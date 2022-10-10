@@ -10,6 +10,7 @@ packages = [{include = "procollab_backend"}]
 python = "^3.8"
 djangorestframework = "^3.14.0"
 flake8 = "^5.0.4"
+python-decouple = "^3.6"
 
 
 [build-system]
