@@ -65,17 +65,12 @@ DB_SERVICE = config('DB_SERVICE',
                     default="postgres",
                     cast=str)
 
-DB_PASSFILE = config('DB_PASSFILE',
-                     default=".pgpass",
-                     cast=str)
-
-
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'OPTIONS': {
             'service': DB_SERVICE,
-            'passfile': DB_PASSFILE,
+            'passfile': '',
         },
     }
 }
