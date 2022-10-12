@@ -61,31 +61,21 @@ WSGI_APPLICATION = 'procollab.wsgi.application'
 
 # Database
 
-DB_NAME = config('DB_NAME',
-                 default="postgres",
-                 cast=str)
+DB_SERVICE = config('DB_SERVICE',
+                    default="postgres",
+                    cast=str)
 
-DB_USER = config('DB_USER',
-                 default="postgres",
-                 cast=str)
+DB_PASSFILE = config('DB_PASSFILE',
+                     default=".pgpass",
+                     cast=str)
 
-DB_USER_PASSWORD = config('DB_USER',
-                          cast=str)
-
-DB_HOST = config('DB_HOST',
-                 default="localhost",
-                 cast=str)
-
-DB_PORT = config('DB_PORT',
-                 default=5432,
-                 cast=int)
 
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'OPTIONS': {
-            'service': 'postgres',
-            'passfile': '.pgpass',
+            'service': DB_SERVICE,
+            'passfile': DB_PASSFILE,
         },
     }
 }
