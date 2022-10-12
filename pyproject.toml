@@ -11,6 +11,8 @@ python = "^3.8"
 djangorestframework = "^3.14.0"
 flake8 = "^5.0.4"
 python-decouple = "^3.6"
+psycopg2 = "^2.9.4"
+psycopg2-binary = "^2.9.4"
 
 
 [build-system]

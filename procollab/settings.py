@@ -13,7 +13,7 @@ DEBUG = config('DEBUG',
                default=False,
                cast=bool)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 
 
 # Application definition
@@ -61,10 +61,32 @@ WSGI_APPLICATION = 'procollab.wsgi.application'
 
 # Database
 
+DB_NAME = config('DB_NAME',
+                 default="postgres",
+                 cast=str)
+
+DB_USER = config('DB_USER',
+                 default="postgres",
+                 cast=str)
+
+DB_USER_PASSWORD = config('DB_USER',
+                          cast=str)
+
+DB_HOST = config('DB_HOST',
+                 default="localhost",
+                 cast=str)
+
+DB_PORT = config('DB_PORT',
+                 default=5432,
+                 cast=int)
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'OPTIONS': {
+            'service': 'postgres',
+            'passfile': '.pgpass',
+        },
     }
 }
 
