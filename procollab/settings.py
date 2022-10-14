@@ -6,14 +6,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 SECRET_KEY = config('DJANGO_SECRET_KEY',
-                    default="django-default-secret-key",
+                    default='django-default-secret-key',
                     cast=str)
 
 DEBUG = config('DEBUG',
                default=False,
                cast=bool)
 
-ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
 
 # Application definition
@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'debug_toolbar',
     'industries.apps.IndustriesConfig',
     'rest_framework',
     'django_cleanup.apps.CleanupConfig',
@@ -40,12 +41,17 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
 ]
 
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:4200",
-    "http://127.0.0.1:4200",
+    'http://localhost:4200',
+    'http://127.0.0.1:4200',
+]
+
+INTERNAL_IPS = [
+    '127.0.0.1',
 ]
 
 
@@ -81,7 +87,7 @@ REST_FRAMEWORK = {
 # Database
 
 DB_SERVICE = config('DB_SERVICE',
-                    default="postgres",
+                    default='postgres',
                     cast=str)
 
 DATABASES = {

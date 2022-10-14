@@ -15,6 +15,7 @@ psycopg2 = "^2.9.4"
 psycopg2-binary = "^2.9.4"
 django-cleanup = "^6.0.0"
 django-cors-headers = "^3.13.0"
+django-debug-toolbar = "^3.7.0"
 
 
 [build-system]
