@@ -1,4 +1,6 @@
+import os.path
 from pathlib import Path
+import mimetypes
 
 from decouple import config
 
@@ -26,6 +28,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'industries.apps.IndustriesConfig',
+    'auth_jwt.apps.AuthConfig',
     'rest_framework',
 ]
 
@@ -76,10 +79,11 @@ DB_SERVICE = config('DB_SERVICE',
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'OPTIONS': {
-            'service': DB_SERVICE,
-            'passfile': '',
-        },
+        'NAME': 'procollab_backend',
+        'USER': 'postgres',
+        'PASSWORD': '123980',
+        'HOST': '127.0.0.1',
+        'PORT': '5432'
     }
 }
 
@@ -120,3 +124,7 @@ STATIC_URL = 'static/'
 # Default primary key field type
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+mimetypes.add_type("application/javascript", ".js", True)
+mimetypes.add_type("text/css", ".css", True)
+mimetypes.add_type("text/html", ".html", True)
