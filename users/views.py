@@ -1,15 +1,14 @@
-from rest_framework import permissions
-from rest_framework.generics import CreateAPIView, RetrieveUpdateAPIView,\
-                                        RetrieveUpdateDestroyAPIView
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
-
-from .serializers import UserSerializer
 from django.contrib.auth import get_user_model
+from .serializers import UserSerializer
+from rest_framework.permissions import IsAuthenticated
+from rest_framework import permissions
+from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
+
 
 User = get_user_model()
 
 
-class RegisterUserView(CreateAPIView):
+class UserDetail(ListCreateAPIView):
     queryset = User.objects.all()
     permission_classes = [
         permissions.AllowAny  # Or anon users can't register
@@ -17,7 +16,7 @@ class RegisterUserView(CreateAPIView):
     serializer_class = UserSerializer
 
 
-class UserUpdateDeleteAPI(RetrieveUpdateDestroyAPIView):
+class UserList(RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()
     permissions_classes = [IsAuthenticated]
     serializer_class = UserSerializer
