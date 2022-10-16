@@ -4,6 +4,17 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 
+class CustomUser(AbstractUser):
+    username = None
+    email = models.EmailField(max_length=255, blank=False, unique=True)
+    first_name = models.CharField(max_length=255, blank=False)
+    last_name = models.CharField(max_length=255, blank=False)
+    password = models.CharField(max_length=255, blank=False)
+
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = []
+
+
 class UserInfo(models.Model):
     """
     User model
@@ -27,8 +38,6 @@ class UserInfo(models.Model):
         user: ForeignKey instance which
     """
     email = models.EmailField(max_length=255)
-    username = models.CharField(max_length=255)
-    surname = models.CharField(max_length=255)
     patronymic = models.CharField(max_length=255)
     birthday = models.DateField(null=True)
     photo_address = models.ImageField(upload_to='photos/%Y/%m/%d/')
@@ -46,20 +55,11 @@ class UserInfo(models.Model):
                                 on_delete=models.CASCADE)
 
     def __str__(self):
-        return self.user
-
-
-class CustomUser(AbstractUser):
-    email = models.EmailField(max_length=255, blank=False, unique=True)
-    first_name = models.CharField(max_length=255, blank=False)
-    last_name = models.CharField(max_length=255, blank=False)
-    password = models.CharField(max_length=255, blank=False)
+        return f"User<{self.email}>"
 
 
 @receiver(post_save, sender=CustomUser)
 def create_or_update_user_profile(sender, instance, created, **kwargs):
     if created:
-        UserInfo.objects.create(username=instance.username,
-                                email=instance.email,
-                                user_id=instance.id)
+        UserInfo.objects.create(user=instance)
     instance.userinfo.save()
