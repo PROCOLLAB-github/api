@@ -7,7 +7,6 @@ from django.dispatch import receiver
 class UserInfo(models.Model):
     """
     User model
-
     Attributes:
         email: CharField instance of user's email.
         username: CharField instance of the username.
@@ -43,19 +42,21 @@ class UserInfo(models.Model):
     organization = models.CharField(max_length=255)
     achievements = models.JSONField(null=True)
     tags = models.CharField(max_length=255)
-    user = models.OneToOneField('User',
+    user = models.OneToOneField('CustomUser',
                                 on_delete=models.CASCADE)
 
     def __str__(self):
         return self.user
 
 
-class User(AbstractUser):
-    email = models.EmailField(max_length=, unique=True, blank=False)
+class CustomUser(AbstractUser):
+    email = models.EmailField(max_length=255, blank=False, unique=True)
+    first_name = models.CharField(max_length=255, blank=False)
+    last_name = models.CharField(max_length=255, blank=False)
     password = models.CharField(max_length=255, blank=False)
 
 
-@receiver(post_save, sender=User)
+@receiver(post_save, sender=CustomUser)
 def create_or_update_user_profile(sender, instance, created, **kwargs):
     if created:
         UserInfo.objects.create(username=instance.username,
