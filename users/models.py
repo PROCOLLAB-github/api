@@ -1,6 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-from django.db.models.signals import post_save, pre_save
+from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 
@@ -51,6 +51,7 @@ class UserInfo(models.Model):
 
 
 class User(AbstractUser):
+    email = models.EmailField(max_length=, unique=True, blank=False)
     password = models.CharField(max_length=255, blank=False)
 
 
