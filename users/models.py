@@ -51,7 +51,7 @@ class UserInfo(models.Model):
     organization = models.CharField(max_length=255)
     achievements = models.JSONField(null=True)
     tags = models.CharField(max_length=255)
-    user = models.OneToOneField('CustomUser',
+    user = models.OneToOneField(CustomUser,
                                 on_delete=models.CASCADE)
 
     def __str__(self):
