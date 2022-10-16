@@ -7,7 +7,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api-auth/', include('rest_framework.urls')),
     path('industries/', include('industries.urls', namespace='industries')),
-    path('auth/', include(('auth_jwt.urls', 'auth_jwt'), namespace='auth_app'))
+    path('auth/', include(('users.urls', 'users'), namespace='users'))
 ]
 
 if settings.DEBUG:

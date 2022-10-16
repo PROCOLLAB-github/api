@@ -28,7 +28,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'industries.apps.IndustriesConfig',
-    'auth_jwt.apps.AuthConfig',
+    'users.apps.UsersConfig',
     'rest_framework',
 ]
 
@@ -104,6 +104,8 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+
+AUTH_USER_MODEL = 'users.User'
 
 # Internationalization
 

@@ -1,5 +1,7 @@
-from django.contrib.auth.models import User
+from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.db.models.signals import post_save, pre_save
+from django.dispatch import receiver
 
 
 class UserInfo(models.Model):
@@ -8,7 +10,7 @@ class UserInfo(models.Model):
 
     Attributes:
         email: CharField instance of user's email.
-        name: CharField instance of the ysername.
+        username: CharField instance of the username.
         surname: CharField instance of the user last name.
         patronymic: CharField instance of the user patronymic.
         birthday: DateField instance of the user's birthday.
@@ -25,11 +27,11 @@ class UserInfo(models.Model):
         tags: CharField instance tags. TODO
         user: ForeignKey instance which
     """
-    email = models.EmailField(max_length=255, blank=False)
-    name = models.CharField(max_length=255)
+    email = models.EmailField(max_length=255)
+    username = models.CharField(max_length=255)
     surname = models.CharField(max_length=255)
     patronymic = models.CharField(max_length=255)
-    birthday = models.DateField()
+    birthday = models.DateField(null=True)
     photo_address = models.ImageField(upload_to='photos/%Y/%m/%d/')
     key_skills = models.CharField(max_length=255)  # TODO
     useful_to_project = models.CharField(max_length=255)
@@ -39,10 +41,27 @@ class UserInfo(models.Model):
     city = models.CharField(max_length=255)
     region = models.CharField(max_length=255)
     organization = models.CharField(max_length=255)
-    achievements = models.JSONField()
+    achievements = models.JSONField(null=True)
     tags = models.CharField(max_length=255)
-    user = models.ForeignKey(User, verbose_name='Пользователь',
-                             on_delete=models.CASCADE)
+    user = models.OneToOneField('User',
+                                on_delete=models.CASCADE)
 
     def __str__(self):
-        return self.name
+        return self.user
+
+
+class User(AbstractUser):
+
+    email = models.EmailField(max_length=255, blank=False, unique=True)
+    username = models.CharField(max_length=255, blank=False, unique=True)
+    password = models.CharField(max_length=255, blank=False)
+    password2 = models.CharField(max_length=255, blank=False)
+
+
+@receiver(post_save, sender=User)
+def create_or_update_user_profile(sender, instance, created, **kwargs):
+    if created:
+        UserInfo.objects.create(username=instance.username,
+                                email=instance.email,
+                                user_id=instance.id)
+    instance.userinfo.save()
