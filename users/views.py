@@ -8,7 +8,7 @@ from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIV
 User = get_user_model()
 
 
-class UserDetail(ListCreateAPIView):
+class UserList(ListCreateAPIView):
     queryset = User.objects.all()
     permission_classes = [
         permissions.AllowAny  # Or anon users can't register
@@ -16,7 +16,7 @@ class UserDetail(ListCreateAPIView):
     serializer_class = UserSerializer
 
 
-class UserList(RetrieveUpdateDestroyAPIView):
+class UserDetail(RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()
     permissions_classes = [IsAuthenticated]
     serializer_class = UserSerializer
