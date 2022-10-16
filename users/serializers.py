@@ -2,18 +2,10 @@ from rest_framework import serializers
 from .models import User
 
 
-class RegisterUserSerializer(serializers.ModelSerializer):
+class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['email', 'username', 'password', 'password2']
-
-    def validate(self, attrs):
-        if attrs['password'] != attrs['password2']:
-            raise serializers.ValidationError(
-                {'password': 'Password fields did not match'}
-            )
-
-        return attrs
+        fields = ['email', 'first_name', 'last_name', 'password']
 
     def create(self, validated_data):
         user = User(**validated_data)
