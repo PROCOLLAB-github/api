@@ -7,4 +7,3 @@ from .models import CustomUser
 class CustomUserAdmin(admin.ModelAdmin):
     list_display = ('email', 'id', )
     list_filter = ('email', 'id', )
-
