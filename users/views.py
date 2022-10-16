@@ -7,14 +7,15 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
+
 class RegisterUserView(CreateAPIView):
     queryset = User.objects.all()
 
     permission_classes = [
-        permissions.AllowAny # Or anon users can't register
+        permissions.AllowAny  # Or anon users can't register
     ]
     serializer_class = RegisterUserSerializer
 
     # def post(self, request, *args, **kwargs):
-        # print(request.data)
-        # serializer = RegisterUserSerializer(data=request.data)
+    # print(request.data)
+    # serializer = RegisterUserSerializer(data=request.data)

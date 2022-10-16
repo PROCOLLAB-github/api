@@ -1,6 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-from django.db.models.signals import post_save, pre_save
+from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 
@@ -43,22 +43,21 @@ class UserInfo(models.Model):
     organization = models.CharField(max_length=255)
     achievements = models.JSONField(null=True)
     tags = models.CharField(max_length=255)
-    user = models.OneToOneField('User',
+    user = models.OneToOneField('CustomUser',
                                 on_delete=models.CASCADE)
 
     def __str__(self):
         return self.user
 
 
-class User(AbstractUser):
-
+class CustomUser(AbstractUser):
     email = models.EmailField(max_length=255, blank=False, unique=True)
     username = models.CharField(max_length=255, blank=False, unique=True)
     password = models.CharField(max_length=255, blank=False)
     password2 = models.CharField(max_length=255, blank=False)
 
 
-@receiver(post_save, sender=User)
+@receiver(post_save, sender=CustomUser)
 def create_or_update_user_profile(sender, instance, created, **kwargs):
     if created:
         UserInfo.objects.create(username=instance.username,
