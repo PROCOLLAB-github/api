@@ -54,7 +54,6 @@ class CustomUser(AbstractUser):
     email = models.EmailField(max_length=255, blank=False, unique=True)
     username = models.CharField(max_length=255, blank=False, unique=True)
     password = models.CharField(max_length=255, blank=False)
-    password2 = models.CharField(max_length=255, blank=False)
 
 
 @receiver(post_save, sender=CustomUser)
