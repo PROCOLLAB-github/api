@@ -7,7 +7,7 @@ readme = "README.md"
 packages = [{include = "procollab_backend"}]
 
 [tool.black]
-    line-length = 79
+    line-length = 100
     include = '\.pyi?$'
     exclude = '''
     /(
@@ -21,11 +21,13 @@ packages = [{include = "procollab_backend"}]
       | build
       | dist
       | venv
+      | migrations
 
       # The following are specific to Black, you probably don't want those.
       | blib2to3
       | tests/data
     )/
+    '''
 
 [tool.poetry.dependencies]
 python = "^3.8"

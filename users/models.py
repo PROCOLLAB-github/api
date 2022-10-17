@@ -11,7 +11,7 @@ class CustomUser(AbstractUser):
     last_name = models.CharField(max_length=255, blank=False)
     password = models.CharField(max_length=255, blank=False)
 
-    USERNAME_FIELD = 'email'
+    USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
 
 
@@ -37,10 +37,11 @@ class UserInfo(models.Model):
         tags: CharField instance tags. TODO
         user: ForeignKey instance which
     """
+
     email = models.EmailField(max_length=255)
     patronymic = models.CharField(max_length=255)
     birthday = models.DateField(null=True)
-    photo_address = models.ImageField(upload_to='photos/%Y/%m/%d/')
+    photo_address = models.ImageField(upload_to="photos/%Y/%m/%d/")
     key_skills = models.CharField(max_length=255)  # TODO
     useful_to_project = models.CharField(max_length=255)
     about_me = models.TextField()
@@ -51,8 +52,7 @@ class UserInfo(models.Model):
     organization = models.CharField(max_length=255)
     achievements = models.JSONField(null=True)
     tags = models.CharField(max_length=255)
-    user = models.OneToOneField(CustomUser,
-                                on_delete=models.CASCADE)
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
 
     def __str__(self):
         return f"User<{self.email}>"

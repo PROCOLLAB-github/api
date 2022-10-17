@@ -7,20 +7,27 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='Industry',
+            name="Industry",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=256)),
-                ('datetime_created', models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
+                ("name", models.CharField(max_length=256)),
+                (
+                    "datetime_created",
+                    models.DateTimeField(auto_now_add=True, verbose_name="Дата создания"),
+                ),
             ],
             options={
-                'verbose_name': 'Industry',
-                'verbose_name_plural': 'Industries',
+                "verbose_name": "Industry",
+                "verbose_name_plural": "Industries",
             },
         ),
     ]
