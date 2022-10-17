@@ -1,6 +1,6 @@
+import mimetypes
 from datetime import timedelta
 from pathlib import Path
-import mimetypes
 
 from decouple import config
 
@@ -30,10 +30,11 @@ INSTALLED_APPS = [
     'debug_toolbar',
     'industries.apps.IndustriesConfig',
     'users.apps.UsersConfig',
+
     'rest_framework',
     'django_cleanup.apps.CleanupConfig',
-    'corsheaders',
     'rest_framework_simplejwt',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
