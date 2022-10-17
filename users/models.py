@@ -3,6 +3,8 @@ from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+from .managers import CustomUserManager
+
 
 class CustomUser(AbstractUser):
     username = None
@@ -10,6 +12,8 @@ class CustomUser(AbstractUser):
     first_name = models.CharField(max_length=255, blank=False)
     last_name = models.CharField(max_length=255, blank=False)
     password = models.CharField(max_length=255, blank=False)
+
+    objects = CustomUserManager()
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
@@ -61,5 +65,5 @@ class UserInfo(models.Model):
 @receiver(post_save, sender=CustomUser)
 def create_or_update_user_profile(sender, instance, created, **kwargs):
     if created:
-        UserInfo.objects.create(user=instance)
+        UserInfo.objects.create(email=instance.email, user_id=instance.pk)
     instance.userinfo.save()

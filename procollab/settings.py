@@ -28,12 +28,12 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'debug_toolbar',
+    'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     'industries.apps.IndustriesConfig',
     'users.apps.UsersConfig',
-
     'rest_framework',
     'django_cleanup.apps.CleanupConfig',
-    'rest_framework_simplejwt',
     'corsheaders',
 ]
 
@@ -99,10 +99,11 @@ DB_SERVICE = config('DB_SERVICE',
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'OPTIONS': {
-            'service': DB_SERVICE,
-            'passfile': '',
-        },
+        'NAME': 'procollab_backend',
+        'USER': 'postgres',
+        'PASSWORD': '123980',
+        'HOST': '127.0.0.1',
+        'PORT': '5432'
     }
 }
 
