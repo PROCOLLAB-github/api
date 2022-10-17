@@ -14,7 +14,6 @@ class CustomUser(AbstractUser):
     last_name = models.CharField(max_length=255, blank=False)
     password = models.CharField(max_length=255, blank=False)
 
-
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
 
@@ -67,3 +66,6 @@ def create_or_update_user_profile(sender, instance, created, **kwargs):
     if created:
         UserInfo.objects.create(email=instance.email, user_id=instance.pk)
     instance.userinfo.save()
+
+
+
