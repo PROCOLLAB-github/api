@@ -5,6 +5,8 @@ class Industry(models.Model):
     """
     Industry model
 
+    Industry represents the scope of activity of the project.
+
      Attributes:
         name: A CharField name of Industry.
         datetime_created: A DateTimeField indicating date of creation.
@@ -20,5 +22,5 @@ class Industry(models.Model):
         return f"Industry<{self.id}>"
 
     class Meta:
-        verbose_name = 'Industry'
-        verbose_name_plural = 'Industries'
+        verbose_name = 'Индустрия'
+        verbose_name_plural = 'Индустрии'

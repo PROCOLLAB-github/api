@@ -13,6 +13,9 @@ flake8 = "^5.0.4"
 python-decouple = "^3.6"
 psycopg2 = "^2.9.4"
 psycopg2-binary = "^2.9.4"
+django-cleanup = "^6.0.0"
+django-cors-headers = "^3.13.0"
+django-debug-toolbar = "^3.7.0"
 Pillow = "^9.2.0"
 djangorestframework-simplejwt = {extras = ["crypto"], version = "^5.2.1"}
 
