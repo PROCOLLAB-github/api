@@ -12,15 +12,14 @@ class Industry(models.Model):
         datetime_created: A DateTimeField indicating date of creation.
     """
 
-    name = models.CharField(max_length=256,
-                            null=False)
-    datetime_created = models.DateTimeField(verbose_name='Дата создания',
-                                            null=False,
-                                            auto_now_add=True)
+    name = models.CharField(max_length=256, null=False)
+    datetime_created = models.DateTimeField(
+        verbose_name="Дата создания", null=False, auto_now_add=True
+    )
 
     def __str__(self):
         return f"Industry<{self.id}>"
 
     class Meta:
-        verbose_name = 'Индустрия'
-        verbose_name_plural = 'Индустрии'
+        verbose_name = "Индустрия"
+        verbose_name_plural = "Индустрии"
