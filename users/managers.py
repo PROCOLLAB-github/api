@@ -2,7 +2,16 @@ from django.contrib.auth.base_user import BaseUserManager
 
 
 class CustomUserManager(BaseUserManager):
-    def create_superuser(self, email, first_name, last_name, password,
+    def create_user(self, email, password, **extra_fields):
+        if not email:
+            raise ValueError("Вы должны указать почту")
+        email = self.normalize_email(email)
+        user = self.model(email=email, **extra_fields)
+        user.set_password(password)
+        user.save()
+        return user
+
+    def create_superuser(self, email, password,
                          **other_fields):
 
         other_fields.setdefault('is_staff', True)
@@ -16,5 +25,4 @@ class CustomUserManager(BaseUserManager):
             raise ValueError(
                 'Superuser must be assigned to is_superuser=True.')
 
-        return self.create_user(email=email, password=password,
-                                **other_fields)
+        return self.create_user(email, password, **other_fields)
