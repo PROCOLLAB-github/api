@@ -7,7 +7,7 @@ app_name = 'users'
 
 urlpatterns = [
     path('', UserList.as_view()),
-    path('<int:pk>/', UserDetail.as_view()),
+    path('<int:pk>', UserDetail.as_view()),
 ]
 
 urlpatterns = format_suffix_patterns(urlpatterns)

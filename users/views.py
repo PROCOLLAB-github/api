@@ -2,7 +2,9 @@ from django.contrib.auth import get_user_model
 from .serializers import UserSerializer
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import permissions
-from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
+from rest_framework.generics import ListCreateAPIView,\
+    RetrieveUpdateDestroyAPIView
+from .utils import send_email_for_verify
 
 
 User = get_user_model()
