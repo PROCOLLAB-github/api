@@ -1,4 +1,4 @@
-from rest_framework import generics, permissions
+from rest_framework import generics
 
 from industries.models import Industry
 from industries.serializers import IndustrySerializer
