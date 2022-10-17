@@ -6,10 +6,43 @@ authors = ["Sergey Yaksanov <sergeyyaksanov@yandex.ru>"]
 readme = "README.md"
 packages = [{include = "procollab_backend"}]
 
+[tool.black]
+    line-length = 100
+    include = '\.pyi?$'
+    exclude = '''
+    /(
+        \.git
+      | \.hg
+      | \.mypy_cache
+      | \.tox
+      | \.venv
+      | _build
+      | buck-out
+      | build
+      | dist
+      | venv
+      | migrations
+
+      # The following are specific to Black, you probably don't want those.
+      | blib2to3
+      | tests/data
+    )/
+    '''
+
 [tool.poetry.dependencies]
 python = "^3.8"
 djangorestframework = "^3.14.0"
 flake8 = "^5.0.4"
+python-decouple = "^3.6"
+psycopg2 = "^2.9.4"
+psycopg2-binary = "^2.9.4"
+django-cleanup = "^6.0.0"
+django-cors-headers = "^3.13.0"
+django-debug-toolbar = "^3.7.0"
+Pillow = "^9.2.0"
+djangorestframework-simplejwt = {extras = ["crypto"], version = "^5.2.1"}
+pre-commit = "^2.20.0"
+black = "^22.10.0"
 
 
 [build-system]
