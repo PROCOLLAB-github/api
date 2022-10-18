@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     "debug_toolbar",
     "industries.apps.IndustriesConfig",
     "users.apps.UsersConfig",
+    "news.apps.NewsConfig",
     "rest_framework",
     "django_cleanup.apps.CleanupConfig",
     "rest_framework_simplejwt",
