@@ -1,6 +1,6 @@
 from rest_framework.permissions import BasePermission
 
-SAFE_METHODS = ["GET", "HEAD", "OPTIONS"]
+from core.constants import SAFE_METHODS
 
 
 class IsStaffOrReadOnly(BasePermission):
