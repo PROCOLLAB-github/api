@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     "industries.apps.IndustriesConfig",
     "users.apps.UsersConfig",
     "news.apps.NewsConfig",
+    "projects.apps.ProjectsConfig",
     "rest_framework",
     "django_cleanup.apps.CleanupConfig",
     "rest_framework_simplejwt",
