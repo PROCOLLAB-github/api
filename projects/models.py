@@ -9,7 +9,6 @@ User = get_user_model()
 
 class Project(models.Model):
     """
-    # TODO verbose names for fields
     Project model
 
      Attributes:
