@@ -5,7 +5,3 @@ VERBOSE_STEPS = (
     (3, "Первые продажи"),
     (4, "Масштабирование"),
 )
-
-
-def get_default_achievements() -> dict:
-    return {"title": "", "status": ""}

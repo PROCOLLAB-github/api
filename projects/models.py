@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from django.db import models
 from industries.models import Industry
 
-from projects.helpers import VERBOSE_STEPS, get_default_achievements
+from projects.helpers import VERBOSE_STEPS
 
 User = get_user_model()
 
@@ -15,7 +15,6 @@ class Project(models.Model):
         name: A CharField name of the project.
         description: A TextField description of the project.
         short_description: A TextField short description of the project.
-        achievements: A JSONField which contains title and status of the achievement.
         region: A CharField region of the project.
         step: A PositiveSmallIntegerField which indicates status of the project
             according to VERBOSE_STEPS.
@@ -32,11 +31,7 @@ class Project(models.Model):
     name = models.CharField(max_length=256, null=False)
     description = models.TextField(blank=True)
     short_description = models.TextField(blank=True)
-
-    # TODO Achievement model
-    achievements = models.JSONField(blank=False, default=get_default_achievements)
     region = models.CharField(max_length=256, blank=True)
-
     step = models.PositiveSmallIntegerField(choices=VERBOSE_STEPS, null=False)
 
     industry = models.ForeignKey(
@@ -73,3 +68,31 @@ class Project(models.Model):
     class Meta:
         verbose_name = "Проект"
         verbose_name_plural = "Проекты"
+
+
+class Achievement(models.Model):
+    """
+    Achievement model
+
+     Attributes:
+        title: A CharField title of the achievement.
+        status: A CharField place or status of the achievement.
+        project: A ForeignKey referring to the Project model.
+    """
+
+    title = models.CharField(max_length=256, null=False)
+    status = models.CharField(max_length=256, null=False)
+
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="achievements",
+    )
+
+    def __str__(self):
+        return f"Achievement<{self.id}>"
+
+    class Meta:
+        verbose_name = "Достижение"
+        verbose_name_plural = "Достижения"
