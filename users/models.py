@@ -3,15 +3,19 @@ from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+from .managers import CustomUserManager
+
 
 class CustomUser(AbstractUser):
+    objects = CustomUserManager()
     username = None
     email = models.EmailField(max_length=255, blank=False, unique=True)
     first_name = models.CharField(max_length=255, blank=False)
     last_name = models.CharField(max_length=255, blank=False)
     password = models.CharField(max_length=255, blank=False)
+    is_active = models.BooleanField(default=False)
 
-    USERNAME_FIELD = "email"
+    USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
 
 
@@ -37,11 +41,10 @@ class UserInfo(models.Model):
         tags: CharField instance tags. TODO
         user: ForeignKey instance which
     """
-
     email = models.EmailField(max_length=255)
     patronymic = models.CharField(max_length=255)
     birthday = models.DateField(null=True)
-    photo_address = models.ImageField(upload_to="photos/%Y/%m/%d/")
+    photo_address = models.ImageField(upload_to='photos/%Y/%m/%d/')
     key_skills = models.CharField(max_length=255)  # TODO
     useful_to_project = models.CharField(max_length=255)
     about_me = models.TextField()
@@ -52,7 +55,8 @@ class UserInfo(models.Model):
     organization = models.CharField(max_length=255)
     achievements = models.JSONField(null=True)
     tags = models.CharField(max_length=255)
-    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
+    user = models.OneToOneField(CustomUser,
+                                on_delete=models.CASCADE)
 
     def __str__(self):
         return f"User<{self.email}>"
@@ -61,5 +65,8 @@ class UserInfo(models.Model):
 @receiver(post_save, sender=CustomUser)
 def create_or_update_user_profile(sender, instance, created, **kwargs):
     if created:
-        UserInfo.objects.create(user=instance)
+        UserInfo.objects.create(email=instance.email, user_id=instance.pk)
     instance.userinfo.save()
+
+
+

@@ -26,11 +26,11 @@ INSTALLED_APPS = [
     "debug_toolbar",
     "industries.apps.IndustriesConfig",
     "users.apps.UsersConfig",
-    "news.apps.NewsConfig",
     "projects.apps.ProjectsConfig",
     "rest_framework",
-    "django_cleanup.apps.CleanupConfig",
     "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
+    "django_cleanup.apps.CleanupConfig",
     "corsheaders",
 ]
 
@@ -110,16 +110,13 @@ AUTH_PASSWORD_VALIDATORS = [
 UserAttributeSimilarityValidator",
     },
     {
-        "NAME": "django.contrib.auth.password_validation.\
-MinimumLengthValidator",
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
     },
     {
-        "NAME": "django.contrib.auth.password_validation.\
-CommonPasswordValidator",
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
     },
     {
-        "NAME": "django.contrib.auth.password_validation.\
-NumericPasswordValidator",
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
 
@@ -176,3 +173,10 @@ default_user_authentication_rule",
     "SLIDING_TOKEN_LIFETIME": timedelta(minutes=5),
     "SLIDING_TOKEN_REFRESH_LIFETIME": timedelta(days=1),
 }
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_USE_TLS = True
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_HOST_USER = config("EMAIL_HOST_USER", cast=str)
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", cast=str)
