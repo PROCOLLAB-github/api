@@ -100,11 +100,10 @@ DB_SERVICE = config("DB_SERVICE", default="postgres", cast=str)
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "procollab_backend",
-        "USER": "postgres",
-        "PASSWORD": "123980",
-        "HOST": "127.0.0.1",
-        "PORT": "5432",
+        "OPTIONS": {
+            "service": DB_SERVICE,
+            "passfile": "",
+        },
     }
 }
 
