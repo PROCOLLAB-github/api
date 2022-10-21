@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "debug_toolbar",
+    "django_rest_passwordreset",
     "industries.apps.IndustriesConfig",
     "users.apps.UsersConfig",
     "projects.apps.ProjectsConfig",
@@ -32,6 +33,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
     "django_cleanup.apps.CleanupConfig",
+    "rest_framework.authtoken",
     "corsheaders",
 ]
 
@@ -80,11 +82,14 @@ WSGI_APPLICATION = "procollab.wsgi.application"
 
 
 REST_FRAMEWORK = {
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
         "rest_framework.authentication.BasicAuthentication",
         "rest_framework.authentication.SessionAuthentication",
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
-    ]
+    ],
 }
 
 
@@ -95,10 +100,11 @@ DB_SERVICE = config("DB_SERVICE", default="postgres", cast=str)
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "OPTIONS": {
-            "service": DB_SERVICE,
-            "passfile": "",
-        },
+        "NAME": "procollab_backend",
+        "USER": "postgres",
+        "PASSWORD": "123980",
+        "HOST": "127.0.0.1",
+        "PORT": "5432",
     }
 }
 

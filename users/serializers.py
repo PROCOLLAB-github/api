@@ -31,3 +31,13 @@ class UserSerializer(serializers.ModelSerializer):
         user.save()
 
         return user
+
+
+class EmailSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
+class PasswordSerializer(serializers.Serializer):
+
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True)

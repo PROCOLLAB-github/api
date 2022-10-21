@@ -8,7 +8,7 @@ from rest_framework_simplejwt.views import (
     TokenVerifyView,
 )
 
-from users.views import VerifyEmail
+from users.views import VerifyEmail, ResetPassword
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -30,6 +30,18 @@ urlpatterns = [
         VerifyEmail.as_view(),
         name="account_confirm_email",
     ),
+    re_path(
+        r"^password-reset/",
+        ResetPassword.as_view(),
+        name="password_reset_sent",
+    ),
+    re_path(
+        r"^password-reset//(?P<key>[-:\w]+)/$",
+        ResetPassword.as_view(),
+        name="password_reset",
+    ),
+    # path('api/password_reset/',
+    #      include('django_rest_passwordreset.urls', namespace='password_reset'))
 ]
 
 if settings.DEBUG:
