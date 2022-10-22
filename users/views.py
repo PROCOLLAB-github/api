@@ -10,11 +10,12 @@ from rest_framework.generics import (
     ListCreateAPIView,
     RetrieveUpdateDestroyAPIView,
     GenericAPIView,
+    UpdateAPIView,
 )
 from core.permissions import IsOwnerOrReadOnly
 
 from core.utils import Email
-from .serializers import UserSerializer
+from .serializers import UserSerializer, EmailSerializer, PasswordSerializer
 
 User = get_user_model()
 
@@ -80,3 +81,60 @@ class VerifyEmail(GenericAPIView):
             )
         except jwt.DecodeError:
             return Response({"error": "Decode error"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class EmailResetPassword(UpdateAPIView):
+    serializer_class = EmailSerializer
+    permission_classes = [IsAuthenticated]
+
+    def update(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid()
+
+        user = User.objects.get(email=serializer.data["email"])
+
+        token = RefreshToken.for_user(user).access_token
+
+        relative_link = reverse("password_reset_sent")
+        print("qwerty")
+
+        current_site = get_current_site(request).domain
+        absolute_url = "http://" + current_site + relative_link + "?token=" + str(token)
+        print("qwerty")
+        email_body = "Hi, {} {}! Use link below verify your email {}".format(
+            user.first_name, user.last_name, absolute_url
+        )
+
+        data = {
+            "email_body": email_body,
+            "email_subject": "Verify your email",
+            "to_email": user.email,
+        }
+
+        Email.send_email(data)
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class ResetPassword(UpdateAPIView):
+    serializer_class = PasswordSerializer
+
+    def get(self, request):
+        token = request.GET.get("token")
+        try:
+            payload = jwt.decode(jwt=token, key=settings.SECRET_KEY, algorithms=["HS256"])
+            user = User.objects.get(id=payload["user_id"])
+            if not user.is_active:
+                user.is_active = True
+                user.save()
+
+            return Response(
+                {"email": "Successfully activated"}, status=status.HTTP_200_OK
+            )
+        except (jwt.ExpiredSignatureError, jwt.DecodeError):
+            return False
+
+    def update(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid()
+        print(serializer.data)
