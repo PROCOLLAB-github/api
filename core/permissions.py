@@ -24,3 +24,15 @@ class IsProjectLeaderOrReadOnly(BasePermission):
         if request.method in SAFE_METHODS or request.user and request.user.id:
             return True
         return False
+
+
+class IsOwnerOrReadOnly(BasePermission):
+    """
+    Allows access to update only to himself.
+    """
+
+    def has_permission(self, request, view) -> bool:
+
+        if request.method in SAFE_METHODS or request.user and request.user.id:
+            return True
+        return False

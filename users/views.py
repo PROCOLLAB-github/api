@@ -5,13 +5,13 @@ from django.contrib.sites.shortcuts import get_current_site
 from django.urls import reverse
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework.permissions import IsAuthenticated
 from rest_framework import permissions, status
 from rest_framework.generics import (
     ListCreateAPIView,
     RetrieveUpdateDestroyAPIView,
     GenericAPIView,
 )
+from core.permissions import IsOwnerOrReadOnly
 
 from core.utils import Email
 from .serializers import UserSerializer
@@ -55,7 +55,7 @@ class UserList(ListCreateAPIView):
 
 class UserDetail(RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()
-    permissions_classes = [IsAuthenticated]
+    permissions_classes = [IsOwnerOrReadOnly]
     serializer_class = UserSerializer
 
 
@@ -67,6 +67,7 @@ class VerifyEmail(GenericAPIView):
             user = User.objects.get(id=payload["user_id"])
             if not user.is_active:
                 user.is_active = True
+
                 user.save()
 
             return Response(
