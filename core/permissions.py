@@ -31,8 +31,7 @@ class IsOwnerOrReadOnly(BasePermission):
     Allows access to update only to himself.
     """
 
-    def has_permission(self, request, view) -> bool:
-
-        if request.method in SAFE_METHODS or request.user and request.user.id:
+    def has_object_permission(self, request, view, obj) -> bool:
+        if request.method in SAFE_METHODS or request.user and request.user.id == obj.id:
             return True
         return False

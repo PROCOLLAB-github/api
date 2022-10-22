@@ -1,28 +1,28 @@
 import jwt
+from core.permissions import IsOwnerOrReadOnly
+from core.utils import Email
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.sites.shortcuts import get_current_site
 from django.urls import reverse
-from rest_framework.response import Response
-from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework import permissions, status
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.generics import (
+    GenericAPIView,
     ListCreateAPIView,
     RetrieveUpdateDestroyAPIView,
-    GenericAPIView,
     UpdateAPIView,
 )
-from core.permissions import IsOwnerOrReadOnly
+from rest_framework.response import Response
+from rest_framework_simplejwt.tokens import RefreshToken
 
-from core.utils import Email
-from .serializers import UserSerializer, EmailSerializer, PasswordSerializer
+from .serializers import EmailSerializer, PasswordSerializer, UserSerializer
 
 User = get_user_model()
 
 
 class UserList(ListCreateAPIView):
     queryset = User.objects.all()
-    permission_classes = [permissions.AllowAny]  # Or anon users can't register
     serializer_class = UserSerializer
 
     def post(self, request, *args, **kwargs):
@@ -56,7 +56,7 @@ class UserList(ListCreateAPIView):
 
 class UserDetail(RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()
-    permissions_classes = [IsOwnerOrReadOnly]
+    permission_classes = [IsOwnerOrReadOnly, IsAuthenticated]
     serializer_class = UserSerializer
 
 
@@ -85,7 +85,6 @@ class VerifyEmail(GenericAPIView):
 
 class EmailResetPassword(UpdateAPIView):
     serializer_class = EmailSerializer
-    permission_classes = [IsAuthenticated]
 
     def update(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
