@@ -4,7 +4,7 @@
 
 ### Clone project
 
-📌 `git clone https://github.com/yeezy-na-izi/FastAPI-template.git`
+📌 `git clone https://github.com/Yakser/procollab-backend.git`
 
 ### Create virtual environment
 
