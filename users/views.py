@@ -12,11 +12,11 @@ from rest_framework.generics import (
     RetrieveUpdateDestroyAPIView,
     UpdateAPIView,
 )
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .serializers import (
+from users.serializers import (
     EmailSerializer,
     PasswordSerializer,
     UserSerializer,
@@ -28,6 +28,7 @@ User = get_user_model()
 
 class UserList(ListCreateAPIView):
     queryset = User.objects.all()
+    permission_classes = [AllowAny]
     serializer_class = UserSerializer
 
     def post(self, request, *args, **kwargs):
