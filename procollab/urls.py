@@ -41,10 +41,8 @@ urlpatterns = [
         ResetPassword.as_view(),
         name="password_reset",
     ),
-    # path('api/password_reset/',
-    #      include('django_rest_passwordreset.urls', namespace='password_reset'))
     path(
-        "openapi",
+        "openapi/",
         get_schema_view(
             title="Procollab API",
             description="API for all things …",

@@ -38,6 +38,10 @@ class EmailSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
 
+class VerifyEmailSerializer(serializers.Serializer):
+    result = serializers.JSONField()
+
+
 class PasswordSerializer(serializers.Serializer):
 
     old_password = serializers.CharField(required=True)

@@ -6,17 +6,22 @@ from django.contrib.auth import get_user_model
 from django.contrib.sites.shortcuts import get_current_site
 from django.urls import reverse
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.generics import (
     GenericAPIView,
     ListCreateAPIView,
     RetrieveUpdateDestroyAPIView,
     UpdateAPIView,
 )
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .serializers import EmailSerializer, PasswordSerializer, UserSerializer
+from .serializers import (
+    EmailSerializer,
+    PasswordSerializer,
+    UserSerializer,
+    VerifyEmailSerializer,
+)
 
 User = get_user_model()
 
@@ -61,6 +66,8 @@ class UserDetail(RetrieveUpdateDestroyAPIView):
 
 
 class VerifyEmail(GenericAPIView):
+    serializer_class = VerifyEmailSerializer
+
     def get(self, request):
         token = request.GET.get("token")
         try:
@@ -68,7 +75,6 @@ class VerifyEmail(GenericAPIView):
             user = User.objects.get(id=payload["user_id"])
             if not user.is_active:
                 user.is_active = True
-
                 user.save()
 
             return Response(
