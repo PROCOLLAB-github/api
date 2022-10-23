@@ -49,9 +49,6 @@ class CustomUser(AbstractUser):
     region = models.CharField(max_length=255, blank=True)
     organization = models.CharField(max_length=255, blank=True)
 
-    # TODO MANY TO MANY RELATION
-    tags = models.CharField(max_length=255, blank=True)  # Что это такое?
-
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
 

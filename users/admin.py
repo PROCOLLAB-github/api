@@ -39,7 +39,6 @@ class CustomUserAdmin(admin.ModelAdmin):
                     "city",
                     "region",
                     "organization",
-                    "tags",
                 )
             },
         ),
