@@ -11,7 +11,7 @@ class News(models.Model):
         short_text: A TextField news short text content.
         cover_url: A TextField link to news cover image.
         datetime_created: A DateTimeField indicating date of creation.
-        datetime_update: A DateTimeField indicating date of update.
+        datetime_updated: A DateTimeField indicating date of update.
     """
 
     title = models.CharField(max_length=256, null=False)

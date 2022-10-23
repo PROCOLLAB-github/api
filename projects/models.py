@@ -25,7 +25,7 @@ class Project(models.Model):
         leader: A ForeignKey referring to the User model.
         draft: A boolean indicating if Project is a draft.
         datetime_created: A DateTimeField indicating date of creation.
-        datetime_update: A DateTimeField indicating date of update.
+        datetime_updated: A DateTimeField indicating date of update.
     """
 
     name = models.CharField(max_length=256, null=False)
