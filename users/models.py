@@ -35,9 +35,11 @@ class CustomUser(AbstractUser):
     password = models.CharField(max_length=255, blank=False)
     is_active = models.BooleanField(default=False, editable=False)
 
-    patronymic = models.CharField(max_length=255, blank=True)
+    patronymic = models.CharField(max_length=255, blank=True)  # Отчество
     birthday = models.DateField(null=True)
-    avatar = models.ImageField(upload_to="uploads/users_avatars/", blank=True)
+    avatar = models.ImageField(
+        upload_to="uploads/users_avatars/", blank=True
+    )  # Почему не url?
     key_skills = models.CharField(max_length=255, blank=True)  # TODO
     useful_to_project = models.CharField(max_length=255, blank=True)
     about_me = models.TextField(blank=True)
@@ -47,10 +49,10 @@ class CustomUser(AbstractUser):
     region = models.CharField(max_length=255, blank=True)
     organization = models.CharField(max_length=255, blank=True)
 
-    # TODO MANY TO MANY RELATION
-    tags = models.CharField(max_length=255, blank=True)
-
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
 
     objects = CustomUserManager()
+
+    def __str__(self):
+        return f"User<{self.id}> - {self.first_name} {self.last_name}"

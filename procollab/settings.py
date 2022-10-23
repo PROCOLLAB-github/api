@@ -6,13 +6,11 @@ from decouple import config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
 SECRET_KEY = config("DJANGO_SECRET_KEY", default="django-default-secret-key", cast=str)
 
 DEBUG = config("DEBUG", default=False, cast=bool)
 
 ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
-
 
 # Application definition
 
@@ -49,7 +47,6 @@ MIDDLEWARE = [
     "debug_toolbar.middleware.DebugToolbarMiddleware",
 ]
 
-
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:4200",
     "http://127.0.0.1:4200",
@@ -58,7 +55,6 @@ CORS_ALLOWED_ORIGINS = [
 INTERNAL_IPS = [
     "127.0.0.1",
 ]
-
 
 ROOT_URLCONF = "procollab.urls"
 
@@ -80,7 +76,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "procollab.wsgi.application"
 
-
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
@@ -92,21 +87,28 @@ REST_FRAMEWORK = {
     ],
 }
 
-
 # Database
 
-DB_SERVICE = config("DB_SERVICE", default="postgres", cast=str)
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "OPTIONS": {
-            "service": DB_SERVICE,
-            "passfile": "",
-        },
+if DEBUG:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": "db.sqlite3",
+        }
     }
-}
+else:
+    DB_SERVICE = config("DB_SERVICE", default="postgres", cast=str)
 
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "OPTIONS": {
+                "service": DB_SERVICE,
+                "passfile": "",
+            },
+        }
+    }
 
 # Password validation
 
@@ -126,7 +128,6 @@ UserAttributeSimilarityValidator",
     },
 ]
 
-
 AUTH_USER_MODEL = "users.CustomUser"
 
 # Internationalization
@@ -138,7 +139,6 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 
 USE_TZ = True
-
 
 # Static files (CSS, JavaScript, Images)
 

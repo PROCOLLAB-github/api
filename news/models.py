@@ -9,9 +9,9 @@ class News(models.Model):
         title: A CharField news title.
         text: A TextField news text content.
         short_text: A TextField news short text content.
-        cover_url: A TextField link to news cover image.
+        cover_url: A URLField link to news cover image.
         datetime_created: A DateTimeField indicating date of creation.
-        datetime_update: A DateTimeField indicating date of update.
+        datetime_updated: A DateTimeField indicating date of update.
     """
 
     title = models.CharField(max_length=256, null=False)
@@ -20,7 +20,7 @@ class News(models.Model):
 
     short_text = models.TextField(max_length=256, blank=True)
 
-    cover_url = models.TextField(null=False)
+    cover_url = models.URLField(null=False)
 
     datetime_created = models.DateTimeField(
         verbose_name="Дата создания", null=False, auto_now_add=True
@@ -31,7 +31,7 @@ class News(models.Model):
     )
 
     def __str__(self):
-        return f"News<{self.id}>"
+        return f"News<{self.id}> - {self.title}"
 
     class Meta:
         verbose_name = "Новость"

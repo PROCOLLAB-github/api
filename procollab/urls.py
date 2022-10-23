@@ -2,6 +2,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path, re_path
+from rest_framework.schemas import get_schema_view
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -42,6 +43,15 @@ urlpatterns = [
     ),
     # path('api/password_reset/',
     #      include('django_rest_passwordreset.urls', namespace='password_reset'))
+    path(
+        "openapi",
+        get_schema_view(
+            title="Procollab API",
+            description="API for all things …",
+            version="1.0.0",
+        ),
+        name="openapi-schema",
+    ),
 ]
 
 if settings.DEBUG:
