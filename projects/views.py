@@ -31,9 +31,6 @@ class ProjectCollaborators(generics.GenericAPIView):
     serializer_class = ProjectCollaboratorsSerializer
 
     def delete(self, request, pk: int):
-        return self.remove(request)
-
-    def remove(self, request):
         m2m_manager = self.get_object().collaborators
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
