@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from vacancy.models import Vacancy, VacancyRequest
+from vacancy.models import Vacancy, VacancyResponse
 
 
 class VacancySerializer(serializers.ModelSerializer):
@@ -24,9 +24,9 @@ class VacancySerializer(serializers.ModelSerializer):
         return vacancy
 
 
-class VacancyRequestSerializer(serializers.ModelSerializer):
+class VacancyResponseSerializer(serializers.ModelSerializer):
     class Meta:
-        model = VacancyRequest
+        model = VacancyResponse
         fields = [
             "id",
             "user",
@@ -37,7 +37,7 @@ class VacancyRequestSerializer(serializers.ModelSerializer):
         ]
 
     def create(self, validated_data):
-        vacancy_request = VacancyRequest(**validated_data)
+        vacancy_request = VacancyResponse(**validated_data)
         vacancy_request.save()
 
         return vacancy_request
