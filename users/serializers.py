@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import CustomUser
+from .models import CustomUser, Achievement
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -34,6 +34,25 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 
+class AchievementSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Achievement
+        fields = [
+            "id",
+            "user",
+            "name",
+            "description",
+            "image_url",
+            "date",
+        ]
+
+    def create(self, validated_data):
+        achievement = Achievement(**validated_data)
+        achievement.save()
+
+        return achievement
+
+
 class EmailSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
@@ -43,6 +62,5 @@ class VerifyEmailSerializer(serializers.Serializer):
 
 
 class PasswordSerializer(serializers.Serializer):
-
     old_password = serializers.CharField(required=True)
     new_password = serializers.CharField(required=True)

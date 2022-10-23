@@ -56,3 +56,31 @@ class CustomUser(AbstractUser):
 
     def __str__(self):
         return f"User<{self.id}> - {self.first_name} {self.last_name}"
+
+
+class Achievement(models.Model):
+    """
+    Achievement model
+
+    Attributes:
+        user: ForeignKey instance of the user.
+        name: CharField instance of the achievement name.
+        description: TextField instance of the achievement description.
+        image_url: URLField instance of the achievement image containing url.
+        date: DateField instance of the achievement date.
+    """
+
+    user = models.ForeignKey(
+        CustomUser, on_delete=models.CASCADE, related_name="achievements"
+    )
+    name = models.CharField(max_length=255, blank=False)
+    description = models.TextField(blank=False)
+    image_url = models.URLField(blank=True)
+    date = models.DateField(auto_now=True)
+
+    def __str__(self):
+        return f"Achievement<{self.id}> - {self.name}: {self.description}"
+
+    class Meta:
+        verbose_name = "Достижение"
+        verbose_name_plural = "Достижения"

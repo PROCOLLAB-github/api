@@ -1,6 +1,4 @@
 import jwt
-from core.permissions import IsOwnerOrReadOnly
-from core.utils import Email
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.sites.shortcuts import get_current_site
@@ -16,11 +14,15 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .serializers import (
+from core.permissions import IsOwnerOrReadOnly
+from core.utils import Email
+from users.models import Achievement
+from users.serializers import (
     EmailSerializer,
     PasswordSerializer,
     UserSerializer,
     VerifyEmailSerializer,
+    AchievementSerializer,
 )
 
 User = get_user_model()
@@ -101,11 +103,9 @@ class EmailResetPassword(UpdateAPIView):
         token = RefreshToken.for_user(user).access_token
 
         relative_link = reverse("password_reset_sent")
-        print("qwerty")
 
         current_site = get_current_site(request).domain
         absolute_url = "http://" + current_site + relative_link + "?token=" + str(token)
-        print("qwerty")
         email_body = "Hi, {} {}! Use link below verify your email {}".format(
             user.first_name, user.last_name, absolute_url
         )
@@ -142,4 +142,23 @@ class ResetPassword(UpdateAPIView):
     def update(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid()
-        print(serializer.data)
+
+
+class UserAchievementList(ListCreateAPIView):
+    serializer_class = AchievementSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Achievement.objects.filter(user_id=self.kwargs["user_id"])
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["user_id"] = self.kwargs["user_id"]
+        return context
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
