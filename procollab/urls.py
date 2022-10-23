@@ -10,6 +10,7 @@ from rest_framework_simplejwt.views import (
 
 from users.views import VerifyEmail, ResetPassword
 
+
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api-auth/", include("rest_framework.urls")),
@@ -20,6 +21,7 @@ urlpatterns = [
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/token/verify/", TokenVerifyView.as_view(), name="token_verify"),
+    
     re_path(
         r"^account-confirm-email/",
         VerifyEmail.as_view(),
@@ -42,6 +44,11 @@ urlpatterns = [
     ),
     # path('api/password_reset/',
     #      include('django_rest_passwordreset.urls', namespace='password_reset'))
+    path("openapi", get_schema_view(
+        title="Procollab API",
+        description="API for all things …",
+        version="1.0.0",
+    ), name="openapi-schema"),
 ]
 
 if settings.DEBUG:
