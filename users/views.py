@@ -12,7 +12,7 @@ from rest_framework.generics import (
     RetrieveUpdateDestroyAPIView,
     UpdateAPIView,
 )
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -30,6 +30,8 @@ class UserList(ListCreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
+    permission_classes = [AllowAny]
+
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -40,7 +42,7 @@ class UserList(ListCreateAPIView):
 
         token = RefreshToken.for_user(user).access_token
 
-        relative_link = reverse("account_email_verification_sent")
+        relative_link = reverse("users:account_email_verification_sent")
         current_site = get_current_site(request).domain
         absolute_url = "http://" + current_site + relative_link + "?token=" + str(token)
 
@@ -100,12 +102,11 @@ class EmailResetPassword(UpdateAPIView):
 
         token = RefreshToken.for_user(user).access_token
 
-        relative_link = reverse("password_reset_sent")
-        print("qwerty")
+        relative_link = reverse("users:password_reset_sent")
 
         current_site = get_current_site(request).domain
         absolute_url = "http://" + current_site + relative_link + "?token=" + str(token)
-        print("qwerty")
+
         email_body = "Hi, {} {}! Use link below verify your email {}".format(
             user.first_name, user.last_name, absolute_url
         )
