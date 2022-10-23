@@ -69,7 +69,10 @@ class VacancyRequest(models.Model):
         related_name="vacancy_requests",
     )
 
-    is_approve = models.BooleanField(blank=True)
+    is_approve = models.BooleanField(
+        blank=True,
+        null=True,
+    )
 
     datetime_created = models.DateTimeField(
         verbose_name="Дата создания", null=False, auto_now_add=True

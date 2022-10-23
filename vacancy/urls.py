@@ -13,7 +13,7 @@ app_name = "vacancy"
 urlpatterns = [
     path("", VacancyList.as_view()),
     path("<int:pk>/", VacancyDetail.as_view()),
-    path("requests/", VacancyRequestList.as_view()),
+    path("<int:pk>/requests/", VacancyRequestList.as_view()),
     path("requests/<int:pk>/", VacancyRequestDetail.as_view()),
 ]
 

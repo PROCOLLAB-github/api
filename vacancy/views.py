@@ -1,4 +1,5 @@
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions, mixins
+from rest_framework.generics import GenericAPIView
 
 from vacancy.models import Vacancy, VacancyRequest
 from vacancy.serializers import VacancySerializer, VacancyRequestSerializer
@@ -16,10 +17,19 @@ class VacancyDetail(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
 
-class VacancyRequestList(generics.ListCreateAPIView):
-    queryset = VacancyRequest.objects.all()
-    serializer_class = VacancyRequestSerializer
+class VacancyRequestList(mixins.ListModelMixin, mixins.CreateModelMixin, GenericAPIView):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    serializer_class = VacancyRequestSerializer
+
+    def get(self, request, *args, **kwargs):
+        return self.list(request, *args, **kwargs)
+
+    def get_queryset(self):
+        return VacancyRequest.objects.filter(vacancy_id=self.kwargs["pk"])
+
+    def post(self, request, *args, **kwargs):
+        request.data["vacancy"] = str(self.kwargs["pk"])
+        return self.create(request, *args, **kwargs)
 
 
 class VacancyRequestDetail(generics.RetrieveUpdateDestroyAPIView):
