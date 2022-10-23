@@ -8,7 +8,7 @@ from vacancy.views import (
     VacancyResponseDetail,
 )
 
-app_name = "vacancy"
+app_name = "vacancies"
 
 urlpatterns = [
     path("", VacancyList.as_view()),

@@ -17,12 +17,6 @@ class VacancySerializer(serializers.ModelSerializer):
             "datetime_updated",
         ]
 
-    def create(self, validated_data):
-        vacancy = Vacancy(**validated_data)
-        vacancy.save()
-
-        return vacancy
-
 
 class VacancyResponseSerializer(serializers.ModelSerializer):
     class Meta:
@@ -35,9 +29,3 @@ class VacancyResponseSerializer(serializers.ModelSerializer):
             "datetime_created",
             "datetime_updated",
         ]
-
-    def create(self, validated_data):
-        vacancy_request = VacancyResponse(**validated_data)
-        vacancy_request.save()
-
-        return vacancy_request
