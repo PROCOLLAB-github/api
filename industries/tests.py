@@ -1,10 +1,10 @@
 from django.test import TestCase
 from rest_framework.test import APIRequestFactory, force_authenticate
-from industries.models import Industry
-
-from industries.views import IndustryList, IndustryDetail
 from users.models import CustomUser
 from users.views import UserList
+
+from industries.models import Industry
+from industries.views import IndustryDetail, IndustryList
 
 
 class IndustryTestCase(TestCase):
