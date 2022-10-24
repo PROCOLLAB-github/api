@@ -69,6 +69,7 @@ class VacancyResponse(models.Model):
         null=False,
         related_name="vacancy_requests",
     )
+    why_me = models.TextField(blank=True)
 
     is_approved = models.BooleanField(
         blank=True,
