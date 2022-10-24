@@ -34,6 +34,7 @@ class CustomUser(AbstractUser):
     last_name = models.CharField(max_length=255, blank=False)
     password = models.CharField(max_length=255, blank=False)
     is_active = models.BooleanField(default=False, editable=False)
+    datetime_updated = models.DateTimeField(auto_now=True)
 
     patronymic = models.CharField(max_length=255, blank=True)  # Отчество
     birthday = models.DateField(null=True)

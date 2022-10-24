@@ -12,9 +12,10 @@ from rest_framework.generics import (
     RetrieveUpdateDestroyAPIView,
     UpdateAPIView,
 )
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
+from datetime import datetime
 
 from .serializers import (
     EmailSerializer,
@@ -29,6 +30,7 @@ User = get_user_model()
 class UserList(ListCreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -40,7 +42,7 @@ class UserList(ListCreateAPIView):
 
         token = RefreshToken.for_user(user).access_token
 
-        relative_link = reverse("account_email_verification_sent")
+        relative_link = reverse("users:account_email_verification_sent")
         current_site = get_current_site(request).domain
         absolute_url = "http://" + current_site + relative_link + "?token=" + str(token)
 
@@ -67,6 +69,7 @@ class UserDetail(RetrieveUpdateDestroyAPIView):
 
 class VerifyEmail(GenericAPIView):
     serializer_class = VerifyEmailSerializer
+    permission_classes = [AllowAny]
 
     def get(self, request):
         token = request.GET.get("token")
@@ -89,10 +92,11 @@ class VerifyEmail(GenericAPIView):
             return Response({"error": "Decode error"}, status=status.HTTP_400_BAD_REQUEST)
 
 
-class EmailResetPassword(UpdateAPIView):
+class EmailResetPassword(GenericAPIView):
     serializer_class = EmailSerializer
+    permission_classes = [AllowAny]
 
-    def update(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid()
 
@@ -100,12 +104,11 @@ class EmailResetPassword(UpdateAPIView):
 
         token = RefreshToken.for_user(user).access_token
 
-        relative_link = reverse("password_reset_sent")
-        print("qwerty")
+        relative_link = reverse("users:password_reset_sent")
 
         current_site = get_current_site(request).domain
         absolute_url = "http://" + current_site + relative_link + "?token=" + str(token)
-        print("qwerty")
+
         email_body = "Hi, {} {}! Use link below verify your email {}".format(
             user.first_name, user.last_name, absolute_url
         )
@@ -123,23 +126,30 @@ class EmailResetPassword(UpdateAPIView):
 
 class ResetPassword(UpdateAPIView):
     serializer_class = PasswordSerializer
-
-    def get(self, request):
-        token = request.GET.get("token")
-        try:
-            payload = jwt.decode(jwt=token, key=settings.SECRET_KEY, algorithms=["HS256"])
-            user = User.objects.get(id=payload["user_id"])
-            if not user.is_active:
-                user.is_active = True
-                user.save()
-
-            return Response(
-                {"email": "Successfully activated"}, status=status.HTTP_200_OK
-            )
-        except (jwt.ExpiredSignatureError, jwt.DecodeError):
-            return False
+    permission_classes = [AllowAny]
 
     def update(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid()
-        print(serializer.data)
+
+        try:
+            token = request.GET.get("token")
+            payload = jwt.decode(jwt=token, key=settings.SECRET_KEY, algorithms=["HS256"])
+            user = User.objects.get(id=payload["user_id"])
+            last_update = user.datatime_updated
+            if (datetime.now().minute - last_update.minute) <= 10:
+                return Response(
+                    {"response": "You can't change your password so often"},
+                    status=status.HTTP_200_OK,
+                )
+
+            user.set_password(serializer.data["new_password"])
+            user.save()
+
+            return Response({"response": "Reset completed"}, status=status.HTTP_200_OK)
+
+        except (jwt.ExpiredSignatureError, jwt.DecodeError):
+            return Response(
+                {"error": "Activate Expired or Decode error"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
