@@ -22,10 +22,15 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "debug_toolbar",
+    "django_rest_passwordreset",
+    # My apps
+  
     "industries.apps.IndustriesConfig",
     "users.apps.UsersConfig",
     "projects.apps.ProjectsConfig",
     "news.apps.NewsConfig",
+    "vacancy.apps.VacancyConfig",
+    # Rest framework
     "rest_framework",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
