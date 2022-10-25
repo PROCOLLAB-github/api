@@ -45,3 +45,5 @@ jobs:
 
       - name: Run tests
         run: poetry run python manage.py test
+        env:
+          DEBUG: True

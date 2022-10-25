@@ -16,7 +16,7 @@ class CustomUser(AbstractUser):
         password: CharField instance of the user password.
         is_active: Boolean indicating if user confirmed email.
         birthday: DateField instance of the user's birthday.
-        avatar: ImageField instance of the user's avatar containing url.
+        avatar: URLField instance of the user's avatar url.
         key_skills: CharField instance of user skills containing keys.
         useful_to_project: CharField instance of the something useful... TODO
         about_me: TextField instance contains information about the user.
@@ -38,9 +38,7 @@ class CustomUser(AbstractUser):
 
     patronymic = models.CharField(max_length=255, blank=True)  # Отчество
     birthday = models.DateField(null=True)
-    avatar = models.ImageField(
-        upload_to="uploads/users_avatars/", blank=True
-    )  # Почему не url?
+    avatar = models.URLField(null=True, blank=True)
     key_skills = models.CharField(max_length=255, blank=True)  # TODO
     useful_to_project = models.CharField(max_length=255, blank=True)
     about_me = models.TextField(blank=True)
