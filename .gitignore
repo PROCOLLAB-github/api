@@ -130,7 +130,6 @@ dmypy.json
 .pyre/
 
 .vscode
-.flake8
 
 *.css.map
 

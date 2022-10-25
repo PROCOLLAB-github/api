@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
-from projects.models import Project
+from projects.models import Project, Achievement
+from users.models import CustomUser
 
 
 class ProjectSerializer(serializers.ModelSerializer):
@@ -27,10 +28,16 @@ class ProjectSerializer(serializers.ModelSerializer):
 
 class AchievementSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Project
+        model = Achievement
         fields = [
             "id",
             "title",
             "status",
             "project",
         ]
+
+
+class ProjectCollaboratorsSerializer(serializers.Serializer):
+    collaborators = serializers.PrimaryKeyRelatedField(
+        queryset=CustomUser.objects.all(), many=True, read_only=False
+    )

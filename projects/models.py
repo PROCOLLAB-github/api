@@ -19,8 +19,8 @@ class Project(models.Model):
         step: A PositiveSmallIntegerField which indicates status of the project
             according to VERBOSE_STEPS.
         industry: A ForeignKey referring to the Industry model.
-        presentation_address: A TextField presentation URL address.
-        image_address: A TextField image URL address.
+        presentation_address: A URLField presentation URL address.
+        image_address: A URLField image URL address.
         collaborators: A ManyToManyField collaborators of the project.
         leader: A ForeignKey referring to the User model.
         draft: A boolean indicating if Project is a draft.
@@ -41,10 +41,14 @@ class Project(models.Model):
         related_name="projects",
     )
     # TODO think about naming
-    presentation_address = models.TextField(blank=True)
-    image_address = models.TextField(blank=True)
+    presentation_address = models.URLField(blank=True)
+    image_address = models.URLField(blank=True)
 
-    collaborators = models.ManyToManyField(User, related_name="projects")
+    collaborators = models.ManyToManyField(
+        User,
+        related_name="projects",
+        blank=True,
+    )
 
     leader = models.ForeignKey(
         User,
@@ -63,7 +67,7 @@ class Project(models.Model):
     )
 
     def __str__(self):
-        return f"Project<{self.id}>"
+        return f"Project<{self.id}> - {self.name}"
 
     class Meta:
         verbose_name = "Проект"

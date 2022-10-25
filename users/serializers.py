@@ -38,7 +38,9 @@ class EmailSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
 
-class PasswordSerializer(serializers.Serializer):
+class VerifyEmailSerializer(serializers.Serializer):
+    result = serializers.JSONField()
 
-    old_password = serializers.CharField(required=True)
+
+class PasswordSerializer(serializers.Serializer):
     new_password = serializers.CharField(required=True)

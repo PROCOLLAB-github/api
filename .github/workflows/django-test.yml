@@ -1,0 +1,49 @@
+name: Django CI
+
+on:
+  push:
+    branches:
+      - '*'         # matches every branch that doesn't contain a '/'
+      - '*/*'       # matches every branch containing a single '/'
+      - '**'        # matches every branch
+
+jobs:
+  django-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+
+      - name: cache poetry install
+        uses: actions/cache@v2
+        with:
+          path: ~/.local
+          key: poetry-1.2.2-0
+
+      - uses: snok/install-poetry@v1
+        with:
+          version: 1.2.2
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: cache deps
+        id: cache-deps
+        uses: actions/cache@v2
+        with:
+          path: .venv
+          key: pydeps-${{ hashFiles('**/poetry.lock') }}
+
+      - run: poetry install --no-root
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+
+      # install setuptools
+      - run: poetry run pip install setuptools
+
+      - name: Run tests
+        run: poetry run python manage.py test
+        env:
+          DEBUG: True
