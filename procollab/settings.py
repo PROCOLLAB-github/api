@@ -6,13 +6,11 @@ from decouple import config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
 SECRET_KEY = config("DJANGO_SECRET_KEY", default="django-default-secret-key", cast=str)
 
 DEBUG = config("DEBUG", default=False, cast=bool)
 
 ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
-
 
 # Application definition
 
@@ -24,14 +22,21 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "debug_toolbar",
+    "django_rest_passwordreset",
+    # My apps
     "industries.apps.IndustriesConfig",
     "users.apps.UsersConfig",
-    "news.apps.NewsConfig",
     "projects.apps.ProjectsConfig",
+    "news.apps.NewsConfig",
+    "vacancy.apps.VacancyConfig",
+    # Rest framework
     "rest_framework",
-    "django_cleanup.apps.CleanupConfig",
     "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
+    "django_cleanup.apps.CleanupConfig",
+    "rest_framework.authtoken",
     "corsheaders",
+    "drf_yasg",
 ]
 
 MIDDLEWARE = [
@@ -46,7 +51,6 @@ MIDDLEWARE = [
     "debug_toolbar.middleware.DebugToolbarMiddleware",
 ]
 
-
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:4200",
     "http://127.0.0.1:4200",
@@ -55,7 +59,6 @@ CORS_ALLOWED_ORIGINS = [
 INTERNAL_IPS = [
     "127.0.0.1",
 ]
-
 
 ROOT_URLCONF = "procollab.urls"
 
@@ -77,30 +80,39 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "procollab.wsgi.application"
 
-
 REST_FRAMEWORK = {
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
         "rest_framework.authentication.BasicAuthentication",
         "rest_framework.authentication.SessionAuthentication",
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
-    ]
+    ],
 }
-
 
 # Database
 
-DB_SERVICE = config("DB_SERVICE", default="postgres", cast=str)
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "OPTIONS": {
-            "service": DB_SERVICE,
-            "passfile": "",
-        },
+if DEBUG:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": "db.sqlite3",
+        }
     }
-}
+else:
+    DB_SERVICE = config("DB_SERVICE", default="postgres", cast=str)
 
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "OPTIONS": {
+                "service": DB_SERVICE,
+                "passfile": "",
+            },
+        }
+    }
 
 # Password validation
 
@@ -110,19 +122,15 @@ AUTH_PASSWORD_VALIDATORS = [
 UserAttributeSimilarityValidator",
     },
     {
-        "NAME": "django.contrib.auth.password_validation.\
-MinimumLengthValidator",
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
     },
     {
-        "NAME": "django.contrib.auth.password_validation.\
-CommonPasswordValidator",
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
     },
     {
-        "NAME": "django.contrib.auth.password_validation.\
-NumericPasswordValidator",
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
-
 
 AUTH_USER_MODEL = "users.CustomUser"
 
@@ -135,7 +143,6 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 
 USE_TZ = True
-
 
 # Static files (CSS, JavaScript, Images)
 
@@ -176,3 +183,10 @@ default_user_authentication_rule",
     "SLIDING_TOKEN_LIFETIME": timedelta(minutes=5),
     "SLIDING_TOKEN_REFRESH_LIFETIME": timedelta(days=1),
 }
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_USE_TLS = True
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_HOST_USER = config("EMAIL_HOST_USER", cast=str, default="example@mail.ru")
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", cast=str, default="password")
