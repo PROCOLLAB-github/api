@@ -35,7 +35,9 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     "django_cleanup.apps.CleanupConfig",
     "rest_framework.authtoken",
+    # Plugins
     "corsheaders",
+    "django_filters",
     "drf_yasg",
 ]
 
