@@ -38,5 +38,6 @@ class AchievementSerializer(serializers.ModelSerializer):
 
 
 class ProjectCollaboratorsSerializer(serializers.Serializer):
-    collaborators = serializers.PrimaryKeyRelatedField(queryset=CustomUser.objects.all(), many=True, read_only=False)
-
+    collaborators = serializers.PrimaryKeyRelatedField(
+        queryset=CustomUser.objects.all(), many=True, read_only=False
+    )
