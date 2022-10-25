@@ -26,7 +26,7 @@ class VacancyResponseSerializer(serializers.ModelSerializer):
             "user",
             "vacancy",
             "why_me",
-            "is_approve",
+            "is_approved",
             "datetime_created",
             "datetime_updated",
         ]
