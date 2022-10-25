@@ -36,7 +36,6 @@ class UserList(ListCreateAPIView):
     serializer_class = UserSerializer
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = UserFilter
-    
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
