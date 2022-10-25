@@ -44,7 +44,11 @@ class Project(models.Model):
     presentation_address = models.URLField(blank=True)
     image_address = models.URLField(blank=True)
 
-    collaborators = models.ManyToManyField(User, related_name="projects")
+    collaborators = models.ManyToManyField(
+        User,
+        related_name="projects",
+        blank=True,
+    )
 
     leader = models.ForeignKey(
         User,
