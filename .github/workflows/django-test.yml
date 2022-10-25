@@ -8,7 +8,7 @@ on:
       - '**'        # matches every branch
 
 jobs:
-  test:
+  django-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
