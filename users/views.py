@@ -17,7 +17,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from datetime import datetime
 
-from .serializers import (
+from users.serializers import (
     EmailSerializer,
     PasswordSerializer,
     UserSerializer,
@@ -29,6 +29,7 @@ User = get_user_model()
 
 class UserList(ListCreateAPIView):
     queryset = User.objects.all()
+    permission_classes = [AllowAny]
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
 
