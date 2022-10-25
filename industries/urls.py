@@ -1,5 +1,6 @@
 from django.urls import path
 
+
 from industries.views import IndustryDetail, IndustryList
 
 app_name = "industries"

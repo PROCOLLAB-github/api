@@ -1,5 +1,6 @@
 from django.urls import path
 
+
 from vacancy.views import (
     VacancyList,
     VacancyDetail,
