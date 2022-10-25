@@ -43,4 +43,4 @@ jobs:
       - run: python -m pip install setuptools
 
       - name: Run tests
-        run: poetry run python manage.py test
+        run: python manage.py test
