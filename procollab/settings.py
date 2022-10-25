@@ -24,7 +24,6 @@ INSTALLED_APPS = [
     "debug_toolbar",
     "django_rest_passwordreset",
     # My apps
-  
     "industries.apps.IndustriesConfig",
     "users.apps.UsersConfig",
     "projects.apps.ProjectsConfig",
