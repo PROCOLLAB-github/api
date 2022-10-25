@@ -4,16 +4,21 @@ from projects.models import Project
 
 
 class ProjectFilter(filters.FilterSet):
-    """
-    Filter for Projects
+    """Filter for Projects
 
-    ?industry=1 - equal to .filter(industry=1)
-    ?step=1 - equal to .filter(step=1)
-    ?region=Moscow - equal to .filter(region='Moscow')
-    ?name__contains=clown - equal to .filter(name__contains='clown')
-    ?description__contains=clown - equal to .filter(description__contains=='clown')
-    ?collaborators__in=1,2,3 - equal to .filter(collaborators__in=[1, 2, 3])
-    ?datetime_created__gt=01.01.2023 - equal to .filter(datetime_created__gt=01.01.2023)
+    Adds filtering to DRF list retrieve views
+
+    Parameters to filter by:
+        industry (int), step (int), region (str), name__contains (str),
+         description__contains (str), collaborators__in (List[int]),
+         datetime_created__gt (datetime.datetime)
+
+    Examples:
+        ?industry=1&name__contains=clown
+            equals to .filter(industry=1, name__contains='clown')
+        ?datetime_created__gt=25.10.2022
+            equals to .filter(datetime_created__gt=datetime.datetime(...))
+        ?collaborators__in=1,2 equals to .filter(collaborators__in=[1, 2])
     """
 
     name__contains = filters.Filter(field_name="name", lookup_expr="contains")
