@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     # Plugins
     "corsheaders",
     "django_filters",
+    "drf_yasg",
 ]
 
 MIDDLEWARE = [

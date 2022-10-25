@@ -20,7 +20,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from core.permissions import IsOwnerOrReadOnly
 from core.utils import Email
 from .filters import UserFilter
-from .serializers import (
+from users.serializers import (
     EmailSerializer,
     PasswordSerializer,
     UserSerializer,
@@ -32,10 +32,11 @@ User = get_user_model()
 
 class UserList(ListCreateAPIView):
     queryset = User.objects.all()
+    permission_classes = [AllowAny]
     serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated]
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = UserFilter
+    
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
