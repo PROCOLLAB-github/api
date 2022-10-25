@@ -24,7 +24,6 @@ INSTALLED_APPS = [
     "debug_toolbar",
     "django_rest_passwordreset",
     # My apps
-  
     "industries.apps.IndustriesConfig",
     "users.apps.UsersConfig",
     "projects.apps.ProjectsConfig",
@@ -36,7 +35,9 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     "django_cleanup.apps.CleanupConfig",
     "rest_framework.authtoken",
+    # Plugins
     "corsheaders",
+    "django_filters",
 ]
 
 MIDDLEWARE = [
