@@ -1,8 +1,10 @@
+from django_filters import rest_framework as filters
 from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.permissions import IsProjectLeaderOrReadOnly, IsStaffOrReadOnly
+from projects.filters import ProjectFilter
 from projects.helpers import VERBOSE_STEPS
 from projects.models import Project, Achievement
 from projects.serializers import ProjectSerializer, AchievementSerializer, ProjectCollaboratorsSerializer
@@ -12,6 +14,8 @@ class ProjectList(generics.ListCreateAPIView):
     queryset = Project.objects.all()
     serializer_class = ProjectSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    filter_backends = (filters.DjangoFilterBackend,)
+    filterset_class = ProjectFilter
 
 
 class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):

@@ -44,6 +44,7 @@ class Project(models.Model):
     presentation_address = models.URLField(blank=True)
     image_address = models.URLField(blank=True)
 
+    # TODO: add a validator making sure leader is always in the list of collaborators
     collaborators = models.ManyToManyField(User, related_name="projects")
 
     leader = models.ForeignKey(
