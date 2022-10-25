@@ -18,7 +18,7 @@ class Industry(models.Model):
     )
 
     def __str__(self):
-        return f"Industry<{self.id}>"
+        return f"Industry<{self.id}> - {self.name}"
 
     class Meta:
         verbose_name = "Индустрия"

@@ -1,30 +1,22 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-from django.db.models.signals import post_save
-from django.dispatch import receiver
+
+from users.managers import CustomUserManager
 
 
 class CustomUser(AbstractUser):
-    username = None
-    email = models.EmailField(max_length=255, blank=False, unique=True)
-    first_name = models.CharField(max_length=255, blank=False)
-    last_name = models.CharField(max_length=255, blank=False)
-    password = models.CharField(max_length=255, blank=False)
-
-    USERNAME_FIELD = "email"
-    REQUIRED_FIELDS = []
-
-
-class UserInfo(models.Model):
     """
     User model
+
     Attributes:
         email: CharField instance of user's email.
-        username: CharField instance of the username.
-        surname: CharField instance of the user last name.
+        first_name: CharField instance of the user first name.
+        last_name: CharField instance of the user last name.
         patronymic: CharField instance of the user patronymic.
+        password: CharField instance of the user password.
+        is_active: Boolean indicating if user confirmed email.
         birthday: DateField instance of the user's birthday.
-        photo_address: ImageField instance of the user's photo containing url.
+        avatar: URLField instance of the user's avatar url.
         key_skills: CharField instance of user skills containing keys.
         useful_to_project: CharField instance of the something useful... TODO
         about_me: TextField instance contains information about the user.
@@ -33,33 +25,33 @@ class UserInfo(models.Model):
         city: CharField instance the user's name city.
         region: CharField instance the user's name region.
         organization: CharField instance the user's name organization.
-        achievements: JSONField instance containing of the user's achievements.
         tags: CharField instance tags. TODO
-        user: ForeignKey instance which
     """
 
-    email = models.EmailField(max_length=255)
-    patronymic = models.CharField(max_length=255)
+    username = None
+    email = models.EmailField(blank=False, unique=True)
+    first_name = models.CharField(max_length=255, blank=False)
+    last_name = models.CharField(max_length=255, blank=False)
+    password = models.CharField(max_length=255, blank=False)
+    is_active = models.BooleanField(default=False, editable=False)
+    datetime_updated = models.DateTimeField(auto_now=True)
+
+    patronymic = models.CharField(max_length=255, blank=True)  # Отчество
     birthday = models.DateField(null=True)
-    photo_address = models.ImageField(upload_to="photos/%Y/%m/%d/")
-    key_skills = models.CharField(max_length=255)  # TODO
-    useful_to_project = models.CharField(max_length=255)
-    about_me = models.TextField()
-    status = models.CharField(max_length=255)
-    speciality = models.CharField(max_length=255)
-    city = models.CharField(max_length=255)
-    region = models.CharField(max_length=255)
-    organization = models.CharField(max_length=255)
-    achievements = models.JSONField(null=True)
-    tags = models.CharField(max_length=255)
-    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
+    avatar = models.URLField(null=True, blank=True)
+    key_skills = models.CharField(max_length=255, blank=True)  # TODO
+    useful_to_project = models.CharField(max_length=255, blank=True)
+    about_me = models.TextField(blank=True)
+    status = models.CharField(max_length=255, blank=True)
+    speciality = models.CharField(max_length=255, blank=True)
+    city = models.CharField(max_length=255, blank=True)
+    region = models.CharField(max_length=255, blank=True)
+    organization = models.CharField(max_length=255, blank=True)
+
+    USERNAME_FIELD = "email"
+    REQUIRED_FIELDS = []
+
+    objects = CustomUserManager()
 
     def __str__(self):
-        return f"User<{self.email}>"
-
-
-@receiver(post_save, sender=CustomUser)
-def create_or_update_user_profile(sender, instance, created, **kwargs):
-    if created:
-        UserInfo.objects.create(user=instance)
-    instance.userinfo.save()
+        return f"User<{self.id}> - {self.first_name} {self.last_name}"
