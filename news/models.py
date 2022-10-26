@@ -50,7 +50,9 @@ class News(models.Model):
     short_text = models.TextField(max_length=256, blank=True)
     cover_url = models.URLField(null=False)
 
-    tags = models.ManyToManyField(NewsTag, verbose_name="Список тегов")
+    tags = models.ManyToManyField(
+        NewsTag, blank=True, null=True, verbose_name="Список тегов"
+    )
 
     datetime_created = models.DateTimeField(
         verbose_name="Дата создания", null=False, auto_now_add=True
