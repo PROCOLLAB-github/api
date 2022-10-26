@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from news.models import News
+from news.models import News, NewsTag
 
 
 class NewsSerializer(serializers.ModelSerializer):
@@ -14,4 +14,11 @@ class NewsSerializer(serializers.ModelSerializer):
             "cover_url",
             "datetime_created",
             "datetime_updated",
+            "tags",
         ]
+
+
+class NewsTagSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NewsTag
+        fields = ["id", "name", "description"]
