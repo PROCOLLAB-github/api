@@ -12,7 +12,7 @@ SECRET_KEY = config("DJANGO_SECRET_KEY", default="django-default-secret-key", ca
 
 DEBUG = config("DEBUG", default=False, cast=bool)
 
-SENTRY_DSN = config("SENTRY_DSN", default=None, cast=str)
+SENTRY_DSN = config("SENTRY_DSN", default="", cast=str)
 
 ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 
