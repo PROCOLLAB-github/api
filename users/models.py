@@ -4,6 +4,38 @@ from django.db import models
 from users.managers import CustomUserManager
 
 
+class UserType(models.Model):
+    """
+    UserType model
+
+    Indicating type of user.
+
+    Attributes:
+        id: PositiveSmallIntegerField indicating user type according to VERBOSE_USER_TYPES.
+
+
+    """
+
+    ADMIN = 0
+    REGULAR = 1
+    MENTOR = 2
+    EXPERT = 3
+    INVESTOR = 4
+
+    VERBOSE_USER_TYPES = (
+        (ADMIN, "Администратор"),
+        (REGULAR, "Участник"),
+        (MENTOR, "Ментор"),
+        (EXPERT, "Эксперт"),
+        (INVESTOR, "Инвестор"),
+    )
+
+    id = models.PositiveSmallIntegerField(choices=VERBOSE_USER_TYPES, primary_key=True)
+
+    def __str__(self):
+        return f"UserType<{self.id}> - {self.get_id_display()}"
+
+
 class CustomUser(AbstractUser):
     """
     User model
@@ -37,16 +69,17 @@ class CustomUser(AbstractUser):
     datetime_updated = models.DateTimeField(auto_now=True)
 
     patronymic = models.CharField(max_length=255, blank=True)  # Отчество
-    birthday = models.DateField(null=True)
     avatar = models.URLField(null=True, blank=True)
-    key_skills = models.CharField(max_length=255, blank=True)  # TODO
-    useful_to_project = models.CharField(max_length=255, blank=True)
+    birthday = models.DateField(null=True)
     about_me = models.TextField(blank=True)
     status = models.CharField(max_length=255, blank=True)
-    speciality = models.CharField(max_length=255, blank=True)
-    city = models.CharField(max_length=255, blank=True)
     region = models.CharField(max_length=255, blank=True)
+    city = models.CharField(max_length=255, blank=True)
     organization = models.CharField(max_length=255, blank=True)
+
+    key_skills = models.CharField(max_length=255, blank=True)  # TODO
+    useful_to_project = models.CharField(max_length=255, blank=True)
+    speciality = models.CharField(max_length=255, blank=True)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
