@@ -8,22 +8,13 @@ class UserSerializer(serializers.ModelSerializer):
         model = CustomUser
         fields = [
             "id",
+            "user_type",
             "email",
             "first_name",
             "last_name",
-            "password",
-            "is_active",
             "patronymic",
-            "birthday",
             "avatar",
-            "key_skills",
-            "useful_to_project",
-            "about_me",
-            "status",
-            "speciality",
             "city",
-            "region",
-            "organization",
         ]
 
     def create(self, validated_data):

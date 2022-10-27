@@ -17,14 +17,14 @@ class UserType(models.Model):
     """
 
     ADMIN = 0
-    REGULAR = 1
+    MEMBER = 1
     MENTOR = 2
     EXPERT = 3
     INVESTOR = 4
 
     VERBOSE_USER_TYPES = (
         (ADMIN, "Администратор"),
-        (REGULAR, "Участник"),
+        (MEMBER, "Участник"),
         (MENTOR, "Ментор"),
         (EXPERT, "Эксперт"),
         (INVESTOR, "Инвестор"),
@@ -34,6 +34,11 @@ class UserType(models.Model):
 
     def __str__(self):
         return f"UserType<{self.id}> - {self.get_id_display()}"
+
+
+def get_default_user_type():
+    user_type, is_created = UserType.objects.get_or_create(id=UserType.MEMBER)
+    return user_type.id
 
 
 class CustomUser(AbstractUser):
@@ -67,6 +72,13 @@ class CustomUser(AbstractUser):
     password = models.CharField(max_length=255, blank=False)
     is_active = models.BooleanField(default=False, editable=False)
     datetime_updated = models.DateTimeField(auto_now=True)
+    user_type = models.ForeignKey(
+        UserType,
+        on_delete=models.SET_DEFAULT,
+        null=False,
+        related_name="users",
+        default=get_default_user_type,
+    )
 
     patronymic = models.CharField(max_length=255, blank=True)  # Отчество
     avatar = models.URLField(null=True, blank=True)
@@ -77,10 +89,6 @@ class CustomUser(AbstractUser):
     city = models.CharField(max_length=255, blank=True)
     organization = models.CharField(max_length=255, blank=True)
 
-    key_skills = models.CharField(max_length=255, blank=True)  # TODO
-    useful_to_project = models.CharField(max_length=255, blank=True)
-    speciality = models.CharField(max_length=255, blank=True)
-
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
 
@@ -88,3 +96,14 @@ class CustomUser(AbstractUser):
 
     def __str__(self):
         return f"User<{self.id}> - {self.first_name} {self.last_name}"
+
+
+class Member(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+
+    key_skills = models.CharField(max_length=255, blank=True)  # TODO
+    useful_to_project = models.CharField(max_length=255, blank=True)
+    speciality = models.CharField(max_length=255, blank=True)
+
+    def __str__(self):
+        return f"Member<{self.id}> - {self.first_name} {self.last_name}"
