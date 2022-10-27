@@ -1,10 +1,11 @@
+from datetime import datetime
+
 import jwt
-from core.permissions import IsOwnerOrReadOnly
-from core.utils import Email
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.sites.shortcuts import get_current_site
 from django.urls import reverse
+from django_filters import rest_framework as filters
 from rest_framework import status
 from rest_framework.generics import (
     GenericAPIView,
@@ -15,8 +16,10 @@ from rest_framework.generics import (
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
-from datetime import datetime
 
+from core.permissions import IsOwnerOrReadOnly
+from core.utils import Email
+from .filters import UserFilter
 from users.serializers import (
     EmailSerializer,
     PasswordSerializer,
@@ -31,6 +34,8 @@ class UserList(ListCreateAPIView):
     queryset = User.objects.all()
     permission_classes = [AllowAny]
     serializer_class = UserSerializer
+    filter_backends = (filters.DjangoFilterBackend,)
+    filterset_class = UserFilter
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
