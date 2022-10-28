@@ -83,6 +83,7 @@ class CustomUserAdmin(admin.ModelAdmin):
     )
 
     list_filter = (
-        "email",
-        "id",
+        "is_staff",
+        "is_superuser",
+        "city",
     )
