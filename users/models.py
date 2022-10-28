@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from industries.models import Industry
 
 from users.managers import CustomUserManager
 
@@ -57,7 +58,7 @@ class CustomUser(AbstractUser):
         speciality: CharField instance the user's specialty.
         city: CharField instance the user's name city.
         region: CharField instance the user's name region.
-        organization: CharField instance the user's name organization.
+        organization: CharField instance the user's place of study or work.
         tags: CharField instance tags. TODO
     """
 
@@ -98,7 +99,7 @@ class Member(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
 
     key_skills = models.CharField(max_length=255, blank=True)  # TODO
-    useful_to_project = models.CharField(max_length=255, blank=True)
+    useful_to_project = models.TextField(blank=True)
     speciality = models.CharField(max_length=255, blank=True)
 
     def __str__(self):
@@ -111,13 +112,35 @@ class Mentor(models.Model):
 
     Attributes:
             job: CharField instance current user job.
-            free_text: CharField instance some text.
+            useful_to_project: CharField instance some text.
     """
 
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
 
     job = models.CharField(max_length=255, blank=True)
-    free_text = models.CharField(max_length=255, blank=True)
+    useful_to_project = models.TextField(blank=True)
 
     def __str__(self):
-        return f"Member<{self.id}> - {self.first_name} {self.last_name}"
+        return f"Mentor<{self.id}> - {self.first_name} {self.last_name}"
+
+
+class Expert(models.Model):
+    """
+    Expert model
+
+    Attributes:
+            preferred_industries: CharField instance TODO
+            useful_to_project: CharField instance TODO
+
+    """
+
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+
+    preferred_industries = models.ManyToManyField(
+        Industry, blank=True, related_name="experts"
+    )
+    useful_to_project = models.TextField(blank=True)
+    # TODO reviews
+
+    def __str__(self):
+        return f"Expert<{self.id}> - {self.first_name} {self.last_name}"

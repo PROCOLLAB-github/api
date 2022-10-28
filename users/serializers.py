@@ -16,6 +16,7 @@ class UserSerializer(serializers.ModelSerializer):
             "avatar",
             "city",
             "password",
+            "is_active",
         ]
 
     def create(self, validated_data):
