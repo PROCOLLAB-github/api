@@ -7,13 +7,9 @@ from users.managers import CustomUserManager
 class UserType(models.Model):
     """
     UserType model
-
     Indicating type of user.
-
     Attributes:
         id: PositiveSmallIntegerField indicating user type according to VERBOSE_USER_TYPES.
-
-
     """
 
     ADMIN = 0
@@ -104,6 +100,24 @@ class Member(models.Model):
     key_skills = models.CharField(max_length=255, blank=True)  # TODO
     useful_to_project = models.CharField(max_length=255, blank=True)
     speciality = models.CharField(max_length=255, blank=True)
+
+    def __str__(self):
+        return f"Member<{self.id}> - {self.first_name} {self.last_name}"
+
+
+class Mentor(models.Model):
+    """
+    Mentor model
+
+    Attributes:
+            job: CharField instance current user job.
+            free_text: CharField instance some text.
+    """
+
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+
+    job = models.CharField(max_length=255, blank=True)
+    free_text = models.CharField(max_length=255, blank=True)
 
     def __str__(self):
         return f"Member<{self.id}> - {self.first_name} {self.last_name}"
