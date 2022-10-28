@@ -8,13 +8,22 @@ class Chat(models.Model):
     Attributes:
         name: A CharField name of the chat.
         users: A ManyToManyField referring to the User model.
+        created_at: A DateTimeField indicating date of creation.
     """
 
     users = models.ManyToManyField("users.CustomUser", related_name="chats")
+    # do we really want this? maybe just set a default chat name
+    #  (e.g. f"chat {self.users_str()}") on creation?
     name = models.CharField(max_length=255, blank=True, null=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.name or f"Chat {self.pk}"
+
+    @property
+    def users_str(self):
+        return ", ".join([i.email for i in self.users.all()])
 
     class Meta:
         verbose_name = "Чат"
@@ -30,7 +39,6 @@ class Message(models.Model):
         author: A ForeignKey referring to the User model.
         text: A TextField containing message text.
         created_at: A DateTimeField indicating date of creation.
-
     """
 
     chat = models.ForeignKey(Chat, on_delete=models.CASCADE, related_name="messages")
