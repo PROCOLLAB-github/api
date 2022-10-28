@@ -20,7 +20,6 @@ class UserSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         user = CustomUser(**validated_data)
-        print("qwer", validated_data)
         user.set_password(validated_data["password"])
         user.save()
 
