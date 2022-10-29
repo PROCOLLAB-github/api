@@ -11,6 +11,8 @@ ENV PATH="/opt/venv/bin:$PATH"
 COPY pyproject.toml poetry.lock /procollab-backend/
 WORKDIR /procollab-backend
 
+FROM python:3.9.6-slim-buster as runner
+
 COPY --from=compiler /opt/venv /opt/venv
 
 # Installing requirements
