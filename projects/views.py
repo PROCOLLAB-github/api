@@ -58,7 +58,7 @@ class ProjectList(generics.ListCreateAPIView):
 
 
 class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Project.objects.all()
+    queryset = Project.objects.get_projects_for_detail_view()
     serializer_class = ProjectDetailSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 

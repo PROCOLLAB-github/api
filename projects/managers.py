@@ -33,3 +33,22 @@ class ProjectManager(Manager):
             )
             .all()
         )
+
+    def get_projects_for_detail_view(self):
+        # users = CustomUser.objects.only("id").all()
+        return (
+            self.get_queryset()
+            .prefetch_related(
+                # Prefetch(
+                #     "industry",
+                #     queryset=Industry.objects.only("name").all(),
+                # ),
+                # Prefetch(
+                #     "leader",
+                #     queryset=users,
+                # ),
+                "collaborators",
+                "achievements",
+            )
+            .all()
+        )

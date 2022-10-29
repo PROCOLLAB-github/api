@@ -5,7 +5,38 @@ from projects.models import Project, Achievement
 from users.models import CustomUser
 
 
+class AchievementSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Achievement
+        fields = [
+            "id",
+            "title",
+            "status",
+        ]
+
+    def get_queryset(self):
+        return Achievement.objects.all()
+
+
+class ProjectCollaboratorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = [
+            "id",
+            "first_name",
+            "last_name",
+            "avatar",
+            "key_skills",
+        ]
+
+    def get_queryset(self):
+        return CustomUser.objects.all()
+
+
 class ProjectDetailSerializer(serializers.ModelSerializer):
+    achievements = AchievementSerializer(many=True, read_only=True)
+    collaborators = ProjectCollaboratorSerializer(many=True, read_only=True)
+
     class Meta:
         model = Project
         fields = [
@@ -54,17 +85,6 @@ class ProjectListSerializer(serializers.ModelSerializer):
             leader=leader,
         )
         return project
-
-
-class AchievementSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Achievement
-        fields = [
-            "id",
-            "title",
-            "status",
-            "project",
-        ]
 
 
 class ProjectCollaboratorsSerializer(serializers.Serializer):
