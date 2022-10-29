@@ -78,4 +78,4 @@ jobs:
             
 #                docker-compose -f docker-compose.yml --project-directory . up --build
                 docker rm --force $(docker ps -qa) &&
-                docker run -d --env-file .env -p 8000:8000 ghcr.io/yeezy-na-izi/procollab-github:latest
+                docker run -d --env-file .env -p 8000:8000 ghcr.io/yakser/procollab-github:latest
