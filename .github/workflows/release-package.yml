@@ -75,5 +75,4 @@ jobs:
             
             echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" >> .env &&
             
-            docker rm --force new-api &&
             docker run -d --env-file .env -p --name "new-api" 8000:8000 ghcr.io/yakser/procollab-backend:latest
