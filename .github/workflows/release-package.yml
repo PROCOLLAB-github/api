@@ -25,7 +25,7 @@ jobs:
           id: meta
           uses: docker/metadata-action@v4
           with:
-            images: ghcr.io/Yakser/procollab-backend
+            images: ghcr.io/yakser/procollab-backend
             flavor: latest=true
             tags: |
               type=ref,event=branch
@@ -54,7 +54,7 @@ jobs:
             password: ${{ secrets.SERVER_PASSWORD }}
 
             command: |
-                docker pull ghcr.io/Yakser/procollab-backend:latest &&
+                docker pull ghcr.io/yakser/procollab-backend:latest &&
                 cd /home/app/procollab-backend &&
 
                 rm -f .env &&
