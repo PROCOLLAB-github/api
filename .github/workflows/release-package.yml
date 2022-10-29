@@ -25,7 +25,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: ghcr.io/yakser/procollab-backend
+          images: ghcr.io/yeezy-na-izi/procollab-backend
           flavor: latest=true
           tags: |
             type=ref,event=branch
@@ -49,31 +49,31 @@ jobs:
       - name: run on server
         uses: garygrossgarten/github-action-ssh@release
         with:
-            host: localhost
-#            host: ${{ secrets.SERVER_HOST }}
-#            username: ${{ secrets.SERVER_USER }}
-#            password: ${{ secrets.SERVER_PASSWORD }}
+#            host: localhost
+            host: ${{ secrets.SERVER_HOST }}
+            username: ${{ secrets.SERVER_USER }}
+            password: ${{ secrets.SERVER_PASSWORD }}
 
             command: |
-                docker pull ghcr.io/yakser/procollab-backend:latest &&
+                docker pull ghcr.io/yeezy-na-izi/procollab-backend:latest &&
                 cd /home/app/procollab-backend &&
 
                 rm -f .env &&
                 touch .env &&
 
                 echo "DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" >> .env &&
-                
+
                 echo "DATABASE_NAME=${{ secrets.DATABASE_NAME }}" >> .env &&
                 echo "DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}" >> .env &&
                 echo "DATABASE_USER=${{ secrets.DATABASE_USER }}" >> .env &&
                 echo "DATABASE_HOST=${{ secrets.DATABASE_HOST }}" >> .env &&
                 echo "DATABASE_PORT=${{ secrets.DATABASE_PORT }}" >> .env &&
-       
+
                 echo "EMAIL_USER=${{ secrets.EMAIL_USER }}" >> .env &&
                 echo "EMAIL_PASSWORD=${{ secrets.EMAIL_PASSWORD }}" >> .env &&
                 echo "EMAIL_HOST=${{ secrets.EMAIL_HOST }}" >> .env &&
                 echo "EMAIL_PORT=${{ secrets.EMAIL_PORT }}" >> .env &&
 
                 echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" >> .env &&
-            
+
                 docker-compose -f docker-compose.yml --project-directory . up --build
