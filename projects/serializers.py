@@ -58,8 +58,23 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
         ]
 
 
+class ProjectIndustrySerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = Industry
+        fields = [
+            "id",
+            "name",
+        ]
+
+    def get_queryset(self):
+        return Industry.objects.all()
+
+
 class ProjectListSerializer(serializers.ModelSerializer):
-    industry = serializers.SlugRelatedField("name", read_only=True)
+    industry = ProjectIndustrySerializer(read_only=False, required=True)
 
     class Meta:
         model = Project
@@ -70,9 +85,9 @@ class ProjectListSerializer(serializers.ModelSerializer):
             "description",
             "short_description",
             "step",
-            "industry",
             "image_address",
             "draft",
+            "industry",
             "datetime_created",
         ]
 
