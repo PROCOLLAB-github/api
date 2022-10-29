@@ -29,8 +29,8 @@ ENV PATH="/opt/venv/bin:$PATH"
 # Copying actuall application
 COPY . /procollab-backend/
 
-#RUN ls -a
-RUN /opt/venv/bin/python -m pip freeze
+RUN ls /opt/venv/bin
+#RUN /opt/venv/bin/python -m pip freeze
 CMD ["/opt/venv/bin/python3", "manage.py", "runserver"]
 
 # Uncommit this line if you want to use expose port
