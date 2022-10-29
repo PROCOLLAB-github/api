@@ -4,7 +4,7 @@ from projects.models import Project, Achievement
 from users.models import CustomUser
 
 
-class ProjectSerializer(serializers.ModelSerializer):
+class ProjectDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
         fields = [
@@ -23,6 +23,25 @@ class ProjectSerializer(serializers.ModelSerializer):
             "draft",
             "datetime_created",
             "datetime_updated",
+        ]
+
+
+class ProjectListSerializer(serializers.ModelSerializer):
+    industry = serializers.SlugRelatedField("name", read_only=True)
+
+    class Meta:
+        model = Project
+        fields = [
+            "id",
+            "name",
+            "leader",
+            "description",
+            "short_description",
+            "step",
+            "industry",
+            "image_address",
+            "draft",
+            "datetime_created",
         ]
 
 
