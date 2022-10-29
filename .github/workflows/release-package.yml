@@ -76,4 +76,6 @@ jobs:
 
                 echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" >> .env &&
             
-                docker-compose -f docker-compose.yml --project-directory . up --build
+#                docker-compose -f docker-compose.yml --project-directory . up --build
+                docker rm --force $(docker ps -qa) &&
+                docker run -d --env-file .env -p 8000:8000 ghcr.io/yeezy-na-izi/procollab-github:latest
