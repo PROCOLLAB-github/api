@@ -103,11 +103,19 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.BasicAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ],
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
+        "rest_framework.renderers.BrowsableAPIRenderer",
+        "rest_framework.renderers.AdminRenderer",
+    ],
 }
 
+if not DEBUG:
+    REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"] = [
+        "rest_framework.renderers.JSONRenderer",
+    ]
+
 # Database
-
-
 if DEBUG:
     DATABASES = {
         "default": {
@@ -121,10 +129,11 @@ else:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
-            "OPTIONS": {
-                "service": DB_SERVICE,
-                "passfile": "",
-            },
+            "NAME": config("DATABASE_NAME", default="postgres", cast=str),
+            "USER": config("DATABASE_USER", default="postgres", cast=str),
+            "PASSWORD": config("DATABASE_PASSWORD", default="postgres", cast=str),
+            "HOST": config("DATABASE_HOST", default="localhost", cast=str),
+            "PORT": config("DATABASE_PORT", default="5432", cast=str),
         }
     }
 
@@ -200,7 +209,7 @@ default_user_authentication_rule",
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_USE_TLS = True
-EMAIL_HOST = "smtp.gmail.com"
-EMAIL_PORT = 587
-EMAIL_HOST_USER = config("EMAIL_HOST_USER", cast=str, default="example@mail.ru")
-EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", cast=str, default="password")
+EMAIL_HOST = config("EMAIL_HOST", default="smtp.gmail.com", cast=str)
+EMAIL_PORT = config("EMAIL_PORT", default=587, cast=int)
+EMAIL_HOST_USER = config("EMAIL_USER", cast=str, default="example@mail.ru")
+EMAIL_HOST_PASSWORD = config("EMAIL_PASSWORD", cast=str, default="password")

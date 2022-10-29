@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import CustomUser, UserType
+from .models import CustomUser
 
 
 @admin.register(CustomUser)
@@ -90,11 +90,6 @@ class CustomUserAdmin(admin.ModelAdmin):
         "email",
         "id",
     )
-
-
-@admin.register(UserType)
-class UserTypeAdmin(admin.ModelAdmin):
-    list_display = ("id",)
 
 
 # TODO display additional fields

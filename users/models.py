@@ -1,41 +1,12 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-from industries.models import Industry
 
+from industries.models import Industry
 from users.managers import CustomUserManager
 
 
-class UserType(models.Model):
-    """
-    UserType model
-    Indicating type of user.
-    Attributes:
-        id: PositiveSmallIntegerField indicating user type according to VERBOSE_USER_TYPES.
-    """
-
-    ADMIN = 0
-    MEMBER = 1
-    MENTOR = 2
-    EXPERT = 3
-    INVESTOR = 4
-
-    VERBOSE_USER_TYPES = (
-        (ADMIN, "Администратор"),
-        (MEMBER, "Участник"),
-        (MENTOR, "Ментор"),
-        (EXPERT, "Эксперт"),
-        (INVESTOR, "Инвестор"),
-    )
-
-    id = models.PositiveSmallIntegerField(choices=VERBOSE_USER_TYPES, primary_key=True)
-
-    def __str__(self):
-        return f"UserType<{self.id}> - {self.get_id_display()}"
-
-
 def get_default_user_type():
-    user_type, is_created = UserType.objects.get_or_create(id=UserType.MEMBER)
-    return user_type.id
+    return CustomUser.MEMBER
 
 
 class CustomUser(AbstractUser):
@@ -62,6 +33,20 @@ class CustomUser(AbstractUser):
         tags: CharField instance tags. TODO
     """
 
+    ADMIN = 0
+    MEMBER = 1
+    MENTOR = 2
+    EXPERT = 3
+    INVESTOR = 4
+
+    VERBOSE_USER_TYPES = (
+        (ADMIN, "Администратор"),
+        (MEMBER, "Участник"),
+        (MENTOR, "Ментор"),
+        (EXPERT, "Эксперт"),
+        (INVESTOR, "Инвестор"),
+    )
+
     username = None
     email = models.EmailField(blank=False, unique=True)
     first_name = models.CharField(max_length=255, blank=False)
@@ -69,11 +54,9 @@ class CustomUser(AbstractUser):
     password = models.CharField(max_length=255, blank=False)
     is_active = models.BooleanField(default=False, editable=False)
     datetime_updated = models.DateTimeField(auto_now=True)
-    user_type = models.ForeignKey(
-        UserType,
-        on_delete=models.SET_DEFAULT,
-        null=False,
-        related_name="users",
+
+    user_type = models.PositiveSmallIntegerField(
+        choices=VERBOSE_USER_TYPES,
         default=get_default_user_type,
     )
 
@@ -139,6 +122,7 @@ class Expert(models.Model):
         Industry, blank=True, related_name="experts"
     )
     useful_to_project = models.TextField(blank=True)
+
     # TODO reviews
 
     def __str__(self):
