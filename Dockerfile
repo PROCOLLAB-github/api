@@ -15,8 +15,8 @@ RUN poetry install --no-root
 # Copying actuall application
 COPY . /procollab-backend/
 
-RUN /opt/venv/bin/python -m pip freeze
-CMD ["/opt/venv/bin/python3", "manage.py", "runserver"]
+RUN python -m pip freeze
+CMD ["python", "manage.py", "runserver"]
 
 # Uncommit this line if you want to use expose port
 EXPOSE 8000
