@@ -1,36 +1,21 @@
 FROM python:3.9.6-slim-buster as compiler
 
+RUN python -m venv /procollab-backend/venv
+RUN ./procollab-backend/venv/bin/activate
 RUN pip install --no-cache-dir poetry
-
-
-RUN python -m venv /opt/venv
 # Enable venv
-ENV PATH="/opt/venv/bin:$PATH"
 
 # Copying requirements of a project
 COPY pyproject.toml poetry.lock /procollab-backend/
 WORKDIR /procollab-backend
 
-FROM python:3.9.6-slim-buster as runner
-
-RUN pip install --no-cache-dir poetry
-
-COPY --from=compiler /opt/venv /opt/venv
-
-WORKDIR /procollab-backend
-
-COPY pyproject.toml poetry.lock /procollab-backend/
 # Installing requirements
 RUN poetry install --no-root
-
-# Enable venv
-ENV PATH="/opt/venv/bin:$PATH"
 
 # Copying actuall application
 COPY . /procollab-backend/
 
-RUN ls /opt/venv/bin
-#RUN /opt/venv/bin/python -m pip freeze
+RUN /opt/venv/bin/python -m pip freeze
 CMD ["/opt/venv/bin/python3", "manage.py", "runserver"]
 
 # Uncommit this line if you want to use expose port
