@@ -44,7 +44,6 @@ class ProjectList(generics.ListCreateAPIView):
             [step] - этап проекта
             [image_address] - адрес изображения
             [presentation_address] - адрес презентации
-            [region] - регион проекта
             [short_description] - краткое описание проекта
             [draft] - черновик проекта
 

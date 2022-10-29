@@ -37,7 +37,7 @@ class VacancyResponseList(mixins.ListModelMixin, mixins.CreateModelMixin, Generi
         return self.list(request, *args, **kwargs)
 
     def get_queryset(self):
-        return VacancyResponse.objects.filter(vacancy_id=self.kwargs["pk"])
+        return VacancyResponse.objects.filter(vacancy__id=self.kwargs["pk"])
 
     def post(self, request, *args, **kwargs):
         if request.data.get("is_approve"):
