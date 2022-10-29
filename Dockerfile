@@ -1,8 +1,7 @@
 FROM python:3.9.6-slim-buster as compiler
 
-RUN python -m venv /procollab-backend/venv
-RUN . ./procollab-backend/venv/bin/activate
 RUN pip install --no-cache-dir poetry
+RUN poetry config virtualenvs.create false
 # Enable venv
 
 # Copying requirements of a project
@@ -16,7 +15,7 @@ RUN poetry install --no-root
 COPY . /procollab-backend/
 
 RUN python -m pip freeze
-CMD ["poetry", "run", "python", "manage.py", "runserver"]
+CMD ["/usr/local/bin/python", "manage.py", "runserver"]
 
 # Uncommit this line if you want to use expose port
 EXPOSE 8000
