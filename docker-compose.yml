@@ -15,10 +15,10 @@ services:
     environment:
       HOST: 0.0.0.0
     volumes:
-      - garant_bot_api-db-data:/db_data/
+      - procollab-db-data:/db_data/
 
 
 
 volumes:
-  garant_bot_api-db-data:
+  procollab-db-data:
     name: garant_bot_api-db-data
