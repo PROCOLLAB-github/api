@@ -103,5 +103,6 @@ class IndustryTestCase(TestCase):
         user_id = response.data["id"]
         user = CustomUser.objects.get(id=user_id)
         user.is_active = True
+        user.is_staff = True
         user.save()
         return user
