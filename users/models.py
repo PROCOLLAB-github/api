@@ -115,7 +115,7 @@ class Mentor(models.Model):
             useful_to_project: CharField instance some text.
     """
 
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="mentors")
 
     job = models.CharField(max_length=255, blank=True)
     useful_to_project = models.TextField(blank=True)
@@ -131,7 +131,6 @@ class Expert(models.Model):
     Attributes:
             preferred_industries: CharField instance TODO
             useful_to_project: CharField instance TODO
-
     """
 
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
@@ -144,3 +143,24 @@ class Expert(models.Model):
 
     def __str__(self):
         return f"Expert<{self.id}> - {self.first_name} {self.last_name}"
+
+
+class Investor(models.Model):
+    """
+    Investor model
+
+    Attributes:
+            preferred_industries: CharField instance TODO
+            interaction_process_description: CharField describes the interaction process.
+
+    """
+
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+
+    preferred_industries = models.ManyToManyField(
+        Industry, blank=True, related_name="investors"
+    )
+    interaction_process_description = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"Investor<{self.id}> - {self.first_name} {self.last_name}"
