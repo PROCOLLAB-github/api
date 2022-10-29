@@ -47,11 +47,11 @@ jobs:
     needs: [PushImage]
     steps:
       - name: Login to GitHub Container Registry
-          uses: docker/login-action@v2
-          with:
-            registry: ghcr.io
-            username: ${{ github.actor }}
-            password: ${{ secrets.TOKEN }}
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.TOKEN }}
       - name: run on server
         uses: garygrossgarten/github-action-ssh@release
         with:
