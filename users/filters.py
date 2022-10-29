@@ -31,7 +31,6 @@ class UserFilter(filters.FilterSet):
             "first_name",
             "last_name",
             "patronymic",
-            "speciality",
             "city",
             "region",
             "organization",
