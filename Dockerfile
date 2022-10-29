@@ -29,7 +29,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 # Copying actuall application
 COPY . /procollab-backend/
 
-CMD ["python", "manage.py", "runserver"]
+CMD ["python3", "manage.py", "runserver"]
 
 # Uncommit this line if you want to use expose port
 EXPOSE 8000
