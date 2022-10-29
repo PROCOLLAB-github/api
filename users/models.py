@@ -1,7 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-from industries.models import Industry
 
+from industries.models import Industry
 from users.managers import CustomUserManager
 
 
@@ -34,8 +34,7 @@ class UserType(models.Model):
 
 
 def get_default_user_type():
-    user_type, is_created = UserType.objects.get_or_create(id=UserType.MEMBER)
-    return user_type.id
+    return UserType.MEMBER
 
 
 class CustomUser(AbstractUser):
@@ -139,6 +138,7 @@ class Expert(models.Model):
         Industry, blank=True, related_name="experts"
     )
     useful_to_project = models.TextField(blank=True)
+
     # TODO reviews
 
     def __str__(self):
