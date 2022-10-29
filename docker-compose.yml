@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile
-    command: gunicorn procollab.wsgi:application --bind
+    # command: gunicorn procollab.wsgi:application --bind
     ports:
       - "8000:8000"
     image: app
