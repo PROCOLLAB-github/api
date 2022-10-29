@@ -1,7 +1,8 @@
 name: Deploy DRF
 
 on:
-  release
+  release:
+      types: [created]
 
 jobs:
   PushImage:
