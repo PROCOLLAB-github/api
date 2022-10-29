@@ -52,6 +52,7 @@ class ProjectList(generics.ListCreateAPIView):
             **kwargs:
 
         Returns:
+            ProjectListSerializer
 
         """
         return self.create(request, *args, **kwargs)
