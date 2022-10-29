@@ -2,7 +2,9 @@ import mimetypes
 from datetime import timedelta
 from pathlib import Path
 
+import sentry_sdk
 from decouple import config
+from sentry_sdk.integrations.django import DjangoIntegration
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -10,9 +12,19 @@ SECRET_KEY = config("DJANGO_SECRET_KEY", default="django-default-secret-key", ca
 
 DEBUG = config("DEBUG", default=False, cast=bool)
 
+SENTRY_DSN = config("SENTRY_DSN", default="", cast=str)
+
 ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 
 # Application definition
+if SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[DjangoIntegration()],
+        release="dev" if DEBUG else "prod",
+        traces_sample_rate=1.0,
+        send_default_pii=True,
+    )
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -35,7 +47,10 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     "django_cleanup.apps.CleanupConfig",
     "rest_framework.authtoken",
+    # Plugins
     "corsheaders",
+    "django_filters",
+    "drf_yasg",
 ]
 
 MIDDLEWARE = [

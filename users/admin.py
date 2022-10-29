@@ -1,11 +1,15 @@
 from django.contrib import admin
 
-from .models import CustomUser
+from .models import CustomUser, UserType
 
 
 @admin.register(CustomUser)
 class CustomUserAdmin(admin.ModelAdmin):
     fieldsets = (
+        (
+            "Аккаунт",
+            {"fields": ("user_type",)},
+        ),
         (
             "Конфиденциальная информация",
             {
@@ -32,10 +36,10 @@ class CustomUserAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     "about_me",
-                    "key_skills",
-                    "useful_to_project",
+                    # "key_skills",
+                    # "useful_to_project",
                     "status",
-                    "speciality",
+                    # "speciality",
                     "city",
                     "region",
                     "organization",
@@ -86,3 +90,38 @@ class CustomUserAdmin(admin.ModelAdmin):
         "email",
         "id",
     )
+
+
+@admin.register(UserType)
+class UserTypeAdmin(admin.ModelAdmin):
+    list_display = ("id",)
+
+
+# TODO display additional fields
+
+# @admin.register(Member)
+# class MemberAdmin(admin.ModelAdmin):
+#     inlines = (CustomUserInlined,)
+#     fieldsets = (
+#         (
+#             "Дополнительные поля",
+#             {
+#                 "fields": (
+#                     "key_skills",
+#                     "useful_to_project",
+#                     "speciality",
+#                 )
+#             },
+#         ),
+#     )
+
+#     list_display = (
+#         "id",
+#     )
+#     search_fields = (
+#         "id",
+#     )
+
+#     list_filter = (
+#         "id",
+#     )
