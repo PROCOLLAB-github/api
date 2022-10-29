@@ -1,7 +1,7 @@
 FROM python:3.9.6-slim-buster as compiler
 
 RUN python -m venv /procollab-backend/venv
-RUN ./procollab-backend/venv/bin/activate
+RUN source /procollab-backend/venv/bin/activate
 RUN pip install --no-cache-dir poetry
 # Enable venv
 
