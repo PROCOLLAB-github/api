@@ -8,9 +8,17 @@ services:
     # command: gunicorn procollab.wsgi:application --bind
     ports:
       - "8000:8000"
-    image: app
+    image: web:latest
     restart: always
     env_file:
       - .env
     environment:
       HOST: 0.0.0.0
+    volumes:
+      - garant_bot_api-db-data:/db_data/
+
+
+
+volumes:
+  garant_bot_api-db-data:
+    name: garant_bot_api-db-data
