@@ -13,8 +13,7 @@ RUN poetry install --no-root
 COPY . /procollab-backend/
 RUN poetry install --no-root
 
-CMD ["ls", "-la"]
-CMD ["/usr/local/bin/python", "manage.py", "runserver"]
+CMD ["poetry", "run", "/usr/local/bin/python", "manage.py", "runserver"]
 
 # Uncommit this line if you want to use expose port
 EXPOSE 8000
