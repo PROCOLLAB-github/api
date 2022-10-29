@@ -75,5 +75,4 @@ jobs:
 
                 echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" >> .env &&
             
-                docker rm --force $(docker ps -qa) &&
                 docker-compose -f docker-compose.yml --project-directory . up --build
