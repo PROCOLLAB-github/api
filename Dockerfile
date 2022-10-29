@@ -7,11 +7,11 @@ COPY pyproject.toml poetry.lock /app/procollab-backend/
 WORKDIR /app/procollab-backend
 
 # Installing requirements
-RUN poetry install
+RUN poetry install --no-root
 
 # Copying actuall application
 COPY . /app/procollab-backend/
-RUN poetry install
+RUN poetry install --no-root
 
 CMD ["/usr/local/bin/python", "manage.py", "runserver", "8000"]
 
