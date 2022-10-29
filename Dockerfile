@@ -30,7 +30,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 COPY . /procollab-backend/
 
 RUN ls -a
-CMD ["python3", "manage.py", "runserver"]
+CMD ["/opt/venv/bin/python3", "manage.py", "runserver"]
 
 # Uncommit this line if you want to use expose port
 EXPOSE 8000
