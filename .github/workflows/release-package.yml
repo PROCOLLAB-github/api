@@ -39,8 +39,7 @@ jobs:
                   push: true
                   cache-from: type=gha
                   cache-to: type=gha,mode=max
-                  tags: ${{ steps.meta.outputs.tags }}
-                  labels: ${{ steps.meta.outputs.labels }}
+  
   RunContainer:
     runs-on: ubuntu-latest
     needs: [PushImage]
@@ -75,4 +74,4 @@ jobs:
                 echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" >> .env &&
             
                 docker rm --force $(docker ps -qa) &&
-                docker run -d --env-file .env -p 8080:8080 ghcr.io/Yakser/procollab-backend:latest
+                docker-compose -f docker-compose.yml --project-directory . up --build
