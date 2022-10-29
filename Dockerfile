@@ -1,4 +1,4 @@
-FROM python:3.9.6-slim
+FROM python:3.9.6-slim-buster
 
 RUN pip install --no-cache-dir poetry
 
@@ -14,7 +14,7 @@ COPY . /procollab-backend/
 RUN poetry install --no-root
 
 
-CMD ["python", "manage.py", "runserver"]
+CMD ["/usr/local/bin/python", "manage.py", "runserver"]
 
 # Uncommit this line if you want to use expose port
 EXPOSE 8000
