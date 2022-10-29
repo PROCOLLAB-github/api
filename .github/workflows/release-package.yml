@@ -18,7 +18,7 @@ jobs:
         uses: docker/login-action@v2
         with:
           registry: ghcr.io
-          username: ${{ github.actor }}
+          username: howone1sky@gmail.com
           password: ${{ secrets.TOKEN }}
 
       - name: Docker meta
