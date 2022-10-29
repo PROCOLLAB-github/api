@@ -3,6 +3,7 @@ from rest_framework.response import Response
 
 from chats.models import Chat, Message
 from chats.serializers import ChatSerializer, MessageSerializer, ChatDetailSerializer
+from core.permissions import IsMessageOwner, IsUserInChat
 
 
 class ChatList(generics.ListCreateAPIView):
@@ -44,11 +45,14 @@ class ChatDetail(generics.RetrieveUpdateDestroyAPIView):
 class MessageList(
     mixins.ListModelMixin, mixins.CreateModelMixin, generics.GenericAPIView
 ):
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [IsUserInChat]
     serializer_class = MessageSerializer
 
+    def get(self, request, *args, **kwargs):
+        return self.list(self, request, *args, **kwargs)
+
     def get_queryset(self):
-        return Message.objects.p.filter(chat_id=self.kwargs["pk"])
+        return Message.objects.filter(chat_id=self.kwargs["pk"])
 
     def post(self, request, *args, **kwargs):
         try:
@@ -56,22 +60,20 @@ class MessageList(
         except AttributeError:
             pass
 
-        chat = Chat.objects.get(pk=request.data["chat"])
-        if request.user not in chat.users.all():
-            return Response(status=status.HTTP_403_FORBIDDEN)
-
         return self.create(request, *args, **kwargs)
 
 
 class MessageDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Message.objects.all()
     serializer_class = MessageSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [IsMessageOwner]
 
     def patch(self, request, *args, **kwargs):
         message = Message.objects.get(pk=self.kwargs["message_id"])
+
         if request.user != message.author:
             return Response(status=status.HTTP_403_FORBIDDEN)
+
         return self.partial_update(request, *args, **kwargs)
 
     def delete(self, request, *args, **kwargs):
@@ -79,6 +81,7 @@ class MessageDetail(generics.RetrieveUpdateDestroyAPIView):
 
         if request.user != message.author:
             return Response(status=status.HTTP_403_FORBIDDEN)
+
         return self.destroy(request, *args, **kwargs)
 
     def put(self, request, *args, **kwargs):

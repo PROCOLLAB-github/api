@@ -47,3 +47,9 @@ class MessageSerializer(serializers.ModelSerializer):
             "text",
             "created_at",
         ]
+
+    def create(self, validated_data):
+        chat_id = self.context["request"].data["chat"]
+        chat = Chat.objects.get(id=chat_id)
+        message = Message.objects.create(chat=chat, **validated_data)
+        return message
