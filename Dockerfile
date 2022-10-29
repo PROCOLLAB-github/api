@@ -15,6 +15,8 @@ FROM python:3.9.6-slim-buster as runner
 
 RUN pip install --no-cache-dir poetry
 
+WORKDIR /procollab-backend
+
 COPY --from=compiler /opt/venv /opt/venv
 
 # Installing requirements
