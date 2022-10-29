@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from industries.models import Industry
 from projects.models import Project, Achievement
 from users.models import CustomUser
 
@@ -43,6 +44,16 @@ class ProjectListSerializer(serializers.ModelSerializer):
             "draft",
             "datetime_created",
         ]
+
+    def create(self, validated_data):
+        industry = Industry.objects.get(id=validated_data.pop("industry"))
+        leader = CustomUser.objects.get(id=validated_data.pop("leader"))
+        project = Project.objects.create(
+            **validated_data,
+            industry=industry,
+            leader=leader,
+        )
+        return project
 
 
 class AchievementSerializer(serializers.ModelSerializer):

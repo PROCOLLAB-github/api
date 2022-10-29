@@ -22,6 +22,40 @@ class ProjectList(generics.ListCreateAPIView):
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = ProjectFilter
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        # Почему-то не работает, если не указать явно
+        serializer.validated_data["leader"] = request.user.id
+        serializer.validated_data["industry"] = request.data["industry"]
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=201, headers=headers)
+
+    def post(self, request, *args, **kwargs):
+        """
+        Создание проекта
+
+        Args:
+            request:
+            [name] - название проекта
+            [description] - описание проекта
+            [industry] - id отрасли
+            [step] - этап проекта
+            [image_address] - адрес изображения
+            [presentation_address] - адрес презентации
+            [region] - регион проекта
+            [short_description] - краткое описание проекта
+            [draft] - черновик проекта
+
+            *args:
+            **kwargs:
+
+        Returns:
+
+        """
+        return self.create(request, *args, **kwargs)
+
 
 class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Project.objects.all()
