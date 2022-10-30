@@ -23,7 +23,7 @@ RUN poetry config virtualenvs.create false \
 
 EXPOSE 8000
 
-MKDIR /procollab/static
+RUN mkdir /procollab/static
 
 COPY . /procollab/
 
