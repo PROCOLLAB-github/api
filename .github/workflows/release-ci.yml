@@ -1,0 +1,80 @@
+name: 'build and deploy test server'
+
+on:
+  push:
+    branches: master
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: 'Build & Publish'
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@v2
+
+      - name: "Set up QEMU"
+        uses: docker/setup-qemu-action@v1
+
+      - name: "Set up Docker Buildx"
+        uses: docker/setup-buildx-action@v1
+
+      - name: "Login to GitHub Registry"
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.TOKEN }}
+
+      - name: "Build&Deploy template-server"
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          tags: |
+            ghcr.io/procollab-github/api:latest
+          secrets: |
+            "ASPNETCORE_ENVIRONMENT=Release"
+          build-args: |
+            build_mode=Release
+
+      - name: "Run deploy on server"
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          script: |
+            sudo docker-compose -f docker-compose.prod-ci.yml -p prod pull
+            sudo docker-compose -f docker-compose.prod-ci.yml -p prod up -d
+
+      - name: run on server
+        uses: garygrossgarten/github-action-ssh@release
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          command: |
+            cd /home/app/procollab-backend &&
+            docker-compose -f docker-compose.prod-ci.yml -p prod pull
+
+            rm -f .env &&
+            touch .env &&
+
+            echo "DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" >> .env &&
+
+            echo "DATABASE_NAME=${{ secrets.DATABASE_NAME }}" >> .env &&
+            echo "DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}" >> .env &&
+            echo "DATABASE_USER=${{ secrets.DATABASE_USER }}" >> .env &&
+            echo "DATABASE_HOST=${{ secrets.DATABASE_HOST }}" >> .env &&
+            echo "DATABASE_PORT=${{ secrets.DATABASE_PORT }}" >> .env &&
+
+            echo "EMAIL_USER=${{ secrets.EMAIL_USER }}" >> .env &&
+            echo "EMAIL_PASSWORD=${{ secrets.EMAIL_PASSWORD }}" >> .env &&
+            echo "EMAIL_HOST=${{ secrets.EMAIL_HOST }}" >> .env &&
+            echo "EMAIL_PORT=${{ secrets.EMAIL_PORT }}" >> .env &&
+
+            echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" >> .env &&
+
+            docker-compose -f docker-compose.prod-ci.yml -p prod up -d
+#            docker run -d --env-file .env -p 8000:8000 ghcr.io/procollab-github/api:latest
