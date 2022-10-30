@@ -26,27 +26,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.TOKEN }}
 
-      - name: "Build&Deploy template-server"
-        uses: docker/build-push-action@v2
+      - name: Build and push container
+        uses: docker/build-push-action@v3
         with:
+          context: .
+          file: Dockerfile
           push: true
-          tags: |
-            ghcr.io/procollab-github/api:latest
-          secrets: |
-            "ASPNETCORE_ENVIRONMENT=Release"
-          build-args: |
-            build_mode=Release
-
-      - name: "Run deploy on server"
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USERNAME }}
-          key: ${{ secrets.SERVER_KEY }}
-          port: ${{ secrets.SERVER_PORT }}
-          script: |
-            sudo docker-compose -f docker-compose.prod-ci.yml -p prod pull
-            sudo docker-compose -f docker-compose.prod-ci.yml -p prod up -d
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
 
       - name: run on server
         uses: garygrossgarten/github-action-ssh@release
