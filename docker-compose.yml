@@ -5,19 +5,11 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile
-    # command: gunicorn procollab.wsgi:application --bind
     ports:
       - "8000:8000"
-    image: web:latest
+    image: ghcr.io/procollab-github/api:latest
     restart: always
     env_file:
       - .env
     environment:
       HOST: 0.0.0.0
-    volumes:
-      - procollab-db-data:/db_data/
-
-
-volumes:
-  procollab-db-data:
-    name: garant_bot_api-db-data
