@@ -14,12 +14,3 @@ services:
       - .env
     environment:
       HOST: 0.0.0.0
-    volumes:
-      - procollab-db-data:/db_data/
-      - ./static:/static
-
-
-
-volumes:
-  procollab-db-data:
-    name: garant_bot_api-db-data
