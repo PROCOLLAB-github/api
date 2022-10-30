@@ -37,7 +37,7 @@ jobs:
             
             echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" >> .env &&
             
-            docker run -d --env-file .env -p 8000:8000 ghcr.io/procollab-github/api:latest
+            docker-compose up -d 
   PushImage:
     runs-on: ubuntu-latest
     steps:

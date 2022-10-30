@@ -5,10 +5,9 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile
-    # command: gunicorn procollab.wsgi:application --bind
     ports:
       - "8000:8000"
-    image: web:latest
+    image: ghcr.io/procollab-github/api:latest
     restart: always
     env_file:
       - .env
