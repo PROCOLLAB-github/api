@@ -2,4 +2,4 @@
 
 python manage.py migrate
 python manage.py collectstatic
-python manage.py runserver 0.0.0.0:8000 --noreload
+python manage.py runserver localhost:8000 --noreload
