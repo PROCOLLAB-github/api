@@ -16,6 +16,7 @@ services:
       HOST: 0.0.0.0
     volumes:
       - procollab-db-data:/db_data/
+      - ./static:/static
 
 
 
