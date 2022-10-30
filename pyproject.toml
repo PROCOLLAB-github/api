@@ -4,7 +4,7 @@ version = "0.1.0"
 description = ""
 authors = ["Sergey Yaksanov <sergeyyaksanov@yandex.ru>"]
 readme = "README.md"
-packages = [{include = "procollab_backend"}]
+packages = []
 
 [tool.black]
     line-length = 90
