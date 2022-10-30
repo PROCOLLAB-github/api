@@ -29,4 +29,4 @@ COPY . /procollab/
 
 CMD ["bash", "startup.sh"]
 
-VOLUME ["./static"]
+VOLUME ["/procollab/static/"]
