@@ -23,6 +23,8 @@ RUN poetry config virtualenvs.create false \
 
 EXPOSE 8000
 
+MKDIR /procollab/static
+
 COPY . /procollab/
 
 CMD ["bash", "startup.sh"]
