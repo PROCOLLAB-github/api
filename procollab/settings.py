@@ -1,4 +1,5 @@
 import mimetypes
+import os
 from datetime import timedelta
 from pathlib import Path
 
@@ -64,7 +65,6 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -132,6 +132,8 @@ else:
         "rest_framework.renderers.JSONRenderer",
     ]
 
+    DB_SERVICE = config("DB_SERVICE", default="postgres", cast=str)
+
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
@@ -176,14 +178,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 
 STATIC_URL = "/static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"
-
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
-
-STATICFILES_FINDERS = [
-    "django.contrib.staticfiles.finders.FileSystemFinder",
-    "django.contrib.staticfiles.finders.AppDirectoriesFinder",
-]
+STATIC_ROOT = os.path.join(BASE_DIR, "static/")
 
 
 # Default primary key field type
