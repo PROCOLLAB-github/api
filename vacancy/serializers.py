@@ -1,12 +1,24 @@
 from rest_framework import serializers
 
-from projects.serializers import ProjectListSerializer
+from projects.models import Project
 from users.serializers import UserSerializer
 from vacancy.models import Vacancy, VacancyResponse
 
 
+class ProjectForVacancySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Project
+        fields = [
+            "id",
+            "name",
+            "description",
+            "short_description",
+            "image_address",
+        ]
+
+
 class VacancyDetailSerializer(serializers.ModelSerializer):
-    project = ProjectListSerializer(many=False)
+    project = ProjectForVacancySerializer(many=False)
 
     class Meta:
         model = Vacancy

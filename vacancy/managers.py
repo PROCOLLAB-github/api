@@ -13,7 +13,6 @@ class VacancyManager(Manager):
                 "project__id",
                 "is_active",
             )
-            .filter(is_active=True)
         )
 
     def get_vacancy_for_detail_view(self):

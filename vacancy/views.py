@@ -1,7 +1,9 @@
+from django_filters import rest_framework as filters
 from rest_framework import generics, permissions, mixins, status
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 
+from vacancy.filters import VacancyFilter
 from vacancy.models import Vacancy, VacancyResponse
 from vacancy.serializers import (
     VacancyDetailSerializer,
@@ -15,6 +17,8 @@ class VacancyList(generics.ListCreateAPIView):
     queryset = Vacancy.objects.get_vacancy_for_list_view()
     serializer_class = ProjectVacancyListSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    filter_backends = (filters.DjangoFilterBackend,)
+    filterset_class = VacancyFilter
 
 
 class VacancyDetail(generics.RetrieveUpdateDestroyAPIView):
