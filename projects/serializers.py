@@ -19,7 +19,6 @@ class ProjectCollaboratorSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "avatar",
-            "key_skills",
         ]
 
     def get_queryset(self):
