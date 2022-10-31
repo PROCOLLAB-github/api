@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "projects.apps.ProjectsConfig",
     "news.apps.NewsConfig",
     "vacancy.apps.VacancyConfig",
+    "metrics.apps.MetricsConfig",
     # Rest framework
     "rest_framework",
     "rest_framework_simplejwt",
