@@ -1,5 +1,8 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
 from industries.models import Industry
 
 from users.managers import CustomUserManager
@@ -148,3 +151,16 @@ class Investor(models.Model):
 
     def __str__(self):
         return f"Investor<{self.id}> - {self.first_name} {self.last_name}"
+
+
+@receiver(post_save, sender=CustomUser)
+def create_or_update_user_types(sender, instance, created, **kwargs):
+    if created:
+        if instance.user_type == CustomUser.MEMBER:
+            Member.objects.create(user=instance)
+        elif instance.user_type == CustomUser.MENTOR:
+            Mentor.objects.create(user=instance)
+        elif instance.user_type == CustomUser.EXPERT:
+            Expert.objects.create(user=instance)
+        elif instance.user_type == CustomUser.INVESTOR:
+            Investor.objects.create(user=instance)
