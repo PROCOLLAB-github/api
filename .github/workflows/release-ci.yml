@@ -1,9 +1,8 @@
-name: 'build and deploy test server'
+name: 'Build and Deploy server'
 
 on:
-  push:
-    branches: master
-  workflow_dispatch:
+  release:
+    types: [ published ]
 
 jobs:
   build:
