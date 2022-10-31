@@ -49,7 +49,7 @@ class VacancyResponseList(mixins.ListModelMixin, mixins.CreateModelMixin, Generi
     def post(self, request, *args, **kwargs):
         if request.data.get("is_approve"):
             return Response(status=status.HTTP_400_BAD_REQUEST)
-        if self.request.user != request.data.get("user"):
+        if self.request.user.id != request.data.get("user"):
             return Response(status=status.HTTP_400_BAD_REQUEST)
 
         try:
