@@ -3,18 +3,23 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 
 from vacancy.models import Vacancy, VacancyResponse
-from vacancy.serializers import VacancySerializer, VacancyResponseSerializer
+from vacancy.serializers import (
+    VacancyDetailSerializer,
+    VacancyListSerializer,
+    VacancyResponseDetailSerializer,
+    VacancyResponseListSerializer,
+)
 
 
 class VacancyList(generics.ListCreateAPIView):
-    queryset = Vacancy.objects.all()
-    serializer_class = VacancySerializer
+    queryset = Vacancy.objects.get_vacancy_for_list_view()
+    serializer_class = VacancyListSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
 
 class VacancyDetail(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Vacancy.objects.all()
-    serializer_class = VacancySerializer
+    queryset = Vacancy.objects.get_vacancy_for_detail_view()
+    serializer_class = VacancyDetailSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
     def put(self, request, *args, **kwargs):
@@ -31,13 +36,15 @@ class VacancyDetail(generics.RetrieveUpdateDestroyAPIView):
 
 class VacancyResponseList(mixins.ListModelMixin, mixins.CreateModelMixin, GenericAPIView):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-    serializer_class = VacancyResponseSerializer
+    serializer_class = VacancyResponseListSerializer
 
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
 
     def get_queryset(self):
-        return VacancyResponse.objects.filter(vacancy__id=self.kwargs["pk"])
+        return VacancyResponse.objects.get_vacancy_response_for_list_view().filter(
+            vacancy__id=self.kwargs["pk"]
+        )
 
     def post(self, request, *args, **kwargs):
         if request.data.get("is_approve"):
@@ -53,8 +60,8 @@ class VacancyResponseList(mixins.ListModelMixin, mixins.CreateModelMixin, Generi
 
 
 class VacancyResponseDetail(generics.RetrieveUpdateDestroyAPIView):
-    queryset = VacancyResponse.objects.all()
-    serializer_class = VacancyResponseSerializer
+    queryset = VacancyResponse.objects.get_vacancy_response_for_detail_view()
+    serializer_class = VacancyResponseDetailSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
     def put(self, request, *args, **kwargs):

@@ -5,17 +5,10 @@ from projects.models import Project, Achievement
 from users.models import CustomUser
 
 
-class AchievementSerializer(serializers.ModelSerializer):
+class AchievementListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Achievement
-        fields = [
-            "id",
-            "title",
-            "status",
-        ]
-
-    def get_queryset(self):
-        return Achievement.objects.all()
+        fields = ["id", "title", "status", "project"]
 
 
 class ProjectCollaboratorSerializer(serializers.ModelSerializer):
@@ -30,11 +23,12 @@ class ProjectCollaboratorSerializer(serializers.ModelSerializer):
         ]
 
     def get_queryset(self):
+        # ???? why is this here
         return CustomUser.objects.all()
 
 
 class ProjectDetailSerializer(serializers.ModelSerializer):
-    achievements = AchievementSerializer(many=True, read_only=True)
+    achievements = AchievementListSerializer(many=True, read_only=True)
     collaborators = ProjectCollaboratorSerializer(many=True, read_only=True)
 
     class Meta:
@@ -58,24 +52,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
         ]
 
 
-class ProjectIndustrySerializer(serializers.ModelSerializer):
-    id = serializers.IntegerField()
-    name = serializers.CharField(read_only=True)
-
-    class Meta:
-        model = Industry
-        fields = [
-            "id",
-            "name",
-        ]
-
-    def get_queryset(self):
-        return Industry.objects.all()
-
-
 class ProjectListSerializer(serializers.ModelSerializer):
-    # industry = ProjectIndustrySerializer(read_only=False, required=True)
-
     class Meta:
         model = Project
         fields = [
@@ -105,7 +82,30 @@ class ProjectListSerializer(serializers.ModelSerializer):
         return project
 
 
+class ProjectIndustrySerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = Industry
+        fields = [
+            "id",
+            "name",
+        ]
+
+    def get_queryset(self):
+        return Industry.objects.all()
+
+
 class ProjectCollaboratorsSerializer(serializers.Serializer):
     collaborators = serializers.PrimaryKeyRelatedField(
         queryset=CustomUser.objects.all(), many=True, read_only=False
     )
+
+
+class AchievementDetailSerializer(serializers.ModelSerializer):
+    project = ProjectListSerializer(many=False, read_only=True)
+
+    class Meta:
+        model = Achievement
+        fields = ["id", "title", "status", "project"]
