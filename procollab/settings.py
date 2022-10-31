@@ -1,10 +1,15 @@
 import mimetypes
+import os
 from datetime import timedelta
 from pathlib import Path
 
 import sentry_sdk
 from decouple import config
 from sentry_sdk.integrations.django import DjangoIntegration
+
+mimetypes.add_type("application/javascript", ".js", True)
+mimetypes.add_type("text/css", ".css", True)
+mimetypes.add_type("text/html", ".html", True)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -14,7 +19,12 @@ DEBUG = config("DEBUG", default=False, cast=bool)
 
 SENTRY_DSN = config("SENTRY_DSN", default="", cast=str)
 
-ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+ALLOWED_HOSTS = [
+    "127.0.0.1",
+    "localhost",
+    "0.0.0.0",
+    "api.procollab.ru",
+]
 
 # Application definition
 if SENTRY_DSN:
@@ -41,6 +51,7 @@ INSTALLED_APPS = [
     "projects.apps.ProjectsConfig",
     "news.apps.NewsConfig",
     "vacancy.apps.VacancyConfig",
+    "metrics.apps.MetricsConfig",
     # Rest framework
     "rest_framework",
     "rest_framework_simplejwt",
@@ -109,12 +120,6 @@ REST_FRAMEWORK = {
         "rest_framework.renderers.AdminRenderer",
     ],
 }
-
-if not DEBUG:
-    REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"] = [
-        "rest_framework.renderers.JSONRenderer",
-    ]
-
 # Database
 if DEBUG:
     DATABASES = {
@@ -124,6 +129,10 @@ if DEBUG:
         }
     }
 else:
+    REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"] = [
+        "rest_framework.renderers.JSONRenderer",
+    ]
+
     DB_SERVICE = config("DB_SERVICE", default="postgres", cast=str)
 
     DATABASES = {
@@ -169,15 +178,13 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
+STATIC_ROOT = os.path.join(BASE_DIR, "static/")
+
 
 # Default primary key field type
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-
-mimetypes.add_type("application/javascript", ".js", True)
-mimetypes.add_type("text/css", ".css", True)
-mimetypes.add_type("text/html", ".html", True)
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
@@ -206,6 +213,8 @@ default_user_authentication_rule",
     "SLIDING_TOKEN_LIFETIME": timedelta(minutes=5),
     "SLIDING_TOKEN_REFRESH_LIFETIME": timedelta(days=1),
 }
+
+SESSION_COOKIE_SECURE = True
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_USE_TLS = True

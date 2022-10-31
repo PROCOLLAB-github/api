@@ -1,13 +1,13 @@
 version: '3.9'
 
 services:
-  api:
+  web:
     build:
       context: .
       dockerfile: ./Dockerfile
     ports:
       - "8000:8000"
-    image: app
+    image: ghcr.io/procollab-github/api:latest
     restart: always
     env_file:
       - .env
