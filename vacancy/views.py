@@ -5,15 +5,15 @@ from rest_framework.response import Response
 from vacancy.models import Vacancy, VacancyResponse
 from vacancy.serializers import (
     VacancyDetailSerializer,
-    VacancyListSerializer,
     VacancyResponseDetailSerializer,
     VacancyResponseListSerializer,
+    ProjectVacancyListSerializer,
 )
 
 
 class VacancyList(generics.ListCreateAPIView):
     queryset = Vacancy.objects.get_vacancy_for_list_view()
-    serializer_class = VacancyListSerializer
+    serializer_class = ProjectVacancyListSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
 

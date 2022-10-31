@@ -12,9 +12,8 @@ class VacancyManager(Manager):
                 "description",
                 "project__id",
                 "is_active",
-                "datetime_created",
-                "datetime_updated",
             )
+            .filter(is_active=True)
         )
 
     def get_vacancy_for_detail_view(self):
@@ -43,8 +42,6 @@ class VacancyResponseManager(Manager):
                 "vacancy__id",
                 "why_me",
                 "is_approved",
-                "datetime_created",
-                "datetime_updated",
             )
         )
 

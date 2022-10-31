@@ -3,7 +3,7 @@ from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.permissions import IsProjectLeaderOrReadOnly, IsStaffOrReadOnly
+from core.permissions import IsStaffOrReadOnly
 from projects.filters import ProjectFilter
 from projects.helpers import VERBOSE_STEPS
 from projects.models import Project, Achievement
@@ -106,10 +106,10 @@ class ProjectSteps(APIView):
 class AchievementList(generics.ListCreateAPIView):
     queryset = Achievement.objects.get_achievements_for_list_view()
     serializer_class = AchievementListSerializer
-    permission_classes = [IsProjectLeaderOrReadOnly]
+    permission_classes = [IsStaffOrReadOnly]
 
 
 class AchievementDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Achievement.objects.get_achievements_for_detail_view()
     serializer_class = AchievementDetailSerializer
-    permission_classes = [IsProjectLeaderOrReadOnly]
+    permission_classes = [IsStaffOrReadOnly]

@@ -8,6 +8,16 @@ from users.models import CustomUser
 class AchievementListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Achievement
+        fields = [
+            "id",
+            "title",
+            "status",
+        ]
+
+
+class ProjectAchievementListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Achievement
         fields = ["id", "title", "status", "project"]
 
 
@@ -20,10 +30,6 @@ class ProjectCollaboratorSerializer(serializers.ModelSerializer):
             "last_name",
             "avatar",
         ]
-
-    def get_queryset(self):
-        # ???? why is this here
-        return CustomUser.objects.all()
 
 
 class ProjectDetailSerializer(serializers.ModelSerializer):
@@ -91,9 +97,6 @@ class ProjectIndustrySerializer(serializers.ModelSerializer):
             "id",
             "name",
         ]
-
-    def get_queryset(self):
-        return Industry.objects.all()
 
 
 class ProjectCollaboratorsSerializer(serializers.Serializer):
