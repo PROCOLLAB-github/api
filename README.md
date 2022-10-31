@@ -32,3 +32,10 @@ To install pre-commit simply run inside the shell:
 ```bash
 pre-commit install
 ```
+
+
+### To start the celery server
+
+```bash
+celery -A procollab.celery worker --pool=solo  -l info
+```
