@@ -28,6 +28,7 @@ class ProjectList(generics.ListCreateAPIView):
         # Почему-то не работает, если не указать явно
         serializer.validated_data["leader"] = request.user.id
         serializer.validated_data["industry"] = request.data["industry"]
+
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=201, headers=headers)
@@ -35,6 +36,12 @@ class ProjectList(generics.ListCreateAPIView):
     def post(self, request, *args, **kwargs):
         """
         Создание проекта
+
+        ---
+
+        leader подставляется автоматически
+        (я не знаю как убрать его из сваггера😅)
+
 
         Args:
             request:

@@ -74,7 +74,7 @@ class ProjectIndustrySerializer(serializers.ModelSerializer):
 
 
 class ProjectListSerializer(serializers.ModelSerializer):
-    industry = ProjectIndustrySerializer(read_only=False, required=True)
+    # industry = ProjectIndustrySerializer(read_only=False, required=True)
 
     class Meta:
         model = Project
@@ -90,6 +90,9 @@ class ProjectListSerializer(serializers.ModelSerializer):
             "industry",
             "datetime_created",
         ]
+
+    def is_valid(self, *, raise_exception=False):
+        return super().is_valid(raise_exception=raise_exception)
 
     def create(self, validated_data):
         industry = Industry.objects.get(id=validated_data.pop("industry"))
