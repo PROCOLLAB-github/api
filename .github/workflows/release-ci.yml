@@ -77,4 +77,3 @@ jobs:
             echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" >> .env &&
 
             docker-compose -f docker-compose.prod-ci.yml -p prod up -d
-#            docker run -d --env-file .env -p 8000:8000 ghcr.io/procollab-github/api:latest
