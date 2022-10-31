@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "projects.apps.ProjectsConfig",
     "news.apps.NewsConfig",
     "vacancy.apps.VacancyConfig",
+    "metrics.apps.MetricsConfig",
     # Rest framework
     "rest_framework",
     "rest_framework_simplejwt",
@@ -225,10 +226,10 @@ EMAIL_HOST_PASSWORD = config("EMAIL_PASSWORD", cast=str, default="password")
 
 # CELERY SETTINGS
 
-CELERY_BROKER_URL = 'redis://127.0.0.1:6379'
+CELERY_BROKER_URL = "redis://127.0.0.1:6379"
 
-CELERY_ACCEPT_CONTENT = ['application/json']
-CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_SERIALIZER = 'json'
+CELERY_ACCEPT_CONTENT = ["application/json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
 # CELERY_TIMEZONE = ''
-CELERY_RESULT_BACKEND = 'django-db'
+CELERY_RESULT_BACKEND = "django-db"
