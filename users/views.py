@@ -1,11 +1,12 @@
 from datetime import datetime
 
 import jwt
+from core.permissions import IsOwnerOrReadOnly
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.sites.shortcuts import get_current_site
-from django.urls import reverse
 from django.shortcuts import redirect
+from django.urls import reverse
 from django_filters import rest_framework as filters
 from rest_framework import status
 from rest_framework.generics import (
@@ -14,20 +15,19 @@ from rest_framework.generics import (
     RetrieveUpdateDestroyAPIView,
     UpdateAPIView,
 )
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from core.permissions import IsOwnerOrReadOnly
-from .filters import UserFilter
 from users.serializers import (
     EmailSerializer,
     PasswordSerializer,
     UserSerializer,
     VerifyEmailSerializer,
 )
-from .tasks import send_email_task
 
+from .filters import UserFilter
+from .tasks import send_email_task
 
 User = get_user_model()
 
@@ -63,7 +63,9 @@ class UserList(ListCreateAPIView):
             "to_email": user.email,
         }
 
-        send_email_task.delay(data)
+        if settings.ENABLE_EMAIL:
+            send_email_task.delay(data)
+
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 

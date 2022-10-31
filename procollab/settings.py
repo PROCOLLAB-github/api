@@ -16,6 +16,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config("DJANGO_SECRET_KEY", default="django-default-secret-key", cast=str)
 
 DEBUG = config("DEBUG", default=False, cast=bool)
+ENABLE_EMAIL = config("ENABLE_EMAIL", default=False, cast=bool)
 
 SENTRY_DSN = config("SENTRY_DSN", default="", cast=str)
 
@@ -51,6 +52,7 @@ INSTALLED_APPS = [
     "projects.apps.ProjectsConfig",
     "news.apps.NewsConfig",
     "vacancy.apps.VacancyConfig",
+    "metrics.apps.MetricsConfig",
     # Rest framework
     "rest_framework",
     "rest_framework_simplejwt",
