@@ -94,7 +94,7 @@ class Member(models.Model):
     speciality = models.CharField(max_length=255, blank=True)
 
     def __str__(self):
-        return f"Member<{self.id}> - {self.first_name} {self.last_name}"
+        return f"Member<{self.id}> - {self.user.first_name} {self.user.last_name}"
 
 
 class Mentor(models.Model):
@@ -112,7 +112,7 @@ class Mentor(models.Model):
     useful_to_project = models.TextField(blank=True)
 
     def __str__(self):
-        return f"Mentor<{self.id}> - {self.first_name} {self.last_name}"
+        return f"Mentor<{self.id}> - {self.user.first_name} {self.user.last_name}"
 
 
 class Expert(models.Model):
@@ -134,7 +134,7 @@ class Expert(models.Model):
     # TODO reviews
 
     def __str__(self):
-        return f"Expert<{self.id}> - {self.first_name} {self.last_name}"
+        return f"Expert<{self.id}> - {self.user.first_name} {self.user.last_name}"
 
 
 class Investor(models.Model):
@@ -155,7 +155,7 @@ class Investor(models.Model):
     interaction_process_description = models.TextField(blank=True)
 
     def __str__(self):
-        return f"Investor<{self.id}> - {self.first_name} {self.last_name}"
+        return f"Investor<{self.id}> - {self.user.first_name} {self.user.last_name}"
 
 
 @receiver(post_save, sender=CustomUser)
