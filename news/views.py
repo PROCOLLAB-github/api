@@ -7,7 +7,6 @@ from news.models import News, NewsTag
 from news.serializers import NewsDetailSerializer, NewsListSerializer, NewsTagSerializer
 
 
-
 class NewsList(generics.ListCreateAPIView):
     queryset = News.objects.all()
     serializer_class = NewsListSerializer

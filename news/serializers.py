@@ -18,7 +18,6 @@ class NewsDetailSerializer(serializers.ModelSerializer):
         ]
 
 
-
 class NewsListSerializer(serializers.ModelSerializer):
     class Meta:
         model = News
@@ -29,7 +28,8 @@ class NewsListSerializer(serializers.ModelSerializer):
             "cover_url",
             "datetime_created",
         ]
-       
+
+
 class NewsTagSerializer(serializers.ModelSerializer):
     class Meta:
         model = NewsTag
