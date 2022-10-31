@@ -77,12 +77,17 @@ class CustomUser(AbstractUser):
 
     objects = CustomUserManager()
 
+    def get_member_key_skills(self):
+        if self.user_type == CustomUser.MEMBER:
+            return str(self.member.all().first().key_skills)
+        return ""
+
     def __str__(self):
         return f"User<{self.id}> - {self.first_name} {self.last_name}"
 
 
 class Member(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="member")
 
     key_skills = models.CharField(max_length=255, blank=True)  # TODO
     useful_to_project = models.TextField(blank=True)

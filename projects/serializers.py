@@ -19,6 +19,8 @@ class AchievementSerializer(serializers.ModelSerializer):
 
 
 class ProjectCollaboratorSerializer(serializers.ModelSerializer):
+    key_skills = serializers.SerializerMethodField()
+
     class Meta:
         model = CustomUser
         fields = [
@@ -28,6 +30,9 @@ class ProjectCollaboratorSerializer(serializers.ModelSerializer):
             "avatar",
             "key_skills",
         ]
+
+    def get_key_skills(self, obj):
+        return obj.get_member_key_skills()
 
     def get_queryset(self):
         return CustomUser.objects.all()

@@ -8,4 +8,4 @@ def send_email_task(data):
         subject=data["email_subject"], body=data["email_body"], to=[data["to_email"]]
     )
     email.send()
-    return 'Email send!'
+    return "Email sent!"
