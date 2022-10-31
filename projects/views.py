@@ -7,7 +7,11 @@ from core.permissions import IsProjectLeaderOrReadOnly, IsStaffOrReadOnly
 from projects.filters import ProjectFilter
 from projects.helpers import VERBOSE_STEPS
 from projects.models import Project, Achievement
-from projects.serializers import ProjectSerializer, AchievementSerializer, ProjectCollaboratorsSerializer
+from projects.serializers import (
+    ProjectSerializer,
+    AchievementSerializer,
+    ProjectCollaboratorsSerializer,
+)
 
 
 class ProjectList(generics.ListCreateAPIView):
@@ -26,8 +30,9 @@ class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
 
 class ProjectCollaborators(generics.GenericAPIView):
     """
-        Project collaborator delete view
+    Project collaborator delete view
     """
+
     # maybe should get/add collaborators here also? (e.g. retrieve/create, get/post methods)
 
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
@@ -38,7 +43,7 @@ class ProjectCollaborators(generics.GenericAPIView):
         m2m_manager = self.get_object().collaborators
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        collaborators = serializer.validated_data['collaborators']
+        collaborators = serializer.validated_data["collaborators"]
         for user in collaborators:
             # note: doesn't raise an error when we try to delete someone who isn't a collaborator
             m2m_manager.remove(user)

@@ -89,20 +89,20 @@ class VerifyEmail(GenericAPIView):
             return redirect(
                 "https://procollab.ru/auth/verification/",
                 status=status.HTTP_200_OK,
-                message="Succeed"
+                message="Succeed",
             )
 
         except jwt.ExpiredSignatureError:
             return redirect(
                 "https://procollab.ru/auth/verification",
                 status=status.HTTP_200_OK,
-                message="Activate Expired"
+                message="Activate Expired",
             )
         except jwt.DecodeError:
             return redirect(
                 "https://procollab.ru/auth/verification",
                 status=status.HTTP_200_OK,
-                message="Decode error"
+                message="Decode error",
             )
 
 
@@ -163,18 +163,18 @@ class ResetPassword(UpdateAPIView):
             return redirect(
                 "https://procollab.ru/auth/reset_password/",
                 status=status.HTTP_200_OK,
-                message="Succeed"
+                message="Succeed",
             )
 
         except jwt.ExpiredSignatureError:
             return redirect(
                 "https://procollab.ru/auth/reset_password/",
                 status=status.HTTP_200_OK,
-                message="Activate Expired"
+                message="Activate Expired",
             )
         except jwt.DecodeError:
             return redirect(
                 "https://procollab.ru/auth/reset_password/",
                 status=status.HTTP_200_OK,
-                message="Decode error"
+                message="Decode error",
             )
