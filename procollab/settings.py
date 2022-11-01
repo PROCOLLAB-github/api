@@ -223,12 +223,15 @@ EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_USE_TLS = True
 EMAIL_HOST = config("EMAIL_HOST", default="smtp.gmail.com", cast=str)
 EMAIL_PORT = config("EMAIL_PORT", default=587, cast=int)
-EMAIL_HOST_USER = config("EMAIL_USER", cast=str, default="example@mail.ru")
+EMAIL_HOST_USER = config("EMAIL_USER", cast=str, default="example@gmail.ru")
 EMAIL_HOST_PASSWORD = config("EMAIL_PASSWORD", cast=str, default="password")
 
 # CELERY SETTINGS
 
-CELERY_BROKER_URL = "redis://127.0.0.1:6379"
+# env variable that must be overwritten in production
+REDIS_HOST = config("REDIS_HOST", cast=str, default="127.0.0.1")
+
+CELERY_BROKER_URL = f"redis://{REDIS_HOST}:6379"
 
 CELERY_ACCEPT_CONTENT = ["application/json"]
 CELERY_TASK_SERIALIZER = "json"
