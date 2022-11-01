@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from projects.models import Project
+from projects.models import Project, Achievement
 
 
 @admin.register(Project)
@@ -13,3 +13,8 @@ class ProjectAdmin(admin.ModelAdmin):
         "id",
         "name",
     )
+
+
+@admin.register(Achievement)
+class AchievementAdmin(admin.ModelAdmin):
+    list_display = ("id", "title", "status", "project")

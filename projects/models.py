@@ -3,7 +3,7 @@ from django.db import models
 
 from industries.models import Industry
 from projects.helpers import VERBOSE_STEPS
-from projects.managers import ProjectManager
+from projects.managers import ProjectManager, AchievementManager
 
 User = get_user_model()
 
@@ -96,6 +96,8 @@ class Achievement(models.Model):
         null=True,
         related_name="achievements",
     )
+
+    objects = AchievementManager()
 
     def __str__(self):
         return f"Achievement<{self.id}>"

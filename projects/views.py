@@ -3,15 +3,16 @@ from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.permissions import IsProjectLeaderOrReadOnly, IsStaffOrReadOnly
+from core.permissions import IsStaffOrReadOnly
 from projects.filters import ProjectFilter
 from projects.helpers import VERBOSE_STEPS
 from projects.models import Project, Achievement
 from projects.serializers import (
     ProjectDetailSerializer,
-    AchievementSerializer,
+    AchievementListSerializer,
     ProjectCollaboratorsSerializer,
     ProjectListSerializer,
+    AchievementDetailSerializer,
 )
 
 
@@ -25,7 +26,7 @@ class ProjectList(generics.ListCreateAPIView):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        # Почему-то не работает, если не указать явно
+        # Doesn't work if not explicitly set like this
         serializer.validated_data["leader"] = request.user.id
         serializer.validated_data["industry"] = request.data["industry"]
 
@@ -103,12 +104,12 @@ class ProjectSteps(APIView):
 
 
 class AchievementList(generics.ListCreateAPIView):
-    queryset = Achievement.objects.all()
-    serializer_class = AchievementSerializer
-    permission_classes = [IsProjectLeaderOrReadOnly]
+    queryset = Achievement.objects.get_achievements_for_list_view()
+    serializer_class = AchievementListSerializer
+    permission_classes = [IsStaffOrReadOnly]
 
 
 class AchievementDetail(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Achievement.objects.all()
-    serializer_class = AchievementSerializer
-    permission_classes = [IsProjectLeaderOrReadOnly]
+    queryset = Achievement.objects.get_achievements_for_detail_view()
+    serializer_class = AchievementDetailSerializer
+    permission_classes = [IsStaffOrReadOnly]
