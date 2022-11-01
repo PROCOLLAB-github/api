@@ -6,6 +6,8 @@ from vacancy.views import (
     VacancyDetail,
     VacancyResponseList,
     VacancyResponseDetail,
+    VacancyResponseAccept,
+    VacancyResponseDecline,
 )
 
 app_name = "vacancies"
@@ -15,4 +17,6 @@ urlpatterns = [
     path("<int:pk>/", VacancyDetail.as_view()),
     path("<int:pk>/responses/", VacancyResponseList.as_view()),
     path("responses/<int:pk>/", VacancyResponseDetail.as_view()),
+    path("responses/<int:pk>/accept", VacancyResponseAccept.as_view()),
+    path("responses/<int:pk>/decline", VacancyResponseDecline.as_view()),
 ]
