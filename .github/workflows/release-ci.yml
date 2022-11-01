@@ -1,3 +1,4 @@
+
 name: 'Build and Deploy server'
 
 on:
@@ -87,7 +88,7 @@ jobs:
           cache-to: type=gha,mode=max
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-
+         
       - name: run on server
         uses: garygrossgarten/github-action-ssh@release
         with:
@@ -95,7 +96,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASSWORD }}
           command: |
-            cd /home/app/procollab-backend &&
+            cd /home/app/procollab-backend
             docker-compose -f docker-compose.prod-ci.yml -p prod pull
 
             rm -f .env &&
@@ -114,6 +115,7 @@ jobs:
             echo "EMAIL_HOST=${{ secrets.EMAIL_HOST }}" >> .env &&
             echo "EMAIL_PORT=${{ secrets.EMAIL_PORT }}" >> .env &&
 
-            echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" >> .env &&
-
+            echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" >> .env 
+            
             docker-compose -f docker-compose.prod-ci.yml -p prod up -d
+

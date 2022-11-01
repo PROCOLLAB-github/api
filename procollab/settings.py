@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "projects.apps.ProjectsConfig",
     "news.apps.NewsConfig",
     "vacancy.apps.VacancyConfig",
+    "metrics.apps.MetricsConfig",
     # Rest framework
     "rest_framework",
     "rest_framework_simplejwt",
@@ -119,6 +120,7 @@ REST_FRAMEWORK = {
         "rest_framework.renderers.AdminRenderer",
     ],
 }
+
 # Database
 if DEBUG:
     DATABASES = {

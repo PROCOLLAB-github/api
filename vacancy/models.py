@@ -1,6 +1,7 @@
 from django.db import models
 
 from projects.models import Project
+from vacancy.managers import VacancyManager, VacancyResponseManager
 
 
 class Vacancy(models.Model):
@@ -35,6 +36,8 @@ class Vacancy(models.Model):
     datetime_updated = models.DateTimeField(
         verbose_name="Дата обновления", null=False, auto_now=True
     )
+
+    objects = VacancyManager()
 
     def __str__(self):
         return f"Vacancy<{self.id}> - {self.role}"
@@ -82,6 +85,8 @@ class VacancyResponse(models.Model):
     datetime_updated = models.DateTimeField(
         verbose_name="Дата обновления", null=False, auto_now=True
     )
+
+    objects = VacancyResponseManager()
 
     def __str__(self):
         return f"VacancyResponse<{self.id}> - {self.user} - {self.vacancy}"
