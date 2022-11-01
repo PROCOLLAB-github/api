@@ -73,16 +73,31 @@ class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
 
 class ProjectCollaborators(generics.GenericAPIView):
     """
-    Project collaborator delete view
+    Project collaborator retrieve/add/delete view
     """
-
-    # maybe should get/add collaborators here also? (e.g. retrieve/create, get/post methods)
 
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     queryset = Project.objects.all()
     serializer_class = ProjectCollaboratorsSerializer
 
+    def get(self, request, pk: int):
+        """retrieve collaborators for given project"""
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
+    def post(self, request, pk: int):
+        """add collaborators to the project"""
+        m2m_manager = self.get_object().collaborators
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        collaborators = serializer.validated_data["collaborators"]
+        for user in collaborators:
+            m2m_manager.add(user)
+        return Response(status=200)
+
     def delete(self, request, pk: int):
+        """delete collaborators from the project"""
         m2m_manager = self.get_object().collaborators
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
