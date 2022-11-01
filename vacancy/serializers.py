@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from projects.models import Project
-from users.serializers import UserSerializer
+from users.serializers import UserDetailSerializer
 from vacancy.models import Vacancy, VacancyResponse
 
 
@@ -74,7 +74,7 @@ class VacancyResponseListSerializer(serializers.ModelSerializer):
 
 class VacancyResponseDetailSerializer(serializers.ModelSerializer):
     vacancy = VacancyListSerializer(many=False)
-    user = UserSerializer(many=False)
+    user = UserDetailSerializer(many=False)
 
     class Meta:
         model = VacancyResponse

@@ -22,7 +22,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from users.serializers import (
     EmailSerializer,
     PasswordSerializer,
-    UserSerializer,
+    UserListSerializer,
+    UserDetailSerializer,
     VerifyEmailSerializer,
 )
 
@@ -35,7 +36,7 @@ User = get_user_model()
 class UserList(ListCreateAPIView):
     queryset = User.objects.all()
     permission_classes = [AllowAny]
-    serializer_class = UserSerializer
+    serializer_class = UserListSerializer
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = UserFilter
 
@@ -72,7 +73,7 @@ class UserList(ListCreateAPIView):
 class UserDetail(RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()
     permission_classes = [IsOwnerOrReadOnly, IsAuthenticated]
-    serializer_class = UserSerializer
+    serializer_class = UserDetailSerializer
 
 
 class VerifyEmail(GenericAPIView):

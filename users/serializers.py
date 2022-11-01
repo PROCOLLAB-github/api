@@ -3,7 +3,7 @@ from rest_framework import serializers
 from .models import CustomUser, Member, Mentor, Expert, Investor
 
 
-class UserSerializer(serializers.ModelSerializer):
+class UserDetailSerializer(serializers.ModelSerializer):
     user_type_fields = serializers.SerializerMethodField()
 
     class Meta:
@@ -51,6 +51,20 @@ class UserSerializer(serializers.ModelSerializer):
         user.save()
 
         return user
+
+
+class UserListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = [
+            "id",
+            "user_type",
+            "email",
+            "first_name",
+            "last_name",
+            "patronymic",
+            "avatar",
+        ]
 
 
 class MemberSerializer(serializers.ModelSerializer):
