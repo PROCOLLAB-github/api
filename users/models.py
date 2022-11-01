@@ -79,7 +79,7 @@ class CustomUser(AbstractUser):
 
     def get_member_key_skills(self):
         if self.user_type == CustomUser.MEMBER:
-            return str(self.member.all().first().key_skills)
+            return str(self.member.key_skills)
         return ""
 
     def __str__(self):
@@ -87,7 +87,9 @@ class CustomUser(AbstractUser):
 
 
 class Member(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="member")
+    user = models.OneToOneField(
+        CustomUser, on_delete=models.CASCADE, related_name="member"
+    )
 
     key_skills = models.CharField(max_length=255, blank=True)  # TODO
     useful_to_project = models.TextField(blank=True)
@@ -106,7 +108,9 @@ class Mentor(models.Model):
             useful_to_project: CharField instance some text.
     """
 
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="mentors")
+    user = models.OneToOneField(
+        CustomUser, on_delete=models.CASCADE, related_name="mentor"
+    )
 
     job = models.CharField(max_length=255, blank=True)
     useful_to_project = models.TextField(blank=True)
@@ -124,7 +128,9 @@ class Expert(models.Model):
             useful_to_project: CharField instance TODO
     """
 
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    user = models.OneToOneField(
+        CustomUser, on_delete=models.CASCADE, related_name="expert"
+    )
 
     preferred_industries = models.ManyToManyField(
         Industry, blank=True, related_name="experts"
@@ -147,7 +153,9 @@ class Investor(models.Model):
 
     """
 
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    user = models.OneToOneField(
+        CustomUser, on_delete=models.CASCADE, related_name="investor"
+    )
 
     preferred_industries = models.ManyToManyField(
         Industry, blank=True, related_name="investors"
