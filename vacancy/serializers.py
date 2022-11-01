@@ -1,9 +1,25 @@
 from rest_framework import serializers
 
+from projects.models import Project
+from users.serializers import UserSerializer
 from vacancy.models import Vacancy, VacancyResponse
 
 
-class VacancySerializer(serializers.ModelSerializer):
+class ProjectForVacancySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Project
+        fields = [
+            "id",
+            "name",
+            "description",
+            "short_description",
+            "image_address",
+        ]
+
+
+class VacancyDetailSerializer(serializers.ModelSerializer):
+    project = ProjectForVacancySerializer(many=False)
+
     class Meta:
         model = Vacancy
         fields = [
@@ -18,7 +34,48 @@ class VacancySerializer(serializers.ModelSerializer):
         ]
 
 
-class VacancyResponseSerializer(serializers.ModelSerializer):
+class VacancyListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Vacancy
+        fields = [
+            "id",
+            "role",
+            "required_skills",
+            "description",
+            "is_active",
+        ]
+
+
+class ProjectVacancyListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Vacancy
+        fields = [
+            "id",
+            "role",
+            "required_skills",
+            "description",
+            "project",
+            "is_active",
+        ]
+
+
+class VacancyResponseListSerializer(serializers.ModelSerializer):
+    is_approved = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = VacancyResponse
+        fields = [
+            "id",
+            "user",
+            "why_me",
+            "is_approved",
+        ]
+
+
+class VacancyResponseDetailSerializer(serializers.ModelSerializer):
+    vacancy = VacancyListSerializer(many=False)
+    user = UserSerializer(many=False)
+
     class Meta:
         model = VacancyResponse
         fields = [

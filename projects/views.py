@@ -3,31 +3,79 @@ from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.permissions import IsProjectLeaderOrReadOnly, IsStaffOrReadOnly
+from core.permissions import IsStaffOrReadOnly
 from projects.filters import ProjectFilter
 from projects.helpers import VERBOSE_STEPS
 from projects.models import Project, Achievement
-from projects.serializers import ProjectSerializer, AchievementSerializer, ProjectCollaboratorsSerializer
+from projects.serializers import (
+    ProjectDetailSerializer,
+    AchievementListSerializer,
+    ProjectCollaboratorsSerializer,
+    ProjectListSerializer,
+    AchievementDetailSerializer,
+)
 
 
 class ProjectList(generics.ListCreateAPIView):
-    queryset = Project.objects.all()
-    serializer_class = ProjectSerializer
+    queryset = Project.objects.get_projects_for_list_view()
+    serializer_class = ProjectListSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = ProjectFilter
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        # Doesn't work if not explicitly set like this
+        serializer.validated_data["leader"] = request.user.id
+        serializer.validated_data["industry"] = request.data["industry"]
+
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=201, headers=headers)
+
+    def post(self, request, *args, **kwargs):
+        """
+        Создание проекта
+
+        ---
+
+        leader подставляется автоматически
+        (я не знаю как убрать его из сваггера😅)
+
+
+        Args:
+            request:
+            [name] - название проекта
+            [description] - описание проекта
+            [industry] - id отрасли
+            [step] - этап проекта
+            [image_address] - адрес изображения
+            [presentation_address] - адрес презентации
+            [short_description] - краткое описание проекта
+            [draft] - черновик проекта
+
+            *args:
+            **kwargs:
+
+        Returns:
+            ProjectListSerializer
+
+        """
+        return self.create(request, *args, **kwargs)
+
 
 class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Project.objects.all()
-    serializer_class = ProjectSerializer
+    queryset = Project.objects.get_projects_for_detail_view()
+    serializer_class = ProjectDetailSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
 
 class ProjectCollaborators(generics.GenericAPIView):
     """
-        Project collaborator delete view
+    Project collaborator delete view
     """
+
     # maybe should get/add collaborators here also? (e.g. retrieve/create, get/post methods)
 
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
@@ -38,7 +86,7 @@ class ProjectCollaborators(generics.GenericAPIView):
         m2m_manager = self.get_object().collaborators
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        collaborators = serializer.validated_data['collaborators']
+        collaborators = serializer.validated_data["collaborators"]
         for user in collaborators:
             # note: doesn't raise an error when we try to delete someone who isn't a collaborator
             m2m_manager.remove(user)
@@ -56,12 +104,12 @@ class ProjectSteps(APIView):
 
 
 class AchievementList(generics.ListCreateAPIView):
-    queryset = Achievement.objects.all()
-    serializer_class = AchievementSerializer
-    permission_classes = [IsProjectLeaderOrReadOnly]
+    queryset = Achievement.objects.get_achievements_for_list_view()
+    serializer_class = AchievementListSerializer
+    permission_classes = [IsStaffOrReadOnly]
 
 
 class AchievementDetail(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Achievement.objects.all()
-    serializer_class = AchievementSerializer
-    permission_classes = [IsProjectLeaderOrReadOnly]
+    queryset = Achievement.objects.get_achievements_for_detail_view()
+    serializer_class = AchievementDetailSerializer
+    permission_classes = [IsStaffOrReadOnly]

@@ -1,8 +1,9 @@
 from django.contrib.auth import get_user_model
 from django.db import models
-from industries.models import Industry
 
+from industries.models import Industry
 from projects.helpers import VERBOSE_STEPS
+from projects.managers import ProjectManager, AchievementManager
 
 User = get_user_model()
 
@@ -66,6 +67,8 @@ class Project(models.Model):
         verbose_name="Дата изменения", null=False, auto_now=True
     )
 
+    objects = ProjectManager()
+
     def __str__(self):
         return f"Project<{self.id}> - {self.name}"
 
@@ -93,6 +96,8 @@ class Achievement(models.Model):
         null=True,
         related_name="achievements",
     )
+
+    objects = AchievementManager()
 
     def __str__(self):
         return f"Achievement<{self.id}>"

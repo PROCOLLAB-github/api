@@ -36,7 +36,6 @@ class NewsTestCase(TestCase):
 
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data["title"], self.TITLE)
-        self.assertEqual(response.data["text"], self.TEXT)
         self.assertEqual(response.data["short_text"], self.SHORT_TEXT)
         self.assertEqual(response.data["cover_url"], self.COVER_URL)
 

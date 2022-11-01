@@ -30,7 +30,7 @@ class ProjectTestCase(TestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data["name"], "Test")
         self.assertEqual(response.data["description"], "Test")
-        self.assertEqual(response.data["industry"], Industry.objects.get(name="Test").id)
+        self.assertEqual(response.data["industry"], 1)
 
     def test_project_creation_with_wrong_data(self):
         user = self.user_create()
