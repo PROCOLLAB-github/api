@@ -64,6 +64,7 @@ class UserListSerializer(serializers.ModelSerializer):
             "last_name",
             "patronymic",
             "avatar",
+            "is_active",
         ]
 
 
