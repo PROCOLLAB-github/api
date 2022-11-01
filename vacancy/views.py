@@ -30,10 +30,10 @@ class VacancyDetail(generics.RetrieveUpdateDestroyAPIView):
         if not request.data.get("is_active"):
             vacancy = self.get_object()
             vacancy_requests = VacancyResponse.objects.filter(
-                vacancy=vacancy, is_approve=None
+                vacancy=vacancy, is_approved=None
             )
             for vacancy_request in vacancy_requests:
-                vacancy_request.is_approve = False
+                vacancy_request.is_approved = False
                 vacancy_request.save()
         return self.update(request, *args, **kwargs)
 
@@ -51,7 +51,7 @@ class VacancyResponseList(mixins.ListModelMixin, mixins.CreateModelMixin, Generi
         )
 
     def post(self, request, *args, **kwargs):
-        if request.data.get("is_approve"):
+        if request.data.get("is_approved"):
             return Response(status=status.HTTP_400_BAD_REQUEST)
         if self.request.user.id != request.data.get("user"):
             return Response(status=status.HTTP_400_BAD_REQUEST)
@@ -69,7 +69,7 @@ class VacancyResponseDetail(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
     def put(self, request, *args, **kwargs):
-        if request.data.get("is_approve"):
+        if request.data.get("is_approved"):
             # Add user to project collaborators
             vacancy_request = self.get_object()
             vacancy = vacancy_request.vacancy
