@@ -92,13 +92,13 @@ class VacancyResponseAccept(generics.GenericAPIView):
         vacancy_request = self.get_object()
         if vacancy_request.is_approved is not None:
             # can't accept a vacancy that's already declined/accepted
-            return Response(status=400)
+            return Response(status=status.HTTP_400_BAD_REQUEST)
         vacancy_request.is_approved = True
         vacancy = vacancy_request.vacancy
         vacancy.project.collaborators.add(vacancy_request.user)
         vacancy.project.save()
         vacancy_request.save()
-        return Response(status=200)
+        return Response(status=status.HTTP_200_OK)
 
 
 class VacancyResponseDecline(generics.GenericAPIView):
@@ -111,7 +111,7 @@ class VacancyResponseDecline(generics.GenericAPIView):
         vacancy_request = self.get_object()
         if vacancy_request.is_approved is not None:
             # can't decline a vacancy that's already declined/accepted
-            return Response(status=400)
+            return Response(status=status.HTTP_400_BAD_REQUEST)
         vacancy_request.is_approved = False
         vacancy_request.save()
-        return Response(status=200)
+        return Response(status=status.HTTP_200_OK)
