@@ -64,17 +64,21 @@ class VacancyResponseListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = VacancyResponse
+        # fmt: off
         fields = [
             "id",
             "user",
             "why_me",
             "is_approved",
+            "vacancy"
         ]
+        # fmt: on
 
 
 class VacancyResponseDetailSerializer(serializers.ModelSerializer):
-    vacancy = VacancyListSerializer(many=False)
-    user = UserSerializer(many=False)
+    vacancy = VacancyListSerializer(many=False, read_only=True)
+    user = UserSerializer(many=False, read_only=True)
+    is_approved = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = VacancyResponse
@@ -87,3 +91,7 @@ class VacancyResponseDetailSerializer(serializers.ModelSerializer):
             "datetime_created",
             "datetime_updated",
         ]
+
+
+class VacancyResponseAcceptSerializer(VacancyResponseDetailSerializer):
+    is_approved = serializers.BooleanField(required=True, read_only=False)
