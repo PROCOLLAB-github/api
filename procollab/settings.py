@@ -62,7 +62,6 @@ INSTALLED_APPS = [
     "corsheaders",
     "django_filters",
     "drf_yasg",
-    "django_celery_results",
 ]
 
 MIDDLEWARE = [
@@ -225,13 +224,3 @@ EMAIL_HOST = config("EMAIL_HOST", default="smtp.gmail.com", cast=str)
 EMAIL_PORT = config("EMAIL_PORT", default=587, cast=int)
 EMAIL_HOST_USER = config("EMAIL_USER", cast=str, default="example@mail.ru")
 EMAIL_HOST_PASSWORD = config("EMAIL_PASSWORD", cast=str, default="password")
-
-# CELERY SETTINGS
-
-CELERY_BROKER_URL = "redis://127.0.0.1:6379"
-
-CELERY_ACCEPT_CONTENT = ["application/json"]
-CELERY_TASK_SERIALIZER = "json"
-CELERY_RESULT_SERIALIZER = "json"
-# CELERY_TIMEZONE = ''
-CELERY_RESULT_BACKEND = "django-db"

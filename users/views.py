@@ -2,6 +2,7 @@ from datetime import datetime
 
 import jwt
 from core.permissions import IsOwnerOrReadOnly
+from core.utils import Email
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.sites.shortcuts import get_current_site
@@ -28,7 +29,6 @@ from users.serializers import (
 )
 
 from .filters import UserFilter
-from .tasks import send_email_task
 
 User = get_user_model()
 
@@ -65,7 +65,7 @@ class UserList(ListCreateAPIView):
         }
 
         if settings.ENABLE_EMAIL:
-            send_email_task.delay(data)
+            Email.send_email(data)
 
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
@@ -136,7 +136,8 @@ class EmailResetPassword(GenericAPIView):
             "to_email": user.email,
         }
 
-        send_email_task.delay(data)
+        if settings.ENABLE_EMAIL:
+            Email.send_email(data)
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 

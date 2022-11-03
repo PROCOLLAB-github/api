@@ -50,8 +50,6 @@ sentry-sdk = "^1.10.1"
 whitenoise = "^6.2.0"
 six = "^1.16.0"
 redis = "^4.3.4"
-django-celery-results = "^2.4.0"
-celery = "^5.2.7"
 
 
 [build-system]
