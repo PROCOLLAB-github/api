@@ -3,7 +3,7 @@ from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.permissions import IsStaffOrReadOnly
+from core.permissions import IsStaffOrReadOnly, IsProjectLeaderOrReadOnly
 from projects.filters import ProjectFilter
 from projects.helpers import VERBOSE_STEPS
 from projects.models import Project, Achievement
@@ -19,6 +19,8 @@ from projects.serializers import (
 class ProjectList(generics.ListCreateAPIView):
     queryset = Project.objects.get_projects_for_list_view()
     serializer_class = ProjectListSerializer
+    # TODO: using this permission could result in a user not having verified email
+    #  creating a project; probably should make IsUserVerifiedOrReadOnly
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = ProjectFilter
@@ -68,21 +70,36 @@ class ProjectList(generics.ListCreateAPIView):
 class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Project.objects.get_projects_for_detail_view()
     serializer_class = ProjectDetailSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [IsProjectLeaderOrReadOnly]
 
 
 class ProjectCollaborators(generics.GenericAPIView):
     """
-    Project collaborator delete view
+    Project collaborator retrieve/add/delete view
     """
 
-    # maybe should get/add collaborators here also? (e.g. retrieve/create, get/post methods)
-
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [IsProjectLeaderOrReadOnly]
     queryset = Project.objects.all()
     serializer_class = ProjectCollaboratorsSerializer
 
+    def get(self, request, pk: int):
+        """retrieve collaborators for given project"""
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
+    def post(self, request, pk: int):
+        """add collaborators to the project"""
+        m2m_manager = self.get_object().collaborators
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        collaborators = serializer.validated_data["collaborators"]
+        for user in collaborators:
+            m2m_manager.add(user)
+        return Response(status=200)
+
     def delete(self, request, pk: int):
+        """delete collaborators from the project"""
         m2m_manager = self.get_object().collaborators
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)

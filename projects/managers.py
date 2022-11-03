@@ -44,6 +44,9 @@ class ProjectManager(Manager):
             .all()
         )
 
+    def check_if_owns_any_projects(self, user) -> bool:
+        return user.leader_projects.exists()
+
 
 class AchievementManager(Manager):
     def get_achievements_for_list_view(self):
