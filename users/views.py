@@ -64,8 +64,7 @@ class UserList(ListCreateAPIView):
             "to_email": user.email,
         }
 
-        if settings.ENABLE_EMAIL:
-            Email.send_email(data)
+        Email.send_email(data)
 
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
@@ -136,8 +135,7 @@ class EmailResetPassword(GenericAPIView):
             "to_email": user.email,
         }
 
-        if settings.ENABLE_EMAIL:
-            Email.send_email(data)
+        Email.send_email(data)
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
