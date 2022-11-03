@@ -64,7 +64,15 @@ class VacancyResponseListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = VacancyResponse
-        fields = ["id", "user", "why_me", "is_approved", "vacancy"]
+        # fmt: off
+        fields = [
+            "id",
+            "user",
+            "why_me",
+            "is_approved",
+            "vacancy"
+        ]
+        # fmt: on
 
 
 class VacancyResponseDetailSerializer(serializers.ModelSerializer):
