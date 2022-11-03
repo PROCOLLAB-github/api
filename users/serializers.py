@@ -1,71 +1,7 @@
+from django.forms.models import model_to_dict
 from rest_framework import serializers
 
-from .models import CustomUser, Member, Mentor, Expert, Investor
-
-
-class UserDetailSerializer(serializers.ModelSerializer):
-    user_type_fields = serializers.SerializerMethodField()
-
-    class Meta:
-        model = CustomUser
-        fields = [
-            "id",
-            "user_type",
-            "email",
-            "first_name",
-            "last_name",
-            "patronymic",
-            "avatar",
-            "city",
-            "password",
-            "is_active",
-            "user_type_fields",
-        ]
-
-    def get_user_type_fields(self, obj):
-        # maybe thats not the best way to do it, but it also works
-
-        # user_type_to_serializer = {
-        #     "member": MemberSerializer,
-        #     "expert": ExpertSerializer,
-        #     "investor": InvestorSerializer,
-        #     "mentor": MentorSerializer,
-        # }
-        # for user_type in user_type_to_serializer.keys():
-        #     if hasattr(obj, user_type):
-        #         serializer = user_type_to_serializer[user_type](getattr(obj, user_type))
-        #         return serializer.data
-
-        if obj.user_type == CustomUser.MEMBER:
-            return MemberSerializer(obj.member).data
-        elif obj.user_type == CustomUser.MENTOR:
-            return MentorSerializer(obj.mentor).data
-        elif obj.user_type == CustomUser.EXPERT:
-            return ExpertSerializer(obj.expert).data
-        elif obj.user_type == CustomUser.INVESTOR:
-            return InvestorSerializer(obj.investor).data
-
-    def create(self, validated_data):
-        user = CustomUser(**validated_data)
-        user.set_password(validated_data["password"])
-        user.save()
-
-        return user
-
-
-class UserListSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CustomUser
-        fields = [
-            "id",
-            "user_type",
-            "email",
-            "first_name",
-            "last_name",
-            "patronymic",
-            "avatar",
-            "is_active",
-        ]
+from .models import CustomUser, Expert, Investor, Member, Mentor
 
 
 class MemberSerializer(serializers.ModelSerializer):
@@ -102,6 +38,89 @@ class InvestorSerializer(serializers.ModelSerializer):
         fields = [
             "interaction_process_description",
             "preferred_industries",
+        ]
+
+
+class UserDetailSerializer(serializers.ModelSerializer):
+    member = MemberSerializer(required=False)
+    investor = InvestorSerializer(required=False)
+    expert = ExpertSerializer(required=False)
+    mentor = MentorSerializer(required=False)
+
+    class Meta:
+        model = CustomUser
+        fields = [
+            "id",
+            "user_type",
+            "email",
+            "first_name",
+            "last_name",
+            "patronymic",
+            "avatar",
+            "city",
+            "is_active",
+            "member",
+            "investor",
+            "expert",
+            "mentor",
+        ]
+
+    def update(self, instance, validated_data):
+        if instance.user_type == CustomUser.MEMBER:
+            instance.member.__dict__.update(
+                validated_data.get("member", model_to_dict(instance.member))
+            )
+            instance.member.save()
+        elif instance.user_type == CustomUser.INVESTOR:
+            instance.investor.__dict__.update(
+                validated_data.get("investor", model_to_dict(instance.investor))
+            )
+            instance.investor.save()
+        elif instance.user_type == CustomUser.EXPERT:
+            instance.expert.__dict__.update(
+                validated_data.get("expert", model_to_dict(instance.expert))
+            )
+            instance.expert.save()
+        elif instance.user_type == CustomUser.MENTOR:
+            instance.mentor.__dict__.update(
+                validated_data.get("mentor", model_to_dict(instance.mentor))
+            )
+            instance.mentor.save()
+
+        # maybe it's better to write ALLOWED_UPDATABLE_FIELDS = ["first_name", "last_name", ...]
+        IMMUTABLE_FIELDS = ("email", "user_type", "is_active", "password")
+        USER_TYPE_FIELDS = ("member", "investor", "expert", "mentor")
+
+        for attr, value in validated_data.items():
+            if attr in IMMUTABLE_FIELDS + USER_TYPE_FIELDS:
+                continue
+            setattr(instance, attr, value)
+
+        instance.save()
+
+        return instance
+
+
+class UserListSerializer(serializers.ModelSerializer):
+    def create(self, validated_data):
+        user = CustomUser(**validated_data)
+        user.set_password(validated_data["password"])
+        user.save()
+
+        return user
+
+    class Meta:
+        model = CustomUser
+        fields = [
+            "id",
+            "user_type",
+            "email",
+            "first_name",
+            "last_name",
+            "patronymic",
+            "avatar",
+            "is_active",
+            "password",
         ]
 
 

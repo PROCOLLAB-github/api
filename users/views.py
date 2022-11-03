@@ -22,8 +22,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from users.serializers import (
     EmailSerializer,
     PasswordSerializer,
-    UserListSerializer,
     UserDetailSerializer,
+    UserListSerializer,
     VerifyEmailSerializer,
 )
 
