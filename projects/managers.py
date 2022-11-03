@@ -45,7 +45,7 @@ class ProjectManager(Manager):
         )
 
     def check_if_owns_any_projects(self, user) -> bool:
-        return self.get_queryset().filter(leader=user).exists()
+        return user.leader_projects.exists()
 
 
 class AchievementManager(Manager):
