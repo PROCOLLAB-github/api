@@ -120,7 +120,6 @@ REST_FRAMEWORK = {
         "rest_framework.renderers.AdminRenderer",
     ],
 }
-
 # Database
 if DEBUG:
     DATABASES = {

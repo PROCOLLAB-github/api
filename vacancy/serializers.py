@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from projects.models import Project
-from users.serializers import UserSerializer
+from users.serializers import UserDetailSerializer
 from vacancy.models import Vacancy, VacancyResponse
 
 
@@ -76,8 +76,8 @@ class VacancyResponseListSerializer(serializers.ModelSerializer):
 
 
 class VacancyResponseDetailSerializer(serializers.ModelSerializer):
+    user = UserDetailSerializer(many=False, read_only=True)
     vacancy = VacancyListSerializer(many=False, read_only=True)
-    user = UserSerializer(many=False, read_only=True)
     is_approved = serializers.BooleanField(read_only=True)
 
     class Meta:

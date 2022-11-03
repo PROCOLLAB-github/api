@@ -91,32 +91,6 @@ class CustomUserAdmin(admin.ModelAdmin):
         "id",
     )
 
-
-# TODO display additional fields
-
-# @admin.register(Member)
-# class MemberAdmin(admin.ModelAdmin):
-#     inlines = (CustomUserInlined,)
-#     fieldsets = (
-#         (
-#             "Дополнительные поля",
-#             {
-#                 "fields": (
-#                     "key_skills",
-#                     "useful_to_project",
-#                     "speciality",
-#                 )
-#             },
-#         ),
-#     )
-
-#     list_display = (
-#         "id",
-#     )
-#     search_fields = (
-#         "id",
-#     )
-
-#     list_filter = (
-#         "id",
-#     )
+    def save_model(self, request, obj, form, change):
+        obj.set_password(form.cleaned_data["password"])
+        obj.save()
