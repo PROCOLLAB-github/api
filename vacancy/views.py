@@ -1,11 +1,12 @@
 from django_filters import rest_framework as filters
-from rest_framework import generics, permissions, mixins
+from rest_framework import generics, permissions, mixins, status
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 
 from core.permissions import IsProjectLeaderOrReadOnly
 from vacancy.filters import VacancyFilter
 from vacancy.models import Vacancy, VacancyResponse
+from vacancy.permissions import IsVacancyResponseOwnerOrReadOnly
 from vacancy.serializers import (
     VacancyDetailSerializer,
     VacancyResponseDetailSerializer,
@@ -22,11 +23,21 @@ class VacancyList(generics.ListCreateAPIView):
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = VacancyFilter
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        if serializer.validated_data["project"].leader != request.user:
+            # additional check that the user is the vacancy's project's leader
+            return Response(status=status.HTTP_403_FORBIDDEN)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
 
 class VacancyDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Vacancy.objects.get_vacancy_for_detail_view()
     serializer_class = VacancyDetailSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [IsProjectLeaderOrReadOnly]
 
     def put(self, request, *args, **kwargs):
         """updating the vacancy"""
@@ -68,7 +79,7 @@ class VacancyResponseList(mixins.ListModelMixin, mixins.CreateModelMixin, Generi
 class VacancyResponseDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = VacancyResponse.objects.get_vacancy_response_for_detail_view()
     serializer_class = VacancyResponseDetailSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [IsVacancyResponseOwnerOrReadOnly]
 
 
 class VacancyResponseAccept(generics.GenericAPIView):

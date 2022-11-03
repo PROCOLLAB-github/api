@@ -3,7 +3,7 @@ from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.permissions import IsStaffOrReadOnly
+from core.permissions import IsStaffOrReadOnly, IsProjectLeaderOrReadOnly
 from projects.filters import ProjectFilter
 from projects.helpers import VERBOSE_STEPS
 from projects.models import Project, Achievement
@@ -19,6 +19,8 @@ from projects.serializers import (
 class ProjectList(generics.ListCreateAPIView):
     queryset = Project.objects.get_projects_for_list_view()
     serializer_class = ProjectListSerializer
+    # TODO: using this permission could result in a user not having verified email
+    #  creating a project; probably should make IsUserVerifiedOrReadOnly
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = ProjectFilter
@@ -68,7 +70,7 @@ class ProjectList(generics.ListCreateAPIView):
 class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Project.objects.get_projects_for_detail_view()
     serializer_class = ProjectDetailSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [IsProjectLeaderOrReadOnly]
 
 
 class ProjectCollaborators(generics.GenericAPIView):
@@ -76,7 +78,7 @@ class ProjectCollaborators(generics.GenericAPIView):
     Project collaborator retrieve/add/delete view
     """
 
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [IsProjectLeaderOrReadOnly]
     queryset = Project.objects.all()
     serializer_class = ProjectCollaboratorsSerializer
 

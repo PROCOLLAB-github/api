@@ -20,8 +20,12 @@ class IsProjectLeaderOrReadOnly(BasePermission):
     """
 
     def has_permission(self, request, view) -> bool:
-        # TODO CHECK IF USER IF PROJECT LEADER
-        if request.method in SAFE_METHODS or request.user and request.user.id:
+        if request.method in SAFE_METHODS or (request.user and request.user.id):
+            return True
+        return False
+
+    def has_object_permission(self, request, view, obj):
+        if request.method in SAFE_METHODS or (obj.leader == request.user):
             return True
         return False
 
