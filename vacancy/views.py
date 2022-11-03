@@ -3,7 +3,7 @@ from rest_framework import generics, permissions, mixins, status
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 
-from core.permissions import IsProjectLeaderOrReadOnly
+from core.permissions import IsProjectLeaderOrReadOnly, IsProjectLeaderForVacancyResponse
 from vacancy.filters import VacancyFilter
 from vacancy.models import Vacancy, VacancyResponse
 from vacancy.permissions import IsVacancyResponseOwnerOrReadOnly
@@ -85,7 +85,7 @@ class VacancyResponseDetail(generics.RetrieveUpdateDestroyAPIView):
 class VacancyResponseAccept(generics.GenericAPIView):
     queryset = VacancyResponse.objects.get_vacancy_response_for_detail_view()
     serializer_class = VacancyResponseAcceptSerializer
-    permission_classes = [IsProjectLeaderOrReadOnly]
+    permission_classes = [IsProjectLeaderForVacancyResponse]
 
     def post(self, request, pk):
         """accepting the vacancy"""
@@ -104,7 +104,7 @@ class VacancyResponseAccept(generics.GenericAPIView):
 class VacancyResponseDecline(generics.GenericAPIView):
     queryset = VacancyResponse.objects.get_vacancy_response_for_detail_view()
     serializer_class = VacancyResponseAcceptSerializer
-    permission_classes = [IsProjectLeaderOrReadOnly]
+    permission_classes = [IsProjectLeaderForVacancyResponse]
 
     def post(self, request, pk):
         """declining the vacancy"""

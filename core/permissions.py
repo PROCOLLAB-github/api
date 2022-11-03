@@ -12,6 +12,13 @@ class IsStaffOrReadOnly(BasePermission):
         return False
 
 
+class IsProjectLeaderForVacancyResponse(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        if obj.vacancy.project.leader == request.user:
+            return True
+        return False
+
+
 class IsProjectLeaderOrReadOnly(BasePermission):
     """
     Allows access to update only to project leader.
