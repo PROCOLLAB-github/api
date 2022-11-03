@@ -122,6 +122,7 @@ class UserListSerializer(serializers.ModelSerializer):
             "is_active",
             "password",
         ]
+        extra_kwargs = {"password": {"write_only": True}}
 
 
 class EmailSerializer(serializers.Serializer):
