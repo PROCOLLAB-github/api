@@ -4,6 +4,7 @@ from django.db import models
 from industries.models import Industry
 from projects.helpers import VERBOSE_STEPS
 from projects.managers import ProjectManager, AchievementManager
+from users.models import CustomUser
 
 User = get_user_model()
 
@@ -105,3 +106,22 @@ class Achievement(models.Model):
     class Meta:
         verbose_name = "Достижение"
         verbose_name_plural = "Достижения"
+
+
+class Collaborator(models.Model):
+    """Project collaborator model"""
+
+    user = models.ForeignKey(CustomUser, models.CASCADE, verbose_name="Пользователь")
+    project = models.ForeignKey(Project, models.CASCADE, verbose_name="Проект")
+    role = models.CharField("Роль", max_length=1024, blank=True, null=True)
+
+    datetime_created = models.DateTimeField(
+        verbose_name="Дата создания", null=False, auto_now_add=True
+    )
+    datetime_updated = models.DateTimeField(
+        verbose_name="Дата изменения", null=False, auto_now=True
+    )
+
+    class Meta:
+        verbose_name = "Коллаборатор"
+        verbose_name_plural = "Коллабораторы"
