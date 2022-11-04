@@ -86,6 +86,26 @@ class CustomUser(AbstractUser):
         return f"User<{self.id}> - {self.first_name} {self.last_name}"
 
 
+class AbstractUserWithRole(models.Model):
+    MENTOR = 2
+    EXPERT = 3
+    INVESTOR = 4
+
+    VERBOSE_ROLE_TYPES = (
+        (MENTOR, "Ментор"),
+        (EXPERT, "Эксперт"),
+        (INVESTOR, "Инвестор"),
+    )
+
+    additional_role = models.PositiveSmallIntegerField(
+        choices=VERBOSE_ROLE_TYPES,
+        null=True,
+    )
+
+    class Meta:
+        abstract = True
+
+
 class Member(models.Model):
     user = models.OneToOneField(
         CustomUser, on_delete=models.CASCADE, related_name="member"
@@ -99,7 +119,7 @@ class Member(models.Model):
         return f"Member<{self.id}> - {self.user.first_name} {self.user.last_name}"
 
 
-class Mentor(models.Model):
+class Mentor(AbstractUserWithRole):
     """
     Mentor model
 
@@ -119,7 +139,7 @@ class Mentor(models.Model):
         return f"Mentor<{self.id}> - {self.user.first_name} {self.user.last_name}"
 
 
-class Expert(models.Model):
+class Expert(AbstractUserWithRole):
     """
     Expert model
 
@@ -143,7 +163,7 @@ class Expert(models.Model):
         return f"Expert<{self.id}> - {self.user.first_name} {self.user.last_name}"
 
 
-class Investor(models.Model):
+class Investor(AbstractUserWithRole):
     """
     Investor model
 

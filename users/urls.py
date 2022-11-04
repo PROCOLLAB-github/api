@@ -31,7 +31,7 @@ urlpatterns = [
         name="password_reset_sent",
     ),
     re_path(
-        r"^password-reset//(?P<key>[-:\w]+)/$",
+        r"^password-reset/(?P<key>[-:\w]+)/$",
         ResetPassword.as_view(),
         name="password_reset",
     ),

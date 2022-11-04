@@ -20,6 +20,7 @@ class MentorSerializer(serializers.ModelSerializer):
         fields = [
             "job",
             "useful_to_project",
+            "additional_role",
         ]
 
 
@@ -29,6 +30,7 @@ class ExpertSerializer(serializers.ModelSerializer):
         fields = [
             "preferred_industries",
             "useful_to_project",
+            "additional_role",
         ]
 
 
@@ -38,6 +40,7 @@ class InvestorSerializer(serializers.ModelSerializer):
         fields = [
             "interaction_process_description",
             "preferred_industries",
+            "additional_role",
         ]
 
 
