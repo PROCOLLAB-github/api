@@ -24,7 +24,6 @@ class Project(models.Model):
         industry: A ForeignKey referring to the Industry model.
         presentation_address: A URLField presentation URL address.
         image_address: A URLField image URL address.
-        collaborators: A ManyToManyField collaborators of the project.
         leader: A ForeignKey referring to the User model.
         draft: A boolean indicating if Project is a draft.
         datetime_created: A DateTimeField indicating date of creation.
@@ -46,13 +45,6 @@ class Project(models.Model):
     # TODO think about naming
     presentation_address = models.URLField(blank=True)
     image_address = models.URLField(blank=True)
-
-    collaborators = models.ManyToManyField(
-        to=User,
-        related_name="projects",
-        through="projects.Collaborator",
-        through_fields=("project", "user"),
-    )
 
     leader = models.ForeignKey(
         User,
@@ -111,7 +103,15 @@ class Achievement(models.Model):
 
 
 class Collaborator(models.Model):
-    """Project collaborator model"""
+    """Project collaborator model
+
+    Attributes:
+        user: A ForeignKey referencing the user who is collaborating in the project
+        project: A ForeignKey referencing the project the user is collaborating in
+        role: A CharField meaning the role the user is fulfilling in the project
+        datetime_created: A DateTimeField indicating date of creation.
+        datetime_updated: A DateTimeField indicating date of update.
+    """
 
     user = models.ForeignKey(CustomUser, models.CASCADE, verbose_name="Пользователь")
     project = models.ForeignKey(Project, models.CASCADE, verbose_name="Проект")
@@ -128,5 +128,11 @@ class Collaborator(models.Model):
         verbose_name = "Коллаборатор"
         verbose_name_plural = "Коллабораторы"
         constraints = [
-            UniqueConstraint(fields=['project', 'user', ], name='unique_collaorator')
+            UniqueConstraint(
+                fields=[
+                    "project",
+                    "user",
+                ],
+                name="unique_collaorator",
+            )
         ]

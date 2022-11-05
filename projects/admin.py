@@ -22,5 +22,12 @@ class AchievementAdmin(admin.ModelAdmin):
 
 @admin.register(Collaborator)
 class CollaboratorAdmin(admin.ModelAdmin):
-    list_display = ("id", "user", "project")
+    list_display = (
+        "id",
+        "user",
+        "project",
+        "role",
+        "datetime_created",
+        "datetime_updated",
+    )
     list_display_links = ("id", "user", "project")

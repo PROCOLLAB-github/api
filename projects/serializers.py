@@ -35,13 +35,7 @@ class ProjectCollaboratorSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Collaborator
-        fields = [
-            "id",
-            "first_name",
-            "last_name",
-            "avatar",
-            "key_skills",
-        ]
+        fields = ["id", "role", "user"]
 
     def get_first_name(self, obj):
         return obj.first_name
@@ -61,7 +55,9 @@ class ProjectCollaboratorSerializer(serializers.ModelSerializer):
 
 class ProjectDetailSerializer(serializers.ModelSerializer):
     achievements = AchievementListSerializer(many=True, read_only=True)
-    collaborators = ProjectCollaboratorSerializer(many=True, read_only=True)
+    collaborators = ProjectCollaboratorSerializer(
+        source="collaborator_set", many=True, read_only=True
+    )
 
     class Meta:
         model = Project
@@ -85,6 +81,17 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
 
 
 class ProjectListSerializer(serializers.ModelSerializer):
+    collaborators = serializers.SerializerMethodField()
+
+    def get_collaborators(self):
+        return ProjectCollaboratorSerializer(
+            source="collaborators", many=True, read_only=True
+        )
+
+    collaborator_count = serializers.IntegerField(
+        source="collaborators.count", read_only=True
+    )
+
     class Meta:
         model = Project
         fields = [
@@ -97,6 +104,8 @@ class ProjectListSerializer(serializers.ModelSerializer):
             "image_address",
             "draft",
             "industry",
+            "collaborator_count",
+            "collaborators",
             "datetime_created",
         ]
         read_only_fields = [
