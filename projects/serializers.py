@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from industries.models import Industry
-from projects.models import Project, Achievement
+from projects.models import Project, Achievement, Collaborator
 from users.models import CustomUser
 
 
@@ -18,14 +18,23 @@ class AchievementListSerializer(serializers.ModelSerializer):
 class ProjectAchievementListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Achievement
-        fields = ["id", "title", "status", "project"]
+        fields = [
+            "id",
+            "title",
+            "status",
+            "project",
+        ]
 
 
 class ProjectCollaboratorSerializer(serializers.ModelSerializer):
+    # id = serializers.IntegerField(source="user.id")
+    first_name = serializers.SerializerMethodField()
+    last_name = serializers.SerializerMethodField()
+    avatar = serializers.SerializerMethodField()
     key_skills = serializers.SerializerMethodField()
 
     class Meta:
-        model = CustomUser
+        model = Collaborator
         fields = [
             "id",
             "first_name",
@@ -34,11 +43,20 @@ class ProjectCollaboratorSerializer(serializers.ModelSerializer):
             "key_skills",
         ]
 
+    def get_first_name(self, obj):
+        return obj.first_name
+
+    def get_last_name(self, obj):
+        return obj.last_name
+
+    def get_avatar(self, obj):
+        return obj.avatar
+
     def get_key_skills(self, obj):
         return obj.get_member_key_skills()
 
     def get_queryset(self):
-        return CustomUser.objects.all()
+        return Collaborator.objects.all()
 
 
 class ProjectDetailSerializer(serializers.ModelSerializer):
@@ -81,6 +99,9 @@ class ProjectListSerializer(serializers.ModelSerializer):
             "industry",
             "datetime_created",
         ]
+        read_only_fields = [
+            "leader",
+        ]
 
     def is_valid(self, *, raise_exception=False):
         return super().is_valid(raise_exception=raise_exception)
@@ -108,10 +129,15 @@ class ProjectIndustrySerializer(serializers.ModelSerializer):
         ]
 
 
-class ProjectCollaboratorsSerializer(serializers.Serializer):
-    collaborators = serializers.PrimaryKeyRelatedField(
-        queryset=CustomUser.objects.all(), many=True, read_only=False
-    )
+class ProjectCollaboratorsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Collaborator
+        fields = [
+            "user",
+            "project",
+            "role",
+            "datetime_created",
+        ]
 
 
 class AchievementDetailSerializer(serializers.ModelSerializer):
@@ -119,4 +145,9 @@ class AchievementDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Achievement
-        fields = ["id", "title", "status", "project"]
+        fields = [
+            "id",
+            "title",
+            "status",
+            "project",
+        ]
