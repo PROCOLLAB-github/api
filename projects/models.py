@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.db import models
+from django.db.models import UniqueConstraint
 
 from industries.models import Industry
 from projects.helpers import VERBOSE_STEPS
@@ -47,9 +48,10 @@ class Project(models.Model):
     image_address = models.URLField(blank=True)
 
     collaborators = models.ManyToManyField(
-        User,
+        to=User,
         related_name="projects",
-        blank=True,
+        through="projects.Collaborator",
+        through_fields=("project", "user"),
     )
 
     leader = models.ForeignKey(
@@ -125,3 +127,6 @@ class Collaborator(models.Model):
     class Meta:
         verbose_name = "Коллаборатор"
         verbose_name_plural = "Коллабораторы"
+        constraints = [
+            UniqueConstraint(fields=['project', 'user', ], name='unique_collaorator')
+        ]
