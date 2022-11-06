@@ -158,7 +158,7 @@ class ProjectIndustrySerializer(serializers.ModelSerializer):
 
 
 class AchievementDetailSerializer(serializers.ModelSerializer):
-    project = ProjectListSerializer(many=False, read_only=True)
+    projects = ProjectListSerializer(many=True, read_only=True)
 
     class Meta:
         model = Achievement
@@ -166,5 +166,5 @@ class AchievementDetailSerializer(serializers.ModelSerializer):
             "id",
             "title",
             "status",
-            "project",
+            "projects",
         ]
