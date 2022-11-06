@@ -10,7 +10,7 @@ class MemberSerializer(serializers.ModelSerializer):
         fields = [
             "key_skills",
             "useful_to_project",
-            "speciality",
+            "preferred_industries",
         ]
 
 
@@ -18,7 +18,6 @@ class MentorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Mentor
         fields = [
-            "job",
             "useful_to_project",
             "additional_role",
         ]
