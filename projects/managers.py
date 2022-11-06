@@ -16,10 +16,6 @@ class ProjectManager(Manager):
                 "leader",
                 queryset=CustomUser.objects.only("id").all(),
             ),
-            # способ выбрать N объектов из prefetch
-            # БЛЯТЬ СУКА КАКОЙ ЕБАНЫЙ ПИЗДЕЦ НАХУЙ ГОВНОКОДИЩЕ БЛЯТЬ
-            # кажется единственный нормальный способ это сделать будет только в 4.2.0
-            # тикет https://code.djangoproject.com/ticket/26780
             # Prefetch(
             #     "collaborator_set",
             #     queryset=Collaborator.objects.filter(
@@ -30,7 +26,15 @@ class ProjectManager(Manager):
             #     ),
             #     to_attr='collaborators'
             # ),
-            Prefetch("collaborator_set", to_attr="collaborators"),
+            # Yes, this fetches the entire collaborator_set even though we only need 4 and the total count.
+            # No, You can't do it any other way than this.
+            # Above is a hack that can fetch max 4 vacancies, but if you use it the count will always be <=4.
+            # To get the count right using the thing above you either have to make another godawful hack,
+            # Or override the default QuerySet to always ask the DB only count after all the filters.
+            # (ticket referring to the reason why you can't
+            # prefetch N items easily https://code.djangoproject.com/ticket/26780)
+            # (seems like in django 4.2.0 it'll be fixed but at the time of writing the latest version is 4.1.3
+            Prefetch("collaborator_set"),
         )
 
     def get_projects_for_detail_view(self):

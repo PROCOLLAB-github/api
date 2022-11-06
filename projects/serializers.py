@@ -3,6 +3,7 @@ from rest_framework import serializers
 from industries.models import Industry
 from projects.models import Project, Achievement, Collaborator
 from users.models import CustomUser
+from vacancy.serializers import ProjectVacancyListSerializer
 
 
 class AchievementListSerializer(serializers.ModelSerializer):
@@ -28,29 +29,25 @@ class ProjectAchievementListSerializer(serializers.ModelSerializer):
 
 class ProjectCollaboratorSerializer(serializers.ModelSerializer):
     # id = serializers.IntegerField(source="user.id")
-    first_name = serializers.SerializerMethodField()
-    last_name = serializers.SerializerMethodField()
-    avatar = serializers.SerializerMethodField()
-    key_skills = serializers.SerializerMethodField()
+    first_name = serializers.CharField(source="user.first_name")
+    last_name = serializers.CharField(source="user.last_name")
+    avatar = serializers.CharField(source="user.avatar")
+    member_key_skills = serializers.SerializerMethodField()
+
+    @classmethod
+    def get_member_key_skills(cls, collaborator):
+        return collaborator.user.get_member_key_skills()
 
     class Meta:
         model = Collaborator
-        fields = ["id", "role", "user"]
-
-    def get_first_name(self, obj):
-        return obj.first_name
-
-    def get_last_name(self, obj):
-        return obj.last_name
-
-    def get_avatar(self, obj):
-        return obj.avatar
-
-    def get_key_skills(self, obj):
-        return obj.get_member_key_skills()
-
-    def get_queryset(self):
-        return Collaborator.objects.all()
+        fields = [
+            "id",
+            "first_name",
+            "last_name",
+            "role",
+            "member_key_skills",
+            "avatar",
+        ]
 
 
 class ProjectDetailSerializer(serializers.ModelSerializer):
@@ -58,6 +55,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     collaborators = ProjectCollaboratorSerializer(
         source="collaborator_set", many=True, read_only=True
     )
+    vacancies = ProjectVacancyListSerializer(many=True, read_only=True)
 
     class Meta:
         model = Project
@@ -81,16 +79,21 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
 
 
 class ProjectListSerializer(serializers.ModelSerializer):
-    collaborators = serializers.SerializerMethodField()
-
-    def get_collaborators(self):
-        return ProjectCollaboratorSerializer(
-            source="collaborators", many=True, read_only=True
-        )
-
-    collaborator_count = serializers.IntegerField(
-        source="collaborators.count", read_only=True
+    collaborators = serializers.SerializerMethodField(method_name="get_collaborators")
+    collaborator_count = serializers.SerializerMethodField(
+        method_name="get_collaborator_count"
     )
+    vacancies = ProjectVacancyListSerializer(many=True, read_only=True)
+
+    @classmethod
+    def get_collaborator_count(cls, obj):
+        return len(obj.collaborator_set.all())
+
+    @classmethod
+    def get_collaborators(cls, obj):
+        return ProjectCollaboratorSerializer(
+            instance=obj.collaborator_set.all()[:4], many=True
+        ).data
 
     class Meta:
         model = Project
@@ -106,8 +109,10 @@ class ProjectListSerializer(serializers.ModelSerializer):
             "industry",
             "collaborator_count",
             "collaborators",
+            "vacancies",
             "datetime_created",
         ]
+
         read_only_fields = [
             "leader",
         ]
@@ -135,17 +140,6 @@ class ProjectIndustrySerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "name",
-        ]
-
-
-class ProjectCollaboratorsSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Collaborator
-        fields = [
-            "user",
-            "project",
-            "role",
-            "datetime_created",
         ]
 
 
