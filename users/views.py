@@ -1,17 +1,17 @@
 from datetime import datetime
 
 import jwt
-from core.permissions import IsOwnerOrReadOnly
-from core.utils import Email
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.sites.shortcuts import get_current_site
+from django.db.models import Q
 from django.shortcuts import redirect
 from django.urls import reverse
 from django_filters import rest_framework as filters
 from rest_framework import status
 from rest_framework.generics import (
     GenericAPIView,
+    ListAPIView,
     ListCreateAPIView,
     RetrieveUpdateDestroyAPIView,
     UpdateAPIView,
@@ -20,6 +20,8 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from core.permissions import IsOwnerOrReadOnly
+from core.utils import Email
 from users.serializers import (
     EmailSerializer,
     PasswordSerializer,
@@ -67,6 +69,18 @@ class UserList(ListCreateAPIView):
         Email.send_email(data)
 
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+
+class SpecialistsList(ListAPIView):
+    """
+    This view returns a list of specialists: investors, experts and mentors.
+    """
+
+    queryset = User.objects.filter(
+        Q(user_type=User.EXPERT) | Q(user_type=User.MENTOR) | Q(user_type=User.INVESTOR)
+    )
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserListSerializer
 
 
 class UserDetail(RetrieveUpdateDestroyAPIView):

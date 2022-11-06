@@ -61,6 +61,7 @@ class ProjectVacancyListSerializer(serializers.ModelSerializer):
 
 class VacancyResponseListSerializer(serializers.ModelSerializer):
     is_approved = serializers.BooleanField(read_only=True)
+    user = UserDetailSerializer(read_only=True)
 
     class Meta:
         model = VacancyResponse
