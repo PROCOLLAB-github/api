@@ -16,15 +16,7 @@ class Migration(migrations.Migration):
             model_name="project",
             name="collaborators",
         ),
-        migrations.AddField(
-            model_name="project",
-            name="collaborators",
-            field=models.ManyToManyField(
-                related_name="projects",
-                through="projects.Collaborator",
-                to=settings.AUTH_USER_MODEL,
-            ),
-        ),
+
         migrations.AddConstraint(
             model_name="collaborator",
             constraint=models.UniqueConstraint(
