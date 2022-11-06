@@ -28,7 +28,8 @@ class ProjectAchievementListSerializer(serializers.ModelSerializer):
 
 
 class CollaboratorSerializer(serializers.ModelSerializer):
-    # id = serializers.IntegerField(source="user.id")
+    # specify so that there's a clear indication that it's the user's id and not collaborator's id
+    user_id = serializers.IntegerField(source="user.id")
     first_name = serializers.CharField(source="user.first_name")
     last_name = serializers.CharField(source="user.last_name")
     avatar = serializers.CharField(source="user.avatar")
@@ -41,13 +42,21 @@ class CollaboratorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Collaborator
         fields = [
-            "id",
+            "user_id",
             "first_name",
             "last_name",
             "role",
             "member_key_skills",
             "avatar",
         ]
+
+
+class ProjectCollaboratorSerializer(serializers.ModelSerializer):
+    collaborators = CollaboratorSerializer(source="collaborator_set", many=True)
+
+    class Meta:
+        model = Project
+        fields = ["collaborators"]
 
 
 class ProjectDetailSerializer(serializers.ModelSerializer):
