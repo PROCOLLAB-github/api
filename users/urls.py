@@ -1,9 +1,9 @@
 from django.urls import path, re_path
 
-
 from users.views import (
     EmailResetPassword,
     ResetPassword,
+    SpecialistsList,
     UserDetail,
     UserList,
     VerifyEmail,
@@ -13,6 +13,9 @@ app_name = "users"
 
 urlpatterns = [
     path("users/", UserList.as_view()),
+    path(
+        "specialists/", SpecialistsList.as_view()
+    ),  # this url actually returns  mentors, experts and investors
     path("users/<int:pk>/", UserDetail.as_view()),
     path("users/reset-password/", EmailResetPassword.as_view()),
     re_path(
