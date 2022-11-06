@@ -36,10 +36,7 @@ class CustomUserAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     "about_me",
-                    # "key_skills",
-                    # "useful_to_project",
                     "status",
-                    # "speciality",
                     "city",
                     "region",
                     "organization",

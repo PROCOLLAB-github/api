@@ -10,7 +10,7 @@ class MemberSerializer(serializers.ModelSerializer):
         fields = [
             "key_skills",
             "useful_to_project",
-            "speciality",
+            "preferred_industries",
         ]
 
 
@@ -18,8 +18,8 @@ class MentorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Mentor
         fields = [
-            "job",
             "useful_to_project",
+            "additional_role",
         ]
 
 
@@ -29,6 +29,7 @@ class ExpertSerializer(serializers.ModelSerializer):
         fields = [
             "preferred_industries",
             "useful_to_project",
+            "additional_role",
         ]
 
 
@@ -38,6 +39,7 @@ class InvestorSerializer(serializers.ModelSerializer):
         fields = [
             "interaction_process_description",
             "preferred_industries",
+            "additional_role",
         ]
 
 
