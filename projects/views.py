@@ -12,7 +12,7 @@ from projects.serializers import (
     AchievementListSerializer,
     ProjectListSerializer,
     AchievementDetailSerializer,
-    ProjectCollaboratorSerializer,
+    CollaboratorSerializer,
 )
 
 
@@ -79,7 +79,7 @@ class ProjectCollaborators(generics.GenericAPIView):
 
     permission_classes = [IsProjectLeaderOrReadOnly]
     queryset = Project.objects.all()
-    serializer_class = ProjectCollaboratorSerializer
+    serializer_class = CollaboratorSerializer
 
     def get(self, request, pk: int):
         """retrieve collaborators for given project"""

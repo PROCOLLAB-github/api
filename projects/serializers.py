@@ -27,7 +27,7 @@ class ProjectAchievementListSerializer(serializers.ModelSerializer):
         ]
 
 
-class ProjectCollaboratorSerializer(serializers.ModelSerializer):
+class CollaboratorSerializer(serializers.ModelSerializer):
     # id = serializers.IntegerField(source="user.id")
     first_name = serializers.CharField(source="user.first_name")
     last_name = serializers.CharField(source="user.last_name")
@@ -52,7 +52,7 @@ class ProjectCollaboratorSerializer(serializers.ModelSerializer):
 
 class ProjectDetailSerializer(serializers.ModelSerializer):
     achievements = AchievementListSerializer(many=True, read_only=True)
-    collaborators = ProjectCollaboratorSerializer(
+    collaborators = CollaboratorSerializer(
         source="collaborator_set", many=True, read_only=True
     )
     vacancies = ProjectVacancyListSerializer(many=True, read_only=True)
@@ -73,12 +73,18 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "collaborators",
             "leader",
             "draft",
+            "vacancies",
             "datetime_created",
             "datetime_updated",
         ]
 
 
 class ProjectListSerializer(serializers.ModelSerializer):
+    def __init__(self, *args, **kwargs):
+        # might be unnecessary
+        self.max_collaborator_count = kwargs.pop("max_collaborator_count", 4)
+        super().__init__(*args, **kwargs)
+
     collaborators = serializers.SerializerMethodField(method_name="get_collaborators")
     collaborator_count = serializers.SerializerMethodField(
         method_name="get_collaborator_count"
@@ -89,10 +95,9 @@ class ProjectListSerializer(serializers.ModelSerializer):
     def get_collaborator_count(cls, obj):
         return len(obj.collaborator_set.all())
 
-    @classmethod
-    def get_collaborators(cls, obj):
-        return ProjectCollaboratorSerializer(
-            instance=obj.collaborator_set.all()[:4], many=True
+    def get_collaborators(self, obj):
+        return CollaboratorSerializer(
+            instance=obj.collaborator_set.all()[: self.max_collaborator_count], many=True
         ).data
 
     class Meta:
