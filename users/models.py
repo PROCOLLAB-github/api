@@ -77,7 +77,7 @@ class CustomUser(AbstractUser):
 
     objects = CustomUserManager()
 
-    def get_member_key_skills(self):
+    def get_member_key_skills(self) -> str:
         if self.user_type == CustomUser.MEMBER:
             return str(self.member.key_skills)
         return ""
