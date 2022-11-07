@@ -93,7 +93,7 @@ class UserDetail(RetrieveUpdateDestroyAPIView):
 class UserTypes(APIView):
     def get(self, request, format=None):
         """
-        Return a tuple of project steps.
+        Return a list of tuples [(id, name), ..] of user types.
         """
         return Response(User.VERBOSE_USER_TYPES)
 
