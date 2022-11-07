@@ -4,18 +4,20 @@ from users.models import CustomUser
 
 
 class UserFilter(filters.FilterSet):
-    """Filter for News
+    """Filter for Users
 
     Adds filtering to DRF list retrieve views
 
     Parameters to filter by:
         first_name (str), last_name (str), patronymic (str), specialty (str),
         city (str), region (str), organization (str), about_me__contains (str),
-        key_skills__contains (str), useful_to_project__contains (str)
+        key_skills__contains (str), useful_to_project__contains (str), speciality (CustomUser.VERBOSE_USER_TYPES)
 
     Examples:
-        ?first_name=test             equals to .filter(first_name='test')
-        ?key_skills__contains=yawning  equals to .filter(key_skills__containing='yawning')
+        ?first_name=test equals to .filter(first_name='test')
+        ?key_skills__contains=yawning equals to .filter(key_skills__containing='yawning')
+        ?user_type=1 equals to .filter(user_type=1)
+            To check what user_types there are & what id they are, see CustomUser.VERBOSE_USER_TYPES
 
     """
 
@@ -34,4 +36,5 @@ class UserFilter(filters.FilterSet):
             "city",
             "region",
             "organization",
+            "user_type",
         )
