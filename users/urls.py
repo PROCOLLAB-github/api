@@ -7,6 +7,7 @@ from users.views import (
     UserDetail,
     UserList,
     VerifyEmail,
+    UserTypes,
 )
 
 app_name = "users"
@@ -18,6 +19,7 @@ urlpatterns = [
     ),  # this url actually returns  mentors, experts and investors
     path("users/<int:pk>/", UserDetail.as_view()),
     path("users/reset-password/", EmailResetPassword.as_view()),
+    path("users/user-types", UserTypes.as_view()),
     re_path(
         r"^account-confirm-email/",
         VerifyEmail.as_view(),

@@ -18,6 +18,7 @@ from rest_framework.generics import (
 )
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from core.permissions import IsOwnerOrReadOnly
@@ -87,6 +88,14 @@ class UserDetail(RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()
     permission_classes = [IsOwnerOrReadOnly, IsAuthenticated]
     serializer_class = UserDetailSerializer
+
+
+class UserTypes(APIView):
+    def get(self, request, format=None):
+        """
+        Return a list of tuples [(id, name), ..] of user types.
+        """
+        return Response(User.VERBOSE_USER_TYPES)
 
 
 class VerifyEmail(GenericAPIView):
