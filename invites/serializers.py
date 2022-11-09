@@ -32,3 +32,10 @@ class InviteDetailSerializer(serializers.ModelSerializer):
             "datetime_created",
             "datetime_updated",
         ]
+        read_only_fields = [
+            "project",
+            "user",
+            "is_accepted",
+            "datetime_created",
+            "datetime_updated",
+        ]

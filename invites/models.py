@@ -1,5 +1,6 @@
 from django.db import models
 
+from invites.managers import InviteManager
 from projects.models import Project
 from users.models import CustomUser
 
@@ -33,6 +34,8 @@ class Invite(models.Model):
     datetime_updated = models.DateTimeField(
         verbose_name="Дата обновления", null=False, auto_now=True
     )
+
+    objects = InviteManager()
 
     def __str__(self):
         return f'Invite from "{self.project.name}" to {self.user.get_full_name()}'
