@@ -1,5 +1,6 @@
 from django_filters import rest_framework as filters
-from rest_framework import generics
+from rest_framework import generics, mixins
+from rest_framework.generics import GenericAPIView
 
 from core.permissions import IsStaffOrReadOnly
 from news.filters import NewsFilter
@@ -15,10 +16,24 @@ class NewsList(generics.ListCreateAPIView):
     filterset_class = NewsFilter
 
 
-class NewsDetail(generics.RetrieveUpdateDestroyAPIView):
+class NewsDetail(
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    GenericAPIView,
+):
     queryset = News.objects.all()
     serializer_class = NewsDetailSerializer
     permission_classes = [IsStaffOrReadOnly]
+
+    def get(self, request, *args, **kwargs):
+        return self.retrieve(request, *args, **kwargs)
+
+    def put(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)
+
+    def delete(self, request, *args, **kwargs):
+        return self.destroy(request, *args, **kwargs)
 
 
 class NewsTagList(generics.ListAPIView):
