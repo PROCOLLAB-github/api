@@ -4,28 +4,34 @@ import jwt
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.sites.shortcuts import get_current_site
+from django.db.models import Q
+from django.shortcuts import redirect
 from django.urls import reverse
 from django_filters import rest_framework as filters
 from rest_framework import status
 from rest_framework.generics import (
     GenericAPIView,
+    ListAPIView,
     ListCreateAPIView,
     RetrieveUpdateDestroyAPIView,
     UpdateAPIView,
 )
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from core.permissions import IsOwnerOrReadOnly
 from core.utils import Email
-from .filters import UserFilter
 from users.serializers import (
     EmailSerializer,
     PasswordSerializer,
-    UserSerializer,
+    UserDetailSerializer,
+    UserListSerializer,
     VerifyEmailSerializer,
 )
+
+from .filters import UserFilter
 
 User = get_user_model()
 
@@ -33,7 +39,7 @@ User = get_user_model()
 class UserList(ListCreateAPIView):
     queryset = User.objects.all()
     permission_classes = [AllowAny]
-    serializer_class = UserSerializer
+    serializer_class = UserListSerializer
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = UserFilter
 
@@ -66,10 +72,30 @@ class UserList(ListCreateAPIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
+class SpecialistsList(ListAPIView):
+    """
+    This view returns a list of specialists: investors, experts and mentors.
+    """
+
+    queryset = User.objects.filter(
+        Q(user_type=User.EXPERT) | Q(user_type=User.MENTOR) | Q(user_type=User.INVESTOR)
+    )
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserListSerializer
+
+
 class UserDetail(RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()
     permission_classes = [IsOwnerOrReadOnly, IsAuthenticated]
-    serializer_class = UserSerializer
+    serializer_class = UserDetailSerializer
+
+
+class UserTypes(APIView):
+    def get(self, request, format=None):
+        """
+        Return a list of tuples [(id, name), ..] of user types.
+        """
+        return Response(User.VERBOSE_USER_TYPES)
 
 
 class VerifyEmail(GenericAPIView):
@@ -85,16 +111,24 @@ class VerifyEmail(GenericAPIView):
                 user.is_active = True
                 user.save()
 
-            return Response(
-                {"email": "Successfully activated"}, status=status.HTTP_200_OK
+            return redirect(
+                "https://procollab.ru/auth/verification/",
+                status=status.HTTP_200_OK,
+                message="Succeed",
             )
 
         except jwt.ExpiredSignatureError:
-            return Response(
-                {"error": "Activate Expired"}, status=status.HTTP_400_BAD_REQUEST
+            return redirect(
+                "https://procollab.ru/auth/verification",
+                status=status.HTTP_200_OK,
+                message="Activate Expired",
             )
         except jwt.DecodeError:
-            return Response({"error": "Decode error"}, status=status.HTTP_400_BAD_REQUEST)
+            return redirect(
+                "https://procollab.ru/auth/verification",
+                status=status.HTTP_200_OK,
+                message="Decode error",
+            )
 
 
 class EmailResetPassword(GenericAPIView):
@@ -151,10 +185,21 @@ class ResetPassword(UpdateAPIView):
             user.set_password(serializer.data["new_password"])
             user.save()
 
-            return Response({"response": "Reset completed"}, status=status.HTTP_200_OK)
+            return redirect(
+                "https://procollab.ru/auth/reset_password/",
+                status=status.HTTP_200_OK,
+                message="Succeed",
+            )
 
-        except (jwt.ExpiredSignatureError, jwt.DecodeError):
-            return Response(
-                {"error": "Activate Expired or Decode error"},
-                status=status.HTTP_400_BAD_REQUEST,
+        except jwt.ExpiredSignatureError:
+            return redirect(
+                "https://procollab.ru/auth/reset_password/",
+                status=status.HTTP_200_OK,
+                message="Activate Expired",
+            )
+        except jwt.DecodeError:
+            return redirect(
+                "https://procollab.ru/auth/reset_password/",
+                status=status.HTTP_200_OK,
+                message="Decode error",
             )

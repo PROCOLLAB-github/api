@@ -121,7 +121,6 @@ REST_FRAMEWORK = {
         "rest_framework.renderers.AdminRenderer",
     ],
 }
-
 # Database
 if DEBUG:
     DATABASES = {
@@ -217,7 +216,7 @@ default_user_authentication_rule",
     "SLIDING_TOKEN_REFRESH_LIFETIME": timedelta(days=1),
 }
 
-SESSION_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = False
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_USE_TLS = True

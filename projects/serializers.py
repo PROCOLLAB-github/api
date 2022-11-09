@@ -1,8 +1,9 @@
 from rest_framework import serializers
 
 from industries.models import Industry
-from projects.models import Project, Achievement
+from projects.models import Project, Achievement, Collaborator
 from users.models import CustomUser
+from vacancy.serializers import ProjectVacancyListSerializer
 
 
 class AchievementListSerializer(serializers.ModelSerializer):
@@ -18,23 +19,52 @@ class AchievementListSerializer(serializers.ModelSerializer):
 class ProjectAchievementListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Achievement
-        fields = ["id", "title", "status", "project"]
-
-
-class ProjectCollaboratorSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CustomUser
         fields = [
             "id",
+            "title",
+            "status",
+            "project",
+        ]
+
+
+class CollaboratorSerializer(serializers.ModelSerializer):
+    # specify so that there's a clear indication that it's the user's id and not collaborator's id
+    user_id = serializers.IntegerField(source="user.id")
+    first_name = serializers.CharField(source="user.first_name")
+    last_name = serializers.CharField(source="user.last_name")
+    avatar = serializers.CharField(source="user.avatar")
+    member_key_skills = serializers.SerializerMethodField()
+
+    @classmethod
+    def get_member_key_skills(cls, collaborator):
+        return collaborator.user.get_member_key_skills()
+
+    class Meta:
+        model = Collaborator
+        fields = [
+            "user_id",
             "first_name",
             "last_name",
+            "role",
+            "member_key_skills",
             "avatar",
         ]
 
 
+class ProjectCollaboratorSerializer(serializers.ModelSerializer):
+    collaborators = CollaboratorSerializer(source="collaborator_set", many=True)
+
+    class Meta:
+        model = Project
+        fields = ["collaborators"]
+
+
 class ProjectDetailSerializer(serializers.ModelSerializer):
     achievements = AchievementListSerializer(many=True, read_only=True)
-    collaborators = ProjectCollaboratorSerializer(many=True, read_only=True)
+    collaborators = CollaboratorSerializer(
+        source="collaborator_set", many=True, read_only=True
+    )
+    vacancies = ProjectVacancyListSerializer(many=True, read_only=True)
 
     class Meta:
         model = Project
@@ -52,12 +82,33 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "collaborators",
             "leader",
             "draft",
+            "vacancies",
             "datetime_created",
             "datetime_updated",
         ]
 
 
 class ProjectListSerializer(serializers.ModelSerializer):
+    def __init__(self, *args, **kwargs):
+        # might be unnecessary
+        self.max_collaborator_count = kwargs.pop("max_collaborator_count", 4)
+        super().__init__(*args, **kwargs)
+
+    collaborators = serializers.SerializerMethodField(method_name="get_collaborators")
+    collaborator_count = serializers.SerializerMethodField(
+        method_name="get_collaborator_count"
+    )
+    vacancies = ProjectVacancyListSerializer(many=True, read_only=True)
+
+    @classmethod
+    def get_collaborator_count(cls, obj):
+        return len(obj.collaborator_set.all())
+
+    def get_collaborators(self, obj):
+        return CollaboratorSerializer(
+            instance=obj.collaborator_set.all()[: self.max_collaborator_count], many=True
+        ).data
+
     class Meta:
         model = Project
         fields = [
@@ -70,7 +121,14 @@ class ProjectListSerializer(serializers.ModelSerializer):
             "image_address",
             "draft",
             "industry",
+            "collaborator_count",
+            "collaborators",
+            "vacancies",
             "datetime_created",
+        ]
+
+        read_only_fields = [
+            "leader",
         ]
 
     def is_valid(self, *, raise_exception=False):
@@ -99,15 +157,14 @@ class ProjectIndustrySerializer(serializers.ModelSerializer):
         ]
 
 
-class ProjectCollaboratorsSerializer(serializers.Serializer):
-    collaborators = serializers.PrimaryKeyRelatedField(
-        queryset=CustomUser.objects.all(), many=True, read_only=False
-    )
-
-
 class AchievementDetailSerializer(serializers.ModelSerializer):
-    project = ProjectListSerializer(many=False, read_only=True)
+    projects = ProjectListSerializer(many=True, read_only=True)
 
     class Meta:
         model = Achievement
-        fields = ["id", "title", "status", "project"]
+        fields = [
+            "id",
+            "title",
+            "status",
+            "projects",
+        ]
