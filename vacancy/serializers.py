@@ -65,15 +65,13 @@ class VacancyResponseListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = VacancyResponse
-        # fmt: off
         fields = [
             "id",
             "user",
             "why_me",
             "is_approved",
-            "vacancy"
+            "vacancy",
         ]
-        # fmt: on
 
 
 class VacancyResponseDetailSerializer(serializers.ModelSerializer):

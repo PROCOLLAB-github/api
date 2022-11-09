@@ -22,6 +22,9 @@ class Invite(models.Model):
     motivational_letter = models.TextField(
         max_length=4096, blank=True, null=True, default=None
     )
+    role = models.CharField(
+        max_length=128, blank=True, null=True
+    )
     is_accepted = models.BooleanField(blank=False, null=True, default=None)
 
     datetime_created = models.DateTimeField(
