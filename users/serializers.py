@@ -71,7 +71,11 @@ class UserDetailSerializer(serializers.ModelSerializer):
         ]
 
     def update(self, instance, validated_data):
+        IMMUTABLE_FIELDS = ("email", "is_active", "password")
+        USER_TYPE_FIELDS = ("member", "investor", "expert", "mentor")
+
         if instance.user_type == CustomUser.MEMBER:
+            IMMUTABLE_FIELDS = ("email", "user_type", "is_active", "password")
             instance.member.__dict__.update(
                 validated_data.get("member", model_to_dict(instance.member))
             )
@@ -92,13 +96,37 @@ class UserDetailSerializer(serializers.ModelSerializer):
             )
             instance.mentor.save()
 
-        # maybe it's better to write ALLOWED_UPDATABLE_FIELDS = ["first_name", "last_name", ...]
-        IMMUTABLE_FIELDS = ("email", "user_type", "is_active", "password")
-        USER_TYPE_FIELDS = ("member", "investor", "expert", "mentor")
-
         for attr, value in validated_data.items():
             if attr in IMMUTABLE_FIELDS + USER_TYPE_FIELDS:
                 continue
+            if attr == "user_type":
+                # we can't change user type to Member
+                if value == CustomUser.MEMBER or value == instance.user_type:
+                    continue
+
+                user_types_to_attr = {
+                    CustomUser.MEMBER: "member",
+                    CustomUser.INVESTOR: "investor",
+                    CustomUser.EXPERT: "expert",
+                    CustomUser.MENTOR: "mentor",
+                }
+                user_types_to_model = {
+                    CustomUser.MEMBER: Member,
+                    CustomUser.INVESTOR: Investor,
+                    CustomUser.EXPERT: Expert,
+                    CustomUser.MENTOR: Mentor,
+                }
+
+                # delete old user type object and attribute
+                getattr(instance, user_types_to_attr[instance.user_type]).delete()
+                setattr(instance, user_types_to_attr[instance.user_type], None)
+
+                instance.user_type = value
+
+                # create new user type object, attribute sets automatically
+                new_user_type = user_types_to_model[value](user=instance)
+                new_user_type.save()
+
             setattr(instance, attr, value)
 
         instance.save()
@@ -111,7 +139,6 @@ class UserListSerializer(serializers.ModelSerializer):
         user = CustomUser(**validated_data)
         user.set_password(validated_data["password"])
         user.save()
-
         return user
 
     class Meta:

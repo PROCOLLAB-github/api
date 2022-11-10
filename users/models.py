@@ -65,7 +65,7 @@ class CustomUser(AbstractUser):
 
     patronymic = models.CharField(max_length=255, blank=True)
     avatar = models.URLField(null=True, blank=True)
-    birthday = models.DateField(null=True)
+    birthday = models.DateField(null=True, blank=True)
     about_me = models.TextField(blank=True)
     status = models.CharField(max_length=255, blank=True)
     region = models.CharField(max_length=255, blank=True)
