@@ -4,6 +4,15 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from industries.models import Industry
+from users.helpers import (
+    VERBOSE_ROLE_TYPES,
+    VERBOSE_USER_TYPES,
+    ADMIN,
+    MEMBER,
+    MENTOR,
+    EXPERT,
+    INVESTOR,
+)
 from users.managers import CustomUserManager
 
 
@@ -23,7 +32,8 @@ class CustomUser(AbstractUser):
         last_name: CharField instance of the user last name.
         password: CharField instance of the user password.
         is_active: Boolean indicating if user confirmed email.
-        user_type: PositiveSmallIntegerField indicating the user's type according  to VERBOSE_USER_TYPES.
+        user_type: PositiveSmallIntegerField indicating the user's type
+                   according to VERBOSE_USER_TYPES.
         patronymic: CharField instance of the user patronymic.
         avatar: URLField instance of the user's avatar url.
         birthday: DateField instance of the user's birthday.
@@ -36,19 +46,11 @@ class CustomUser(AbstractUser):
         datetime_created: A DateTimeField indicating date of creation.
     """
 
-    ADMIN = 0
-    MEMBER = 1
-    MENTOR = 2
-    EXPERT = 3
-    INVESTOR = 4
-
-    VERBOSE_USER_TYPES = (
-        (ADMIN, "Администратор"),
-        (MEMBER, "Участник"),
-        (MENTOR, "Ментор"),
-        (EXPERT, "Эксперт"),
-        (INVESTOR, "Инвестор"),
-    )
+    ADMIN = ADMIN
+    MEMBER = MEMBER
+    MENTOR = MENTOR
+    EXPERT = EXPERT
+    INVESTOR = INVESTOR
 
     username = None
     email = models.EmailField(blank=False, unique=True)
@@ -94,22 +96,16 @@ class AbstractUserWithRole(models.Model):
     This model adds additional role field to the user model.
 
     Attributes:
-        additional_role: PositiveSmallIntegerField indicating the user's additional role
+        first_additional_role: PositiveSmallIntegerField indicating the user's additional role
                          according to VERBOSE_ROLE_TYPES.
-
+        second_additional_role: the same as first one.
     """
 
-    MENTOR = 2
-    EXPERT = 3
-    INVESTOR = 4
-
-    VERBOSE_ROLE_TYPES = (
-        (MENTOR, "Ментор"),
-        (EXPERT, "Эксперт"),
-        (INVESTOR, "Инвестор"),
+    first_additional_role = models.PositiveSmallIntegerField(
+        choices=VERBOSE_ROLE_TYPES,
+        null=True,
     )
-
-    additional_role = models.PositiveSmallIntegerField(
+    second_additional_role = models.PositiveSmallIntegerField(
         choices=VERBOSE_ROLE_TYPES,
         null=True,
     )
