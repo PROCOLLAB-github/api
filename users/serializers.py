@@ -96,26 +96,28 @@ class UserDetailSerializer(serializers.ModelSerializer):
             )
             instance.mentor.save()
 
+        user_types_to_attr = {
+            CustomUser.MEMBER: "member",
+            CustomUser.INVESTOR: "investor",
+            CustomUser.EXPERT: "expert",
+            CustomUser.MENTOR: "mentor",
+        }
+        user_types_to_model = {
+            CustomUser.MEMBER: Member,
+            CustomUser.INVESTOR: Investor,
+            CustomUser.EXPERT: Expert,
+            CustomUser.MENTOR: Mentor,
+        }
+
         for attr, value in validated_data.items():
             if attr in IMMUTABLE_FIELDS + USER_TYPE_FIELDS:
                 continue
             if attr == "user_type":
-                # we can't change user type to Member
-                if value == CustomUser.MEMBER or value == instance.user_type:
+                if value == instance.user_type or value not in user_types_to_attr.keys():
                     continue
-
-                user_types_to_attr = {
-                    CustomUser.MEMBER: "member",
-                    CustomUser.INVESTOR: "investor",
-                    CustomUser.EXPERT: "expert",
-                    CustomUser.MENTOR: "mentor",
-                }
-                user_types_to_model = {
-                    CustomUser.MEMBER: Member,
-                    CustomUser.INVESTOR: Investor,
-                    CustomUser.EXPERT: Expert,
-                    CustomUser.MENTOR: Mentor,
-                }
+                # we can't change user type to Member
+                if value == CustomUser.MEMBER:
+                    continue
 
                 # delete old user type object and attribute
                 getattr(instance, user_types_to_attr[instance.user_type]).delete()

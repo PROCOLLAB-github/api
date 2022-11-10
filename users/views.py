@@ -105,7 +105,7 @@ class SpecialistsList(ListAPIView):
 
 
 class UserDetail(RetrieveUpdateDestroyAPIView):
-    queryset = User.objects.all()
+    queryset = User.objects.get_users_for_detail_view()
     permission_classes = [IsOwnerOrReadOnly, IsAuthenticated]
     serializer_class = UserDetailSerializer
 

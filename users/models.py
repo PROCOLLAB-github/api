@@ -5,13 +5,13 @@ from django.dispatch import receiver
 
 from industries.models import Industry
 from users.helpers import (
-    VERBOSE_ROLE_TYPES,
-    VERBOSE_USER_TYPES,
     ADMIN,
-    MEMBER,
-    MENTOR,
     EXPERT,
     INVESTOR,
+    MEMBER,
+    MENTOR,
+    VERBOSE_ROLE_TYPES,
+    VERBOSE_USER_TYPES,
 )
 from users.managers import CustomUserManager
 
