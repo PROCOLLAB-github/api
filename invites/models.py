@@ -8,6 +8,8 @@ from users.models import CustomUser
 class Invite(models.Model):
     """Invite model
 
+    This model is used to store the information about the invitation to the project.
+
     Attributes:
         project: A ForeignKey referring to the Project model, who sent out the invite
         user: A ForeignKey referring to the user, who got the invite
@@ -23,9 +25,7 @@ class Invite(models.Model):
     motivational_letter = models.TextField(
         max_length=4096, blank=True, null=True, default=None
     )
-    role = models.CharField(
-        max_length=128, blank=True, null=True
-    )
+    role = models.CharField(max_length=128, blank=True, null=True)
     is_accepted = models.BooleanField(blank=False, null=True, default=None)
 
     datetime_created = models.DateTimeField(
