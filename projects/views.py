@@ -3,10 +3,11 @@ from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.permissions import IsStaffOrReadOnly, IsProjectLeaderOrReadOnly
+from core.permissions import IsStaffOrReadOnly
 from projects.filters import ProjectFilter
 from projects.helpers import VERBOSE_STEPS
 from projects.models import Project, Achievement
+from projects.permissions import IsProjectLeaderOrReadOnly
 from projects.serializers import (
     ProjectDetailSerializer,
     AchievementListSerializer,
