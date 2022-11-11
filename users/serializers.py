@@ -10,7 +10,6 @@ class MemberSerializer(serializers.ModelSerializer):
         fields = [
             "key_skills",
             "useful_to_project",
-            "speciality",
         ]
 
 
