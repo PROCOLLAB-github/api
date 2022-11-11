@@ -4,8 +4,10 @@ from users.views import (
     EmailResetPassword,
     ResetPassword,
     SpecialistsList,
+    UserAdditionalRolesView,
     UserDetail,
     UserList,
+    UserTypesView,
     VerifyEmail,
     UserTypes,
 )
@@ -13,10 +15,12 @@ from users.views import (
 app_name = "users"
 
 urlpatterns = [
-    path("users/", UserList.as_view()),
     path(
         "specialists/", SpecialistsList.as_view()
     ),  # this url actually returns  mentors, experts and investors
+    path("users/", UserList.as_view()),
+    path("users/roles/", UserAdditionalRolesView.as_view()),
+    path("users/types/", UserTypesView.as_view()),
     path("users/<int:pk>/", UserDetail.as_view()),
     path("users/reset-password/", EmailResetPassword.as_view()),
     path("users/user-types", UserTypes.as_view()),
