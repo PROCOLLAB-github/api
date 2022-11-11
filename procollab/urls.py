@@ -37,6 +37,7 @@ urlpatterns = [
     re_path(
         r"^redoc/$", schema_view.with_ui("redoc", cache_timeout=0), name="schema-redoc"
     ),
+    path("files/", include("files.urls", namespace="files")),
     path("industries/", include("industries.urls", namespace="industries")),
     path("news/", include("news.urls", namespace="news")),
     path("projects/", include("projects.urls", namespace="projects")),
