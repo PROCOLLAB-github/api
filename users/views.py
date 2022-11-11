@@ -18,10 +18,12 @@ from rest_framework.generics import (
 )
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from core.permissions import IsOwnerOrReadOnly
 from core.utils import Email
+from users.helpers import VERBOSE_ROLE_TYPES, VERBOSE_USER_TYPES
 from users.serializers import (
     EmailSerializer,
     PasswordSerializer,
@@ -71,6 +73,26 @@ class UserList(ListCreateAPIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
+class UserTypesView(GenericAPIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, format=None):
+        """
+        Return a tuple of user types.
+        """
+        return Response(VERBOSE_USER_TYPES, status=status.HTTP_200_OK)
+
+
+class UserAdditionalRolesView(GenericAPIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, format=None):
+        """
+        Return a tuple of user additional roles types.
+        """
+        return Response(VERBOSE_ROLE_TYPES, status=status.HTTP_200_OK)
+
+
 class SpecialistsList(ListAPIView):
     """
     This view returns a list of specialists: investors, experts and mentors.
@@ -84,9 +106,17 @@ class SpecialistsList(ListAPIView):
 
 
 class UserDetail(RetrieveUpdateDestroyAPIView):
-    queryset = User.objects.all()
+    queryset = User.objects.get_users_for_detail_view()
     permission_classes = [IsOwnerOrReadOnly, IsAuthenticated]
     serializer_class = UserDetailSerializer
+
+
+class UserTypes(APIView):
+    def get(self, request, format=None):
+        """
+        Return a list of tuples [(id, name), ..] of user types.
+        """
+        return Response(User.VERBOSE_USER_TYPES)
 
 
 class VerifyEmail(GenericAPIView):
