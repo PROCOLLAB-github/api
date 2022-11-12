@@ -1,10 +1,11 @@
 from django.urls import path
 
 
-from files.views import FileUploadView
+from files.views import FileView
 
 app_name = "industries"
 
 urlpatterns = [
-    path("", FileUploadView.as_view()),
+    path("", FileView.as_view()),
+    path("<int:pk>", FileView.as_view()),
 ]

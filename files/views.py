@@ -17,7 +17,7 @@ from procollab.settings import (
 )
 
 
-class FileUploadView(APIView):
+class FileView(APIView):
     permission_classes = [permissions.AllowAny]
 
     @transaction.atomic
@@ -46,16 +46,20 @@ class FileUploadView(APIView):
         with file.open(mode="rb") as file_object:
             r = requests.put(
                 url,
-                headers={
-                    "X-Auth-Token": token,
-                    "X-Object-Meta-Content-Type": file_object.content_type,
-                },
-                files={"file": (file.name, file_object, file.content_type)},
+                headers={"X-Auth-Token": token, "Content-Type": file_object.content_type},
+                data=file_object.read(),
             )
         if r.status_code != 201:
             return Response("Failed to upload file", status=status.HTTP_409_CONFLICT)
         self._save_to_db(user, url)
         return Response({"url": url}, status=status.HTTP_201_CREATED)
+
+    def delete(self, request, pk):
+        try:
+            UserFile.objects.get(pk=pk).delete()
+        except UserFile.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        return Response(status=status.HTTP_200_OK)
 
     @classmethod
     def _save_to_db(cls, user, url):
