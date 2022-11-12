@@ -3,16 +3,17 @@ from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.permissions import IsStaffOrReadOnly, IsProjectLeaderOrReadOnly
+from core.permissions import IsStaffOrReadOnly
 from projects.filters import ProjectFilter
 from projects.helpers import VERBOSE_STEPS
 from projects.models import Project, Achievement
+from projects.permissions import IsProjectLeaderOrReadOnly
 from projects.serializers import (
     ProjectDetailSerializer,
     AchievementListSerializer,
-    ProjectCollaboratorsSerializer,
     ProjectListSerializer,
     AchievementDetailSerializer,
+    ProjectCollaboratorSerializer,
 )
 
 
@@ -43,7 +44,6 @@ class ProjectList(generics.ListCreateAPIView):
         ---
 
         leader подставляется автоматически
-        (я не знаю как убрать его из сваггера😅)
 
 
         Args:
@@ -80,7 +80,7 @@ class ProjectCollaborators(generics.GenericAPIView):
 
     permission_classes = [IsProjectLeaderOrReadOnly]
     queryset = Project.objects.all()
-    serializer_class = ProjectCollaboratorsSerializer
+    serializer_class = ProjectCollaboratorSerializer
 
     def get(self, request, pk: int):
         """retrieve collaborators for given project"""

@@ -1,18 +1,21 @@
 from django_filters import rest_framework as filters
-from rest_framework import generics, permissions, mixins, status
+from rest_framework import generics, mixins, permissions, status
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 
-from core.permissions import IsProjectLeaderOrReadOnly, IsProjectLeaderForVacancyResponse
+from projects.permissions import IsProjectLeaderOrReadOnly
 from vacancy.filters import VacancyFilter
 from vacancy.models import Vacancy, VacancyResponse
-from vacancy.permissions import IsVacancyResponseOwnerOrReadOnly
+from vacancy.permissions import (
+    IsProjectLeaderForVacancyResponse,
+    IsVacancyResponseOwnerOrReadOnly,
+)
 from vacancy.serializers import (
+    ProjectVacancyListSerializer,
     VacancyDetailSerializer,
+    VacancyResponseAcceptSerializer,
     VacancyResponseDetailSerializer,
     VacancyResponseListSerializer,
-    ProjectVacancyListSerializer,
-    VacancyResponseAcceptSerializer,
 )
 
 
