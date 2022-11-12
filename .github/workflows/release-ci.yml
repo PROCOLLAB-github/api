@@ -117,6 +117,12 @@ jobs:
               echo "EMAIL_PASSWORD=${{ secrets.EMAIL_PASSWORD }}" >> .env &&
               echo "EMAIL_HOST=${{ secrets.EMAIL_HOST }}" >> .env &&
               echo "EMAIL_PORT=${{ secrets.EMAIL_PORT }}" >> .env &&
+
+              echo "SELECTEL_ACCOUNT_ID=${{ secrets.SELECTEL_ACCOUNT_ID }}" >> .env &&
+              echo "SELECTEL_CONTAINER_NAME=${{ secrets.SELECTEL_CONTAINER_NAME }}" >> .env &&
+              echo "SELECTEL_CONTAINER_PASSWORD=${{ secrets.SELECTEL_CONTAINER_PASSWORD }}" >> .env &&
+              echo "SELECTEL_CONTAINER_USERNAME=${{ secrets.SELECTEL_CONTAINER_USERNAME }}" >> .env &&
+
               
               echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" >> .env 
               
