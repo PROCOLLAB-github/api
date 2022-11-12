@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     "vacancy.apps.VacancyConfig",
     "metrics.apps.MetricsConfig",
     "invites.apps.InvitesConfig",
+    "files.apps.FilesConfig",
     # Rest framework
     "rest_framework",
     "rest_framework_simplejwt",
@@ -224,3 +225,14 @@ EMAIL_HOST = config("EMAIL_HOST", default="smtp.gmail.com", cast=str)
 EMAIL_PORT = config("EMAIL_PORT", default=587, cast=int)
 EMAIL_HOST_USER = config("EMAIL_USER", cast=str, default="example@mail.ru")
 EMAIL_HOST_PASSWORD = config("EMAIL_PASSWORD", cast=str, default="password")
+
+SELECTEL_ACCOUNT_ID = config("SELECTEL_ACCOUNT_ID", cast=str, default="123456")
+SELECTEL_CONTAINER_NAME = config(
+    "SELECTEL_CONTAINER_NAME", cast=str, default="procollab_media"
+)
+SELECTEL_CONTAINER_USERNAME = config(
+    "SELECTEL_CONTAINER_USERNAME", cast=str, default="228194_backend"
+)
+SELECTEL_CONTAINER_PASSWORD = config(
+    "SELECTEL_CONTAINER_PASSWORD", cast=str, default="PWD"
+)
