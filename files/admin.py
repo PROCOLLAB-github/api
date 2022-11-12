@@ -6,11 +6,8 @@ from files.models import UserFile
 @admin.register(UserFile)
 class UserFileAdmin(admin.ModelAdmin):
     list_display = (
-        "id",
         "link",
+        "user",
         "datetime_uploaded",
     )
-    list_display_links = (
-        "id",
-        "link",
-    )
+    list_display_links = ("link",)
