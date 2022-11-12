@@ -125,28 +125,32 @@ class VerifyEmail(GenericAPIView):
 
     def get(self, request):
         token = request.GET.get("token")
+        REDIRECT_URL = "https://app.procollab.ru/auth/verification/"
         try:
             payload = jwt.decode(jwt=token, key=settings.SECRET_KEY, algorithms=["HS256"])
             user = User.objects.get(id=payload["user_id"])
+            access_token = RefreshToken.for_user(user).access_token
+            refresh_token = RefreshToken.for_user(user)
+
             if not user.is_active:
                 user.is_active = True
                 user.save()
 
             return redirect(
-                "https://procollab.ru/auth/verification/",
+                f"{REDIRECT_URL}?access_token={access_token}&refresh_token={refresh_token}",
                 status=status.HTTP_200_OK,
                 message="Succeed",
             )
 
         except jwt.ExpiredSignatureError:
             return redirect(
-                "https://procollab.ru/auth/verification",
+                REDIRECT_URL,
                 status=status.HTTP_200_OK,
                 message="Activate Expired",
             )
         except jwt.DecodeError:
             return redirect(
-                "https://procollab.ru/auth/verification",
+                REDIRECT_URL,
                 status=status.HTTP_200_OK,
                 message="Decode error",
             )
