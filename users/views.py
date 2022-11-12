@@ -166,20 +166,26 @@ class EmailResetPassword(GenericAPIView):
 
         user = User.objects.get(email=serializer.data["email"])
 
-        token = RefreshToken.for_user(user).access_token
+        access_token = RefreshToken.for_user(user).access_token
+        refresh_token = RefreshToken.for_user(user)
 
         relative_link = reverse("users:password_reset_sent")
 
         current_site = get_current_site(request).domain
-        absolute_url = "http://" + current_site + relative_link + "?token=" + str(token)
+        absolute_url = (
+            "http://"
+            + current_site
+            + relative_link
+            + f"?access_token={access_token}&refresh_token={refresh_token}"
+        )
 
-        email_body = "Hi, {} {}! Use link below verify your email {}".format(
+        email_body = "Hi, {} {}! Use link below for reset password {}".format(
             user.first_name, user.last_name, absolute_url
         )
 
         data = {
             "email_body": email_body,
-            "email_subject": "Verify your email",
+            "email_subject": "Reset password",
             "to_email": user.email,
         }
 
@@ -197,10 +203,10 @@ class ResetPassword(UpdateAPIView):
         serializer.is_valid()
 
         try:
-            token = request.GET.get("token")
+            token = request.GET.get("access_token")
             payload = jwt.decode(jwt=token, key=settings.SECRET_KEY, algorithms=["HS256"])
             user = User.objects.get(id=payload["user_id"])
-            last_update = user.datatime_updated
+            last_update = user.datetime_updated
             if (datetime.now().minute - last_update.minute) <= 10:
                 return Response(
                     {"response": "You can't change your password so often"},
