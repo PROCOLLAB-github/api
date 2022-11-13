@@ -223,7 +223,8 @@ class ResetPassword(UpdateAPIView):
             )
             user = User.objects.get(id=payload["user_id"])
             last_update = user.datetime_updated
-            if (datetime.now().minute - last_update.minute) < 0:
+            frequency_update = datetime.utcnow().minute - last_update.minute
+            if frequency_update <= 10:
                 return redirect(
                     "https://procollab.ru/auth/reset_password/",
                     status=status.HTTP_400_BAD_REQUEST,
