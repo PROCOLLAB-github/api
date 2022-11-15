@@ -19,11 +19,11 @@ from rest_framework.generics import (
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
 from core.permissions import IsOwnerOrReadOnly
 from core.utils import Email
-from users.helpers import VERBOSE_ROLE_TYPES, VERBOSE_USER_TYPES
+from users.helpers import VERBOSE_ROLE_TYPES
 from users.serializers import (
     EmailSerializer,
     PasswordSerializer,
@@ -73,17 +73,7 @@ class UserList(ListCreateAPIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
-class UserTypesView(GenericAPIView):
-    permission_classes = [AllowAny]
-
-    def get(self, request, format=None):
-        """
-        Return a tuple of user types.
-        """
-        return Response(VERBOSE_USER_TYPES, status=status.HTTP_200_OK)
-
-
-class UserAdditionalRolesView(GenericAPIView):
+class UserAdditionalRoles(GenericAPIView):
     permission_classes = [AllowAny]
 
     def get(self, request, format=None):
@@ -109,6 +99,17 @@ class UserDetail(RetrieveUpdateDestroyAPIView):
     queryset = User.objects.get_users_for_detail_view()
     permission_classes = [IsOwnerOrReadOnly, IsAuthenticated]
     serializer_class = UserDetailSerializer
+
+
+class CurrentUser(APIView):
+    queryset = User.objects.get_users_for_detail_view()
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserDetailSerializer
+
+    def get(self, request):
+        user = request.user
+        serializer = UserDetailSerializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class UserTypes(APIView):
@@ -145,13 +146,13 @@ class VerifyEmail(GenericAPIView):
         except jwt.ExpiredSignatureError:
             return redirect(
                 REDIRECT_URL,
-                status=status.HTTP_200_OK,
+                status=status.HTTP_400_BAD_REQUEST,
                 message="Activate Expired",
             )
         except jwt.DecodeError:
             return redirect(
                 REDIRECT_URL,
-                status=status.HTTP_200_OK,
+                status=status.HTTP_400_BAD_REQUEST,
                 message="Decode error",
             )
 
@@ -166,20 +167,26 @@ class EmailResetPassword(GenericAPIView):
 
         user = User.objects.get(email=serializer.data["email"])
 
-        token = RefreshToken.for_user(user).access_token
+        access_token = RefreshToken.for_user(user).access_token
+        refresh_token = RefreshToken.for_user(user)
 
         relative_link = reverse("users:password_reset_sent")
 
         current_site = get_current_site(request).domain
-        absolute_url = "http://" + current_site + relative_link + "?token=" + str(token)
+        absolute_url = (
+            "http://"
+            + current_site
+            + relative_link
+            + f"?access_token={access_token}&refresh_token={refresh_token}"
+        )
 
-        email_body = "Hi, {} {}! Use link below verify your email {}".format(
+        email_body = "Hi, {} {}! Use link below for reset password {}".format(
             user.first_name, user.last_name, absolute_url
         )
 
         data = {
             "email_body": email_body,
-            "email_subject": "Verify your email",
+            "email_subject": "Reset password",
             "to_email": user.email,
         }
 
@@ -192,24 +199,43 @@ class ResetPassword(UpdateAPIView):
     serializer_class = PasswordSerializer
     permission_classes = [AllowAny]
 
+    def get(self, request, *args, **kwargs):
+        refresh_token = request.GET.get("refresh_token")
+        try:
+            RefreshToken(refresh_token).check_blacklist()
+        except TokenError:
+            return redirect(
+                "https://procollab.ru/auth/reset_password/",
+                status=status.HTTP_400_BAD_REQUEST,
+                message="Used token",
+            )
+
+        return Response({"message": "Enter new password"})
+
     def update(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid()
 
         try:
-            token = request.GET.get("token")
-            payload = jwt.decode(jwt=token, key=settings.SECRET_KEY, algorithms=["HS256"])
+            refresh_token = request.GET.get("refresh_token")
+            access_token = request.GET.get("access_token")
+            payload = jwt.decode(
+                jwt=access_token, key=settings.SECRET_KEY, algorithms=["HS256"]
+            )
             user = User.objects.get(id=payload["user_id"])
-            last_update = user.datatime_updated
-            if (datetime.now().minute - last_update.minute) <= 10:
-                return Response(
-                    {"response": "You can't change your password so often"},
-                    status=status.HTTP_200_OK,
+            last_update = user.datetime_updated
+            frequency_update = datetime.utcnow().minute - last_update.minute
+            if frequency_update <= 10:
+                return redirect(
+                    "https://procollab.ru/auth/reset_password/",
+                    status=status.HTTP_400_BAD_REQUEST,
+                    message="You can't change your password so often",
                 )
 
             user.set_password(serializer.data["new_password"])
             user.save()
 
+            RefreshToken(refresh_token).blacklist()
             return redirect(
                 "https://procollab.ru/auth/reset_password/",
                 status=status.HTTP_200_OK,
@@ -219,12 +245,12 @@ class ResetPassword(UpdateAPIView):
         except jwt.ExpiredSignatureError:
             return redirect(
                 "https://procollab.ru/auth/reset_password/",
-                status=status.HTTP_200_OK,
+                status=status.HTTP_400_BAD_REQUEST,
                 message="Activate Expired",
             )
         except jwt.DecodeError:
             return redirect(
                 "https://procollab.ru/auth/reset_password/",
-                status=status.HTTP_200_OK,
+                status=status.HTTP_400_BAD_REQUEST,
                 message="Decode error",
             )
