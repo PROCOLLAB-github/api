@@ -44,6 +44,7 @@ class CustomUser(AbstractUser):
         organization: CharField instance the user's place of study or work.
         datetime_updated: A DateTimeField indicating date of update.
         datetime_created: A DateTimeField indicating date of creation.
+        speciality: CharField instance the user's specialty.
     """
 
     ADMIN = ADMIN
@@ -71,6 +72,7 @@ class CustomUser(AbstractUser):
     region = models.CharField(max_length=255, blank=True)
     city = models.CharField(max_length=255, blank=True)
     organization = models.CharField(max_length=255, blank=True)
+    speciality = models.CharField(max_length=255, blank=True)
 
     datetime_updated = models.DateTimeField(null=False, auto_now=True)
     datetime_created = models.DateTimeField(null=False, auto_now_add=True)
