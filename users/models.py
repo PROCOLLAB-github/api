@@ -42,9 +42,9 @@ class CustomUser(AbstractUser):
         region: CharField instance the user's name region.
         city: CharField instance the user's name city.
         organization: CharField instance the user's place of study or work.
+        speciality: CharField instance the user's specialty.
         datetime_updated: A DateTimeField indicating date of update.
         datetime_created: A DateTimeField indicating date of creation.
-        speciality: CharField instance the user's specialty.
     """
 
     ADMIN = ADMIN
