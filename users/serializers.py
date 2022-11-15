@@ -17,7 +17,7 @@ class MentorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Mentor
         fields = [
-            "job",
+            # "job",
             "useful_to_project",
         ]
 
