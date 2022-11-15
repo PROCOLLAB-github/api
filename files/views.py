@@ -43,5 +43,5 @@ class FileView(generics.GenericAPIView):
         if instance.user != request.user:
             return Response(status=status.HTTP_403_FORBIDDEN)
         FileAPI.delete(instance.link)  # delete the file via api
-        self.perform_destroy(instance)
+        instance.delete()  # delete the UserFile object
         return Response(status=status.HTTP_204_NO_CONTENT)
