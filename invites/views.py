@@ -26,11 +26,13 @@ class InviteList(generics.ListCreateAPIView):
 
 
 class InviteDetail(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Invite.objects.all()
     serializer_class = InviteDetailSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
 
 class InviteAccept(generics.GenericAPIView):
+    queryset = Invite.objects.all()
     serializer_class = InviteDetailSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
@@ -44,6 +46,7 @@ class InviteAccept(generics.GenericAPIView):
 
 
 class InviteDecline(generics.GenericAPIView):
+    queryset = Invite.objects.all()
     serializer_class = InviteDetailSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
