@@ -17,13 +17,6 @@ class InviteFilter(filters.FilterSet):
         ?is_active=false equals to .filter(is_active=False)
     """
 
-    def __init__(self, *args, **kwargs):
-        """if is_active filter is not passed, default to True"""
-        super().__init__(*args, **kwargs)
-        if self.data.get("is_active") is None:
-            self.data = dict(self.data)
-            self.data["is_active"] = True
-
     is_active = filters.BooleanFilter(field_name="is_active")
 
     class Meta:
