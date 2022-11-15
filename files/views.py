@@ -9,7 +9,7 @@ from files.models import UserFile
 from files.serializers import UserFileSerializer
 
 
-class FileView(generics.RetrieveDestroyAPIView):
+class FileView(generics.GenericAPIView):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     serializer_class = UserFileSerializer
     queryset = UserFile.objects.all()
