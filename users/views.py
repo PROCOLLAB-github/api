@@ -24,7 +24,11 @@ from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 from core.permissions import IsOwnerOrReadOnly
 from core.utils import Email
 from users.helpers import VERBOSE_ROLE_TYPES
+from users.models import UserAchievement
+from users.permissions import IsAchievementOwnerOrReadOnly
 from users.serializers import (
+    AchievementDetailSerializer,
+    AchievementListSerializer,
     EmailSerializer,
     PasswordSerializer,
     UserDetailSerializer,
@@ -254,3 +258,15 @@ class ResetPassword(UpdateAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
                 message="Decode error",
             )
+
+
+class AchievementList(ListCreateAPIView):
+    queryset = UserAchievement.objects.get_achievements_for_list_view()
+    serializer_class = AchievementListSerializer
+    permission_classes = [IsAchievementOwnerOrReadOnly]
+
+
+class AchievementDetail(RetrieveUpdateDestroyAPIView):
+    queryset = UserAchievement.objects.get_achievements_for_detail_view()
+    serializer_class = AchievementDetailSerializer
+    permission_classes = [IsAchievementOwnerOrReadOnly]

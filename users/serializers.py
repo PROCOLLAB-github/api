@@ -1,7 +1,17 @@
 from django.forms.models import model_to_dict
 from rest_framework import serializers
 
-from .models import CustomUser, Expert, Investor, Member, Mentor
+from .models import CustomUser, Expert, Investor, Member, Mentor, UserAchievement
+
+
+class AchievementListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserAchievement
+        fields = [
+            "id",
+            "title",
+            "status",
+        ]
 
 
 class MemberSerializer(serializers.ModelSerializer):
@@ -45,6 +55,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
     investor = InvestorSerializer(required=False)
     expert = ExpertSerializer(required=False)
     mentor = MentorSerializer(required=False)
+    achievements = AchievementListSerializer(required=False, many=True)
 
     class Meta:
         model = CustomUser
@@ -63,6 +74,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
             "investor",
             "expert",
             "mentor",
+            "achievements",
         ]
 
     def update(self, instance, validated_data):
@@ -90,12 +102,19 @@ class UserDetailSerializer(serializers.ModelSerializer):
         # maybe it's better to write ALLOWED_UPDATABLE_FIELDS = ["first_name", "last_name", ...]
         IMMUTABLE_FIELDS = ("email", "user_type", "is_active", "password")
         USER_TYPE_FIELDS = ("member", "investor", "expert", "mentor")
-
+        RELATED_FIELDS = ("achievements",)
         for attr, value in validated_data.items():
-            if attr in IMMUTABLE_FIELDS + USER_TYPE_FIELDS:
+            if attr in IMMUTABLE_FIELDS + USER_TYPE_FIELDS + RELATED_FIELDS:
                 continue
             setattr(instance, attr, value)
 
+        # if "achievements" in validated_data:
+        #     instance.achievements.all().delete()
+        #     instance.achievements.clear()
+        #     for achievement in validated_data["achievements"]:
+        #         obj = UserAchievement(**achievement)
+        #         obj.save()
+        #         instance.achievements.add(obj)
         instance.save()
 
         return instance
@@ -125,6 +144,17 @@ class UserListSerializer(serializers.ModelSerializer):
             "password",
         ]
         extra_kwargs = {"password": {"write_only": True}}
+
+
+class AchievementDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserAchievement
+        fields = [
+            "id",
+            "title",
+            "status",
+            "user",
+        ]
 
 
 class EmailSerializer(serializers.Serializer):

@@ -1,6 +1,8 @@
 from django.urls import path, re_path
 
 from users.views import (
+    AchievementDetail,
+    AchievementList,
     CurrentUser,
     EmailResetPassword,
     ResetPassword,
@@ -24,6 +26,8 @@ urlpatterns = [
     path("users/<int:pk>/", UserDetail.as_view()),
     path("users/reset-password/", EmailResetPassword.as_view()),
     path("users/current/", CurrentUser.as_view()),
+    path("users/achievements/", AchievementList.as_view()),
+    path("users/achievements/<int:pk>/", AchievementDetail.as_view()),
     re_path(
         r"^account-confirm-email/",
         VerifyEmail.as_view(),
