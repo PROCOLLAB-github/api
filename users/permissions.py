@@ -7,8 +7,9 @@ class IsAchievementOwnerOrReadOnly(BasePermission):
     """
 
     def has_permission(self, request, view) -> bool:
-        # todo check if user is achievement owner
-        if request.method in SAFE_METHODS or (request.user and request.user.id):
+        if request.method in SAFE_METHODS or (
+            request.user and request.user.id == request.data.get("user")
+        ):
             return True
         return False
 
