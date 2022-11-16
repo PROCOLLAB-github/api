@@ -1,31 +1,107 @@
+from django.forms.models import model_to_dict
 from rest_framework import serializers
 
-from .models import CustomUser, Achievement
+from .models import CustomUser, Expert, Investor, Member, Mentor
 
 
-class UserSerializer(serializers.ModelSerializer):
+class MemberSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Member
+        fields = [
+            "key_skills",
+            "useful_to_project",
+        ]
+
+
+class MentorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Mentor
+        fields = [
+            # "job",
+            "useful_to_project",
+        ]
+
+
+class ExpertSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Expert
+        fields = [
+            "preferred_industries",
+            "useful_to_project",
+        ]
+
+
+class InvestorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Investor
+        fields = [
+            "interaction_process_description",
+            "preferred_industries",
+        ]
+
+
+class UserDetailSerializer(serializers.ModelSerializer):
+    member = MemberSerializer(required=False)
+    investor = InvestorSerializer(required=False)
+    expert = ExpertSerializer(required=False)
+    mentor = MentorSerializer(required=False)
+
     class Meta:
         model = CustomUser
         fields = [
             "id",
+            "user_type",
             "email",
             "first_name",
             "last_name",
-            "password",
-            "is_active",
             "patronymic",
-            "birthday",
-            "avatar",
-            "key_skills",
-            "useful_to_project",
-            "about_me",
-            "status",
             "speciality",
+            "avatar",
             "city",
-            "region",
-            "organization",
+            "is_active",
+            "member",
+            "investor",
+            "expert",
+            "mentor",
         ]
 
+    def update(self, instance, validated_data):
+        if instance.user_type == CustomUser.MEMBER:
+            instance.member.__dict__.update(
+                validated_data.get("member", model_to_dict(instance.member))
+            )
+            instance.member.save()
+        elif instance.user_type == CustomUser.INVESTOR:
+            instance.investor.__dict__.update(
+                validated_data.get("investor", model_to_dict(instance.investor))
+            )
+            instance.investor.save()
+        elif instance.user_type == CustomUser.EXPERT:
+            instance.expert.__dict__.update(
+                validated_data.get("expert", model_to_dict(instance.expert))
+            )
+            instance.expert.save()
+        elif instance.user_type == CustomUser.MENTOR:
+            instance.mentor.__dict__.update(
+                validated_data.get("mentor", model_to_dict(instance.mentor))
+            )
+            instance.mentor.save()
+
+        # maybe it's better to write ALLOWED_UPDATABLE_FIELDS = ["first_name", "last_name", ...]
+        IMMUTABLE_FIELDS = ("email", "user_type", "is_active", "password")
+        USER_TYPE_FIELDS = ("member", "investor", "expert", "mentor")
+
+        for attr, value in validated_data.items():
+            if attr in IMMUTABLE_FIELDS + USER_TYPE_FIELDS:
+                continue
+            setattr(instance, attr, value)
+
+        instance.save()
+
+        return instance
+
+
+class UserListSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         user = CustomUser(**validated_data)
         user.set_password(validated_data["password"])
@@ -33,24 +109,22 @@ class UserSerializer(serializers.ModelSerializer):
 
         return user
 
-
-class AchievementSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Achievement
+        model = CustomUser
         fields = [
             "id",
-            "user",
-            "name",
-            "description",
-            "image_url",
-            "date",
+            "email",
+            "user_type",
+            "first_name",
+            "last_name",
+            "patronymic",
+            "avatar",
+            "speciality",
+            "birthday",
+            "is_active",
+            "password",
         ]
-
-    def create(self, validated_data):
-        achievement = Achievement(**validated_data)
-        achievement.save()
-
-        return achievement
+        extra_kwargs = {"password": {"write_only": True}}
 
 
 class EmailSerializer(serializers.Serializer):
@@ -62,5 +136,4 @@ class VerifyEmailSerializer(serializers.Serializer):
 
 
 class PasswordSerializer(serializers.Serializer):
-    old_password = serializers.CharField(required=True)
     new_password = serializers.CharField(required=True)

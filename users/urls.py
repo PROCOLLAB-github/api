@@ -1,15 +1,47 @@
-from django.urls import path
-from rest_framework.urlpatterns import format_suffix_patterns
+from django.urls import path, re_path
 
-from users.views import UserDetail, UserList, EmailResetPassword, UserAchievementList
+from users.views import (
+    CurrentUser,
+    EmailResetPassword,
+    ResetPassword,
+    SpecialistsList,
+    UserAdditionalRoles,
+    UserDetail,
+    UserList,
+    UserTypes,
+    VerifyEmail,
+)
 
 app_name = "users"
 
 urlpatterns = [
+    path(
+        "specialists/", SpecialistsList.as_view()
+    ),  # this url actually returns  mentors, experts and investors
     path("users/", UserList.as_view()),
+    path("users/roles/", UserAdditionalRoles.as_view()),
+    path("users/types/", UserTypes.as_view()),
     path("users/<int:pk>/", UserDetail.as_view()),
     path("users/reset-password/", EmailResetPassword.as_view()),
-    path("users/<int:user_id>/achievements/", UserAchievementList.as_view()),
+    path("users/current/", CurrentUser.as_view()),
+    re_path(
+        r"^account-confirm-email/",
+        VerifyEmail.as_view(),
+        name="account_email_verification_sent",
+    ),
+    re_path(
+        r"^account-confirm-email/(?P<key>[-:\w]+)/$",
+        VerifyEmail.as_view(),
+        name="account_confirm_email",
+    ),
+    re_path(
+        r"^password-reset/",
+        ResetPassword.as_view(),
+        name="password_reset_sent",
+    ),
+    re_path(
+        r"^password-reset/(?P<key>[-:\w]+)/$",
+        ResetPassword.as_view(),
+        name="password_reset",
+    ),
 ]
-
-urlpatterns = format_suffix_patterns(urlpatterns)

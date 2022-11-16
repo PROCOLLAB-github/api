@@ -1,0 +1,17 @@
+version: "3.4"
+services:
+  server:
+    ports:
+      - "8000:8000"
+    image: ghcr.io/procollab-github/api:latest
+    env_file:
+      - .env
+    restart: always
+    networks:
+      template-network:
+
+networks:
+  template-network:
+
+volumes:
+  db-volume:

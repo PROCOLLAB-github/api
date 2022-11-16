@@ -1,9 +1,25 @@
 from rest_framework import serializers
 
-from vacancy.models import Vacancy, VacancyRequest
+from projects.models import Project
+from users.serializers import UserDetailSerializer
+from vacancy.models import Vacancy, VacancyResponse
 
 
-class VacancySerializer(serializers.ModelSerializer):
+class ProjectForVacancySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Project
+        fields = [
+            "id",
+            "name",
+            "description",
+            "short_description",
+            "image_address",
+        ]
+
+
+class VacancyDetailSerializer(serializers.ModelSerializer):
+    project = ProjectForVacancySerializer(many=False)
+
     class Meta:
         model = Vacancy
         fields = [
@@ -17,27 +33,64 @@ class VacancySerializer(serializers.ModelSerializer):
             "datetime_updated",
         ]
 
-    def create(self, validated_data):
-        vacancy = Vacancy(**validated_data)
-        vacancy.save()
 
-        return vacancy
-
-
-class VacancyRequestSerializer(serializers.ModelSerializer):
+class VacancyListSerializer(serializers.ModelSerializer):
     class Meta:
-        model = VacancyRequest
+        model = Vacancy
+        fields = [
+            "id",
+            "role",
+            "required_skills",
+            "description",
+            "is_active",
+        ]
+
+
+class ProjectVacancyListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Vacancy
+        fields = [
+            "id",
+            "role",
+            "required_skills",
+            "description",
+            "project",
+            "is_active",
+        ]
+
+
+class VacancyResponseListSerializer(serializers.ModelSerializer):
+    is_approved = serializers.BooleanField(read_only=True)
+    user = UserDetailSerializer(read_only=True)
+
+    class Meta:
+        model = VacancyResponse
+        fields = [
+            "id",
+            "user",
+            "why_me",
+            "is_approved",
+            "vacancy",
+        ]
+
+
+class VacancyResponseDetailSerializer(serializers.ModelSerializer):
+    user = UserDetailSerializer(many=False, read_only=True)
+    vacancy = VacancyListSerializer(many=False, read_only=True)
+    is_approved = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = VacancyResponse
         fields = [
             "id",
             "user",
             "vacancy",
-            "is_approve",
+            "why_me",
+            "is_approved",
             "datetime_created",
             "datetime_updated",
         ]
 
-    def create(self, validated_data):
-        vacancy_request = VacancyRequest(**validated_data)
-        vacancy_request.save()
 
-        return vacancy_request
+class VacancyResponseAcceptSerializer(VacancyResponseDetailSerializer):
+    is_approved = serializers.BooleanField(required=True, read_only=False)

@@ -24,6 +24,18 @@ class CustomUserManager(UserManager):
 
         return self._create_user(email, password, **extra_fields)
 
+    def get_users_for_detail_view(self):
+        return (
+            self.get_queryset()
+            .select_related("member", "investor", "expert", "mentor")
+            .prefetch_related(
+                "member__preferred_industries",
+                "expert__preferred_industries",
+                "investor__preferred_industries",
+            )
+            .all()
+        )
+
     def _create_user(self, email, password, **extra_fields):
         email = self.normalize_email(email)
         user = self.model(email=email, **extra_fields)

@@ -7,6 +7,10 @@ from .models import CustomUser
 class CustomUserAdmin(admin.ModelAdmin):
     fieldsets = (
         (
+            "Аккаунт",
+            {"fields": ("user_type",)},
+        ),
+        (
             "Конфиденциальная информация",
             {
                 "fields": (
@@ -32,10 +36,7 @@ class CustomUserAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     "about_me",
-                    "key_skills",
-                    "useful_to_project",
                     "status",
-                    "speciality",
                     "city",
                     "region",
                     "organization",
@@ -86,3 +87,7 @@ class CustomUserAdmin(admin.ModelAdmin):
         "email",
         "id",
     )
+
+    def save_model(self, request, obj, form, change):
+        obj.set_password(form.cleaned_data["password"])
+        obj.save()

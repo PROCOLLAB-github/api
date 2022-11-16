@@ -1,0 +1,2 @@
+class SelectelUploadError(Exception):
+    pass

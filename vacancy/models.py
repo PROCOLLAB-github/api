@@ -1,6 +1,7 @@
 from django.db import models
 
 from projects.models import Project
+from vacancy.managers import VacancyManager, VacancyResponseManager
 
 
 class Vacancy(models.Model):
@@ -36,8 +37,10 @@ class Vacancy(models.Model):
         verbose_name="Дата обновления", null=False, auto_now=True
     )
 
+    objects = VacancyManager()
+
     def __str__(self):
-        return self.role
+        return f"Vacancy<{self.id}> - {self.role}"
 
     class Meta:
         verbose_name = "Вакансия"
@@ -45,13 +48,14 @@ class Vacancy(models.Model):
         ordering = ["-datetime_created"]
 
 
-class VacancyRequest(models.Model):
+class VacancyResponse(models.Model):
     """
-    VacancyRequest model
+    VacancyResponse model
 
     Attributes:
         user: A ForeignKey referring to the User model.
         vacancy: A ForeignKey referring to the Vacancy model.
+        is_approved: A boolean indicating if VacancyResponse is approved.
         datetime_created: A DateTimeField indicating date of creation.
         datetime_updated: A DateTimeField indicating date of update.
     """
@@ -68,8 +72,9 @@ class VacancyRequest(models.Model):
         null=False,
         related_name="vacancy_requests",
     )
+    why_me = models.TextField(blank=True)
 
-    is_approve = models.BooleanField(
+    is_approved = models.BooleanField(
         blank=True,
         null=True,
     )
@@ -81,10 +86,12 @@ class VacancyRequest(models.Model):
         verbose_name="Дата обновления", null=False, auto_now=True
     )
 
+    objects = VacancyResponseManager()
+
     def __str__(self):
-        return f"VacancyRequest<{self.id}> - {self.user} - {self.vacancy}"
+        return f"VacancyResponse<{self.id}> - {self.user} - {self.vacancy}"
 
     class Meta:
-        verbose_name = "Заявка на вакансию"
-        verbose_name_plural = "Заявки на вакансии"
+        verbose_name = "Отклик на вакансию"
+        verbose_name_plural = "Отклик на вакансии"
         ordering = ["-datetime_created"]
