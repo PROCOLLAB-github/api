@@ -9,9 +9,9 @@ class UserFilter(filters.FilterSet):
     Adds filtering to DRF list retrieve views
 
     Parameters to filter by:
-        first_name (str), last_name (str), patronymic (str), specialty (str),
+        first_name (str), last_name (str), patronymic (str),
         city (str), region (str), organization (str), about_me__contains (str),
-        key_skills__contains (str), useful_to_project__contains (str), speciality (CustomUser.VERBOSE_USER_TYPES)
+        key_skills__contains (str), useful_to_project__contains (str)
 
     Examples:
         ?first_name=test equals to .filter(first_name='test')
