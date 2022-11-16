@@ -17,8 +17,15 @@ class InviteFilter(filters.FilterSet):
         ?is_active=false equals to .filter(is_active=False)
     """
 
-    is_active = filters.BooleanFilter(field_name="is_active")
+    def __init__(self, *args, **kwargs):
+        """if is_active filter is not passed, default to True"""
+        super().__init__(*args, **kwargs)
+        # if self.data.get("is_active") is None:
+        if self.data.get("user") is None:
+            # default filtering by current user
+            self.data = dict(self.data)
+            self.data["user"] = kwargs.get("request").user.id
 
     class Meta:
         model = Invite
-        fields = ("project", "is_active")
+        fields = ("project", "user")
