@@ -113,12 +113,14 @@ class UserListSerializer(serializers.ModelSerializer):
         model = CustomUser
         fields = [
             "id",
-            "user_type",
             "email",
+            "user_type",
             "first_name",
             "last_name",
             "patronymic",
             "avatar",
+            "speciality",
+            "birthday",
             "is_active",
             "password",
         ]
