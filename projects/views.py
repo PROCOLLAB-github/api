@@ -81,7 +81,13 @@ class ProjectCountView(generics.GenericAPIView):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
     def get(self, request):
-        return Response({"count": self.get_queryset().count()}, status=status.HTTP_200_OK)
+        return Response(
+            {
+                "all": self.get_queryset().count(),
+                "my": self.get_queryset().filter(leader_id=request.user.id).count(),
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class ProjectCollaborators(generics.GenericAPIView):
