@@ -97,8 +97,8 @@ jobs:
             username: ${{ secrets.SERVER_USER }}
             password: ${{ secrets.SERVER_PASSWORD }}
             command: |
-              cd /home/app/procollab-backend
-              docker-compose -f docker-compose.prod-ci.yml -p prod pull
+              cd /home/app/procollab-backend &&
+              docker-compose -f docker-compose.prod-ci.yml -p prod pull &&
               
               rm -f .env &&
               touch .env &&
@@ -120,6 +120,6 @@ jobs:
               echo "SELECTEL_CONTAINER_PASSWORD=${{ secrets.SELECTEL_CONTAINER_PASSWORD }}" >> .env &&
               echo "SELECTEL_CONTAINER_USERNAME=${{ secrets.SELECTEL_CONTAINER_USERNAME }}" >> .env &&
               
-              echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" >> .env 
+              echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" >> .env &&
               
               docker-compose -f docker-compose.prod-ci.yml -p prod up -d
