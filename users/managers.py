@@ -1,5 +1,6 @@
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import UserManager
+from django.db.models import Manager
 
 
 class CustomUserManager(UserManager):
@@ -32,6 +33,7 @@ class CustomUserManager(UserManager):
                 "member__preferred_industries",
                 "expert__preferred_industries",
                 "investor__preferred_industries",
+                "achievements",
             )
             .all()
         )
@@ -42,3 +44,19 @@ class CustomUserManager(UserManager):
         user.password = make_password(password)
         user.save()
         return user
+
+
+class UserAchievementManager(Manager):
+    def get_achievements_for_list_view(self):
+        return (
+            self.get_queryset()
+            .select_related("user")
+            .only("id", "title", "status", "user__id")
+        )
+
+    def get_achievements_for_detail_view(self):
+        return (
+            self.get_queryset()
+            .select_related("user")
+            .only("id", "title", "status", "user")
+        )

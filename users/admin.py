@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import CustomUser
+from .models import CustomUser, UserAchievement
 
 
 @admin.register(CustomUser)
@@ -91,3 +91,8 @@ class CustomUserAdmin(admin.ModelAdmin):
     def save_model(self, request, obj, form, change):
         obj.set_password(form.cleaned_data["password"])
         obj.save()
+
+
+@admin.register(UserAchievement)
+class UserAchievementAdmin(admin.ModelAdmin):
+    list_display = ("id", "title", "status", "user")
