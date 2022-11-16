@@ -1,5 +1,5 @@
 from django_filters import rest_framework as filters
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -71,6 +71,17 @@ class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Project.objects.get_projects_for_detail_view()
     serializer_class = ProjectDetailSerializer
     permission_classes = [IsProjectLeaderOrReadOnly]
+
+
+class ProjectCountView(generics.GenericAPIView):
+    queryset = Project.objects.get_projects_for_count_view()
+    serializer_class = ProjectListSerializer
+    # TODO: using this permission could result in a user not having verified email
+    #  creating a project; probably should make IsUserVerifiedOrReadOnly
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get(self, request):
+        return Response({"count": self.get_queryset().count()}, status=status.HTTP_200_OK)
 
 
 class ProjectCollaborators(generics.GenericAPIView):
