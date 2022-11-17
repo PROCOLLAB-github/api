@@ -89,10 +89,6 @@ class CustomUserAdmin(admin.ModelAdmin):
         "id",
     )
 
-    def save_model(self, request, obj, form, change):
-        obj.set_password(form.cleaned_data["password"])
-        obj.save()
-
 
 @admin.register(UserAchievement)
 class UserAchievementAdmin(admin.ModelAdmin):
