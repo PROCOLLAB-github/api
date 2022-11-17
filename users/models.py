@@ -64,15 +64,15 @@ class CustomUser(AbstractUser):
         default=get_default_user_type,
     )
 
-    patronymic = models.CharField(max_length=255, blank=True)
+    patronymic = models.CharField(max_length=255, null=True, blank=True)
     avatar = models.URLField(null=True, blank=True)
     birthday = models.DateField(null=True, blank=True)
-    about_me = models.TextField(blank=True)
-    status = models.CharField(max_length=255, blank=True)
-    region = models.CharField(max_length=255, blank=True)
-    city = models.CharField(max_length=255, blank=True)
-    organization = models.CharField(max_length=255, blank=True)
-    speciality = models.CharField(max_length=255, blank=True)
+    about_me = models.TextField(null=True, blank=True)
+    status = models.CharField(max_length=255, null=True, blank=True)
+    region = models.CharField(max_length=255, null=True, blank=True)
+    city = models.CharField(max_length=255, null=True, blank=True)
+    organization = models.CharField(max_length=255, null=True, blank=True)
+    speciality = models.CharField(max_length=255, null=True, blank=True)
 
     datetime_updated = models.DateTimeField(null=False, auto_now=True)
     datetime_created = models.DateTimeField(null=False, auto_now_add=True)
