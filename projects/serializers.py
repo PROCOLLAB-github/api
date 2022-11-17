@@ -135,6 +135,17 @@ class ProjectListSerializer(serializers.ModelSerializer):
     def is_valid(self, *, raise_exception=False):
         return super().is_valid(raise_exception=raise_exception)
 
+    def validate(self, data):
+        super().validate(data)
+        if not data.get("draft"):
+            error = {}
+            for key, value in data.items():
+                if value == "" or value is None:
+                    error[key] = "This field is required"
+            if error:
+                raise serializers.ValidationError(error)
+        return data
+
     def create(self, validated_data):
         industry = Industry.objects.get(id=validated_data.pop("industry"))
         leader = CustomUser.objects.get(id=validated_data.pop("leader"))
