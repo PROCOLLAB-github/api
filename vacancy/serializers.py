@@ -81,9 +81,24 @@ class VacancyResponseListSerializer(serializers.ModelSerializer):
             "user_id": {"write_only": True},
         }
 
+    def validate(self, attrs):
+        vacancy = attrs["vacancy"]
+        user = self.validate_user_exists(attrs["user_id"])
+
+        if VacancyResponse.objects.filter(vacancy=vacancy, user=user).exists():
+            raise serializers.ValidationError("Vacancy response already exists")
+        return attrs
+
+    def validate_user_exists(self, value):
+        try:
+            user = User.objects.get(pk=value)
+        except User.DoesNotExist:
+            raise serializers.ValidationError("User does not exist")
+        return user
+
     def create(self, validated_data):
         user_id = validated_data.pop("user_id")
-        user = User.objects.get(id=user_id)
+        user = User.objects.get(pk=user_id)
         vacancy_response = VacancyResponse.objects.create(user=user, **validated_data)
         return vacancy_response
 

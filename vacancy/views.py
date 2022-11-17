@@ -72,10 +72,12 @@ class VacancyResponseList(mixins.ListModelMixin, mixins.CreateModelMixin, Generi
 
     def post(self, request, vacancy_id):
         try:
-            request.data["user"] = self.request.user.id
+            request.data["user_id"] = self.request.user.id
             request.data["vacancy"] = vacancy_id
         except AttributeError:
             pass
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         return self.create(request, vacancy_id)
 
 
