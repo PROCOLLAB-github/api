@@ -1,8 +1,11 @@
+from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from projects.models import Project
 from users.serializers import UserDetailSerializer
 from vacancy.models import Vacancy, VacancyResponse
+
+User = get_user_model()
 
 
 class ProjectForVacancySerializer(serializers.ModelSerializer):
@@ -62,16 +65,27 @@ class ProjectVacancyListSerializer(serializers.ModelSerializer):
 class VacancyResponseListSerializer(serializers.ModelSerializer):
     is_approved = serializers.BooleanField(read_only=True)
     user = UserDetailSerializer(read_only=True)
+    user_id = serializers.IntegerField(write_only=True)
 
     class Meta:
         model = VacancyResponse
         fields = [
             "id",
             "user",
+            "user_id",
             "why_me",
             "is_approved",
             "vacancy",
         ]
+        extra_kwargs = {
+            "user_id": {"write_only": True},
+        }
+
+    def create(self, validated_data):
+        user_id = validated_data.pop("user_id")
+        user = User.objects.get(id=user_id)
+        vacancy_response = VacancyResponse.objects.create(user=user, **validated_data)
+        return vacancy_response
 
 
 class VacancyResponseDetailSerializer(serializers.ModelSerializer):

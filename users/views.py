@@ -35,7 +35,6 @@ from users.serializers import (
     UserListSerializer,
     VerifyEmailSerializer,
 )
-
 from .filters import UserFilter
 
 User = get_user_model()
@@ -77,10 +76,10 @@ class UserList(ListCreateAPIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
-class UserAdditionalRolesView(GenericAPIView):
+class UserAdditionalRolesView(APIView):
     permission_classes = [AllowAny]
 
-    def get(self, request, format=None):
+    def get(self, request):
         """
         Return a tuple of user additional roles types.
         """
@@ -105,19 +104,19 @@ class UserDetail(RetrieveUpdateDestroyAPIView):
     serializer_class = UserDetailSerializer
 
 
-class CurrentUser(APIView):
+class CurrentUser(GenericAPIView):
     queryset = User.objects.get_users_for_detail_view()
     permission_classes = [IsAuthenticated]
     serializer_class = UserDetailSerializer
 
     def get(self, request):
         user = request.user
-        serializer = UserDetailSerializer(user)
+        serializer = self.get_serializer(user)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class UserTypesView(APIView):
-    def get(self, request, format=None):
+    def get(self, request):
         """
         Return a list of tuples [(id, name), ..] of user types.
         """
