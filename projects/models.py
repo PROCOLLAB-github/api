@@ -30,11 +30,11 @@ class Project(models.Model):
         datetime_updated: A DateTimeField indicating date of update.
     """
 
-    name = models.CharField(max_length=256, null=False)
+    name = models.CharField(max_length=256, null=True, blank=True)
     description = models.TextField(blank=True)
     short_description = models.TextField(blank=True)
     region = models.CharField(max_length=256, blank=True)
-    step = models.PositiveSmallIntegerField(choices=VERBOSE_STEPS, null=False)
+    step = models.PositiveSmallIntegerField(choices=VERBOSE_STEPS, null=True, blank=True)
 
     industry = models.ForeignKey(
         Industry,

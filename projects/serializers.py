@@ -14,6 +14,7 @@ class AchievementListSerializer(serializers.ModelSerializer):
             "title",
             "status",
         ]
+        ref_name = "Projects"
 
 
 class ProjectAchievementListSerializer(serializers.ModelSerializer):
@@ -168,3 +169,4 @@ class AchievementDetailSerializer(serializers.ModelSerializer):
             "status",
             "projects",
         ]
+        ref_name = "Projects"

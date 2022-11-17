@@ -23,15 +23,18 @@ from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
 from core.permissions import IsOwnerOrReadOnly
 from core.utils import Email
-from users.helpers import VERBOSE_ROLE_TYPES
+from users.helpers import VERBOSE_ROLE_TYPES, VERBOSE_USER_TYPES
+from users.models import UserAchievement
+from users.permissions import IsAchievementOwnerOrReadOnly
 from users.serializers import (
+    AchievementDetailSerializer,
+    AchievementListSerializer,
     EmailSerializer,
     PasswordSerializer,
     UserDetailSerializer,
     UserListSerializer,
     VerifyEmailSerializer,
 )
-
 from .filters import UserFilter
 
 User = get_user_model()
@@ -73,10 +76,10 @@ class UserList(ListCreateAPIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
-class UserAdditionalRoles(GenericAPIView):
+class UserAdditionalRolesView(APIView):
     permission_classes = [AllowAny]
 
-    def get(self, request, format=None):
+    def get(self, request):
         """
         Return a tuple of user additional roles types.
         """
@@ -101,23 +104,23 @@ class UserDetail(RetrieveUpdateDestroyAPIView):
     serializer_class = UserDetailSerializer
 
 
-class CurrentUser(APIView):
+class CurrentUser(GenericAPIView):
     queryset = User.objects.get_users_for_detail_view()
     permission_classes = [IsAuthenticated]
     serializer_class = UserDetailSerializer
 
     def get(self, request):
         user = request.user
-        serializer = UserDetailSerializer(user)
+        serializer = self.get_serializer(user)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class UserTypes(APIView):
-    def get(self, request, format=None):
+class UserTypesView(APIView):
+    def get(self, request):
         """
         Return a list of tuples [(id, name), ..] of user types.
         """
-        return Response(User.VERBOSE_USER_TYPES)
+        return Response(VERBOSE_USER_TYPES)
 
 
 class VerifyEmail(GenericAPIView):
@@ -254,3 +257,15 @@ class ResetPassword(UpdateAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
                 message="Decode error",
             )
+
+
+class AchievementList(ListCreateAPIView):
+    queryset = UserAchievement.objects.get_achievements_for_list_view()
+    serializer_class = AchievementListSerializer
+    permission_classes = [IsAchievementOwnerOrReadOnly]
+
+
+class AchievementDetail(RetrieveUpdateDestroyAPIView):
+    queryset = UserAchievement.objects.get_achievements_for_detail_view()
+    serializer_class = AchievementDetailSerializer
+    permission_classes = [IsAchievementOwnerOrReadOnly]

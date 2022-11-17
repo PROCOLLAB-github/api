@@ -13,7 +13,7 @@ from users.helpers import (
     VERBOSE_ROLE_TYPES,
     VERBOSE_USER_TYPES,
 )
-from users.managers import CustomUserManager
+from users.managers import CustomUserManager, UserAchievementManager
 
 
 def get_default_user_type():
@@ -89,6 +89,36 @@ class CustomUser(AbstractUser):
 
     def __str__(self):
         return f"User<{self.id}> - {self.first_name} {self.last_name}"
+
+
+class UserAchievement(models.Model):
+    """
+    UserAchievement model
+
+     Attributes:
+        title: A CharField title of the achievement.
+        status: A CharField place or status of the achievement.
+        user: A ForeignKey referring to the CustomUser model.
+    """
+
+    title = models.CharField(max_length=256, null=False)
+    status = models.CharField(max_length=256, null=False)
+
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="achievements",
+    )
+
+    objects = UserAchievementManager()
+
+    def __str__(self):
+        return f"UserAchievement<{self.id}>"
+
+    class Meta:
+        verbose_name = "Достижение"
+        verbose_name_plural = "Достижения"
 
 
 class AbstractUserWithRole(models.Model):
