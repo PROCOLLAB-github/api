@@ -67,8 +67,8 @@ class UserDetailSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "patronymic",
-            "speciality",
             "birthday",
+            "speciality",
             "avatar",
             "city",
             "is_active",
@@ -110,13 +110,6 @@ class UserDetailSerializer(serializers.ModelSerializer):
                 continue
             setattr(instance, attr, value)
 
-        # if "achievements" in validated_data:
-        #     instance.achievements.all().delete()
-        #     instance.achievements.clear()
-        #     for achievement in validated_data["achievements"]:
-        #         obj = UserAchievement(**achievement)
-        #         obj.save()
-        #         instance.achievements.add(obj)
         instance.save()
 
         return instance
