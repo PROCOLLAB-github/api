@@ -25,6 +25,14 @@ ALLOWED_HOSTS = [
     "api.procollab.ru",
 ]
 
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",
+    "django.contrib.auth.hashers.Argon2PasswordHasher",
+    "django.contrib.auth.hashers.ScryptPasswordHasher",
+    "django.contrib.auth.hashers.BCryptPasswordHasher",
+]
+
 # Application definition
 if SENTRY_DSN:
     sentry_sdk.init(
