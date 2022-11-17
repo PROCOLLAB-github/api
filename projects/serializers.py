@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from industries.models import Industry
 from projects.models import Project, Achievement, Collaborator
+from projects.validators import validate_project
 from users.models import CustomUser
 from vacancy.serializers import ProjectVacancyListSerializer
 
@@ -66,6 +67,10 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
         source="collaborator_set", many=True, read_only=True
     )
     vacancies = ProjectVacancyListSerializer(many=True, read_only=True)
+
+    def validate(self, data):
+        super().validate(data)
+        return validate_project(data)
 
     class Meta:
         model = Project
@@ -134,6 +139,10 @@ class ProjectListSerializer(serializers.ModelSerializer):
 
     def is_valid(self, *, raise_exception=False):
         return super().is_valid(raise_exception=raise_exception)
+
+    def validate(self, data):
+        super().validate(data)
+        return validate_project(data)
 
     def create(self, validated_data):
         industry = Industry.objects.get(id=validated_data.pop("industry"))

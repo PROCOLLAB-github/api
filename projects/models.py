@@ -4,7 +4,7 @@ from django.db.models import UniqueConstraint
 
 from industries.models import Industry
 from projects.helpers import VERBOSE_STEPS
-from projects.managers import ProjectManager, AchievementManager
+from projects.managers import AchievementManager, ProjectManager
 from users.models import CustomUser
 
 User = get_user_model()
@@ -42,7 +42,6 @@ class Project(models.Model):
         null=True,
         related_name="projects",
     )
-    # TODO think about naming
     presentation_address = models.URLField(blank=True)
     image_address = models.URLField(blank=True)
 
@@ -133,6 +132,6 @@ class Collaborator(models.Model):
                     "project",
                     "user",
                 ],
-                name="unique_collaorator",
+                name="unique_collaborator",
             )
         ]
