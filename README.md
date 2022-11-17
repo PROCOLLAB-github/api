@@ -4,7 +4,7 @@
 
 ### Clone project
 
-📌 `git clone https://github.com/Yakser/procollab-backend.git`
+📌 `git clone https://github.com/procollab-github/api.git`
 
 ### Create virtual environment
 
@@ -31,4 +31,10 @@ To install pre-commit simply run inside the shell:
 
 ```bash
 pre-commit install
+```
+
+To run it on all of your files, do
+
+```bash
+pre-commit run --all-files
 ```

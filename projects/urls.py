@@ -1,5 +1,5 @@
 from django.urls import path
-from rest_framework.urlpatterns import format_suffix_patterns
+
 
 from projects.views import (
     ProjectDetail,
@@ -7,7 +7,8 @@ from projects.views import (
     ProjectSteps,
     AchievementList,
     AchievementDetail,
-    ProjectCollaborators
+    ProjectCollaborators,
+    ProjectCountView,
 )
 
 app_name = "projects"
@@ -16,9 +17,8 @@ urlpatterns = [
     path("", ProjectList.as_view()),
     path("<int:pk>/collaborators", ProjectCollaborators.as_view()),
     path("<int:pk>/", ProjectDetail.as_view()),
+    path("count/", ProjectCountView.as_view()),
     path("steps/", ProjectSteps.as_view()),
     path("achievements/", AchievementList.as_view()),
     path("achievements/<int:pk>/", AchievementDetail.as_view()),
 ]
-
-urlpatterns = format_suffix_patterns(urlpatterns)

@@ -1,11 +1,15 @@
 from django.contrib import admin
 
-from .models import CustomUser
+from .models import CustomUser, UserAchievement
 
 
 @admin.register(CustomUser)
 class CustomUserAdmin(admin.ModelAdmin):
     fieldsets = (
+        (
+            "Аккаунт",
+            {"fields": ("user_type",)},
+        ),
         (
             "Конфиденциальная информация",
             {
@@ -32,10 +36,7 @@ class CustomUserAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     "about_me",
-                    "key_skills",
-                    "useful_to_project",
                     "status",
-                    "speciality",
                     "city",
                     "region",
                     "organization",
@@ -86,3 +87,12 @@ class CustomUserAdmin(admin.ModelAdmin):
         "email",
         "id",
     )
+
+    def save_model(self, request, obj, form, change):
+        obj.set_password(form.cleaned_data["password"])
+        obj.save()
+
+
+@admin.register(UserAchievement)
+class UserAchievementAdmin(admin.ModelAdmin):
+    list_display = ("id", "title", "status", "user")

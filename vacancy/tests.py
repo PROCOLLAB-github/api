@@ -19,6 +19,7 @@ class VacancyTestCase(TestCase):
         self.user_list_view = UserList.as_view()
         self.vacancy_list_view = VacancyList.as_view()
         self.vacancy_detail_view = VacancyDetail.as_view()
+        self.user_project_owner = self.user_create()
         self.vacancy_create_data = {
             "role": "Test",
             "required_skills": "Test",
@@ -29,15 +30,15 @@ class VacancyTestCase(TestCase):
                 description="Test",
                 industry=Industry.objects.create(name="Test"),
                 step=1,
+                leader=self.user_project_owner,
             ).id,
         }
 
     def test_vacancy_creation(self):
-        user = self.user_create()
         request = self.factory.post("vacancy/", self.vacancy_create_data)
-        force_authenticate(request, user=user)
-
+        force_authenticate(request, user=self.user_project_owner)
         response = self.vacancy_list_view(request)
+
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data["role"], "Test")
         self.assertEqual(response.data["required_skills"], "Test")

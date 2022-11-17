@@ -1,40 +1,126 @@
-from rest_framework import generics, permissions
+from django_filters import rest_framework as filters
+from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.permissions import IsProjectLeaderOrReadOnly, IsStaffOrReadOnly
+from core.permissions import IsStaffOrReadOnly
+from projects.filters import ProjectFilter
 from projects.helpers import VERBOSE_STEPS
 from projects.models import Project, Achievement
-from projects.serializers import ProjectSerializer, AchievementSerializer, ProjectCollaboratorsSerializer
+from projects.permissions import IsProjectLeaderOrReadOnly
+from projects.serializers import (
+    ProjectDetailSerializer,
+    AchievementListSerializer,
+    ProjectListSerializer,
+    AchievementDetailSerializer,
+    ProjectCollaboratorSerializer,
+)
 
 
 class ProjectList(generics.ListCreateAPIView):
-    queryset = Project.objects.all()
-    serializer_class = ProjectSerializer
+    queryset = Project.objects.get_projects_for_list_view()
+    serializer_class = ProjectListSerializer
+    # TODO: using this permission could result in a user not having verified email
+    #  creating a project; probably should make IsUserVerifiedOrReadOnly
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    filter_backends = (filters.DjangoFilterBackend,)
+    filterset_class = ProjectFilter
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        # Doesn't work if not explicitly set like this
+        serializer.validated_data["leader"] = request.user.id
+        serializer.validated_data["industry"] = request.data["industry"]
+
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=201, headers=headers)
+
+    def post(self, request, *args, **kwargs):
+        """
+        Создание проекта
+
+        ---
+
+        leader подставляется автоматически
+
+
+        Args:
+            request:
+            [name] - название проекта
+            [description] - описание проекта
+            [industry] - id отрасли
+            [step] - этап проекта
+            [image_address] - адрес изображения
+            [presentation_address] - адрес презентации
+            [short_description] - краткое описание проекта
+            [draft] - черновик проекта
+
+            *args:
+            **kwargs:
+
+        Returns:
+            ProjectListSerializer
+
+        """
+        return self.create(request, *args, **kwargs)
 
 
 class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Project.objects.all()
-    serializer_class = ProjectSerializer
+    queryset = Project.objects.get_projects_for_detail_view()
+    serializer_class = ProjectDetailSerializer
+    permission_classes = [IsProjectLeaderOrReadOnly]
+
+
+class ProjectCountView(generics.GenericAPIView):
+    queryset = Project.objects.get_projects_for_count_view()
+    serializer_class = ProjectListSerializer
+    # TODO: using this permission could result in a user not having verified email
+    #  creating a project; probably should make IsUserVerifiedOrReadOnly
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get(self, request):
+        return Response(
+            {
+                "all": self.get_queryset().count(),
+                "my": self.get_queryset().filter(leader_id=request.user.id).count(),
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class ProjectCollaborators(generics.GenericAPIView):
     """
-        Project collaborator delete view
+    Project collaborator retrieve/add/delete view
     """
-    # maybe should get/add collaborators here also? (e.g. retrieve/create, get/post methods)
 
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [IsProjectLeaderOrReadOnly]
     queryset = Project.objects.all()
-    serializer_class = ProjectCollaboratorsSerializer
+    serializer_class = ProjectCollaboratorSerializer
 
-    def delete(self, request, pk: int):
+    def get(self, request, pk: int):
+        """retrieve collaborators for given project"""
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
+    def post(self, request, pk: int):
+        """add collaborators to the project"""
         m2m_manager = self.get_object().collaborators
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        collaborators = serializer.validated_data['collaborators']
+        collaborators = serializer.validated_data["collaborators"]
+        for user in collaborators:
+            m2m_manager.add(user)
+        return Response(status=200)
+
+    def delete(self, request, pk: int):
+        """delete collaborators from the project"""
+        m2m_manager = self.get_object().collaborators
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        collaborators = serializer.validated_data["collaborators"]
         for user in collaborators:
             # note: doesn't raise an error when we try to delete someone who isn't a collaborator
             m2m_manager.remove(user)
@@ -52,12 +138,12 @@ class ProjectSteps(APIView):
 
 
 class AchievementList(generics.ListCreateAPIView):
-    queryset = Achievement.objects.all()
-    serializer_class = AchievementSerializer
-    permission_classes = [IsProjectLeaderOrReadOnly]
+    queryset = Achievement.objects.get_achievements_for_list_view()
+    serializer_class = AchievementListSerializer
+    permission_classes = [IsStaffOrReadOnly]
 
 
 class AchievementDetail(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Achievement.objects.all()
-    serializer_class = AchievementSerializer
-    permission_classes = [IsProjectLeaderOrReadOnly]
+    queryset = Achievement.objects.get_achievements_for_detail_view()
+    serializer_class = AchievementDetailSerializer
+    permission_classes = [IsStaffOrReadOnly]
