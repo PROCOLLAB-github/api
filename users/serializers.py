@@ -68,6 +68,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
             "last_name",
             "patronymic",
             "speciality",
+            "birthday",
             "avatar",
             "city",
             "is_active",

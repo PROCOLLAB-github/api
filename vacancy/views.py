@@ -67,16 +67,18 @@ class VacancyResponseList(mixins.ListModelMixin, mixins.CreateModelMixin, Generi
 
     def get_queryset(self):
         return VacancyResponse.objects.get_vacancy_response_for_list_view().filter(
-            vacancy__id=self.kwargs["pk"]
+            vacancy__id=self.kwargs["vacancy_id"]
         )
 
-    def post(self, request, pk):
+    def post(self, request, vacancy_id):
         try:
-            request.data["user"] = self.request.user.id
-            request.data["vacancy"] = pk
+            request.data["user_id"] = self.request.user.id
+            request.data["vacancy"] = vacancy_id
         except AttributeError:
             pass
-        return self.create(request, pk)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return self.create(request, vacancy_id)
 
 
 class VacancyResponseDetail(generics.RetrieveUpdateDestroyAPIView):
