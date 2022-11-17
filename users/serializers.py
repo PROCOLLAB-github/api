@@ -51,12 +51,18 @@ class InvestorSerializer(serializers.ModelSerializer):
         ]
 
 
+class CustomDateFieldSerializer(serializers.Field):
+    def to_representation(self, value):
+        return value.strftime("%d-%m-%Y")
+
+
 class UserDetailSerializer(serializers.ModelSerializer):
     member = MemberSerializer(required=False)
     investor = InvestorSerializer(required=False)
     expert = ExpertSerializer(required=False)
     mentor = MentorSerializer(required=False)
     achievements = AchievementListSerializer(required=False, many=True)
+    birthday = CustomDateFieldSerializer()
 
     class Meta:
         model = CustomUser
@@ -116,6 +122,8 @@ class UserDetailSerializer(serializers.ModelSerializer):
 
 
 class UserListSerializer(serializers.ModelSerializer):
+    birthday = CustomDateFieldSerializer()
+
     def create(self, validated_data):
         user = CustomUser(**validated_data)
         user.set_password(validated_data["password"])
