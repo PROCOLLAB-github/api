@@ -23,7 +23,7 @@ from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
 from core.permissions import IsOwnerOrReadOnly
 from core.utils import Email
-from users.helpers import VERBOSE_ROLE_TYPES
+from users.helpers import VERBOSE_ROLE_TYPES, VERBOSE_USER_TYPES
 from users.models import UserAchievement
 from users.permissions import IsAchievementOwnerOrReadOnly
 from users.serializers import (
@@ -77,7 +77,7 @@ class UserList(ListCreateAPIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
-class UserAdditionalRoles(GenericAPIView):
+class UserAdditionalRolesView(GenericAPIView):
     permission_classes = [AllowAny]
 
     def get(self, request, format=None):
@@ -116,12 +116,12 @@ class CurrentUser(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class UserTypes(APIView):
+class UserTypesView(APIView):
     def get(self, request, format=None):
         """
         Return a list of tuples [(id, name), ..] of user types.
         """
-        return Response(User.VERBOSE_USER_TYPES)
+        return Response(VERBOSE_USER_TYPES)
 
 
 class VerifyEmail(GenericAPIView):
