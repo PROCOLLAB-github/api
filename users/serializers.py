@@ -12,6 +12,7 @@ class AchievementListSerializer(serializers.ModelSerializer):
             "title",
             "status",
         ]
+        ref_name = "Users"
 
 
 class MemberSerializer(serializers.ModelSerializer):
@@ -155,6 +156,7 @@ class AchievementDetailSerializer(serializers.ModelSerializer):
             "status",
             "user",
         ]
+        ref_name = "Users"
 
 
 class EmailSerializer(serializers.Serializer):
