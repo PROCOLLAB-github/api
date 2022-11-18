@@ -47,40 +47,7 @@ class UserList(ListCreateAPIView):
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = UserFilter
 
-    def create_user(self, request, *args, **kwargs):
-        data = request.data
-        bday = None
-        if data.get("birthday"):
-            numbers = data.get("birthday").split(".")
-            year = int(numbers[2])
-            month = int(numbers[1])
-            day = int(numbers[0])
-            bday = datetime(year, month, day)
-        u = User.objects.create(
-            email=data["email"],
-            first_name=data["name"],
-            last_name=data["surname"],
-            patronymic=data["patronymic"],
-            birthday=bday,
-            avatar=data["avatar"],
-            about_me=data["about_me"],
-            speciality=data["speciality"],
-            status=data["status"],
-            city=data["city"],
-            region=data["region"],
-            password=data["hash"],
-            is_active=True,
-        )
-        u.member.key_skills = ", ".join(data["key_skills"])
-        u.save()
-        for a in data["achievements"]:
-            UserAchievement.objects.create(title=a["title"], status=a["place"], user=u)
-        # 2 + achievement_count db operations per user
-        return Response(status=269)
-
     def post(self, request, *args, **kwargs):
-        if request.headers.get("Secret-Create") == "yep":
-            return self.create_user(request, *args, **kwargs)
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
