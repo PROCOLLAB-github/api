@@ -264,6 +264,26 @@ class AchievementList(ListCreateAPIView):
     serializer_class = AchievementListSerializer
     permission_classes = [IsAchievementOwnerOrReadOnly]
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.validated_data["user"] = request.user
+        # warning for someone who tries to set user variable (the user will always be yourself anyway)
+        if (
+            request.data.get("user") is not None
+            and request.data.get("user") != request.user.id
+        ):
+            return Response(
+                {
+                    "error": "you can't edit USER field for this view since "
+                    "you can't create achievements for other people"
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
 
 class AchievementDetail(RetrieveUpdateDestroyAPIView):
     queryset = UserAchievement.objects.get_achievements_for_detail_view()

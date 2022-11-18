@@ -7,15 +7,22 @@ from .models import CustomUser, Expert, Investor, Member, Mentor, UserAchievemen
 class AchievementListSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserAchievement
-        fields = [
-            "id",
-            "title",
-            "status",
-        ]
+        fields = ["id", "title", "status"]
+        # extra_kwargs = {"user": {"write_only": True}}
         ref_name = "Users"
 
 
+class KeySkillsField(serializers.Field):
+    def to_representation(self, value):
+        return [skill.strip() for skill in value.split(",") if skill.strip()]
+
+    def to_internal_value(self, data):
+        return ",".join(data)
+
+
 class MemberSerializer(serializers.ModelSerializer):
+    key_skills = KeySkillsField()
+
     class Meta:
         model = Member
         fields = [
