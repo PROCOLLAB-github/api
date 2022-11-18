@@ -15,7 +15,17 @@ class AchievementListSerializer(serializers.ModelSerializer):
         ref_name = "Users"
 
 
+class KeySkillsField(serializers.Field):
+    def to_representation(self, value):
+        return [skill.strip() for skill in value.split(",") if skill.strip()]
+
+    def to_internal_value(self, data):
+        return ",".join(data)
+
+
 class MemberSerializer(serializers.ModelSerializer):
+    key_skills = KeySkillsField()
+
     class Meta:
         model = Member
         fields = [

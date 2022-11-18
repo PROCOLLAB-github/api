@@ -82,10 +82,14 @@ class CustomUser(AbstractUser):
 
     objects = CustomUserManager()
 
-    def get_member_key_skills(self) -> str:
+    def get_member_key_skills(self) -> list[str]:
         if self.user_type == CustomUser.MEMBER:
-            return str(self.member.key_skills)
-        return ""
+            return [
+                skill.strip()
+                for skill in self.member.key_skills.split(",")
+                if skill.strip()
+            ]
+        return []
 
     def __str__(self):
         return f"User<{self.id}> - {self.first_name} {self.last_name}"
@@ -169,6 +173,9 @@ class Member(models.Model):
     preferred_industries = models.ManyToManyField(
         Industry, blank=True, related_name="members"
     )
+
+    def get_key_skills(self) -> list[str]:
+        return [skill.strip() for skill in self.key_skills.split(",") if skill.strip()]
 
     def __str__(self):
         return f"Member<{self.id}> - {self.user.first_name} {self.user.last_name}"
