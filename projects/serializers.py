@@ -140,14 +140,6 @@ class ProjectListSerializer(serializers.ModelSerializer):
         super().validate(data)
         return validate_project(data)
 
-    # def create(self, validated_data):
-    #     project = Project.objects.create(
-    #         **validated_data,
-    #         industry_id=validated_data.pop("industry"),
-    #         leader_id=validated_data.pop("leader"),
-    #     )
-    #     return project
-
 
 class ProjectIndustrySerializer(serializers.ModelSerializer):
     id = serializers.IntegerField()
