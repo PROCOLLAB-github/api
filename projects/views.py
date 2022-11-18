@@ -31,7 +31,6 @@ class ProjectList(generics.ListCreateAPIView):
         serializer.is_valid(raise_exception=True)
         # Doesn't work if not explicitly set like this
         serializer.validated_data["leader"] = request.user.id
-        serializer.validated_data["industry"] = request.data["industry"]
 
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)

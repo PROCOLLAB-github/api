@@ -7,8 +7,8 @@ from .models import CustomUser, Expert, Investor, Member, Mentor, UserAchievemen
 class AchievementListSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserAchievement
-        fields = ["id", "title", "status", "user"]
-        extra_kwargs = {"user": {"write_only": True}}
+        fields = ["id", "title", "status"]
+        # extra_kwargs = {"user": {"write_only": True}}
         ref_name = "Users"
 
 
