@@ -7,7 +7,7 @@ import django.db.models.deletion
 
 def set_userachievement_user_to_not_null(apps, schema_editor):
     UserAchievement = apps.get_model('users', 'UserAchievement')
-    User = apps.get_model('users', 'User')
+    User = apps.get_model('users', 'CustomUser')
     legend = User.objects.all()[0]
     for u in UserAchievement.objects.filter(user=None):
         u.user = legend
