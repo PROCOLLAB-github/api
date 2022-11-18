@@ -31,24 +31,24 @@ class Project(models.Model):
     """
 
     name = models.CharField(max_length=256, null=True, blank=True)
-    description = models.TextField(blank=True)
-    short_description = models.TextField(blank=True)
-    region = models.CharField(max_length=256, blank=True)
+    description = models.TextField(null=True, blank=True)
+    short_description = models.TextField(null=True, blank=True)
+    region = models.CharField(max_length=256, null=True, blank=True)
     step = models.PositiveSmallIntegerField(choices=VERBOSE_STEPS, null=True, blank=True)
 
     industry = models.ForeignKey(
         Industry,
         on_delete=models.SET_NULL,
         null=True,
+        blank=True,
         related_name="projects",
     )
-    presentation_address = models.URLField(blank=True)
-    image_address = models.URLField(blank=True)
+    presentation_address = models.URLField(null=True, blank=True)
+    image_address = models.URLField(null=True, blank=True)
 
     leader = models.ForeignKey(
         User,
-        on_delete=models.SET_NULL,
-        null=True,
+        on_delete=models.CASCADE,
         related_name="leaders_projects",  # projects in which this user is the leader
     )
 
@@ -85,10 +85,7 @@ class Achievement(models.Model):
     status = models.CharField(max_length=256, null=False)
 
     project = models.ForeignKey(
-        Project,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name="achievements",
+        Project, on_delete=models.SET_NULL, null=True, related_name="achievements"
     )
 
     objects = AchievementManager()

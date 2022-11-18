@@ -3,7 +3,6 @@ from rest_framework import serializers
 from industries.models import Industry
 from projects.models import Project, Achievement, Collaborator
 from projects.validators import validate_project
-from users.models import CustomUser
 from vacancy.serializers import ProjectVacancyListSerializer
 
 
@@ -95,10 +94,6 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
 
 
 class ProjectListSerializer(serializers.ModelSerializer):
-    def __init__(self, *args, **kwargs):
-        # might be unnecessary
-        self.max_collaborator_count = kwargs.pop("max_collaborator_count", 4)
-        super().__init__(*args, **kwargs)
 
     collaborators = serializers.SerializerMethodField(method_name="get_collaborators")
     collaborator_count = serializers.SerializerMethodField(
@@ -111,8 +106,9 @@ class ProjectListSerializer(serializers.ModelSerializer):
         return len(obj.collaborator_set.all())
 
     def get_collaborators(self, obj):
+        max_collaborator_count = 4
         return CollaboratorSerializer(
-            instance=obj.collaborator_set.all()[: self.max_collaborator_count], many=True
+            instance=obj.collaborator_set.all()[:max_collaborator_count], many=True
         ).data
 
     class Meta:
@@ -144,15 +140,13 @@ class ProjectListSerializer(serializers.ModelSerializer):
         super().validate(data)
         return validate_project(data)
 
-    def create(self, validated_data):
-        industry = Industry.objects.get(id=validated_data.pop("industry"))
-        leader = CustomUser.objects.get(id=validated_data.pop("leader"))
-        project = Project.objects.create(
-            **validated_data,
-            industry=industry,
-            leader=leader,
-        )
-        return project
+    # def create(self, validated_data):
+    #     project = Project.objects.create(
+    #         **validated_data,
+    #         industry_id=validated_data.pop("industry"),
+    #         leader_id=validated_data.pop("leader"),
+    #     )
+    #     return project
 
 
 class ProjectIndustrySerializer(serializers.ModelSerializer):
