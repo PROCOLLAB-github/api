@@ -3,6 +3,14 @@ from django_filters import rest_framework as filters
 from vacancy.models import Vacancy
 
 
+def project_id_filter(queryset, name, value):
+    return queryset.filter(
+        **{
+            "project_id": value[0],
+        }
+    )
+
+
 class VacancyFilter(filters.FilterSet):
     """Filter for Vacancies
 
@@ -25,6 +33,7 @@ class VacancyFilter(filters.FilterSet):
             self.data["is_active"] = True
 
     is_active = filters.BooleanFilter(field_name="is_active")
+    project = filters.Filter(method=project_id_filter)
 
     class Meta:
         model = Vacancy
