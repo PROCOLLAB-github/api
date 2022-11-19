@@ -111,8 +111,8 @@ class UserDetail(RetrieveUpdateDestroyAPIView):
                 achievement_id = i.get("id")
                 if achievement_id is None:
                     UserAchievement.objects.create(
-                        title=request.data["title"],
-                        status=request.data["status"],
+                        title=i["title"],
+                        status=i["status"],
                         user_id=pk,
                     )
                     continue
