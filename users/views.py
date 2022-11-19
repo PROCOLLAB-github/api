@@ -1,6 +1,7 @@
 from datetime import datetime
 
 import jwt
+from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.sites.shortcuts import get_current_site
@@ -23,6 +24,7 @@ from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
 from core.permissions import IsOwnerOrReadOnly
 from core.utils import Email
+from projects.serializers import ProjectListSerializer
 from users.helpers import VERBOSE_ROLE_TYPES, VERBOSE_USER_TYPES
 from users.models import UserAchievement
 from users.permissions import IsAchievementOwnerOrReadOnly
@@ -35,9 +37,11 @@ from users.serializers import (
     UserListSerializer,
     VerifyEmailSerializer,
 )
+
 from .filters import UserFilter
 
 User = get_user_model()
+Project = apps.get_model("projects", "Project")
 
 
 class UserList(ListCreateAPIView):
@@ -309,3 +313,16 @@ class AchievementDetail(RetrieveUpdateDestroyAPIView):
     queryset = UserAchievement.objects.get_achievements_for_detail_view()
     serializer_class = AchievementDetailSerializer
     permission_classes = [IsAchievementOwnerOrReadOnly]
+
+
+class UserDraftsList(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        serializer = ProjectListSerializer(
+            Project.objects.get_projects_for_user_drafts_view().filter(
+                leader=self.request.user
+            ),
+            many=True,
+        )
+        return Response(serializer.data, status=status.HTTP_200_OK)

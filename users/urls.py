@@ -9,6 +9,7 @@ from users.views import (
     SpecialistsList,
     UserAdditionalRolesView,
     UserDetail,
+    UserDraftsList,
     UserList,
     UserTypesView,
     VerifyEmail,
@@ -21,6 +22,7 @@ urlpatterns = [
         "specialists/", SpecialistsList.as_view()
     ),  # this url actually returns  mentors, experts and investors
     path("users/", UserList.as_view()),
+    path("users/drafts/", UserDraftsList.as_view()),
     path("users/roles/", UserAdditionalRolesView.as_view()),
     path("users/types/", UserTypesView.as_view()),
     path("users/<int:pk>/", UserDetail.as_view()),
