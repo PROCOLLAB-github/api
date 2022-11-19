@@ -124,7 +124,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
 
 class UserListSerializer(serializers.ModelSerializer):
     member = MemberSerializer(required=False)
-    key_skills = KeySkillsField()
+    key_skills = KeySkillsField(required=False)
 
     def create(self, validated_data):
         user = CustomUser(**validated_data)
