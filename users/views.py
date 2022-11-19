@@ -103,6 +103,17 @@ class UserDetail(RetrieveUpdateDestroyAPIView):
     permission_classes = [IsOwnerOrReadOnly, IsAuthenticated]
     serializer_class = UserDetailSerializer
 
+    def put(self, request, pk):
+        if request.data.get("achievements") is not None:
+            achievements = request.data.get("achievements")
+            for i in achievements:
+                instance = UserAchievement.objects.get(id=i["id"])
+                i["user"] = pk
+                serializer = AchievementDetailSerializer(instance, data=i, partial=False)
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+        return Response(status=status.HTTP_200_OK)
+
 
 class CurrentUser(GenericAPIView):
     queryset = User.objects.get_users_for_detail_view()
