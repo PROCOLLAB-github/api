@@ -104,10 +104,19 @@ class UserDetail(RetrieveUpdateDestroyAPIView):
     serializer_class = UserDetailSerializer
 
     def put(self, request, pk):
+        # bootleg version of updating achievements via user
         if request.data.get("achievements") is not None:
             achievements = request.data.get("achievements")
             for i in achievements:
-                instance = UserAchievement.objects.get(id=i["id"])
+                achievement_id = i.get("id")
+                if achievement_id is None:
+                    UserAchievement.objects.create(
+                        title=request.data["title"],
+                        status=request.data["status"],
+                        user_id=pk,
+                    )
+                    continue
+                instance = UserAchievement.objects.get(id=achievement_id)
                 i["user"] = pk
                 serializer = AchievementDetailSerializer(instance, data=i, partial=False)
                 serializer.is_valid(raise_exception=True)
