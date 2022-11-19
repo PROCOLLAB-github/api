@@ -32,7 +32,7 @@ class Project(models.Model):
 
     name = models.CharField(max_length=256, null=True, blank=True)
     description = models.TextField(null=True, blank=True)
-    short_description = models.TextField(null=True, blank=True)
+    # short_description = models.TextField(null=True, blank=True)
     region = models.CharField(max_length=256, null=True, blank=True)
     step = models.PositiveSmallIntegerField(choices=VERBOSE_STEPS, null=True, blank=True)
 
@@ -62,6 +62,9 @@ class Project(models.Model):
     )
 
     objects = ProjectManager()
+
+    def get_short_description(self):
+        return self.description[:30]
 
     def __str__(self):
         return f"Project<{self.id}> - {self.name}"
