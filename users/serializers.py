@@ -8,7 +8,6 @@ class AchievementListSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserAchievement
         fields = ["id", "title", "status"]
-        # extra_kwargs = {"user": {"write_only": True}}
         ref_name = "Users"
 
 
@@ -76,6 +75,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
             "patronymic",
             "birthday",
             "speciality",
+            "about_me",
             "avatar",
             "city",
             "is_active",
