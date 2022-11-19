@@ -65,6 +65,7 @@ class CustomUser(AbstractUser):
     )
 
     patronymic = models.CharField(max_length=255, null=True, blank=True)
+    key_skills = models.CharField(max_length=512, null=True, blank=True)
     avatar = models.URLField(null=True, blank=True)
     birthday = models.DateField(null=True, blank=True)
     about_me = models.TextField(null=True, blank=True)
@@ -82,14 +83,8 @@ class CustomUser(AbstractUser):
 
     objects = CustomUserManager()
 
-    def get_member_key_skills(self) -> list[str]:
-        if self.user_type == CustomUser.MEMBER:
-            return [
-                skill.strip()
-                for skill in self.member.key_skills.split(",")
-                if skill.strip()
-            ]
-        return []
+    def get_key_skills(self) -> list[str]:
+        return [skill.strip() for skill in self.key_skills.split(",") if skill.strip()]
 
     def __str__(self):
         return f"User<{self.id}> - {self.first_name} {self.last_name}"
@@ -157,7 +152,6 @@ class Member(models.Model):
 
     Attributes:
         user: ForeignKey instance of the CustomUser model.
-        key_skills: CharField instance indicating member key skills.
         useful_to_project: TextField instance indicates actions useful
                            for the development and maintenance of the project.
         preferred_industries: ManyToManyField indicating user industries preferred for work.
@@ -167,14 +161,10 @@ class Member(models.Model):
         CustomUser, on_delete=models.CASCADE, related_name="member"
     )
 
-    key_skills = models.CharField(max_length=512, blank=True)
     useful_to_project = models.TextField(blank=True)
     preferred_industries = models.ManyToManyField(
         Industry, blank=True, related_name="members"
     )
-
-    def get_key_skills(self) -> list[str]:
-        return [skill.strip() for skill in self.key_skills.split(",") if skill.strip()]
 
     def __str__(self):
         return f"Member<{self.id}> - {self.user.first_name} {self.user.last_name}"

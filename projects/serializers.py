@@ -34,11 +34,12 @@ class CollaboratorSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(source="user.first_name")
     last_name = serializers.CharField(source="user.last_name")
     avatar = serializers.CharField(source="user.avatar")
-    member_key_skills = serializers.SerializerMethodField()
+    key_skills = serializers.CharField(source="user.key_skills")
+    # member_key_skills = serializers.SerializerMethodField()
 
-    @classmethod
-    def get_member_key_skills(cls, collaborator):
-        return collaborator.user.get_member_key_skills()
+    # @classmethod
+    # def get_member_key_skills(cls, collaborator):
+    #     return collaborator.user.get_member_key_skills()
 
     class Meta:
         model = Collaborator
@@ -47,7 +48,8 @@ class CollaboratorSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "role",
-            "member_key_skills",
+            "key_skills",
+            # "member_key_skills",
             "avatar",
         ]
 

@@ -20,12 +20,9 @@ class KeySkillsField(serializers.Field):
 
 
 class MemberSerializer(serializers.ModelSerializer):
-    key_skills = KeySkillsField()
-
     class Meta:
         model = Member
         fields = [
-            "key_skills",
             "useful_to_project",
         ]
 
@@ -63,6 +60,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
     expert = ExpertSerializer(required=False)
     mentor = MentorSerializer(required=False)
     achievements = AchievementListSerializer(required=False, many=True)
+    key_skills = KeySkillsField(required=False)
 
     class Meta:
         model = CustomUser
@@ -73,6 +71,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "patronymic",
+            "key_skills",
             "birthday",
             "speciality",
             "about_me",
@@ -87,6 +86,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
         ]
 
     def update(self, instance, validated_data):
+
         if instance.user_type == CustomUser.MEMBER:
             instance.member.__dict__.update(
                 validated_data.get("member", model_to_dict(instance.member))
@@ -108,13 +108,13 @@ class UserDetailSerializer(serializers.ModelSerializer):
             )
             instance.mentor.save()
 
-        # maybe it's better to write ALLOWED_UPDATABLE_FIELDS = ["first_name", "last_name", ...]
         IMMUTABLE_FIELDS = ("email", "user_type", "is_active", "password")
         USER_TYPE_FIELDS = ("member", "investor", "expert", "mentor")
         RELATED_FIELDS = ("achievements",)
         for attr, value in validated_data.items():
             if attr in IMMUTABLE_FIELDS + USER_TYPE_FIELDS + RELATED_FIELDS:
                 continue
+            print(attr, value)
             setattr(instance, attr, value)
 
         instance.save()
@@ -124,6 +124,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
 
 class UserListSerializer(serializers.ModelSerializer):
     member = MemberSerializer(required=False)
+    key_skills = KeySkillsField(required=False)
 
     def create(self, validated_data):
         user = CustomUser(**validated_data)
@@ -141,6 +142,7 @@ class UserListSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "patronymic",
+            "key_skills",
             "avatar",
             "speciality",
             "birthday",

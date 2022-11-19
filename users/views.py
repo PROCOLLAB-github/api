@@ -121,7 +121,7 @@ class UserDetail(RetrieveUpdateDestroyAPIView):
                 serializer = AchievementDetailSerializer(instance, data=i, partial=False)
                 serializer.is_valid(raise_exception=True)
                 serializer.save()
-        return Response(status=status.HTTP_200_OK)
+        return super().put(request, pk)
 
 
 class CurrentUser(GenericAPIView):
