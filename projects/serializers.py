@@ -64,7 +64,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     )
     vacancies = ProjectVacancyListSerializer(many=True, read_only=True)
     short_description = serializers.SerializerMethodField()
-    industry_id = serializers.IntegerField(write_only=True, required=False)
+    industry_id = serializers.IntegerField(required=False)
 
     def validate(self, data):
         super().validate(data)
@@ -90,6 +90,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "region",
             "step",
             "industry",
+            "industry_id",
             "presentation_address",
             "image_address",
             "collaborators",
@@ -98,7 +99,6 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "vacancies",
             "datetime_created",
             "datetime_updated",
-            "industry_id",
         ]
         read_only_fields = ["leader"]
 
