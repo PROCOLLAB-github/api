@@ -98,6 +98,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "datetime_created",
             "datetime_updated",
         ]
+        read_only_fields = ["leader"]
 
 
 class ProjectListSerializer(serializers.ModelSerializer):
