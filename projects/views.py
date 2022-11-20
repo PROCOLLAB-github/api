@@ -64,6 +64,7 @@ class ProjectList(generics.ListCreateAPIView):
             ProjectListSerializer
 
         """
+        # set leader to current user
         return self.create(request, *args, **kwargs)
 
 
@@ -72,24 +73,24 @@ class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ProjectDetailSerializer
     permission_classes = [IsProjectLeaderOrReadOnly]
 
-    def put(self, request, pk):
+    def put(self, request, pk, **kwargs):
         # bootleg version of updating achievements via project
         if request.data.get("achievements") is not None:
             achievements = request.data.get("achievements")
-            for i in achievements:
-                achievement_id = i.get("id")
+            for achievement in achievements:
+                achievement_id = achievement.get("id")
                 if achievement_id is None:
                     # creating
-                    i["project"] = pk
-                    serializer = ProjectAchievementListSerializer(data=i)
+                    achievement["project"] = pk
+                    serializer = ProjectAchievementListSerializer(data=achievement)
                     serializer.is_valid(raise_exception=True)
                     serializer.save()
                 else:
                     # changing
                     instance = Achievement.objects.get(id=achievement_id)
-                    i["project"] = pk
+                    achievement["project"] = pk
                     serializer = AchievementDetailSerializer(
-                        instance, data=i, partial=False
+                        instance, data=achievement, partial=False
                     )
                     serializer.is_valid(raise_exception=True)
                     serializer.save()

@@ -73,6 +73,11 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     def get_short_description(cls, project):
         return project.get_short_description()
 
+    def update(self, instance, validated_data):
+        instance = super().update(instance, validated_data)
+        instance.save()
+        return instance
+
     class Meta:
         model = Project
         fields = [
