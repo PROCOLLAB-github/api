@@ -15,7 +15,6 @@ class ProjectForVacancySerializer(serializers.ModelSerializer):
             "id",
             "name",
             "description",
-            "short_description",
             "image_address",
         ]
 
