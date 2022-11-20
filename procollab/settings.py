@@ -90,6 +90,9 @@ MIDDLEWARE = [
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:4200",
     "http://127.0.0.1:4200",
+    "https://api.procollab.ru",
+    "https://procollab-pr-*.onrender.com.",
+    "http://localhost:8000",
 ]
 
 INTERNAL_IPS = [
