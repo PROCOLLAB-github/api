@@ -1,3 +1,5 @@
+from typing import Optional
+
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.db.models import UniqueConstraint
@@ -63,8 +65,8 @@ class Project(models.Model):
 
     objects = ProjectManager()
 
-    def get_short_description(self):
-        return self.description[:30]
+    def get_short_description(self) -> Optional[str]:
+        return self.description[:30] if self.description else None
 
     def __str__(self):
         return f"Project<{self.id}> - {self.name}"
