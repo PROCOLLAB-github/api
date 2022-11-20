@@ -44,7 +44,6 @@ class CollaboratorSerializer(serializers.ModelSerializer):
             "last_name",
             "role",
             "key_skills",
-            # "member_key_skills",
             "avatar",
         ]
 
