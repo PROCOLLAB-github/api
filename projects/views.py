@@ -14,6 +14,7 @@ from projects.serializers import (
     ProjectListSerializer,
     AchievementDetailSerializer,
     ProjectCollaboratorSerializer,
+    ProjectAchievementListSerializer,
 )
 
 
@@ -78,12 +79,13 @@ class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
             for i in achievements:
                 achievement_id = i.get("id")
                 if achievement_id is None:
-                    Achievement.objects.create(
-                        title=i["title"],
-                        status=i["status"],
-                        project_id=pk,
-                    )
+                    # creating
+                    i["project"] = pk
+                    serializer = ProjectAchievementListSerializer(data=i)
+                    serializer.is_valid(raise_exception=True)
+                    serializer.save()
                 else:
+                    # changing
                     instance = Achievement.objects.get(id=achievement_id)
                     i["project"] = pk
                     serializer = AchievementDetailSerializer(
@@ -91,7 +93,8 @@ class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
                     )
                     serializer.is_valid(raise_exception=True)
                     serializer.save()
-        return Response(status=status.HTTP_200_OK)
+
+        return super(ProjectDetail, self).put(request, pk)
 
 
 class ProjectCountView(generics.GenericAPIView):
