@@ -8,6 +8,7 @@ class ProjectAdmin(admin.ModelAdmin):
     list_display = (
         "id",
         "name",
+        "draft",
     )
     list_display_links = (
         "id",

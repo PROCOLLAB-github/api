@@ -1,10 +1,12 @@
+from typing import Optional
+
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.db.models import UniqueConstraint
 
 from industries.models import Industry
 from projects.helpers import VERBOSE_STEPS
-from projects.managers import ProjectManager, AchievementManager
+from projects.managers import AchievementManager, ProjectManager
 from users.models import CustomUser
 
 User = get_user_model()
@@ -30,26 +32,25 @@ class Project(models.Model):
         datetime_updated: A DateTimeField indicating date of update.
     """
 
-    name = models.CharField(max_length=256, null=False)
-    description = models.TextField(blank=True)
-    short_description = models.TextField(blank=True)
-    region = models.CharField(max_length=256, blank=True)
-    step = models.PositiveSmallIntegerField(choices=VERBOSE_STEPS, null=False)
+    name = models.CharField(max_length=256, null=True, blank=True)
+    description = models.TextField(null=True, blank=True)
+    # short_description = models.TextField(null=True, blank=True)
+    region = models.CharField(max_length=256, null=True, blank=True)
+    step = models.PositiveSmallIntegerField(choices=VERBOSE_STEPS, null=True, blank=True)
 
     industry = models.ForeignKey(
         Industry,
         on_delete=models.SET_NULL,
         null=True,
+        blank=True,
         related_name="projects",
     )
-    # TODO think about naming
-    presentation_address = models.URLField(blank=True)
-    image_address = models.URLField(blank=True)
+    presentation_address = models.URLField(null=True, blank=True)
+    image_address = models.URLField(null=True, blank=True)
 
     leader = models.ForeignKey(
         User,
-        on_delete=models.SET_NULL,
-        null=True,
+        on_delete=models.CASCADE,
         related_name="leaders_projects",  # projects in which this user is the leader
     )
 
@@ -63,6 +64,9 @@ class Project(models.Model):
     )
 
     objects = ProjectManager()
+
+    def get_short_description(self) -> Optional[str]:
+        return self.description[:30] if self.description else None
 
     def __str__(self):
         return f"Project<{self.id}> - {self.name}"
@@ -86,10 +90,7 @@ class Achievement(models.Model):
     status = models.CharField(max_length=256, null=False)
 
     project = models.ForeignKey(
-        Project,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name="achievements",
+        Project, on_delete=models.SET_NULL, null=True, related_name="achievements"
     )
 
     objects = AchievementManager()
@@ -133,6 +134,6 @@ class Collaborator(models.Model):
                     "project",
                     "user",
                 ],
-                name="unique_collaorator",
+                name="unique_collaborator",
             )
         ]

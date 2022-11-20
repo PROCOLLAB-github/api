@@ -1,6 +1,7 @@
 from datetime import datetime
 
 import jwt
+from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.sites.shortcuts import get_current_site
@@ -23,8 +24,13 @@ from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
 from core.permissions import IsOwnerOrReadOnly
 from core.utils import Email
-from users.helpers import VERBOSE_ROLE_TYPES
+from projects.serializers import ProjectListSerializer
+from users.helpers import VERBOSE_ROLE_TYPES, VERBOSE_USER_TYPES
+from users.models import UserAchievement
+from users.permissions import IsAchievementOwnerOrReadOnly
 from users.serializers import (
+    AchievementDetailSerializer,
+    AchievementListSerializer,
     EmailSerializer,
     PasswordSerializer,
     UserDetailSerializer,
@@ -35,11 +41,12 @@ from users.serializers import (
 from .filters import UserFilter
 
 User = get_user_model()
+Project = apps.get_model("projects", "Project")
 
 
 class UserList(ListCreateAPIView):
     queryset = User.objects.all()
-    permission_classes = [AllowAny]
+    permission_classes = [AllowAny]  # FIXME: change to IsAuthorized
     serializer_class = UserListSerializer
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = UserFilter
@@ -73,10 +80,10 @@ class UserList(ListCreateAPIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
-class UserAdditionalRoles(GenericAPIView):
+class UserAdditionalRolesView(APIView):
     permission_classes = [AllowAny]
 
-    def get(self, request, format=None):
+    def get(self, request):
         """
         Return a tuple of user additional roles types.
         """
@@ -100,24 +107,44 @@ class UserDetail(RetrieveUpdateDestroyAPIView):
     permission_classes = [IsOwnerOrReadOnly, IsAuthenticated]
     serializer_class = UserDetailSerializer
 
+    def put(self, request, pk):
+        # bootleg version of updating achievements via user
+        if request.data.get("achievements") is not None:
+            achievements = request.data.get("achievements")
+            for i in achievements:
+                achievement_id = i.get("id")
+                if achievement_id is None:
+                    UserAchievement.objects.create(
+                        title=i["title"],
+                        status=i["status"],
+                        user_id=pk,
+                    )
+                    continue
+                instance = UserAchievement.objects.get(id=achievement_id)
+                i["user"] = pk
+                serializer = AchievementDetailSerializer(instance, data=i, partial=False)
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+        return super().put(request, pk)
 
-class CurrentUser(APIView):
+
+class CurrentUser(GenericAPIView):
     queryset = User.objects.get_users_for_detail_view()
     permission_classes = [IsAuthenticated]
     serializer_class = UserDetailSerializer
 
     def get(self, request):
         user = request.user
-        serializer = UserDetailSerializer(user)
+        serializer = self.get_serializer(user)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class UserTypes(APIView):
-    def get(self, request, format=None):
+class UserTypesView(APIView):
+    def get(self, request):
         """
         Return a list of tuples [(id, name), ..] of user types.
         """
-        return Response(User.VERBOSE_USER_TYPES)
+        return Response(VERBOSE_USER_TYPES)
 
 
 class VerifyEmail(GenericAPIView):
@@ -254,3 +281,48 @@ class ResetPassword(UpdateAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
                 message="Decode error",
             )
+
+
+class AchievementList(ListCreateAPIView):
+    queryset = UserAchievement.objects.get_achievements_for_list_view()
+    serializer_class = AchievementListSerializer
+    permission_classes = [IsAchievementOwnerOrReadOnly]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.validated_data["user"] = request.user
+        # warning for someone who tries to set user variable (the user will always be yourself anyway)
+        if (
+            request.data.get("user") is not None
+            and request.data.get("user") != request.user.id
+        ):
+            return Response(
+                {
+                    "error": "you can't edit USER field for this view since "
+                    "you can't create achievements for other people"
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+
+class AchievementDetail(RetrieveUpdateDestroyAPIView):
+    queryset = UserAchievement.objects.get_achievements_for_detail_view()
+    serializer_class = AchievementDetailSerializer
+    permission_classes = [IsAchievementOwnerOrReadOnly]
+
+
+class UserDraftsList(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        serializer = ProjectListSerializer(
+            Project.objects.get_projects_for_user_drafts_view().filter(
+                leader=self.request.user
+            ),
+            many=True,
+        )
+        return Response(serializer.data, status=status.HTTP_200_OK)

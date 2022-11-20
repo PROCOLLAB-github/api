@@ -1,14 +1,17 @@
 from django.urls import path, re_path
 
 from users.views import (
+    AchievementDetail,
+    AchievementList,
     CurrentUser,
     EmailResetPassword,
     ResetPassword,
     SpecialistsList,
-    UserAdditionalRoles,
+    UserAdditionalRolesView,
     UserDetail,
+    UserDraftsList,
     UserList,
-    UserTypes,
+    UserTypesView,
     VerifyEmail,
 )
 
@@ -19,11 +22,14 @@ urlpatterns = [
         "specialists/", SpecialistsList.as_view()
     ),  # this url actually returns  mentors, experts and investors
     path("users/", UserList.as_view()),
-    path("users/roles/", UserAdditionalRoles.as_view()),
-    path("users/types/", UserTypes.as_view()),
+    path("users/drafts/", UserDraftsList.as_view()),
+    path("users/roles/", UserAdditionalRolesView.as_view()),
+    path("users/types/", UserTypesView.as_view()),
     path("users/<int:pk>/", UserDetail.as_view()),
     path("users/reset-password/", EmailResetPassword.as_view()),
     path("users/current/", CurrentUser.as_view()),
+    path("users/achievements/", AchievementList.as_view()),
+    path("users/achievements/<int:pk>/", AchievementDetail.as_view()),
     re_path(
         r"^account-confirm-email/",
         VerifyEmail.as_view(),

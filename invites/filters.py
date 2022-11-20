@@ -9,16 +9,23 @@ class InviteFilter(filters.FilterSet):
     Adds filtering to DRF list retrieve views
 
     Parameters to filter by:
-        project (int), is_active (default to True if not set otherwise) (boolean)
+        project (int), user (default to request.user if not set otherwise) (int)
 
     Examples:
         ?project=1 equals to .filter(project_id=1)
-        (no params passed) equals to .filter(is_active=True)
-        ?is_active=false equals to .filter(is_active=False)
+        (no params passed) equals to .filter(user=request.user)
+        ?user=4 equals to .filter(user_id=4)
     """
 
-    is_active = filters.BooleanFilter(field_name="is_active")
+    def __init__(self, *args, **kwargs):
+        """if user filter is not passed, default to request.user"""
+        super().__init__(*args, **kwargs)
+        # if self.data.get("is_active") is None:
+        if self.data.get("user") is None:
+            # default filtering by current user
+            self.data = dict(self.data)
+            self.data["user"] = kwargs.get("request").user.id
 
     class Meta:
         model = Invite
-        fields = ("project", "is_active")
+        fields = ("project", "user")

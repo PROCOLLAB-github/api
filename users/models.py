@@ -13,7 +13,7 @@ from users.helpers import (
     VERBOSE_ROLE_TYPES,
     VERBOSE_USER_TYPES,
 )
-from users.managers import CustomUserManager
+from users.managers import CustomUserManager, UserAchievementManager
 
 
 def get_default_user_type():
@@ -42,9 +42,9 @@ class CustomUser(AbstractUser):
         region: CharField instance the user's name region.
         city: CharField instance the user's name city.
         organization: CharField instance the user's place of study or work.
+        speciality: CharField instance the user's specialty.
         datetime_updated: A DateTimeField indicating date of update.
         datetime_created: A DateTimeField indicating date of creation.
-        speciality: CharField instance the user's specialty.
     """
 
     ADMIN = ADMIN
@@ -64,16 +64,16 @@ class CustomUser(AbstractUser):
         default=get_default_user_type,
     )
 
-    patronymic = models.CharField(max_length=255, blank=True)
+    patronymic = models.CharField(max_length=255, null=True, blank=True)
+    key_skills = models.CharField(max_length=512, null=True, blank=True)
     avatar = models.URLField(null=True, blank=True)
     birthday = models.DateField(null=True, blank=True)
-    about_me = models.TextField(blank=True)
-    status = models.CharField(max_length=255, blank=True)
-    region = models.CharField(max_length=255, blank=True)
-    city = models.CharField(max_length=255, blank=True)
-    organization = models.CharField(max_length=255, blank=True)
-    speciality = models.CharField(max_length=255, blank=True)
-
+    about_me = models.TextField(null=True, blank=True)
+    status = models.CharField(max_length=255, null=True, blank=True)
+    region = models.CharField(max_length=255, null=True, blank=True)
+    city = models.CharField(max_length=255, null=True, blank=True)
+    organization = models.CharField(max_length=255, null=True, blank=True)
+    speciality = models.CharField(max_length=255, null=True, blank=True)
     datetime_updated = models.DateTimeField(null=False, auto_now=True)
     datetime_created = models.DateTimeField(null=False, auto_now_add=True)
 
@@ -82,13 +82,40 @@ class CustomUser(AbstractUser):
 
     objects = CustomUserManager()
 
-    def get_member_key_skills(self) -> str:
-        if self.user_type == CustomUser.MEMBER:
-            return str(self.member.key_skills)
-        return ""
+    def get_key_skills(self) -> list[str]:
+        return [skill.strip() for skill in self.key_skills.split(",") if skill.strip()]
 
     def __str__(self):
         return f"User<{self.id}> - {self.first_name} {self.last_name}"
+
+
+class UserAchievement(models.Model):
+    """
+    UserAchievement model
+
+     Attributes:
+        title: A CharField title of the achievement.
+        status: A CharField place or status of the achievement.
+        user: A ForeignKey referring to the CustomUser model.
+    """
+
+    title = models.CharField(max_length=256, null=False)
+    status = models.CharField(max_length=256, null=False)
+
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name="achievements",
+    )
+
+    objects = UserAchievementManager()
+
+    def __str__(self):
+        return f"UserAchievement<{self.id}>"
+
+    class Meta:
+        verbose_name = "Достижение"
+        verbose_name_plural = "Достижения"
 
 
 class AbstractUserWithRole(models.Model):
@@ -124,7 +151,6 @@ class Member(models.Model):
 
     Attributes:
         user: ForeignKey instance of the CustomUser model.
-        key_skills: CharField instance indicating member key skills.
         useful_to_project: TextField instance indicates actions useful
                            for the development and maintenance of the project.
         preferred_industries: ManyToManyField indicating user industries preferred for work.
@@ -134,7 +160,6 @@ class Member(models.Model):
         CustomUser, on_delete=models.CASCADE, related_name="member"
     )
 
-    key_skills = models.CharField(max_length=512, blank=True)
     useful_to_project = models.TextField(blank=True)
     preferred_industries = models.ManyToManyField(
         Industry, blank=True, related_name="members"

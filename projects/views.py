@@ -1,5 +1,5 @@
 from django_filters import rest_framework as filters
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -7,13 +7,14 @@ from core.permissions import IsStaffOrReadOnly
 from projects.filters import ProjectFilter
 from projects.helpers import VERBOSE_STEPS
 from projects.models import Project, Achievement
-from projects.permissions import IsProjectLeaderOrReadOnly
+from projects.permissions import IsProjectLeaderOrReadOnlyForNonDrafts
 from projects.serializers import (
     ProjectDetailSerializer,
     AchievementListSerializer,
     ProjectListSerializer,
     AchievementDetailSerializer,
     ProjectCollaboratorSerializer,
+    ProjectAchievementListSerializer,
 )
 
 
@@ -30,8 +31,7 @@ class ProjectList(generics.ListCreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         # Doesn't work if not explicitly set like this
-        serializer.validated_data["leader"] = request.user.id
-        serializer.validated_data["industry"] = request.data["industry"]
+        serializer.validated_data["leader"] = request.user
 
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
@@ -64,13 +64,55 @@ class ProjectList(generics.ListCreateAPIView):
             ProjectListSerializer
 
         """
+        # set leader to current user
         return self.create(request, *args, **kwargs)
 
 
 class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Project.objects.get_projects_for_detail_view()
     serializer_class = ProjectDetailSerializer
-    permission_classes = [IsProjectLeaderOrReadOnly]
+    permission_classes = [IsProjectLeaderOrReadOnlyForNonDrafts]
+
+    def put(self, request, pk, **kwargs):
+        # bootleg version of updating achievements via project
+        if request.data.get("achievements") is not None:
+            achievements = request.data.get("achievements")
+            for achievement in achievements:
+                achievement_id = achievement.get("id")
+                if achievement_id is None:
+                    # creating
+                    achievement["project"] = pk
+                    serializer = ProjectAchievementListSerializer(data=achievement)
+                    serializer.is_valid(raise_exception=True)
+                    serializer.save()
+                else:
+                    # changing
+                    instance = Achievement.objects.get(id=achievement_id)
+                    achievement["project"] = pk
+                    serializer = AchievementDetailSerializer(
+                        instance, data=achievement, partial=False
+                    )
+                    serializer.is_valid(raise_exception=True)
+                    serializer.save()
+
+        return super(ProjectDetail, self).put(request, pk)
+
+
+class ProjectCountView(generics.GenericAPIView):
+    queryset = Project.objects.get_projects_for_count_view()
+    serializer_class = ProjectListSerializer
+    # TODO: using this permission could result in a user not having verified email
+    #  creating a project; probably should make IsUserVerifiedOrReadOnly
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get(self, request):
+        return Response(
+            {
+                "all": self.get_queryset().count(),
+                "my": self.get_queryset().filter(leader_id=request.user.id).count(),
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class ProjectCollaborators(generics.GenericAPIView):
@@ -78,7 +120,7 @@ class ProjectCollaborators(generics.GenericAPIView):
     Project collaborator retrieve/add/delete view
     """
 
-    permission_classes = [IsProjectLeaderOrReadOnly]
+    permission_classes = [IsProjectLeaderOrReadOnlyForNonDrafts]
     queryset = Project.objects.all()
     serializer_class = ProjectCollaboratorSerializer
 

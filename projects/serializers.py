@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from industries.models import Industry
 from projects.models import Project, Achievement, Collaborator
-from users.models import CustomUser
+from projects.validators import validate_project
 from vacancy.serializers import ProjectVacancyListSerializer
 
 
@@ -14,6 +14,7 @@ class AchievementListSerializer(serializers.ModelSerializer):
             "title",
             "status",
         ]
+        ref_name = "Projects"
 
 
 class ProjectAchievementListSerializer(serializers.ModelSerializer):
@@ -33,11 +34,7 @@ class CollaboratorSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(source="user.first_name")
     last_name = serializers.CharField(source="user.last_name")
     avatar = serializers.CharField(source="user.avatar")
-    member_key_skills = serializers.SerializerMethodField()
-
-    @classmethod
-    def get_member_key_skills(cls, collaborator):
-        return collaborator.user.get_member_key_skills()
+    key_skills = serializers.CharField(source="user.key_skills")
 
     class Meta:
         model = Collaborator
@@ -46,7 +43,8 @@ class CollaboratorSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "role",
-            "member_key_skills",
+            "key_skills",
+            # "member_key_skills",
             "avatar",
         ]
 
@@ -65,6 +63,21 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
         source="collaborator_set", many=True, read_only=True
     )
     vacancies = ProjectVacancyListSerializer(many=True, read_only=True)
+    short_description = serializers.SerializerMethodField()
+    industry_id = serializers.IntegerField(required=False)
+
+    def validate(self, data):
+        super().validate(data)
+        return validate_project(data)
+
+    @classmethod
+    def get_short_description(cls, project):
+        return project.get_short_description()
+
+    def update(self, instance, validated_data):
+        instance = super().update(instance, validated_data)
+        instance.save()
+        return instance
 
     class Meta:
         model = Project
@@ -77,6 +90,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "region",
             "step",
             "industry",
+            "industry_id",
             "presentation_address",
             "image_address",
             "collaborators",
@@ -86,13 +100,10 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "datetime_created",
             "datetime_updated",
         ]
+        read_only_fields = ["leader"]
 
 
 class ProjectListSerializer(serializers.ModelSerializer):
-    def __init__(self, *args, **kwargs):
-        # might be unnecessary
-        self.max_collaborator_count = kwargs.pop("max_collaborator_count", 4)
-        super().__init__(*args, **kwargs)
 
     collaborators = serializers.SerializerMethodField(method_name="get_collaborators")
     collaborator_count = serializers.SerializerMethodField(
@@ -100,13 +111,20 @@ class ProjectListSerializer(serializers.ModelSerializer):
     )
     vacancies = ProjectVacancyListSerializer(many=True, read_only=True)
 
+    short_description = serializers.SerializerMethodField()
+
+    @classmethod
+    def get_short_description(cls, project):
+        return project.get_short_description()
+
     @classmethod
     def get_collaborator_count(cls, obj):
         return len(obj.collaborator_set.all())
 
     def get_collaborators(self, obj):
+        max_collaborator_count = 4
         return CollaboratorSerializer(
-            instance=obj.collaborator_set.all()[: self.max_collaborator_count], many=True
+            instance=obj.collaborator_set.all()[:max_collaborator_count], many=True
         ).data
 
     class Meta:
@@ -134,15 +152,9 @@ class ProjectListSerializer(serializers.ModelSerializer):
     def is_valid(self, *, raise_exception=False):
         return super().is_valid(raise_exception=raise_exception)
 
-    def create(self, validated_data):
-        industry = Industry.objects.get(id=validated_data.pop("industry"))
-        leader = CustomUser.objects.get(id=validated_data.pop("leader"))
-        project = Project.objects.create(
-            **validated_data,
-            industry=industry,
-            leader=leader,
-        )
-        return project
+    def validate(self, data):
+        super().validate(data)
+        return validate_project(data)
 
 
 class ProjectIndustrySerializer(serializers.ModelSerializer):
@@ -168,3 +180,4 @@ class AchievementDetailSerializer(serializers.ModelSerializer):
             "status",
             "projects",
         ]
+        ref_name = "Projects"
