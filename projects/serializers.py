@@ -64,6 +64,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     )
     vacancies = ProjectVacancyListSerializer(many=True, read_only=True)
     short_description = serializers.SerializerMethodField()
+    industry_id = serializers.IntegerField(required=False)
 
     def validate(self, data):
         super().validate(data)
@@ -72,6 +73,11 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     @classmethod
     def get_short_description(cls, project):
         return project.get_short_description()
+
+    def update(self, instance, validated_data):
+        instance = super().update(instance, validated_data)
+        instance.save()
+        return instance
 
     class Meta:
         model = Project
@@ -84,6 +90,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "region",
             "step",
             "industry",
+            "industry_id",
             "presentation_address",
             "image_address",
             "collaborators",
@@ -93,6 +100,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "datetime_created",
             "datetime_updated",
         ]
+        read_only_fields = ["leader"]
 
 
 class ProjectListSerializer(serializers.ModelSerializer):

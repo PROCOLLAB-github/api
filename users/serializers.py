@@ -74,6 +74,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
             "key_skills",
             "birthday",
             "speciality",
+            "organization",
             "about_me",
             "avatar",
             "city",

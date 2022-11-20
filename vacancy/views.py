@@ -3,12 +3,12 @@ from rest_framework import generics, mixins, permissions, status
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 
-from projects.permissions import IsProjectLeaderOrReadOnly
 from vacancy.filters import VacancyFilter
 from vacancy.models import Vacancy, VacancyResponse
 from vacancy.permissions import (
     IsProjectLeaderForVacancyResponse,
     IsVacancyResponseOwnerOrReadOnly,
+    IsVacancyProjectLeader,
 )
 from vacancy.serializers import (
     ProjectVacancyListSerializer,
@@ -40,7 +40,7 @@ class VacancyList(generics.ListCreateAPIView):
 class VacancyDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Vacancy.objects.get_vacancy_for_detail_view()
     serializer_class = VacancyDetailSerializer
-    permission_classes = [IsProjectLeaderOrReadOnly]
+    permission_classes = [IsVacancyProjectLeader]
 
     def put(self, request, *args, **kwargs):
         """updating the vacancy"""
