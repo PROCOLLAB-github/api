@@ -114,7 +114,6 @@ class UserDetailSerializer(serializers.ModelSerializer):
         for attr, value in validated_data.items():
             if attr in IMMUTABLE_FIELDS + USER_TYPE_FIELDS + RELATED_FIELDS:
                 continue
-            print(attr, value)
             setattr(instance, attr, value)
 
         instance.save()

@@ -35,11 +35,6 @@ class CollaboratorSerializer(serializers.ModelSerializer):
     last_name = serializers.CharField(source="user.last_name")
     avatar = serializers.CharField(source="user.avatar")
     key_skills = serializers.CharField(source="user.key_skills")
-    # member_key_skills = serializers.SerializerMethodField()
-
-    # @classmethod
-    # def get_member_key_skills(cls, collaborator):
-    #     return collaborator.user.get_member_key_skills()
 
     class Meta:
         model = Collaborator
@@ -68,10 +63,15 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
         source="collaborator_set", many=True, read_only=True
     )
     vacancies = ProjectVacancyListSerializer(many=True, read_only=True)
+    short_description = serializers.SerializerMethodField()
 
     def validate(self, data):
         super().validate(data)
         return validate_project(data)
+
+    @classmethod
+    def get_short_description(cls, project):
+        return project.get_short_description()
 
     class Meta:
         model = Project
@@ -102,6 +102,12 @@ class ProjectListSerializer(serializers.ModelSerializer):
         method_name="get_collaborator_count"
     )
     vacancies = ProjectVacancyListSerializer(many=True, read_only=True)
+
+    short_description = serializers.SerializerMethodField()
+
+    @classmethod
+    def get_short_description(cls, project):
+        return project.get_short_description()
 
     @classmethod
     def get_collaborator_count(cls, obj):
