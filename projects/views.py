@@ -65,7 +65,6 @@ class ProjectList(generics.ListCreateAPIView):
 
         """
         # set leader to current user
-        request.data["leader"] = request.user.id
         return self.create(request, *args, **kwargs)
 
 
@@ -95,9 +94,6 @@ class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
                     )
                     serializer.is_valid(raise_exception=True)
                     serializer.save()
-
-        # set leader to current user
-        request.data["leader"] = request.user.id
 
         return super(ProjectDetail, self).put(request, pk)
 
