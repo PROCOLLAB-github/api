@@ -14,7 +14,6 @@ from projects.serializers import (
     ProjectListSerializer,
     AchievementDetailSerializer,
     ProjectCollaboratorSerializer,
-    ProjectAchievementListSerializer,
 )
 
 
@@ -77,23 +76,19 @@ class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
         # bootleg version of updating achievements via project
         if request.data.get("achievements") is not None:
             achievements = request.data.get("achievements")
-            for achievement in achievements:
-                achievement_id = achievement.get("id")
-                if achievement_id is None:
-                    # creating
-                    achievement["project"] = pk
-                    serializer = ProjectAchievementListSerializer(data=achievement)
-                    serializer.is_valid(raise_exception=True)
-                    serializer.save()
-                else:
-                    # changing
-                    instance = Achievement.objects.get(id=achievement_id)
-                    achievement["project"] = pk
-                    serializer = AchievementDetailSerializer(
-                        instance, data=achievement, partial=False
+            # delete all old achievements
+            Achievement.objects.filter(project_id=pk).delete()
+            # create new achievements
+            Achievement.objects.bulk_create(
+                [
+                    Achievement(
+                        project_id=pk,
+                        title=achievement.get("name"),
+                        status=achievement.get("description"),
                     )
-                    serializer.is_valid(raise_exception=True)
-                    serializer.save()
+                    for achievement in achievements
+                ]
+            )
 
         return super(ProjectDetail, self).put(request, pk)
 
