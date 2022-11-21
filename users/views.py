@@ -139,6 +139,8 @@ class CurrentUser(GenericAPIView):
 
 
 class UserTypesView(APIView):
+    permission_classes = [AllowAny]
+
     def get(self, request):
         """
         Return a list of tuples [(id, name), ..] of user types.
