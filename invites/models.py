@@ -38,7 +38,7 @@ class Invite(models.Model):
     objects = InviteManager()
 
     def __str__(self):
-        return f'Invite from "{self.project.name}" to {self.user.get_full_name()}'
+        return f'Invite from project "{self.project.name}" to {self.user.get_full_name()}'
 
     class Meta:
         verbose_name = "Приглашение"
