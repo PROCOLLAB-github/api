@@ -64,7 +64,7 @@ class ProjectManager(Manager):
         )
 
     def get_projects_for_count_view(self):
-        return self.get_queryset().filter(draft=False).only("id", "leader_id")
+        return self.get_queryset().only("id", "leader_id")
 
     def check_if_owns_any_projects(self, user) -> bool:
         # I don't think this should work but the function has no usages, so I'll let it be

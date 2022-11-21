@@ -108,7 +108,7 @@ class ProjectCountView(generics.GenericAPIView):
     def get(self, request):
         return Response(
             {
-                "all": self.get_queryset().count(),
+                "all": self.get_queryset().filter(draft=False).count(),
                 "my": self.get_queryset().filter(leader_id=request.user.id).count(),
             },
             status=status.HTTP_200_OK,
