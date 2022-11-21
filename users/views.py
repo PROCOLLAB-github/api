@@ -314,12 +314,12 @@ class AchievementDetail(RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAchievementOwnerOrReadOnly]
 
 
-class UserDraftsList(APIView):
+class UserProjectsList(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         serializer = ProjectListSerializer(
-            Project.objects.get_projects_for_user_drafts_view().filter(
+            Project.objects.get_user_projects_for_list_view().filter(
                 leader=self.request.user
             ),
             many=True,

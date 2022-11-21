@@ -41,21 +41,17 @@ class ProjectManager(Manager):
             )
         )
 
-    def get_projects_for_user_drafts_view(self):
-        return (
-            self.get_queryset()
-            .filter(draft=True)
-            .prefetch_related(
-                Prefetch(
-                    "industry",
-                    queryset=Industry.objects.only("name").all(),
-                ),
-                Prefetch(
-                    "leader",
-                    queryset=CustomUser.objects.only("id").all(),
-                ),
-                Prefetch("collaborator_set"),
-            )
+    def get_user_projects_for_list_view(self):
+        return self.get_queryset().prefetch_related(
+            Prefetch(
+                "industry",
+                queryset=Industry.objects.only("name").all(),
+            ),
+            Prefetch(
+                "leader",
+                queryset=CustomUser.objects.only("id").all(),
+            ),
+            Prefetch("collaborator_set"),
         )
 
     def get_projects_for_detail_view(self):
