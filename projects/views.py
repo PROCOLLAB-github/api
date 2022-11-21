@@ -16,6 +16,8 @@ from projects.serializers import (
     ProjectCollaboratorSerializer,
     ProjectAchievementListSerializer,
 )
+from vacancy.models import VacancyResponse
+from vacancy.serializers import VacancyResponseListSerializer
 
 
 class ProjectList(generics.ListCreateAPIView):
@@ -172,3 +174,16 @@ class AchievementDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Achievement.objects.get_achievements_for_detail_view()
     serializer_class = AchievementDetailSerializer
     permission_classes = [IsStaffOrReadOnly]
+
+
+class ProjectVacancyResponses(generics.GenericAPIView):
+    serializer_class = VacancyResponseListSerializer
+    permission_classes = [IsProjectLeaderOrReadOnly]
+
+    def get_queryset(self):
+        return VacancyResponse.objects.filter(vacancy__project_id=self.kwargs["pk"])
+
+    def get(self, request, pk):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
