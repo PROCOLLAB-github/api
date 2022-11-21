@@ -75,8 +75,8 @@ class Project(models.Model):
         if (
             self.name
             and self.description
-            # and self.region
-            # and self.step
+            and self.region
+            and self.step
             and self.industry
             and self.presentation_address
             and self.image_address
