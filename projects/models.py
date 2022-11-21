@@ -68,6 +68,22 @@ class Project(models.Model):
     def get_short_description(self) -> Optional[str]:
         return self.description[:30] if self.description else None
 
+    def save(
+        self, force_insert=False, force_update=False, using=None, update_fields=None
+    ):
+        # if every field is filled, set draft to false
+        if (
+            self.name
+            and self.description
+            and self.region
+            and self.step
+            and self.industry
+            and self.presentation_address
+            and self.image_address
+        ):
+            self.draft = False
+        super().save(force_insert, force_update, using, update_fields)
+
     def __str__(self):
         return f"Project<{self.id}> - {self.name}"
 
