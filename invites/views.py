@@ -46,7 +46,7 @@ class InviteAccept(generics.GenericAPIView):
         invite = self.get_object()
         if invite.user != request.user:
             return Response(status=status.HTTP_403_FORBIDDEN)
-        invite.is_approved = True
+        invite.is_accepted = True
         invite.save()
         return Response(status=status.HTTP_200_OK)
 
@@ -60,6 +60,6 @@ class InviteDecline(generics.GenericAPIView):
         invite = self.get_object()
         if invite.user != request.user:
             return Response(status=status.HTTP_403_FORBIDDEN)
-        invite.is_approved = False
+        invite.is_accepted = False
         invite.save()
         return Response(status=status.HTTP_200_OK)
