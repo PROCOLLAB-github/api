@@ -1,6 +1,5 @@
 from django.urls import path
 
-
 from projects.views import (
     ProjectDetail,
     ProjectList,
@@ -9,6 +8,7 @@ from projects.views import (
     AchievementDetail,
     ProjectCollaborators,
     ProjectCountView,
+    ProjectVacancyResponses,
 )
 
 app_name = "projects"
@@ -21,4 +21,5 @@ urlpatterns = [
     path("steps/", ProjectSteps.as_view()),
     path("achievements/", AchievementList.as_view()),
     path("achievements/<int:pk>/", AchievementDetail.as_view()),
+    path("<int:pk>/responses/", ProjectVacancyResponses.as_view()),
 ]
