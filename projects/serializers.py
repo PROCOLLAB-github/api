@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from core.fields import CustomListField
 from industries.models import Industry
 from projects.models import Project, Achievement, Collaborator
 from projects.validators import validate_project
@@ -34,7 +35,7 @@ class CollaboratorSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(source="user.first_name")
     last_name = serializers.CharField(source="user.last_name")
     avatar = serializers.CharField(source="user.avatar")
-    key_skills = serializers.CharField(source="user.key_skills")
+    key_skills = CustomListField(child=serializers.CharField(), source="user.key_skills")
 
     class Meta:
         model = Collaborator
@@ -44,7 +45,6 @@ class CollaboratorSerializer(serializers.ModelSerializer):
             "last_name",
             "role",
             "key_skills",
-            # "member_key_skills",
             "avatar",
         ]
 
@@ -64,6 +64,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     )
     vacancies = ProjectVacancyListSerializer(many=True, read_only=True)
     short_description = serializers.SerializerMethodField()
+    industry_id = serializers.IntegerField(required=False)
 
     def validate(self, data):
         super().validate(data)
@@ -89,6 +90,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "region",
             "step",
             "industry",
+            "industry_id",
             "presentation_address",
             "image_address",
             "collaborators",
@@ -98,10 +100,10 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "datetime_created",
             "datetime_updated",
         ]
+        read_only_fields = ["leader"]
 
 
 class ProjectListSerializer(serializers.ModelSerializer):
-
     collaborators = serializers.SerializerMethodField(method_name="get_collaborators")
     collaborator_count = serializers.SerializerMethodField(
         method_name="get_collaborator_count"

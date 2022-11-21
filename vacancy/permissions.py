@@ -8,6 +8,17 @@ class IsVacancyResponseOwnerOrReadOnly(BasePermission):
         return False
 
 
+class IsVacancyProjectLeader(BasePermission):
+    """
+    Allows access to vacancy update only to project leader.
+    """
+
+    def has_object_permission(self, request, view, obj):
+        if request.method in SAFE_METHODS or obj.project.leader == request.user:
+            return True
+        return False
+
+
 class IsProjectLeaderForVacancyResponse(BasePermission):
     def has_object_permission(self, request, view, obj):
         if obj.vacancy.project.leader == request.user:

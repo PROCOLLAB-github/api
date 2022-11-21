@@ -22,7 +22,7 @@ class VacancyTestCase(TestCase):
         self.user_project_owner = self.user_create()
         self.vacancy_create_data = {
             "role": "Test",
-            "required_skills": "Test",
+            "required_skills": ["Test"],
             "description": "Test",
             "is_active": True,
             "project": Project.objects.create(
@@ -41,7 +41,7 @@ class VacancyTestCase(TestCase):
 
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data["role"], "Test")
-        self.assertEqual(response.data["required_skills"], "Test")
+        self.assertEqual(response.data["required_skills"], ["Test"])
         self.assertEqual(response.data["description"], "Test")
         self.assertEqual(response.data["is_active"], True)
         self.assertEqual(response.data["project"], self.vacancy_create_data["project"])

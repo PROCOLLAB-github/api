@@ -74,6 +74,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
             "key_skills",
             "birthday",
             "speciality",
+            "organization",
             "about_me",
             "avatar",
             "city",
@@ -86,7 +87,6 @@ class UserDetailSerializer(serializers.ModelSerializer):
         ]
 
     def update(self, instance, validated_data):
-
         if instance.user_type == CustomUser.MEMBER:
             instance.member.__dict__.update(
                 validated_data.get("member", model_to_dict(instance.member))
@@ -111,13 +111,13 @@ class UserDetailSerializer(serializers.ModelSerializer):
         IMMUTABLE_FIELDS = ("email", "user_type", "is_active", "password")
         USER_TYPE_FIELDS = ("member", "investor", "expert", "mentor")
         RELATED_FIELDS = ("achievements",)
+
         for attr, value in validated_data.items():
             if attr in IMMUTABLE_FIELDS + USER_TYPE_FIELDS + RELATED_FIELDS:
                 continue
             setattr(instance, attr, value)
 
         instance.save()
-
         return instance
 
 

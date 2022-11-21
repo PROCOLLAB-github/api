@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from invites.models import Invite
+from projects.serializers import ProjectListSerializer
 from users.serializers import UserDetailSerializer
 
 
@@ -19,6 +20,7 @@ class InviteListSerializer(serializers.ModelSerializer):
 
 class InviteDetailSerializer(serializers.ModelSerializer):
     user = UserDetailSerializer(many=False, read_only=True)
+    project = ProjectListSerializer(many=False, read_only=True)
 
     class Meta:
         model = Invite

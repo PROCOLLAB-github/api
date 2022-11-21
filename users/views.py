@@ -111,20 +111,19 @@ class UserDetail(RetrieveUpdateDestroyAPIView):
         # bootleg version of updating achievements via user
         if request.data.get("achievements") is not None:
             achievements = request.data.get("achievements")
-            for i in achievements:
-                achievement_id = i.get("id")
-                if achievement_id is None:
-                    UserAchievement.objects.create(
-                        title=i["title"],
-                        status=i["status"],
+            # delete all old achievements
+            UserAchievement.objects.filter(user_id=pk).delete()
+            # create new achievements
+            UserAchievement.objects.bulk_create(
+                [
+                    UserAchievement(
                         user_id=pk,
+                        title=achievement.get("name"),
+                        status=achievement.get("description"),
                     )
-                    continue
-                instance = UserAchievement.objects.get(id=achievement_id)
-                i["user"] = pk
-                serializer = AchievementDetailSerializer(instance, data=i, partial=False)
-                serializer.is_valid(raise_exception=True)
-                serializer.save()
+                    for achievement in achievements
+                ]
+            )
         return super().put(request, pk)
 
 
@@ -315,12 +314,12 @@ class AchievementDetail(RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAchievementOwnerOrReadOnly]
 
 
-class UserDraftsList(APIView):
+class UserProjectsList(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         serializer = ProjectListSerializer(
-            Project.objects.get_projects_for_user_drafts_view().filter(
+            Project.objects.get_user_projects_for_list_view().filter(
                 leader=self.request.user
             ),
             many=True,

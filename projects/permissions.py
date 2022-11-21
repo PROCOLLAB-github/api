@@ -1,7 +1,7 @@
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 
 
-class IsProjectLeaderOrReadOnly(BasePermission):
+class IsProjectLeaderOrReadOnlyForNonDrafts(BasePermission):
     """
     Allows access to update only to project leader.
     """
@@ -12,6 +12,8 @@ class IsProjectLeaderOrReadOnly(BasePermission):
         return False
 
     def has_object_permission(self, request, view, obj):
-        if request.method in SAFE_METHODS or (obj.leader == request.user):
+        if (request.method in SAFE_METHODS and not obj.draft) or (
+            obj.leader == request.user
+        ):
             return True
         return False

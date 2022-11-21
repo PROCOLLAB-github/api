@@ -1,6 +1,7 @@
 from django_filters import rest_framework as filters
 
 from invites.models import Invite
+from vacancy.filters import project_id_filter
 
 
 class InviteFilter(filters.FilterSet):
@@ -20,11 +21,16 @@ class InviteFilter(filters.FilterSet):
     def __init__(self, *args, **kwargs):
         """if user filter is not passed, default to request.user"""
         super().__init__(*args, **kwargs)
-        # if self.data.get("is_active") is None:
         if self.data.get("user") is None:
             # default filtering by current user
             self.data = dict(self.data)
             self.data["user"] = kwargs.get("request").user.id
+        # if user == "any", remove the filter
+        if self.data.get("user") == "any":
+            self.data = dict(self.data)
+            self.data.pop("user")
+
+    project = filters.Filter(method=project_id_filter)
 
     class Meta:
         model = Invite
