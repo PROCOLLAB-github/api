@@ -17,10 +17,10 @@ class VacancyFilter(filters.FilterSet):
     Adds filtering to DRF list retrieve views
 
     Parameters to filter by:
-        project (int), is_active (default to True if not set otherwise) (boolean)
+        project_id (int), is_active (default to True if not set otherwise) (boolean)
 
     Examples:
-        ?project=1 equals to .filter(project_id=1)
+        ?project_id=1 equals to .filter(project_id=1)
         (no params passed) equals to .filter(is_active=True)
         ?is_active=false equals to .filter(is_active=False)
     """
@@ -33,8 +33,8 @@ class VacancyFilter(filters.FilterSet):
             self.data["is_active"] = True
 
     is_active = filters.BooleanFilter(field_name="is_active")
-    project = filters.Filter(method=project_id_filter)
+    project_id = filters.Filter(method=project_id_filter)
 
     class Meta:
         model = Vacancy
-        fields = ("project", "is_active")
+        fields = ("project_id", "is_active")
