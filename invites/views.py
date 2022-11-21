@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from invites.filters import InviteFilter
 from invites.models import Invite
 from invites.serializers import InviteListSerializer, InviteDetailSerializer
+from projects.models import Collaborator
 
 
 class InviteList(generics.ListCreateAPIView):
@@ -43,11 +44,13 @@ class InviteAccept(generics.GenericAPIView):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
     def post(self, request, *args, **kwargs):
-        invite = self.get_object()
+        invite = self.get_object()  # type: Invite
         if invite.user != request.user:
             return Response(status=status.HTTP_403_FORBIDDEN)
         # add user to project collaborators
-        invite.project.collaborators.add(invite.user)
+        Collaborator.objects.create(
+            user=invite.user, project=invite.project, role=invite.role
+        )
         invite.is_accepted = True
         invite.save()
         return Response(status=status.HTTP_200_OK)
