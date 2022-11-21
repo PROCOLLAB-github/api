@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from core.fields import CustomListField
 from industries.models import Industry
 from projects.models import Project, Achievement, Collaborator
 from projects.validators import validate_project
@@ -26,11 +27,6 @@ class ProjectAchievementListSerializer(serializers.ModelSerializer):
             "status",
             "project",
         ]
-
-
-class CustomListField(serializers.ListField):
-    def to_representation(self, data):
-        return [i.strip() for i in data.split(",")]
 
 
 class CollaboratorSerializer(serializers.ModelSerializer):
