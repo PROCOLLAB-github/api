@@ -1,8 +1,10 @@
+from django.db.models import Q
 from django_filters import rest_framework as filters
 from rest_framework import generics, permissions, status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from django.db.models import Q
+
 from core.permissions import IsStaffOrReadOnly
 from projects.filters import ProjectFilter
 from projects.helpers import VERBOSE_STEPS
@@ -175,7 +177,7 @@ class AchievementDetail(generics.RetrieveUpdateDestroyAPIView):
 
 class ProjectVacancyResponses(generics.GenericAPIView):
     serializer_class = VacancyResponseListSerializer
-    permission_classes = [IsProjectLeaderOrReadOnly]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         return VacancyResponse.objects.filter(vacancy__project_id=self.kwargs["pk"])
