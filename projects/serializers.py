@@ -28,13 +28,18 @@ class ProjectAchievementListSerializer(serializers.ModelSerializer):
         ]
 
 
+class CustomListField(serializers.ListField):
+    def to_representation(self, data):
+        return [i.strip() for i in data.split(",")]
+
+
 class CollaboratorSerializer(serializers.ModelSerializer):
     # specify so that there's a clear indication that it's the user's id and not collaborator's id
     user_id = serializers.IntegerField(source="user.id")
     first_name = serializers.CharField(source="user.first_name")
     last_name = serializers.CharField(source="user.last_name")
     avatar = serializers.CharField(source="user.avatar")
-    key_skills = serializers.CharField(source="user.key_skills")
+    key_skills = CustomListField(child=serializers.CharField(), source="user.key_skills")
 
     class Meta:
         model = Collaborator
@@ -103,7 +108,6 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
 
 
 class ProjectListSerializer(serializers.ModelSerializer):
-
     collaborators = serializers.SerializerMethodField(method_name="get_collaborators")
     collaborator_count = serializers.SerializerMethodField(
         method_name="get_collaborator_count"

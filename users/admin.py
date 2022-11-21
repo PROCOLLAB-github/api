@@ -41,6 +41,7 @@ class CustomUserAdmin(admin.ModelAdmin):
                     "region",
                     "organization",
                     "speciality",
+                    "key_skills",
                 )
             },
         ),
