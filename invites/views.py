@@ -46,6 +46,8 @@ class InviteAccept(generics.GenericAPIView):
         invite = self.get_object()
         if invite.user != request.user:
             return Response(status=status.HTTP_403_FORBIDDEN)
+        # add user to project collaborators
+        invite.project.collaborators.add(invite.user)
         invite.is_accepted = True
         invite.save()
         return Response(status=status.HTTP_200_OK)
