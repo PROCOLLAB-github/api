@@ -68,12 +68,13 @@ class CustomUserAdmin(admin.ModelAdmin):
     )
 
     list_display = (
+        "id",
         "email",
         "last_name",
         "first_name",
-        "id",
     )
     list_display_links = (
+        "id",
         "email",
         "first_name",
         "last_name",
