@@ -2,7 +2,7 @@ from django_filters import rest_framework as filters
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
+from django.db.models import Q
 from core.permissions import IsStaffOrReadOnly
 from projects.filters import ProjectFilter
 from projects.helpers import VERBOSE_STEPS
@@ -98,13 +98,15 @@ class ProjectCountView(generics.GenericAPIView):
     serializer_class = ProjectListSerializer
     # TODO: using this permission could result in a user not having verified email
     #  creating a project; probably should make IsUserVerifiedOrReadOnly
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         return Response(
             {
                 "all": self.get_queryset().filter(draft=False).count(),
-                "my": self.get_queryset().filter(leader_id=request.user.id).count(),
+                "my": self.get_queryset()
+                .filter(Q(leader_id=request.user.id) | Q(collaborator__user=request.user))
+                .count(),
             },
             status=status.HTTP_200_OK,
         )
