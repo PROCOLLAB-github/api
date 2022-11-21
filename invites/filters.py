@@ -25,6 +25,10 @@ class InviteFilter(filters.FilterSet):
             # default filtering by current user
             self.data = dict(self.data)
             self.data["user"] = kwargs.get("request").user.id
+        # if user == "any", remove the filter
+        if self.data.get("user") == "any":
+            self.data = dict(self.data)
+            self.data.pop("user")
 
     class Meta:
         model = Invite
