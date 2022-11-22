@@ -28,7 +28,6 @@ class CustomUserAdmin(admin.ModelAdmin):
                     "patronymic",
                     "birthday",
                     "avatar",
-                    "is_active",
                 )
             },
         ),
@@ -68,12 +67,7 @@ class CustomUserAdmin(admin.ModelAdmin):
         ),
     )
 
-    list_display = (
-        "id",
-        "email",
-        "last_name",
-        "first_name",
-    )
+    list_display = ("id", "email", "last_name", "first_name", "is_active")
     list_display_links = (
         "id",
         "email",
