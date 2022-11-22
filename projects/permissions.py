@@ -44,3 +44,4 @@ class HasInvolvementInProjectOrReadOnly(BasePermission):
                 or request.user in obj.invite_set.all()
             ):
                 return True
+            return False
