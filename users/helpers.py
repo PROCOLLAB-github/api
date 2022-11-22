@@ -5,7 +5,6 @@ EXPERT = 3
 INVESTOR = 4
 
 VERBOSE_USER_TYPES = (
-    (ADMIN, "Администратор"),
     (MEMBER, "Участник"),
     (MENTOR, "Ментор"),
     (EXPERT, "Эксперт"),
@@ -13,7 +12,6 @@ VERBOSE_USER_TYPES = (
 )
 
 VERBOSE_ROLE_TYPES = (
-    (MEMBER, "Участник"),
     (MENTOR, "Ментор"),
     (EXPERT, "Эксперт"),
     (INVESTOR, "Инвестор"),
