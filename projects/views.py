@@ -9,7 +9,10 @@ from core.permissions import IsStaffOrReadOnly
 from projects.filters import ProjectFilter
 from projects.helpers import VERBOSE_STEPS
 from projects.models import Project, Achievement
-from projects.permissions import IsProjectLeaderOrReadOnlyForNonDrafts
+from projects.permissions import (
+    IsProjectLeaderOrReadOnlyForNonDrafts,
+    HasInvolvementInProjectOrReadOnly,
+)
 from projects.serializers import (
     ProjectDetailSerializer,
     AchievementListSerializer,
@@ -73,8 +76,8 @@ class ProjectList(generics.ListCreateAPIView):
 
 class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Project.objects.get_projects_for_detail_view()
+    permission_classes = [HasInvolvementInProjectOrReadOnly]
     serializer_class = ProjectDetailSerializer
-    permission_classes = [IsProjectLeaderOrReadOnlyForNonDrafts]
 
     def put(self, request, pk, **kwargs):
         # bootleg version of updating achievements via project
