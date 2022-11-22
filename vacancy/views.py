@@ -101,6 +101,16 @@ class VacancyResponseAccept(generics.GenericAPIView):
             return Response(status=status.HTTP_400_BAD_REQUEST)
         vacancy_request.is_approved = True
         vacancy = vacancy_request.vacancy
+
+        # check if this person already has a collaborator role in this project
+        if Collaborator.objects.filter(
+            project=vacancy.project, user=vacancy_request.user
+        ).exists():
+            return Response(
+                "You already work for this project, you can't accept a vacancy here",
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         new_collaborator = Collaborator(
             user=vacancy_request.user,
             project=vacancy.project,
