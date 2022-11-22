@@ -13,6 +13,7 @@ VERBOSE_USER_TYPES = (
 )
 
 VERBOSE_ROLE_TYPES = (
+    (MEMBER, "Участник"),
     (MENTOR, "Ментор"),
     (EXPERT, "Эксперт"),
     (INVESTOR, "Инвестор"),

@@ -17,6 +17,7 @@ class IsProjectLeaderOrReadOnlyForNonDrafts(BasePermission):
             or obj.collaborator_set.filter(user=request.user).exists()
             or obj.invite_set.filter(user=request.user).exists()
         ):
+
             return True
         return False
 
