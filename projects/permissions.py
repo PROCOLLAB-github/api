@@ -41,8 +41,9 @@ class HasInvolvementInProjectOrReadOnly(BasePermission):
         else:
             if (
                 request.user == obj.leader
-                or request.user in obj.collaborator_set.all()
-                or request.user in obj.invite_set.all()
+                or obj.collaborator_set.filter(user=request.user).exists()
+                or obj.invite_set.filter(user=request.user).exists()
             ):
+
                 return True
             return False
