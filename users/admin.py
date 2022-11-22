@@ -28,6 +28,7 @@ class CustomUserAdmin(admin.ModelAdmin):
                     "patronymic",
                     "birthday",
                     "avatar",
+                    "is_active",
                 )
             },
         ),
