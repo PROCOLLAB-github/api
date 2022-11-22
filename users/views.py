@@ -45,7 +45,8 @@ Project = apps.get_model("projects", "Project")
 
 
 class UserList(ListCreateAPIView):
-    queryset = User.objects.all()
+    # TODO: add to manager
+    queryset = User.objects.filter(is_active=True)
     permission_classes = [AllowAny]  # FIXME: change to IsAuthorized
     serializer_class = UserListSerializer
     filter_backends = (filters.DjangoFilterBackend,)
