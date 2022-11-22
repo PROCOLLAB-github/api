@@ -322,7 +322,8 @@ class UserProjectsList(APIView):
     def get(self, request):
         serializer = ProjectListSerializer(
             Project.objects.get_user_projects_for_list_view().filter(
-                leader=self.request.user
+                Q(leader_id=self.request.user.id)
+                | Q(collaborator__user=self.request.user)
             ),
             many=True,
         )
