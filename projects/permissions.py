@@ -12,8 +12,10 @@ class IsProjectLeaderOrReadOnlyForNonDrafts(BasePermission):
         return False
 
     def has_object_permission(self, request, view, obj):
-        if (request.method in SAFE_METHODS and not obj.draft) or (
-            obj.leader == request.user
-        ):
+        # if (request.method in SAFE_METHODS and not obj.draft) or (
+        #     obj.leader == request.user
+        # ):
+        # todo check if user is invited to the project
+        if (request.method in SAFE_METHODS) or (obj.leader == request.user):
             return True
         return False
