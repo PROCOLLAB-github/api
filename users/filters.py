@@ -26,6 +26,7 @@ class UserFilter(filters.FilterSet):
     useful_to_project__contains = filters.Filter(
         field_name="useful_to_project", lookup_expr="contains"
     )
+    user_type = filters.BaseInFilter(field_name="user_type", lookup_expr="in")
 
     class Meta:
         model = CustomUser
