@@ -18,6 +18,14 @@ DEBUG = config("DEBUG", default=False, cast=bool)
 
 SENTRY_DSN = config("SENTRY_DSN", default="", cast=str)
 
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost",
+    "https://api.procollab.ru",
+    "https://procollab.ru",
+    "https://www.procollab.ru",
+    "https://app.procollab.ru",
+]
+
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
@@ -96,7 +104,6 @@ MIDDLEWARE = [
 # ] # FIXME:
 
 CORS_ALLOW_ALL_ORIGINS = True
-
 
 INTERNAL_IPS = [
     "127.0.0.1",
