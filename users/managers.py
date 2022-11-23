@@ -30,9 +30,9 @@ class CustomUserManager(UserManager):
             self.get_queryset()
             .select_related("member", "investor", "expert", "mentor")
             .prefetch_related(
-                "member__preferred_industries",
-                "expert__preferred_industries",
-                "investor__preferred_industries",
+                # "member__preferred_industries",
+                # "expert__preferred_industries",
+                # "investor__preferred_industries",
                 "achievements",
             )
             .all()

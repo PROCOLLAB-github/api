@@ -1,7 +1,6 @@
 from django.forms.models import model_to_dict
 from rest_framework import serializers
 
-from industries.models import Industry
 from .models import CustomUser, Expert, Investor, Member, Mentor, UserAchievement
 
 
@@ -18,6 +17,14 @@ class KeySkillsField(serializers.Field):
 
     def to_internal_value(self, data):
         return ",".join(data)
+
+
+class CustomListField(serializers.ListField):
+    # костыль
+    def to_representation(self, data):
+        if type(data) == list:
+            return data
+        return [i.replace("'", "") for i in data.strip("][").split(", ")]
 
 
 class MemberSerializer(serializers.ModelSerializer):
@@ -39,8 +46,8 @@ class MentorSerializer(serializers.ModelSerializer):
 
 class ExpertSerializer(serializers.ModelSerializer):
 
-    preferred_industries = serializers.ListSerializer(
-        child=serializers.PrimaryKeyRelatedField(queryset=Industry.objects.all())
+    preferred_industries = CustomListField(
+        child=serializers.CharField(max_length=255),
     )
 
     class Meta:
@@ -53,9 +60,7 @@ class ExpertSerializer(serializers.ModelSerializer):
 
 class InvestorSerializer(serializers.ModelSerializer):
 
-    preferred_industries = serializers.ListSerializer(
-        child=serializers.PrimaryKeyRelatedField(queryset=Industry.objects.all())
-    )
+    preferred_industries = CustomListField(child=serializers.CharField(max_length=255))
 
     class Meta:
         model = Investor
@@ -107,17 +112,18 @@ class UserDetailSerializer(serializers.ModelSerializer):
             instance.investor.__dict__.update(
                 validated_data.get("investor", model_to_dict(instance.investor))
             )
-            instance.investor.preferred_industries.set(
-                validated_data.get("investor", {}).get("preferred_industries", [])
-            )
+            instance.investor.preferred_industries = validated_data.get(
+                "investor", {}
+            ).get("preferred_industries", [])
             instance.investor.save()
         elif instance.user_type == CustomUser.EXPERT:
             instance.expert.__dict__.update(
                 validated_data.get("expert", model_to_dict(instance.expert))
             )
-            instance.expert.preferred_industries.set(
-                validated_data.get("expert", {}).get("preferred_industries", [])
+            instance.expert.preferred_industries = validated_data.get("expert", {}).get(
+                "preferred_industries", []
             )
+            print("expert", instance.expert.preferred_industries)
             instance.expert.save()
         elif instance.user_type == CustomUser.MENTOR:
             instance.mentor.__dict__.update(
