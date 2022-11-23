@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import CustomUser, UserAchievement
+from .models import CustomUser, UserAchievement, Member, Mentor, Expert, Investor
 
 
 @admin.register(CustomUser)
@@ -85,6 +85,31 @@ class CustomUserAdmin(admin.ModelAdmin):
         "email",
         "id",
     )
+
+    #     if user_type changed, then delete all related fields
+    def save_model(self, request, obj, form, change):
+        if change:
+            old_user = CustomUser.objects.get(id=obj.id)
+            if obj.user_type != old_user.user_type:
+                if old_user.user_type == 1:
+                    old_user.member.delete()
+                elif old_user.user_type == 2:
+                    old_user.mentor.delete()
+                elif old_user.user_type == 3:
+                    old_user.expert.delete()
+                elif old_user.user_type == 4:
+                    old_user.investor.delete()
+
+                if obj.user_type == 1:
+                    Member.objects.create(user=old_user)
+                elif obj.user_type == 2:
+                    Mentor.objects.create(user=old_user)
+                elif obj.user_type == 3:
+                    Expert.objects.create(user=old_user)
+                elif obj.user_type == 4:
+                    Investor.objects.create(user=old_user)
+
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(UserAchievement)
