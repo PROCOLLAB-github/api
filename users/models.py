@@ -208,9 +208,10 @@ class Expert(AbstractUserWithRole):
         CustomUser, on_delete=models.CASCADE, related_name="expert"
     )
 
-    preferred_industries = models.ManyToManyField(
-        Industry, blank=True, related_name="experts"
-    )
+    # preferred_industries = models.ManyToManyField(
+    #     Industry, blank=True, related_name="experts"
+    # )
+    preferred_industries = models.CharField(max_length=4096, blank=True)
     useful_to_project = models.TextField(blank=True)
 
     # TODO reviews
@@ -235,9 +236,10 @@ class Investor(AbstractUserWithRole):
         CustomUser, on_delete=models.CASCADE, related_name="investor"
     )
 
-    preferred_industries = models.ManyToManyField(
-        Industry, blank=True, related_name="investors"
-    )
+    # preferred_industries = models.ManyToManyField(
+    #     Industry, blank=True, related_name="investors"
+    # )
+    preferred_industries = models.CharField(max_length=4096, blank=True)
     interaction_process_description = models.TextField(blank=True)
 
     def __str__(self):
