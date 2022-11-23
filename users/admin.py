@@ -91,14 +91,17 @@ class CustomUserAdmin(admin.ModelAdmin):
         if change:
             old_user = CustomUser.objects.get(id=obj.id)
             if obj.user_type != old_user.user_type:
-                if old_user.user_type == 1:
-                    old_user.member.delete()
-                elif old_user.user_type == 2:
-                    old_user.mentor.delete()
-                elif old_user.user_type == 3:
-                    old_user.expert.delete()
-                elif old_user.user_type == 4:
-                    old_user.investor.delete()
+                try:
+                    if old_user.user_type == 1:
+                        old_user.member.delete()
+                    elif old_user.user_type == 2:
+                        old_user.mentor.delete()
+                    elif old_user.user_type == 3:
+                        old_user.expert.delete()
+                    elif old_user.user_type == 4:
+                        old_user.investor.delete()
+                except Exception:
+                    pass
 
                 if obj.user_type == 1:
                     Member.objects.create(user=old_user)
