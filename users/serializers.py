@@ -1,6 +1,7 @@
 from django.forms.models import model_to_dict
 from rest_framework import serializers
 
+from industries.models import Industry
 from .models import CustomUser, Expert, Investor, Member, Mentor, UserAchievement
 
 
@@ -37,6 +38,11 @@ class MentorSerializer(serializers.ModelSerializer):
 
 
 class ExpertSerializer(serializers.ModelSerializer):
+
+    preferred_industries = serializers.ListSerializer(
+        child=serializers.PrimaryKeyRelatedField(queryset=Industry.objects.all())
+    )
+
     class Meta:
         model = Expert
         fields = [
@@ -46,6 +52,11 @@ class ExpertSerializer(serializers.ModelSerializer):
 
 
 class InvestorSerializer(serializers.ModelSerializer):
+
+    preferred_industries = serializers.ListSerializer(
+        child=serializers.PrimaryKeyRelatedField(queryset=Industry.objects.all())
+    )
+
     class Meta:
         model = Investor
         fields = [
@@ -96,10 +107,16 @@ class UserDetailSerializer(serializers.ModelSerializer):
             instance.investor.__dict__.update(
                 validated_data.get("investor", model_to_dict(instance.investor))
             )
+            instance.investor.preferred_industries.set(
+                validated_data.get("investor", {}).get("preferred_industries", [])
+            )
             instance.investor.save()
         elif instance.user_type == CustomUser.EXPERT:
             instance.expert.__dict__.update(
                 validated_data.get("expert", model_to_dict(instance.expert))
+            )
+            instance.expert.preferred_industries.set(
+                validated_data.get("expert", {}).get("preferred_industries", [])
             )
             instance.expert.save()
         elif instance.user_type == CustomUser.MENTOR:
