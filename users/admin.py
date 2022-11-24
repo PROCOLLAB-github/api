@@ -92,24 +92,24 @@ class CustomUserAdmin(admin.ModelAdmin):
             old_user = CustomUser.objects.get(id=obj.id)
             if obj.user_type != old_user.user_type:
                 try:
-                    if old_user.user_type == 1:
+                    if old_user.user_type == CustomUser.MEMBER:
                         old_user.member.delete()
-                    elif old_user.user_type == 2:
+                    elif old_user.user_type == CustomUser.MENTOR:
                         old_user.mentor.delete()
-                    elif old_user.user_type == 3:
+                    elif old_user.user_type == CustomUser.EXPERT:
                         old_user.expert.delete()
-                    elif old_user.user_type == 4:
+                    elif old_user.user_type == CustomUser.INVESTOR:
                         old_user.investor.delete()
                 except Exception:
                     pass
 
-                if obj.user_type == 1:
+                if obj.user_type == CustomUser.MEMBER:
                     Member.objects.create(user=old_user)
-                elif obj.user_type == 2:
+                elif obj.user_type == CustomUser.MENTOR:
                     Mentor.objects.create(user=old_user)
-                elif obj.user_type == 3:
+                elif obj.user_type == CustomUser.EXPERT:
                     Expert.objects.create(user=old_user)
-                elif obj.user_type == 4:
+                elif obj.user_type == CustomUser.INVESTOR:
                     Investor.objects.create(user=old_user)
 
         super().save_model(request, obj, form, change)

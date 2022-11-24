@@ -5,6 +5,7 @@ from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.sites.shortcuts import get_current_site
+from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import redirect
 from django.urls import reverse
@@ -108,6 +109,7 @@ class UserDetail(RetrieveUpdateDestroyAPIView):
     permission_classes = [IsOwnerOrReadOnly, IsAuthenticated]
     serializer_class = UserDetailSerializer
 
+    @transaction.atomic
     def put(self, request, pk):
         # bootleg version of updating achievements via user
         if request.data.get("achievements") is not None:
