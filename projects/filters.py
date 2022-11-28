@@ -1,3 +1,4 @@
+from django.db.models import Count
 from django_filters import rest_framework as filters
 
 from projects.models import Project
@@ -22,8 +23,16 @@ class ProjectFilter(filters.FilterSet):
         ?collaborator__user__in=1,2 equals to .filter(collaborator__user__in=[1, 2])
         ?step=1 equals to .filter(step=1)
         ?any_vacancies=true equals to .filter(any_vacancies=True)
-        ?member_count__gt=1 equals to .filter(member_count__gt=1)
+        ?collaborator__count__gt=1 equals to .filter(collaborator__count__gt=1)
     """
+
+    @classmethod
+    def filter_collaborator_count_lt(cls, queryset, name, value):
+        return queryset.alias(Count("collaborator")).filter(collaborator__count__lt=value)
+
+    @classmethod
+    def filter_collaborator_count_gt(cls, queryset, name, value):
+        return queryset.alias(Count("collaborator")).filter(collaborator__count__gt=value)
 
     name__contains = filters.Filter(field_name="name", lookup_expr="contains")
     description__contains = filters.Filter(
@@ -38,14 +47,15 @@ class ProjectFilter(filters.FilterSet):
 
     # filters by whether there are any vacancies in the project
     any_vacancies = filters.BooleanFilter(
-        field_name="vacancy", lookup_expr="isnull", exclude=True
+        field_name="vacancies", lookup_expr="isnull", exclude=True
     )
-    member_count_gt = filters.NumberFilter(
+    collaborator__count__gt = filters.NumberFilter(
         field_name="collaborator", lookup_expr="count__gt"
     )
-    member_count_lt = filters.NumberFilter(
-        field_name="collaborator", lookup_expr="count__lt"
+    collaborator__count__lt = filters.NumberFilter(
+        field_name="collaborator", method="filter_collaborator_count_lt"
     )
+    step = filters.NumberFilter(field_name="step")
 
     class Meta:
         model = Project
