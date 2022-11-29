@@ -13,6 +13,7 @@ from users.views import (
     UserList,
     UserTypesView,
     VerifyEmail,
+    LogoutView,
 )
 
 app_name = "users"
@@ -30,6 +31,7 @@ urlpatterns = [
     path("users/current/", CurrentUser.as_view()),
     path("users/achievements/", AchievementList.as_view()),
     path("users/achievements/<int:pk>/", AchievementDetail.as_view()),
+    path("logout/", LogoutView.as_view()),
     re_path(
         r"^account-confirm-email/",
         VerifyEmail.as_view(),
