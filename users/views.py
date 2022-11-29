@@ -331,3 +331,17 @@ class UserProjectsList(APIView):
             many=True,
         )
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            # get request's refresh token from headers
+            refresh_token = request.headers["Authorization"].split(" ")[1]
+            # blacklist the refresh token
+            RefreshToken(refresh_token).blacklist()
+            return Response(status=status.HTTP_205_RESET_CONTENT)
+        except TokenError:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
