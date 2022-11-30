@@ -121,8 +121,8 @@ class UserDetail(RetrieveUpdateDestroyAPIView):
                 [
                     UserAchievement(
                         user_id=pk,
-                        title=achievement.get("name"),
-                        status=achievement.get("description"),
+                        title=achievement.get("title"),
+                        status=achievement.get("status"),
                     )
                     for achievement in achievements
                 ]
