@@ -90,8 +90,8 @@ class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
                 [
                     Achievement(
                         project_id=pk,
-                        title=achievement.get("name"),
-                        status=achievement.get("description"),
+                        title=achievement.get("title"),
+                        status=achievement.get("status"),
                     )
                     for achievement in achievements
                 ]
