@@ -159,4 +159,6 @@ class Collaborator(models.Model):
 def create_project(sender, instance, created, **kwargs):
     """Creates collaborator for the project leader on project creation"""
     if created:
-        Collaborator.objects.create(user=instance.leader, project=instance)
+        Collaborator.objects.create(
+            user=instance.leader, project=instance, role="Основатель"
+        )
