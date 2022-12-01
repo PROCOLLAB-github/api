@@ -3,6 +3,8 @@ from typing import Optional
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.db.models import UniqueConstraint
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 from industries.models import Industry
 from projects.helpers import VERBOSE_STEPS
@@ -19,7 +21,6 @@ class Project(models.Model):
      Attributes:
         name: A CharField name of the project.
         description: A TextField description of the project.
-        short_description: A TextField short description of the project.
         region: A CharField region of the project.
         step: A PositiveSmallIntegerField which indicates status of the project
             according to VERBOSE_STEPS.
@@ -34,7 +35,6 @@ class Project(models.Model):
 
     name = models.CharField(max_length=256, null=True, blank=True)
     description = models.TextField(null=True, blank=True)
-    # short_description = models.TextField(null=True, blank=True)
     region = models.CharField(max_length=256, null=True, blank=True)
     step = models.PositiveSmallIntegerField(choices=VERBOSE_STEPS, null=True, blank=True)
 
@@ -153,3 +153,10 @@ class Collaborator(models.Model):
                 name="unique_collaborator",
             )
         ]
+
+
+@receiver(post_save, sender=Project)
+def create_project(sender, instance, created, **kwargs):
+    """Creates collaborator for the project leader on project creation"""
+    if created:
+        Collaborator.objects.create(user=instance.leader, project=instance)
