@@ -76,7 +76,7 @@ class Project(models.Model):
             self.name
             and self.description
             and self.region
-            and self.step
+            and (self.step is not None)
             and self.industry
             and self.presentation_address
             and self.image_address
