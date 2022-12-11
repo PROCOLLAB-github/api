@@ -27,12 +27,16 @@ class ProjectFilter(filters.FilterSet):
     """
 
     @classmethod
-    def filter_collaborator_count_lt(cls, queryset, name, value):
-        return queryset.alias(Count("collaborator")).filter(collaborator__count__lt=value)
+    def filter_collaborator_count_lte(cls, queryset, name, value):
+        return queryset.alias(Count("collaborator")).filter(
+            collaborator__count__lte=value
+        )
 
     @classmethod
-    def filter_collaborator_count_gt(cls, queryset, name, value):
-        return queryset.alias(Count("collaborator")).filter(collaborator__count__gt=value)
+    def filter_collaborator_count_gte(cls, queryset, name, value):
+        return queryset.alias(Count("collaborator")).filter(
+            collaborator__count__gte=value
+        )
 
     name__contains = filters.Filter(field_name="name", lookup_expr="contains")
     description__contains = filters.Filter(
@@ -50,10 +54,10 @@ class ProjectFilter(filters.FilterSet):
         field_name="vacancies", lookup_expr="isnull", exclude=True
     )
     collaborator__count__gt = filters.NumberFilter(
-        field_name="collaborator", method="filter_collaborator_count_gt"
+        field_name="collaborator", method="filter_collaborator_count_gte"
     )
-    collaborator__count__lt = filters.NumberFilter(
-        field_name="collaborator", method="filter_collaborator_count_lt"
+    collaborator__count__lte = filters.NumberFilter(
+        field_name="collaborator", method="filter_collaborator_count_lte"
     )
     step = filters.NumberFilter(field_name="step")
 

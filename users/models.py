@@ -14,6 +14,7 @@ from users.helpers import (
     VERBOSE_USER_TYPES,
 )
 from users.managers import CustomUserManager, UserAchievementManager
+from users.validators import user_birthday_validator
 
 
 def get_default_user_type():
@@ -67,7 +68,11 @@ class CustomUser(AbstractUser):
     patronymic = models.CharField(max_length=255, null=True, blank=True)
     key_skills = models.CharField(max_length=512, null=True, blank=True)
     avatar = models.URLField(null=True, blank=True)
-    birthday = models.DateField(null=True, blank=True)
+    birthday = models.DateField(
+        null=False,
+        blank=False,
+        validators=[user_birthday_validator],
+    )
     about_me = models.TextField(null=True, blank=True)
     status = models.CharField(max_length=255, null=True, blank=True)
     region = models.CharField(max_length=255, null=True, blank=True)
@@ -87,6 +92,10 @@ class CustomUser(AbstractUser):
 
     def __str__(self):
         return f"User<{self.id}> - {self.first_name} {self.last_name}"
+
+    class Meta:
+        verbose_name = "Пользователь"
+        verbose_name_plural = "Пользователи"
 
 
 class UserAchievement(models.Model):
