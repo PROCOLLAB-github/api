@@ -1,8 +1,5 @@
-from datetime import timedelta
-
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-from django.db.models import F
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
@@ -17,6 +14,7 @@ from users.helpers import (
     VERBOSE_USER_TYPES,
 )
 from users.managers import CustomUserManager, UserAchievementManager
+from users.validators import user_birthday_validator
 
 
 def get_default_user_type():
@@ -70,7 +68,11 @@ class CustomUser(AbstractUser):
     patronymic = models.CharField(max_length=255, null=True, blank=True)
     key_skills = models.CharField(max_length=512, null=True, blank=True)
     avatar = models.URLField(null=True, blank=True)
-    birthday = models.DateField()
+    birthday = models.DateField(
+        null=False,
+        blank=False,
+        validators=[user_birthday_validator],
+    )
     about_me = models.TextField(null=True, blank=True)
     status = models.CharField(max_length=255, null=True, blank=True)
     region = models.CharField(max_length=255, null=True, blank=True)
@@ -94,13 +96,6 @@ class CustomUser(AbstractUser):
     class Meta:
         verbose_name = "Пользователь"
         verbose_name_plural = "Пользователи"
-        # constraint for birthday - person must be older than 14 years
-        constraints = [
-            models.CheckConstraint(
-                check=models.Q(birthday__lte=F("birthday") - timedelta(days=14 * 365)),
-                name="user_birthday_constraint",
-            )
-        ]
 
 
 class UserAchievement(models.Model):

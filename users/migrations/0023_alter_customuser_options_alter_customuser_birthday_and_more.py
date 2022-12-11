@@ -5,6 +5,18 @@ from django.db import migrations, models
 import django.db.models.expressions
 
 
+def set_birthday_defaults(apps, schema_editor):
+    CustomUser = apps.get_model("users", "CustomUser")
+    for user in CustomUser.objects.all():
+        if not user.birthday:
+            user.birthday = "2000-01-01"
+            user.save()
+
+
+def rev(apps, schema_editor):
+    pass
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -12,6 +24,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RunPython(set_birthday_defaults, rev),
         migrations.AlterModelOptions(
             name="customuser",
             options={
@@ -22,22 +35,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name="customuser",
             name="birthday",
-            field=models.DateField(),
-        ),
-        migrations.AddConstraint(
-            model_name="customuser",
-            constraint=models.CheckConstraint(
-                check=models.Q(
-                    (
-                        "birthday__lte",
-                        django.db.models.expressions.CombinedExpression(
-                            models.F("birthday"),
-                            "-",
-                            models.Value(datetime.timedelta(days=5110)),
-                        ),
-                    )
-                ),
-                name="user_birthday_constraint",
-            ),
+            field=models.DateField(null=False, default="2000-01-01"),
         ),
     ]
