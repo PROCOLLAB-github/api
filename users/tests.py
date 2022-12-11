@@ -1,5 +1,6 @@
 from django.test import TestCase
 from rest_framework.test import APIRequestFactory, force_authenticate
+from tests.constants import USER_CREATE_DATA
 
 from users.models import CustomUser
 from users.views import UserList, UserDetail
@@ -10,15 +11,9 @@ class UserTestCase(TestCase):
         self.factory = APIRequestFactory()
         self.user_list_view = UserList.as_view()
         self.user_detail_view = UserDetail.as_view()
-        self.user_create_data = {
-            "email": "only_for_test@test.test",
-            "password": "very_strong_password",
-            "first_name": "Test",
-            "last_name": "Test",
-        }
 
     def test_user_creation(self):
-        request = self.factory.post("auth/users/", self.user_create_data)
+        request = self.factory.post("auth/users/", USER_CREATE_DATA)
         response = self.user_list_view(request)
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data["email"], "only_for_test@test.test")
@@ -38,14 +33,14 @@ class UserTestCase(TestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_user_creation_with_existing_email(self):
-        request = self.factory.post("auth/users/", self.user_create_data)
+        request = self.factory.post("auth/users/", USER_CREATE_DATA)
         response = self.user_list_view(request)
         self.assertEqual(response.status_code, 201)
         response = self.user_list_view(request)
         self.assertEqual(response.status_code, 400)
 
     def test_user_update(self):
-        request = self.factory.post("auth/users/", self.user_create_data)
+        request = self.factory.post("auth/users/", USER_CREATE_DATA)
         response = self.user_list_view(request)
         user_id = response.data["id"]
         user = CustomUser.objects.get(id=user_id)
