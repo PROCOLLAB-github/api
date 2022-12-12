@@ -53,7 +53,7 @@ class ProjectFilter(filters.FilterSet):
     any_vacancies = filters.BooleanFilter(
         field_name="vacancies", lookup_expr="isnull", exclude=True
     )
-    collaborator__count__gt = filters.NumberFilter(
+    collaborator__count__gte = filters.NumberFilter(
         field_name="collaborator", method="filter_collaborator_count_gte"
     )
     collaborator__count__lte = filters.NumberFilter(
