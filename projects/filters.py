@@ -38,6 +38,19 @@ class ProjectFilter(filters.FilterSet):
             collaborator__count__gte=value
         )
 
+    @classmethod
+    def vacancy_filter(cls, queryset, name, value):
+        """Filter by vacancies
+        If value is False, returns all projects.
+        If value is True, returns projects with active vacancies.
+        """
+        if value:
+            return queryset.filter(
+                vacancies=True,
+                vacancies__is_active=True,
+            )
+        return queryset
+
     name__contains = filters.Filter(field_name="name", lookup_expr="contains")
     description__contains = filters.Filter(
         field_name="description", lookup_expr="contains"
@@ -50,9 +63,7 @@ class ProjectFilter(filters.FilterSet):
     )
 
     # filters by whether there are any vacancies in the project
-    any_vacancies = filters.BooleanFilter(
-        field_name="vacancies", lookup_expr="isnull", exclude=True
-    )
+    any_vacancies = filters.BooleanFilter(field_name="vacancies", method="vacancy_filter")
     collaborator__count__gte = filters.NumberFilter(
         field_name="collaborator", method="filter_collaborator_count_gte"
     )
