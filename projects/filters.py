@@ -46,9 +46,8 @@ class ProjectFilter(filters.FilterSet):
         """
         if value:
             return queryset.filter(
-                vacancies=True,
-                vacancies__is_active=True,
-            )
+                vacancies__is_active=True, vacancies__isnull=False
+            ).distinct()
         return queryset
 
     name__contains = filters.Filter(field_name="name", lookup_expr="contains")
