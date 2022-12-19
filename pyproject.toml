@@ -48,6 +48,7 @@ django-filter = "^22.1"
 setuptools = "^65.5.0"
 drf-yasg = "^1.21.4"
 sentry-sdk = "^1.10.1"
+channels = "^4.0.0"
 
 
 [build-system]
