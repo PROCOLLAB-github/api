@@ -1,8 +1,15 @@
+from typing import Optional
+
 from django.contrib.auth import get_user_model
 from django.db import models
-from industries.models import Industry
+from django.db.models import UniqueConstraint
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
+from industries.models import Industry
 from projects.helpers import VERBOSE_STEPS
+from projects.managers import AchievementManager, ProjectManager
+from users.models import CustomUser
 
 User = get_user_model()
 
@@ -14,46 +21,36 @@ class Project(models.Model):
      Attributes:
         name: A CharField name of the project.
         description: A TextField description of the project.
-        short_description: A TextField short description of the project.
         region: A CharField region of the project.
         step: A PositiveSmallIntegerField which indicates status of the project
             according to VERBOSE_STEPS.
         industry: A ForeignKey referring to the Industry model.
         presentation_address: A URLField presentation URL address.
         image_address: A URLField image URL address.
-        collaborators: A ManyToManyField collaborators of the project.
         leader: A ForeignKey referring to the User model.
         draft: A boolean indicating if Project is a draft.
         datetime_created: A DateTimeField indicating date of creation.
         datetime_updated: A DateTimeField indicating date of update.
     """
 
-    name = models.CharField(max_length=256, null=False)
-    description = models.TextField(blank=True)
-    short_description = models.TextField(blank=True)
-    region = models.CharField(max_length=256, blank=True)
-    step = models.PositiveSmallIntegerField(choices=VERBOSE_STEPS, null=False)
+    name = models.CharField(max_length=256, null=True, blank=True)
+    description = models.TextField(null=True, blank=True)
+    region = models.CharField(max_length=256, null=True, blank=True)
+    step = models.PositiveSmallIntegerField(choices=VERBOSE_STEPS, null=True, blank=True)
 
     industry = models.ForeignKey(
         Industry,
         on_delete=models.SET_NULL,
         null=True,
-        related_name="projects",
-    )
-    # TODO think about naming
-    presentation_address = models.URLField(blank=True)
-    image_address = models.URLField(blank=True)
-
-    collaborators = models.ManyToManyField(
-        User,
-        related_name="projects",
         blank=True,
+        related_name="projects",
     )
+    presentation_address = models.URLField(null=True, blank=True)
+    image_address = models.URLField(null=True, blank=True)
 
     leader = models.ForeignKey(
         User,
-        on_delete=models.SET_NULL,
-        null=True,
+        on_delete=models.CASCADE,
         related_name="leaders_projects",  # projects in which this user is the leader
     )
 
@@ -65,6 +62,27 @@ class Project(models.Model):
     datetime_updated = models.DateTimeField(
         verbose_name="Дата изменения", null=False, auto_now=True
     )
+
+    objects = ProjectManager()
+
+    def get_short_description(self) -> Optional[str]:
+        return self.description[:30] if self.description else None
+
+    def save(
+        self, force_insert=False, force_update=False, using=None, update_fields=None
+    ):
+        # if every field is filled, set draft to false
+        if (
+            self.name
+            and self.description
+            and self.region
+            and (self.step is not None)
+            and self.industry
+            and self.presentation_address
+            and self.image_address
+        ):
+            self.draft = False
+        super().save(force_insert, force_update, using, update_fields)
 
     def __str__(self):
         return f"Project<{self.id}> - {self.name}"
@@ -88,11 +106,10 @@ class Achievement(models.Model):
     status = models.CharField(max_length=256, null=False)
 
     project = models.ForeignKey(
-        Project,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name="achievements",
+        Project, on_delete=models.SET_NULL, null=True, related_name="achievements"
     )
+
+    objects = AchievementManager()
 
     def __str__(self):
         return f"Achievement<{self.id}>"
@@ -100,3 +117,48 @@ class Achievement(models.Model):
     class Meta:
         verbose_name = "Достижение"
         verbose_name_plural = "Достижения"
+
+
+class Collaborator(models.Model):
+    """Project collaborator model
+
+    Attributes:
+        user: A ForeignKey referencing the user who is collaborating in the project
+        project: A ForeignKey referencing the project the user is collaborating in
+        role: A CharField meaning the role the user is fulfilling in the project
+        datetime_created: A DateTimeField indicating date of creation.
+        datetime_updated: A DateTimeField indicating date of update.
+    """
+
+    user = models.ForeignKey(CustomUser, models.CASCADE, verbose_name="Пользователь")
+    project = models.ForeignKey(Project, models.CASCADE, verbose_name="Проект")
+    role = models.CharField("Роль", max_length=1024, blank=True, null=True)
+
+    datetime_created = models.DateTimeField(
+        verbose_name="Дата создания", null=False, auto_now_add=True
+    )
+    datetime_updated = models.DateTimeField(
+        verbose_name="Дата изменения", null=False, auto_now=True
+    )
+
+    class Meta:
+        verbose_name = "Коллаборатор"
+        verbose_name_plural = "Коллабораторы"
+        constraints = [
+            UniqueConstraint(
+                fields=[
+                    "project",
+                    "user",
+                ],
+                name="unique_collaborator",
+            )
+        ]
+
+
+@receiver(post_save, sender=Project)
+def create_project(sender, instance, created, **kwargs):
+    """Creates collaborator for the project leader on project creation"""
+    if created:
+        Collaborator.objects.create(
+            user=instance.leader, project=instance, role="Основатель"
+        )

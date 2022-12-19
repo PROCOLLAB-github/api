@@ -1,5 +1,6 @@
 from django.test import TestCase
 from rest_framework.test import APIRequestFactory, force_authenticate
+from tests.constants import USER_CREATE_DATA
 from users.models import CustomUser
 from users.views import UserList
 
@@ -90,18 +91,11 @@ class IndustryTestCase(TestCase):
         self.assertEqual(response.status_code, 400)
 
     def _user_create(self):
-        request = self.factory.post(
-            "auth/users/",
-            {
-                "email": "only_for_test@test.test",
-                "password": "test_password",
-                "first_name": "Test_first_name",
-                "last_name": "Test_last_name",
-            },
-        )
+        request = self.factory.post("auth/users/", USER_CREATE_DATA)
         response = self.user_list_view(request)
         user_id = response.data["id"]
         user = CustomUser.objects.get(id=user_id)
         user.is_active = True
+        user.is_staff = True
         user.save()
         return user
