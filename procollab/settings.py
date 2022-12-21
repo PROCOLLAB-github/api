@@ -31,6 +31,7 @@ ALLOWED_HOSTS = [
     "localhost",
     "0.0.0.0",
     "api.procollab.ru",
+    "127.0.0.1:8000",
 ]
 
 PASSWORD_HASHERS = [
@@ -53,6 +54,9 @@ if SENTRY_DSN:
     )
 
 INSTALLED_APPS = [
+    # daphne is required for channels, should be installed before django.contrib.staticfiles
+    "daphne",
+    # django apps
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -81,7 +85,19 @@ INSTALLED_APPS = [
     "corsheaders",
     "django_filters",
     "drf_yasg",
+    "channels",
 ]
+
+# django channels
+ASGI_APPLICATION = "procollab.asgi.application"
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
+    },
+}
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
