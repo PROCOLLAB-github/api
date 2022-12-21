@@ -10,6 +10,9 @@ class CustomUserManager(UserManager):
 
         return self._create_user(email, password, **extra_fields)
 
+    def get_active(self):
+        return self.get_queryset().filter(is_active=True)
+
     def create_superuser(self, email, password=None, **extra_fields):
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
