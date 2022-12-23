@@ -1,7 +1,7 @@
 from django.db import models
 
 
-class Chat(models.Model):
+class BaseChat(models.Model):
     """
     Chat model
 
@@ -11,15 +11,14 @@ class Chat(models.Model):
         created_at: A DateTimeField indicating date of creation.
     """
 
-    users = models.ManyToManyField("users.CustomUser", related_name="chats")
-    # do we really want this? maybe just set a default chat name
-    #  (e.g. f"chat {self.users_str()}") on creation?
-    name = models.CharField(max_length=255, blank=True, null=True)
-
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # has to be overriden in child classes
+    def get_chat_users(self):
+        raise NotImplementedError
+
     def __str__(self):
-        return self.name or f"Chat {self.pk}"
+        return f"Chat {self.pk}"
 
     @property
     def users_str(self):
@@ -28,6 +27,54 @@ class Chat(models.Model):
     class Meta:
         verbose_name = "Чат"
         verbose_name_plural = "Чаты"
+        abstract = True
+
+
+class ProjectChat(BaseChat):
+    """
+    ProjectChat model
+
+    Attributes:
+        users: A ManyToManyField referring to the User model.
+        created_at: A DateTimeField indicating date of creation.
+    """
+
+    project = models.ForeignKey(
+        "projects.Project", on_delete=models.CASCADE, related_name="chats"
+    )
+
+    def get_chat_users(self):
+        # TODO: return all collaborators from project + leader
+        pass
+
+    def __str__(self):
+        return f"Chat {self.pk} ({self.name})"
+
+    class Meta:
+        verbose_name = "Чат проекта"
+        verbose_name_plural = "Чаты проектов"
+
+
+class DirectChat(BaseChat):
+    """
+    DirectChat model
+
+    Attributes:
+        users: A ManyToManyField referring to the User model.
+        created_at: A DateTimeField indicating date of creation.
+    """
+
+    users = models.ManyToManyField("users.CustomUser", related_name="chats")
+
+    def get_chat_users(self):
+        return self.users.all()
+
+    def __str__(self):
+        return f"Direct chat {self.pk} ({self.users_str})"
+
+    class Meta:
+        verbose_name = "Личный чат"
+        verbose_name_plural = "Личные чаты"
 
 
 class Message(models.Model):
@@ -41,7 +88,8 @@ class Message(models.Model):
         created_at: A DateTimeField indicating date of creation.
     """
 
-    chat = models.ForeignKey(Chat, on_delete=models.CASCADE, related_name="messages")
+    # TODO: add chat foreign key
+    # chat = models.ForeignKey(Chat, on_delete=models.CASCADE, related_name="messages")
     author = models.ForeignKey(
         "users.CustomUser", on_delete=models.CASCADE, related_name="messages"
     )
