@@ -1,32 +1,27 @@
+from django.contrib.auth import get_user_model
 from django.db import models
+
+User = get_user_model()
 
 
 class BaseChat(models.Model):
     """
-    Chat model
+    Base Chat model
 
     Attributes:
-        name: A CharField name of the chat.
-        users: A ManyToManyField referring to the User model.
         created_at: A DateTimeField indicating date of creation.
     """
 
     created_at = models.DateTimeField(auto_now_add=True)
 
     # has to be overriden in child classes
-    def get_chat_users(self):
+    def get_users(self):
         raise NotImplementedError
 
     def __str__(self):
-        return f"Chat {self.pk}"
-
-    @property
-    def users_str(self):
-        return ", ".join([i.email for i in self.users.all()])
+        return f"BaseChat {self.pk}"
 
     class Meta:
-        verbose_name = "Чат"
-        verbose_name_plural = "Чаты"
         abstract = True
 
 
@@ -35,7 +30,6 @@ class ProjectChat(BaseChat):
     ProjectChat model
 
     Attributes:
-        users: A ManyToManyField referring to the User model.
         created_at: A DateTimeField indicating date of creation.
     """
 
@@ -43,12 +37,12 @@ class ProjectChat(BaseChat):
         "projects.Project", on_delete=models.CASCADE, related_name="chats"
     )
 
-    def get_chat_users(self):
+    def get_users(self):
         # TODO: return all collaborators from project + leader
         pass
 
     def __str__(self):
-        return f"Chat {self.pk} ({self.name})"
+        return f"ProjectChat<{self.project.id}> - {self.project.name}"
 
     class Meta:
         verbose_name = "Чат проекта"
@@ -60,17 +54,18 @@ class DirectChat(BaseChat):
     DirectChat model
 
     Attributes:
-        users: A ManyToManyField referring to the User model.
         created_at: A DateTimeField indicating date of creation.
     """
+    first_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="direct_chats")
+    second_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="direct_chats")
 
-    users = models.ManyToManyField("users.CustomUser", related_name="chats")
-
-    def get_chat_users(self):
-        return self.users.all()
+    def get_users(self):
+        return [self.first_user, self.second_user]
 
     def __str__(self):
-        return f"Direct chat {self.pk} ({self.users_str})"
+        return f"DirectChat<{self.first_user.id}-{self.second_user.id}> -" \
+               f" {self.first_user.first_name} {self.first_user.last_name} -" \
+               f" {self.second_user.first_name} {self.second_user.last_name}"
 
     class Meta:
         verbose_name = "Личный чат"

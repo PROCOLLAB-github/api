@@ -6,7 +6,7 @@ from channels.generic.websocket import JsonWebsocketConsumer
 
 class ChatConsumer(JsonWebsocketConsumer):
     def connect(self):
-        # 1. check that user is authenticated
+        # TODO 1. check that user is authenticated
         self.room_name = self.scope["url_route"]["kwargs"]["room_name"]
         self.room_group_name = f"chat_{self.room_name}"
 
