@@ -1,14 +1,14 @@
-# chat/consumers.py
 import json
 
 from asgiref.sync import async_to_sync
-from channels.generic.websocket import WebsocketConsumer
+from channels.generic.websocket import JsonWebsocketConsumer
 
 
-class ChatConsumer(WebsocketConsumer):
+class ChatConsumer(JsonWebsocketConsumer):
     def connect(self):
+        # 1. check that user is authenticated
         self.room_name = self.scope["url_route"]["kwargs"]["room_name"]
-        self.room_group_name = "chat_%s" % self.room_name
+        self.room_group_name = f"chat_{self.room_name}"
 
         # Join room group
         async_to_sync(self.channel_layer.group_add)(
@@ -24,9 +24,8 @@ class ChatConsumer(WebsocketConsumer):
         )
 
     # Receive message from WebSocket
-    def receive(self, text_data):
-        text_data_json = json.loads(text_data)
-        message = text_data_json["message"]
+    def receive_json(self, content, **kwargs):
+        message = content["message"]
 
         # Send message to room group
         async_to_sync(self.channel_layer.group_send)(
