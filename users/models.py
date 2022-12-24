@@ -96,7 +96,6 @@ class CustomUser(AbstractUser):
     def __str__(self):
         return f"User<{self.id}> - {self.first_name} {self.last_name}"
 
-
     class Meta:
         verbose_name = "Пользователь"
         verbose_name_plural = "Пользователи"
