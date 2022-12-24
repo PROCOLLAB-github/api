@@ -30,6 +30,7 @@ class ProjectChat(BaseChat):
     ProjectChat model
 
     Attributes:
+        project: A ForeignKey to Project model, indicating project, which chat belongs to.
         created_at: A DateTimeField indicating date of creation.
     """
 
@@ -38,8 +39,14 @@ class ProjectChat(BaseChat):
     )
 
     def get_users(self):
-        # TODO: return all collaborators from project + leader
-        pass
+        """returns all collaborators and leader of the project
+
+        Returns:
+            List[CustomUser]: list of users, who are collaborators or leader of the project
+        """        
+        collaborators = self.project.collaborators.all()
+        users = [collaborator.user for collaborator in collaborators]
+        return users + [self.project.leader]
 
     def __str__(self):
         return f"ProjectChat<{self.project.id}> - {self.project.name}"
@@ -55,6 +62,11 @@ class DirectChat(BaseChat):
 
     Attributes:
         created_at: A DateTimeField indicating date of creation.
+        first_user: A ForeignKey to CustomUser model, indicating first user in chat.
+        second_user: A ForeignKey to CustomUser model, indicating second user in chat.
+
+    Methods:
+        get_users: returns list of users, who are in chat
     """
     first_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="direct_chats")
     second_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="direct_chats")
@@ -63,32 +75,27 @@ class DirectChat(BaseChat):
         return [self.first_user, self.second_user]
 
     def __str__(self):
-        return f"DirectChat<{self.first_user.id}-{self.second_user.id}> -" \
-               f" {self.first_user.first_name} {self.first_user.last_name} -" \
-               f" {self.second_user.first_name} {self.second_user.last_name}"
+        return f"DirectChat with {self.first_user.get_full_name()} and {self.second_user.get_full_name()}"
 
     class Meta:
         verbose_name = "Личный чат"
         verbose_name_plural = "Личные чаты"
 
 
-class Message(models.Model):
+class BaseMessage(models.Model):
     """
-    Message model
+    Base message model
 
     Attributes:
-        chat: A ForeignKey referring to the Chat model.
         author: A ForeignKey referring to the User model.
         text: A TextField containing message text.
         created_at: A DateTimeField indicating date of creation.
     """
 
-    # TODO: add chat foreign key
-    # chat = models.ForeignKey(Chat, on_delete=models.CASCADE, related_name="messages")
     author = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="messages"
     )
-    text = models.TextField()
+    text = models.TextField(max_length=8192)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -98,3 +105,49 @@ class Message(models.Model):
         verbose_name = "Сообщение"
         verbose_name_plural = "Сообщения"
         ordering = ["-created_at"]
+
+
+class ProjectChatMessage(BaseMessage):
+    """
+    ProjectMessage model
+
+    Attributes:
+        chat: A ForeignKey to ProjectChat model, indicating chat, which message belongs to.
+        author: A ForeignKey referring to the User model.
+        text: A TextField containing message text.
+        created_at: A DateTimeField indicating date of creation.
+    """
+    
+    chat = models.ForeignKey(
+        ProjectChat, on_delete=models.CASCADE, related_name="messages"
+    )
+
+    def __str__(self):
+        return f"ProjectChatMessage<{self.pk}>"
+
+    class Meta:
+        verbose_name = "Сообщение в чате проекта"
+        verbose_name_plural = "Сообщения в чатах проектов"
+
+
+class DirectChatMessage(BaseMessage):
+    """
+    DirectChatMessage model
+
+    Attributes:
+        chat: A ForeignKey to DirectChat model, indicating chat, which message belongs to.
+        author: A ForeignKey referring to the User model.
+        text: A TextField containing message text.
+        created_at: A DateTimeField indicating date of creation.
+    """
+
+    chat = models.ForeignKey(
+        DirectChat, on_delete=models.CASCADE, related_name="messages"
+    )
+
+    def __str__(self):
+        return f"DirectChatMessage<{self.pk}>"
+
+    class Meta:
+        verbose_name = "Сообщение в личном чате"
+        verbose_name_plural = "Сообщения в личных чатах"
