@@ -17,6 +17,15 @@ class BaseChat(models.Model):
     # has to be overriden in child classes
     def get_users(self):
         raise NotImplementedError
+    
+    def get_users_str(self):
+        """returns string of users, who are in chat
+
+        Returns:
+            str: string of users, who are in chat
+        """        
+        users = self.get_users()
+        return ", ".join([user.get_full_name() for user in users])
 
     def __str__(self):
         return f"BaseChat {self.pk}"
@@ -78,15 +87,6 @@ class DirectChat(BaseChat):
             List[CustomUser]: list of users, who are in chat
         """        
         return self.users.all()
-    
-    def get_users_str(self):
-        """returns string of users, who are in chat
-
-        Returns:
-            str: string of users, who are in chat
-        """        
-        users = self.get_users()
-        return f"{users[0].get_full_name()}, {users[1].get_full_name()}"
 
     def __str__(self):
         return f"DirectChat with {self.get_users_str()}"
