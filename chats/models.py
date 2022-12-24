@@ -28,7 +28,7 @@ class BaseChat(models.Model):
         return ", ".join([user.get_full_name() for user in users])
 
     def __str__(self):
-        return f"BaseChat {self.pk}"
+        return f"BaseChat<{self.pk}>"
 
     class Meta:
         abstract = True
@@ -48,11 +48,13 @@ class ProjectChat(BaseChat):
     )
 
     def get_users(self):
-        """returns all collaborators and leader of the project
+        """
+        Returns all collaborators and leader of the project.
 
         Returns:
             List[CustomUser]: list of users, who are collaborators or leader of the project
         """
+
         collaborators = self.project.collaborators.all()
         users = [collaborator.user for collaborator in collaborators]
         return users + [self.project.leader]
@@ -71,8 +73,6 @@ class DirectChat(BaseChat):
 
     Attributes:
         created_at: A DateTimeField indicating date of creation.
-        first_user: A ForeignKey to CustomUser model, indicating first user in chat.
-        second_user: A ForeignKey to CustomUser model, indicating second user in chat.
 
     Methods:
         get_users: returns list of users, who are in chat
@@ -81,11 +81,13 @@ class DirectChat(BaseChat):
     users = models.ManyToManyField(User, related_name="direct_chats")
 
     def get_users(self):
-        """returns all users in chat
+        """
+        Returns all users in chat.
 
         Returns:
             List[CustomUser]: list of users, who are in chat
         """
+
         return self.users.all()
 
     def __str__(self):

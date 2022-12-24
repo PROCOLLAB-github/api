@@ -90,11 +90,12 @@ class CustomUser(AbstractUser):
     def get_key_skills(self) -> list[str]:
         return [skill.strip() for skill in self.key_skills.split(",") if skill.strip()]
 
+    def get_full_name(self) -> str:
+        return f"{self.first_name} {self.last_name}"
+
     def __str__(self):
         return f"User<{self.id}> - {self.first_name} {self.last_name}"
 
-    def get_full_name(self) -> str:
-        return f"{self.first_name} {self.last_name}"
 
     class Meta:
         verbose_name = "Пользователь"
