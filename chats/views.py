@@ -1,5 +1,5 @@
-from rest_framework import generics, permissions, mixins, status
-from rest_framework.response import Response
+# from rest_framework import generics, permissions, mixins, status
+# from rest_framework.response import Response
 
 # from chats.models import Chat, Message
 # from chats.serializers import ChatSerializer, MessageSerializer, ChatDetailSerializer
