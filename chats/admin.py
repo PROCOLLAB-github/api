@@ -21,8 +21,8 @@ class ChatAdmin(admin.ModelAdmin):
 
 @admin.register(DirectChat)
 class DirectChatAdmin(admin.ModelAdmin):
-    list_display = ("id", "first_user", "second_user", chat_message_count, "created_at")
-    list_display_links = ("id", "first_user", "second_user")
+    list_display = ("id", "users", chat_message_count, "created_at")
+    list_display_links = ("id",)
 
 
 @admin.register(ProjectChatMessage)

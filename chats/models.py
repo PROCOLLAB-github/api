@@ -68,14 +68,28 @@ class DirectChat(BaseChat):
     Methods:
         get_users: returns list of users, who are in chat
     """
-    first_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="direct_chats")
-    second_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="direct_chats")
+
+    users = models.ManyToManyField(User, related_name="direct_chats")
 
     def get_users(self):
-        return [self.first_user, self.second_user]
+        """returns all users in chat
+
+        Returns:
+            List[CustomUser]: list of users, who are in chat
+        """        
+        return self.users.all()
+    
+    def get_users_str(self):
+        """returns string of users, who are in chat
+
+        Returns:
+            str: string of users, who are in chat
+        """        
+        users = self.get_users()
+        return f"{users[0].get_full_name()}, {users[1].get_full_name()}"
 
     def __str__(self):
-        return f"DirectChat with {self.first_user.get_full_name()} and {self.second_user.get_full_name()}"
+        return f"DirectChat with {self.get_users_str()}"
 
     class Meta:
         verbose_name = "Личный чат"
