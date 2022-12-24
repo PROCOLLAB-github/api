@@ -86,13 +86,13 @@ class Message(models.Model):
     # TODO: add chat foreign key
     # chat = models.ForeignKey(Chat, on_delete=models.CASCADE, related_name="messages")
     author = models.ForeignKey(
-        "users.CustomUser", on_delete=models.CASCADE, related_name="messages"
+        User, on_delete=models.CASCADE, related_name="messages"
     )
     text = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Message {self.pk}"
+        return f"Message<{self.pk}>"
 
     class Meta:
         verbose_name = "Сообщение"
