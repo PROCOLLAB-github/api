@@ -94,7 +94,7 @@ class CustomUser(AbstractUser):
         return f"User<{self.id}> - {self.first_name} {self.last_name}"
 
     def get_full_name(self) -> str:
-        return self.first_name + " " + self.last_name
+        return f"{self.first_name} {self.last_name}"
 
     class Meta:
         verbose_name = "Пользователь"
