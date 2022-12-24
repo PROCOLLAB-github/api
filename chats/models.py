@@ -17,13 +17,13 @@ class BaseChat(models.Model):
     # has to be overriden in child classes
     def get_users(self):
         raise NotImplementedError
-    
+
     def get_users_str(self):
         """returns string of users, who are in chat
 
         Returns:
             str: string of users, who are in chat
-        """        
+        """
         users = self.get_users()
         return ", ".join([user.get_full_name() for user in users])
 
@@ -52,7 +52,7 @@ class ProjectChat(BaseChat):
 
         Returns:
             List[CustomUser]: list of users, who are collaborators or leader of the project
-        """        
+        """
         collaborators = self.project.collaborators.all()
         users = [collaborator.user for collaborator in collaborators]
         return users + [self.project.leader]
@@ -85,7 +85,7 @@ class DirectChat(BaseChat):
 
         Returns:
             List[CustomUser]: list of users, who are in chat
-        """        
+        """
         return self.users.all()
 
     def __str__(self):
@@ -106,9 +106,7 @@ class BaseMessage(models.Model):
         created_at: A DateTimeField indicating date of creation.
     """
 
-    author = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="messages"
-    )
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="messages")
     text = models.TextField(max_length=8192)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -131,7 +129,7 @@ class ProjectChatMessage(BaseMessage):
         text: A TextField containing message text.
         created_at: A DateTimeField indicating date of creation.
     """
-    
+
     chat = models.ForeignKey(
         ProjectChat, on_delete=models.CASCADE, related_name="messages"
     )
