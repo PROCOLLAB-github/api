@@ -92,7 +92,7 @@ class DirectChat(BaseChat):
     """
 
     id = models.CharField(primary_key=True, max_length=64)
-    users = models.ManyToManyField(User, related_name="direct_chats", primary_key=True)
+    users = models.ManyToManyField(User, related_name="direct_chats")
 
     def get_users(self):
         return self.users.all()
