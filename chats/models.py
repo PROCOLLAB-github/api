@@ -14,8 +14,13 @@ class BaseChat(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
-    # has to be overriden in child classes
     def get_users(self):
+        """
+        Returns all collaborators and leader of the project.
+
+        Returns:
+            List[CustomUser]: list of users, who are collaborators or leader of the project
+        """
         raise NotImplementedError
 
     def get_users_str(self):
@@ -26,6 +31,18 @@ class BaseChat(models.Model):
         """
         users = self.get_users()
         return ", ".join([user.get_full_name() for user in users])
+
+    def get_avatar(self, user):
+        """
+        Returns avatar of the chat for given user
+
+        Args:
+            user: User who will see the avatar
+
+        Returns:
+            str: link to avatar of the chat for given user
+        """
+        raise NotImplementedError
 
     def __str__(self):
         return f"BaseChat<{self.pk}>"
@@ -48,16 +65,12 @@ class ProjectChat(BaseChat):
     )
 
     def get_users(self):
-        """
-        Returns all collaborators and leader of the project.
-
-        Returns:
-            List[CustomUser]: list of users, who are collaborators or leader of the project
-        """
-
         collaborators = self.project.collaborators.all()
         users = [collaborator.user for collaborator in collaborators]
         return users + [self.project.leader]
+
+    def get_avatar(self, user):
+        return self.project.image_address
 
     def __str__(self):
         return f"ProjectChat<{self.project.id}> - {self.project.name}"
@@ -78,17 +91,39 @@ class DirectChat(BaseChat):
         get_users: returns list of users, who are in chat
     """
 
-    users = models.ManyToManyField(User, related_name="direct_chats")
+    id = models.CharField(primary_key=True, max_length=64)
+    users = models.ManyToManyField(User, related_name="direct_chats", primary_key=True)
 
     def get_users(self):
+        return self.users.all()
+
+    def get_avatar(self, user):
+        other_user = self.get_users().exclude(pk=user.pk).first()
+        return other_user.avatar
+
+    @classmethod
+    def get_chat(cls, user1, user2) -> "DirectChat":
         """
-        Returns all users in chat.
+        Returns chat between two users.
+
+        Args:
+            user1 (CustomUser): first user, who is in chat
+            user2 (CustomUser): second user, who is in chat
 
         Returns:
-            List[CustomUser]: list of users, who are in chat
+            DirectChat: chat between two users
         """
+        # maybe use .get_or_create() here?
+        try:
+            return cls.objects.get(pk="_".join(sorted([str(user1.pk), str(user2.pk)])))
+        except cls.DoesNotExist:
+            return cls.objects.create(users=[user1, user2])
 
-        return self.users.all()
+    def save(
+        self, force_insert=False, force_update=False, using=None, update_fields=None
+    ):
+        self.id = "_".join(sorted([str(user.pk) for user in self.users.all()]))
+        super().save(force_insert, force_update, using, update_fields)
 
     def __str__(self):
         return f"DirectChat with {self.get_users_str()}"
