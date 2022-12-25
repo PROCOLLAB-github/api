@@ -14,7 +14,7 @@ class IsStaffOrReadOnly(BasePermission):
 
 class IsOwnerOrReadOnly(BasePermission):
     """
-    Allows access to update only to himself.
+    Access to update only to the owner.
     """
 
     def has_object_permission(self, request, view, obj) -> bool:
@@ -25,7 +25,7 @@ class IsOwnerOrReadOnly(BasePermission):
 
 class IsMessageOwner(BasePermission):
     """
-    Allows access to update only to himself.
+    Access to update only message owner.
     """
 
     def has_object_permission(self, request, view, obj) -> bool:
@@ -36,7 +36,7 @@ class IsMessageOwner(BasePermission):
 
 class IsUserInChat(BasePermission):
     """
-    Allows access to update only to himself.
+    Access to update only to users in chat.
     """
 
     def has_object_permission(self, request, view, obj) -> bool:
