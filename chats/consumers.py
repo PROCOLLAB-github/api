@@ -24,14 +24,14 @@ class ChatConsumer(JsonWebsocketConsumer):
 
         room_name = self.scope["url_route"]["kwargs"]["room_name"]
         if room_name.startswith(ChatType.DIRECT.value):
-            self.__connect_to_direct_chat()
+            if not self.__connect_to_direct_chat():
+                return
         elif room_name.startswith(ChatType.PROJECT.value):
-            self.__connect_to_project_chat()
-
+            if not self.__connect_to_project_chat():
+                return
+        self.accept()
         # Join room group
         async_to_sync(self.channel_layer.group_add)(self.room_name, self.channel_name)
-
-        self.accept()
 
     def disconnect(self, close_code):
         # Leave room group
@@ -71,7 +71,7 @@ class ChatConsumer(JsonWebsocketConsumer):
             },
         )
 
-    def __connect_to_direct_chat(self):
+    def __connect_to_direct_chat(self) -> bool:
         # room name looks like "direct_{other_user_id}"
         room_name = self.scope["url_route"]["kwargs"]["room_name"]
         other_user_id = int(room_name.split("_")[1])
@@ -80,7 +80,7 @@ class ChatConsumer(JsonWebsocketConsumer):
         if not other_user or other_user_id == self.user.id:
             # such user does not exist / user tries to chat with himself
             self.close()
-            return
+            return False
 
         user1_id = min(self.user.pk, other_user_id)
         user2_id = max(self.user.pk, other_user_id)
@@ -88,8 +88,9 @@ class ChatConsumer(JsonWebsocketConsumer):
         self.room_name = f"direct_{user1_id}_{user2_id}"
         self.chat_type = "direct"
         self.chat = DirectChat.objects.get_chat(self.user, other_user)
+        return True
 
-    def __connect_to_project_chat(self):
+    def __connect_to_project_chat(self) -> bool:
         # room name looks like "project_{project_id}"
         room_name = self.scope["url_route"]["kwargs"]["room_name"]
         project_id = int(room_name.split("_")[1])
@@ -98,16 +99,17 @@ class ChatConsumer(JsonWebsocketConsumer):
         if not filtered_projects.exists():
             # project does not exist
             self.close()
-            return
+            return False
 
         if not filtered_projects.first().collaborators.filter(user=self.user).exists():
             # user is not a collaborator
             self.close()
-            return
+            return False
 
         self.room_name = f"project_{project_id}"
         self.chat_type = "project"
         self.chat = ProjectChat.objects.get(project_id=project_id)
+        return True
 
 
 class NotificationConsumer(JsonWebsocketConsumer):
