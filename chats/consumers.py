@@ -1,9 +1,7 @@
-import json
-
 from asgiref.sync import async_to_sync
 from channels.generic.websocket import JsonWebsocketConsumer
 
-from chats.models import ProjectChat, DirectChat
+from chats.models import ProjectChat, DirectChat, DirectChatMessage, ProjectChatMessage
 from projects.models import Project
 from users.models import CustomUser
 
@@ -65,20 +63,7 @@ class ChatConsumer(JsonWebsocketConsumer):
         message_type = content["type"]
 
         if message_type == "chat_message":
-            # TODO
-            # message = Message.objects.create(
-            #     author=self.user,
-            #     content=content["message"],
-            #     chat=
-            # )
-            async_to_sync(self.channel_layer.group_send)(
-                self.room_name,
-                {
-                    "type": "chat_message_echo",
-                    "name": content["name"],
-                    "message": content["message"],
-                },
-            )
+            self.__process_new_message(content)
         elif message_type == "typing":
             # TODO
             pass
@@ -86,14 +71,24 @@ class ChatConsumer(JsonWebsocketConsumer):
             # TODO
             pass
 
-        return super().receive_json(content, **kwargs)
+    def __process_new_message(self, content):
+        if self.chat_type == "direct":  # TODO: replace with enum
+            DirectChatMessage.objects.create(
+                chat=self.chat, author=self.user, text=content["text"]
+            )
+        else:
+            ProjectChatMessage.objects.create(
+                chat=self.chat, author=self.user, text=content["text"]
+            )
 
-    # Receive message from room group
-    def chat_message(self, event):
-        message = event["message"]
-
-        # Send message to WebSocket
-        self.send(text_data=json.dumps({"message": message}))
+        async_to_sync(self.channel_layer.group_send)(
+            self.room_name,
+            {
+                "type": "chat_message_echo",
+                "name": content["name"],
+                "message": content["message"],
+            },
+        )
 
 
 class NotificationConsumer(JsonWebsocketConsumer):
