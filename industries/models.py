@@ -23,3 +23,4 @@ class Industry(models.Model):
     class Meta:
         verbose_name = "Индустрия"
         verbose_name_plural = "Индустрии"
+        ordering = ["name"]
