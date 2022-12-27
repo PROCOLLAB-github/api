@@ -52,7 +52,7 @@ class ProjectManager(Manager):
                 queryset=CustomUser.objects.only("id").all(),
             ),
             Prefetch("collaborator_set"),
-        )
+        ).distinct()
 
     def get_projects_for_detail_view(self):
         return (

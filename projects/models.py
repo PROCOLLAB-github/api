@@ -66,7 +66,7 @@ class Project(models.Model):
     objects = ProjectManager()
 
     def get_short_description(self) -> Optional[str]:
-        return self.description[:30] if self.description else None
+        return self.description[:90] if self.description else None
 
     def save(
         self, force_insert=False, force_update=False, using=None, update_fields=None
