@@ -24,7 +24,9 @@ class CustomListField(serializers.ListField):
     def to_representation(self, data):
         if type(data) == list:
             return data
-        return [i.replace("'", "") for i in data.strip("][").split(", ")]
+        return [
+            i.replace("'", "") for i in data.strip("][").split(", ") if i.replace("'", "")
+        ]
 
 
 class MemberSerializer(serializers.ModelSerializer):
@@ -36,6 +38,10 @@ class MemberSerializer(serializers.ModelSerializer):
 
 
 class MentorSerializer(serializers.ModelSerializer):
+    preferred_industries = CustomListField(
+        child=serializers.CharField(max_length=255),
+    )
+
     class Meta:
         model = Mentor
         fields = [
@@ -59,7 +65,6 @@ class ExpertSerializer(serializers.ModelSerializer):
 
 
 class InvestorSerializer(serializers.ModelSerializer):
-
     preferred_industries = CustomListField(child=serializers.CharField(max_length=255))
 
     class Meta:
