@@ -186,6 +186,7 @@ class Mentor(AbstractUserWithRole):
 
     Attributes:
             user: ForeignKey instance of the CustomUser model.
+            preferred_industries: ManyToManyField indicating user industries preferred for work.
             useful_to_project: TextField instance indicates actions useful
                                for the development and maintenance of the project.
     """
@@ -193,8 +194,7 @@ class Mentor(AbstractUserWithRole):
     user = models.OneToOneField(
         CustomUser, on_delete=models.CASCADE, related_name="mentor"
     )
-    # CustomUser already has a field called "organization"
-    # job = models.CharField(max_length=255, blank=True)
+    preferred_industries = models.CharField(max_length=4096, blank=True)
     useful_to_project = models.TextField(blank=True)
 
     def __str__(self):
