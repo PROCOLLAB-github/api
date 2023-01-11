@@ -44,13 +44,20 @@ class ChatConsumer(JsonWebsocketConsumer):
         if message_type == EventType.CHAT_MESSAGE.value:
             self.__process_new_message(content)
         elif message_type == EventType.TYPING.value:
-            # TODO
-            pass
+            self.__process_typing_event(content)
         elif message_type == EventType.READ.value:
-            # TODO
-            pass
+            self.__process_read_event(content)
+
+    def __process_typing_event(self, content):
+        """Send typing event to room group."""
+        pass
+
+    def __process_read_event(self, content):
+        """Send message read event to room group."""
+        pass
 
     def __process_new_message(self, content):
+        """Send new message to everyone"""
         text = clean_message_text(content["text"])
         if not validate_message_text(text):
             return
@@ -113,6 +120,7 @@ class ChatConsumer(JsonWebsocketConsumer):
 
 
 class NotificationConsumer(JsonWebsocketConsumer):
+    # TODO: implement
     def __init__(self, *args, **kwargs):
         super().__init__(args, kwargs)
         self.user = None

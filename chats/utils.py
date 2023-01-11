@@ -11,4 +11,4 @@ def validate_message_text(text: str) -> bool:
     Validates message text.
     """
 
-    return len(text) > 0 and len(text) <= 8192
+    return 0 < len(text) <= 8192

@@ -146,6 +146,9 @@ class BaseMessage(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="messages")
     text = models.TextField(max_length=8192)
     created_at = models.DateTimeField(auto_now_add=True)
+    reply_to = models.ForeignKey(
+        "self", on_delete=models.CASCADE, null=True, blank=True, related_name="replies"
+    )
 
     def __str__(self):
         return f"Message<{self.pk}>"
