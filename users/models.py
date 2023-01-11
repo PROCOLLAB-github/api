@@ -3,7 +3,6 @@ from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from industries.models import Industry
 from users.helpers import (
     ADMIN,
     EXPERT,
@@ -165,7 +164,6 @@ class Member(models.Model):
         user: ForeignKey instance of the CustomUser model.
         useful_to_project: TextField instance indicates actions useful
                            for the development and maintenance of the project.
-        preferred_industries: ManyToManyField indicating user industries preferred for work.
     """
 
     user = models.OneToOneField(
@@ -173,9 +171,6 @@ class Member(models.Model):
     )
 
     useful_to_project = models.TextField(blank=True)
-    preferred_industries = models.ManyToManyField(
-        Industry, blank=True, related_name="members"
-    )
 
     def __str__(self):
         return f"Member<{self.id}> - {self.user.first_name} {self.user.last_name}"
@@ -189,6 +184,7 @@ class Mentor(AbstractUserWithRole):
 
     Attributes:
             user: ForeignKey instance of the CustomUser model.
+            preferred_industries: CharField indicating user industries preferred for work.
             useful_to_project: TextField instance indicates actions useful
                                for the development and maintenance of the project.
     """
@@ -196,8 +192,7 @@ class Mentor(AbstractUserWithRole):
     user = models.OneToOneField(
         CustomUser, on_delete=models.CASCADE, related_name="mentor"
     )
-    # CustomUser already has a field called "organization"
-    # job = models.CharField(max_length=255, blank=True)
+    preferred_industries = models.CharField(max_length=4096, null=True, blank=True)
     useful_to_project = models.TextField(blank=True)
 
     def __str__(self):
@@ -220,10 +215,7 @@ class Expert(AbstractUserWithRole):
         CustomUser, on_delete=models.CASCADE, related_name="expert"
     )
 
-    # preferred_industries = models.ManyToManyField(
-    #     Industry, blank=True, related_name="experts"
-    # )
-    preferred_industries = models.CharField(max_length=4096, blank=True)
+    preferred_industries = models.CharField(max_length=4096, null=True, blank=True)
     useful_to_project = models.TextField(blank=True)
 
     # TODO reviews
@@ -247,11 +239,7 @@ class Investor(AbstractUserWithRole):
     user = models.OneToOneField(
         CustomUser, on_delete=models.CASCADE, related_name="investor"
     )
-
-    # preferred_industries = models.ManyToManyField(
-    #     Industry, blank=True, related_name="investors"
-    # )
-    preferred_industries = models.CharField(max_length=4096, blank=True)
+    preferred_industries = models.CharField(max_length=4096, null=True, blank=True)
     interaction_process_description = models.TextField(blank=True)
 
     def __str__(self):
