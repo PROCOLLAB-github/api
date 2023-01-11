@@ -16,6 +16,9 @@ class BaseChat(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def get_last_message(self):
+        return self.messages.last()
+
     def get_users(self):
         """
         Returns all collaborators and leader of the project.
