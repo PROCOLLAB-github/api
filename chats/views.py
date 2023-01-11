@@ -1,25 +1,26 @@
-# from rest_framework import generics, permissions, mixins, status
-# from rest_framework.response import Response
-from rest_framework import status
+from rest_framework.generics import ListAPIView
 
-# from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
 
-# from chats.models import DirectChat, ProjectChat
-# from chats.serializers import ChatListSerializer
+from chats.serializers import DirectChatListSerializer, ProjectChatListSerializer
 
 
-class ChatList(APIView):
+class DirectChatList(ListAPIView):
+    serializer_class = DirectChatListSerializer
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, *args, **kwargs):
-        # queryset1 = DirectChat.objects.filter(users=request.user)
-        # queryset2 = ProjectChat.objects.filter(project__collaborator__user=request.user)
-        # serializer = ChatListSerializer(queryset, many=True)
-        # serializer.data
-        return Response([], status=status.HTTP_200_OK)
+    def get_queryset(self):
+        user = self.request.user
+        return user.direct_chats.all()
+
+
+class ProjectChatList(ListAPIView):
+    serializer_class = ProjectChatListSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        return user.project_chats.all()
 
 
 # class ChatDetail(generics.RetrieveUpdateDestroyAPIView):

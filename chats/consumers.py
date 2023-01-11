@@ -2,6 +2,7 @@ from typing import Optional
 
 from asgiref.sync import async_to_sync
 from channels.generic.websocket import JsonWebsocketConsumer
+from django.core.cache import cache
 
 from chats.models import (
     DirectChat,
@@ -12,6 +13,7 @@ from chats.models import (
 )
 from chats.utils import clean_message_text, validate_message_text
 from chats.websockets_settings import ChatType, EventType
+from core.constants import ONE_DAY_IN_SECONDS
 from projects.models import Project
 from users.models import CustomUser
 
@@ -38,21 +40,41 @@ class ChatConsumer(JsonWebsocketConsumer):
         elif room_name.startswith(ChatType.PROJECT.value):
             if not self.__connect_to_project_chat():
                 return
-        self.accept()
-        messages = self.chat.get_last_messages(30)  # TODO: set 30 as a constant somewhere
-        has_more_messages = self.chat.messages.all().count() > 30
         # ugly way to paginate messages
+        # messages = self.chat.get_last_messages(30)  # TODO: set 30 as a constant somewhere
+        # has_more_messages = self.chat.messages.all().count() > 30
+        self.accept()
+
+        cache_key = self.__get_cache_key()
+        if self.chat_type == ChatType.DIRECT.value:
+            current_online_list = cache.get(cache_key, [])
+            current_online_list.append(self.user.pk)
+            cache.set(cache_key, current_online_list, ONE_DAY_IN_SECONDS)
+        elif self.chat_type == ChatType.PROJECT.value:
+            current_online_list = cache.get(cache_key, [])
+            current_online_list.append(self.user.pk)
+            cache.set(cache_key, current_online_list, ONE_DAY_IN_SECONDS)
+        else:
+            raise ValueError("Chat type is not supported! Something went terribly wrong!")
+
         self.send_json(
             {
-                "type": EventType.LAST_30_MESSAGES.value,  # TODO: use enum here
-                "messages": messages,
-                "has_more": has_more_messages > 5,
+                "type": EventType.LAST_30_MESSAGES.value,
+                "online_users": current_online_list,
             }
         )
+
         async_to_sync(self.channel_layer.group_add)(self.room_name, self.channel_name)
 
     def disconnect(self, close_code):
         # Leave room group
+
+        # remove user from online cache
+        cache_key = self.__get_cache_key()
+        current_online_list = cache.get(cache_key, [])
+        current_online_list.remove(self.user.pk)
+        cache.set(cache_key, current_online_list, ONE_DAY_IN_SECONDS)
+
         async_to_sync(self.channel_layer.group_discard)(self.room_name, self.channel_name)
 
     # Receive message from WebSocket
@@ -95,6 +117,9 @@ class ChatConsumer(JsonWebsocketConsumer):
                 "message": text,
             },
         )
+
+    def __get_cache_key(self):
+        return f"online_list_{self.chat_type}_{self.chat.pk}"
 
     def __connect_to_direct_chat(self) -> bool:
         # room name looks like "direct_{other_user_id}"

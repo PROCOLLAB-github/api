@@ -83,7 +83,9 @@ class ProjectChat(BaseChat):
         created_at: A DateTimeField indicating date of creation.
     """
 
-    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="chats")
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name="project_chats"
+    )
 
     def get_users(self):
         collaborators = self.project.collaborators.all()

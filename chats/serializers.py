@@ -1,31 +1,56 @@
 from rest_framework import serializers
 
-from chats.models import BaseChat
+from chats.models import DirectChat, ProjectChat, DirectChatMessage, ProjectChatMessage
 
 
-class ChatListSerializer(serializers.ModelSerializer):
+class DirectChatListSerializer(serializers.ModelSerializer):
     last_message = serializers.SerializerMethodField()
 
     @classmethod
-    def get_last_message(cls, chat: BaseChat):
+    def get_last_message(cls, chat: DirectChat):
         return chat.get_last_message()
 
     class Meta:
-        model = BaseChat
+        model = DirectChat
         fields = ["id", "users", "last_message"]
 
 
-# class MessageInChatSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Message
-#         fields = [
-#             "id",
-#             "text",
-#             "author",
-#             "created_at",
-#         ]
-#
-#
+class ProjectChatListSerializer(serializers.ModelSerializer):
+    last_message = serializers.SerializerMethodField()
+
+    @classmethod
+    def get_last_message(cls, chat: ProjectChat):
+        return chat.get_last_message()
+
+    class Meta:
+        model = ProjectChat
+        fields = ["id", "project", "last_message"]
+
+
+class DirectChatMessageListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DirectChatMessage
+        fields = [
+            "id",
+            "author",
+            "text",
+            "reply_to",
+            "created_at",
+        ]
+
+
+class ProjectChatMessageListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProjectChatMessage
+        fields = [
+            "id",
+            "author",
+            "text",
+            "reply_to",
+            "created_at",
+        ]
+
+
 # class ChatDetailSerializer(serializers.ModelSerializer):
 #     messages = MessageInChatSerializer(many=True, read_only=True)
 #
@@ -38,20 +63,3 @@ class ChatListSerializer(serializers.ModelSerializer):
 #             "messages",
 #         ]
 #
-#
-# class MessageSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Message
-#         fields = [
-#             "id",
-#             "chat",
-#             "author",
-#             "text",
-#             "created_at",
-#         ]
-#
-#     def create(self, validated_data):
-#         chat_id = self.context["request"].data["chat"]
-#         chat = Chat.objects.get(id=chat_id)
-#         message = Message.objects.create(chat=chat, **validated_data)
-#         return message
