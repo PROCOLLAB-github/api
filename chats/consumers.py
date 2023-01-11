@@ -1,7 +1,15 @@
+from typing import Optional
+
 from asgiref.sync import async_to_sync
 from channels.generic.websocket import JsonWebsocketConsumer
 
-from chats.models import DirectChat, DirectChatMessage, ProjectChat, ProjectChatMessage
+from chats.models import (
+    DirectChat,
+    DirectChatMessage,
+    ProjectChat,
+    ProjectChatMessage,
+    BaseChat,
+)
 from chats.utils import clean_message_text, validate_message_text
 from chats.websockets_settings import ChatType, EventType
 from projects.models import Project
@@ -11,12 +19,13 @@ from users.models import CustomUser
 class ChatConsumer(JsonWebsocketConsumer):
     def __init__(self, *args, **kwargs):
         super().__init__(args, kwargs)
-        self.room_name = None
-        self.user = None
+        self.room_name: str = None
+        self.user: Optional[CustomUser] = None
         self.chat_type = None
-        self.chat = None
+        self.chat: Optional[BaseChat] = None
 
     def connect(self):
+        # Join room group
         # authentication
         self.user = self.scope["user"]
         if not self.user.is_authenticated:
@@ -30,7 +39,16 @@ class ChatConsumer(JsonWebsocketConsumer):
             if not self.__connect_to_project_chat():
                 return
         self.accept()
-        # Join room group
+        messages = self.chat.get_last_messages(30)  # TODO: set 30 as a constant somewhere
+        has_more_messages = self.chat.messages.all().count() > 30
+        # ugly way to paginate messages
+        self.send_json(
+            {
+                "type": EventType.LAST_30_MESSAGES.value,  # TODO: use enum here
+                "messages": messages,
+                "has_more": has_more_messages > 5,
+            }
+        )
         async_to_sync(self.channel_layer.group_add)(self.room_name, self.channel_name)
 
     def disconnect(self, close_code):

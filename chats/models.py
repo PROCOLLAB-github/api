@@ -1,3 +1,6 @@
+from abc import abstractmethod
+from typing import List
+
 from django.contrib.auth import get_user_model
 from django.db import models
 
@@ -16,17 +19,8 @@ class BaseChat(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
-    def get_users(self):
-        """
-        Returns all collaborators and leader of the project.
-
-        Returns:
-            List[CustomUser]: list of users, who are collaborators or leader of the project
-        """
-        raise NotImplementedError
-
     def get_users_str(self):
-        """returns string of users, who are in chat
+        """Returns string of users separated by a comma, who are in chat
 
         Returns:
             str: string of users, who are in chat
@@ -34,6 +28,17 @@ class BaseChat(models.Model):
         users = self.get_users()
         return ", ".join([user.get_full_name() for user in users])
 
+    @abstractmethod
+    def get_users(self):
+        """
+        Returns all collaborators and leader of the project.
+
+        Returns:
+            List[CustomUser]: list of users, who are collaborators or leader of the project
+        """
+        pass
+
+    @abstractmethod
     def get_avatar(self, user):
         """
         Returns avatar of the chat for given user
@@ -44,7 +49,20 @@ class BaseChat(models.Model):
         Returns:
             str: link to avatar of the chat for given user
         """
-        raise NotImplementedError
+        pass
+
+    @abstractmethod
+    def get_last_messages(self, message_count):
+        """
+        Returns last messages of the chat
+
+        Args:
+            message_count: number of messages to return
+
+        Returns:
+            List[Message]: list of messages
+        """
+        pass
 
     def __str__(self):
         return f"BaseChat<{self.pk}>"
@@ -71,6 +89,9 @@ class ProjectChat(BaseChat):
 
     def get_avatar(self, user):
         return self.project.image_address
+
+    def get_last_messages(self, message_count) -> List["BaseMessage"]:
+        return self.messages.order_by("-created_at")[:message_count]
 
     def __str__(self):
         return f"ProjectChat<{self.project.id}> - {self.project.name}"
@@ -113,11 +134,14 @@ class DirectChat(BaseChat):
         Returns:
             DirectChat: chat between two users
         """
-        # maybe use .get_or_create() here?
+        # TODO: use .get_or_create() here
         try:
             return cls.objects.get(pk="_".join(sorted([str(user1.pk), str(user2.pk)])))
         except cls.DoesNotExist:
             return cls.objects.create(users=[user1, user2])
+
+    def get_last_messages(self, message_count):
+        return self.messages.order_by("-created_at")[:message_count]
 
     def save(
         self, force_insert=False, force_update=False, using=None, update_fields=None
