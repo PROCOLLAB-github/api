@@ -1,18 +1,20 @@
-# from rest_framework import serializers
-#
-# from chats.models import Chat, Message
-#
-#
-# class ChatSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Chat
-#         fields = [
-#             "id",
-#             "name",
-#             "users",
-#         ]
-#
-#
+from rest_framework import serializers
+
+from chats.models import BaseChat
+
+
+class ChatListSerializer(serializers.ModelSerializer):
+    last_message = serializers.SerializerMethodField()
+
+    @classmethod
+    def get_last_message(cls, chat: BaseChat):
+        return chat.get_last_message()
+
+    class Meta:
+        model = BaseChat
+        fields = ["id", "users", "last_message"]
+
+
 # class MessageInChatSerializer(serializers.ModelSerializer):
 #     class Meta:
 #         model = Message

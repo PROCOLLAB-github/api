@@ -19,6 +19,9 @@ class BaseChat(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def get_last_message(self):
+        return self.messages.last()
+
     def get_users_str(self):
         """Returns string of users separated by a comma, who are in chat
 
