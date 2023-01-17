@@ -46,33 +46,3 @@ class ProjectChatMessageList(ListAPIView):
         return self.request.user.project_chats.get(
             id=self.kwargs["chat_id"]
         ).messages.all()
-
-
-# class MessageDetail(generics.RetrieveUpdateDestroyAPIView):
-#     queryset = Message.objects.all()
-#     serializer_class = MessageSerializer
-#     permission_classes = [IsMessageOwner]
-
-#     def patch(self, request, *args, **kwargs):
-#         message = Message.objects.get(pk=self.kwargs["message_id"])
-
-#         if request.user != message.author:
-#             return Response(status=status.HTTP_403_FORBIDDEN)
-
-#         return self.partial_update(request, *args, **kwargs)
-
-#     def delete(self, request, *args, **kwargs):
-#         message = Message.objects.get(pk=self.kwargs["message_id"])
-
-#         if request.user != message.author:
-#             return Response(status=status.HTTP_403_FORBIDDEN)
-
-#         return self.destroy(request, *args, **kwargs)
-
-#     def put(self, request, *args, **kwargs):
-#         message = Message.objects.get(pk=self.kwargs["message_id"])
-
-#         if request.user != message.author:
-#             return Response(status=status.HTTP_403_FORBIDDEN)
-
-#         return self.update(request, *args, **kwargs)
