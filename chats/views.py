@@ -2,7 +2,7 @@ from rest_framework.generics import ListAPIView
 
 from rest_framework.permissions import IsAuthenticated
 
-from chats.serializers import DirectChatListSerializer, ProjectChatListSerializer
+from chats.serializers import DirectChatListSerializer, DirectChatMessageListSerializer, ProjectChatListSerializer, ProjectChatMessageListSerializer
 
 
 class DirectChatList(ListAPIView):
@@ -23,56 +23,20 @@ class ProjectChatList(ListAPIView):
         return user.project_chats.all()
 
 
-# class ChatDetail(generics.RetrieveUpdateDestroyAPIView):
-#     serializer_class = ChatDetailSerializer
-#     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+class DirectChatMessageList(ListAPIView):
+    serializer_class = DirectChatMessageListSerializer
+    permission_classes = [IsAuthenticated]
 
-#     def get_queryset(self):
-#         return (
-#             Chat.objects.all()
-#             .prefetch_related("messages")
-#             .prefetch_related("users")
-#             .all()
-#         )
-
-#     def get(self, request, *args, **kwargs):
-#         """
-#         Get chat by id
-#         You can set first_obj and count to get messages from chat
-#         Args:
-#             request: request
-#             *args: args
-#             **kwargs: kwargs
-
-#         Returns:
-#             Response with chat
-#         """
-
-#         instance = self.get_object()
-#         serializer = self.get_serializer(instance)
-#         return Response(serializer.data)
+    def get_queryset(self):
+        return self.request.user.direct_chats.get(id=self.kwargs["chat_id"]).messages.all()
 
 
-# class MessageList(
-#     mixins.ListModelMixin, mixins.CreateModelMixin, generics.GenericAPIView
-# ):
-#     permission_classes = [IsUserInChat]
-#     serializer_class = MessageSerializer
+class ProjectChatMessageList(ListAPIView):
+    serializer_class = ProjectChatMessageListSerializer
+    permission_classes = [IsAuthenticated]
 
-#     def get(self, request, *args, **kwargs):
-#         return self.list(self, request, *args, **kwargs)
-
-#     def get_queryset(self):
-#         return Message.objects.filter(chat_id=self.kwargs["pk"])
-
-#     def post(self, request, *args, **kwargs):
-#         try:
-#             request.data["chat"] = str(self.kwargs["pk"])
-#         except AttributeError:
-#             pass
-
-#         return self.create(request, *args, **kwargs)
-
+    def get_queryset(self):
+        return self.request.user.project_chats.get(id=self.kwargs["chat_id"]).messages.all()
 
 # class MessageDetail(generics.RetrieveUpdateDestroyAPIView):
 #     queryset = Message.objects.all()
