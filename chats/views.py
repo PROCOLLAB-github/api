@@ -2,7 +2,12 @@ from rest_framework.generics import ListAPIView
 
 from rest_framework.permissions import IsAuthenticated
 
-from chats.serializers import DirectChatListSerializer, DirectChatMessageListSerializer, ProjectChatListSerializer, ProjectChatMessageListSerializer
+from chats.serializers import (
+    DirectChatListSerializer,
+    DirectChatMessageListSerializer,
+    ProjectChatListSerializer,
+    ProjectChatMessageListSerializer,
+)
 
 
 class DirectChatList(ListAPIView):
@@ -28,7 +33,9 @@ class DirectChatMessageList(ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return self.request.user.direct_chats.get(id=self.kwargs["chat_id"]).messages.all()
+        return self.request.user.direct_chats.get(
+            id=self.kwargs["chat_id"]
+        ).messages.all()
 
 
 class ProjectChatMessageList(ListAPIView):
@@ -36,7 +43,10 @@ class ProjectChatMessageList(ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return self.request.user.project_chats.get(id=self.kwargs["chat_id"]).messages.all()
+        return self.request.user.project_chats.get(
+            id=self.kwargs["chat_id"]
+        ).messages.all()
+
 
 # class MessageDetail(generics.RetrieveUpdateDestroyAPIView):
 #     queryset = Message.objects.all()
