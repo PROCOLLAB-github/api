@@ -1,6 +1,8 @@
-from rest_framework.generics import ListAPIView
+from rest_framework import status
+from rest_framework.generics import ListAPIView, ListCreateAPIView
 
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
 from chats.serializers import (
     DirectChatListSerializer,
@@ -28,7 +30,7 @@ class ProjectChatList(ListAPIView):
         return user.project_chats.all()
 
 
-class DirectChatMessageList(ListAPIView):
+class DirectChatMessageList(ListCreateAPIView):
     serializer_class = DirectChatMessageListSerializer
     permission_classes = [IsAuthenticated]
 
@@ -38,7 +40,7 @@ class DirectChatMessageList(ListAPIView):
         ).messages.all()
 
 
-class ProjectChatMessageList(ListAPIView):
+class ProjectChatMessageList(ListCreateAPIView):
     serializer_class = ProjectChatMessageListSerializer
     permission_classes = [IsAuthenticated]
 
@@ -46,3 +48,11 @@ class ProjectChatMessageList(ListAPIView):
         return self.request.user.project_chats.get(
             id=self.kwargs["chat_id"]
         ).messages.all()
+
+    def post(self, request, *args, **kwargs):
+        # TODO: try to create a message in a chat. If chat doesn't exist, create it and then create a message.
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)

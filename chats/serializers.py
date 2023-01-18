@@ -5,6 +5,11 @@ from chats.models import DirectChat, ProjectChat, DirectChatMessage, ProjectChat
 
 class DirectChatListSerializer(serializers.ModelSerializer):
     last_message = serializers.SerializerMethodField()
+    users = serializers.SerializerMethodField(read_only=True)
+
+    @classmethod
+    def get_users(cls, chat: ProjectChat):
+        return chat.get_users()
 
     @classmethod
     def get_last_message(cls, chat: DirectChat):
