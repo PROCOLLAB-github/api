@@ -88,17 +88,6 @@ INSTALLED_APPS = [
     "channels",
 ]
 
-# django channels
-ASGI_APPLICATION = "procollab.asgi.application"
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)],
-        },
-    },
-}
-
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -161,7 +150,9 @@ REST_FRAMEWORK = {
         "rest_framework.renderers.AdminRenderer",
     ],
 }
-# Database
+
+ASGI_APPLICATION = "procollab.asgi.application"
+
 if DEBUG:
     DATABASES = {
         "default": {
@@ -169,17 +160,29 @@ if DEBUG:
             "NAME": "db.sqlite3",
         }
     }
+
     CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
         }
     }
+
+    CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
 else:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [("127.0.0.1", 6379)],
+            },
+        },
+    }
+
+    REDIS_HOST = config("REDIS_HOST", cast=str, default="127.0.0.1")
     CACHES = {
         "default": {
-            # TODO: setup proper redis caching
             "BACKEND": "django.core.cache.backends.redis.RedisCache",
-            "LOCATION": "redis://127.0.0.1:6379",
+            "LOCATION": f"redis://{REDIS_HOST}:6379",
         }
     }
 
