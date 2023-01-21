@@ -166,7 +166,7 @@ class LikesOnProject(models.Model):
         project: ForeignKey instance of project.
     """
 
-    like = models.BooleanField(default=True)
+    is_liked = models.BooleanField(default=True)
 
     user = models.ForeignKey(
         CustomUser,
@@ -181,8 +181,8 @@ class LikesOnProject(models.Model):
 
     objects = LikesOnProjectManager()
 
-    def swap_like(self):
-        self.like = not self.like
+    def toggle_like(self):
+        self.is_liked = not self.is_liked
         self.save()
 
     def __str__(self):

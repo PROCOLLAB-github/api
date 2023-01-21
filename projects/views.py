@@ -112,20 +112,20 @@ class SetLikeOnProject(APIView):
 
     def post(self, request, pk):
         """
-        Поставить лайк на проект
+        Set like on project
 
         ---
 
         Args:
             request:
-            pk - id проекта
+            pk - project id
 
         Returns:
-            ProjectListSerializer
+            Response
 
         """
         project = Project.objects.get(pk=pk)
-        LikesOnProject.objects.change_like(request.user, project)
+        LikesOnProject.objects.toggle_like(request.user, project)
 
         return Response(ProjectListSerializer(project).data)
 

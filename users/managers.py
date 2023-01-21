@@ -73,8 +73,8 @@ class LikesOnProjectManager(Manager):
     def get_or_create(self, user, project):
         return super().get_or_create(user=user, project=project)
 
-    def change_like(self, user, project):
+    def toggle_like(self, user, project):
         like, created = self.get_or_create(user=user, project=project)
         if not created:
-            like.swap_like()
+            like.toggle_like()
         return like

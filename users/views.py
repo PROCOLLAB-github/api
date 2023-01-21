@@ -81,13 +81,13 @@ class UserList(ListCreateAPIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
-class LikesProjectList(ListAPIView):
+class LikedProjectList(ListAPIView):
     serializer_class = ProjectListSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         projects_ids_list = LikesOnProject.objects.filter(
-            user=self.request.user, like=True
+            user=self.request.user, is_liked=True
         ).values_list("project", flat=True)
 
         return Project.objects.get_projects_from_list_of_ids(projects_ids_list)

@@ -77,7 +77,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
         return project.get_short_description()
 
     def count_likes(self, project):
-        return LikesOnProject.objects.filter(project=project, like=True).count()
+        return LikesOnProject.objects.filter(project=project, is_liked=True).count()
 
     def update(self, instance, validated_data):
         instance = super().update(instance, validated_data)
@@ -134,7 +134,7 @@ class ProjectListSerializer(serializers.ModelSerializer):
         return len(obj.collaborator_set.all())
 
     def count_likes(self, obj):
-        return LikesOnProject.objects.filter(project=obj, like=True).count()
+        return LikesOnProject.objects.filter(project=obj, is_liked=True).count()
 
     def get_collaborators(self, obj):
         max_collaborator_count = 4
