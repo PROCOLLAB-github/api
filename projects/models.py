@@ -120,7 +120,8 @@ class Achievement(models.Model):
 
 
 class Collaborator(models.Model):
-    """Project collaborator model
+    """
+    Project collaborator model
 
     Attributes:
         user: A ForeignKey referencing the user who is collaborating in the project
@@ -130,7 +131,12 @@ class Collaborator(models.Model):
         datetime_updated: A DateTimeField indicating date of update.
     """
 
-    user = models.ForeignKey(CustomUser, models.CASCADE, verbose_name="Пользователь")
+    user = models.ForeignKey(
+        CustomUser,
+        models.CASCADE,
+        verbose_name="Пользователь",
+        related_name="collaborations",
+    )
     project = models.ForeignKey(Project, models.CASCADE, verbose_name="Проект")
     role = models.CharField("Роль", max_length=1024, blank=True, null=True)
 

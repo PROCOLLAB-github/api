@@ -86,6 +86,10 @@ class CustomUser(AbstractUser):
 
     objects = CustomUserManager()
 
+    def get_project_chats(self):
+        collaborations = self.collaborations.all()
+        return [collaboration.project.project_chats for collaboration in collaborations]
+
     def get_key_skills(self) -> list[str]:
         return [skill.strip() for skill in self.key_skills.split(",") if skill.strip()]
 

@@ -1,14 +1,16 @@
 from rest_framework import status
-from rest_framework.generics import ListAPIView, ListCreateAPIView
+from rest_framework.generics import ListAPIView, ListCreateAPIView, RetrieveAPIView
 
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from chats.models import ProjectChat
 from chats.serializers import (
     DirectChatListSerializer,
     DirectChatMessageListSerializer,
     ProjectChatListSerializer,
     ProjectChatMessageListSerializer,
+    ProjectChatDetailSerializer,
 )
 
 
@@ -27,7 +29,16 @@ class ProjectChatList(ListAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        return user.project_chats.all()
+        return user.get_project_chats()
+
+
+class ProjectChatDetail(RetrieveAPIView):
+    queryset = ProjectChat.objects.all()
+    serializer_class = ProjectChatDetailSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        return self.get_queryset().get(pk=self.kwargs["pk"])
 
 
 class DirectChatMessageList(ListCreateAPIView):

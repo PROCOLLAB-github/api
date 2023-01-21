@@ -17,10 +17,26 @@ class DirectChatListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DirectChat
-        fields = ["id", "users", "last_message"]
+        fields = [
+            "id",
+            "users",
+            "last_message",
+        ]
 
 
 class ProjectChatListSerializer(serializers.ModelSerializer):
+    last_message = serializers.SerializerMethodField(read_only=True)
+
+    @classmethod
+    def get_last_message(cls, chat: ProjectChat):
+        return chat.get_last_message()
+
+    class Meta:
+        model = ProjectChat
+        fields = ["id", "project", "last_message"]
+
+
+class ProjectChatDetailSerializer(serializers.ModelSerializer):
     last_message = serializers.SerializerMethodField(read_only=True)
     users = serializers.SerializerMethodField(read_only=True)
 
@@ -34,7 +50,12 @@ class ProjectChatListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ProjectChat
-        fields = ["id", "project", "last_message"]
+        fields = [
+            "id",
+            "project",
+            "last_message",
+            "users",
+        ]
 
 
 class DirectChatMessageListSerializer(serializers.ModelSerializer):
