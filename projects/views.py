@@ -20,6 +20,7 @@ from projects.serializers import (
     AchievementDetailSerializer,
     ProjectCollaboratorSerializer,
 )
+from users.models import LikesOnProject
 from vacancy.models import VacancyResponse
 from vacancy.serializers import VacancyResponseListSerializer
 
@@ -104,6 +105,29 @@ class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
             )
 
         return super(ProjectDetail, self).put(request, pk)
+
+
+class SetLikeOnProject(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        """
+        Поставить лайк на проект
+
+        ---
+
+        Args:
+            request:
+            pk - id проекта
+
+        Returns:
+            ProjectListSerializer
+
+        """
+        project = Project.objects.get(pk=pk)
+        LikesOnProject.objects.change_like(request.user, project)
+
+        return Response(ProjectListSerializer(project).data)
 
 
 class ProjectCountView(generics.GenericAPIView):
