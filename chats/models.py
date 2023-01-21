@@ -169,11 +169,13 @@ class BaseMessage(models.Model):
     Attributes:
         author: A ForeignKey referring to the User model.
         text: A TextField containing message text.
+        is_read: A BooleanField indicating whether message is read.
         created_at: A DateTimeField indicating date of creation.
     """
 
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="messages")
     text = models.TextField(max_length=8192)
+    is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     reply_to = models.ForeignKey(
         "self", on_delete=models.CASCADE, null=True, blank=True, related_name="replies"
