@@ -79,6 +79,12 @@ class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [HasInvolvementInProjectOrReadOnly]
     serializer_class = ProjectDetailSerializer
 
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.increment_views_count()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
     def put(self, request, pk, **kwargs):
         # bootleg version of updating achievements via project
         if request.data.get("achievements") is not None:

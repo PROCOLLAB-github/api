@@ -65,6 +65,12 @@ class Project(models.Model):
 
     objects = ProjectManager()
 
+    views_count = models.PositiveIntegerField(default=0)
+
+    def increment_views_count(self):
+        self.views_count += 1
+        self.save()
+
     def get_short_description(self) -> Optional[str]:
         return self.description[:90] if self.description else None
 

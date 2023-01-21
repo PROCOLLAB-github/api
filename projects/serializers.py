@@ -99,8 +99,14 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "vacancies",
             "datetime_created",
             "datetime_updated",
+            "views_count",
         ]
-        read_only_fields = ["leader"]
+        read_only_fields = [
+            "leader",
+            "views_count",
+            "datetime_created",
+            "datetime_updated",
+        ]
 
 
 class ProjectListSerializer(serializers.ModelSerializer):
