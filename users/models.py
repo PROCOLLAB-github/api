@@ -86,7 +86,7 @@ class CustomUser(AbstractUser):
 
     objects = CustomUserManager()
 
-    def get_project_chats(self):
+    def get_project_chats(self) -> list:
         collaborations = self.collaborations.all()
         projects = []
         for collaboration in collaborations:
@@ -99,7 +99,7 @@ class CustomUser(AbstractUser):
     def get_full_name(self) -> str:
         return f"{self.first_name} {self.last_name}"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"User<{self.id}> - {self.first_name} {self.last_name}"
 
     class Meta:

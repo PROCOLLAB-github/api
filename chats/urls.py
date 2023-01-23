@@ -6,23 +6,23 @@ from chats.views import (
     ProjectChatList,
     ProjectChatMessageList,
     ProjectChatDetail,
+    DirectChatDetail,
 )
 
 app_name = "chats"
 
 urlpatterns = [
-    path("direct_chats/", DirectChatList.as_view(), name="direct-chat-list"),
-    path("project_chats/", ProjectChatList.as_view(), name="project-chat-list"),
+    path("directs/", DirectChatList.as_view(), name="direct-chat-list"),
+    path("directs/<slug:pk>/", DirectChatDetail.as_view(), name="direct-chat-detail"),
+    path("projects/", ProjectChatList.as_view(), name="project-chat-list"),
+    path("projects/<int:pk>/", ProjectChatDetail.as_view(), name="project-chat-detail"),
     path(
-        "project_chats/<int:pk>/", ProjectChatDetail.as_view(), name="project-chat-detail"
-    ),
-    path(
-        "direct_chat_messages/",
+        "directs/messages/",
         DirectChatMessageList.as_view(),
         name="direct-chat-messages",
     ),
     path(
-        "project_chat_messages/",
+        "projects/messages/",
         ProjectChatMessageList.as_view(),
         name="project-chat-messages",
     ),

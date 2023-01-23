@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from chats.models import DirectChat, ProjectChat, DirectChatMessage, ProjectChatMessage
+from users.serializers import UserListSerializer
 
 
 class DirectChatListSerializer(serializers.ModelSerializer):
@@ -24,6 +25,22 @@ class DirectChatListSerializer(serializers.ModelSerializer):
         ]
 
 
+class DirectChatDetailSerializer(serializers.ModelSerializer):
+    users = serializers.SerializerMethodField(read_only=True)
+
+    @classmethod
+    def get_users(cls, chat: ProjectChat):
+        return UserListSerializer(chat.get_users(), many=True).data
+
+    class Meta:
+        model = DirectChat
+        fields = [
+            "id",
+            "users",
+            "messages",
+        ]
+
+
 class ProjectChatListSerializer(serializers.ModelSerializer):
     last_message = serializers.SerializerMethodField(read_only=True)
 
@@ -42,7 +59,7 @@ class ProjectChatDetailSerializer(serializers.ModelSerializer):
 
     @classmethod
     def get_users(cls, chat: ProjectChat):
-        return chat.get_users()
+        return UserListSerializer(chat.get_users(), many=True).data
 
     @classmethod
     def get_last_message(cls, chat: ProjectChat):

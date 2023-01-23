@@ -1,17 +1,21 @@
+from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.generics import ListAPIView, ListCreateAPIView, RetrieveAPIView
 
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from chats.models import ProjectChat
+from chats.models import ProjectChat, DirectChat
 from chats.serializers import (
     DirectChatListSerializer,
     DirectChatMessageListSerializer,
     ProjectChatListSerializer,
     ProjectChatMessageListSerializer,
     ProjectChatDetailSerializer,
+    DirectChatDetailSerializer,
 )
+
+User = get_user_model()
 
 
 class DirectChatList(ListAPIView):
@@ -37,8 +41,43 @@ class ProjectChatDetail(RetrieveAPIView):
     serializer_class = ProjectChatDetailSerializer
     permission_classes = [IsAuthenticated]
 
-    def get_object(self):
-        return self.get_queryset().get(pk=self.kwargs["pk"])
+
+class DirectChatDetail(RetrieveAPIView):
+    queryset = DirectChat.objects.all()
+    serializer_class = DirectChatDetailSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs) -> Response:
+        try:
+            assert "_" in self.kwargs["pk"], "pk must contain underscore"
+
+            user1_id, user2_id = map(int, self.kwargs["pk"].split("_"))
+
+            user1 = User.objects.get(pk=user1_id)
+            user2 = User.objects.get(pk=user2_id)
+
+            return Response(
+                status=status.HTTP_200_OK,
+                data=DirectChatDetailSerializer(DirectChat.get_chat(user1, user2)).data,
+            )
+
+        except ValueError:
+            return Response(
+                status=status.HTTP_400_BAD_REQUEST,
+                data={"detail": "pk must contain two integers separated by underscore"},
+            )
+        except AssertionError as e:
+            return Response(status=status.HTTP_400_BAD_REQUEST, data={"detail": str(e)})
+        except User.DoesNotExist:
+            return Response(
+                status=status.HTTP_400_BAD_REQUEST,
+                data={"detail": "One or both users do not exist"},
+            )
+        except DirectChat.DoesNotExist:
+            return Response(
+                status=status.HTTP_404_NOT_FOUND,
+                data={"detail": "Direct chat does not exist"},
+            )
 
 
 class DirectChatMessageList(ListCreateAPIView):

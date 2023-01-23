@@ -143,7 +143,9 @@ class DirectChat(BaseChat):
         try:
             return cls.objects.get(pk="_".join(sorted([str(user1.pk), str(user2.pk)])))
         except cls.DoesNotExist:
-            return cls.objects.create(users=[user1, user2])
+            chat = cls.objects.create()
+            chat.users.set([user1, user2])
+            return chat
 
     def get_last_messages(self, message_count):
         return self.messages.order_by("-created_at")[:message_count]
