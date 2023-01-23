@@ -3,9 +3,6 @@ from typing import Optional
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.db.models import UniqueConstraint
-from django.db.models.signals import post_save
-from django.dispatch import receiver
-
 from industries.models import Industry
 from projects.helpers import VERBOSE_STEPS
 from projects.managers import AchievementManager, ProjectManager
@@ -159,12 +156,3 @@ class Collaborator(models.Model):
                 name="unique_collaborator",
             )
         ]
-
-
-@receiver(post_save, sender=Project)
-def create_project(sender, instance, created, **kwargs):
-    """Creates collaborator for the project leader on project creation"""
-    if created:
-        Collaborator.objects.create(
-            user=instance.leader, project=instance, role="Основатель"
-        )

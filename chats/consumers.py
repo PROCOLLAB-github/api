@@ -151,7 +151,7 @@ class ChatConsumer(JsonWebsocketConsumer):
             self.close()
             return False
 
-        if not filtered_projects.first().collaborators.filter(user=self.user).exists():
+        if not filtered_projects.first().collaborator_set.filter(user=self.user).exists():
             # user is not a collaborator
             self.close()
             return False

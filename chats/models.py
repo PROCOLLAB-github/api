@@ -88,7 +88,7 @@ class ProjectChat(BaseChat):
     )
 
     def get_users(self):
-        collaborators = self.project.collaborators.all()
+        collaborators = self.project.collaborator_set.all()
         users = [collaborator.user for collaborator in collaborators]
         return users + [self.project.leader]
 
