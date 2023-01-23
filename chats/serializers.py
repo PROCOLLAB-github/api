@@ -54,23 +54,29 @@ class ProjectChatListSerializer(serializers.ModelSerializer):
 
 
 class ProjectChatDetailSerializer(serializers.ModelSerializer):
-    last_message = serializers.SerializerMethodField(read_only=True)
     users = serializers.SerializerMethodField(read_only=True)
+    name = serializers.SerializerMethodField(read_only=True)
+    image_address = serializers.SerializerMethodField(read_only=True)
+
+    @classmethod
+    def get_image_address(cls, chat: ProjectChat):
+        return chat.project.image_address
+
+    @classmethod
+    def get_name(cls, chat: ProjectChat):
+        return chat.project.name
 
     @classmethod
     def get_users(cls, chat: ProjectChat):
         return UserListSerializer(chat.get_users(), many=True).data
 
-    @classmethod
-    def get_last_message(cls, chat: ProjectChat):
-        return chat.get_last_message()
-
     class Meta:
         model = ProjectChat
         fields = [
             "id",
-            "project",
-            "last_message",
+            "name",
+            "image_address",
+            "messages",
             "users",
         ]
 
