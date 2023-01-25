@@ -5,14 +5,14 @@ from channels.generic.websocket import JsonWebsocketConsumer
 from django.core.cache import cache
 
 from chats.models import (
+    BaseChat,
     DirectChat,
     DirectChatMessage,
     ProjectChat,
     ProjectChatMessage,
-    BaseChat,
 )
-from chats.utils import clean_message_text, validate_message_text
-from chats.websockets_settings import ChatType, EventType
+from chats.utils import clean_message_text, get_user_id_from_token, validate_message_text
+from chats.websockets_settings import ChatType, Content, Event, EventType, Headers
 from core.constants import ONE_DAY_IN_SECONDS
 from projects.models import Project
 from users.models import CustomUser
@@ -21,72 +21,89 @@ from users.models import CustomUser
 class ChatConsumer(JsonWebsocketConsumer):
     def __init__(self, *args, **kwargs):
         super().__init__(args, kwargs)
-        self.room_name: str = None
+        self.room_name: str = ""
         self.user: Optional[CustomUser] = None
         self.chat_type = None
         self.chat: Optional[BaseChat] = None
 
     def connect(self):
         # Join room group
-        # authentication
-        self.user = self.scope["user"]
-        if not self.user.is_authenticated:
-            return
-
-        room_name = self.scope["url_route"]["kwargs"]["room_name"]
-        if room_name.startswith(ChatType.DIRECT.value):
-            if not self.__connect_to_direct_chat():
-                return
-        elif room_name.startswith(ChatType.PROJECT.value):
-            if not self.__connect_to_project_chat():
-                return
-        # ugly way to paginate messages
-        # messages = self.chat.get_last_messages(30)  # TODO: set 30 as a constant somewhere
-        # has_more_messages = self.chat.messages.all().count() > 30
         self.accept()
 
+    def disconnect(self, close_code):
+        pass
+        # Leave room group
+        #
+        # # remove user from online cache
+        # if self.chat:
+        #     cache_key = self.__get_cache_key()
+        #     current_online_list = cache.get(cache_key, [])
+        #     current_online_list.remove(self.user.pk)
+        #     cache.set(cache_key, current_online_list, ONE_DAY_IN_SECONDS)
+        #
+        # async_to_sync(self.channel_layer.group_discard)(self.room_name, self.channel_name)
+
+    # Receive message from WebSocket
+    def receive_json(self, content, **kwargs):
+        event = Event(
+            type=content["type"],
+            headers=Headers(content["headers"]),
+            content=Content(**content["content"]),
+        )
+        token = event.headers.Authorization
+        user_id = get_user_id_from_token(token)
+
+        if event.type == EventType.NEW_MESSAGE:
+            room_name = f"{EventType.NEW_MESSAGE}_{event.content.chat_id}"
+        elif event.type == EventType.TYPING:
+            room_name = f"{EventType.TYPING}_{event.content.chat_id}"
+        elif event.type == EventType.READ_MESSAGE:
+            room_name = f"{EventType.READ_MESSAGE}_{event.content.chat_id}"
+        elif event.type == EventType.DELETE_MESSAGE:
+            room_name = f"{EventType.DELETE_MESSAGE}_{event.content.chat_id}"
+        elif event.type == EventType.SET_ONLINE:
+            room_name = f"{EventType.SET_ONLINE}_{user_id}"
+        elif event.type == EventType.SET_OFFLINE:
+            room_name = f"{EventType.SET_OFFLINE}_{user_id}"
+        else:
+            return self.disconnect(400)
+
+        if room_name.startswith(ChatType.DIRECT):
+            if not self.__connect_to_direct_chat():
+                return self.disconnect(400)
+        elif room_name.startswith(ChatType.PROJECT):
+            if not self.__connect_to_project_chat():
+                return self.disconnect(400)
+
+        if event.type == EventType.NEW_MESSAGEЫ:
+            self.__process_new_message(content)
+        elif event.type == EventType.TYPING:
+            self.__process_typing_event(content)
+        elif event.type == EventType.READ_MESSAGE:
+            self.__process_read_event(content)
+
+    def __set_user_online(self):
+        room_name = f"{EventType.SET_ONLINE}_{self.user.pk}"
+        async_to_sync(self.channel_layer.group_add)(room_name, self.channel_name)
+
         cache_key = self.__get_cache_key()
-        if self.chat_type == ChatType.DIRECT.value:
+        if self.chat_type == ChatType.DIRECT:
             current_online_list = cache.get(cache_key, [])
             current_online_list.append(self.user.pk)
             cache.set(cache_key, current_online_list, ONE_DAY_IN_SECONDS)
-        elif self.chat_type == ChatType.PROJECT.value:
+        elif self.chat_type == ChatType.PROJECT:
             current_online_list = cache.get(cache_key, [])
             current_online_list.append(self.user.pk)
             cache.set(cache_key, current_online_list, ONE_DAY_IN_SECONDS)
         else:
             raise ValueError("Chat type is not supported! Something went terribly wrong!")
 
-        self.send_json(
-            {
-                "type": EventType.LAST_30_MESSAGES.value,
-                "online_users": current_online_list,
-            }
-        )
+    def __process_connection_event(self):
+        """
 
-        async_to_sync(self.channel_layer.group_add)(self.room_name, self.channel_name)
+        Send connection event to everyone
 
-    def disconnect(self, close_code):
-        # Leave room group
-
-        # remove user from online cache
-        cache_key = self.__get_cache_key()
-        current_online_list = cache.get(cache_key, [])
-        current_online_list.remove(self.user.pk)
-        cache.set(cache_key, current_online_list, ONE_DAY_IN_SECONDS)
-
-        async_to_sync(self.channel_layer.group_discard)(self.room_name, self.channel_name)
-
-    # Receive message from WebSocket
-    def receive_json(self, content, **kwargs):
-        message_type = content["type"]
-
-        if message_type == EventType.CHAT_MESSAGE.value:
-            self.__process_new_message(content)
-        elif message_type == EventType.TYPING.value:
-            self.__process_typing_event(content)
-        elif message_type == EventType.READ.value:
-            self.__process_read_event(content)
+        """
 
     def __process_typing_event(self, content):
         """Send typing event to room group."""
@@ -102,9 +119,9 @@ class ChatConsumer(JsonWebsocketConsumer):
         if not validate_message_text(text):
             return
 
-        if self.chat_type == ChatType.DIRECT.value:
+        if self.chat_type == ChatType.DIRECT:
             DirectChatMessage.objects.create(chat=self.chat, author=self.user, text=text)
-        elif self.chat_type == ChatType.PROJECT.value:
+        elif self.chat_type == ChatType.PROJECT:
             ProjectChatMessage.objects.create(chat=self.chat, author=self.user, text=text)
         else:
             return
@@ -123,9 +140,13 @@ class ChatConsumer(JsonWebsocketConsumer):
 
     def __connect_to_direct_chat(self) -> bool:
         # room name looks like "direct_{other_user_id}"
-        room_name = self.scope["url_route"]["kwargs"]["room_name"]
-        other_user_id = int(room_name.split("_")[1])
-        other_user = CustomUser.objects.filter(id=other_user_id).first()
+        # room_name = self.scope["url_route"]["kwargs"]["room_name"]
+        try:
+            other_user_id = int(self.room_name.split("_")[1])
+            other_user = CustomUser.objects.filter(id=other_user_id).first()
+        except (IndexError, ValueError):
+            # todo meaningful error message
+            return False
 
         if not other_user or other_user_id == self.user.id:
             # such user does not exist / user tries to chat with himself
@@ -144,7 +165,7 @@ class ChatConsumer(JsonWebsocketConsumer):
         # room name looks like "project_{project_id}"
         room_name = self.scope["url_route"]["kwargs"]["room_name"]
         project_id = int(room_name.split("_")[1])
-        filtered_projects = Project.objects.filter(id=project_id)
+        filtered_projects = Project.objects.filter(pk=project_id)
 
         if not filtered_projects.exists():
             # project does not exist

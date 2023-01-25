@@ -1,13 +1,35 @@
+from dataclasses import dataclass
 from enum import Enum
+from typing import Optional
 
 
-class ChatType(Enum):
+class ChatType(str, Enum):
     DIRECT = "direct"
     PROJECT = "project"
 
 
-class EventType(Enum):
-    CHAT_MESSAGE = "chat_message"
+class EventType(str, Enum):
+    NEW_MESSAGE = "new_message"
     TYPING = "typing"
-    READ = "read"
-    LAST_30_MESSAGES = "last_30_messages"
+    READ_MESSAGE = "read"
+    DELETE_MESSAGE = "delete_message"
+    SET_ONLINE = "set_online"
+    SET_OFFLINE = "set_offline"
+
+
+@dataclass(slots=True, frozen=True)
+class Content:
+    chat_id: str
+    message: str
+
+
+@dataclass(slots=True, frozen=True)
+class Headers:
+    Authorization: str
+
+
+@dataclass(slots=True, frozen=True)
+class Event:
+    type: EventType
+    headers: Headers
+    content: Optional[Content]
