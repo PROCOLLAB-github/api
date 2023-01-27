@@ -90,33 +90,6 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         """Send message read event to room group."""
         pass
 
-    # async def __process_new_message(self, content):
-    #     """Send new message to everyone"""
-    #     text = clean_message_text(content["text"])
-    #     chat_id = content["chat_id"]
-    #     chat_type = content["chat_type"]
-    #     user = self.scope["user"]
-    #     # check user has access to that chat
-    #
-    #     if not validate_message_text(text):
-    #         return
-    #
-    #     if self.chat_type == ChatType.DIRECT:
-    #         DirectChatMessage.objects.create(chat=chat_id, author=self.user, text=text)
-    #     elif self.chat_type == ChatType.PROJECT:
-    #         ProjectChatMessage.objects.create(chat=chat_id, author=self.user, text=text)
-    #     else:
-    #         return
-    #
-    #     self.channel_layer.group_send(
-    #         self.room_name,
-    #         {
-    #             "type": "chat_message_echo",
-    #             "name": content["name"],
-    #             "message": text,
-    #         },
-    #     )
-
     async def __process_chat_related_event(self, event, room_name):
         pass
 
