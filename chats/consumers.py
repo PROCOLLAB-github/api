@@ -1,7 +1,6 @@
 from typing import Optional
 
-from asgiref.sync import async_to_sync
-from channels.generic.websocket import JsonWebsocketConsumer
+from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from django.core.cache import cache
 
 from chats.models import (
@@ -18,7 +17,7 @@ from projects.models import Project
 from users.models import CustomUser
 
 
-class ChatConsumer(JsonWebsocketConsumer):
+class ChatConsumer(AsyncJsonWebsocketConsumer):
     def __init__(self, *args, **kwargs):
         super().__init__(args, kwargs)
         self.room_name: str = ""
@@ -26,11 +25,11 @@ class ChatConsumer(JsonWebsocketConsumer):
         self.chat_type = None
         self.chat: Optional[BaseChat] = None
 
-    def connect(self):
+    async def connect(self):
         # Join room group
-        self.accept()
+        await self.accept()
 
-    def disconnect(self, close_code):
+    async def disconnect(self, close_code):
         pass
         # Leave room group
         #
@@ -44,7 +43,7 @@ class ChatConsumer(JsonWebsocketConsumer):
         # async_to_sync(self.channel_layer.group_discard)(self.room_name, self.channel_name)
 
     # Receive message from WebSocket
-    def receive_json(self, content, **kwargs):
+    async def receive_json(self, content, **kwargs):
         event = Event(
             type=content["type"],
             headers=Headers(content["headers"]),
@@ -75,16 +74,16 @@ class ChatConsumer(JsonWebsocketConsumer):
             if not self.__connect_to_project_chat():
                 return self.disconnect(400)
 
-        if event.type == EventType.NEW_MESSAGEЫ:
-            self.__process_new_message(content)
+        if event.type == EventType.NEW_MESSAGE:
+            await self.__process_new_message(content)
         elif event.type == EventType.TYPING:
-            self.__process_typing_event(content)
+            await self.__process_typing_event(content)
         elif event.type == EventType.READ_MESSAGE:
-            self.__process_read_event(content)
+            await self.__process_read_event(content)
 
-    def __set_user_online(self):
+    async def __set_user_online(self):
         room_name = f"{EventType.SET_ONLINE}_{self.user.pk}"
-        async_to_sync(self.channel_layer.group_add)(room_name, self.channel_name)
+        self.channel_layer.group_add(room_name, self.channel_name)
 
         cache_key = self.__get_cache_key()
         if self.chat_type == ChatType.DIRECT:
@@ -98,22 +97,22 @@ class ChatConsumer(JsonWebsocketConsumer):
         else:
             raise ValueError("Chat type is not supported! Something went terribly wrong!")
 
-    def __process_connection_event(self):
+    async def __process_connection_event(self):
         """
 
         Send connection event to everyone
 
         """
 
-    def __process_typing_event(self, content):
+    async def __process_typing_event(self, content):
         """Send typing event to room group."""
         pass
 
-    def __process_read_event(self, content):
+    async def __process_read_event(self, content):
         """Send message read event to room group."""
         pass
 
-    def __process_new_message(self, content):
+    async def __process_new_message(self, content):
         """Send new message to everyone"""
         text = clean_message_text(content["text"])
         if not validate_message_text(text):
@@ -126,7 +125,7 @@ class ChatConsumer(JsonWebsocketConsumer):
         else:
             return
 
-        async_to_sync(self.channel_layer.group_send)(
+        self.channel_layer.group_send(
             self.room_name,
             {
                 "type": "chat_message_echo",
@@ -135,10 +134,10 @@ class ChatConsumer(JsonWebsocketConsumer):
             },
         )
 
-    def __get_cache_key(self):
+    async def __get_cache_key(self):
         return f"online_list_{self.chat_type}_{self.chat.pk}"
 
-    def __connect_to_direct_chat(self) -> bool:
+    async def __connect_to_direct_chat(self) -> bool:
         # room name looks like "direct_{other_user_id}"
         # room_name = self.scope["url_route"]["kwargs"]["room_name"]
         try:
@@ -150,7 +149,7 @@ class ChatConsumer(JsonWebsocketConsumer):
 
         if not other_user or other_user_id == self.user.id:
             # such user does not exist / user tries to chat with himself
-            self.close()
+            await self.close()
             return False
 
         user1_id = min(self.user.pk, other_user_id)
@@ -161,7 +160,7 @@ class ChatConsumer(JsonWebsocketConsumer):
         self.chat = DirectChat.objects.get_chat(self.user, other_user)
         return True
 
-    def __connect_to_project_chat(self) -> bool:
+    async def __connect_to_project_chat(self) -> bool:
         # room name looks like "project_{project_id}"
         room_name = self.scope["url_route"]["kwargs"]["room_name"]
         project_id = int(room_name.split("_")[1])
@@ -169,12 +168,12 @@ class ChatConsumer(JsonWebsocketConsumer):
 
         if not filtered_projects.exists():
             # project does not exist
-            self.close()
+            await self.close()
             return False
 
         if not filtered_projects.first().collaborator_set.filter(user=self.user).exists():
             # user is not a collaborator
-            self.close()
+            await self.close()
             return False
 
         self.room_name = f"project_{project_id}"
@@ -183,17 +182,17 @@ class ChatConsumer(JsonWebsocketConsumer):
         return True
 
 
-class NotificationConsumer(JsonWebsocketConsumer):
-    # TODO: implement
-    def __init__(self, *args, **kwargs):
-        super().__init__(args, kwargs)
-        self.user = None
+class NotificationConsumer(AsyncJsonWebsocketConsumer):
+    # # TODO: implement
+    # def __init__(self, *args, **kwargs):
+    #     super().__init__(args, kwargs)
+    #     self.user = None
 
-    def connect(self):
-        self.user = self.scope["user"]
-        if not self.user.is_authenticated:
-            return
-
-        self.accept()
-
+    async def connect(self):
+        # self.user = self.scope["user"]
+        # if not self.user.is_authenticated:
+        #     return
+        #
+        # self.accept()
+        pass
         # Send count of unread messages
