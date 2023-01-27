@@ -17,6 +17,11 @@ class EventType(str, Enum):
     SET_OFFLINE = "set_offline"
 
 
+class EventGroupType(str, Enum):
+    CHATS_RELATED = "CHATS_RELATED"
+    GENERAL_EVENTS = "GENERAL_EVENTS"
+
+
 @dataclass(slots=True, frozen=True)
 class Content:
     chat_id: str

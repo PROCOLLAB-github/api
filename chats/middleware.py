@@ -1,6 +1,8 @@
 from urllib.parse import parse_qs
 
+import jwt
 from channels.db import database_sync_to_async
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
 from rest_framework.exceptions import AuthenticationFailed
@@ -45,6 +47,27 @@ class TokenAuthentication:
             raise AuthenticationFailed(_("User inactive or deleted."))
 
         return token.user
+
+    def authenticate(self, token):
+        """
+        Returns a `User` if a correct username and password have been supplied
+        Args:
+            token: token key
+
+        Returns:
+            User: A user instance.
+        """
+        try:
+            user_id = jwt.decode(
+                jwt=token, key=settings.SECRET_KEY, algorithms=["HS256"]
+            )["user_id"]
+        except jwt.exceptions.DecodeError:
+            raise AuthenticationFailed(_("Invalid token."))
+        except jwt.exceptions.ExpiredSignatureError:
+            raise AuthenticationFailed(_("Token expired."))
+
+        user = User.objects.get(pk=user_id)
+        return user
 
 
 @database_sync_to_async
