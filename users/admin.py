@@ -82,8 +82,9 @@ class CustomUserAdmin(admin.ModelAdmin):
     )
 
     list_filter = (
-        "email",
-        "id",
+        "is_staff",
+        "is_superuser",
+        "city",
     )
 
     #     if user_type changed, then delete all related fields
