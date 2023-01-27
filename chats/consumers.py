@@ -28,8 +28,8 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
     async def connect(self):
         """User connected to websocket"""
-        if self.scope.user.is_anonymous:
-            return self.disconnect(403)
+        if self.scope["user"].is_anonymous:
+            return await self.close(403)
 
         await self.channel_layer.group_add(
             EventGroupType.GENERAL_EVENTS, self.channel_name
