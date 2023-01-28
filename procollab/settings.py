@@ -272,6 +272,10 @@ default_user_authentication_rule",
     "SLIDING_TOKEN_REFRESH_LIFETIME": timedelta(days=1),
 }
 
+if DEBUG:
+    SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"] = timedelta(weeks=1)
+
+
 SESSION_COOKIE_SECURE = False
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
