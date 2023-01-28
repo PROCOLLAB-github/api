@@ -1,5 +1,3 @@
-from urllib.parse import parse_qs
-
 import jwt
 from channels.db import database_sync_to_async
 from django.conf import settings
@@ -108,13 +106,21 @@ class TokenAuthMiddleware:
         # Look up user from query string (you should also do things like
         # checking if it is a valid user ID, or if scope["user"] is already
         # populated).
-        query_params = parse_qs(scope["query_string"].decode())
+        headers = scope["headers"]
         try:
-            token = query_params["token"][0]
+            token = None
+            for name, value in headers:
+                if name == b"authorization":
+                    token = value.decode()
+                    break
+
+            if token is None:
+                raise ValueError("Token is missing from headers")
+
             scope["token"] = token
             scope["user"] = await get_user(scope)
-        except KeyError:
-            # Token is missing from query string
+        except ValueError:
+            # Token is missing from headers
             from django.contrib.auth.models import AnonymousUser
 
             scope["user"] = AnonymousUser()
