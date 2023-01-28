@@ -8,6 +8,8 @@ from projects.models import Project
 
 User = get_user_model()
 
+id = models.AutoField(primary_key=True)
+
 
 class BaseChat(models.Model):
     """
@@ -155,15 +157,21 @@ class DirectChat(BaseChat):
 
     @classmethod
     def create_from_two_users(cls, user1, user2):
-        chat = cls.objects.create(pk="_".join(sorted([str(user1.pk), str(user2.pk)])))
+        chat = cls.objects.create(pk=cls.get_chat_id_from_users(user1, user2))
         chat.users.set([user1, user2])
         return chat
 
-    def save(
-        self, force_insert=False, force_update=False, using=None, update_fields=None
-    ):
-        self.id = "_".join(sorted([str(user.pk) for user in self.users.all()]))
-        super().save(force_insert, force_update, using, update_fields)
+    @classmethod
+    def get_chat_id_from_users(cls, user1, user2):
+        first_user = user1 if user1.pk < user2.pk else user2
+        second_user = user2 if user1.pk < user2.pk else user1
+        return f"{first_user.pk}_{second_user.pk}"
+
+    # def save(
+    #     self, force_insert=False, force_update=False, using=None, update_fields=None
+    # ):
+    #     self.id = self.get_chat_id_from_users(*self.users.all())
+    #     super().save(force_insert, force_update, using, update_fields)
 
     def __str__(self):
         return f"DirectChat with {self.get_users_str()}"

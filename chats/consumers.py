@@ -5,7 +5,7 @@ from asgiref.sync import sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from django.core.cache import cache
 
-from chats.exceptions import NonMatchingDirectChatIdException
+from chats.exceptions import NonMatchingDirectChatIdException, WrongChatIdException
 from chats.models import (
     BaseChat,
     DirectChatMessage,
@@ -101,20 +101,22 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 else:
                     raise NonMatchingDirectChatIdException
 
+                if chat_id != DirectChat.get_chat_id_from_users(self.user, other_user):
+                    raise WrongChatIdException
+
                 # check if chat exists
                 try:
                     await sync_to_async(DirectChat.objects.get)(pk=event.content.chat_id)
                 except DirectChat.DoesNotExist:
-                    # create a chat
-                    print(self.user, other_user)
+                    # if not, create such chat
                     await sync_to_async(DirectChat.create_from_two_users)(
                         self.user, other_user
                     )
 
                 msg = await sync_to_async(DirectChatMessage.objects.create)(
-                    chat_id=event.content.chat_id,
-                    sender=self.user,
-                    message=event.content.message,
+                    chat_id=chat_id,
+                    author=self.user,
+                    text=event.content.message,
                 )
                 # send message to user's channel
                 other_user_channel = cache.get(
@@ -130,9 +132,22 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                         "message": {
                             "id": msg.id,
                             "chat_id": msg.chat_id,
-                            "author": msg.author,
-                            "text": msg.message,
-                            "created_at": msg.created_at,
+                            "author_id": msg.author.pk,
+                            "text": msg.text,
+                            "created_at": msg.created_at.timestamp(),
+                        },
+                    },
+                )
+                await self.channel_layer.send(
+                    self.channel_name,
+                    {
+                        "type": "chat_message",
+                        "message": {
+                            "id": msg.id,
+                            "chat_id": msg.chat_id,
+                            "author_id": msg.author.pk,
+                            "text": msg.text,
+                            "created_at": msg.created_at.timestamp(),
                         },
                     },
                 )
