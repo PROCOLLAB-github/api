@@ -7,12 +7,12 @@ from chats.models import (
     BaseChat,
 )
 from chats.websockets_settings import (
-    ChatType,
     Content,
     Event,
     EventType,
     Headers,
     EventGroupType,
+    ONLINE_USER_CACHE_KEY_PREFIX,
 )
 from core.constants import ONE_DAY_IN_SECONDS
 from users.models import CustomUser
@@ -28,13 +28,14 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
     async def connect(self):
         """User connected to websocket"""
+
         if self.scope["user"].is_anonymous:
             return await self.close(403)
 
+        await self.accept()
         await self.channel_layer.group_add(
             EventGroupType.GENERAL_EVENTS, self.channel_name
         )
-        await self.accept()
 
     async def disconnect(self, close_code):
         """User disconnected from websocket, Don't have to do anything here"""
@@ -63,22 +64,6 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         else:
             return self.disconnect(400)
 
-    async def __set_user_online(self):
-        room_name = f"{EventType.SET_ONLINE}_{self.user.pk}"
-        self.channel_layer.group_add(room_name, self.channel_name)
-
-        cache_key = self.__get_cache_key()
-        if self.chat_type == ChatType.DIRECT:
-            current_online_list = cache.get(cache_key, [])
-            current_online_list.append(self.user.pk)
-            cache.set(cache_key, current_online_list, ONE_DAY_IN_SECONDS)
-        elif self.chat_type == ChatType.PROJECT:
-            current_online_list = cache.get(cache_key, [])
-            current_online_list.append(self.user.pk)
-            cache.set(cache_key, current_online_list, ONE_DAY_IN_SECONDS)
-        else:
-            raise ValueError("Chat type is not supported! Something went terribly wrong!")
-
     async def __process_connection_event(self):
         """Send connection event to everyone"""
 
@@ -94,11 +79,23 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         pass
 
     async def __process_general_event(self, event, room_name):
+        cache_key = f"{ONLINE_USER_CACHE_KEY_PREFIX}{self.user.pk}"
         if event.type == EventType.SET_ONLINE:
+            cache.set(cache_key, True, ONE_DAY_IN_SECONDS)
+
             # sent everyone online event that user X is online
             self.channel_layer.group_send(
-                room_name, {"type": "set_online", "user_id": self.user.pk}
+                room_name, {"type": EventType.SET_ONLINE, "user_id": self.user.pk}
             )
+        elif event.type == EventType.SET_OFFLINE:
+            cache.delete(cache_key)
+
+            # sent everyone online event that user X is offline
+            self.channel_layer.group_send(
+                room_name, {"type": EventType.SET_OFFLINE, "user_id": self.user.pk}
+            )
+        else:
+            raise ValueError("Unknown event type")
 
 
 class NotificationConsumer(AsyncJsonWebsocketConsumer):

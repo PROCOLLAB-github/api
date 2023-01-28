@@ -109,7 +109,14 @@ class TokenAuthMiddleware:
         # checking if it is a valid user ID, or if scope["user"] is already
         # populated).
         query_params = parse_qs(scope["query_string"].decode())
-        token = query_params["token"][0]
-        scope["token"] = token
-        scope["user"] = await get_user(scope)
+        try:
+            token = query_params["token"][0]
+            scope["token"] = token
+            scope["user"] = await get_user(scope)
+        except KeyError:
+            # Token is missing from query string
+            from django.contrib.auth.models import AnonymousUser
+
+            scope["user"] = AnonymousUser()
+
         return await self.app(scope, receive, send)

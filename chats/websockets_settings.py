@@ -38,3 +38,6 @@ class Event:
     type: EventType
     headers: Headers
     content: Optional[Content]
+
+
+ONLINE_USER_CACHE_KEY_PREFIX = "online_user_"
