@@ -24,20 +24,11 @@ class EventGroupType(str, Enum):
 
 @dataclass(slots=True, frozen=True)
 class Content:
-    chat_id: str
-    message: str
-
-
-@dataclass(slots=True, frozen=True)
-class Headers:
-    Authorization: str
+    chat_id: Optional[str]
+    message: Optional[str]
 
 
 @dataclass(slots=True, frozen=True)
 class Event:
     type: EventType
-    headers: Headers
     content: Optional[Content]
-
-
-ONLINE_USER_CACHE_KEY_PREFIX = "online_user_"

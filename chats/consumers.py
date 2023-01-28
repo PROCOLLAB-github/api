@@ -10,11 +10,10 @@ from chats.websockets_settings import (
     Content,
     Event,
     EventType,
-    Headers,
     EventGroupType,
-    ONLINE_USER_CACHE_KEY_PREFIX,
 )
 from core.constants import ONE_DAY_IN_SECONDS
+from core.utils import get_user_online_cache_key
 from users.models import CustomUser
 
 
@@ -32,6 +31,8 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         if self.scope["user"].is_anonymous:
             return await self.close(403)
 
+        self.user = self.scope["user"]
+
         await self.accept()
         await self.channel_layer.group_add(
             EventGroupType.GENERAL_EVENTS, self.channel_name
@@ -45,8 +46,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         """Receive message from WebSocket in JSON format"""
         event = Event(
             type=content["type"],
-            headers=Headers(content["headers"]),
-            content=Content(**content["content"]),
+            content=Content(**content.get("content", {"chat_id": None, "message": None})),
         )
 
         # two event types - related to group chat and related to leave/connect
@@ -64,9 +64,6 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         else:
             return self.disconnect(400)
 
-    async def __process_connection_event(self):
-        """Send connection event to everyone"""
-
     async def __process_typing_event(self, content):
         """Send typing event to room group."""
         pass
@@ -79,8 +76,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         pass
 
     async def __process_general_event(self, event, room_name):
-        cache_key = f"{ONLINE_USER_CACHE_KEY_PREFIX}{self.user.pk}"
+        cache_key = get_user_online_cache_key(self.user)
         if event.type == EventType.SET_ONLINE:
+            print("set online", cache_key)
             cache.set(cache_key, True, ONE_DAY_IN_SECONDS)
 
             # sent everyone online event that user X is online

@@ -8,3 +8,7 @@ class Email:
             subject=data["email_subject"], body=data["email_body"], to=[data["to_email"]]
         )
         email.send()
+
+
+def get_user_online_cache_key(user) -> str:
+    return f"online_user_{user.pk}"
