@@ -1,3 +1,4 @@
+import json
 from typing import Optional
 
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
@@ -33,10 +34,10 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
         self.user = self.scope["user"]
 
-        await self.accept()
         await self.channel_layer.group_add(
             EventGroupType.GENERAL_EVENTS, self.channel_name
         )
+        await self.accept()
 
     async def disconnect(self, close_code):
         """User disconnected from websocket, Don't have to do anything here"""
@@ -75,21 +76,26 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
     async def __process_chat_related_event(self, event, room_name):
         pass
 
+    async def set_online(self, event):
+        await self.send(json.dumps(event))
+
+    async def set_offline(self, event):
+        await self.send(json.dumps(event))
+
     async def __process_general_event(self, event, room_name):
         cache_key = get_user_online_cache_key(self.user)
         if event.type == EventType.SET_ONLINE:
-            print("set online", cache_key)
             cache.set(cache_key, True, ONE_DAY_IN_SECONDS)
 
             # sent everyone online event that user X is online
-            self.channel_layer.group_send(
+            await self.channel_layer.group_send(
                 room_name, {"type": EventType.SET_ONLINE, "user_id": self.user.pk}
             )
         elif event.type == EventType.SET_OFFLINE:
             cache.delete(cache_key)
 
             # sent everyone online event that user X is offline
-            self.channel_layer.group_send(
+            await self.channel_layer.group_send(
                 room_name, {"type": EventType.SET_OFFLINE, "user_id": self.user.pk}
             )
         else:
@@ -97,16 +103,5 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
 
 class NotificationConsumer(AsyncJsonWebsocketConsumer):
-    # # TODO: implement
-    # def __init__(self, *args, **kwargs):
-    #     super().__init__(args, kwargs)
-    #     self.user = None
-
-    async def connect(self):
-        # self.user = self.scope["user"]
-        # if not self.user.is_authenticated:
-        #     return
-        #
-        # self.accept()
-        pass
-        # Send count of unread messages
+    # TODO: implement this
+    pass
