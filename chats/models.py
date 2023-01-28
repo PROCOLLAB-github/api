@@ -85,6 +85,7 @@ class ProjectChat(BaseChat):
         created_at: A DateTimeField indicating date of creation.
     """
 
+    id = models.PositiveIntegerField(primary_key=True, unique=True)
     project = models.ForeignKey(
         Project, on_delete=models.CASCADE, related_name="project_chats"
     )
@@ -102,6 +103,12 @@ class ProjectChat(BaseChat):
 
     def __str__(self):
         return f"ProjectChat<{self.project.id}> - {self.project.name}"
+
+    def save(
+        self, force_insert=False, force_update=False, using=None, update_fields=None
+    ):
+        self.id = self.project.id
+        super().save(force_insert, force_update, using, update_fields)
 
     class Meta:
         verbose_name = "Чат проекта"
