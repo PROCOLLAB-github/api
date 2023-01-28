@@ -1,19 +1,23 @@
 import json
 from typing import Optional
 
+from asgiref.sync import sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from django.core.cache import cache
 
 from chats.models import (
     BaseChat,
+    DirectChatMessage,
 )
+from chats.utils import get_user_channel_cache_key
 from chats.websockets_settings import (
     Content,
     Event,
     EventType,
     EventGroupType,
+    ChatType,
 )
-from core.constants import ONE_DAY_IN_SECONDS
+from core.constants import ONE_DAY_IN_SECONDS, ONE_WEEK_IN_SECONDS
 from core.utils import get_user_online_cache_key
 from users.models import CustomUser
 
@@ -33,6 +37,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             return await self.close(403)
 
         self.user = self.scope["user"]
+        cache.set(
+            get_user_channel_cache_key(self.user), self.channel_name, ONE_WEEK_IN_SECONDS
+        )
 
         await self.channel_layer.group_add(
             EventGroupType.GENERAL_EVENTS, self.channel_name
@@ -47,7 +54,11 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         """Receive message from WebSocket in JSON format"""
         event = Event(
             type=content["type"],
-            content=Content(**content.get("content", {"chat_id": None, "message": None})),
+            content=Content(
+                **content.get(
+                    "content", {"chat_id": None, "message": None, "chat_type": None}
+                )
+            ),
         )
 
         # two event types - related to group chat and related to leave/connect
@@ -74,7 +85,49 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         pass
 
     async def __process_chat_related_event(self, event, room_name):
-        pass
+        if event.type == EventType.NEW_MESSAGE:
+            if event.content.chat_type == ChatType.DIRECT:
+                # create new message
+                direct_chat = 1
+                other_user = sync_to_async(direct_chat.get_other_user(self.user))
+                # try:
+                #     direct_chat = await sync_to_async(DirectChat.objects.get)(
+                #         pk=event.content.chat_id
+                #     )
+                # except DirectChat.DoesNotExist:
+                #     # create a chat
+                #     direct_chat = await sync_to_async(DirectChat.objects.create)(
+                #         user1=self.user, user2_id=event.content.chat_id
+                #     )
+
+                msg = await sync_to_async(DirectChatMessage.objects.create)(
+                    chat_id=event.content.chat_id,
+                    sender=self.user,
+                    message=event.content.message,
+                )
+                # send message to user's channel
+                other_user_channel = cache.get(
+                    get_user_channel_cache_key(other_user), None
+                )
+                if other_user_channel is None:
+                    return
+
+                await self.channel_layer.send(
+                    other_user_channel,
+                    {
+                        "type": "chat_message",
+                        "message": {
+                            "id": msg.id,
+                            "chat_id": msg.chat_id,
+                            "author": msg.author,
+                            "text": msg.message,
+                            "created_at": msg.created_at,
+                        },
+                    },
+                )
+
+    async def chat_message(self, event):
+        await self.send(json.dumps(event))
 
     async def set_online(self, event):
         await self.send(json.dumps(event))

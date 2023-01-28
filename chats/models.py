@@ -150,6 +150,9 @@ class DirectChat(BaseChat):
     def get_last_messages(self, message_count):
         return self.messages.order_by("-created_at")[:message_count]
 
+    def get_other_user(self, user):
+        return self.users.exclude(pk=user.pk).first()
+
     def save(
         self, force_insert=False, force_update=False, using=None, update_fields=None
     ):

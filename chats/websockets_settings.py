@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
+from typing import Optional, Union
 
 
 class ChatType(str, Enum):
@@ -25,6 +25,7 @@ class EventGroupType(str, Enum):
 @dataclass(slots=True, frozen=True)
 class Content:
     chat_id: Optional[str]
+    chat_type: Optional[Union[ChatType.DIRECT, ChatType.PROJECT]]
     message: Optional[str]
 
 
