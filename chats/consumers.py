@@ -5,9 +5,11 @@ from asgiref.sync import sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from django.core.cache import cache
 
+from chats.exceptions import NonMatchingDirectChatIdException
 from chats.models import (
     BaseChat,
     DirectChatMessage,
+    DirectChat,
 )
 from chats.utils import get_user_channel_cache_key
 from chats.websockets_settings import (
@@ -88,17 +90,26 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         if event.type == EventType.NEW_MESSAGE:
             if event.content.chat_type == ChatType.DIRECT:
                 # create new message
-                direct_chat = 1
-                other_user = sync_to_async(direct_chat.get_other_user(self.user))
-                # try:
-                #     direct_chat = await sync_to_async(DirectChat.objects.get)(
-                #         pk=event.content.chat_id
-                #     )
-                # except DirectChat.DoesNotExist:
-                #     # create a chat
-                #     direct_chat = await sync_to_async(DirectChat.objects.create)(
-                #         user1=self.user, user2_id=event.content.chat_id
-                #     )
+                chat_id = event.content.chat_id
+
+                # todo add try/except
+                user1_id, user2_id = map(int, chat_id.split("_"))
+                if user1_id == self.user.id or user2_id == self.user.id:
+                    other_user = await sync_to_async(CustomUser.objects.get)(
+                        id=user1_id if user1_id != self.user.id else user2_id
+                    )
+                else:
+                    raise NonMatchingDirectChatIdException
+
+                # check if chat exists
+                try:
+                    await sync_to_async(DirectChat.objects.get)(pk=event.content.chat_id)
+                except DirectChat.DoesNotExist:
+                    # create a chat
+                    print(self.user, other_user)
+                    await sync_to_async(DirectChat.create_from_two_users)(
+                        self.user, other_user
+                    )
 
                 msg = await sync_to_async(DirectChatMessage.objects.create)(
                     chat_id=event.content.chat_id,

@@ -143,7 +143,7 @@ class DirectChat(BaseChat):
         try:
             return cls.objects.get(pk="_".join(sorted([str(user1.pk), str(user2.pk)])))
         except cls.DoesNotExist:
-            chat = cls.objects.create()
+            chat = cls.objects.create(pk="_".join(sorted([str(user1.pk), str(user2.pk)])))
             chat.users.set([user1, user2])
             return chat
 
@@ -152,6 +152,12 @@ class DirectChat(BaseChat):
 
     def get_other_user(self, user):
         return self.users.exclude(pk=user.pk).first()
+
+    @classmethod
+    def create_from_two_users(cls, user1, user2):
+        chat = cls.objects.create(pk="_".join(sorted([str(user1.pk), str(user2.pk)])))
+        chat.users.set([user1, user2])
+        return chat
 
     def save(
         self, force_insert=False, force_update=False, using=None, update_fields=None
