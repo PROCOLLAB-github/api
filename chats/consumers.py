@@ -5,11 +5,18 @@ from asgiref.sync import sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from django.core.cache import cache
 
-from chats.exceptions import NonMatchingDirectChatIdException, WrongChatIdException
+from chats.exceptions import (
+    NonMatchingDirectChatIdException,
+    WrongChatIdException,
+    ChatException,
+    UserNotInChatException,
+)
 from chats.models import (
     BaseChat,
     DirectChatMessage,
     DirectChat,
+    ProjectChat,
+    ProjectChatMessage,
 )
 from chats.utils import get_user_channel_cache_key
 from chats.websockets_settings import (
@@ -44,10 +51,11 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             get_user_channel_cache_key(self.user), self.channel_name, ONE_WEEK_IN_SECONDS
         )
         # get all projects that user is a member of
-        project_ids_list = await sync_to_async(
-            Collaborator.objects.filter(user=self.user).values_list("project", flat=True)
-        )()
-        for project_id in project_ids_list:
+        project_ids_list = Collaborator.objects.filter(user=self.user).values_list(
+            "project", flat=True
+        )
+        async for project_id in project_ids_list:
+            # FIXME: if a user is a leader but not a collaborator, this doesn't work
             # join room for each project
             # It's currently not possible to do this in a single call,
             #  so we have to do it in a loop (e.g. that's O(N) calls to layer backend, redis cache that would be)
@@ -70,7 +78,13 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             type=content["type"],
             content=Content(
                 **content.get(
-                    "content", {"chat_id": None, "message": None, "chat_type": None}
+                    "content",
+                    {
+                        "chat_id": None,
+                        "message": None,
+                        "chat_type": None,
+                        "reply_to": None,
+                    },
                 )
             ),
         )
@@ -83,7 +97,11 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             EventType.DELETE_MESSAGE,
         ]:
             room_name = f"{EventGroupType.CHATS_RELATED}_{event.content.chat_id}"
-            await self.__process_chat_related_event(event, room_name)
+            try:
+                await self.__process_chat_related_event(event, room_name)
+            except ChatException as e:
+                await self.send_json({"error": str(e.get_error())})
+
         elif event.type in [EventType.SET_ONLINE, EventType.SET_OFFLINE]:
             room_name = EventGroupType.GENERAL_EVENTS
             await self.__process_general_event(event, room_name)
@@ -108,20 +126,25 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 try:
                     user1_id, user2_id = map(int, chat_id.split("_"))
                 except ValueError:
-                    raise WrongChatIdException
+                    raise WrongChatIdException(
+                        f'Chat id "{chat_id}" is not in the format of'
+                        f" <user1_id>_<user2_id>, where user1_id < user2_id"
+                    )
                 if user1_id == self.user.id or user2_id == self.user.id:
                     other_user = await sync_to_async(CustomUser.objects.get)(
                         id=user1_id if user1_id != self.user.id else user2_id
                     )
                 else:
-                    raise NonMatchingDirectChatIdException
+                    raise NonMatchingDirectChatIdException(
+                        f"User {self.user.id} is not a member of chat {chat_id}"
+                    )
 
-                if chat_id != DirectChat.get_chat_id_from_users(self.user, other_user):
-                    raise WrongChatIdException
+                # if chat_id == 17_7, then chat_id will be == 7_17
+                chat_id = DirectChat.get_chat_id_from_users(self.user, other_user)
 
                 # check if chat exists
                 try:
-                    await sync_to_async(DirectChat.objects.get)(pk=event.content.chat_id)
+                    await sync_to_async(DirectChat.objects.get)(pk=chat_id)
                 except DirectChat.DoesNotExist:
                     # if not, create such chat
                     await sync_to_async(DirectChat.create_from_two_users)(
@@ -129,7 +152,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                     )
                 # TODO: check that content.reply_to is a message in this chat. maybe constraint?
                 msg = await sync_to_async(DirectChatMessage.objects.create)(
-                    reply_to=event.content.reply_to,
+                    # reply_to=event.content.reply_to,
                     chat_id=chat_id,
                     author=self.user,
                     text=event.content.message,
@@ -137,22 +160,6 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 # send message to user's channel
                 other_user_channel = cache.get(
                     get_user_channel_cache_key(other_user), None
-                )
-                if other_user_channel is None:
-                    return
-
-                await self.channel_layer.send(
-                    other_user_channel,
-                    {
-                        "type": "chat_message",
-                        "message": {
-                            "id": msg.id,
-                            "chat_id": msg.chat_id,
-                            "author_id": msg.author.pk,
-                            "text": msg.text,
-                            "created_at": msg.created_at.timestamp(),
-                        },
-                    },
                 )
                 await self.channel_layer.send(
                     self.channel_name,
@@ -167,6 +174,56 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                         },
                     },
                 )
+
+                if other_user_channel is None:
+                    return
+
+                await self.channel_layer.send(
+                    other_user_channel,
+                    {
+                        "type": "chat_message",
+                        "message": {
+                            "id": msg.id,
+                            "chat_id": msg.chat_id,
+                            "chat_type": ChatType.DIRECT,
+                            "author_id": msg.author.pk,
+                            "text": msg.text,
+                            "created_at": msg.created_at.timestamp(),
+                        },
+                    },
+                )
+            else:
+                # create new message
+                chat_id = event.content.chat_id
+                chat = await sync_to_async(ProjectChat.objects.get)(pk=chat_id)
+                # check that user is in this chat
+                users = await sync_to_async(chat.get_users)()
+                if self.user not in users:
+                    raise UserNotInChatException(
+                        f"User {self.user.id} is not in project chat {chat_id}"
+                    )
+
+                msg = await sync_to_async(ProjectChatMessage.objects.create)(
+                    reply_to=event.content.reply_to,
+                    chat=chat,
+                    author=self.user,
+                    text=event.content.message,
+                )
+                await self.channel_layer.group_send(
+                    room_name,
+                    {
+                        "type": "chat_message",
+                        "message": {
+                            "id": msg.id,
+                            "chat_id": msg.chat_id,
+                            "chat_type": ChatType.PROJECT,
+                            "author_id": msg.author.pk,
+                            "text": msg.text,
+                            "created_at": msg.created_at.timestamp(),
+                        },
+                    },
+                )
+                pass
 
     async def chat_message(self, event):
         await self.send(json.dumps(event))

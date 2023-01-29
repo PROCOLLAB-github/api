@@ -1,5 +1,6 @@
 class ChatException(Exception):
-    pass
+    def get_error(self):
+        return self.args[0]
 
 
 class NonMatchingDirectChatIdException(ChatException):
@@ -7,4 +8,8 @@ class NonMatchingDirectChatIdException(ChatException):
 
 
 class WrongChatIdException(ChatException):
+    pass
+
+
+class UserNotInChatException(ChatException):
     pass
