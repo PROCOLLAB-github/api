@@ -196,16 +196,18 @@ class BaseMessage(models.Model):
         author: A ForeignKey referring to the User model.
         text: A TextField containing message text.
         is_read: A BooleanField indicating whether message is read.
+        # is_deleted: A BooleanField indicating whether message is deleted.
         created_at: A DateTimeField indicating date of creation.
     """
 
-    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="messages")
     text = models.TextField(max_length=8192)
     is_read = models.BooleanField(default=False)
+    # is_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
-    reply_to = models.ForeignKey(
-        "self", on_delete=models.CASCADE, null=True, blank=True, related_name="replies"
-    )
+    # author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="messages")
+    # reply_to = models.ForeignKey(
+    #     "self", on_delete=models.CASCADE, null=True, blank=True, related_name="replies"
+    # )
 
     def __str__(self):
         return f"Message<{self.pk}>"
@@ -214,6 +216,7 @@ class BaseMessage(models.Model):
         verbose_name = "Сообщение"
         verbose_name_plural = "Сообщения"
         ordering = ["-created_at"]
+        abstract = True
 
 
 class ProjectChatMessage(BaseMessage):
@@ -229,6 +232,16 @@ class ProjectChatMessage(BaseMessage):
 
     chat = models.ForeignKey(
         ProjectChat, on_delete=models.CASCADE, related_name="messages"
+    )
+    author = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="project_messages"
+    )
+    reply_to = models.ForeignKey(
+        "self",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="project_replies",
     )
 
     def __str__(self):
@@ -252,6 +265,16 @@ class DirectChatMessage(BaseMessage):
 
     chat = models.ForeignKey(
         DirectChat, on_delete=models.CASCADE, related_name="messages"
+    )
+    author = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="direct_messages"
+    )
+    reply_to = models.ForeignKey(
+        "self",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="direct_replies",
     )
 
     def __str__(self):
