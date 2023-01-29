@@ -13,3 +13,7 @@ class WrongChatIdException(ChatException):
 
 class UserNotInChatException(ChatException):
     pass
+
+
+class NonMatchingReplyChatIdException(ChatException):
+    pass

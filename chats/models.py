@@ -2,13 +2,12 @@ from abc import abstractmethod
 from typing import List
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from projects.models import Project
 
 User = get_user_model()
-
-id = models.AutoField(primary_key=True)
 
 
 class BaseChat(models.Model):
@@ -148,11 +147,12 @@ class DirectChat(BaseChat):
         Returns:
             DirectChat: chat between two users
         """
-        # TODO: use .get_or_create() here
+
+        pk = "_".join(sorted([str(user1.pk), str(user2.pk)]))
         try:
-            return cls.objects.get(pk="_".join(sorted([str(user1.pk), str(user2.pk)])))
+            return cls.objects.get(pk=pk)
         except cls.DoesNotExist:
-            chat = cls.objects.create(pk="_".join(sorted([str(user1.pk), str(user2.pk)])))
+            chat = cls.objects.create(pk=pk)
             chat.users.set([user1, user2])
             return chat
 
@@ -174,12 +174,6 @@ class DirectChat(BaseChat):
         second_user = user2 if user1.pk < user2.pk else user1
         return f"{first_user.pk}_{second_user.pk}"
 
-    # def save(
-    #     self, force_insert=False, force_update=False, using=None, update_fields=None
-    # ):
-    #     self.id = self.get_chat_id_from_users(*self.users.all())
-    #     super().save(force_insert, force_update, using, update_fields)
-
     def __str__(self):
         return f"DirectChat with {self.get_users_str()}"
 
@@ -193,21 +187,16 @@ class BaseMessage(models.Model):
     Base message model
 
     Attributes:
-        author: A ForeignKey referring to the User model.
         text: A TextField containing message text.
         is_read: A BooleanField indicating whether message is read.
-        # is_deleted: A BooleanField indicating whether message is deleted.
+        is_deleted: A BooleanField indicating whether message is deleted.
         created_at: A DateTimeField indicating date of creation.
     """
 
     text = models.TextField(max_length=8192)
     is_read = models.BooleanField(default=False)
-    # is_deleted = models.BooleanField(default=False)
+    is_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
-    # author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="messages")
-    # reply_to = models.ForeignKey(
-    #     "self", on_delete=models.CASCADE, null=True, blank=True, related_name="replies"
-    # )
 
     def __str__(self):
         return f"Message<{self.pk}>"
@@ -244,6 +233,11 @@ class ProjectChatMessage(BaseMessage):
         related_name="project_replies",
     )
 
+    def clean(self):
+        # check that replied message is in the same chat
+        if self.reply_to and self.reply_to.chat != self.chat:
+            raise ValidationError("Reply to message from another chat")
+
     def __str__(self):
         return f"ProjectChatMessage<{self.pk}>"
 
@@ -276,6 +270,11 @@ class DirectChatMessage(BaseMessage):
         blank=True,
         related_name="direct_replies",
     )
+
+    def clean(self):
+        # check that replied message is in the same chat
+        if self.reply_to and self.reply_to.chat != self.chat:
+            raise ValidationError("Reply to message from another chat")
 
     def __str__(self):
         return f"DirectChatMessage<{self.pk}>"

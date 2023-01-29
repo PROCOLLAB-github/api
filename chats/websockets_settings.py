@@ -9,10 +9,13 @@ class ChatType(str, Enum):
 
 
 class EventType(str, Enum):
+    # CHATS RELATED EVENTS
     NEW_MESSAGE = "new_message"
-    TYPING = "typing"
-    READ_MESSAGE = "read"
     DELETE_MESSAGE = "delete_message"
+    READ_MESSAGE = "read"
+    TYPING = "typing"
+
+    # GENERAL EVENTS
     SET_ONLINE = "set_online"
     SET_OFFLINE = "set_offline"
 
