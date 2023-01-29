@@ -1,12 +1,13 @@
+import datetime
 import json
 from typing import Optional
 
 from asgiref.sync import sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from django.core.cache import cache
+from django.utils import timezone
 
 from chats.exceptions import (
-    NonMatchingDirectChatIdException,
     WrongChatIdException,
     ChatException,
     UserNotInChatException,
@@ -18,7 +19,11 @@ from chats.models import (
     ProjectChat,
     ProjectChatMessage,
 )
-from chats.utils import get_user_channel_cache_key, create_message
+from chats.utils import (
+    get_user_channel_cache_key,
+    create_message,
+    get_chat_and_user_ids_from_content,
+)
 from chats.websockets_settings import (
     Event,
     EventType,
@@ -116,26 +121,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             raise ValueError("Chat type is not supported")
 
     async def __process_new_direct_message_event(self, event: Event):
-        chat_id = event.content["chat_id"]
-
-        # check if chat_id is in the format of <user1_id>_<user2_id>
-        try:
-            user1_id, user2_id = map(int, chat_id.split("_"))
-        except ValueError:
-            raise WrongChatIdException(
-                f'Chat id "{chat_id}" is not in the format of'
-                f" <user1_id>_<user2_id>, where user1_id < user2_id"
-            )
-
-        # check if user is a member of this chat and get other user
-        if user1_id == self.user.id or user2_id == self.user.id:
-            other_user = await sync_to_async(CustomUser.objects.get)(
-                id=user1_id if user1_id != self.user.id else user2_id
-            )
-        else:
-            raise NonMatchingDirectChatIdException(
-                f"User {self.user.id} is not a member of chat {chat_id}"
-            )
+        chat_id, other_user = await get_chat_and_user_ids_from_content(
+            event.content, self.user
+        )
 
         # if chat_id == 17_7, then chat_id will be == 7_17
         chat_id = DirectChat.get_chat_id_from_users(self.user, other_user)
@@ -212,11 +200,79 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
     async def __process_typing_event(self, event: Event, room_name: str):
         """Send typing event to room group."""
-        pass
+        await self.channel_layer.group_send(
+            room_name,
+            {
+                "type": EventType.TYPING,
+                "content": {
+                    "chat_id": event.content["chat_id"],
+                    "chat_type": event.content["chat_type"],
+                    "user_id": self.user.id,
+                    "end_time": (
+                        timezone.now() + datetime.timedelta(seconds=5)
+                    ).timestamp(),
+                },
+            },
+        )
 
     async def __process_read_message_event(self, event: Event, room_name: str):
         """Send message read event to room group."""
-        pass
+        if event.content["chat_type"] == ChatType.DIRECT:
+            chat_id, other_user = await get_chat_and_user_ids_from_content(
+                event.content, self.user
+            )
+            msg = await sync_to_async(DirectChatMessage.objects.get)(
+                pk=event.content["message_id"]
+            )
+            if msg.chat_id != chat_id or msg.author_id != other_user:
+                raise WrongChatIdException(
+                    "Some of chat/message ids are wrong, you can't access this message"
+                )
+            msg.is_read = True
+            await sync_to_async(msg.save)()
+            # send 2 events to user's channel
+            other_user_channel = cache.get(get_user_channel_cache_key(other_user), None)
+            json_thingy = {
+                "type": EventType.READ_MESSAGE,
+                "content": {
+                    "chat_id": event.content["chat_id"],
+                    "chat_type": event.content["chat_type"],
+                    "user_id": self.user.id,
+                    "message_id": event.content["message_id"],
+                },
+            }
+            await self.channel_layer.send(self.channel_name, json_thingy)
+            if other_user_channel is None:
+                return
+            await self.channel_layer.send(other_user_channel, json_thingy)
+        elif event.content["chat_type"] == ChatType.PROJECT:
+            msg = await sync_to_async(ProjectChatMessage.objects.get)(
+                pk=event.content["message_id"]
+            )
+            # check that user is in this chat
+            users = await sync_to_async(msg.chat.get_users)()
+            if self.user not in users:
+                raise UserNotInChatException(
+                    f"User {self.user.id} is not in project chat {msg.chat_id}"
+                )
+            if msg.chat_id != event.content["chat_id"]:
+                raise WrongChatIdException(
+                    "Some of chat/message ids are wrong, you can't access this message"
+                )
+            msg.is_read = True
+            await sync_to_async(msg.save)()
+            await self.channel_layer.group_send(
+                room_name,
+                {
+                    "type": EventType.READ_MESSAGE,
+                    "content": {
+                        "chat_id": event.content["chat_id"],
+                        "chat_type": event.content["chat_type"],
+                        "user_id": self.user.id,
+                        "message_id": event.content["message_id"],
+                    },
+                },
+            )
 
     async def __process_delete_message_event(self, event: Event, room_name: str):
         if event.content["chat_type"] == ChatType.DIRECT:
@@ -231,26 +287,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         message.is_deleted = True
         await sync_to_async(message.save)()
 
-        chat_id = event.content["chat_id"]
-
-        # check if chat_id is in the format of <user1_id>_<user2_id>
-        try:
-            user1_id, user2_id = map(int, chat_id.split("_"))
-        except ValueError:
-            raise WrongChatIdException(
-                f'Chat id "{chat_id}" is not in the format of'
-                f" <user1_id>_<user2_id>, where user1_id < user2_id"
-            )
-
-        # check if user is a member of this chat and get other user
-        if user1_id == self.user.id or user2_id == self.user.id:
-            other_user = await sync_to_async(CustomUser.objects.get)(
-                id=user1_id if user1_id != self.user.id else user2_id
-            )
-        else:
-            raise NonMatchingDirectChatIdException(
-                f"User {self.user.id} is not a member of chat {chat_id}"
-            )
+        chat_id, other_user = await get_chat_and_user_ids_from_content(
+            event.content, self.user
+        )
 
         # send message to user's channel
         other_user_channel = cache.get(get_user_channel_cache_key(other_user), None)
@@ -291,6 +330,12 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 "content": {"message_id": event.content["message_id"]},
             },
         )
+
+    async def message_read(self, event: Event):
+        await self.send(json.dumps(event))
+
+    async def user_typing(self, event: Event):
+        await self.send(json.dumps(event))
 
     async def new_message(self, event: Event):
         await self.send(json.dumps(event))

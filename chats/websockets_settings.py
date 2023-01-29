@@ -12,8 +12,8 @@ class EventType(str, Enum):
     # CHATS RELATED EVENTS
     NEW_MESSAGE = "new_message"
     DELETE_MESSAGE = "delete_message"
-    READ_MESSAGE = "read"
-    TYPING = "typing"
+    READ_MESSAGE = "message_read"
+    TYPING = "user_typing"
 
     # GENERAL EVENTS
     SET_ONLINE = "set_online"

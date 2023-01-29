@@ -4,7 +4,11 @@ from asgiref.sync import sync_to_async
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 
-from chats.exceptions import NonMatchingReplyChatIdException
+from chats.exceptions import (
+    NonMatchingReplyChatIdException,
+    WrongChatIdException,
+    NonMatchingDirectChatIdException,
+)
 from chats.models import DirectChatMessage, ProjectChatMessage
 
 User = get_user_model()
@@ -65,3 +69,27 @@ async def create_message(
         raise NonMatchingReplyChatIdException(
             f"Message {reply_to} is not in chat {chat_id}"
         )
+
+
+async def get_chat_and_user_ids_from_content(content, current_user) -> tuple[str, User]:
+    chat_id = content["chat_id"]
+
+    # check if chat_id is in the format of <user1_id>_<user2_id>
+    try:
+        user1_id, user2_id = map(int, chat_id.split("_"))
+    except ValueError:
+        raise WrongChatIdException(
+            f'Chat id "{chat_id}" is not in the format of'
+            f" <user1_id>_<user2_id>, where user1_id < user2_id"
+        )
+
+    # check if user is a member of this chat and get other user
+    if user1_id == current_user.id or user2_id == current_user.id:
+        other_user = await sync_to_async(User.objects.get)(
+            id=user1_id if user1_id != current_user.id else user2_id
+        )
+    else:
+        raise NonMatchingDirectChatIdException(
+            f"User {current_user.id} is not a member of chat {chat_id}"
+        )
+    return chat_id, other_user
