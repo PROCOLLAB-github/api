@@ -4,14 +4,12 @@ from typing import Optional
 from asgiref.sync import sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from django.core.cache import cache
-from django.core.exceptions import ValidationError
 
 from chats.exceptions import (
     NonMatchingDirectChatIdException,
     WrongChatIdException,
     ChatException,
     UserNotInChatException,
-    NonMatchingReplyChatIdException,
 )
 from chats.models import (
     BaseChat,
@@ -20,7 +18,7 @@ from chats.models import (
     ProjectChat,
     ProjectChatMessage,
 )
-from chats.utils import get_user_channel_cache_key
+from chats.utils import get_user_channel_cache_key, create_message
 from chats.websockets_settings import (
     Content,
     Event,
@@ -158,17 +156,13 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             # if not, create such chat
             await sync_to_async(DirectChat.create_from_two_users)(self.user, other_user)
 
-        try:
-            msg = await sync_to_async(DirectChatMessage.objects.create)(
-                chat_id=chat_id,
-                author=self.user,
-                text=event.content.message,
-                reply_to=event.content.reply_to,
-            )
-        except ValidationError:
-            raise NonMatchingReplyChatIdException(
-                f"Message {event.content.reply_to} is not in chat {chat_id}"
-            )
+        msg = await create_message(
+            chat_id=chat_id,
+            chat_model=DirectChatMessage,
+            author=self.user,
+            text=event.content.message,
+            reply_to=event.content.reply_to,
+        )
 
         # send message to user's channel
         other_user_channel = cache.get(get_user_channel_cache_key(other_user), None)
@@ -215,19 +209,13 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 f"User {self.user.id} is not in project chat {chat_id}"
             )
 
-        try:
-            # todo: may be pass chat_id=chat_id and move message creation to function
-            #  that will raise NonMatchingReplyChatIdException ?
-            msg = await sync_to_async(ProjectChatMessage.objects.create)(
-                chat=chat,
-                author=self.user,
-                text=event.content.message,
-                reply_to=event.content.reply_to,
-            )
-        except ValidationError:
-            raise NonMatchingReplyChatIdException(
-                f"Message {event.content.reply_to} is not in chat {chat_id}"
-            )
+        msg = await create_message(
+            chat_id=chat_id,
+            chat_model=ProjectChatMessage,
+            author=self.user,
+            text=event.content.message,
+            reply_to=event.content.reply_to,
+        )
 
         await self.channel_layer.group_send(
             room_name,
