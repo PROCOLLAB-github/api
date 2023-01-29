@@ -27,6 +27,7 @@ class Content:
     chat_id: Optional[str]
     chat_type: Optional[Union[ChatType.DIRECT, ChatType.PROJECT]]
     message: Optional[str]
+    reply_to: Optional[int]
 
 
 @dataclass(slots=True, frozen=True)

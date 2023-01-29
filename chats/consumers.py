@@ -21,6 +21,7 @@ from chats.websockets_settings import (
 )
 from core.constants import ONE_DAY_IN_SECONDS, ONE_WEEK_IN_SECONDS
 from core.utils import get_user_online_cache_key
+from projects.models import Collaborator
 from users.models import CustomUser
 
 
@@ -42,6 +43,17 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         cache.set(
             get_user_channel_cache_key(self.user), self.channel_name, ONE_WEEK_IN_SECONDS
         )
+        # get all projects that user is a member of
+        project_ids_list = await sync_to_async(
+            Collaborator.objects.filter(user=self.user).values_list("project", flat=True)
+        )()
+        for project_id in project_ids_list:
+            # join room for each project
+            # It's currently not possible to do this in a single call,
+            #  so we have to do it in a loop (e.g. that's O(N) calls to layer backend, redis cache that would be)
+            await self.channel_layer.group_add(
+                f"{EventGroupType.CHATS_RELATED}_{project_id}", self.channel_name
+            )
 
         await self.channel_layer.group_add(
             EventGroupType.GENERAL_EVENTS, self.channel_name
@@ -93,7 +105,10 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 chat_id = event.content.chat_id
 
                 # todo add try/except
-                user1_id, user2_id = map(int, chat_id.split("_"))
+                try:
+                    user1_id, user2_id = map(int, chat_id.split("_"))
+                except ValueError:
+                    raise WrongChatIdException
                 if user1_id == self.user.id or user2_id == self.user.id:
                     other_user = await sync_to_async(CustomUser.objects.get)(
                         id=user1_id if user1_id != self.user.id else user2_id
@@ -112,8 +127,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                     await sync_to_async(DirectChat.create_from_two_users)(
                         self.user, other_user
                     )
-
+                # TODO: check that content.reply_to is a message in this chat. maybe constraint?
                 msg = await sync_to_async(DirectChatMessage.objects.create)(
+                    reply_to=event.content.reply_to,
                     chat_id=chat_id,
                     author=self.user,
                     text=event.content.message,
@@ -177,6 +193,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             await self.channel_layer.group_send(
                 room_name, {"type": EventType.SET_OFFLINE, "user_id": self.user.pk}
             )
+
+            # TODO: close connection here?
+            # await self.close(200)
         else:
             raise ValueError("Unknown event type")
 
