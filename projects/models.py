@@ -121,9 +121,9 @@ class Collaborator(models.Model):
     Project collaborator model
 
     Attributes:
-        user: A ForeignKey referencing the user who is collaborating in the project
-        project: A ForeignKey referencing the project the user is collaborating in
-        role: A CharField meaning the role the user is fulfilling in the project
+        user: A ForeignKey referencing the user who is collaborating in the project.
+        project: A ForeignKey referencing the project the user is collaborating in.
+        role: A CharField meaning the role the user is fulfilling in the project.
         datetime_created: A DateTimeField indicating date of creation.
         datetime_updated: A DateTimeField indicating date of update.
     """

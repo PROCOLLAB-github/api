@@ -56,6 +56,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         )
         async for project_id in project_ids_list:
             # FIXME: if a user is a leader but not a collaborator, this doesn't work
+            #  upd: it seems not possible to be a leader without being a collaborator
             # join room for each project
             # It's currently not possible to do this in a single call,
             #  so we have to do it in a loop (e.g. that's O(N) calls to layer backend, redis cache that would be)
@@ -74,6 +75,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
     async def receive_json(self, content, **kwargs):
         """Receive message from WebSocket in JSON format"""
+
         event = Event(
             type=content["type"],
             content=Content(
@@ -108,28 +110,26 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         else:
             return self.disconnect(400)
 
-    async def __process_typing_event(self, content):
-        """Send typing event to room group."""
-        pass
-
-    async def __process_read_event(self, content):
-        """Send message read event to room group."""
-        pass
-
     async def __process_chat_related_event(self, event, room_name):
         if event.type == EventType.NEW_MESSAGE:
             await self.__process_new_message_event(event, room_name)
+        elif event.type == EventType.TYPING:
+            await self.__process_typing_event(event, room_name)
+        elif event.type == EventType.READ_MESSAGE:
+            await self.__process_read_message_event(event, room_name)
 
     async def __process_new_message_event(self, event, room_name):
         if event.content.chat_type == ChatType.DIRECT:
             await self.__process_new_direct_message_event(event)
-        else:
+        elif event.content.chat_type == ChatType.PROJECT:
             await self.__process_new_project_message_event(event, room_name)
+        else:
+            raise ValueError("Chat type is not supported")
 
-    async def __process_new_direct_message_event(self, event):
-        # create new message
+    async def __process_new_direct_message_event(self, event: Event):
         chat_id = event.content.chat_id
 
+        # check if chat_id is in the format of <user1_id>_<user2_id>
         try:
             user1_id, user2_id = map(int, chat_id.split("_"))
         except ValueError:
@@ -137,6 +137,8 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 f'Chat id "{chat_id}" is not in the format of'
                 f" <user1_id>_<user2_id>, where user1_id < user2_id"
             )
+
+        # check if user is a member of this chat and get other user
         if user1_id == self.user.id or user2_id == self.user.id:
             other_user = await sync_to_async(CustomUser.objects.get)(
                 id=user1_id if user1_id != self.user.id else user2_id
@@ -198,10 +200,10 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             },
         )
 
-    async def __process_new_project_message_event(self, event, room_name):
-        # create new message
+    async def __process_new_project_message_event(self, event: Event, room_name: str):
         chat_id = event.content.chat_id
         chat = await sync_to_async(ProjectChat.objects.get)(pk=chat_id)
+
         # check that user is in this chat
         users = await sync_to_async(chat.get_users)()
         if self.user not in users:
@@ -232,16 +234,24 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             },
         )
 
-    async def chat_message(self, event):
+    async def __process_typing_event(self, event: Event, room_name: str):
+        """Send typing event to room group."""
+        pass
+
+    async def __process_read_message_event(self, event: Event, room_name: str):
+        """Send message read event to room group."""
+        pass
+
+    async def chat_message(self, event: Event):
         await self.send(json.dumps(event))
 
-    async def set_online(self, event):
+    async def set_online(self, event: Event):
         await self.send(json.dumps(event))
 
-    async def set_offline(self, event):
+    async def set_offline(self, event: Event):
         await self.send(json.dumps(event))
 
-    async def __process_general_event(self, event, room_name):
+    async def __process_general_event(self, event: Event, room_name: str):
         cache_key = get_user_online_cache_key(self.user)
         if event.type == EventType.SET_ONLINE:
             cache.set(cache_key, True, ONE_DAY_IN_SECONDS)

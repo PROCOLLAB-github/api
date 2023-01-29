@@ -31,7 +31,7 @@ def get_user_channel_cache_key(user: User) -> str:
 
 
 async def create_message(
-    chat_id: int,
+    chat_id: Union[str, int],
     chat_model: Union[Type[DirectChatMessage], Type[ProjectChatMessage]],
     author: User,
     text: str,
