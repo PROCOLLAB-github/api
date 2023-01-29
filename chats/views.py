@@ -96,9 +96,11 @@ class DirectChatMessageList(ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return self.request.user.direct_chats.get(
-            id=self.kwargs["chat_id"]
-        ).messages.all()
+        return (
+            self.request.user.direct_chats.get(id=self.kwargs["pk"])
+            .messages.filter(is_deleted=False)
+            .all()
+        )
 
 
 class ProjectChatMessageList(ListCreateAPIView):
@@ -106,9 +108,11 @@ class ProjectChatMessageList(ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return self.request.user.project_chats.get(
-            id=self.kwargs["chat_id"]
-        ).messages.all()
+        return (
+            ProjectChat.objects.get(id=self.kwargs["pk"])
+            .messages.filter(is_deleted=False)
+            .all()
+        )
 
     def post(self, request, *args, **kwargs):
         # TODO: try to create a message in a chat. If chat doesn't exist, create it and then create a message.

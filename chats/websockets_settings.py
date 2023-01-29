@@ -26,7 +26,7 @@ class EventGroupType(str, Enum):
 
 
 @dataclass(slots=True, frozen=True)
-class Content:
+class NewMessageEventContent:
     chat_id: Optional[str]
     chat_type: Optional[Union[ChatType.DIRECT, ChatType.PROJECT]]
     message: Optional[str]
@@ -36,4 +36,4 @@ class Content:
 @dataclass(slots=True, frozen=True)
 class Event:
     type: EventType
-    content: Optional[Content]
+    content: dict

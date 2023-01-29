@@ -17,12 +17,12 @@ urlpatterns = [
     path("projects/", ProjectChatList.as_view(), name="project-chat-list"),
     path("projects/<int:pk>/", ProjectChatDetail.as_view(), name="project-chat-detail"),
     path(
-        "directs/messages/",
+        "directs/<slug:pk>/messages/",
         DirectChatMessageList.as_view(),
         name="direct-chat-messages",
     ),
     path(
-        "projects/messages/",
+        "projects/<int:pk>/messages/",
         ProjectChatMessageList.as_view(),
         name="project-chat-messages",
     ),

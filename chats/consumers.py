@@ -20,7 +20,6 @@ from chats.models import (
 )
 from chats.utils import get_user_channel_cache_key, create_message
 from chats.websockets_settings import (
-    Content,
     Event,
     EventType,
     EventGroupType,
@@ -76,20 +75,8 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
     async def receive_json(self, content, **kwargs):
         """Receive message from WebSocket in JSON format"""
 
-        event = Event(
-            type=content["type"],
-            content=Content(
-                **content.get(
-                    "content",
-                    {
-                        "chat_id": None,
-                        "message": None,
-                        "chat_type": None,
-                        "reply_to": None,
-                    },
-                )
-            ),
-        )
+        # todo reply_to key is not required
+        event = Event(type=content["type"], content=content.get("content"))
 
         # two event types - related to group chat and related to leave/connect
         if event.type in [
@@ -98,7 +85,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             EventType.READ_MESSAGE,
             EventType.DELETE_MESSAGE,
         ]:
-            room_name = f"{EventGroupType.CHATS_RELATED}_{event.content.chat_id}"
+            room_name = f"{EventGroupType.CHATS_RELATED}_{event.content.get('chat_id')}"
             try:
                 await self.__process_chat_related_event(event, room_name)
             except ChatException as e:
@@ -117,17 +104,19 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             await self.__process_typing_event(event, room_name)
         elif event.type == EventType.READ_MESSAGE:
             await self.__process_read_message_event(event, room_name)
+        elif event.type == EventType.DELETE_MESSAGE:
+            await self.__process_delete_message_event(event, room_name)
 
     async def __process_new_message_event(self, event, room_name):
-        if event.content.chat_type == ChatType.DIRECT:
+        if event.content["chat_type"] == ChatType.DIRECT:
             await self.__process_new_direct_message_event(event)
-        elif event.content.chat_type == ChatType.PROJECT:
+        elif event.content["chat_type"] == ChatType.PROJECT:
             await self.__process_new_project_message_event(event, room_name)
         else:
             raise ValueError("Chat type is not supported")
 
     async def __process_new_direct_message_event(self, event: Event):
-        chat_id = event.content.chat_id
+        chat_id = event.content["chat_id"]
 
         # check if chat_id is in the format of <user1_id>_<user2_id>
         try:
@@ -162,18 +151,15 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             chat_id=chat_id,
             chat_model=DirectChatMessage,
             author=self.user,
-            text=event.content.message,
-            reply_to=event.content.reply_to,
+            text=event.content["message"],
+            reply_to=event.content["reply_to"],
         )
 
-        # send message to user's channel
-        other_user_channel = cache.get(get_user_channel_cache_key(other_user), None)
-        await self.channel_layer.send(
-            self.channel_name,
+        content = (
             {
-                "type": "chat_message",
-                "message": {
-                    "id": msg.id,
+                "type": EventType.NEW_MESSAGE,
+                "content": {
+                    "message_id": msg.id,
                     "chat_id": msg.chat_id,
                     "author_id": msg.author.pk,
                     "text": msg.text,
@@ -181,27 +167,17 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 },
             },
         )
+        # send message to user's channel
+        other_user_channel = cache.get(get_user_channel_cache_key(other_user), None)
+        await self.channel_layer.send(self.channel_name, content)
 
         if other_user_channel is None:
             return
 
-        await self.channel_layer.send(
-            other_user_channel,
-            {
-                "type": "chat_message",
-                "message": {
-                    "id": msg.id,
-                    "chat_id": msg.chat_id,
-                    "chat_type": ChatType.DIRECT,
-                    "author_id": msg.author.pk,
-                    "text": msg.text,
-                    "created_at": msg.created_at.timestamp(),
-                },
-            },
-        )
+        await self.channel_layer.send(other_user_channel, content)
 
     async def __process_new_project_message_event(self, event: Event, room_name: str):
-        chat_id = event.content.chat_id
+        chat_id = event.content["chat_id"]
         chat = await sync_to_async(ProjectChat.objects.get)(pk=chat_id)
 
         # check that user is in this chat
@@ -215,16 +191,16 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             chat_id=chat_id,
             chat_model=ProjectChatMessage,
             author=self.user,
-            text=event.content.message,
-            reply_to=event.content.reply_to,
+            text=event.content["message"],
+            reply_to=event.content["reply_to"],
         )
 
         await self.channel_layer.group_send(
             room_name,
             {
-                "type": "chat_message",
-                "message": {
-                    "id": msg.id,
+                "type": EventType.NEW_MESSAGE,
+                "content": {
+                    "message_id": msg.id,
                     "chat_id": msg.chat_id,
                     "chat_type": ChatType.PROJECT,
                     "author_id": msg.author.pk,
@@ -242,7 +218,84 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         """Send message read event to room group."""
         pass
 
-    async def chat_message(self, event: Event):
+    async def __process_delete_message_event(self, event: Event, room_name: str):
+        if event.content["chat_type"] == ChatType.DIRECT:
+            await self.__process_delete_direct_message_event(event)
+        elif event.content["chat_type"] == ChatType.PROJECT:
+            await self.__process_delete_project_message_event(event, room_name)
+
+    async def __process_delete_direct_message_event(self, event):
+        message_id = event.content["message_id"]
+
+        message = await sync_to_async(DirectChatMessage.objects.get)(pk=message_id)
+        message.is_deleted = True
+        await sync_to_async(message.save)()
+
+        chat_id = event.content["chat_id"]
+
+        # check if chat_id is in the format of <user1_id>_<user2_id>
+        try:
+            user1_id, user2_id = map(int, chat_id.split("_"))
+        except ValueError:
+            raise WrongChatIdException(
+                f'Chat id "{chat_id}" is not in the format of'
+                f" <user1_id>_<user2_id>, where user1_id < user2_id"
+            )
+
+        # check if user is a member of this chat and get other user
+        if user1_id == self.user.id or user2_id == self.user.id:
+            other_user = await sync_to_async(CustomUser.objects.get)(
+                id=user1_id if user1_id != self.user.id else user2_id
+            )
+        else:
+            raise NonMatchingDirectChatIdException(
+                f"User {self.user.id} is not a member of chat {chat_id}"
+            )
+
+        # send message to user's channel
+        other_user_channel = cache.get(get_user_channel_cache_key(other_user), None)
+        content = {
+            "type": EventType.DELETE_MESSAGE,
+            "content": {
+                "message_id": message_id,
+            },
+        }
+        await self.channel_layer.send(self.channel_name, content)
+
+        if other_user_channel is None:
+            return
+
+        await self.channel_layer.send(other_user_channel, content)
+
+    async def __process_delete_project_message_event(self, event: Event, room_name: str):
+        chat_id = event.content["chat_id"]
+        chat = await sync_to_async(ProjectChat.objects.get)(pk=chat_id)
+
+        # check that user is in this chat
+        users = await sync_to_async(chat.get_users)()
+        if self.user not in users:
+            raise UserNotInChatException(
+                f"User {self.user.id} is not in project chat {chat_id}"
+            )
+
+        message = await sync_to_async(ProjectChatMessage.objects.get)(
+            pk=event.content["message_id"]
+        )
+        message.is_deleted = True
+        await sync_to_async(message.save)()
+
+        await self.channel_layer.group_send(
+            room_name,
+            {
+                "type": EventType.NEW_MESSAGE,
+                "content": {"message_id": event.content["message_id"]},
+            },
+        )
+
+    async def new_message(self, event: Event):
+        await self.send(json.dumps(event))
+
+    async def delete_message(self, event: Event):
         await self.send(json.dumps(event))
 
     async def set_online(self, event: Event):
