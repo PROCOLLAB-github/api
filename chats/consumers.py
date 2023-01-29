@@ -249,8 +249,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             msg = await sync_to_async(ProjectChatMessage.objects.get)(
                 pk=event.content["message_id"]
             )
+            chat = await sync_to_async(ProjectChat.objects.get)(pk=msg.chat_id)
             # check that user is in this chat
-            users = await sync_to_async(msg.chat.get_users)()
+            users = await sync_to_async(chat.get_users)()
             if self.user not in users:
                 raise UserNotInChatException(
                     f"User {self.user.id} is not in project chat {msg.chat_id}"

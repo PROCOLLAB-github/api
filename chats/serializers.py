@@ -10,11 +10,11 @@ class DirectChatListSerializer(serializers.ModelSerializer):
 
     @classmethod
     def get_users(cls, chat: ProjectChat):
-        return chat.get_users()
+        return UserListSerializer(chat.get_users(), many=True).data
 
     @classmethod
     def get_last_message(cls, chat: DirectChat):
-        return chat.get_last_message()
+        return DirectChatMessageListSerializer(chat.get_last_message()).data
 
     class Meta:
         model = DirectChat
@@ -46,7 +46,7 @@ class ProjectChatListSerializer(serializers.ModelSerializer):
 
     @classmethod
     def get_last_message(cls, chat: ProjectChat):
-        return chat.get_last_message()
+        return ProjectChatMessageListSerializer(chat.get_last_message()).data
 
     class Meta:
         model = ProjectChat

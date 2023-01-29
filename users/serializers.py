@@ -193,13 +193,12 @@ class UserListSerializer(serializers.ModelSerializer):
     is_online = serializers.SerializerMethodField()
 
     @classmethod
-    def get_is_online(cls, user: CustomUser):
+    def get_is_online(cls, user: CustomUser) -> bool:
         cache_key = get_user_online_cache_key(user)
-        print(cache_key)
         is_online = cache.get(cache_key, False)
         return is_online
 
-    def create(self, validated_data):
+    def create(self, validated_data) -> CustomUser:
         user = CustomUser(**validated_data)
         user.set_password(validated_data["password"])
         user.save()
