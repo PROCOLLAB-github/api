@@ -143,18 +143,16 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             reply_to=event.content["reply_to"],
         )
 
-        content = (
-            {
-                "type": EventType.NEW_MESSAGE,
-                "content": {
-                    "message_id": msg.id,
-                    "chat_id": msg.chat_id,
-                    "author_id": msg.author.pk,
-                    "text": msg.text,
-                    "created_at": msg.created_at.timestamp(),
-                },
+        content = {
+            "type": EventType.NEW_MESSAGE,
+            "content": {
+                "message_id": msg.id,
+                "chat_id": msg.chat_id,
+                "author_id": msg.author.pk,
+                "text": msg.text,
+                "created_at": msg.created_at.timestamp(),
             },
-        )
+        }
         # send message to user's channel
         other_user_channel = cache.get(get_user_channel_cache_key(other_user), None)
         await self.channel_layer.send(self.channel_name, content)
