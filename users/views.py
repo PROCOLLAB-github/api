@@ -337,8 +337,8 @@ class LogoutView(APIView):
 
     def post(self, request):
         try:
-            # get request's refresh token from headers
-            refresh_token = request.headers["Authorization"].split(" ")[1]
+            # get refresh token from request body
+            refresh_token = request.data["refresh_token"]
             # blacklist the refresh token
             RefreshToken(refresh_token).blacklist()
             return Response(status=status.HTTP_205_RESET_CONTENT)
