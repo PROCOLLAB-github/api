@@ -99,6 +99,8 @@ jobs:
             command: |
               cd /home/app/procollab-backend &&
               docker-compose -f docker-compose.prod-ci.yml -p prod pull &&
+              docker container prune -f &&
+              docker image prune -a -f &&
               
               rm -f .env &&
               touch .env &&
