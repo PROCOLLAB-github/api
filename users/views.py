@@ -129,6 +129,10 @@ class UserDetail(RetrieveUpdateDestroyAPIView):
             )
         return super().put(request, pk)
 
+    @transaction.atomic
+    def patch(self, request, pk):
+        return super().patch(request, pk)
+
 
 class CurrentUser(GenericAPIView):
     queryset = User.objects.get_users_for_detail_view()
@@ -339,7 +343,13 @@ class LogoutView(APIView):
     def post(self, request):
         try:
             # get refresh token from request body
-            refresh_token = request.data["refresh_token"]
+            try:
+                refresh_token = request.data["refresh_token"]
+            except KeyError:
+                return Response(
+                    {"error": "Provide refresh_token in data"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             # blacklist the refresh token
             RefreshToken(refresh_token).blacklist()
             return Response(status=status.HTTP_205_RESET_CONTENT)
