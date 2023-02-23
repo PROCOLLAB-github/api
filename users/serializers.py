@@ -1,6 +1,8 @@
 from django.forms.models import model_to_dict
 from rest_framework import serializers
+from django.core.cache import cache
 
+from core.utils import get_user_online_cache_key
 from .models import CustomUser, Expert, Investor, Member, Mentor, UserAchievement
 
 
@@ -51,7 +53,6 @@ class MentorSerializer(serializers.ModelSerializer):
 
 
 class ExpertSerializer(serializers.ModelSerializer):
-
     preferred_industries = CustomListField(
         child=serializers.CharField(max_length=255),
     )
@@ -82,6 +83,13 @@ class UserDetailSerializer(serializers.ModelSerializer):
     mentor = MentorSerializer(required=False)
     achievements = AchievementListSerializer(required=False, many=True)
     key_skills = KeySkillsField(required=False)
+    is_online = serializers.SerializerMethodField()
+
+    @classmethod
+    def get_is_online(cls, user: CustomUser):
+        cache_key = get_user_online_cache_key(user)
+        is_online = cache.get(cache_key, False)
+        return is_online
 
     class Meta:
         model = CustomUser
@@ -100,6 +108,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
             "avatar",
             "city",
             "is_active",
+            "is_online",
             "member",
             "investor",
             "expert",
@@ -181,8 +190,15 @@ class UserDetailSerializer(serializers.ModelSerializer):
 class UserListSerializer(serializers.ModelSerializer):
     member = MemberSerializer(required=False)
     key_skills = KeySkillsField(required=False)
+    is_online = serializers.SerializerMethodField()
 
-    def create(self, validated_data):
+    @classmethod
+    def get_is_online(cls, user: CustomUser) -> bool:
+        cache_key = get_user_online_cache_key(user)
+        is_online = cache.get(cache_key, False)
+        return is_online
+
+    def create(self, validated_data) -> CustomUser:
         user = CustomUser(**validated_data)
         user.set_password(validated_data["password"])
         user.save()
@@ -203,6 +219,7 @@ class UserListSerializer(serializers.ModelSerializer):
             "speciality",
             "birthday",
             "is_active",
+            "is_online",
             "member",
             "password",
         ]

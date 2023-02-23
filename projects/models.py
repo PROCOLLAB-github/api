@@ -3,9 +3,6 @@ from typing import Optional
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.db.models import UniqueConstraint
-from django.db.models.signals import post_save
-from django.dispatch import receiver
-
 from industries.models import Industry
 from projects.helpers import VERBOSE_STEPS
 from projects.managers import AchievementManager, ProjectManager
@@ -120,17 +117,23 @@ class Achievement(models.Model):
 
 
 class Collaborator(models.Model):
-    """Project collaborator model
+    """
+    Project collaborator model
 
     Attributes:
-        user: A ForeignKey referencing the user who is collaborating in the project
-        project: A ForeignKey referencing the project the user is collaborating in
-        role: A CharField meaning the role the user is fulfilling in the project
+        user: A ForeignKey referencing the user who is collaborating in the project.
+        project: A ForeignKey referencing the project the user is collaborating in.
+        role: A CharField meaning the role the user is fulfilling in the project.
         datetime_created: A DateTimeField indicating date of creation.
         datetime_updated: A DateTimeField indicating date of update.
     """
 
-    user = models.ForeignKey(CustomUser, models.CASCADE, verbose_name="Пользователь")
+    user = models.ForeignKey(
+        CustomUser,
+        models.CASCADE,
+        verbose_name="Пользователь",
+        related_name="collaborations",
+    )
     project = models.ForeignKey(Project, models.CASCADE, verbose_name="Проект")
     role = models.CharField("Роль", max_length=1024, blank=True, null=True)
 
@@ -153,12 +156,3 @@ class Collaborator(models.Model):
                 name="unique_collaborator",
             )
         ]
-
-
-@receiver(post_save, sender=Project)
-def create_project(sender, instance, created, **kwargs):
-    """Creates collaborator for the project leader on project creation"""
-    if created:
-        Collaborator.objects.create(
-            user=instance.leader, project=instance, role="Основатель"
-        )

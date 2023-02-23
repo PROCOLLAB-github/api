@@ -10,8 +10,12 @@ class CustomUserManager(UserManager):
 
         return self._create_user(email, password, **extra_fields)
 
+    def get_active(self):
+        return self.get_queryset().filter(is_active=True)
+
     def create_superuser(self, email, password=None, **extra_fields):
         extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("birthday", "1900-01-01")
         extra_fields.setdefault("is_superuser", True)
         extra_fields.setdefault("is_active", True)
 
@@ -30,9 +34,6 @@ class CustomUserManager(UserManager):
             self.get_queryset()
             .select_related("member", "investor", "expert", "mentor")
             .prefetch_related(
-                # "member__preferred_industries",
-                # "expert__preferred_industries",
-                # "investor__preferred_industries",
                 "achievements",
             )
             .all()
