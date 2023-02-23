@@ -68,7 +68,7 @@ class EventType(str, Enum):
 }
 ```
 
-![[img/event_new_message.png]]
+![New message event](img/event_new_message.png "New message event")
 
 ##### EventType.TYPING
 
