@@ -1,5 +1,9 @@
 # Procollab backend service
 
+## Документация
+
+[Здесь](/docs/readme.md)
+
 ## Usage
 
 ### Clone project
