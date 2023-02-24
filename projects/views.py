@@ -112,8 +112,8 @@ class ProjectRecommendedUsers(generics.RetrieveAPIView):
 
     def get(self, request, pk, **kwargs):
         project = self.get_object()
-        # fixme: store key_skills and required_skills more convenient, not just as a string'
 
+        # fixme: store key_skills and required_skills more convenient, not just as a string
         all_needed_skills = set()
         for vacancy in project.vacancies.all():
             all_needed_skills.update(set(vacancy.required_skills.lower().split(",")))
@@ -122,9 +122,12 @@ class ProjectRecommendedUsers(generics.RetrieveAPIView):
         for user in User.objects.get_members():
             if user == request.user or not user.key_skills:
                 continue
+
             skills = set(user.key_skills.lower().split(","))
             if skills.intersection(all_needed_skills):
                 recommended_users.append(user)
+
+        # get some random users
         sampled_recommended_users = sample(
             recommended_users, min(RECOMMENDATIONS_COUNT, len(recommended_users))
         )
@@ -136,8 +139,6 @@ class ProjectRecommendedUsers(generics.RetrieveAPIView):
 class ProjectCountView(generics.GenericAPIView):
     queryset = Project.objects.get_projects_for_count_view()
     serializer_class = ProjectListSerializer
-    # TODO: using this permission could result in a user not having verified email
-    #  creating a project; probably should make IsUserVerifiedOrReadOnly
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
