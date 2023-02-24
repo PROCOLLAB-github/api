@@ -20,6 +20,7 @@ from projects.serializers import (
     AchievementDetailSerializer,
     ProjectCollaboratorSerializer,
 )
+from users.models import LikesOnProject
 from vacancy.models import VacancyResponse
 from vacancy.serializers import VacancyResponseListSerializer
 
@@ -77,6 +78,12 @@ class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [HasInvolvementInProjectOrReadOnly]
     serializer_class = ProjectDetailSerializer
 
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.increment_views_count()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
     def put(self, request, pk, **kwargs):
         # bootleg version of updating achievements via project
         if request.data.get("achievements") is not None:
@@ -96,6 +103,29 @@ class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
             )
 
         return super(ProjectDetail, self).put(request, pk)
+
+
+class SetLikeOnProject(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        """
+        Set like on project
+
+        ---
+
+        Args:
+            request:
+            pk - project id
+
+        Returns:
+            Response
+
+        """
+        project = Project.objects.get(pk=pk)
+        LikesOnProject.objects.toggle_like(request.user, project)
+
+        return Response(ProjectListSerializer(project).data)
 
 
 class ProjectCountView(generics.GenericAPIView):

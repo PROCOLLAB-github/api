@@ -27,7 +27,7 @@ from core.permissions import IsOwnerOrReadOnly
 from core.utils import Email
 from projects.serializers import ProjectListSerializer
 from users.helpers import VERBOSE_ROLE_TYPES, VERBOSE_USER_TYPES
-from users.models import UserAchievement
+from users.models import UserAchievement, LikesOnProject
 from users.permissions import IsAchievementOwnerOrReadOnly
 from users.serializers import (
     AchievementDetailSerializer,
@@ -38,7 +38,6 @@ from users.serializers import (
     UserListSerializer,
     VerifyEmailSerializer,
 )
-
 from .filters import UserFilter
 
 User = get_user_model()
@@ -79,6 +78,18 @@ class UserList(ListCreateAPIView):
         Email.send_email(data)
 
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+
+class LikedProjectList(ListAPIView):
+    serializer_class = ProjectListSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        projects_ids_list = LikesOnProject.objects.filter(
+            user=self.request.user, is_liked=True
+        ).values_list("project", flat=True)
+
+        return Project.objects.get_projects_from_list_of_ids(projects_ids_list)
 
 
 class UserAdditionalRolesView(APIView):

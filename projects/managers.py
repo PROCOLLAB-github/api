@@ -70,6 +70,9 @@ class ProjectManager(Manager):
         # I don't think this should work but the function has no usages, so I'll let it be
         return user.leader_projects.exists()
 
+    def get_projects_from_list_of_ids(self, ids):
+        return self.get_queryset().filter(id__in=ids)
+
 
 class AchievementManager(Manager):
     def get_achievements_for_list_view(self):

@@ -61,3 +61,21 @@ class UserAchievementManager(Manager):
             .select_related("user")
             .only("id", "title", "status", "user")
         )
+
+
+class LikesOnProjectManager(Manager):
+    def get_likes_for_list_view(self):
+        return (
+            self.get_queryset()
+            .select_related("user")
+            .only("id", "user__id", "project__id")
+        )
+
+    def get_or_create(self, user, project):
+        return super().get_or_create(user=user, project=project)
+
+    def toggle_like(self, user, project):
+        like, created = self.get_or_create(user=user, project=project)
+        if not created:
+            like.toggle_like()
+        return like
