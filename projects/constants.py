@@ -5,3 +5,5 @@ VERBOSE_STEPS = (
     (3, "Первые продажи"),
     (4, "Масштабирование"),
 )
+
+RECOMMENDATIONS_COUNT = 5

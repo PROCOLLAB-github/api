@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.db import models
 from django.db.models import UniqueConstraint
 from industries.models import Industry
-from projects.helpers import VERBOSE_STEPS
+from projects.constants import VERBOSE_STEPS
 from projects.managers import AchievementManager, ProjectManager
 from users.models import CustomUser
 

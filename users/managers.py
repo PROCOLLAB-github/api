@@ -2,6 +2,8 @@ from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import UserManager
 from django.db.models import Manager
 
+from users.helpers import MEMBER
+
 
 class CustomUserManager(UserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -38,6 +40,9 @@ class CustomUserManager(UserManager):
             )
             .all()
         )
+
+    def get_members(self):
+        return self.get_queryset().filter(user_type=MEMBER)
 
     def _create_user(self, email, password, **extra_fields):
         email = self.normalize_email(email)

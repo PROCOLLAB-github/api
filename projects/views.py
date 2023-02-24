@@ -1,3 +1,6 @@
+from random import sample
+
+from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django_filters import rest_framework as filters
 from rest_framework import generics, permissions, status
@@ -7,11 +10,12 @@ from rest_framework.views import APIView
 
 from core.permissions import IsStaffOrReadOnly
 from projects.filters import ProjectFilter
-from projects.helpers import VERBOSE_STEPS
+from projects.constants import VERBOSE_STEPS, RECOMMENDATIONS_COUNT
 from projects.models import Project, Achievement
 from projects.permissions import (
     IsProjectLeaderOrReadOnlyForNonDrafts,
     HasInvolvementInProjectOrReadOnly,
+    IsProjectLeader,
 )
 from projects.serializers import (
     ProjectDetailSerializer,
@@ -20,8 +24,11 @@ from projects.serializers import (
     AchievementDetailSerializer,
     ProjectCollaboratorSerializer,
 )
+from users.serializers import UserListSerializer
 from vacancy.models import VacancyResponse
 from vacancy.serializers import VacancyResponseListSerializer
+
+User = get_user_model()
 
 
 class ProjectList(generics.ListCreateAPIView):
@@ -96,6 +103,34 @@ class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
             )
 
         return super(ProjectDetail, self).put(request, pk)
+
+
+class ProjectRecommendedUsers(generics.RetrieveAPIView):
+    queryset = Project.objects.all()
+    permission_classes = [IsProjectLeader]
+    serializer_class = UserListSerializer
+
+    def get(self, request, pk, **kwargs):
+        project = self.get_object()
+        # fixme: store key_skills and required_skills more convenient, not just as a string'
+
+        all_needed_skills = set()
+        for vacancy in project.vacancies.all():
+            all_needed_skills.update(set(vacancy.required_skills.lower().split(",")))
+
+        recommended_users = []
+        for user in User.objects.get_members():
+            if user == request.user or not user.key_skills:
+                continue
+            skills = set(user.key_skills.lower().split(","))
+            if skills.intersection(all_needed_skills):
+                recommended_users.append(user)
+        sampled_recommended_users = sample(
+            recommended_users, min(RECOMMENDATIONS_COUNT, len(recommended_users))
+        )
+
+        serializer = self.get_serializer(sampled_recommended_users, many=True)
+        return Response(status=status.HTTP_200_OK, data=serializer.data)
 
 
 class ProjectCountView(generics.GenericAPIView):
