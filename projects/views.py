@@ -23,6 +23,7 @@ from projects.serializers import (
     AchievementDetailSerializer,
     ProjectCollaboratorSerializer,
 )
+from users.models import LikesOnProject
 from users.serializers import UserListSerializer
 from vacancy.models import VacancyResponse
 from vacancy.serializers import VacancyResponseListSerializer
@@ -83,6 +84,12 @@ class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [HasInvolvementInProjectOrReadOnly]
     serializer_class = ProjectDetailSerializer
 
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.increment_views_count()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
     def put(self, request, pk, **kwargs):
         # bootleg version of updating achievements via project
         if request.data.get("achievements") is not None:
@@ -116,9 +123,34 @@ class ProjectRecommendedUsers(generics.RetrieveAPIView):
         return Response(status=status.HTTP_200_OK, data=serializer.data)
 
 
+class SetLikeOnProject(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        """
+        Set like on project
+
+        ---
+
+        Args:
+            request:
+            pk - project id
+
+        Returns:
+            Response
+
+        """
+        project = Project.objects.get(pk=pk)
+        LikesOnProject.objects.toggle_like(request.user, project)
+
+        return Response(ProjectListSerializer(project).data)
+
+
 class ProjectCountView(generics.GenericAPIView):
     queryset = Project.objects.get_projects_for_count_view()
     serializer_class = ProjectListSerializer
+    # TODO: using this permission could result in a user not having verified email
+    #  creating a project; probably should make IsUserVerifiedOrReadOnly
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):

@@ -10,12 +10,14 @@ from projects.views import (
     ProjectCountView,
     ProjectVacancyResponses,
     ProjectRecommendedUsers,
+    SetLikeOnProject,
 )
 
 app_name = "projects"
 
 urlpatterns = [
     path("", ProjectList.as_view()),
+    path("<int:pk>/like/", SetLikeOnProject.as_view()),
     path("<int:pk>/collaborators/", ProjectCollaborators.as_view()),
     path("<int:pk>/", ProjectDetail.as_view()),
     path("<int:pk>/recommended_users", ProjectRecommendedUsers.as_view()),
