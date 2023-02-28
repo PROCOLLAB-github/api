@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional, Union
 
 
 class ChatType(str, Enum):
@@ -25,15 +24,7 @@ class EventGroupType(str, Enum):
     GENERAL_EVENTS = "GENERAL_EVENTS"
 
 
-@dataclass(slots=True, frozen=True)
-class NewMessageEventContent:
-    chat_id: Optional[str]
-    chat_type: Optional[Union[ChatType.DIRECT, ChatType.PROJECT]]
-    message: Optional[str]
-    reply_to: Optional[int]
-
-
-@dataclass(slots=True, frozen=True)
+@dataclass(frozen=True)
 class Event:
     type: EventType
     content: dict
