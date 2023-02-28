@@ -27,11 +27,13 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 ALLOWED_HOSTS = [
+    "127.0.0.1:8000",
     "127.0.0.1",
     "localhost",
     "0.0.0.0",
     "api.procollab.ru",
-    "127.0.0.1:8000",
+    "app.procollab.ru",
+    "procollab.ru",
 ]
 
 PASSWORD_HASHERS = [

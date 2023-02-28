@@ -84,12 +84,12 @@ def get_user(scope):
             "TokenAuthMiddleware."
         )
     token = scope["token"]
-    # user = None
-    # try:
-    auth = TokenAuthentication()
-    user = auth.authenticate(token)
-    # except AuthenticationFailed:
-    #     pass
+    user = None
+    try:
+        auth = TokenAuthentication()
+        user = auth.authenticate(token)
+    except AuthenticationFailed:
+        pass
     return user or AnonymousUser()
 
 
@@ -107,21 +107,22 @@ class TokenAuthMiddleware:
         # checking if it is a valid user ID, or if scope["user"] is already
         # populated).
         headers = scope["headers"]
-        token = None
-        for name, value in headers:
-            if name == b"authorization":
-                token = value.decode()
-                break
+        try:
+            token = None
+            for name, value in headers:
+                if name == b"authorization":
+                    token = value.decode()
+                    break
 
-        if token is None:
-            raise ValueError("Token is missing from headers")
+            if token is None:
+                raise ValueError("Token is missing from headers")
 
-        scope["token"] = token
-        scope["user"] = await get_user(scope)
-        # Token is missing from headers
-        # if token is None:
-        #     from django.contrib.auth.models import AnonymousUser
-        #
-        #     scope["user"] = AnonymousUser()
+            scope["token"] = token
+            scope["user"] = await get_user(scope)
+        except ValueError:
+            # Token is missing from headers
+            from django.contrib.auth.models import AnonymousUser
+
+            scope["user"] = AnonymousUser()
 
         return await self.app(scope, receive, send)
