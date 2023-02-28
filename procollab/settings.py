@@ -169,22 +169,30 @@ if DEBUG:
 
     CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
 else:
-    CHANNEL_LAYERS = {
-        "default": {
-            "BACKEND": "channels_redis.core.RedisChannelLayer",
-            "CONFIG": {
-                "hosts": [("127.0.0.1", 6379)],
-            },
-        },
-    }
-
-    REDIS_HOST = config("REDIS_HOST", cast=str, default="127.0.0.1")
+    # fixme
     CACHES = {
         "default": {
-            "BACKEND": "django.core.cache.backends.redis.RedisCache",
-            "LOCATION": f"redis://{REDIS_HOST}:6379",
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
         }
     }
+
+    CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
+    # CHANNEL_LAYERS = {
+    #     "default": {
+    #         "BACKEND": "channels_redis.core.RedisChannelLayer",
+    #         "CONFIG": {
+    #             "hosts": [("127.0.0.1", 6379)],
+    #         },
+    #     },
+    # }
+    #
+    # REDIS_HOST = config("REDIS_HOST", cast=str, default="127.0.0.1")
+    # CACHES = {
+    #     "default": {
+    #         "BACKEND": "django.core.cache.backends.redis.RedisCache",
+    #         "LOCATION": f"redis://{REDIS_HOST}:6379",
+    #     }
+    # }
 
     REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"] = [
         "rest_framework.renderers.JSONRenderer",
@@ -274,7 +282,6 @@ default_user_authentication_rule",
 
 if DEBUG:
     SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"] = timedelta(weeks=1)
-
 
 SESSION_COOKIE_SECURE = False
 
