@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django_filters import rest_framework as filters
 from rest_framework import generics, permissions, status
@@ -7,11 +8,13 @@ from rest_framework.views import APIView
 
 from core.permissions import IsStaffOrReadOnly
 from projects.filters import ProjectFilter
-from projects.helpers import VERBOSE_STEPS
+from projects.constants import VERBOSE_STEPS
+from projects.helpers import get_recommended_users
 from projects.models import Project, Achievement
 from projects.permissions import (
     IsProjectLeaderOrReadOnlyForNonDrafts,
     HasInvolvementInProjectOrReadOnly,
+    IsProjectLeader,
 )
 from projects.serializers import (
     ProjectDetailSerializer,
@@ -20,15 +23,17 @@ from projects.serializers import (
     AchievementDetailSerializer,
     ProjectCollaboratorSerializer,
 )
+from users.models import LikesOnProject
+from users.serializers import UserListSerializer
 from vacancy.models import VacancyResponse
 from vacancy.serializers import VacancyResponseListSerializer
+
+User = get_user_model()
 
 
 class ProjectList(generics.ListCreateAPIView):
     queryset = Project.objects.get_projects_for_list_view()
     serializer_class = ProjectListSerializer
-    # TODO: using this permission could result in a user not having verified email
-    #  creating a project; probably should make IsUserVerifiedOrReadOnly
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = ProjectFilter
@@ -41,7 +46,7 @@ class ProjectList(generics.ListCreateAPIView):
 
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=201, headers=headers)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def post(self, request, *args, **kwargs):
         """
@@ -79,6 +84,12 @@ class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [HasInvolvementInProjectOrReadOnly]
     serializer_class = ProjectDetailSerializer
 
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.increment_views_count()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
     def put(self, request, pk, **kwargs):
         # bootleg version of updating achievements via project
         if request.data.get("achievements") is not None:
@@ -98,6 +109,41 @@ class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
             )
 
         return super(ProjectDetail, self).put(request, pk)
+
+
+class ProjectRecommendedUsers(generics.RetrieveAPIView):
+    queryset = Project.objects.all()
+    permission_classes = [IsProjectLeader]
+    serializer_class = UserListSerializer
+
+    def get(self, request, pk, **kwargs):
+        project = self.get_object()
+        recommended_users = get_recommended_users(project)
+        serializer = self.get_serializer(recommended_users, many=True)
+        return Response(status=status.HTTP_200_OK, data=serializer.data)
+
+
+class SetLikeOnProject(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        """
+        Set like on project
+
+        ---
+
+        Args:
+            request:
+            pk - project id
+
+        Returns:
+            Response
+
+        """
+        project = Project.objects.get(pk=pk)
+        LikesOnProject.objects.toggle_like(request.user, project)
+
+        return Response(ProjectListSerializer(project).data)
 
 
 class ProjectCountView(generics.GenericAPIView):

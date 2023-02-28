@@ -31,6 +31,7 @@ ALLOWED_HOSTS = [
     "localhost",
     "0.0.0.0",
     "api.procollab.ru",
+    "127.0.0.1:8000",
 ]
 
 PASSWORD_HASHERS = [
@@ -53,6 +54,9 @@ if SENTRY_DSN:
     )
 
 INSTALLED_APPS = [
+    # daphne is required for channels, should be installed before django.contrib.staticfiles
+    "daphne",
+    # django apps
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -67,6 +71,7 @@ INSTALLED_APPS = [
     "projects.apps.ProjectsConfig",
     "news.apps.NewsConfig",
     "vacancy.apps.VacancyConfig",
+    "chats.apps.ChatsConfig",
     "metrics.apps.MetricsConfig",
     "invites.apps.InvitesConfig",
     "files.apps.FilesConfig",
@@ -80,6 +85,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "django_filters",
     "drf_yasg",
+    "channels",
 ]
 
 MIDDLEWARE = [
@@ -144,7 +150,9 @@ REST_FRAMEWORK = {
         "rest_framework.renderers.AdminRenderer",
     ],
 }
-# Database
+
+ASGI_APPLICATION = "procollab.asgi.application"
+
 if DEBUG:
     DATABASES = {
         "default": {
@@ -152,7 +160,32 @@ if DEBUG:
             "NAME": "db.sqlite3",
         }
     }
+
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        }
+    }
+
+    CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
 else:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [("127.0.0.1", 6379)],
+            },
+        },
+    }
+
+    REDIS_HOST = config("REDIS_HOST", cast=str, default="127.0.0.1")
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": f"redis://{REDIS_HOST}:6379",
+        }
+    }
+
     REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"] = [
         "rest_framework.renderers.JSONRenderer",
     ]
@@ -194,7 +227,7 @@ AUTH_USER_MODEL = "users.CustomUser"
 
 LANGUAGE_CODE = "ru-ru"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = "Europe/Moscow"
 
 USE_I18N = True
 
@@ -238,6 +271,10 @@ default_user_authentication_rule",
     "SLIDING_TOKEN_LIFETIME": timedelta(minutes=5),
     "SLIDING_TOKEN_REFRESH_LIFETIME": timedelta(days=1),
 }
+
+if DEBUG:
+    SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"] = timedelta(weeks=1)
+
 
 SESSION_COOKIE_SECURE = False
 

@@ -14,6 +14,7 @@ from users.views import (
     UserTypesView,
     VerifyEmail,
     LogoutView,
+    LikedProjectList,
 )
 
 app_name = "users"
@@ -24,6 +25,7 @@ urlpatterns = [
     ),  # this url actually returns  mentors, experts and investors
     path("users/", UserList.as_view()),
     path("users/projects/", UserProjectsList.as_view()),
+    path("users/liked/", LikedProjectList.as_view()),
     path("users/roles/", UserAdditionalRolesView.as_view()),
     path("users/types/", UserTypesView.as_view()),
     path("users/<int:pk>/", UserDetail.as_view()),
