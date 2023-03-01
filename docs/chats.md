@@ -3,10 +3,10 @@
 ## Общая инфа
 URL для всего вебсокет-релейтед - `/ws/`
 
-В данный момент есть только 1 Consumer (т.е. View, но для вебсокетов). Это ChatsConsumer, живет на `/ws/chats/`.
+В данный момент есть только 1 Consumer (т.е. View, но для вебсокетов). Это ChatConsumer, живет на `/ws/chat/`.
 
-# ChatsConsumer
-`/ws/chats/`
+# ChatConsumer
+`/ws/chat/`
 
 ### Подключение
 Чтобы законнектиться, укажите в хедерах авторизацию по Bearer токену (как и для всех других запросов в REST API).
@@ -25,7 +25,7 @@ class Event:
 # эти строки указывать в {"type": event_type}
 
 class EventType(str, Enum):
-    # CHATS RELATED EVENTS
+    # CHAT RELATED EVENTS
     NEW_MESSAGE = "new_message"
     DELETE_MESSAGE = "delete_message"
     READ_MESSAGE = "message_read"
