@@ -1,8 +1,10 @@
 from rest_framework import serializers
 
+from core.fields import CustomListField
 from industries.models import Industry
 from projects.models import Project, Achievement, Collaborator
 from projects.validators import validate_project
+from users.models import LikesOnProject
 from vacancy.serializers import ProjectVacancyListSerializer
 
 
@@ -34,7 +36,7 @@ class CollaboratorSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(source="user.first_name")
     last_name = serializers.CharField(source="user.last_name")
     avatar = serializers.CharField(source="user.avatar")
-    key_skills = serializers.CharField(source="user.key_skills")
+    key_skills = CustomListField(child=serializers.CharField(), source="user.key_skills")
 
     class Meta:
         model = Collaborator
@@ -44,7 +46,6 @@ class CollaboratorSerializer(serializers.ModelSerializer):
             "last_name",
             "role",
             "key_skills",
-            # "member_key_skills",
             "avatar",
         ]
 
@@ -65,6 +66,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     vacancies = ProjectVacancyListSerializer(many=True, read_only=True)
     short_description = serializers.SerializerMethodField()
     industry_id = serializers.IntegerField(required=False)
+    likes_count = serializers.SerializerMethodField(method_name="count_likes")
 
     def validate(self, data):
         super().validate(data)
@@ -73,6 +75,9 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     @classmethod
     def get_short_description(cls, project):
         return project.get_short_description()
+
+    def count_likes(self, project):
+        return LikesOnProject.objects.filter(project=project, is_liked=True).count()
 
     def update(self, instance, validated_data):
         instance = super().update(instance, validated_data)
@@ -99,13 +104,20 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "vacancies",
             "datetime_created",
             "datetime_updated",
+            "views_count",
+            "likes_count",
         ]
-        read_only_fields = ["leader"]
+        read_only_fields = [
+            "leader",
+            "views_count",
+            "datetime_created",
+            "datetime_updated",
+        ]
 
 
 class ProjectListSerializer(serializers.ModelSerializer):
-
     collaborators = serializers.SerializerMethodField(method_name="get_collaborators")
+    likes_count = serializers.SerializerMethodField(method_name="count_likes")
     collaborator_count = serializers.SerializerMethodField(
         method_name="get_collaborator_count"
     )
@@ -120,6 +132,9 @@ class ProjectListSerializer(serializers.ModelSerializer):
     @classmethod
     def get_collaborator_count(cls, obj):
         return len(obj.collaborator_set.all())
+
+    def count_likes(self, obj):
+        return LikesOnProject.objects.filter(project=obj, is_liked=True).count()
 
     def get_collaborators(self, obj):
         max_collaborator_count = 4
@@ -143,6 +158,7 @@ class ProjectListSerializer(serializers.ModelSerializer):
             "collaborators",
             "vacancies",
             "datetime_created",
+            "likes_count",
         ]
 
         read_only_fields = [

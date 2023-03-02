@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import CustomUser, UserAchievement
+from .models import CustomUser, UserAchievement, Member, Mentor, Expert, Investor
 
 
 @admin.register(CustomUser)
@@ -41,6 +41,7 @@ class CustomUserAdmin(admin.ModelAdmin):
                     "region",
                     "organization",
                     "speciality",
+                    "key_skills",
                 )
             },
         ),
@@ -66,13 +67,9 @@ class CustomUserAdmin(admin.ModelAdmin):
         ),
     )
 
-    list_display = (
-        "email",
-        "last_name",
-        "first_name",
-        "id",
-    )
+    list_display = ("id", "email", "last_name", "first_name", "is_active")
     list_display_links = (
+        "id",
         "email",
         "first_name",
         "last_name",
@@ -85,9 +82,38 @@ class CustomUserAdmin(admin.ModelAdmin):
     )
 
     list_filter = (
-        "email",
-        "id",
+        "is_staff",
+        "is_superuser",
+        "city",
     )
+
+    #     if user_type changed, then delete all related fields
+    def save_model(self, request, obj, form, change):
+        if change:
+            old_user = CustomUser.objects.get(id=obj.id)
+            if obj.user_type != old_user.user_type:
+                try:
+                    if old_user.user_type == CustomUser.MEMBER:
+                        old_user.member.delete()
+                    elif old_user.user_type == CustomUser.MENTOR:
+                        old_user.mentor.delete()
+                    elif old_user.user_type == CustomUser.EXPERT:
+                        old_user.expert.delete()
+                    elif old_user.user_type == CustomUser.INVESTOR:
+                        old_user.investor.delete()
+                except Exception:
+                    pass
+
+                if obj.user_type == CustomUser.MEMBER:
+                    Member.objects.create(user=old_user)
+                elif obj.user_type == CustomUser.MENTOR:
+                    Mentor.objects.create(user=old_user)
+                elif obj.user_type == CustomUser.EXPERT:
+                    Expert.objects.create(user=old_user)
+                elif obj.user_type == CustomUser.INVESTOR:
+                    Investor.objects.create(user=old_user)
+
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(UserAchievement)

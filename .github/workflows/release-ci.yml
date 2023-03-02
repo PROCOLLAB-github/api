@@ -98,6 +98,8 @@ jobs:
             password: ${{ secrets.SERVER_PASSWORD }}
             command: |
               cd /home/app/procollab-backend &&
+              docker container prune -f &&
+              docker image prune -a -f &&
               docker-compose -f docker-compose.prod-ci.yml -p prod pull &&
               
               rm -f .env &&

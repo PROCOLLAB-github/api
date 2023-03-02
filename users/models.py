@@ -3,7 +3,6 @@ from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from industries.models import Industry
 from users.helpers import (
     ADMIN,
     EXPERT,
@@ -13,7 +12,12 @@ from users.helpers import (
     VERBOSE_ROLE_TYPES,
     VERBOSE_USER_TYPES,
 )
-from users.managers import CustomUserManager, UserAchievementManager
+from users.managers import (
+    CustomUserManager,
+    UserAchievementManager,
+    LikesOnProjectManager,
+)
+from users.validators import user_birthday_validator
 
 
 def get_default_user_type():
@@ -67,7 +71,11 @@ class CustomUser(AbstractUser):
     patronymic = models.CharField(max_length=255, null=True, blank=True)
     key_skills = models.CharField(max_length=512, null=True, blank=True)
     avatar = models.URLField(null=True, blank=True)
-    birthday = models.DateField(null=True, blank=True)
+    birthday = models.DateField(
+        null=False,
+        blank=False,
+        validators=[user_birthday_validator],
+    )
     about_me = models.TextField(null=True, blank=True)
     status = models.CharField(max_length=255, null=True, blank=True)
     region = models.CharField(max_length=255, null=True, blank=True)
@@ -82,11 +90,25 @@ class CustomUser(AbstractUser):
 
     objects = CustomUserManager()
 
+    def get_project_chats(self) -> list:
+        collaborations = self.collaborations.all()
+        projects = []
+        for collaboration in collaborations:
+            projects.extend(list(collaboration.project.project_chats.all()))
+        return projects
+
     def get_key_skills(self) -> list[str]:
         return [skill.strip() for skill in self.key_skills.split(",") if skill.strip()]
 
-    def __str__(self):
+    def get_full_name(self) -> str:
+        return f"{self.first_name} {self.last_name}"
+
+    def __str__(self) -> str:
         return f"User<{self.id}> - {self.first_name} {self.last_name}"
+
+    class Meta:
+        verbose_name = "Пользователь"
+        verbose_name_plural = "Пользователи"
 
 
 class UserAchievement(models.Model):
@@ -143,6 +165,45 @@ class AbstractUserWithRole(models.Model):
         abstract = True
 
 
+class LikesOnProject(models.Model):
+    """
+    LikesOnProject model
+
+    This model is used to store the user's likes on projects.
+
+    Attributes:
+        user: ForeignKey instance of user.
+        project: ForeignKey instance of project.
+    """
+
+    is_liked = models.BooleanField(default=True)
+
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name="likes_on_projects",
+    )
+    project = models.ForeignKey(
+        "projects.Project",
+        on_delete=models.CASCADE,
+        related_name="likes",
+    )
+
+    objects = LikesOnProjectManager()
+
+    def toggle_like(self):
+        self.is_liked = not self.is_liked
+        self.save()
+
+    def __str__(self):
+        return f"LikesOnProject<{self.id}>"
+
+    class Meta:
+        verbose_name = "Лайк на проект"
+        verbose_name_plural = "Лайки на проекты"
+        unique_together = ("user", "project")
+
+
 class Member(models.Model):
     """
     Member model
@@ -153,7 +214,6 @@ class Member(models.Model):
         user: ForeignKey instance of the CustomUser model.
         useful_to_project: TextField instance indicates actions useful
                            for the development and maintenance of the project.
-        preferred_industries: ManyToManyField indicating user industries preferred for work.
     """
 
     user = models.OneToOneField(
@@ -161,9 +221,6 @@ class Member(models.Model):
     )
 
     useful_to_project = models.TextField(blank=True)
-    preferred_industries = models.ManyToManyField(
-        Industry, blank=True, related_name="members"
-    )
 
     def __str__(self):
         return f"Member<{self.id}> - {self.user.first_name} {self.user.last_name}"
@@ -177,6 +234,7 @@ class Mentor(AbstractUserWithRole):
 
     Attributes:
             user: ForeignKey instance of the CustomUser model.
+            preferred_industries: CharField indicating user industries preferred for work.
             useful_to_project: TextField instance indicates actions useful
                                for the development and maintenance of the project.
     """
@@ -184,8 +242,7 @@ class Mentor(AbstractUserWithRole):
     user = models.OneToOneField(
         CustomUser, on_delete=models.CASCADE, related_name="mentor"
     )
-    # CustomUser already has a field called "organization"
-    # job = models.CharField(max_length=255, blank=True)
+    preferred_industries = models.CharField(max_length=4096, null=True, blank=True)
     useful_to_project = models.TextField(blank=True)
 
     def __str__(self):
@@ -208,9 +265,7 @@ class Expert(AbstractUserWithRole):
         CustomUser, on_delete=models.CASCADE, related_name="expert"
     )
 
-    preferred_industries = models.ManyToManyField(
-        Industry, blank=True, related_name="experts"
-    )
+    preferred_industries = models.CharField(max_length=4096, null=True, blank=True)
     useful_to_project = models.TextField(blank=True)
 
     # TODO reviews
@@ -234,10 +289,7 @@ class Investor(AbstractUserWithRole):
     user = models.OneToOneField(
         CustomUser, on_delete=models.CASCADE, related_name="investor"
     )
-
-    preferred_industries = models.ManyToManyField(
-        Industry, blank=True, related_name="investors"
-    )
+    preferred_industries = models.CharField(max_length=4096, null=True, blank=True)
     interaction_process_description = models.TextField(blank=True)
 
     def __str__(self):

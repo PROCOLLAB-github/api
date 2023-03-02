@@ -2,6 +2,7 @@ from django_filters import rest_framework as filters
 from rest_framework import generics, mixins, permissions, status
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
+from projects.models import Collaborator
 
 from vacancy.filters import VacancyFilter
 from vacancy.models import Vacancy, VacancyResponse
@@ -100,7 +101,23 @@ class VacancyResponseAccept(generics.GenericAPIView):
             return Response(status=status.HTTP_400_BAD_REQUEST)
         vacancy_request.is_approved = True
         vacancy = vacancy_request.vacancy
-        vacancy.project.collaborators.add(vacancy_request.user)
+
+        # check if this person already has a collaborator role in this project
+        if Collaborator.objects.filter(
+            project=vacancy.project, user=vacancy_request.user
+        ).exists():
+            return Response(
+                "You already work for this project, you can't accept a vacancy here",
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        new_collaborator = Collaborator(
+            user=vacancy_request.user,
+            project=vacancy.project,
+            role=vacancy.role,
+        )
+        new_collaborator.save()
+        # vacancy.project.collaborator_set.add(vacancy_request.user)
         vacancy.project.save()
         vacancy_request.save()
         return Response(status=status.HTTP_200_OK)

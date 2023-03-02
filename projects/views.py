@@ -1,28 +1,39 @@
+from django.contrib.auth import get_user_model
+from django.db.models import Q
 from django_filters import rest_framework as filters
 from rest_framework import generics, permissions, status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.permissions import IsStaffOrReadOnly
 from projects.filters import ProjectFilter
-from projects.helpers import VERBOSE_STEPS
+from projects.constants import VERBOSE_STEPS
+from projects.helpers import get_recommended_users
 from projects.models import Project, Achievement
-from projects.permissions import IsProjectLeaderOrReadOnlyForNonDrafts
+from projects.permissions import (
+    IsProjectLeaderOrReadOnlyForNonDrafts,
+    HasInvolvementInProjectOrReadOnly,
+    IsProjectLeader,
+)
 from projects.serializers import (
     ProjectDetailSerializer,
     AchievementListSerializer,
     ProjectListSerializer,
     AchievementDetailSerializer,
     ProjectCollaboratorSerializer,
-    ProjectAchievementListSerializer,
 )
+from users.models import LikesOnProject
+from users.serializers import UserListSerializer
+from vacancy.models import VacancyResponse
+from vacancy.serializers import VacancyResponseListSerializer
+
+User = get_user_model()
 
 
 class ProjectList(generics.ListCreateAPIView):
     queryset = Project.objects.get_projects_for_list_view()
     serializer_class = ProjectListSerializer
-    # TODO: using this permission could result in a user not having verified email
-    #  creating a project; probably should make IsUserVerifiedOrReadOnly
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = ProjectFilter
@@ -35,7 +46,7 @@ class ProjectList(generics.ListCreateAPIView):
 
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=201, headers=headers)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def post(self, request, *args, **kwargs):
         """
@@ -70,32 +81,69 @@ class ProjectList(generics.ListCreateAPIView):
 
 class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Project.objects.get_projects_for_detail_view()
+    permission_classes = [HasInvolvementInProjectOrReadOnly]
     serializer_class = ProjectDetailSerializer
-    permission_classes = [IsProjectLeaderOrReadOnlyForNonDrafts]
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.increment_views_count()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
 
     def put(self, request, pk, **kwargs):
         # bootleg version of updating achievements via project
         if request.data.get("achievements") is not None:
             achievements = request.data.get("achievements")
-            for achievement in achievements:
-                achievement_id = achievement.get("id")
-                if achievement_id is None:
-                    # creating
-                    achievement["project"] = pk
-                    serializer = ProjectAchievementListSerializer(data=achievement)
-                    serializer.is_valid(raise_exception=True)
-                    serializer.save()
-                else:
-                    # changing
-                    instance = Achievement.objects.get(id=achievement_id)
-                    achievement["project"] = pk
-                    serializer = AchievementDetailSerializer(
-                        instance, data=achievement, partial=False
+            # delete all old achievements
+            Achievement.objects.filter(project_id=pk).delete()
+            # create new achievements
+            Achievement.objects.bulk_create(
+                [
+                    Achievement(
+                        project_id=pk,
+                        title=achievement.get("title"),
+                        status=achievement.get("status"),
                     )
-                    serializer.is_valid(raise_exception=True)
-                    serializer.save()
+                    for achievement in achievements
+                ]
+            )
 
         return super(ProjectDetail, self).put(request, pk)
+
+
+class ProjectRecommendedUsers(generics.RetrieveAPIView):
+    queryset = Project.objects.all()
+    permission_classes = [IsProjectLeader]
+    serializer_class = UserListSerializer
+
+    def get(self, request, pk, **kwargs):
+        project = self.get_object()
+        recommended_users = get_recommended_users(project)
+        serializer = self.get_serializer(recommended_users, many=True)
+        return Response(status=status.HTTP_200_OK, data=serializer.data)
+
+
+class SetLikeOnProject(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        """
+        Set like on project
+
+        ---
+
+        Args:
+            request:
+            pk - project id
+
+        Returns:
+            Response
+
+        """
+        project = Project.objects.get(pk=pk)
+        LikesOnProject.objects.toggle_like(request.user, project)
+
+        return Response(ProjectListSerializer(project).data)
 
 
 class ProjectCountView(generics.GenericAPIView):
@@ -103,13 +151,15 @@ class ProjectCountView(generics.GenericAPIView):
     serializer_class = ProjectListSerializer
     # TODO: using this permission could result in a user not having verified email
     #  creating a project; probably should make IsUserVerifiedOrReadOnly
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         return Response(
             {
-                "all": self.get_queryset().count(),
-                "my": self.get_queryset().filter(leader_id=request.user.id).count(),
+                "all": self.get_queryset().filter(draft=False).count(),
+                "my": self.get_queryset()
+                .filter(Q(leader_id=request.user.id) | Q(collaborator__user=request.user))
+                .count(),
             },
             status=status.HTTP_200_OK,
         )
@@ -172,3 +222,16 @@ class AchievementDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Achievement.objects.get_achievements_for_detail_view()
     serializer_class = AchievementDetailSerializer
     permission_classes = [IsStaffOrReadOnly]
+
+
+class ProjectVacancyResponses(generics.GenericAPIView):
+    serializer_class = VacancyResponseListSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return VacancyResponse.objects.filter(vacancy__project_id=self.kwargs["pk"])
+
+    def get(self, request, pk):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)

@@ -30,12 +30,13 @@ class FileView(generics.GenericAPIView):
         """deletes the file (only if the request is sent by the user who owns it!)
         The link has to be specified in the JSON body, not in the URL arguments.
         """
-        if request.data and (request.data.get("link") is not None):
-            link = request.data.get("link")
+        # get the link from the query
+        if request.query_params and (request.query_params.get("link") is not None):
+            link = request.query_params.get("link")
         else:
             return Response(
                 {
-                    "error": "you have to pass the link of the object you want to delete as JSON"
+                    "error": "you have to pass the link of the object you want to delete in query parameters"
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )

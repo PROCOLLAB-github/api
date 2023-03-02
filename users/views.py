@@ -5,6 +5,7 @@ from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.sites.shortcuts import get_current_site
+from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import redirect
 from django.urls import reverse
@@ -26,7 +27,7 @@ from core.permissions import IsOwnerOrReadOnly
 from core.utils import Email
 from projects.serializers import ProjectListSerializer
 from users.helpers import VERBOSE_ROLE_TYPES, VERBOSE_USER_TYPES
-from users.models import UserAchievement
+from users.models import UserAchievement, LikesOnProject
 from users.permissions import IsAchievementOwnerOrReadOnly
 from users.serializers import (
     AchievementDetailSerializer,
@@ -37,7 +38,6 @@ from users.serializers import (
     UserListSerializer,
     VerifyEmailSerializer,
 )
-
 from .filters import UserFilter
 
 User = get_user_model()
@@ -45,7 +45,7 @@ Project = apps.get_model("projects", "Project")
 
 
 class UserList(ListCreateAPIView):
-    queryset = User.objects.all()
+    queryset = User.objects.get_active()
     permission_classes = [AllowAny]  # FIXME: change to IsAuthorized
     serializer_class = UserListSerializer
     filter_backends = (filters.DjangoFilterBackend,)
@@ -80,6 +80,18 @@ class UserList(ListCreateAPIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
+class LikedProjectList(ListAPIView):
+    serializer_class = ProjectListSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        projects_ids_list = LikesOnProject.objects.filter(
+            user=self.request.user, is_liked=True
+        ).values_list("project", flat=True)
+
+        return Project.objects.get_projects_from_list_of_ids(projects_ids_list)
+
+
 class UserAdditionalRolesView(APIView):
     permission_classes = [AllowAny]
 
@@ -107,25 +119,29 @@ class UserDetail(RetrieveUpdateDestroyAPIView):
     permission_classes = [IsOwnerOrReadOnly, IsAuthenticated]
     serializer_class = UserDetailSerializer
 
+    @transaction.atomic
     def put(self, request, pk):
         # bootleg version of updating achievements via user
         if request.data.get("achievements") is not None:
             achievements = request.data.get("achievements")
-            for i in achievements:
-                achievement_id = i.get("id")
-                if achievement_id is None:
-                    UserAchievement.objects.create(
-                        title=i["title"],
-                        status=i["status"],
+            # delete all old achievements
+            UserAchievement.objects.filter(user_id=pk).delete()
+            # create new achievements
+            UserAchievement.objects.bulk_create(
+                [
+                    UserAchievement(
                         user_id=pk,
+                        title=achievement.get("title"),
+                        status=achievement.get("status"),
                     )
-                    continue
-                instance = UserAchievement.objects.get(id=achievement_id)
-                i["user"] = pk
-                serializer = AchievementDetailSerializer(instance, data=i, partial=False)
-                serializer.is_valid(raise_exception=True)
-                serializer.save()
+                    for achievement in achievements
+                ]
+            )
         return super().put(request, pk)
+
+    @transaction.atomic
+    def patch(self, request, pk):
+        return super().patch(request, pk)
 
 
 class CurrentUser(GenericAPIView):
@@ -140,6 +156,8 @@ class CurrentUser(GenericAPIView):
 
 
 class UserTypesView(APIView):
+    permission_classes = [AllowAny]
+
     def get(self, request):
         """
         Return a list of tuples [(id, name), ..] of user types.
@@ -315,14 +333,35 @@ class AchievementDetail(RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAchievementOwnerOrReadOnly]
 
 
-class UserDraftsList(APIView):
+class UserProjectsList(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         serializer = ProjectListSerializer(
-            Project.objects.get_projects_for_user_drafts_view().filter(
-                leader=self.request.user
+            Project.objects.get_user_projects_for_list_view().filter(
+                Q(leader_id=self.request.user.id)
+                | Q(collaborator__user=self.request.user)
             ),
             many=True,
         )
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            # get refresh token from request body
+            try:
+                refresh_token = request.data["refresh_token"]
+            except KeyError:
+                return Response(
+                    {"error": "Provide refresh_token in data"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            # blacklist the refresh token
+            RefreshToken(refresh_token).blacklist()
+            return Response(status=status.HTTP_205_RESET_CONTENT)
+        except TokenError:
+            return Response(status=status.HTTP_400_BAD_REQUEST)

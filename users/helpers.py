@@ -5,7 +5,6 @@ EXPERT = 3
 INVESTOR = 4
 
 VERBOSE_USER_TYPES = (
-    (ADMIN, "Администратор"),
     (MEMBER, "Участник"),
     (MENTOR, "Ментор"),
     (EXPERT, "Эксперт"),

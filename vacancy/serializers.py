@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
+from core.fields import CustomListField
 from projects.models import Project
 from users.serializers import UserDetailSerializer
 from vacancy.models import Vacancy, VacancyResponse
@@ -20,7 +21,8 @@ class ProjectForVacancySerializer(serializers.ModelSerializer):
 
 
 class VacancyDetailSerializer(serializers.ModelSerializer):
-    project = ProjectForVacancySerializer(many=False)
+    project = ProjectForVacancySerializer(many=False, read_only=True)
+    required_skills = serializers.ListSerializer(child=serializers.CharField())
 
     class Meta:
         model = Vacancy
@@ -34,9 +36,14 @@ class VacancyDetailSerializer(serializers.ModelSerializer):
             "datetime_created",
             "datetime_updated",
         ]
+        read_only_fields = [
+            "project",
+        ]
 
 
 class VacancyListSerializer(serializers.ModelSerializer):
+    required_skills = CustomListField(child=serializers.CharField())
+
     class Meta:
         model = Vacancy
         fields = [
@@ -46,9 +53,14 @@ class VacancyListSerializer(serializers.ModelSerializer):
             "description",
             "is_active",
         ]
+        read_only_fields = [
+            "project",
+        ]
 
 
 class ProjectVacancyListSerializer(serializers.ModelSerializer):
+    required_skills = CustomListField(child=serializers.CharField())
+
     class Meta:
         model = Vacancy
         fields = [

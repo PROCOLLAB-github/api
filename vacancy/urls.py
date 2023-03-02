@@ -17,6 +17,6 @@ urlpatterns = [
     path("<int:pk>/", VacancyDetail.as_view()),
     path("<int:vacancy_id>/responses/", VacancyResponseList.as_view()),
     path("responses/<int:pk>/", VacancyResponseDetail.as_view()),
-    path("responses/<int:pk>/accept", VacancyResponseAccept.as_view()),
-    path("responses/<int:pk>/decline", VacancyResponseDecline.as_view()),
+    path("responses/<int:pk>/accept/", VacancyResponseAccept.as_view()),
+    path("responses/<int:pk>/decline/", VacancyResponseDecline.as_view()),
 ]
