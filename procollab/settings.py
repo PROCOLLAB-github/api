@@ -27,11 +27,13 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 ALLOWED_HOSTS = [
+    "127.0.0.1:8000",
     "127.0.0.1",
     "localhost",
     "0.0.0.0",
     "api.procollab.ru",
-    "127.0.0.1:8000",
+    "app.procollab.ru",
+    "procollab.ru",
 ]
 
 PASSWORD_HASHERS = [
@@ -80,7 +82,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
     "django_cleanup.apps.CleanupConfig",
-    "rest_framework.authtoken",
+    # "rest_framework.authtoken",
     # Plugins
     "corsheaders",
     "django_filters",
@@ -169,22 +171,30 @@ if DEBUG:
 
     CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
 else:
-    CHANNEL_LAYERS = {
-        "default": {
-            "BACKEND": "channels_redis.core.RedisChannelLayer",
-            "CONFIG": {
-                "hosts": [("127.0.0.1", 6379)],
-            },
-        },
-    }
-
-    REDIS_HOST = config("REDIS_HOST", cast=str, default="127.0.0.1")
+    # fixme
     CACHES = {
         "default": {
-            "BACKEND": "django.core.cache.backends.redis.RedisCache",
-            "LOCATION": f"redis://{REDIS_HOST}:6379",
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
         }
     }
+
+    CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
+    # CHANNEL_LAYERS = {
+    #     "default": {
+    #         "BACKEND": "channels_redis.core.RedisChannelLayer",
+    #         "CONFIG": {
+    #             "hosts": [("127.0.0.1", 6379)],
+    #         },
+    #     },
+    # }
+    #
+    # REDIS_HOST = config("REDIS_HOST", cast=str, default="127.0.0.1")
+    # CACHES = {
+    #     "default": {
+    #         "BACKEND": "django.core.cache.backends.redis.RedisCache",
+    #         "LOCATION": f"redis://{REDIS_HOST}:6379",
+    #     }
+    # }
 
     REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"] = [
         "rest_framework.renderers.JSONRenderer",
@@ -252,7 +262,7 @@ SIMPLE_JWT = {
     "UPDATE_LAST_LOGIN": False,
     "ALGORITHM": "HS256",
     "SIGNING_KEY": SECRET_KEY,
-    "VERIFYING_KEY": None,
+    "VERIFYING_KEY": True,
     "AUDIENCE": None,
     "ISSUER": None,
     "JWK_URL": None,
@@ -273,8 +283,7 @@ default_user_authentication_rule",
 }
 
 if DEBUG:
-    SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"] = timedelta(weeks=1)
-
+    SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"] = timedelta(seconds=30)
 
 SESSION_COOKIE_SECURE = False
 

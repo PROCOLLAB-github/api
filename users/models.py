@@ -12,7 +12,11 @@ from users.helpers import (
     VERBOSE_ROLE_TYPES,
     VERBOSE_USER_TYPES,
 )
-from users.managers import CustomUserManager, UserAchievementManager
+from users.managers import (
+    CustomUserManager,
+    UserAchievementManager,
+    LikesOnProjectManager,
+)
 from users.validators import user_birthday_validator
 
 
@@ -159,6 +163,45 @@ class AbstractUserWithRole(models.Model):
 
     class Meta:
         abstract = True
+
+
+class LikesOnProject(models.Model):
+    """
+    LikesOnProject model
+
+    This model is used to store the user's likes on projects.
+
+    Attributes:
+        user: ForeignKey instance of user.
+        project: ForeignKey instance of project.
+    """
+
+    is_liked = models.BooleanField(default=True)
+
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name="likes_on_projects",
+    )
+    project = models.ForeignKey(
+        "projects.Project",
+        on_delete=models.CASCADE,
+        related_name="likes",
+    )
+
+    objects = LikesOnProjectManager()
+
+    def toggle_like(self):
+        self.is_liked = not self.is_liked
+        self.save()
+
+    def __str__(self):
+        return f"LikesOnProject<{self.id}>"
+
+    class Meta:
+        verbose_name = "Лайк на проект"
+        verbose_name_plural = "Лайки на проекты"
+        unique_together = ("user", "project")
 
 
 class Member(models.Model):

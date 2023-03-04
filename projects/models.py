@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.db import models
 from django.db.models import UniqueConstraint
 from industries.models import Industry
-from projects.helpers import VERBOSE_STEPS
+from projects.constants import VERBOSE_STEPS
 from projects.managers import AchievementManager, ProjectManager
 from users.models import CustomUser
 
@@ -61,6 +61,12 @@ class Project(models.Model):
     )
 
     objects = ProjectManager()
+
+    views_count = models.PositiveIntegerField(default=0)
+
+    def increment_views_count(self):
+        self.views_count += 1
+        self.save()
 
     def get_short_description(self) -> Optional[str]:
         return self.description[:90] if self.description else None
