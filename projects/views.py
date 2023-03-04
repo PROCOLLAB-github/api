@@ -34,7 +34,7 @@ User = get_user_model()
 class ProjectList(generics.ListCreateAPIView):
     queryset = Project.objects.get_projects_for_list_view()
     serializer_class = ProjectListSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAuthenticated, permissions.IsAuthenticatedOrReadOnly]
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = ProjectFilter
 
