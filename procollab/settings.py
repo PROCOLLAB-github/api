@@ -82,7 +82,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
     "django_cleanup.apps.CleanupConfig",
-    "rest_framework.authtoken",
+    # "rest_framework.authtoken",
     # Plugins
     "corsheaders",
     "django_filters",
@@ -262,7 +262,7 @@ SIMPLE_JWT = {
     "UPDATE_LAST_LOGIN": False,
     "ALGORITHM": "HS256",
     "SIGNING_KEY": SECRET_KEY,
-    "VERIFYING_KEY": None,
+    "VERIFYING_KEY": True,
     "AUDIENCE": None,
     "ISSUER": None,
     "JWK_URL": None,
@@ -283,7 +283,7 @@ default_user_authentication_rule",
 }
 
 if DEBUG:
-    SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"] = timedelta(weeks=1)
+    SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"] = timedelta(seconds=30)
 
 SESSION_COOKIE_SECURE = False
 

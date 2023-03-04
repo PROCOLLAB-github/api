@@ -108,7 +108,7 @@ class TokenAuthMiddleware:
         # Look up user from query string
 
         # TODO: (you should also do things like
-        #  checking if it is a valid user ID, or if scope["user"] is already
+        #  checking if it is a valid user ID, or if scope["user" ] is already
         #  populated).
 
         query_string = scope["query_string"].decode()
