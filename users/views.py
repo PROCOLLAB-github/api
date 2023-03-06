@@ -23,7 +23,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
-from core.permissions import IsOwnerOrReadOnly
+from core.permissions import IsOwnerOrReadOnly, IsAuthenticatedOrWriteOnly
 from core.utils import Email
 from projects.serializers import ProjectListSerializer
 from users.helpers import VERBOSE_ROLE_TYPES, VERBOSE_USER_TYPES
@@ -46,20 +46,10 @@ Project = apps.get_model("projects", "Project")
 
 class UserList(ListCreateAPIView):
     queryset = User.objects.get_active()
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticatedOrWriteOnly]
     serializer_class = UserListSerializer
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = UserFilter
-
-    def get(self, request, *args, **kwargs):
-        if request.user and request.user.is_authenticated:
-            return super().get(request, *args, **kwargs)
-        return Response(
-            {
-                "error": "you must be authenticated for this"
-            },
-            status=status.HTTP_401_UNAUTHORIZED,
-        )
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
