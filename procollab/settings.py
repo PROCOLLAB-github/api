@@ -77,6 +77,7 @@ INSTALLED_APPS = [
     "metrics.apps.MetricsConfig",
     "invites.apps.InvitesConfig",
     "files.apps.FilesConfig",
+    "events.apps.EventsConfig",
     # Rest framework
     "rest_framework",
     "rest_framework_simplejwt",
