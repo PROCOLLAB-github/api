@@ -23,7 +23,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
-from core.permissions import IsOwnerOrReadOnly
+from core.permissions import IsOwnerOrReadOnly, IsAuthenticatedOrWriteOnly
 from core.utils import Email
 from projects.serializers import ProjectListSerializer
 from users.helpers import VERBOSE_ROLE_TYPES, VERBOSE_USER_TYPES
@@ -46,7 +46,7 @@ Project = apps.get_model("projects", "Project")
 
 class UserList(ListCreateAPIView):
     queryset = User.objects.get_active()
-    permission_classes = [AllowAny]  # FIXME: change to IsAuthorized
+    permission_classes = [IsAuthenticatedOrWriteOnly]
     serializer_class = UserListSerializer
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = UserFilter
@@ -219,10 +219,10 @@ class EmailResetPassword(GenericAPIView):
 
         current_site = get_current_site(request).domain
         absolute_url = (
-            "http://"
-            + current_site
-            + relative_link
-            + f"?access_token={access_token}&refresh_token={refresh_token}"
+                "http://"
+                + current_site
+                + relative_link
+                + f"?access_token={access_token}&refresh_token={refresh_token}"
         )
 
         email_body = "Hi, {} {}! Use link below for reset password {}".format(
@@ -312,13 +312,13 @@ class AchievementList(ListCreateAPIView):
         serializer.validated_data["user"] = request.user
         # warning for someone who tries to set user variable (the user will always be yourself anyway)
         if (
-            request.data.get("user") is not None
-            and request.data.get("user") != request.user.id
+                request.data.get("user") is not None
+                and request.data.get("user") != request.user.id
         ):
             return Response(
                 {
                     "error": "you can't edit USER field for this view since "
-                    "you can't create achievements for other people"
+                             "you can't create achievements for other people"
                 },
                 status=status.HTTP_403_FORBIDDEN,
             )
