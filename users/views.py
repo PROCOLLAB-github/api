@@ -3,12 +3,10 @@ from datetime import datetime
 import jwt
 from django.apps import apps
 from django.conf import settings
-from django.contrib.auth import get_user_model
-from django.contrib.sites.shortcuts import get_current_site
 from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import redirect
-from django.urls import reverse
+from django.contrib.auth import get_user_model
 from django_filters import rest_framework as filters
 from rest_framework import status
 from rest_framework.generics import (
@@ -24,9 +22,14 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
 from core.permissions import IsOwnerOrReadOnly, IsAuthenticatedOrWriteOnly
-from core.utils import Email
 from projects.serializers import ProjectListSerializer
-from users.helpers import VERBOSE_ROLE_TYPES, VERBOSE_USER_TYPES
+from users.helpers import (
+    REDIRECT_URL,
+    VERBOSE_ROLE_TYPES,
+    VERBOSE_USER_TYPES,
+    reset_email,
+    verify_email,
+)
 from users.models import UserAchievement, LikesOnProject
 from users.permissions import IsAchievementOwnerOrReadOnly
 from users.serializers import (
@@ -59,23 +62,7 @@ class UserList(ListCreateAPIView):
 
         user = User.objects.get(email=serializer.data["email"])
 
-        token = RefreshToken.for_user(user).access_token
-
-        relative_link = reverse("users:account_email_verification_sent")
-        current_site = get_current_site(request).domain
-        absolute_url = "http://" + current_site + relative_link + "?token=" + str(token)
-
-        email_body = "Hi, {} {}! Use link below verify your email {}".format(
-            user.first_name, user.last_name, absolute_url
-        )
-
-        data = {
-            "email_body": email_body,
-            "email_subject": "Verify your email",
-            "to_email": user.email,
-        }
-
-        Email.send_email(data)
+        verify_email(user, request)
 
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
@@ -171,7 +158,6 @@ class VerifyEmail(GenericAPIView):
 
     def get(self, request):
         token = request.GET.get("token")
-        REDIRECT_URL = "https://app.procollab.ru/auth/verification/"
         try:
             payload = jwt.decode(jwt=token, key=settings.SECRET_KEY, algorithms=["HS256"])
             user = User.objects.get(id=payload["user_id"])
@@ -212,30 +198,7 @@ class EmailResetPassword(GenericAPIView):
 
         user = User.objects.get(email=serializer.data["email"])
 
-        access_token = RefreshToken.for_user(user).access_token
-        refresh_token = RefreshToken.for_user(user)
-
-        relative_link = reverse("users:password_reset_sent")
-
-        current_site = get_current_site(request).domain
-        absolute_url = (
-                "http://"
-                + current_site
-                + relative_link
-                + f"?access_token={access_token}&refresh_token={refresh_token}"
-        )
-
-        email_body = "Hi, {} {}! Use link below for reset password {}".format(
-            user.first_name, user.last_name, absolute_url
-        )
-
-        data = {
-            "email_body": email_body,
-            "email_subject": "Reset password",
-            "to_email": user.email,
-        }
-
-        Email.send_email(data)
+        reset_email(user, request)
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -312,13 +275,13 @@ class AchievementList(ListCreateAPIView):
         serializer.validated_data["user"] = request.user
         # warning for someone who tries to set user variable (the user will always be yourself anyway)
         if (
-                request.data.get("user") is not None
-                and request.data.get("user") != request.user.id
+            request.data.get("user") is not None
+            and request.data.get("user") != request.user.id
         ):
             return Response(
                 {
                     "error": "you can't edit USER field for this view since "
-                             "you can't create achievements for other people"
+                    "you can't create achievements for other people"
                 },
                 status=status.HTTP_403_FORBIDDEN,
             )
