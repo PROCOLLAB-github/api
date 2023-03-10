@@ -188,12 +188,14 @@ class BaseMessage(models.Model):
 
     Attributes:
         text: A TextField containing message text.
+        file_url: A URLField containing attached file url.
         is_read: A BooleanField indicating whether message is read.
         is_deleted: A BooleanField indicating whether message is deleted.
         created_at: A DateTimeField indicating date of creation.
     """
 
     text = models.TextField(max_length=8192)
+    file_url = models.URLField(blank=True, null=True)
     is_read = models.BooleanField(default=False)
     is_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)

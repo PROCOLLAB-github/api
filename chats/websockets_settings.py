@@ -31,6 +31,7 @@ class NewMessageEventContent:
     chat_type: Optional[Union[ChatType.DIRECT, ChatType.PROJECT]]
     message: Optional[str]
     reply_to: Optional[int]
+    file_url: Optional[str]
 
 
 @dataclass(slots=True, frozen=True)

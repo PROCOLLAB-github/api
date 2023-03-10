@@ -141,6 +141,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             author=self.user,
             text=event.content["message"],
             reply_to=event.content["reply_to"],
+            file_url=event.content["file_url"],
         )
 
         content = {
@@ -179,6 +180,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             author=self.user,
             text=event.content["message"],
             reply_to=event.content["reply_to"],
+            file_url=event.content["file_url"],
         )
 
         await self.channel_layer.group_send(
