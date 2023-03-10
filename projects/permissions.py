@@ -17,7 +17,22 @@ class IsProjectLeaderOrReadOnlyForNonDrafts(BasePermission):
             or obj.collaborator_set.filter(user=request.user).exists()
             or obj.invite_set.filter(user=request.user).exists()
         ):
+            return True
+        return False
 
+
+class IsProjectLeader(BasePermission):
+    """
+    Allows access to get only to project leader.
+    """
+
+    def has_permission(self, request, view) -> bool:
+        if request.user and request.user.id:
+            return True
+        return False
+
+    def has_object_permission(self, request, view, obj):
+        if obj.leader == request.user:
             return True
         return False
 
@@ -44,6 +59,5 @@ class HasInvolvementInProjectOrReadOnly(BasePermission):
                 or obj.collaborator_set.filter(user=request.user).exists()
                 or obj.invite_set.filter(user=request.user).exists()
             ):
-
                 return True
             return False

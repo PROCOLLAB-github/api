@@ -48,6 +48,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         """User connected to websocket"""
 
         if self.scope["user"].is_anonymous:
+            # not authenticated
             return await self.close(403)
 
         self.user = self.scope["user"]
