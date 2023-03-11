@@ -18,6 +18,8 @@ DEBUG = config("DEBUG", default=False, cast=bool)
 
 SENTRY_DSN = config("SENTRY_DSN", default="", cast=str)
 
+AUTOPOSTING_ON = config("AUTOPOSTING_ON", default=False, cast=bool)
+
 TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN", default="", cast=str)
 TELEGRAM_CHANNEL = config("TELEGRAM_CHANNEL", default="", cast=str)
 
