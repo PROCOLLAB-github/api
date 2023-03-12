@@ -283,7 +283,7 @@ default_user_authentication_rule",
 }
 
 if DEBUG:
-    SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"] = timedelta(seconds=30)
+    SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"] = timedelta(weeks=2)
 
 SESSION_COOKIE_SECURE = False
 

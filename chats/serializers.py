@@ -1,10 +1,18 @@
 from rest_framework import serializers
+from rest_framework.serializers import ModelSerializer
 
-from chats.models import DirectChat, ProjectChat, DirectChatMessage, ProjectChatMessage
+from chats.models import (
+    DirectChat,
+    ProjectChat,
+    DirectChatMessage,
+    ProjectChatMessage,
+    DirectChatAttachment,
+    ProjectChatAttachment,
+)
 from users.serializers import UserListSerializer
 
 
-class DirectChatListSerializer(serializers.ModelSerializer):
+class DirectChatListSerializer(ModelSerializer):
     last_message = serializers.SerializerMethodField()
     users = serializers.SerializerMethodField(read_only=True)
 
@@ -41,7 +49,7 @@ class DirectChatDetailSerializer(serializers.ModelSerializer):
         ]
 
 
-class ProjectChatListSerializer(serializers.ModelSerializer):
+class ProjectChatListSerializer(ModelSerializer):
     last_message = serializers.SerializerMethodField(read_only=True)
 
     @classmethod
@@ -53,7 +61,7 @@ class ProjectChatListSerializer(serializers.ModelSerializer):
         fields = ["id", "project", "last_message"]
 
 
-class ProjectChatDetailSerializer(serializers.ModelSerializer):
+class ProjectChatDetailSerializer(ModelSerializer):
     users = serializers.SerializerMethodField(read_only=True)
     name = serializers.SerializerMethodField(read_only=True)
     image_address = serializers.SerializerMethodField(read_only=True)
@@ -81,7 +89,7 @@ class ProjectChatDetailSerializer(serializers.ModelSerializer):
         ]
 
 
-class DirectChatMessageListSerializer(serializers.ModelSerializer):
+class DirectChatMessageListSerializer(ModelSerializer):
     class Meta:
         model = DirectChatMessage
         fields = [
@@ -93,7 +101,7 @@ class DirectChatMessageListSerializer(serializers.ModelSerializer):
         ]
 
 
-class ProjectChatMessageListSerializer(serializers.ModelSerializer):
+class ProjectChatMessageListSerializer(ModelSerializer):
     class Meta:
         model = ProjectChatMessage
         fields = [
@@ -102,4 +110,32 @@ class ProjectChatMessageListSerializer(serializers.ModelSerializer):
             "text",
             "reply_to",
             "created_at",
+        ]
+
+
+class DirectChatAttachmentSerializer(ModelSerializer):
+    class Meta:
+        model = DirectChatAttachment
+        fields = [
+            "user",
+            "link",
+            "name",
+            "extension",
+            "chat_id",
+            "size",
+            "datetime_uploaded",
+        ]
+
+
+class ProjectChatAttachmentSerializer(ModelSerializer):
+    class Meta:
+        model = ProjectChatAttachment
+        fields = [
+            "user",
+            "link",
+            "name",
+            "extension",
+            "chat_id",
+            "size",
+            "datetime_uploaded",
         ]
