@@ -196,6 +196,7 @@ class BaseMessage(models.Model):
     text = models.TextField(max_length=8192)
     is_read = models.BooleanField(default=False)
     is_deleted = models.BooleanField(default=False)
+    is_edited = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

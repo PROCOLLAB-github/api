@@ -13,6 +13,7 @@ class EventType(str, Enum):
     DELETE_MESSAGE = "delete_message"
     READ_MESSAGE = "message_read"
     TYPING = "user_typing"
+    EDIT_MESSAGE = "edit_message"
 
     # GENERAL EVENTS
     SET_ONLINE = "set_online"
