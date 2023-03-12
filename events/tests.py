@@ -17,18 +17,18 @@ class EventsTestCase(TestCase):
         self.event_list_view = EventsList.as_view()
         self.event_detail_view = EventDetail.as_view()
 
-        self.title = "TITLE"
-        self.text = "TEXT"
-        self.short_text = "njknk"
-        self.cover_url = "https://example.com/"
-        self.datetime_of_event = "2023-03-11T14:31:22+03:00"
+        self.TITLE = "TITLE"
+        self.TEXT = "TEXT"
+        self.SHORT_TEXT = "njknk"
+        self.COVER_URL = "https://example.com/"
+        self.DATETIME_OF_EVENT = "2023-03-11T14:31:22+03:00"
 
         self.CREATE_DATA = {
-            "title": self.title,
-            "text": self.text,
-            "short_text": self.short_text,
-            "cover_url": self.cover_url,
-            "datetime_of_event": self.datetime_of_event,
+            "title": self.TITLE,
+            "text": self.TEXT,
+            "short_text": self.SHORT_TEXT,
+            "cover_url": self.COVER_URL,
+            "datetime_of_event": self.DATETIME_OF_EVENT,
         }
 
     def test_events_creation(self):
@@ -38,10 +38,10 @@ class EventsTestCase(TestCase):
         response = self.event_list_view(request)
 
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.data["title"], self.title)
-        self.assertEqual(response.data["short_text"], self.short_text)
-        self.assertEqual(response.data["cover_url"], self.cover_url)
-        self.assertEqual(response.data["datetime_of_event"], self.datetime_of_event)
+        self.assertEqual(response.data["title"], self.TITLE)
+        self.assertEqual(response.data["short_text"], self.SHORT_TEXT)
+        self.assertEqual(response.data["cover_url"], self.COVER_URL)
+        self.assertEqual(response.data["datetime_of_event"], self.DATETIME_OF_EVENT)
 
     def test_events_creation_by_not_staff_user(self):
         user = self._user_create(is_staff=False)
@@ -57,11 +57,11 @@ class EventsTestCase(TestCase):
         response = self.event_list_view(request)
 
         event_id = response.data["id"]
-        news = Event.objects.get(id=event_id)
+        event = Event.objects.get(id=event_id)
 
-        request = self.factory.patch(f"event/{news.pk}/", {"text": "New text"})
+        request = self.factory.patch(f"event/{event.pk}/", {"text": "New text"})
         force_authenticate(request, user=user)
-        response = self.event_detail_view(request, pk=news.pk)
+        response = self.event_detail_view(request, pk=event.pk)
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["text"], "New text")
