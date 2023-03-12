@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from chats.models import ProjectChat, DirectChat
+from chats.pagination import MessageListPagination
 from chats.serializers import (
     DirectChatListSerializer,
     DirectChatMessageListSerializer,
@@ -94,6 +95,7 @@ class DirectChatDetail(RetrieveAPIView):
 class DirectChatMessageList(ListCreateAPIView):
     serializer_class = DirectChatMessageListSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = MessageListPagination
 
     def get_queryset(self):
         return (
@@ -106,6 +108,7 @@ class DirectChatMessageList(ListCreateAPIView):
 class ProjectChatMessageList(ListCreateAPIView):
     serializer_class = ProjectChatMessageListSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = MessageListPagination
 
     def get_queryset(self):
         return (
