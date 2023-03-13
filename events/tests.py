@@ -9,6 +9,7 @@ from .views import EventDetail, EventsList
 
 
 class EventsTestCase(TestCase):
+
     def setUp(self):
         self.factory = APIRequestFactory()
 
@@ -53,16 +54,11 @@ class EventsTestCase(TestCase):
     def test_event_creation_with_empty_text(self):
         user = self._user_create(is_staff=True)
         new_data = self.CREATE_DATA
-        del new_data["text"]
+        new_data["text"] = ""
 
         request = self.factory.post("events/", new_data)
         force_authenticate(request, user=user)
         response = self.event_list_view(request)
-        event_id = response.data["id"]
-        event = Event.objects.get(pk=event_id)
-        request = self.factory.get(f"event/{event.pk}/")
-        response = self.event_detail_view(request, pk=event.pk)
-        print(response.data)
         self.assertEqual(response.status_code, 400)
 
     def test_events_update(self):
