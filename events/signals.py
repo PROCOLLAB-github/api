@@ -20,7 +20,8 @@ def my_callback(sender, instance, created, *args, **kwargs):
         if r["ok"]:
             instance.tg_message_id = r["result"]["message_id"]
             instance.save()
-        print(r)
+        # todo: logging
+        # print(r)
     else:
         link = f"https://procollab.ru/events/{instance.pk}/"
         text = f"***{instance.title}***\n{instance.short_text}\n\n" + link
@@ -32,4 +33,6 @@ def my_callback(sender, instance, created, *args, **kwargs):
             "message_id": instance.tg_message_id,
         }
         r = requests.post(url, data=data).json()
-        print(r)
+        # todo: logging
+
+        # print(r)

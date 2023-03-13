@@ -29,7 +29,7 @@ class Event(models.Model):
     datetime_updated = models.DateTimeField(
         verbose_name="Дата изменения", null=False, auto_now=True
     )
-    tg_message_id = models.IntegerField(blank=True, null=True)
+    tg_message_id = models.IntegerField(blank=True, null=True, editable=False)
 
     def __str__(self):
         return f"Event<{self.id}> - {self.title}"
