@@ -18,7 +18,7 @@ class Event(models.Model):
     """
 
     title = models.CharField(max_length=256, null=False)
-    text = models.TextField(null=False)
+    text = models.TextField(null=False, blank=False)
     short_text = models.TextField(max_length=256, blank=True)
     cover_url = models.URLField(null=False)
     datetime_of_event = models.DateTimeField(verbose_name="Дата проведения", null=False)
