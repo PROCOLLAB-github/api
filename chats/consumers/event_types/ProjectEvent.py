@@ -1,12 +1,9 @@
 from asgiref.sync import sync_to_async
-from django.core.cache import cache
-from django.utils import timezone
 from chats.models import ProjectChat, ProjectChatMessage
 from chats.utils import create_message
 from chats.websockets_settings import Event, EventType, ChatType
 from chats.exceptions import (
     WrongChatIdException,
-    ChatException,
     UserNotInChatException,
 )
 
@@ -34,7 +31,7 @@ class ProjectEvent:
             author=self.user,
             text=event.content["message"],
             reply_to=event.content["reply_to"],
-            #file_url=event.content["file_url"],
+            # file_url=event.content["file_url"],
         )
 
         await self.channel_layer.group_send(

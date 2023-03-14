@@ -1,2 +1,2 @@
-from .ProjectEvent import ProjectEvent
-from .DirectEvent import DirectEvent
+from .ProjectEvent import ProjectEvent  # noqa: F401
+from .DirectEvent import DirectEvent  # noqa: F401

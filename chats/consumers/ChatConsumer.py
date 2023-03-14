@@ -2,28 +2,13 @@ import datetime
 import json
 from typing import Optional
 
-from asgiref.sync import sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from django.core.cache import cache
 from django.utils import timezone
 
-from chats.exceptions import (
-    WrongChatIdException,
-    ChatException,
-    UserNotInChatException,
-)
-from chats.models import (
-    BaseChat,
-    DirectChatMessage,
-    DirectChat,
-    ProjectChat,
-    ProjectChatMessage,
-)
-from chats.utils import (
-    get_user_channel_cache_key,
-    create_message,
-    get_chat_and_user_ids_from_content,
-)
+from chats.exceptions import ChatException
+from chats.models import BaseChat
+from chats.utils import get_user_channel_cache_key
 from chats.websockets_settings import (
     Event,
     EventType,
@@ -97,7 +82,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             if event.content["chat_type"] == ChatType.DIRECT:
                 self.event = DirectEvent(self.user, self.channel_layer, self.channel_name)
             elif event.content["chat_type"] == ChatType.PROJECT:
-                self.event = ProjectEvent(self.user, self.channel_layer, self.channel_name)
+                self.event = ProjectEvent(
+                    self.user, self.channel_layer, self.channel_name
+                )
             else:
                 raise ValueError("Chat type is not supported")
 

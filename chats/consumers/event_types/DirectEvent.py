@@ -1,4 +1,4 @@
-from chats.models import DirectChatMessage, DirectChat, ProjectChat
+from chats.models import DirectChatMessage, DirectChat
 from chats.websockets_settings import Event, EventType
 from asgiref.sync import sync_to_async
 from chats.exceptions import WrongChatIdException
@@ -8,6 +8,7 @@ from chats.utils import (
     create_message,
     get_chat_and_user_ids_from_content,
 )
+
 
 class DirectEvent:
     def __init__(self, user, channel_layer, channel_name):
@@ -36,7 +37,7 @@ class DirectEvent:
             author=self.user,
             text=event.content["message"],
             reply_to=event.content["reply_to"],
-            #file_url=event.content["file_url"],
+            # file_url=event.content["file_url"],
         )
 
         content = {
