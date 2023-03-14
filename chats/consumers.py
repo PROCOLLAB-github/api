@@ -11,6 +11,7 @@ from chats.exceptions import (
     WrongChatIdException,
     ChatException,
     UserNotInChatException,
+    UserNotMessageAuthorException,
 )
 from chats.models import (
     BaseChat,
@@ -34,6 +35,7 @@ from core.constants import ONE_DAY_IN_SECONDS, ONE_WEEK_IN_SECONDS
 from core.utils import get_user_online_cache_key
 from projects.models import Collaborator
 from users.models import CustomUser
+from users.serializers import UserDetailSerializer
 
 
 class ChatConsumer(AsyncJsonWebsocketConsumer):
@@ -143,17 +145,19 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             chat_id=chat_id,
             chat_model=DirectChatMessage,
             author=self.user,
-            text=event.content["message"],
+            text=event.content["text"],
             reply_to=event.content["reply_to"],
         )
 
+        # get author of the message's via UserSerializer, check for errors
+        author = await sync_to_async(lambda: (UserDetailSerializer(self.user)).data)()
         content = {
             "type": EventType.NEW_MESSAGE,
             "content": {
                 "message_id": msg.id,
                 "chat_id": msg.chat_id,
                 "chat_type": ChatType.PROJECT,
-                "author_id": msg.author.pk,
+                "author": author,
                 "text": msg.text,
                 "created_at": msg.created_at.timestamp(),
                 "is_edited": msg.is_edited,
@@ -183,10 +187,11 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             chat_id=chat_id,
             chat_model=ProjectChatMessage,
             author=self.user,
-            text=event.content["message"],
+            text=event.content["text"],
             reply_to=event.content["reply_to"],
         )
 
+        author = await sync_to_async(lambda: (UserDetailSerializer(self.user)).data)()
         await self.channel_layer.group_send(
             room_name,
             {
@@ -195,7 +200,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                     "message_id": msg.id,
                     "chat_id": msg.chat_id,
                     "chat_type": ChatType.PROJECT,
-                    "author_id": msg.author.pk,
+                    "author": author,
                     "text": msg.text,
                     "created_at": msg.created_at.timestamp(),
                     "is_edited": msg.is_edited,
@@ -399,15 +404,20 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         msg = await sync_to_async(DirectChatMessage.objects.get)(
             pk=event.content["message_id"]
         )
-        msg.text = event.content["message"]
+        if msg.author != self.user:
+            raise UserNotMessageAuthorException(
+                f"User {self.user.id} is not author of message {msg.id}"
+            )
+        msg.text = event.content["text"]
         msg.is_edited = True
         await sync_to_async(msg.save)()
+        author = await sync_to_async(lambda: (UserDetailSerializer(self.user)).data)()
         content = {
             "type": EventType.EDIT_MESSAGE,
             "content": {
                 "message_id": msg.id,
                 "chat_id": msg.chat_id,
-                "author_id": msg.author_id,
+                "author": author,
                 "text": msg.text,
                 "created_at": msg.created_at.timestamp(),
                 "is_edited": msg.is_edited,
@@ -436,13 +446,18 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         message = await sync_to_async(ProjectChatMessage.objects.get)(
             pk=event.content["message_id"]
         )
+        if message.author != self.user:
+            raise UserNotMessageAuthorException(
+                f"User {self.user.id} is not author of message {message.id}"
+            )
         message.text = event.content["text"]
         message.is_edited = True
         await sync_to_async(message.save)()
+        author = await sync_to_async(lambda: (UserDetailSerializer(self.user)).data)()
         content = {
             "message_id": message.id,
             "chat_id": message.chat_id,
-            "author_id": message.author.pk,
+            "author": author,
             "text": message.text,
             "created_at": message.created_at.timestamp(),
             "is_edited": message.is_edited,
