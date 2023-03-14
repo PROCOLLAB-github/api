@@ -99,6 +99,13 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 await self.__process_chat_related_event(event, room_name)
             except ChatException as e:
                 await self.send_json({"error": str(e.get_error())})
+            except KeyError as e:
+                await self.send_json(
+                    {
+                        "error": f"Missing key (might be backend's fault,"
+                        f" but most likely you are missing this field): {e}"
+                    }
+                )
 
         elif event.type in [EventType.SET_ONLINE, EventType.SET_OFFLINE]:
             room_name = EventGroupType.GENERAL_EVENTS
