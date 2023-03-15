@@ -411,7 +411,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         msg = await sync_to_async(DirectChatMessage.objects.get)(
             pk=event.content["message_id"]
         )
-        if msg.author != self.user:
+
+        message_author = await sync_to_async(lambda: msg.author)()
+        if message_author != self.user:
             raise UserNotMessageAuthorException(
                 f"User {self.user.id} is not author of message {msg.id}"
             )
@@ -453,7 +455,8 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         message = await sync_to_async(ProjectChatMessage.objects.get)(
             pk=event.content["message_id"]
         )
-        if message.author != self.user:
+        message_author = await sync_to_async(lambda: message.author)()
+        if message_author != self.user:
             raise UserNotMessageAuthorException(
                 f"User {self.user.id} is not author of message {message.id}"
             )
