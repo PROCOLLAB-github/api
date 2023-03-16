@@ -210,19 +210,43 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
     async def __process_typing_event(self, event: Event, room_name: str):
         """Send typing event to room group."""
+        event_data = {
+            "type": EventType.TYPING,
+            "content": {
+                "chat_id": event.content["chat_id"],
+                "chat_type": event.content["chat_type"],
+                "user_id": self.user.id,
+                "end_time": (timezone.now() + datetime.timedelta(seconds=5)).isoformat(),
+            },
+        }
+
+        if event.content["chat_type"] == ChatType.DIRECT:
+            # fixme: need to move this to func
+            chat_id, other_user = await get_chat_and_user_ids_from_content(
+                event.content, self.user
+            )
+
+            # if chat_id == 17_7, then chat_id will be == 7_17
+            chat_id = DirectChat.get_chat_id_from_users(self.user, other_user)
+
+            # check if chat exists
+            try:
+                await sync_to_async(DirectChat.objects.get)(pk=chat_id)
+            except DirectChat.DoesNotExist:
+                # if not, create such chat
+                await sync_to_async(DirectChat.create_from_two_users)(
+                    self.user, other_user
+                )
+
+            # send message to user's channel
+            other_user_channel = cache.get(get_user_channel_cache_key(other_user), None)
+
+            if other_user_channel:
+                await self.channel_layer.send(other_user_channel, event_data)
+
         await self.channel_layer.group_send(
             room_name,
-            {
-                "type": EventType.TYPING,
-                "content": {
-                    "chat_id": event.content["chat_id"],
-                    "chat_type": event.content["chat_type"],
-                    "user_id": self.user.id,
-                    "end_time": (
-                        timezone.now() + datetime.timedelta(seconds=5)
-                    ).isoformat(),
-                },
-            },
+            event_data,
         )
 
     async def __process_read_message_event(self, event: Event, room_name: str):
