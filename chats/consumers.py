@@ -427,6 +427,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         content = await sync_to_async(
             lambda: (DirectChatMessageListSerializer(msg)).data
         )()
+        content["chat_id"] = chat_id
+        content["message_id"] = content["id"]
+        del content["id"]
 
         # send message to user's channel
         other_user_channel = cache.get(get_user_channel_cache_key(other_user), None)
@@ -465,6 +468,10 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         content = await sync_to_async(
             lambda: (ProjectChatMessageListSerializer(message)).data
         )()
+        content["chat_id"] = chat_id
+        content["message_id"] = content["id"]
+        del content["id"]
+
         await self.channel_layer.group_send(
             room_name,
             {"type": EventType.EDIT_MESSAGE, "content": content},
