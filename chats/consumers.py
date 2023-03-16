@@ -20,6 +20,10 @@ from chats.models import (
     ProjectChat,
     ProjectChatMessage,
 )
+from chats.serializers import (
+    ProjectChatMessageListSerializer,
+    DirectChatMessageListSerializer,
+)
 from chats.utils import (
     get_user_channel_cache_key,
     create_message,
@@ -350,7 +354,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         await self.channel_layer.group_send(
             room_name,
             {
-                "type": EventType.NEW_MESSAGE,
+                "type": EventType.DELETE_MESSAGE,
                 "content": {"message_id": event.content["message_id"]},
             },
         )
@@ -420,26 +424,19 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         msg.text = event.content["text"]
         msg.is_edited = True
         await sync_to_async(msg.save)()
-        author = await sync_to_async(lambda: (UserDetailSerializer(self.user)).data)()
-        content = {
-            "type": EventType.EDIT_MESSAGE,
-            "content": {
-                "message_id": msg.id,
-                "chat_id": msg.chat_id,
-                "author": author,
-                "text": msg.text,
-                "created_at": msg.created_at.timestamp(),
-                "is_edited": msg.is_edited,
-            },
-        }
+        content = await sync_to_async(
+            lambda: (DirectChatMessageListSerializer(msg)).data
+        )()
+
         # send message to user's channel
         other_user_channel = cache.get(get_user_channel_cache_key(other_user), None)
-        await self.channel_layer.send(self.channel_name, content)
 
-        if other_user_channel is None:
-            return
+        if other_user_channel:
+            await self.channel_layer.send(other_user_channel, content)
 
-        await self.channel_layer.send(other_user_channel, content)
+        await self.channel_layer.send(
+            self.channel_name, {"type": EventType.EDIT_MESSAGE, "content": content}
+        )
 
     async def __process_edit_project_message_event(self, event, room_name):
         chat_id = event.content["chat_id"]
@@ -455,6 +452,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         message = await sync_to_async(ProjectChatMessage.objects.get)(
             pk=event.content["message_id"]
         )
+
         message_author = await sync_to_async(lambda: message.author)()
         if message_author != self.user:
             raise UserNotMessageAuthorException(
@@ -463,15 +461,10 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         message.text = event.content["text"]
         message.is_edited = True
         await sync_to_async(message.save)()
-        author = await sync_to_async(lambda: (UserDetailSerializer(self.user)).data)()
-        content = {
-            "message_id": message.id,
-            "chat_id": message.chat_id,
-            "author": author,
-            "text": message.text,
-            "created_at": message.created_at.timestamp(),
-            "is_edited": message.is_edited,
-        }
+
+        content = await sync_to_async(
+            lambda: (ProjectChatMessageListSerializer(message)).data
+        )()
         await self.channel_layer.group_send(
             room_name,
             {"type": EventType.EDIT_MESSAGE, "content": content},

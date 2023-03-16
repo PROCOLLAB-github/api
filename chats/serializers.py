@@ -91,6 +91,9 @@ class DirectChatMessageListSerializer(serializers.ModelSerializer):
             "author",
             "text",
             "reply_to",
+            "is_edited",
+            "is_read",
+            "is_deleted",
             "created_at",
         ]
 
@@ -105,5 +108,8 @@ class ProjectChatMessageListSerializer(serializers.ModelSerializer):
             "author",
             "text",
             "reply_to",
+            "is_edited",
+            "is_read",
+            "is_deleted",
             "created_at",
         ]
