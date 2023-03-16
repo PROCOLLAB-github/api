@@ -220,7 +220,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                     "user_id": self.user.id,
                     "end_time": (
                         timezone.now() + datetime.timedelta(seconds=5)
-                    ).timestamp(),
+                    ).isoformat(),
                 },
             },
         )
