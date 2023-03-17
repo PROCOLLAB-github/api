@@ -151,9 +151,13 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             # if not, create such chat
             await sync_to_async(DirectChat.create_from_two_users)(self.user, other_user)
 
-        reply_to_message = await sync_to_async(DirectChatMessage.objects.get)(
-            pk=event.content["reply_to"]
-        )
+        try:
+            reply_to_message = await sync_to_async(DirectChatMessage.objects.get)(
+                pk=event.content["reply_to"]
+            )
+        except DirectChatMessage.DoesNotExist:
+            reply_to_message = None
+
         msg = await create_message(
             chat_id=chat_id,
             chat_model=DirectChatMessage,
@@ -191,9 +195,13 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 f"User {self.user.id} is not in project chat {chat_id}"
             )
 
-        reply_to_message = await sync_to_async(ProjectChatMessage.objects.get)(
-            pk=event.content["reply_to"]
-        )
+        try:
+            reply_to_message = await sync_to_async(ProjectChatMessage.objects.get)(
+                pk=event.content["reply_to"]
+            )
+        except ProjectChatMessage.DoesNotExist:
+            reply_to_message = None
+
         msg = await create_message(
             chat_id=chat_id,
             chat_model=ProjectChatMessage,
