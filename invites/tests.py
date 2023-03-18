@@ -1,5 +1,7 @@
 from django.test import TestCase
 from rest_framework.test import APIRequestFactory, force_authenticate
+
+from projects.models import Project
 from tests.constants import USER_CREATE_DATA
 
 from users.views import UserList
@@ -39,9 +41,11 @@ class InvitesTestCase(TestCase):
 
     def test_invites_creation(self):
         user_main = self._user_create("example@gmail.com")
-        self._user_create("example2@gmail.com")
-        self._project_create(user_main)
-        self.invite_create_data["user"] = CustomUser.objects.values()[1]["id"]
+        user2 = self._user_create("example2@gmail.com")
+        project = self._project_create(user_main)
+
+        self.invite_create_data["user"] = user2.id
+        self.invite_create_data["project"] = project.id
         request = self.factory.post("invites/", self.invite_create_data, format="json")
         force_authenticate(request, user=user_main)
 
@@ -54,11 +58,13 @@ class InvitesTestCase(TestCase):
         force_authenticate(request, user=user)
 
         response = self.project_list_view(request)
-        self.assertEqual(response.status_code, 201)
+        project_id = response.data["id"]
+        return Project.objects.get(pk=project_id)
 
     def _user_create(self, email):
-        USER_CREATE_DATA["email"] = email
-        request = self.factory.post("auth/users/", USER_CREATE_DATA)
+        tmp_create_data = USER_CREATE_DATA
+        tmp_create_data["email"] = email
+        request = self.factory.post("auth/users/", tmp_create_data)
         response = self.user_list_view(request)
         user_id = response.data["id"]
         user = CustomUser.objects.get(id=user_id)
