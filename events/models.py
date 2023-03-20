@@ -18,7 +18,7 @@ class Event(models.Model):
     """
 
     title = models.CharField(max_length=256, null=False)
-    text = models.TextField(null=False)
+    text = models.TextField(null=False, blank=False)
     short_text = models.TextField(max_length=256, blank=True)
     cover_url = models.URLField(null=False)
     datetime_of_event = models.DateTimeField(verbose_name="Дата проведения", null=False)
@@ -29,7 +29,7 @@ class Event(models.Model):
     datetime_updated = models.DateTimeField(
         verbose_name="Дата изменения", null=False, auto_now=True
     )
-    tg_message_id = models.IntegerField(blank=True, null=True)
+    tg_message_id = models.IntegerField(blank=True, null=True, editable=False)
 
     def __str__(self):
         return f"Event<{self.id}> - {self.title}"

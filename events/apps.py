@@ -1,4 +1,5 @@
 from django.apps import AppConfig
+from django.conf import settings
 
 
 class EventsConfig(AppConfig):
@@ -6,4 +7,5 @@ class EventsConfig(AppConfig):
     name = "events"
 
     def ready(self):
-        import events.signals  # noqa: F401
+        if settings.AUTOPOSTING_ON:
+            import events.signals  # noqa: F401
