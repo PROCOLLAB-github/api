@@ -4,7 +4,7 @@ from django.conf import settings
 
 
 def send_message(text, chat_id):
-    url = TELEGRAM_API_URL + settings.TELEGRAM_BOT_TOKEN + "/sendMessage"
+    url = f"{TELEGRAM_API_URL}{settings.TELEGRAM_BOT_TOKEN}/sendMessage"
     data = {
         "chat_id": chat_id,
         "text": text,
@@ -14,7 +14,7 @@ def send_message(text, chat_id):
 
 
 def edit_message(text, message_id, chat_id):
-    url = TELEGRAM_API_URL + settings.TELEGRAM_BOT_TOKEN + "/editMessageText"
+    url = f"{TELEGRAM_API_URL}{settings.TELEGRAM_BOT_TOKEN}/editMessageText"
     data = {
         "chat_id": chat_id,
         "text": text,
