@@ -205,7 +205,7 @@ class BaseMessage(models.Model):
     class Meta:
         verbose_name = "Сообщение"
         verbose_name_plural = "Сообщения"
-        ordering = ["created_at"]
+        ordering = ["-created_at"]
         abstract = True
 
 
