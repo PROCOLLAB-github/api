@@ -1,1 +1,1 @@
-from .ChatConsumer import ChatConsumer  # noqa: F401
+from .chat import ChatConsumer  # noqa: F401

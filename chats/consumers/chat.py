@@ -77,21 +77,28 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             EventType.TYPING,
             EventType.READ_MESSAGE,
             EventType.DELETE_MESSAGE,
+            EventType.EDIT_MESSAGE,
         ]:
-            room_name = f"{EventGroupType.CHATS_RELATED}_{event.content.get('chat_id')}"
+
             if event.content["chat_type"] == ChatType.DIRECT:
                 self.event = DirectEvent(self.user, self.channel_layer, self.channel_name)
             elif event.content["chat_type"] == ChatType.PROJECT:
                 self.event = ProjectEvent(
                     self.user, self.channel_layer, self.channel_name
                 )
-            else:
-                raise ValueError("Chat type is not supported")
 
+            room_name = f"{EventGroupType.CHATS_RELATED}_{event.content.get('chat_id')}"
             try:
                 await self.__process_chat_related_event(event, room_name)
             except ChatException as e:
                 await self.send_json({"error": str(e.get_error())})
+            except KeyError as e:
+                await self.send_json(
+                    {
+                        "error": f"Missing key (might be backend's fault,"
+                        f" but most likely you are missing this field): {e}"
+                    }
+                )
 
         elif event.type in [EventType.SET_ONLINE, EventType.SET_OFFLINE]:
             room_name = EventGroupType.GENERAL_EVENTS
@@ -108,22 +115,48 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             await self.event.process_read_message_event(event, room_name)
         elif event.type == EventType.DELETE_MESSAGE:
             await self.event.process_delete_message_event(event, room_name)
+        elif event.type == EventType.EDIT_MESSAGE:
+            await self.event.process_edit_message_event(event, room_name)
 
     async def __process_typing_event(self, event: Event, room_name: str):
         """Send typing event to room group."""
+        event_data = {
+            "type": EventType.TYPING,
+            "content": {
+                "chat_id": event.content["chat_id"],
+                "chat_type": event.content["chat_type"],
+                "user_id": self.user.id,
+                "end_time": (timezone.now() + datetime.timedelta(seconds=5)).isoformat(),
+            },
+        }
+
+        if event.content["chat_type"] == ChatType.DIRECT:
+            # fixme: need to move this to func
+            chat_id, other_user = await get_chat_and_user_ids_from_content(
+                event.content, self.user
+            )
+
+            # if chat_id == 17_7, then chat_id will be == 7_17
+            chat_id = DirectChat.get_chat_id_from_users(self.user, other_user)
+
+            # check if chat exists
+            try:
+                await sync_to_async(DirectChat.objects.get)(pk=chat_id)
+            except DirectChat.DoesNotExist:
+                # if not, create such chat
+                await sync_to_async(DirectChat.create_from_two_users)(
+                    self.user, other_user
+                )
+
+            # send message to user's channel
+            other_user_channel = cache.get(get_user_channel_cache_key(other_user), None)
+
+            if other_user_channel:
+                await self.channel_layer.send(other_user_channel, event_data)
+
         await self.channel_layer.group_send(
             room_name,
-            {
-                "type": EventType.TYPING,
-                "content": {
-                    "chat_id": event.content["chat_id"],
-                    "chat_type": event.content["chat_type"],
-                    "user_id": self.user.id,
-                    "end_time": (
-                        timezone.now() + datetime.timedelta(seconds=5)
-                    ).timestamp(),
-                },
-            },
+            event_data,
         )
 
     async def message_read(self, event: Event):
@@ -142,6 +175,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         await self.send(json.dumps(event))
 
     async def set_offline(self, event: Event):
+        await self.send(json.dumps(event))
+
+    async def edit_message(self, event: Event):
         await self.send(json.dumps(event))
 
     async def __process_general_event(self, event: Event, room_name: str):
