@@ -8,7 +8,7 @@ from chats.utils import (
     create_message,
     get_chat_and_user_ids_from_content,
 )
-from chat.serializer import DirectChatMessageListSerializer
+from chats.serializers import DirectChatMessageListSerializer
 
 
 class DirectEvent:

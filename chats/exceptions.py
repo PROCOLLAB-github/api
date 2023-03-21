@@ -15,5 +15,9 @@ class UserNotInChatException(ChatException):
     pass
 
 
+class UserNotMessageAuthorException(ChatException):
+    pass
+
+
 class NonMatchingReplyChatIdException(ChatException):
     pass

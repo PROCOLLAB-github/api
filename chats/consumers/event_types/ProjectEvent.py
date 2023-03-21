@@ -6,7 +6,7 @@ from chats.exceptions import (
     WrongChatIdException,
     UserNotInChatException,
 )
-from chat.serializer import ProjectChatMessageListSerializer
+from chats.serializers import ProjectChatMessageListSerializer
 
 
 class ProjectEvent:
