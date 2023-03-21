@@ -1,12 +1,16 @@
 from asgiref.sync import sync_to_async
 from chats.models import ProjectChat, ProjectChatMessage
 from chats.utils import create_message
-from chats.websockets_settings import Event, EventType, ChatType
+from chats.websockets_settings import Event, EventType
 from chats.exceptions import (
     WrongChatIdException,
     UserNotInChatException,
+    UserNotMessageAuthorException,
 )
-from chats.serializers import ProjectChatMessageListSerializer
+from chats.serializers import (
+    ProjectChatMessageListSerializer,
+    DirectChatMessageListSerializer,
+)
 
 
 class ProjectEvent:
@@ -107,42 +111,6 @@ class ProjectEvent:
                 "content": {"message_id": event.content["message_id"]},
             },
         )
-
-    async def process_edit_message_event(self, event, room_name):
-        chat_id = event.content["chat_id"]
-        chat = await sync_to_async(ProjectChat.objects.get)(pk=chat_id)
-
-        # check that user is in this chat
-        users = await sync_to_async(chat.get_users)()
-        if self.user not in users:
-            raise UserNotInChatException(
-                f"User {self.user.id} is not in project chat {chat_id}"
-            )
-
-        message = await sync_to_async(ProjectChatMessage.objects.get)(
-            pk=event.content["message_id"]
-        )
-
-        message_author = await sync_to_async(lambda: message.author)()
-        if message_author != self.user:
-            raise UserNotMessageAuthorException(
-                f"User {self.user.id} is not author of message {message.id}"
-            )
-        message.text = event.content["text"]
-        message.is_edited = True
-        await sync_to_async(message.save)()
-
-        message_data = await sync_to_async(
-            lambda: (ProjectChatMessageListSerializer(message)).data
-        )()
-        content = {
-            "chat_id": chat_id,
-            "message": message_data,
-        }
-
-        event_data = {"type": EventType.EDIT_MESSAGE, "content": content}
-
-        await self.channel_layer.group_send(room_name, event_data)
 
     async def process_edit_message_event(self, event, room_name):
         chat_id = event.content["chat_id"]

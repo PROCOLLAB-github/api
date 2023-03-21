@@ -67,8 +67,8 @@ class DirectEvent:
 
     async def process_read_message_event(self, event: Event, room_name: str):
         chat_id, other_user = await get_chat_and_user_ids_from_content(
-                event.content, self.user
-            )
+            event.content, self.user
+        )
         msg = await sync_to_async(DirectChatMessage.objects.get)(
             pk=event.content["message_id"]
         )
@@ -119,47 +119,6 @@ class DirectEvent:
             return
 
         await self.channel_layer.send(other_user_channel, content)
-
-    async def process_edit_message_event(self, event):
-        chat_id, other_user = await get_chat_and_user_ids_from_content(
-            event.content, self.user
-        )
-        # if chat_id == 17_7, then chat_id will be == 7_17
-        chat_id = DirectChat.get_chat_id_from_users(self.user, other_user)
-
-        # check if chat exists ( this raises exception if not )
-        await sync_to_async(DirectChat.objects.get)(pk=chat_id)
-
-        msg = await sync_to_async(DirectChatMessage.objects.get)(
-            pk=event.content["message_id"]
-        )
-
-        message_author = await sync_to_async(lambda: msg.author)()
-        if message_author != self.user:
-            raise UserNotMessageAuthorException(
-                f"User {self.user.id} is not author of message {msg.id}"
-            )
-        msg.text = event.content["text"]
-        msg.is_edited = True
-        await sync_to_async(msg.save)()
-
-        message_data = await sync_to_async(
-            lambda: (DirectChatMessageListSerializer(msg)).data
-        )()
-        content = {
-            "chat_id": chat_id,
-            "message": message_data,
-        }
-
-        # send message to user's channel
-        other_user_channel = cache.get(get_user_channel_cache_key(other_user), None)
-
-        event_data = {"type": EventType.EDIT_MESSAGE, "content": content}
-
-        if other_user_channel:
-            await self.channel_layer.send(other_user_channel, event_data)
-
-        await self.channel_layer.send(self.channel_name, event_data)
 
     async def process_edit_message_event(self, event, room_name):
         chat_id, other_user = await get_chat_and_user_ids_from_content(

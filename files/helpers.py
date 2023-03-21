@@ -1,6 +1,5 @@
 import requests
 import time
-from typing import TypeAlias
 from files.exceptions import SelectelUploadError
 
 from procollab.settings import (
@@ -10,9 +9,6 @@ from procollab.settings import (
     SELECTEL_CONTAINER_PASSWORD,
     SELECTEL_CONTAINER_USERNAME,
 )
-
-# да я крутой
-Bytes: TypeAlias = int
 
 
 class FileAPI:
@@ -78,7 +74,6 @@ class FileAPI:
     def _generate_selectel_swift_file_url(self) -> str:
         """
         Generates url for selcdn
-
         Returns:
             url: str looks like /hashedEmail/hashedFilename_hashedTime.extension
         """
@@ -88,10 +83,3 @@ class FileAPI:
             link
             + f"{abs(hash(self.user.email))}/{abs(hash(self.file.name))}_{abs(hash(time.time()))}{extension}"
         )
-
-
-def get_file_data(file) -> dict[str, str | Bytes]:
-    filename, ext = file.name.split(".")
-    size: Bytes = file.size
-
-    return {"name": filename, "extension": ext, "size": size}

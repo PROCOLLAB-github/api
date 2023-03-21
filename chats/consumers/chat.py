@@ -20,6 +20,9 @@ from core.utils import get_user_online_cache_key
 from projects.models import Collaborator
 from users.models import CustomUser
 from chats.consumers.event_types import DirectEvent, ProjectEvent
+from chats.utils import get_chat_and_user_ids_from_content
+from chats.models import DirectChat
+from asgiref.sync import sync_to_async
 
 
 class ChatConsumer(AsyncJsonWebsocketConsumer):
