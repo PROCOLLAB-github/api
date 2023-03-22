@@ -45,9 +45,10 @@ class InvitesTestCase(TestCase):
         user2 = self._user_create("example2@gmail.com")
         project = self._project_create(user_main)
 
-        self.invite_create_data["user"] = user2.id
-        self.invite_create_data["project"] = project.id
-        request = self.factory.post("invites/", self.invite_create_data, format="json")
+        create_user = self.invite_create_data.copy()
+        create_user["user"] = user2.id
+        create_user["project"] = project.id
+        request = self.factory.post("invites/", create_user, format="json")
         force_authenticate(request, user=user_main)
 
         response = self.invite_list_view(request)
@@ -55,25 +56,22 @@ class InvitesTestCase(TestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(
             response.data["motivational_letter"],
-            self.invite_create_data["motivational_letter"],
+            create_user["motivational_letter"],
         )
-        self.assertEqual(
-            response.data["project"]["id"], self.invite_create_data["project"]
-        )
-        self.assertEqual(response.data["role"], self.invite_create_data["role"])
-        self.assertEqual(
-            response.data["is_accepted"], self.invite_create_data["is_accepted"]
-        )
+        self.assertEqual(response.data["project"]["id"], create_user["project"])
+        self.assertEqual(response.data["role"], create_user["role"])
+        self.assertEqual(response.data["is_accepted"], create_user["is_accepted"])
 
     def test_invites_creation_with_empty_text(self):
         user_main = self._user_create("example@gmail.com")
         user2 = self._user_create("example2@gmail.com")
         project = self._project_create(user_main)
 
-        self.invite_create_data["user"] = user2.id
-        self.invite_create_data["project"] = project.id
-        self.invite_create_data["motivational_letter"] = None
-        request = self.factory.post("invites/", self.invite_create_data, format="json")
+        empty_text = self.invite_create_data.copy()
+        empty_text["user"] = user2.id
+        empty_text["project"] = project.id
+        empty_text["motivational_letter"] = None
+        request = self.factory.post("invites/", empty_text, format="json")
         force_authenticate(request, user=user_main)
 
         response = self.invite_list_view(request)
@@ -85,9 +83,10 @@ class InvitesTestCase(TestCase):
         user2 = self._user_create("example2@gmail.com")
         project = self._project_create(user_main)
 
-        self.invite_create_data["user"] = user2.id
-        self.invite_create_data["project"] = project.id
-        request = self.factory.post("invites/", self.invite_create_data, format="json")
+        updater = self.invite_create_data.copy()
+        updater["user"] = user2.id
+        updater["project"] = project.id
+        request = self.factory.post("invites/", updater, format="json")
         force_authenticate(request, user=user_main)
 
         response = self.invite_list_view(request)
@@ -107,9 +106,9 @@ class InvitesTestCase(TestCase):
     def test_invites_creation_with_empty_data(self):
         user_main = self._user_create("example@gmail.com")
 
-        self.invite_create_data = {}
+        empty_data = {}
 
-        request = self.factory.post("invites/", self.invite_create_data, format="json")
+        request = self.factory.post("invites/", empty_data, format="json")
         force_authenticate(request, user=user_main)
         response = self.invite_list_view(request)
 
