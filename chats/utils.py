@@ -1,4 +1,4 @@
-from typing import Union, Type, Optional
+from typing import Union, Type
 
 from asgiref.sync import sync_to_async
 from django.contrib.auth import get_user_model
@@ -40,7 +40,6 @@ async def create_message(
     author: User,
     text: str,
     reply_to: int = None,
-    file_url: Optional[str] = None,
 ) -> Union[DirectChatMessage, ProjectChatMessage]:
     """
     Creates message.
@@ -51,7 +50,6 @@ async def create_message(
         author: A user instance.
         text: A string representing message text.
         reply_to: An integer representing message id to reply to.
-        file_url: An string representing attached file url.
 
     Returns:
         A message instance.
@@ -66,7 +64,6 @@ async def create_message(
             author=author,
             text=text,
             reply_to=reply_to,
-            file_url=file_url,
         )
     except ValidationError:
         raise NonMatchingReplyChatIdException(
