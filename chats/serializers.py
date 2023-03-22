@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from chats.models import DirectChat, ProjectChat, DirectChatMessage, ProjectChatMessage
-from users.serializers import UserListSerializer
+from users.serializers import UserListSerializer, UserDetailSerializer
 
 
 class DirectChatListSerializer(serializers.ModelSerializer):
@@ -82,6 +82,8 @@ class ProjectChatDetailSerializer(serializers.ModelSerializer):
 
 
 class DirectChatMessageListSerializer(serializers.ModelSerializer):
+    author = UserDetailSerializer()
+
     class Meta:
         model = DirectChatMessage
         fields = [
@@ -89,11 +91,16 @@ class DirectChatMessageListSerializer(serializers.ModelSerializer):
             "author",
             "text",
             "reply_to",
+            "is_edited",
+            "is_read",
+            "is_deleted",
             "created_at",
         ]
 
 
 class ProjectChatMessageListSerializer(serializers.ModelSerializer):
+    author = UserDetailSerializer()
+
     class Meta:
         model = ProjectChatMessage
         fields = [
@@ -101,5 +108,8 @@ class ProjectChatMessageListSerializer(serializers.ModelSerializer):
             "author",
             "text",
             "reply_to",
+            "is_edited",
+            "is_read",
+            "is_deleted",
             "created_at",
         ]

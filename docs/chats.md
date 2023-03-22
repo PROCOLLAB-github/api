@@ -5,7 +5,6 @@ URL для всего вебсокет-релейтед - `/ws/`
 
 В данный момент есть только 1 Consumer (т.е. View, но для вебсокетов). Это ChatConsumer, живет на `/ws/chat/`.
 
-# ChatConsumer
 `/ws/chat/`
 
 ### Подключение
@@ -70,7 +69,74 @@ class EventType(str, Enum):
 - `chat_id` см выше
 - `message_id: int` айди сообщение, которое прочитали
 
-### DELETE_MESSAGE
-- `chat_type` см выше
-- `chat_id` см выше
-- `message_id: int` айди сообщения, которое удаляем
+#### General events
+
+- EventType.SET_ONLINE
+- EventType.SET_OFFLINE
+
+Структура этих event'ов одинаковая. 
+
+```json
+{
+	"type": "set_offline",
+	"content": {
+		
+	}
+}
+```
+
+#### Chat-related events
+
+##### EventType.NEW_MESSAGE
+
+```json
+{
+	"type": "new_message",
+	"content": {
+		"chat_type": {{"direct" | "project"}},
+		"chat_id": {{"id1"_"id2"}}, // например: 1_2
+		"message": {{string}},
+		"reply_to": number | null
+	}
+}
+```
+
+![New message event](img/event_new_message.png "New message event")
+
+##### EventType.TYPING
+
+```json
+{
+	"type": "typing",
+	"content": {
+		"chat_type": {{"direct" | "project"}},
+		"chat_id": {{"id1"_"id2"}}, // например: 1_2
+	}
+}
+```
+
+##### EventType.READ_MESSAGE
+
+```json
+{
+	"type": "typing",
+	"content": {
+		"chat_type": {{"direct" | "project"}},
+		"chat_id": {{"id1"_"id2"}}, // например: 1_2
+		"message_id": {{number}}
+	}
+}
+```
+
+##### EventType.DELETE_MESSAGE
+
+```json
+{
+	"type": "typing",
+	"content": {
+		"chat_type": {{"direct" | "project"}},
+		"chat_id": {{"id1"_"id2"}}, // например: 1_2
+		"message_id": {{number}}
+	}
+}
+```

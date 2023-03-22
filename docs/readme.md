@@ -1,7 +1,8 @@
 # Документация
 
-### REST API
-Чтобы посмотреть документацию через swagger, включите проект и зайдите на http://localhost:8000/swagger
+## REST API
+- [swagger](https://api.procollab.ru/swagger)
+- [redoc](https://api.procollab.ru/redoc)
 
-### WebSockets для чатов
-[Вот здесь](/docs/chats.md)
+## [WebSockets для чатов](/docs/chats.md)
+

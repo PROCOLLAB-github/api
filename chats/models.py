@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import models
 
+from files.models import UserFile
 from projects.models import Project
 
 User = get_user_model()
@@ -188,12 +189,14 @@ class BaseMessage(models.Model):
 
     Attributes:
         text: A TextField containing message text.
+        file_url: A URLField containing attached file url.
         is_read: A BooleanField indicating whether message is read.
         is_deleted: A BooleanField indicating whether message is deleted.
         created_at: A DateTimeField indicating date of creation.
     """
 
     text = models.TextField(max_length=8192)
+    file_url = models.URLField(blank=True, null=True)
     is_read = models.BooleanField(default=False)
     is_deleted = models.BooleanField(default=False)
     is_edited = models.BooleanField(default=False)
@@ -283,3 +286,30 @@ class DirectChatMessage(BaseMessage):
     class Meta:
         verbose_name = "Сообщение в личном чате"
         verbose_name_plural = "Сообщения в личных чатах"
+
+
+class BaseChatAttachment(UserFile):
+    name = models.CharField(max_length=512, null=False, blank=False, default="file")
+    extension = models.CharField(max_length=32, null=False, blank=True, default="")
+    size = models.PositiveBigIntegerField(null=False, blank=False, default=1)
+
+    class Meta:
+        abstract = True
+
+
+class DirectChatAttachment(BaseChatAttachment):
+    chat_id = models.ForeignKey(
+        DirectChat, on_delete=models.CASCADE, related_name="attachments"
+    )
+    message_id = models.ForeignKey(
+        DirectChatMessage, on_delete=models.CASCADE, related_name="attachments"
+    )
+
+
+class ProjectChatAttachment(BaseChatAttachment):
+    chat_id = models.ForeignKey(
+        ProjectChat, on_delete=models.CASCADE, related_name="attachments"
+    )
+    message_id = models.ForeignKey(
+        ProjectChatMessage, on_delete=models.CASCADE, related_name="attachments"
+    )
