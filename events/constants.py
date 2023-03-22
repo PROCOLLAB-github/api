@@ -6,7 +6,7 @@ ONLINE = 1
 ONLINE_OFFLINE = 2
 
 VERBOSE_EVENT_TYPE = (
-	(OFFLINE, "Оффлайн"),
-	(ONLINE, "Онлайн"),
-	(ONLINE_OFFLINE, "Оффлайн и онлайн")
+    (OFFLINE, "Оффлайн"),
+    (ONLINE, "Онлайн"),
+    (ONLINE_OFFLINE, "Оффлайн и онлайн"),
 )

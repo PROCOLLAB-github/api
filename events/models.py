@@ -1,6 +1,7 @@
 from django.db import models
 from events.constants import VERBOSE_EVENT_TYPE
-#from django.contrib.auth.models import User
+
+# from django.contrib.auth.models import User
 from django.conf import settings
 
 
@@ -28,7 +29,9 @@ class Event(models.Model):
 
     title = models.CharField(max_length=256, null=False)
     text = models.TextField(null=False)
-    short_text = models.TextField(max_length=256, blank=True, help_text="Текст для поста в телеграм")
+    short_text = models.TextField(
+        max_length=256, blank=True, help_text="Текст для поста в телеграм"
+    )
     cover_url = models.URLField(null=False)
     datetime_of_event = models.DateTimeField(verbose_name="Дата проведения", null=False)
 
@@ -42,10 +45,16 @@ class Event(models.Model):
     link = models.URLField(null=False)
     event_type = models.PositiveSmallIntegerField(choices=VERBOSE_EVENT_TYPE)
     prize = models.CharField(max_length=128, null=False)
-    favorites = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name='favorites')
-    registered_users = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name='events')
+    favorites = models.ManyToManyField(
+        settings.AUTH_USER_MODEL, blank=True, related_name="favorites"
+    )
+    registered_users = models.ManyToManyField(
+        settings.AUTH_USER_MODEL, blank=True, related_name="events"
+    )
     views = models.BigIntegerField(default=0)
-    likes = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name='likes')
+    likes = models.ManyToManyField(
+        settings.AUTH_USER_MODEL, blank=True, related_name="likes"
+    )
 
     def __str__(self):
         return f"Event<{self.id}> - {self.title}"
