@@ -29,6 +29,7 @@ class EventType(str, Enum):
     DELETE_MESSAGE = "delete_message"
     READ_MESSAGE = "message_read"
     TYPING = "user_typing"
+    EDIT_MESSAGE = "edit_message"
 
     # GENERAL EVENTS
     SET_ONLINE = "set_online"
@@ -42,7 +43,8 @@ class EventType(str, Enum):
     "chat_type": "direct",
     "chat_id": "12_23",
     "message": "hello world",
-    "reply_to": 54
+    "reply_to": 54,
+    "is_edited": false
   }
 }
 ```
@@ -59,6 +61,12 @@ class EventType(str, Enum):
 Если тип `"project"`, то тип будет `int` и это айди проекта, которому принадлежит чат. Если тип `"direct"`, то это `str`. Выглядит как `{user1_id}_{user2_id}`, **где первое число всегда меньше второго**.
 - `message: str` текст сообщения
 - `reply_to: Optional[int]` айди сообщения, на которое кидается ответ. Если его нет, то обязательно кидать `None`
+
+### EDIT_MESSAGE
+- `chat_type: str`
+- `chat_id` см выше
+- `message_id: int` айди сообщение, которое прочитали
+- `message: str` текст сообщения
 
 ### TYPING
 - `chat_type` см выше
@@ -137,6 +145,20 @@ class EventType(str, Enum):
 		"chat_type": {{"direct" | "project"}},
 		"chat_id": {{"id1"_"id2"}}, // например: 1_2
 		"message_id": {{number}}
+	}
+}
+```
+
+##### EventType.EDIT_MESSAGE
+
+```json
+{
+	"type": "edit_message",
+	"content": {
+		"chat_type": {{"direct" | "project"}},
+		"chat_id": {{"id1"_"id2"}}, // например: 1_2
+		"message_id": {{number}},
+		"message": {{string}}
 	}
 }
 ```
