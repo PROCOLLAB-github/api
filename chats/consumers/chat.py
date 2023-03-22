@@ -110,10 +110,11 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             return self.disconnect(400)
 
     async def __process_chat_related_event(self, event, room_name):
+        self.event: DirectEvent | ProjectEvent
         if event.type == EventType.NEW_MESSAGE:
             await self.event.process_new_message_event(event, room_name)
         elif event.type == EventType.TYPING:
-            await self.event.process_typing_event(event, room_name)
+            await self.__process_typing_event(event, room_name)
         elif event.type == EventType.READ_MESSAGE:
             await self.event.process_read_message_event(event, room_name)
         elif event.type == EventType.DELETE_MESSAGE:
