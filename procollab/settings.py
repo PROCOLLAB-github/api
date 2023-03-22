@@ -18,6 +18,11 @@ DEBUG = config("DEBUG", default=False, cast=bool)
 
 SENTRY_DSN = config("SENTRY_DSN", default="", cast=str)
 
+AUTOPOSTING_ON = config("AUTOPOSTING_ON", default=False, cast=bool)
+
+TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN", default="", cast=str)
+TELEGRAM_CHANNEL = config("TELEGRAM_CHANNEL", default="", cast=str)
+
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost",
     "https://api.procollab.ru",
@@ -77,6 +82,7 @@ INSTALLED_APPS = [
     "metrics.apps.MetricsConfig",
     "invites.apps.InvitesConfig",
     "files.apps.FilesConfig",
+    "events.apps.EventsConfig",
     # Rest framework
     "rest_framework",
     "rest_framework_simplejwt",
@@ -283,7 +289,7 @@ default_user_authentication_rule",
 }
 
 if DEBUG:
-    SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"] = timedelta(weeks=1)
+    SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"] = timedelta(weeks=2)
 
 SESSION_COOKIE_SECURE = False
 

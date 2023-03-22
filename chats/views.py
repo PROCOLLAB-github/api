@@ -1,6 +1,14 @@
 from django.contrib.auth import get_user_model
+
+# from django.db import transaction
 from rest_framework import status
-from rest_framework.generics import ListAPIView, ListCreateAPIView, RetrieveAPIView
+from rest_framework.generics import (
+    ListAPIView,
+    ListCreateAPIView,
+    RetrieveAPIView,
+    # GenericAPIView,
+    # get_object_or_404,
+)
 
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -15,6 +23,8 @@ from chats.serializers import (
     ProjectChatDetailSerializer,
     DirectChatDetailSerializer,
 )
+
+# from files.helpers import FileAPI, get_file_data
 
 User = get_user_model()
 
@@ -101,6 +111,7 @@ class DirectChatMessageList(ListCreateAPIView):
         return (
             self.request.user.direct_chats.get(id=self.kwargs["pk"])
             .messages.filter(is_deleted=False)
+            .order_by("-created_at")
             .all()
         )
 
@@ -114,6 +125,7 @@ class ProjectChatMessageList(ListCreateAPIView):
         return (
             ProjectChat.objects.get(id=self.kwargs["pk"])
             .messages.filter(is_deleted=False)
+            .order_by("-created_at")
             .all()
         )
 
@@ -124,3 +136,50 @@ class ProjectChatMessageList(ListCreateAPIView):
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+
+# class ChatAttachmentView(GenericAPIView):
+#     permission_classes = [IsAuthenticatedOrReadOnly]
+#     serializer_class = ChatAttachmentSerializer
+#     queryset = ChatAttachment.objects.all()
+#
+#     @transaction.atomic
+#     def post(self, request):
+#         """creates a UserFile object and uploads the file to selectel"""
+#
+#         file = request.FILES["file"]
+#         file_api = FileAPI(file, request.user)
+#         status_code, url = file_api.upload()
+#
+#         if status_code == 201:
+#             file_data = get_file_data(file)
+#             ChatAttachment.objects.create(
+#                 user=request.user,
+#                 link=url,
+#                 name=file_data["name"],
+#                 extension=file_data["extension"],
+#                 size=file_data["size"],
+#             )
+#
+#         return Response("Failed to upload file", status=status.HTTP_409_CONFLICT)
+#
+#     def delete(self, request, *args, **kwargs):
+#         """deletes the file (only if the request is sent by the user who owns it!)
+#         The link has to be specified in the JSON body, not in the URL arguments.
+#         """
+#         # get the link from the query
+#         if request.query_params and (request.query_params.get("link") is not None):
+#             link = request.query_params.get("link")
+#         else:
+#             return Response(
+#                 {
+#                     "error": "you have to pass the link of the object you want to delete in query parameters"
+#                 },
+#                 status=status.HTTP_400_BAD_REQUEST,
+#             )
+#         instance = get_object_or_404(self.get_queryset(), link=link)
+#         if instance.user != request.user:
+#             return Response(status=status.HTTP_403_FORBIDDEN)
+#         FileAPI.delete(instance.link)  # delete the file via api
+#         instance.delete()  # delete the UserFile object
+#         return Response(status=status.HTTP_204_NO_CONTENT)

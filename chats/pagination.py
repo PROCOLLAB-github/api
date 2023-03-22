@@ -2,6 +2,14 @@ from rest_framework import pagination
 
 
 class MessageListPagination(pagination.LimitOffsetPagination):
-    default_limit = 15
-    limit_query_param = "next"
-    offset_query_param = "previous"
+    """
+    Pagination for messages
+
+    For example:
+        /api/v1/chats/directs/1/messages/?limit=10&offset=10
+        gets the next 10 messages after the first 10 messages.
+    """
+
+    default_limit = 20
+    limit_query_param = "limit"
+    offset_query_param = "offset"
