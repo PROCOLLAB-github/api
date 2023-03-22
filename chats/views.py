@@ -111,6 +111,7 @@ class DirectChatMessageList(ListCreateAPIView):
         return (
             self.request.user.direct_chats.get(id=self.kwargs["pk"])
             .messages.filter(is_deleted=False)
+            .order_by("-created_at")
             .all()
         )
 
@@ -124,6 +125,7 @@ class ProjectChatMessageList(ListCreateAPIView):
         return (
             ProjectChat.objects.get(id=self.kwargs["pk"])
             .messages.filter(is_deleted=False)
+            .order_by("-created_at")
             .all()
         )
 
