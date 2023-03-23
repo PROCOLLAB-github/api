@@ -65,9 +65,10 @@ class UserList(ListCreateAPIView):
         current_site = get_current_site(request).domain
         absolute_url = "http://" + current_site + relative_link + "?token=" + str(token)
 
-        email_body = "Hi, {} {}! Use link below verify your email {}".format(
-            user.first_name, user.last_name, absolute_url
-        )
+        email_body = "Подтверждение адреса электронной почты\n\nЗдравствйте, {} {}!\nВаш адрес электронной почты был " \
+                     "связан с созданием ProColLab аккаунта. Для подтверждения адреса перейдите по ссылке:\n{}\n\n" \
+                     "Если данное сообщение пришло вам по ошибке, проигнорируйте его.\nС уважением, ProColLab!" \
+            .format(user.first_name, user.last_name, absolute_url)
 
         data = {
             "email_body": email_body,
@@ -219,15 +220,14 @@ class EmailResetPassword(GenericAPIView):
 
         current_site = get_current_site(request).domain
         absolute_url = (
-            "http://"
-            + current_site
-            + relative_link
-            + f"?access_token={access_token}&refresh_token={refresh_token}"
+                "http://"
+                + current_site
+                + relative_link
+                + f"?access_token={access_token}&refresh_token={refresh_token}"
         )
 
-        email_body = "Hi, {} {}! Use link below for reset password {}".format(
-            user.first_name, user.last_name, absolute_url
-        )
+        email_body = "Здравствуйте, {} {}! Перейдите по данной ссылке для смены пароля:\n {}\n\nС уважением, " \
+                     "ProColLab!".format(user.first_name, user.last_name, absolute_url)
 
         data = {
             "email_body": email_body,
@@ -312,13 +312,13 @@ class AchievementList(ListCreateAPIView):
         serializer.validated_data["user"] = request.user
         # warning for someone who tries to set user variable (the user will always be yourself anyway)
         if (
-            request.data.get("user") is not None
-            and request.data.get("user") != request.user.id
+                request.data.get("user") is not None
+                and request.data.get("user") != request.user.id
         ):
             return Response(
                 {
                     "error": "you can't edit USER field for this view since "
-                    "you can't create achievements for other people"
+                             "you can't create achievements for other people"
                 },
                 status=status.HTTP_403_FORBIDDEN,
             )
