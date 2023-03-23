@@ -81,7 +81,11 @@ class ProjectChatDetailSerializer(serializers.ModelSerializer):
         ]
 
 
-class DirectChatMessageListSerializer(serializers.ModelSerializer):
+class DirectChatMessageSerializer(serializers.ModelSerializer):
+    """Same as DirectChatMessageListSerializer but reply_to is an id, not an object.
+    This is done to avoid circular imports.
+    """
+
     author = UserDetailSerializer()
 
     class Meta:
@@ -98,8 +102,48 @@ class DirectChatMessageListSerializer(serializers.ModelSerializer):
         ]
 
 
+class DirectChatMessageListSerializer(serializers.ModelSerializer):
+    author = UserDetailSerializer()
+    reply_to = DirectChatMessageSerializer(allow_null=True)
+
+    class Meta:
+        model = DirectChatMessage
+        fields = [
+            "id",
+            "author",
+            "text",
+            "reply_to",
+            "is_edited",
+            "is_read",
+            "is_deleted",
+            "created_at",
+        ]
+
+
+class ProjectChatMessageSerializer(serializers.ModelSerializer):
+    """Same as ProjectChatMessageListSerializer but reply_to is an id, not an object.
+    This is done to avoid circular imports.
+    """
+
+    author = UserDetailSerializer()
+
+    class Meta:
+        model = ProjectChatMessage
+        fields = [
+            "id",
+            "author",
+            "text",
+            "reply_to",
+            "is_edited",
+            "is_read",
+            "is_deleted",
+            "created_at",
+        ]
+
+
 class ProjectChatMessageListSerializer(serializers.ModelSerializer):
     author = UserDetailSerializer()
+    reply_to = ProjectChatMessageSerializer(allow_null=True)
 
     class Meta:
         model = ProjectChatMessage
