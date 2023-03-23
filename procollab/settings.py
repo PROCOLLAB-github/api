@@ -23,6 +23,8 @@ AUTOPOSTING_ON = config("AUTOPOSTING_ON", default=False, cast=bool)
 TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN", default="", cast=str)
 TELEGRAM_CHANNEL = config("TELEGRAM_CHANNEL", default="", cast=str)
 
+TAGGIT_CASE_INSENSITIVE = True
+
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost",
     "https://api.procollab.ru",
@@ -94,6 +96,7 @@ INSTALLED_APPS = [
     "django_filters",
     "drf_yasg",
     "channels",
+    "taggit",
 ]
 
 MIDDLEWARE = [

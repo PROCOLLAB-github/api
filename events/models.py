@@ -1,6 +1,6 @@
 from django.db import models
 from events.constants import VERBOSE_EVENT_TYPE, MAIN_URL
-
+from taggit.managers import TaggableManager
 # from django.contrib.auth.models import User
 from django.conf import settings
 
@@ -55,6 +55,7 @@ class Event(models.Model):
     likes = models.ManyToManyField(
         settings.AUTH_USER_MODEL, blank=True, related_name="likes"
     )
+    tags = TaggableManager()
 
     def __str__(self):
         return f"Event<{self.id}> - {self.title}"
