@@ -72,7 +72,7 @@ class DirectEvent:
         msg = await sync_to_async(DirectChatMessage.objects.get)(
             pk=event.content["message_id"]
         )
-        if msg.chat_id != chat_id or msg.author_id != other_user:
+        if msg.chat_id != chat_id or msg.author_id != other_user.id:
             raise WrongChatIdException(
                 "Some of chat/message ids are wrong, you can't access this message"
             )
