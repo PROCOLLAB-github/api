@@ -21,7 +21,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
-from core.permissions import IsOwnerOrReadOnly, IsAuthenticatedOrWriteOnly
+from core.permissions import IsOwnerOrReadOnly
 from projects.serializers import ProjectListSerializer
 from users.helpers import (
     REDIRECT_URL,
@@ -49,7 +49,7 @@ Project = apps.get_model("projects", "Project")
 
 class UserList(ListCreateAPIView):
     queryset = User.objects.get_active()
-    permission_classes = [IsAuthenticatedOrWriteOnly]
+    permission_classes = [AllowAny]  # FIXME: change to IsAuthorized
     serializer_class = UserListSerializer
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = UserFilter
