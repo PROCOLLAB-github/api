@@ -4,7 +4,7 @@ from rest_framework import permissions, status
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
-from files.helpers import FileAPI
+from files.helpers import FileAPI, fetcher_info
 from files.models import UserFile
 from files.serializers import UserFileSerializer
 
@@ -21,7 +21,10 @@ class FileView(generics.GenericAPIView):
         status_code, url = file_api.upload()
 
         if status_code == 201:
-            UserFile.objects.create(user=request.user, link=url)
+            size, name, extension = fetcher_info(request)
+            UserFile.objects.create(
+                user=request.user, link=url, name=name, size=size, extension=extension
+            )
             return Response({"url": url}, status=status.HTTP_201_CREATED)
 
         return Response("Failed to upload file", status=status.HTTP_409_CONFLICT)
