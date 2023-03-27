@@ -16,17 +16,16 @@ class Event(models.Model):
         text: A TextField event text content.
         short_text: A TextField event short text content.
         cover_url: A URLField link to event cover image.
-        # datetime_created: A DateTimeField indicating date of creation.
-        datetime_created: A DateTimeField indicating date of creation.
-        datetime_updated: A DateTimeField indicating date of update.
-        tg_message_id: A IntegerField Telegram messaage id (for edit message)
+        tg_message_id: A IntegerField Telegram message id (for editing message)
         website_url: URLField url to company website
-        event_type: ChoiceField choice from "online", "offline" and "offline and online"
+        event_type: PositiveSmallIntegerField choice from "online", "offline" and "offline and online"
         prize: CharField described what the person will get
         favorites: ManyToManyField User can select favorite events
-        registered: ManyToManyField list of registered users
+        registered_users: ManyToManyField list of registered users
         views: BigIntegerField
         likes: ManyToManyField likes from users
+        datetime_created: A DateTimeField indicating date of creation.
+        datetime_updated: A DateTimeField indicating date of update.
     """
 
     title = models.CharField(max_length=256, null=False)
