@@ -21,9 +21,9 @@ class FileView(generics.GenericAPIView):
         status_code, url = file_api.upload()
 
         if status_code == 201:
-            size, name, extension = fetcher_info(request)
+            info = fetcher_info(request.FILES["file"])
             UserFile.objects.create(
-                user=request.user, link=url, name=name, size=size, extension=extension
+                user=request.user, link=url, name=info["name"], size=info["size"], extension=info["extension"]
             )
             return Response({"url": url}, status=status.HTTP_201_CREATED)
 

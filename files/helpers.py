@@ -86,7 +86,5 @@ class FileAPI:
 
 
 def fetcher_info(request):
-    size = request.FILES["file"].size
-    name = request.FILES["file"].name
-    extension = name.split(".")[-1]
-    return size, name, extension
+    info = {"size": request.size, "name": request.name, "extension": request.name.split(".")[-1]}
+    return info
