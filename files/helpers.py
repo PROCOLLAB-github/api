@@ -83,3 +83,12 @@ class FileAPI:
             link
             + f"{abs(hash(self.user.email))}/{abs(hash(self.file.name))}_{abs(hash(time.time()))}{extension}"
         )
+
+
+def fetcher_info(request):
+    info = {
+        "size": request.size,
+        "name": request.name,
+        "extension": request.name.split(".")[-1],
+    }
+    return info
