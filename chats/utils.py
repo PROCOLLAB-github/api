@@ -9,7 +9,8 @@ from chats.exceptions import (
     WrongChatIdException,
     NonMatchingDirectChatIdException,
 )
-from chats.models import DirectChatMessage, ProjectChatMessage
+from chats.models import DirectChatMessage, ProjectChatMessage, FileToMessage
+from files.models import UserFile
 
 User = get_user_model()
 
@@ -93,3 +94,24 @@ async def get_chat_and_user_ids_from_content(content, current_user) -> tuple[str
             f"User {current_user.id} is not a member of chat {chat_id}"
         )
     return chat_id, other_user
+
+
+async def create_file_to_message(
+    direct_message: Union[str, None, DirectChatMessage],
+    project_message: Union[str, None, ProjectChatMessage],
+    file: str,
+) -> FileToMessage:
+    return await sync_to_async(FileToMessage.objects.create)(
+        direct_message=direct_message, project_message=project_message, file=file
+    )
+
+
+async def match_files_and_messages(file_urls, messages):
+    for url in file_urls:
+        file = await sync_to_async(UserFile.objects.get)(pk=url)
+        # implicitly matches a file and a message
+        await create_file_to_message(
+            direct_message=messages["direct_message"],
+            project_message=messages["project_message"],
+            file=file,
+        )

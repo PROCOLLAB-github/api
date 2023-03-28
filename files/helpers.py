@@ -85,10 +85,11 @@ class FileAPI:
         )
 
 
-def fetcher_info(request):
-    info = {
+def get_file_info(request):
+    name, ext = request.name.split(".")
+
+    return {
         "size": request.size,
-        "name": request.name,
-        "extension": request.name.split(".")[-1],
+        "name": name,
+        "extension": ext,
     }
-    return info

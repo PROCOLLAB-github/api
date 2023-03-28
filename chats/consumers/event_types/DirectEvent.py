@@ -7,6 +7,7 @@ from chats.utils import (
     get_user_channel_cache_key,
     create_message,
     get_chat_and_user_ids_from_content,
+    match_files_and_messages,
 )
 from chats.serializers import DirectChatMessageListSerializer
 
@@ -47,9 +48,16 @@ class DirectEvent:
             reply_to=reply_to_message,
         )
 
+        messages = {
+            "direct_message": msg,
+            "project_message": None,
+        }
+        await match_files_and_messages(event.content["file_urls"], messages)
+
         message_data = await sync_to_async(
             lambda: (DirectChatMessageListSerializer(msg)).data
         )()
+
         content = {
             "chat_id": chat_id,
             "message": message_data,

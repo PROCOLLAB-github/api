@@ -6,4 +6,11 @@ from files.models import UserFile
 class UserFileSerializer(ModelSerializer):
     class Meta:
         model = UserFile
-        fields = ["user", "link", "datetime_uploaded"]
+        fields = [
+            "name",
+            "extension",
+            "size",
+            "link",
+            "user",
+            "datetime_uploaded",
+        ]
