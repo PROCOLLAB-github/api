@@ -1,15 +1,15 @@
 from asgiref.sync import sync_to_async
 from chats.models import ProjectChat, ProjectChatMessage
-from chats.utils import create_message
+from chats.utils import create_message, match_files_and_messages
 from chats.websockets_settings import Event, EventType
 from chats.exceptions import (
     WrongChatIdException,
     UserNotInChatException,
     UserNotMessageAuthorException,
 )
+
 from chats.serializers import (
     ProjectChatMessageListSerializer,
-    DirectChatMessageListSerializer,
 )
 
 
@@ -45,8 +45,14 @@ class ProjectEvent:
             reply_to=reply_to_message,
         )
 
+        messages = {
+            "direct_message": None,
+            "project_message": msg,
+        }
+        await match_files_and_messages(event.content["file_urls"], messages)
+
         message_data = await sync_to_async(
-            lambda: (DirectChatMessageListSerializer(msg)).data
+            lambda: (ProjectChatMessageListSerializer(msg)).data
         )()
         content = {
             "chat_id": chat_id,
