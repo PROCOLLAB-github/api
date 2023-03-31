@@ -4,10 +4,12 @@ from chats.tests.constants import TEST_USER1, TEST_USER2, TEST_USER3
 from django.contrib.auth import get_user_model
 from chats.consumers import ChatConsumer
 from asgiref.sync import sync_to_async
-#from chats.tests.helpres import chat_connect
+
+# from chats.tests.helpres import chat_connect
 from projects.models import Project, Collaborator
 from chats.models import ProjectChat, ProjectChatMessage
 from chats.websockets_settings import EventType
+
 
 class DirectTests(TestCase):
     @classmethod
@@ -17,9 +19,7 @@ class DirectTests(TestCase):
         cls.project = Project.objects.create(leader=cls.leader)
         cls.chat = ProjectChat.objects.create(id=1, project=cls.project)
         cls.other_user = get_user_model().objects.create(**TEST_USER3)
-        Collaborator.objects.create(
-            user=cls.user, project=cls.project, role="User"
-        )
+        Collaborator.objects.create(user=cls.user, project=cls.project, role="User")
 
     def setUp(self):
         self.data = {
@@ -28,8 +28,8 @@ class DirectTests(TestCase):
                 "chat_type": "project",
                 "chat_id": "1",
                 "text": "hello world",
-                "reply_to": None
-            }
+                "reply_to": None,
+            },
         }
 
     async def connect(self, user):
@@ -44,28 +44,24 @@ class DirectTests(TestCase):
 
     async def test_new_message_in_my_project_with_leader_account(self):
         await self.connect(self.leader)
-        chat_id = self.chat.id
         await self.communicator.send_json_to(self.data)
         response = await self.communicator.receive_json_from()
         self.assertFalse("error" in response.keys())
 
     async def test_new_message_in_my_project_without_leader_account(self):
         await self.connect(self.user)
-        chat_id = self.chat.id
         await self.communicator.send_json_to(self.data)
         response = await self.communicator.receive_json_from()
         self.assertFalse("error" in response.keys())
 
     async def test_new_message_in_other_project(self):
         await self.connect(self.other_user)
-        chat_id = self.chat.id
         await self.communicator.send_json_to(self.data)
         response = await self.communicator.receive_json_from()
         self.assertTrue("error" in response.keys())
 
     async def test_read_message_in_my_project_my_message(self):
         await self.connect(self.user)
-        chat_id = self.chat.id
         await self.communicator.send_json_to(self.data)
         response = await self.communicator.receive_json_from()
         self.data["type"] = EventType.READ_MESSAGE
@@ -77,7 +73,6 @@ class DirectTests(TestCase):
 
     async def test_read_message_in_my_project_other_message(self):
         await self.connect(self.user)
-        chat_id = self.chat.id
         await self.communicator.send_json_to(self.data)
         response = await self.communicator.receive_json_from()
         await self.communicator.disconnect()
@@ -92,7 +87,6 @@ class DirectTests(TestCase):
 
     async def test_read_message_in_other_project_other_message(self):
         await self.connect(self.user)
-        chat_id = self.chat.id
         await self.communicator.send_json_to(self.data)
         response = await self.communicator.receive_json_from()
         await self.communicator.disconnect()
@@ -107,7 +101,6 @@ class DirectTests(TestCase):
 
     async def test_delete_message_in_my_project_my_message(self):
         await self.connect(self.user)
-        chat_id = self.chat.id
         await self.communicator.send_json_to(self.data)
         response = await self.communicator.receive_json_from()
         self.data["type"] = EventType.DELETE_MESSAGE
@@ -119,7 +112,6 @@ class DirectTests(TestCase):
 
     async def test_delete_message_in_my_project_other_message(self):
         await self.connect(self.leader)
-        chat_id = self.chat.id
         await self.communicator.send_json_to(self.data)
         response = await self.communicator.receive_json_from()
         await self.communicator.disconnect()
@@ -134,7 +126,6 @@ class DirectTests(TestCase):
 
     async def test_delete_message_in_other_project_other_message(self):
         await self.connect(self.leader)
-        chat_id = self.chat.id
         await self.communicator.send_json_to(self.data)
         response = await self.communicator.receive_json_from()
         await self.communicator.disconnect()
@@ -149,7 +140,6 @@ class DirectTests(TestCase):
 
     async def test_edit_message_in_my_project_my_message(self):
         await self.connect(self.user)
-        chat_id = self.chat.id
         await self.communicator.send_json_to(self.data)
         response = await self.communicator.receive_json_from()
         self.data["type"] = EventType.EDIT_MESSAGE
@@ -161,7 +151,6 @@ class DirectTests(TestCase):
 
     async def test_edit_message_in_my_project_other_message(self):
         await self.connect(self.leader)
-        chat_id = self.chat.id
         await self.communicator.send_json_to(self.data)
         response = await self.communicator.receive_json_from()
         await self.communicator.disconnect()
@@ -176,7 +165,6 @@ class DirectTests(TestCase):
 
     async def test_edit_message_other_my_project_other_message(self):
         await self.connect(self.leader)
-        chat_id = self.chat.id
         await self.communicator.send_json_to(self.data)
         response = await self.communicator.receive_json_from()
         await self.communicator.disconnect()
