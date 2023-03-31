@@ -297,13 +297,13 @@ class FileToMessage(models.Model):
     direct_message = models.ForeignKey(
         DirectChatMessage,
         on_delete=models.CASCADE,
-        related_name="file_to_direct_message",
+        related_name="file_to_message",
         null=True,
     )
     project_message = models.ForeignKey(
         ProjectChatMessage,
         on_delete=models.CASCADE,
-        related_name="file_to_direct_message",
+        related_name="file_to_message",
         null=True,
     )
 
