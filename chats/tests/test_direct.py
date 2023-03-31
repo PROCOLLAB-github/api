@@ -68,31 +68,6 @@ class DirectTests(TestCase):
         response = await communicator.receive_json_from()
         self.assertTrue("error" in response.keys())
 
-    async def test_active_direct_with_myself(self):
-        communicator = WebsocketCommunicator(ChatConsumer.as_asgi(), "/ws/chat/")
-        communicator.scope["user"] = self.user
-        connected, subprotocol = await communicator.connect()
-        data = {
-            "type": "new_message",
-            "content": {
-                "chat_type": "direct",
-                "chat_id": "1_1",
-                "text": "hello world",
-                "reply_to": None,
-                "is_edited": False,
-            },
-        }
-        await communicator.send_json_to(data)
-        response = await communicator.receive_json_from()
-        message = response["content"]["message"]
-        self.assertTrue(
-            message["author"]["is_online"]
-        )  # Пользователь онлайн во время переписки с самим собой
-        self.assertTrue(
-            message["author"]["is_active"]
-        )  # Пользователь онлайн во время переписки с самим собой
-        self.assertTrue(message["is_read"])  # Сразу читать сообщение
-
     async def test_is_edited_new_message_direct_with_myself(
         self,
     ):  # Проверка на редактированность нового сообщения

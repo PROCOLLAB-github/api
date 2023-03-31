@@ -205,8 +205,3 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             # await self.close(200)
         else:
             raise ValueError("Unknown event type")
-
-
-class NotificationConsumer(AsyncJsonWebsocketConsumer):
-    # TODO: implement this
-    pass

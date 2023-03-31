@@ -68,7 +68,8 @@ class ProjectEvent:
             raise UserNotInChatException(
                 f"User {self.user.id} is not in project chat {msg.chat_id}"
             )
-        if msg.chat_id != event.content["chat_id"]:
+        same_chat = await sync_to_async(ProjectChat.objects.get)(pk=event.content["chat_id"])
+        if msg.chat_id != same_chat.id:
             raise WrongChatIdException(
                 "Some of chat/message ids are wrong, you can't access this message"
             )
