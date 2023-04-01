@@ -121,9 +121,10 @@ def get_all_files(messages):
     # looks like something bad
     files = []
     for message in messages:
-        files_in_message = [
-            file_to_message.file for file_to_message in message.file_to_message.all()
-        ]
-        files.extend(files_in_message)
+        if hasattr(message, "file_to_message"):
+            files_in_message = [
+                file_to_message.file for file_to_message in message.file_to_message.all()
+            ]
+            files.extend(files_in_message)
 
     return files
