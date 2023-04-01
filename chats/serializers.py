@@ -116,7 +116,7 @@ class DirectChatMessageListSerializer(serializers.ModelSerializer):
     @classmethod
     def get_files(cls, message: DirectChatMessage):
         data = []
-        for file_to_message in message.file_to_direct_message.all():
+        for file_to_message in message.file_to_message.all():
             file_data = UserFileSerializer(file_to_message.file).data
             data.append(file_data)
         return data
@@ -165,7 +165,7 @@ class ProjectChatMessageListSerializer(serializers.ModelSerializer):
     @classmethod
     def get_files(cls, message: DirectChatMessage):
         data = []
-        for file_to_message in message.file_to_direct_message.all():
+        for file_to_message in message.file_to_message.all():
             file_data = UserFileSerializer(file_to_message.file).data
             data.append(file_data)
         return data
