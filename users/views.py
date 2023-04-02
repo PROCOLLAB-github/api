@@ -25,6 +25,8 @@ from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
 from core.permissions import IsOwnerOrReadOnly
 from core.utils import Email
+from events.models import Event
+from events.serializers import EventsListSerializer
 from projects.serializers import ProjectListSerializer
 from users.helpers import VERBOSE_ROLE_TYPES, VERBOSE_USER_TYPES
 from users.models import UserAchievement, LikesOnProject
@@ -219,10 +221,10 @@ class EmailResetPassword(GenericAPIView):
 
         current_site = get_current_site(request).domain
         absolute_url = (
-            "http://"
-            + current_site
-            + relative_link
-            + f"?access_token={access_token}&refresh_token={refresh_token}"
+                "http://"
+                + current_site
+                + relative_link
+                + f"?access_token={access_token}&refresh_token={refresh_token}"
         )
 
         email_body = "Hi, {} {}! Use link below for reset password {}".format(
@@ -312,13 +314,13 @@ class AchievementList(ListCreateAPIView):
         serializer.validated_data["user"] = request.user
         # warning for someone who tries to set user variable (the user will always be yourself anyway)
         if (
-            request.data.get("user") is not None
-            and request.data.get("user") != request.user.id
+                request.data.get("user") is not None
+                and request.data.get("user") != request.user.id
         ):
             return Response(
                 {
                     "error": "you can't edit USER field for this view since "
-                    "you can't create achievements for other people"
+                             "you can't create achievements for other people"
                 },
                 status=status.HTTP_403_FORBIDDEN,
             )
@@ -365,3 +367,12 @@ class LogoutView(APIView):
             return Response(status=status.HTTP_205_RESET_CONTENT)
         except TokenError:
             return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+class RegisteredEventsList(ListAPIView):
+    serializer_class = EventsListSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        events = Event.objects.filter(registered_users__pk=self.request.user.pk)
+        return events

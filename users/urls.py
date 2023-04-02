@@ -14,7 +14,7 @@ from users.views import (
     UserTypesView,
     VerifyEmail,
     LogoutView,
-    LikedProjectList,
+    LikedProjectList, RegisteredEventsList,
 )
 
 app_name = "users"
@@ -28,6 +28,7 @@ urlpatterns = [
     path("users/liked/", LikedProjectList.as_view()),
     path("users/roles/", UserAdditionalRolesView.as_view()),
     path("users/types/", UserTypesView.as_view()),
+    path("users/events/", RegisteredEventsList.as_view()),
     path("users/<int:pk>/", UserDetail.as_view()),
     path("users/reset-password/", EmailResetPassword.as_view()),
     path("users/current/", CurrentUser.as_view()),
