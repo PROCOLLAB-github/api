@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from taggit.serializers import TaggitSerializer, TagListSerializerField
+
 from events.models import Event
 
 
@@ -19,7 +20,7 @@ class EventDetailSerializer(serializers.ModelSerializer, TaggitSerializer):
         ]
 
 
-class EventsListSerializer(serializers.ModelSerializer, TaggitSerializer):
+class EventsListSerializer(TaggitSerializer, serializers.ModelSerializer):
     tags = TagListSerializerField()
     text = serializers.CharField(allow_null=False, write_only=True)
 

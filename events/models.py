@@ -50,6 +50,7 @@ class Event(models.Model):
     registered_users = models.ManyToManyField(User, blank=True, related_name="events")
     views = models.BigIntegerField(default=0)
     likes = models.ManyToManyField(User, blank=True, related_name="likes")
+
     tags = TaggableManager()
 
     def __str__(self):
