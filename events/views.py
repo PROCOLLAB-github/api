@@ -5,6 +5,7 @@ from core.permissions import IsStaffOrReadOnly
 from events.filters import EventFilter
 from events.models import Event
 from events.serializers import EventsListSerializer, EventDetailSerializer
+from users.serializers import UserListSerializer
 
 
 class EventsList(generics.ListCreateAPIView):
@@ -19,3 +20,12 @@ class EventDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Event.objects.all()
     serializer_class = EventDetailSerializer
     permission_classes = [IsStaffOrReadOnly]
+
+
+class EventRegisteredUsersList(generics.ListAPIView):
+    serializer_class = UserListSerializer
+    permission_classes = [IsStaffOrReadOnly]
+
+    def get_queryset(self):
+        users = Event.objects.get(pk=self.kwargs["pk"]).registered_users.all()
+        return users
