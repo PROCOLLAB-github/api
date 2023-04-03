@@ -10,6 +10,7 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
     TokenVerifyView,
 )
+from core import permissions as core_permissions
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -18,7 +19,7 @@ schema_view = get_schema_view(
         description="API for ProCollab",
     ),
     public=True,
-    permission_classes=[permissions.AllowAny],
+    permission_classes=[core_permissions.IsStaffOrReadOnly],
 )
 
 urlpatterns = [
