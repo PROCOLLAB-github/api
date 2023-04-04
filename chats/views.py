@@ -1,13 +1,10 @@
 from django.contrib.auth import get_user_model
 
-# from django.db import transaction
 from rest_framework import status
 from rest_framework.generics import (
     ListAPIView,
     ListCreateAPIView,
     RetrieveAPIView,
-    # GenericAPIView,
-    # get_object_or_404,
 )
 
 from rest_framework.permissions import IsAuthenticated
@@ -23,8 +20,8 @@ from chats.serializers import (
     ProjectChatDetailSerializer,
     DirectChatDetailSerializer,
 )
-
-# from files.helpers import FileAPI, get_file_data
+from chats.utils import get_all_files
+from files.serializers import UserFileSerializer
 
 User = get_user_model()
 
@@ -136,3 +133,23 @@ class ProjectChatMessageList(ListCreateAPIView):
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+
+class DirectChatFileList(ListCreateAPIView):
+    serializer_class = UserFileSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        messages = self.request.user.direct_chats.get(id=self.kwargs["pk"]).messages.all()
+
+        return get_all_files(messages)
+
+
+class ProjectChatFileList(ListCreateAPIView):
+    serializer_class = UserFileSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        messages = ProjectChat.objects.get(id=self.kwargs["pk"]).messages.all()
+
+        return get_all_files(messages)

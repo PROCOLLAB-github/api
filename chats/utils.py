@@ -115,3 +115,16 @@ async def match_files_and_messages(file_urls, messages):
             project_message=messages["project_message"],
             file=file,
         )
+
+
+def get_all_files(messages):
+    # looks like something bad
+    files = []
+    for message in messages:
+        if hasattr(message, "file_to_message"):
+            files_in_message = [
+                file_to_message.file for file_to_message in message.file_to_message.all()
+            ]
+            files.extend(files_in_message)
+
+    return files
