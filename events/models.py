@@ -30,26 +30,19 @@ class Event(models.Model):
 
     title = models.CharField(max_length=256, null=False)
     text = models.TextField(null=False)
-    short_text = models.TextField(
-        max_length=256, blank=True, help_text="Текст для поста в телеграм"
-    )
+    short_text = models.TextField(max_length=256, blank=True)
     cover_url = models.URLField(null=False)
-    datetime_of_event = models.DateTimeField(verbose_name="Дата проведения", null=False)
-
-    datetime_created = models.DateTimeField(
-        verbose_name="Дата создания", null=False, auto_now_add=True
-    )
-    datetime_updated = models.DateTimeField(
-        verbose_name="Дата изменения", null=False, auto_now=True
-    )
-    tg_message_id = models.IntegerField(blank=True, null=True)
-    website_url = models.URLField(null=False, default=MAIN_URL)
+    datetime_of_event = models.DateTimeField(null=False)
+    datetime_created = models.DateTimeField(null=False, auto_now_add=True)
+    datetime_updated = models.DateTimeField(null=False, auto_now=True)
+    tg_message_id = models.IntegerField(blank=True, null=True, editable=False)
+    website_url = models.URLField(null=False, default=MAIN_URL,)
     event_type = models.PositiveSmallIntegerField(choices=VERBOSE_EVENT_TYPE, default=0)
     prize = models.CharField(max_length=256, null=True)
     favorites = models.ManyToManyField(User, blank=True, related_name="favorites")
     registered_users = models.ManyToManyField(User, blank=True, related_name="events")
-    views = models.BigIntegerField(default=0)
-    likes = models.ManyToManyField(User, blank=True, related_name="likes")
+    views = models.BigIntegerField(default=0, editable=False)
+    likes = models.ManyToManyField(User, blank=True, related_name="likes", editable=False)
 
     tags = TaggableManager()
 
