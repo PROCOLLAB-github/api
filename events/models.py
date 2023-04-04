@@ -36,7 +36,7 @@ class Event(models.Model):
     datetime_created = models.DateTimeField(null=False, auto_now_add=True)
     datetime_updated = models.DateTimeField(null=False, auto_now=True)
     tg_message_id = models.IntegerField(blank=True, null=True, editable=False)
-    website_url = models.URLField(null=False, default=MAIN_URL,)
+    website_url = models.URLField(null=False, default=MAIN_URL)
     event_type = models.PositiveSmallIntegerField(choices=VERBOSE_EVENT_TYPE, default=0)
     prize = models.CharField(max_length=256, null=True)
     favorites = models.ManyToManyField(User, blank=True, related_name="favorites")
