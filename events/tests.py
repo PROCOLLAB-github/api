@@ -4,12 +4,11 @@ from tests.constants import USER_CREATE_DATA
 from users.models import CustomUser
 from users.views import UserList
 
-from .models import Event
-from .views import EventDetail, EventsList
+from events.models import Event
+from events.views import EventDetail, EventsList
 
 
 class EventsTestCase(TestCase):
-
     def setUp(self):
         self.factory = APIRequestFactory()
 
@@ -30,11 +29,12 @@ class EventsTestCase(TestCase):
             "short_text": self.SHORT_TEXT,
             "cover_url": self.COVER_URL,
             "datetime_of_event": self.DATETIME_OF_EVENT,
+            "tags": ["some tag"],
         }
 
     def test_events_creation(self):
         user = self._user_create(is_staff=True)
-        request = self.factory.post("events/", self.CREATE_DATA, format='json')
+        request = self.factory.post("events/", self.CREATE_DATA, format="json")
         force_authenticate(request, user=user)
         response = self.event_list_view(request)
 
@@ -66,7 +66,6 @@ class EventsTestCase(TestCase):
         request = self.factory.post("events/", self.CREATE_DATA)
         force_authenticate(request, user=user)
         response = self.event_list_view(request)
-
         event_id = response.data["id"]
         event = Event.objects.get(id=event_id)
 

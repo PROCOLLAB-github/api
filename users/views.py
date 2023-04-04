@@ -3,10 +3,10 @@ from datetime import datetime
 import jwt
 from django.apps import apps
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import redirect
-from django.contrib.auth import get_user_model
 from django_filters import rest_framework as filters
 from rest_framework import status
 from rest_framework.generics import (
@@ -21,10 +21,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
-from core.permissions import IsOwnerOrReadOnly, IsAuthenticatedOrWriteOnly
+from core.permissions import IsOwnerOrReadOnly
+from events.models import Event
+from events.serializers import EventsListSerializer
 from projects.serializers import ProjectListSerializer
 from users.helpers import (
-    REDIRECT_URL,
     VERBOSE_ROLE_TYPES,
     VERBOSE_USER_TYPES,
     reset_email,
@@ -49,7 +50,7 @@ Project = apps.get_model("projects", "Project")
 
 class UserList(ListCreateAPIView):
     queryset = User.objects.get_active()
-    permission_classes = [IsAuthenticatedOrWriteOnly]
+    permission_classes = [AllowAny]  # FIXME: change to IsAuthorized
     serializer_class = UserListSerializer
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = UserFilter
@@ -158,6 +159,7 @@ class VerifyEmail(GenericAPIView):
 
     def get(self, request):
         token = request.GET.get("token")
+        REDIRECT_URL = "https://app.procollab.ru/auth/verification/"
         try:
             payload = jwt.decode(jwt=token, key=settings.SECRET_KEY, algorithms=["HS256"])
             user = User.objects.get(id=payload["user_id"])
@@ -328,3 +330,12 @@ class LogoutView(APIView):
             return Response(status=status.HTTP_205_RESET_CONTENT)
         except TokenError:
             return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+class RegisteredEventsList(ListAPIView):
+    serializer_class = EventsListSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        events = Event.objects.filter(registered_users__pk=self.request.user.pk)
+        return events

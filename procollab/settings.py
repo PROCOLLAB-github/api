@@ -23,6 +23,14 @@ AUTOPOSTING_ON = config("AUTOPOSTING_ON", default=False, cast=bool)
 TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN", default="", cast=str)
 TELEGRAM_CHANNEL = config("TELEGRAM_CHANNEL", default="", cast=str)
 
+TAGGIT_CASE_INSENSITIVE = True
+
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "static"
+STATICFILES_DIRS = [
+    BASE_DIR / 'static'
+]
+
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost",
     "https://api.procollab.ru",
@@ -94,6 +102,7 @@ INSTALLED_APPS = [
     "django_filters",
     "drf_yasg",
     "channels",
+    "taggit",
 ]
 
 MIDDLEWARE = [
@@ -128,7 +137,7 @@ ROOT_URLCONF = "procollab.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR, "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
