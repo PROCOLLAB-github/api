@@ -10,14 +10,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveField(
-            model_name="directchatmessage",
-            name="file_url",
-        ),
-        migrations.RemoveField(
-            model_name="projectchatmessage",
-            name="file_url",
-        ),
         migrations.DeleteModel(
             name="ChatAttachment",
         ),

@@ -1,6 +1,12 @@
 from rest_framework import serializers
 
-from chats.models import DirectChat, ProjectChat, DirectChatMessage, ProjectChatMessage
+from chats.models import (
+    DirectChat,
+    ProjectChat,
+    DirectChatMessage,
+    ProjectChatMessage,
+)
+from files.serializers import UserFileSerializer
 from users.serializers import UserListSerializer, UserDetailSerializer
 
 
@@ -81,7 +87,11 @@ class ProjectChatDetailSerializer(serializers.ModelSerializer):
         ]
 
 
-class DirectChatMessageListSerializer(serializers.ModelSerializer):
+class DirectChatMessageSerializer(serializers.ModelSerializer):
+    """Same as DirectChatMessageListSerializer but reply_to is an id, not an object.
+    This is done to avoid circular imports.
+    """
+
     author = UserDetailSerializer()
 
     class Meta:
@@ -98,7 +108,39 @@ class DirectChatMessageListSerializer(serializers.ModelSerializer):
         ]
 
 
-class ProjectChatMessageListSerializer(serializers.ModelSerializer):
+class DirectChatMessageListSerializer(serializers.ModelSerializer):
+    author = UserDetailSerializer()
+    reply_to = DirectChatMessageSerializer(allow_null=True)
+    files = serializers.SerializerMethodField()
+
+    @classmethod
+    def get_files(cls, message: DirectChatMessage):
+        data = []
+        for file_to_message in message.file_to_message.all():
+            file_data = UserFileSerializer(file_to_message.file).data
+            data.append(file_data)
+        return data
+
+    class Meta:
+        model = DirectChatMessage
+        fields = [
+            "id",
+            "author",
+            "text",
+            "reply_to",
+            "files",
+            "is_edited",
+            "is_read",
+            "is_deleted",
+            "created_at",
+        ]
+
+
+class ProjectChatMessageSerializer(serializers.ModelSerializer):
+    """Same as ProjectChatMessageListSerializer but reply_to is an id, not an object.
+    This is done to avoid circular imports.
+    """
+
     author = UserDetailSerializer()
 
     class Meta:
@@ -107,6 +149,34 @@ class ProjectChatMessageListSerializer(serializers.ModelSerializer):
             "id",
             "author",
             "text",
+            "reply_to",
+            "is_edited",
+            "is_read",
+            "is_deleted",
+            "created_at",
+        ]
+
+
+class ProjectChatMessageListSerializer(serializers.ModelSerializer):
+    author = UserDetailSerializer()
+    reply_to = ProjectChatMessageSerializer(allow_null=True)
+    files = serializers.SerializerMethodField()
+
+    @classmethod
+    def get_files(cls, message: DirectChatMessage):
+        data = []
+        for file_to_message in message.file_to_message.all():
+            file_data = UserFileSerializer(file_to_message.file).data
+            data.append(file_data)
+        return data
+
+    class Meta:
+        model = ProjectChatMessage
+        fields = [
+            "id",
+            "author",
+            "text",
+            "files",
             "reply_to",
             "is_edited",
             "is_read",
