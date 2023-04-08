@@ -33,6 +33,7 @@ class DirectTests(TestCase):
                 "text": "hello world",
                 "reply_to": None,
                 "is_edited": False,
+                "file_urls": [],
             },
         }
         await communicator.send_json_to(data)
@@ -62,6 +63,7 @@ class DirectTests(TestCase):
                 "text": "hello world",
                 "reply_to": None,
                 "is_edited": False,
+                "file_urls": [],
             },
         }
         await communicator.send_json_to(data)
@@ -82,6 +84,7 @@ class DirectTests(TestCase):
                 "text": "hello world",
                 "reply_to": None,
                 "is_edited": True,
+                "file_urls": [],
             },
         }
         await communicator.send_json_to(data)
@@ -102,6 +105,7 @@ class DirectTests(TestCase):
                 "text": "hello world",
                 "reply_to": None,
                 "is_edited": False,
+                "file_urls": [],
             },
         }
         await communicator.send_json_to(data)
@@ -123,6 +127,7 @@ class DirectTests(TestCase):
                 "text": "hello world",
                 "reply_to": None,
                 "is_edited": False,
+                "file_urls": [],
             },
         }
         await communicator.send_json_to(data)
@@ -140,6 +145,7 @@ class DirectTests(TestCase):
                 "chat_type": "direct",
                 "chat_id": "1_2",
                 "message_id": message_id,
+                "file_urls": [],
             },
         }
         await communicator.send_json_to(data)
@@ -161,6 +167,7 @@ class DirectTests(TestCase):
                 "text": "hello world",
                 "reply_to": None,
                 "is_edited": False,
+                "file_urls": [],
             },
         }
         await communicator.send_json_to(data)
@@ -173,6 +180,7 @@ class DirectTests(TestCase):
                 "chat_type": "direct",
                 "chat_id": "1_2",
                 "message_id": message_id,
+                "file_urls": [],
             },
         }
         await communicator.send_json_to(data)
@@ -197,6 +205,7 @@ class DirectTests(TestCase):
                 "text": "hello world",
                 "reply_to": None,
                 "is_edited": False,
+                "file_urls": [],
             },
         }
         await communicator.send_json_to(data)
@@ -214,6 +223,7 @@ class DirectTests(TestCase):
                 "chat_type": "direct",
                 "chat_id": "1_2",
                 "message_id": message_id,
+                "file_urls": [],
             },
         }
         await communicator.send_json_to(data)
@@ -234,6 +244,7 @@ class DirectTests(TestCase):
                 "text": "hello world",
                 "reply_to": None,
                 "is_edited": False,
+                "file_urls": [],
             },
         }
         await communicator.send_json_to(data)
@@ -247,6 +258,7 @@ class DirectTests(TestCase):
                 "chat_id": "1_1",
                 "message_id": message_id,
                 "text": text,
+                "file_urls": [],
             },
         }
         await communicator.send_json_to(data)
@@ -268,6 +280,7 @@ class DirectTests(TestCase):
                 "text": "hello world",
                 "reply_to": None,
                 "is_edited": False,
+                "file_urls": [],
             },
         }
         await communicator.send_json_to(data)
@@ -281,6 +294,7 @@ class DirectTests(TestCase):
                 "chat_id": "1_2",
                 "message_id": message_id,
                 "text": text,
+                "file_urls": [],
             },
         }
         await communicator.send_json_to(data)
@@ -304,6 +318,7 @@ class DirectTests(TestCase):
                 "text": "hello world",
                 "reply_to": None,
                 "is_edited": False,
+                "file_urls": [],
             },
         }
         await communicator.send_json_to(data)
@@ -321,6 +336,7 @@ class DirectTests(TestCase):
                 "chat_id": "1_2",
                 "message_id": message_id,
                 "text": text,
+                "file_urls": [],
             },
         }
         await communicator.send_json_to(data)
@@ -346,6 +362,7 @@ class DirectTests(TestCase):
                 "text": "hello world",
                 "reply_to": None,
                 "is_edited": False,
+                "file_urls": [],
             },
         }
         await communicator.send_json_to(data)
@@ -364,6 +381,7 @@ class DirectTests(TestCase):
                 "chat_id": "1_2",
                 "message_id": message_id,
                 "text": text,
+                "file_urls": [],
             },
         }
         await communicator.send_json_to(data)
@@ -387,6 +405,7 @@ class DirectTests(TestCase):
                 "text": "hello world",
                 "reply_to": None,
                 "is_edited": False,
+                "file_urls": [],
             },
         }
         await communicator.send_json_to(data)
@@ -398,6 +417,7 @@ class DirectTests(TestCase):
                 "chat_type": "direct",
                 "chat_id": "1_1",
                 "message_id": message_id,
+                "file_urls": [],
             },
         }
         await communicator.send_json_to(data)
@@ -418,6 +438,7 @@ class DirectTests(TestCase):
                 "text": "hello world",
                 "reply_to": None,
                 "is_edited": False,
+                "file_urls": [],
             },
         }
         await communicator.send_json_to(data)
@@ -429,6 +450,7 @@ class DirectTests(TestCase):
                 "chat_type": "direct",
                 "chat_id": "1_2",
                 "message_id": message_id,
+                "file_urls": [],
             },
         }
         await communicator.send_json_to(data)
@@ -449,6 +471,7 @@ class DirectTests(TestCase):
                 "text": "hello world",
                 "reply_to": None,
                 "is_edited": False,
+                "file_urls": [],
             },
         }
         await communicator.send_json_to(data)
@@ -465,6 +488,7 @@ class DirectTests(TestCase):
                 "chat_type": "direct",
                 "chat_id": "1_2",
                 "message_id": message_id,
+                "file_urls": [],
             },
         }
         await communicator.send_json_to(data)
@@ -488,6 +512,7 @@ class DirectTests(TestCase):
                 "text": "hello world",
                 "reply_to": None,
                 "is_edited": False,
+                "file_urls": [],
             },
         }
         await communicator.send_json_to(data)
@@ -504,6 +529,7 @@ class DirectTests(TestCase):
                 "chat_type": "direct",
                 "chat_id": "1_2",
                 "message_id": message_id,
+                "file_urls": [],
             },
         }
         await communicator.send_json_to(data)
