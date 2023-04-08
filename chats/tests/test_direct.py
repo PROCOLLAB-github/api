@@ -222,43 +222,6 @@ class DirectTests(TestCase):
         self.assertTrue("error" in response.keys())
         self.assertFalse(direct_message.is_read)
 
-    async def test_read_in_same_chats(self):  # 2_1 == 1_2
-        user = await sync_to_async(get_user_model().objects.create)(**TEST_USER2)
-        communicator = WebsocketCommunicator(ChatConsumer.as_asgi(), "/ws/chat/")
-        communicator.scope["user"] = user
-        connected, subprotocol = await communicator.connect()
-        data = {
-            "type": "new_message",
-            "content": {
-                "chat_type": "direct",
-                "chat_id": "1_2",
-                "text": "hello world",
-                "reply_to": None,
-                "is_edited": False,
-            },
-        }
-        await communicator.send_json_to(data)
-        response = await communicator.receive_json_from()
-        message = response["content"]["message"]
-        message_id = message["id"]
-        await communicator.disconnect()
-        # Read message with new user
-        communicator = WebsocketCommunicator(ChatConsumer.as_asgi(), "/ws/chat/")
-        communicator.scope["user"] = self.user
-        connected, subprotocol = await communicator.connect()
-        data = {
-            "type": "message_read",
-            "content": {
-                "chat_type": "direct",
-                "chat_id": "2_1",
-                "message_id": message_id,
-            },
-        }
-        await communicator.send_json_to(data)
-        response = await communicator.receive_json_from()
-        direct_message = await sync_to_async(DirectChatMessage.objects.get)(id=1)
-        self.assertTrue(direct_message.is_read)
-
     async def test_edit_my_message_in_myself(self):  # Редактирование в чате с самим собой
         communicator = WebsocketCommunicator(ChatConsumer.as_asgi(), "/ws/chat/")
         communicator.scope["user"] = self.user

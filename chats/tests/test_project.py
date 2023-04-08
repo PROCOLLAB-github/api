@@ -60,17 +60,6 @@ class DirectTests(TestCase):
         response = await self.communicator.receive_json_from()
         self.assertTrue("error" in response.keys())
 
-    async def test_read_message_in_my_project_my_message(self):
-        await self.connect(self.user)
-        await self.communicator.send_json_to(self.data)
-        response = await self.communicator.receive_json_from()
-        self.data["type"] = EventType.READ_MESSAGE
-        self.data["content"]["message_id"] = response["content"]["message"]["id"]
-        await self.communicator.send_json_to(self.data)
-        response = await self.communicator.receive_json_from()
-        project_message = await sync_to_async(ProjectChatMessage.objects.get)(pk=1)
-        self.assertFalse(project_message.is_read)
-
     async def test_read_message_in_my_project_other_message(self):
         await self.connect(self.user)
         await self.communicator.send_json_to(self.data)

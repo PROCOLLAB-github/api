@@ -6,6 +6,7 @@ from chats.exceptions import (
     WrongChatIdException,
     UserNotInChatException,
     UserNotMessageAuthorException,
+    UserIsNotAuthor,
 )
 from chats.serializers import (
     ProjectChatMessageListSerializer,
@@ -104,6 +105,9 @@ class ProjectEvent:
         message = await sync_to_async(ProjectChatMessage.objects.get)(
             pk=event.content["message_id"]
         )
+
+        if self.user.id != message.author_id:
+            raise UserIsNotAuthor(f"User {self.user.id} is not author {chat_id}")
         message.is_deleted = True
         await sync_to_async(message.save)()
 
