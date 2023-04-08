@@ -6,6 +6,7 @@ from chats.exceptions import (
     WrongChatIdException,
     UserNotInChatException,
     UserNotMessageAuthorException,
+    UserIsNotAuthor,
 )
 
 from chats.serializers import (
@@ -74,7 +75,10 @@ class ProjectEvent:
             raise UserNotInChatException(
                 f"User {self.user.id} is not in project chat {msg.chat_id}"
             )
-        if msg.chat_id != event.content["chat_id"]:
+        same_chat = await sync_to_async(ProjectChat.objects.get)(
+            pk=event.content["chat_id"]
+        )
+        if msg.chat_id != same_chat.id:
             raise WrongChatIdException(
                 "Some of chat/message ids are wrong, you can't access this message"
             )
@@ -107,6 +111,9 @@ class ProjectEvent:
         message = await sync_to_async(ProjectChatMessage.objects.get)(
             pk=event.content["message_id"]
         )
+
+        if self.user.id != message.author_id:
+            raise UserIsNotAuthor(f"User {self.user.id} is not author {chat_id}")
         message.is_deleted = True
         await sync_to_async(message.save)()
 
