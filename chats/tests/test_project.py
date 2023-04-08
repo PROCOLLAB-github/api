@@ -29,6 +29,7 @@ class DirectTests(TestCase):
                 "chat_id": "1",
                 "text": "hello world",
                 "reply_to": None,
+                "file_urls": [],
             },
         }
 
