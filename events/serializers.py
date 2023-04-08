@@ -23,12 +23,11 @@ class EventDetailSerializer(TaggitSerializer, serializers.ModelSerializer):
             "datetime_of_event",
             "datetime_created",
             "tags",
-            "tg_message_id"
+            "tg_message_id",
             "website_url",
             "event_type",
             "prize",
             "favorites",
-            "registered_users",
             "views",
             "likes",
         ]
