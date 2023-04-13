@@ -82,6 +82,13 @@ class CustomUser(AbstractUser):
     city = models.CharField(max_length=255, null=True, blank=True)
     organization = models.CharField(max_length=255, null=True, blank=True)
     speciality = models.CharField(max_length=255, null=True, blank=True)
+    # default=number of a last stage + 1 - it means that onboarding is completed
+    onboarding_stage = models.PositiveSmallIntegerField(
+        null=False,
+        blank=False,
+        default=6,
+    )
+
     datetime_updated = models.DateTimeField(null=False, auto_now=True)
     datetime_created = models.DateTimeField(null=False, auto_now_add=True)
 
