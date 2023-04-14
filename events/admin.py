@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django import forms
-from events.models import Event
+from events.models import Event, LikesOnEvent
 
 
 class EventAdminForm(forms.ModelForm):
@@ -22,7 +22,7 @@ class EventAdminForm(forms.ModelForm):
             "registered_users": "Зарегистрированные пользователи",
             "views": "Просмотры",
             "likes": "Оценили",
-            "tags": "Теги"
+            "tags": "Теги",
         }
         help_texts = {
             "title": "Обязателен к заполнению, max 256 символов",
@@ -33,7 +33,7 @@ class EventAdminForm(forms.ModelForm):
             "website_url": "URL от организатора, обязательно",
             "event_type": "Формат проведения",
             "prize": "256 char, обязательно",
-            "tags": "Указывать через запятую(можно использовать пробел в теге)"
+            "tags": "Указывать через запятую(можно использовать пробел в теге)",
         }
 
 
@@ -42,7 +42,7 @@ class EventAdmin(admin.ModelAdmin):
     form = EventAdminForm
     save_as = True
     save_on_top = True
-    filter_horizontal = ["registered_users", "favorites", "likes"]
+    filter_horizontal = ["registered_users", "favorites"]
     list_display = (
         "id",
         "title",
@@ -56,6 +56,11 @@ class EventAdmin(admin.ModelAdmin):
     readonly_fields = (
         "tg_message_id",
         "views",
-        "likes",
     )
     radio_fields = {"event_type": admin.VERTICAL}
+
+
+@admin.register(LikesOnEvent)
+class LikesOnEventAdmin(admin.ModelAdmin):
+    list_display = ("id",)
+    list_display_links = ("id",)
