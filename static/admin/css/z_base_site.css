@@ -20,7 +20,7 @@
     --hairline-color: #00000000;
     --border-color: #606060;
     --error-fg: #ba2121;
-    --message-success-bg: #00000000;
+    --message-success-bg: #025a00;
     --message-warning-bg: #ff740033;
     --message-error-bg: #ffefef;
     --darkened-bg: #00000000;
@@ -54,7 +54,7 @@ input[type=number], input[type=tel], textarea, .vTextField {
     border-radius: 4px;
     padding: 5px 6px;
     margin-top: 0;
-    color: var(--body-fg);
+    color: #ffffff;
     background-color: #00000000;
 }
 select {
@@ -94,9 +94,57 @@ select {
     padding: 0;
 }
 
-tr:nth-child(odd), .row-form-errors {
+tr:nth-child(odd), .row-form-errors, tr:nth-child(even) {
     background: #00000036;
 }
 #nav-filter.no-results {
     background: #00000000;
 }
+.errornote {
+    font-size: 0.875rem;
+    font-weight: 700;
+    display: block;
+    padding: 10px 12px;
+    margin: 0 0 10px 0;
+    color: #cf1414;
+    border: 1px solid #ba2121;
+    border-radius: 4px;
+    background-color: #292929;
+    background-position: 5px 12px;
+    overflow-wrap: break-word;
+}
+ul.errorlist {
+    margin: 0 0 4px;
+    padding: 3px;
+    color: #f81919;
+    background: #292929;
+}
+ul.errorlist li {
+    font-size: 0.8125rem;
+    display: block;
+    margin-bottom: 1px;
+}
+.errors input, .errors select, .errors textarea, td ul.errorlist + input, td ul.errorlist + select, td ul.errorlist + textarea{
+    border: 1px solid var(--error-fg);
+}
+
+div.breadcrumbs a {
+    color: #ffffffd6;
+    font-style: normal;
+
+}
+
+div.breadcrumbs {
+    background: #533493;
+    padding: 10px 40px;
+    border: none;
+    color: #ffffff;
+    text-align: left;
+    font-style: italic;
+}
+td, th {
+    font-size: 0.8125rem;
+    line-height: 16px;
+    border-bottom: 1.5px solid #2a2929;
+    vertical-align: top;
+    padding: 8px;
