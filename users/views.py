@@ -17,6 +17,7 @@ from rest_framework.generics import (
     UpdateAPIView,
 )
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
@@ -339,3 +340,23 @@ class RegisteredEventsList(ListAPIView):
     def get_queryset(self):
         events = Event.objects.filter(registered_users__pk=self.request.user.pk)
         return events
+
+
+class SetUserOnboardingStage(APIView):
+    def put(self, request: Request, pk):
+        try:
+            request.user.onboarding_stage = request.data["onboarding_stage"]
+            request.user.save()
+            # print(request.user.pk, pk)
+            if request.user.pk != pk:
+                return Response(
+                    status=status.HTTP_403_FORBIDDEN,
+                    data={"error": "You cannot edit other users!"},
+                )
+            serialized_user = UserListSerializer(request.user)
+            data = serialized_user.data
+            return Response(status=status.HTTP_200_OK, data=data)
+        except Exception:
+            return Response(
+                status=status.HTTP_400_BAD_REQUEST, data={"error": "Something went wrong"}
+            )

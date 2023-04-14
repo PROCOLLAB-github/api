@@ -87,6 +87,7 @@ class CustomUser(AbstractUser):
         null=True,
         blank=True,
         default=None,
+        editable=False,
         verbose_name="Стадия онбординга",
         help_text="null(пустое) - онбординг пройден, 1, 2 и 3 - номера стадий онбординга",
     )
