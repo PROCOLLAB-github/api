@@ -16,6 +16,7 @@ from users.views import (
     LogoutView,
     LikedProjectList,
     RegisteredEventsList,
+    SetUserOnboardingStage,
 )
 
 app_name = "users"
@@ -30,6 +31,7 @@ urlpatterns = [
     path("users/roles/", UserAdditionalRolesView.as_view()),
     path("users/types/", UserTypesView.as_view()),
     path("users/<int:pk>/", UserDetail.as_view()),
+    path("users/<int:pk>/set_onboarding_stage/", SetUserOnboardingStage.as_view()),
     path("users/reset-password/", EmailResetPassword.as_view()),
     path("users/current/", CurrentUser.as_view()),
     path("users/current/events/", RegisteredEventsList.as_view()),
