@@ -39,11 +39,6 @@
     --object-tools-bg: var(--close-button-bg);
     --object-tools-hover-bg: var(--close-button-hover-bg);
 }
-.module {
-    border: none;
-    margin-bottom: 30px;
-    background: #00000000;
-}
 #content-related .module{
     background: #00000036;
 }
@@ -57,6 +52,45 @@ input[type=number], input[type=tel], textarea, .vTextField {
     color: #ffffff;
     background-color: #00000000;
 }
+
+
+.module {
+    border: none;
+    margin-bottom: 30px;
+    background: #00000000;
+}
+
+.module h2, .module caption, .inline-group h2 {
+    margin: 0;
+    padding: 10px 12px;
+    font-weight: 400;
+    font-size: 0.8125rem;
+    text-align: left;
+    background: var(--primary);
+    color: var(--header-link-color);
+}
+
+.navbar_models_name {
+    padding: 10px 12px;
+    border: 1px solid #5b5b5b00;
+    border-radius: 4px;
+}
+
+
+.navbar_models {
+    font-size: 0.875rem;
+    font-weight: 700;
+    display: block;
+    padding: 10px 12px;
+    margin: 0 0 10px 0;
+    color: #ff0000;
+    border: 1px solid #555555;
+    border-radius: 4px;
+    background-color: #00ffbc00;
+    background-position: 5px 12px;
+    overflow-wrap: break-word;
+}
+
 select {
     border: 1px solid #ccc;
     border-radius: 4px;
@@ -94,9 +128,13 @@ select {
     padding: 0;
 }
 
-tr:nth-child(odd), .row-form-errors, tr:nth-child(even) {
-    background: #00000036;
+tr:nth-child(odd), .row-form-error {
+    background: #282828;
 }
+tr:nth-child(even) {
+    background: #1d1d1dd6;
+}
+
 #nav-filter.no-results {
     background: #00000000;
 }
@@ -145,6 +183,6 @@ div.breadcrumbs {
 td, th {
     font-size: 0.8125rem;
     line-height: 16px;
-    border-bottom: 1.5px solid #2a2929;
     vertical-align: top;
     padding: 8px;
+
