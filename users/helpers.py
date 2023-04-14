@@ -29,7 +29,7 @@ REDIRECT_URL = "https://app.procollab.ru/auth/verification/"
 PROTOCOL = "https"
 
 if settings.DEBUG:
-    PROTOCOL = "https"
+    PROTOCOL = "http"
 
 
 def reset_email(user, request):
