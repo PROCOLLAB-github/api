@@ -20,7 +20,7 @@
     --hairline-color: #00000000;
     --border-color: #606060;
     --error-fg: #ba2121;
-    --message-success-bg: #00000000;
+    --message-success-bg: #025a00;
     --message-warning-bg: #ff740033;
     --message-error-bg: #ffefef;
     --darkened-bg: #00000000;
@@ -39,11 +39,6 @@
     --object-tools-bg: var(--close-button-bg);
     --object-tools-hover-bg: var(--close-button-hover-bg);
 }
-.module {
-    border: none;
-    margin-bottom: 30px;
-    background: #00000000;
-}
 #content-related .module{
     background: #00000036;
 }
@@ -54,9 +49,48 @@ input[type=number], input[type=tel], textarea, .vTextField {
     border-radius: 4px;
     padding: 5px 6px;
     margin-top: 0;
-    color: var(--body-fg);
+    color: #ffffff;
     background-color: #00000000;
 }
+
+
+.module {
+    border: none;
+    margin-bottom: 30px;
+    background: #00000000;
+}
+
+.module h2, .module caption, .inline-group h2 {
+    margin: 0;
+    padding: 10px 12px;
+    font-weight: 400;
+    font-size: 0.8125rem;
+    text-align: left;
+    background: var(--primary);
+    color: var(--header-link-color);
+}
+
+.navbar_models_name {
+    padding: 10px 12px;
+    border: 1px solid #5b5b5b00;
+    border-radius: 4px;
+}
+
+
+.navbar_models {
+    font-size: 0.875rem;
+    font-weight: 700;
+    display: block;
+    padding: 10px 12px;
+    margin: 0 0 10px 0;
+    color: #ff0000;
+    border: 1px solid #555555;
+    border-radius: 4px;
+    background-color: #00ffbc00;
+    background-position: 5px 12px;
+    overflow-wrap: break-word;
+}
+
 select {
     border: 1px solid #ccc;
     border-radius: 4px;
@@ -94,9 +128,61 @@ select {
     padding: 0;
 }
 
-tr:nth-child(odd), .row-form-errors {
-    background: #00000036;
+tr:nth-child(odd), .row-form-error {
+    background: #282828;
 }
+tr:nth-child(even) {
+    background: #1d1d1dd6;
+}
+
 #nav-filter.no-results {
     background: #00000000;
 }
+.errornote {
+    font-size: 0.875rem;
+    font-weight: 700;
+    display: block;
+    padding: 10px 12px;
+    margin: 0 0 10px 0;
+    color: #cf1414;
+    border: 1px solid #ba2121;
+    border-radius: 4px;
+    background-color: #292929;
+    background-position: 5px 12px;
+    overflow-wrap: break-word;
+}
+ul.errorlist {
+    margin: 0 0 4px;
+    padding: 3px;
+    color: #f81919;
+    background: #292929;
+}
+ul.errorlist li {
+    font-size: 0.8125rem;
+    display: block;
+    margin-bottom: 1px;
+}
+.errors input, .errors select, .errors textarea, td ul.errorlist + input, td ul.errorlist + select, td ul.errorlist + textarea{
+    border: 1px solid var(--error-fg);
+}
+
+div.breadcrumbs a {
+    color: #ffffffd6;
+    font-style: normal;
+
+}
+
+div.breadcrumbs {
+    background: #533493;
+    padding: 10px 40px;
+    border: none;
+    color: #ffffff;
+    text-align: left;
+    font-style: italic;
+}
+td, th {
+    font-size: 0.8125rem;
+    line-height: 16px;
+    vertical-align: top;
+    padding: 8px;
+
