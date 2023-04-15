@@ -86,10 +86,14 @@ class CustomUser(AbstractUser):
     onboarding_stage = models.PositiveSmallIntegerField(
         null=True,
         blank=True,
-        default=None,
         editable=False,
         verbose_name="Стадия онбординга",
         help_text="null(пустое) - онбординг пройден, 1, 2 и 3 - номера стадий онбординга",
+    )
+    verification_date = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Дата верификации",
     )
 
     datetime_updated = models.DateTimeField(null=False, auto_now=True)
