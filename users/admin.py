@@ -12,7 +12,7 @@ class CustomUserAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     "user_type",
-                    # "onboarding_stage",
+                    "verification_date",
                 )
             },
         ),
