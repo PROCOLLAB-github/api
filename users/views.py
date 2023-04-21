@@ -27,10 +27,13 @@ from events.models import Event
 from events.serializers import EventsListSerializer
 from projects.serializers import ProjectListSerializer
 from users.helpers import (
-    VERBOSE_ROLE_TYPES,
-    VERBOSE_USER_TYPES,
     reset_email,
     verify_email,
+)
+from users.constants import (
+    VERBOSE_ROLE_TYPES,
+    VERBOSE_USER_TYPES,
+    VERIFY_EMAIL_REDIRECT_URL,
 )
 from users.models import UserAchievement, LikesOnProject
 from users.permissions import IsAchievementOwnerOrReadOnly
@@ -160,7 +163,7 @@ class VerifyEmail(GenericAPIView):
 
     def get(self, request):
         token = request.GET.get("token")
-        REDIRECT_URL = "https://app.procollab.ru/auth/verification/"
+
         try:
             payload = jwt.decode(jwt=token, key=settings.SECRET_KEY, algorithms=["HS256"])
             user = User.objects.get(id=payload["user_id"])
@@ -172,20 +175,20 @@ class VerifyEmail(GenericAPIView):
                 user.save()
 
             return redirect(
-                f"{REDIRECT_URL}?access_token={access_token}&refresh_token={refresh_token}",
+                f"{VERIFY_EMAIL_REDIRECT_URL}?access_token={access_token}&refresh_token={refresh_token}",
                 status=status.HTTP_200_OK,
                 message="Succeed",
             )
 
         except jwt.ExpiredSignatureError:
             return redirect(
-                REDIRECT_URL,
+                VERIFY_EMAIL_REDIRECT_URL,
                 status=status.HTTP_400_BAD_REQUEST,
                 message="Activate Expired",
             )
         except jwt.DecodeError:
             return redirect(
-                REDIRECT_URL,
+                VERIFY_EMAIL_REDIRECT_URL,
                 status=status.HTTP_400_BAD_REQUEST,
                 message="Decode error",
             )
@@ -360,3 +363,26 @@ class SetUserOnboardingStage(APIView):
             return Response(
                 status=status.HTTP_400_BAD_REQUEST, data={"error": "Something went wrong"}
             )
+
+
+class ResendVerifyEmail(GenericAPIView):
+    permission_classes = [AllowAny]
+    serializer_class = UserDetailSerializer
+    queryset = User.objects.all()
+
+    def post(self, request, *args, **kwargs):
+        try:
+            email = request.data["email"]
+            user = User.objects.get(email=email)
+
+            if not user.is_active:
+                verify_email(user, request)
+                return Response("Email sent!", status=status.HTTP_200_OK)
+
+            return Response("User already verified!", status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response(
+                "User with given email does not exists!", status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception:
+            return Response(status=status.HTTP_400_BAD_REQUEST)

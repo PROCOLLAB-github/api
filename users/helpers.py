@@ -1,35 +1,9 @@
-from django.conf import settings
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.sites.shortcuts import get_current_site
 from django.urls import reverse
 
 from core.utils import Email
-
-ADMIN = 0
-MEMBER = 1
-MENTOR = 2
-EXPERT = 3
-INVESTOR = 4
-
-VERBOSE_USER_TYPES = (
-    (MEMBER, "Участник"),
-    (MENTOR, "Ментор"),
-    (EXPERT, "Эксперт"),
-    (INVESTOR, "Инвестор"),
-)
-
-VERBOSE_ROLE_TYPES = (
-    (MENTOR, "Ментор"),
-    (EXPERT, "Эксперт"),
-    (INVESTOR, "Инвестор"),
-)
-
-REDIRECT_URL = "https://app.procollab.ru/auth/verification/"
-
-PROTOCOL = "https"
-
-if settings.DEBUG:
-    PROTOCOL = "http"
+from users.constants import PROTOCOL
 
 
 def reset_email(user, request):
