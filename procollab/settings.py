@@ -25,12 +25,6 @@ TELEGRAM_CHANNEL = config("TELEGRAM_CHANNEL", default="", cast=str)
 
 TAGGIT_CASE_INSENSITIVE = True
 
-STATIC_URL = "/static/"
-STATIC_ROOT = BASE_DIR / "static"
-STATICFILES_DIRS = [
-    BASE_DIR / 'static'
-]
-
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost",
     "https://api.procollab.ru",

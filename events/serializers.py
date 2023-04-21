@@ -23,6 +23,13 @@ class EventDetailSerializer(TaggitSerializer, serializers.ModelSerializer):
             "datetime_of_event",
             "datetime_created",
             "tags",
+            "tg_message_id",
+            "website_url",
+            "event_type",
+            "prize",
+            "favorites",
+            "views",
+            "likes",
         ]
 
 
@@ -40,6 +47,9 @@ class EventsListSerializer(TaggitSerializer, serializers.ModelSerializer):
             "cover_url",
             "datetime_of_event",
             "tags",
+            "event_type",
+            "prize",
+            "favorites",
         ]
 
 
