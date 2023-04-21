@@ -1,7 +1,11 @@
 from chats.models import DirectChatMessage, DirectChat
 from chats.websockets_settings import Event, EventType
 from asgiref.sync import sync_to_async
-from chats.exceptions import WrongChatIdException, UserNotMessageAuthorException
+from chats.exceptions import (
+    WrongChatIdException,
+    UserNotMessageAuthorException,
+    UserIsNotAuthor,
+)
 from django.core.cache import cache
 from chats.utils import (
     get_user_channel_cache_key,
@@ -80,7 +84,7 @@ class DirectEvent:
         msg = await sync_to_async(DirectChatMessage.objects.get)(
             pk=event.content["message_id"]
         )
-        if msg.chat_id != chat_id or msg.author_id != other_user:
+        if msg.chat_id != chat_id or msg.author_id != other_user.id:
             raise WrongChatIdException(
                 "Some of chat/message ids are wrong, you can't access this message"
             )
@@ -106,6 +110,10 @@ class DirectEvent:
         message_id = event.content["message_id"]
 
         message = await sync_to_async(DirectChatMessage.objects.get)(pk=message_id)
+
+        if self.user.id != message.author_id:
+            raise UserIsNotAuthor(f"User {self.user.id} is not author {message.text}")
+
         message.is_deleted = True
         await sync_to_async(message.save)()
 

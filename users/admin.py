@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib import admin
 
 from .models import CustomUser, UserAchievement, Member, Mentor, Expert, Investor
@@ -8,7 +9,12 @@ class CustomUserAdmin(admin.ModelAdmin):
     fieldsets = (
         (
             "Аккаунт",
-            {"fields": ("user_type",)},
+            {
+                "fields": (
+                    "user_type",
+                    "verification_date",
+                )
+            },
         ),
         (
             "Конфиденциальная информация",
@@ -87,8 +93,8 @@ class CustomUserAdmin(admin.ModelAdmin):
         "city",
     )
 
-    #     if user_type changed, then delete all related fields
     def save_model(self, request, obj, form, change):
+        # if user_type changed, then delete all related fields
         if change:
             old_user = CustomUser.objects.get(id=obj.id)
             if obj.user_type != old_user.user_type:
@@ -102,7 +108,7 @@ class CustomUserAdmin(admin.ModelAdmin):
                     elif old_user.user_type == CustomUser.INVESTOR:
                         old_user.investor.delete()
                 except Exception:
-                    pass
+                    print(f"User type `{old_user.user_type}` is not supported!")
 
                 if obj.user_type == CustomUser.MEMBER:
                     Member.objects.create(user=old_user)
@@ -112,6 +118,12 @@ class CustomUserAdmin(admin.ModelAdmin):
                     Expert.objects.create(user=old_user)
                 elif obj.user_type == CustomUser.INVESTOR:
                     Investor.objects.create(user=old_user)
+
+            # # set hashed password
+            # obj.set_password(obj.password)
+
+            if settings.DEBUG:
+                obj.is_active = True
 
         super().save_model(request, obj, form, change)
 

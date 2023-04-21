@@ -3,10 +3,10 @@ from datetime import datetime
 import jwt
 from django.apps import apps
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import redirect
-from django.contrib.auth import get_user_model
 from django_filters import rest_framework as filters
 from rest_framework import status
 from rest_framework.generics import (
@@ -17,18 +17,23 @@ from rest_framework.generics import (
     UpdateAPIView,
 )
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
-from core.permissions import IsOwnerOrReadOnly, IsAuthenticatedOrWriteOnly
+from core.permissions import IsOwnerOrReadOnly
+from events.models import Event
+from events.serializers import EventsListSerializer
 from projects.serializers import ProjectListSerializer
 from users.helpers import (
-    REDIRECT_URL,
-    VERBOSE_ROLE_TYPES,
-    VERBOSE_USER_TYPES,
     reset_email,
     verify_email,
+)
+from users.constants import (
+    VERBOSE_ROLE_TYPES,
+    VERBOSE_USER_TYPES,
+    VERIFY_EMAIL_REDIRECT_URL,
 )
 from users.models import UserAchievement, LikesOnProject
 from users.permissions import IsAchievementOwnerOrReadOnly
@@ -49,7 +54,7 @@ Project = apps.get_model("projects", "Project")
 
 class UserList(ListCreateAPIView):
     queryset = User.objects.get_active()
-    permission_classes = [IsAuthenticatedOrWriteOnly]
+    permission_classes = [AllowAny]  # FIXME: change to IsAuthorized
     serializer_class = UserListSerializer
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = UserFilter
@@ -158,6 +163,7 @@ class VerifyEmail(GenericAPIView):
 
     def get(self, request):
         token = request.GET.get("token")
+
         try:
             payload = jwt.decode(jwt=token, key=settings.SECRET_KEY, algorithms=["HS256"])
             user = User.objects.get(id=payload["user_id"])
@@ -169,20 +175,20 @@ class VerifyEmail(GenericAPIView):
                 user.save()
 
             return redirect(
-                f"{REDIRECT_URL}?access_token={access_token}&refresh_token={refresh_token}",
+                f"{VERIFY_EMAIL_REDIRECT_URL}?access_token={access_token}&refresh_token={refresh_token}",
                 status=status.HTTP_200_OK,
                 message="Succeed",
             )
 
         except jwt.ExpiredSignatureError:
             return redirect(
-                REDIRECT_URL,
+                VERIFY_EMAIL_REDIRECT_URL,
                 status=status.HTTP_400_BAD_REQUEST,
                 message="Activate Expired",
             )
         except jwt.DecodeError:
             return redirect(
-                REDIRECT_URL,
+                VERIFY_EMAIL_REDIRECT_URL,
                 status=status.HTTP_400_BAD_REQUEST,
                 message="Decode error",
             )
@@ -327,4 +333,56 @@ class LogoutView(APIView):
             RefreshToken(refresh_token).blacklist()
             return Response(status=status.HTTP_205_RESET_CONTENT)
         except TokenError:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+class RegisteredEventsList(ListAPIView):
+    serializer_class = EventsListSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        events = Event.objects.filter(registered_users__pk=self.request.user.pk)
+        return events
+
+
+class SetUserOnboardingStage(APIView):
+    def put(self, request: Request, pk):
+        try:
+            request.user.onboarding_stage = request.data["onboarding_stage"]
+            request.user.save()
+            # print(request.user.pk, pk)
+            if request.user.pk != pk:
+                return Response(
+                    status=status.HTTP_403_FORBIDDEN,
+                    data={"error": "You cannot edit other users!"},
+                )
+            serialized_user = UserListSerializer(request.user)
+            data = serialized_user.data
+            return Response(status=status.HTTP_200_OK, data=data)
+        except Exception:
+            return Response(
+                status=status.HTTP_400_BAD_REQUEST, data={"error": "Something went wrong"}
+            )
+
+
+class ResendVerifyEmail(GenericAPIView):
+    permission_classes = [AllowAny]
+    serializer_class = UserDetailSerializer
+    queryset = User.objects.all()
+
+    def post(self, request, *args, **kwargs):
+        try:
+            email = request.data["email"]
+            user = User.objects.get(email=email)
+
+            if not user.is_active:
+                verify_email(user, request)
+                return Response("Email sent!", status=status.HTTP_200_OK)
+
+            return Response("User already verified!", status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response(
+                "User with given email does not exists!", status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception:
             return Response(status=status.HTTP_400_BAD_REQUEST)

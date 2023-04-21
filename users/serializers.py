@@ -114,6 +114,8 @@ class UserDetailSerializer(serializers.ModelSerializer):
             "expert",
             "mentor",
             "achievements",
+            "verification_date",
+            "onboarding_stage",
         ]
 
     def update(self, instance, validated_data):
@@ -221,9 +223,15 @@ class UserListSerializer(serializers.ModelSerializer):
             "is_active",
             "is_online",
             "member",
+            "onboarding_stage",
+            "verification_date",
             "password",
         ]
-        extra_kwargs = {"password": {"write_only": True}}
+        extra_kwargs = {
+            "password": {"write_only": True},
+            "onboarding_stage": {"read_only": True},
+            "verification_date": {"read_only": True},
+        }
 
 
 class AchievementDetailSerializer(serializers.ModelSerializer):
