@@ -17,6 +17,7 @@ from users.views import (
     LikedProjectList,
     RegisteredEventsList,
     SetUserOnboardingStage,
+    ResendVerifyEmail,
 )
 
 app_name = "users"
@@ -38,6 +39,11 @@ urlpatterns = [
     path("users/achievements/", AchievementList.as_view()),
     path("users/achievements/<int:pk>/", AchievementDetail.as_view()),
     path("logout/", LogoutView.as_view()),
+    path(
+        "resend_email/",
+        ResendVerifyEmail.as_view(),
+        name="account_email_verification_resent",
+    ),
     re_path(
         r"^account-confirm-email/",
         VerifyEmail.as_view(),
