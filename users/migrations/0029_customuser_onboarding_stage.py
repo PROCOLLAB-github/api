@@ -13,6 +13,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="customuser",
             name="onboarding_stage",
-            field=models.PositiveSmallIntegerField(),
+            field=models.PositiveSmallIntegerField(null=True, blank=True),
         ),
     ]
