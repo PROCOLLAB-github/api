@@ -6,6 +6,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
 from rest_framework.exceptions import AuthenticationFailed
+from loguru import logger
 
 User = get_user_model()
 
@@ -125,5 +126,9 @@ class TokenAuthMiddleware:
             from django.contrib.auth.models import AnonymousUser
 
             scope["user"] = AnonymousUser()
+            logger.warning("Token is missing from headers")
 
         return await self.app(scope, receive, send)
+
+    async def process_exception(self, request, exception):
+        logger.warning(f"{exception} http_path={request.get_full_path()}")

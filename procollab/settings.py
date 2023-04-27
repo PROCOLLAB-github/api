@@ -99,6 +99,7 @@ INSTALLED_APPS = [
     "taggit",
 ]
 
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -110,6 +111,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "debug_toolbar.middleware.DebugToolbarMiddleware",
+    "logs.middleware.CustomLoguruMiddleware",
 ]
 
 # CORS_ALLOWED_ORIGINS = [
@@ -313,3 +315,5 @@ SELECTEL_CONTAINER_USERNAME = config(
 SELECTEL_CONTAINER_PASSWORD = config(
     "SELECTEL_CONTAINER_PASSWORD", cast=str, default="PWD"
 )
+
+LAGURU_LOGGIN = {"ROTATION": "100 KB", "COMPRESSION": "zip"}

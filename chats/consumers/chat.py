@@ -23,6 +23,7 @@ from chats.consumers.event_types import DirectEvent, ProjectEvent
 from chats.utils import get_chat_and_user_ids_from_content
 from chats.models import DirectChat
 from asgiref.sync import sync_to_async
+from loguru import logger
 
 
 class ChatConsumer(AsyncJsonWebsocketConsumer):
@@ -94,8 +95,10 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             try:
                 await self.__process_chat_related_event(event, room_name)
             except ChatException as e:
+                logger.warning(str(e.get_error()))
                 await self.send_json({"error": str(e.get_error())})
             except KeyError as e:
+                logger.warning(f"Missing key: {e}")
                 await self.send_json(
                     {
                         "error": f"Missing key (might be backend's fault,"
