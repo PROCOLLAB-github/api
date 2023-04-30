@@ -25,6 +25,8 @@ TELEGRAM_CHANNEL = config("TELEGRAM_CHANNEL", default="", cast=str)
 
 TAGGIT_CASE_INSENSITIVE = True
 
+# Static files (CSS, JavaScript, Images)
+
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "static"
 STATICFILES_DIRS = [
@@ -259,11 +261,6 @@ USE_I18N = True
 USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
-
-STATIC_URL = "/static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"
-
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # Default primary key field type
 
