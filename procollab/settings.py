@@ -29,9 +29,7 @@ TAGGIT_CASE_INSENSITIVE = True
 
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "static"
-STATICFILES_DIRS = [
-    BASE_DIR / 'static'
-]
+STATICFILES_DIRS = []
 
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost",
