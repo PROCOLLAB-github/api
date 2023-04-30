@@ -4,6 +4,7 @@ from django.urls import reverse
 
 from core.utils import Email
 from users.constants import PROTOCOL
+from users.models import UserAchievement
 
 
 def reset_email(user, request):
@@ -62,3 +63,19 @@ def verify_email(user, request):
     }
 
     Email.send_email(data)
+
+
+def update_achievements(achievements, pk):
+    # delete all old achievements
+    UserAchievement.objects.filter(user_id=pk).delete()
+    # create new achievements
+    UserAchievement.objects.bulk_create(
+        [
+            UserAchievement(
+                user_id=pk,
+                title=achievement.get("title"),
+                status=achievement.get("status"),
+            )
+            for achievement in achievements
+        ]
+    )

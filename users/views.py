@@ -29,6 +29,7 @@ from projects.serializers import ProjectListSerializer
 from users.helpers import (
     reset_email,
     verify_email,
+    update_achievements,
 )
 from users.constants import (
     VERBOSE_ROLE_TYPES,
@@ -115,24 +116,14 @@ class UserDetail(RetrieveUpdateDestroyAPIView):
     def put(self, request, pk):
         # bootleg version of updating achievements via user
         if request.data.get("achievements") is not None:
-            achievements = request.data.get("achievements")
-            # delete all old achievements
-            UserAchievement.objects.filter(user_id=pk).delete()
-            # create new achievements
-            UserAchievement.objects.bulk_create(
-                [
-                    UserAchievement(
-                        user_id=pk,
-                        title=achievement.get("title"),
-                        status=achievement.get("status"),
-                    )
-                    for achievement in achievements
-                ]
-            )
+            update_achievements(request.data.get("achievements"), pk)
         return super().put(request, pk)
 
     @transaction.atomic
     def patch(self, request, pk):
+        # bootleg version of updating achievements via user
+        if request.data.get("achievements") is not None:
+            update_achievements(request.data.get("achievements"), pk)
         return super().patch(request, pk)
 
 
