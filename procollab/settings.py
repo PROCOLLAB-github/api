@@ -25,12 +25,6 @@ TELEGRAM_CHANNEL = config("TELEGRAM_CHANNEL", default="", cast=str)
 
 TAGGIT_CASE_INSENSITIVE = True
 
-# Static files (CSS, JavaScript, Images)
-
-STATIC_URL = "/static/"
-STATIC_ROOT = BASE_DIR / "static"
-STATICFILES_DIRS = []
-
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost",
     "https://api.procollab.ru",
@@ -260,6 +254,11 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_DIRS = [BASE_DIR / "static"]
+
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 # Default primary key field type
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
