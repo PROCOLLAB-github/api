@@ -15,7 +15,7 @@ User = get_user_model()
 class VerificationTasks:
     instance = None
     __TOKEN = config("CLICKUP_API_TOKEN", default="default-api-key", cast=str)
-    __CLICKUP_SPACE_ID = config("CLICKUP_SPACE_ID", default="default-space-id", cast=int)
+    __CLICKUP_SPACE_ID = config("CLICKUP_SPACE_ID", default=0, cast=int)
 
     @classmethod
     def create(cls, user: User):
