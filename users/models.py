@@ -88,8 +88,9 @@ class CustomUser(AbstractUser):
         null=True,
         blank=True,
         editable=False,
+        default=0,
         verbose_name="Стадия онбординга",
-        help_text="null(пустое) - онбординг пройден, 1, 2 и 3 - номера стадий онбординга",
+        help_text="0 - не пройден, 1, 2 и 3 - номера стадий онбординга, null(пустое) - онбординг пройден",
     )
     verification_date = models.DateField(
         null=True,
