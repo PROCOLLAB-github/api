@@ -1,4 +1,14 @@
+from enum import Enum
+
 from django.conf import settings
+
+
+class OnboardingStage(Enum):
+    intro = 0
+    skills = 1
+    account_type = 2
+    completed = None
+
 
 ADMIN = 0
 MEMBER = 1

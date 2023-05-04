@@ -35,6 +35,7 @@ from users.constants import (
     VERBOSE_ROLE_TYPES,
     VERBOSE_USER_TYPES,
     VERIFY_EMAIL_REDIRECT_URL,
+    OnboardingStage,
 )
 from users.models import UserAchievement, LikesOnProject
 from users.permissions import IsAchievementOwnerOrReadOnly
@@ -354,7 +355,10 @@ class SetUserOnboardingStage(APIView):
                     data={"error": "Wrong onboarding stage number!"},
                 )
             # if the user was on the last stage and passed it
-            if request.user.onboarding_stage == 3 and new_stage is None:
+            if (
+                request.user.onboarding_stage == OnboardingStage.account_type.value
+                and new_stage == OnboardingStage.completed.value
+            ):
                 VerificationTasks.create(request.user)
 
             request.user.onboarding_stage = new_stage

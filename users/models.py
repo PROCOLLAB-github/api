@@ -11,6 +11,7 @@ from users.constants import (
     MENTOR,
     VERBOSE_ROLE_TYPES,
     VERBOSE_USER_TYPES,
+    OnboardingStage,
 )
 from users.managers import (
     CustomUserManager,
@@ -88,9 +89,9 @@ class CustomUser(AbstractUser):
         null=True,
         blank=True,
         editable=False,
-        default=0,
+        default=OnboardingStage.intro.value,
         verbose_name="Стадия онбординга",
-        help_text="0 - не пройден, 1, 2 и 3 - номера стадий онбординга, null(пустое) - онбординг пройден",
+        help_text="0, 1, 2 - номера стадий онбординга, null(пустое) - онбординг пройден",
     )
     verification_date = models.DateField(
         null=True,
