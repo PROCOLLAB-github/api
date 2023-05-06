@@ -47,6 +47,7 @@ from users.serializers import (
     UserDetailSerializer,
     UserListSerializer,
     VerifyEmailSerializer,
+    ResendVerifyEmailSerializer,
 )
 from .filters import UserFilter
 from .services.verification import VerificationTasks
@@ -375,8 +376,7 @@ class SetUserOnboardingStage(APIView):
 
 class ResendVerifyEmail(GenericAPIView):
     permission_classes = [AllowAny]
-    serializer_class = UserDetailSerializer
-    queryset = User.objects.all()
+    serializer_class = ResendVerifyEmailSerializer
 
     def post(self, request, *args, **kwargs):
         try:
