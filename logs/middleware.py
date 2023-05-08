@@ -12,20 +12,20 @@ class CustomLoguruMiddleware:
             logger.add(
                 f"{settings.BASE_DIR}/logs/debug.log",
                 level="DEBUG",
-                rotation=settings.LAGURU_LOGGIN["ROTATION"],
-                compression=settings.LAGURU_LOGGIN["COMPRESSION"],
+                rotation=settings.LOGURU_LOGGING["ROTATION"],
+                compression=settings.LOGURU_LOGGING["COMPRESSION"],
             )
         logger.add(
             f"{settings.BASE_DIR}/logs/info.log",
             level="INFO",
-            rotation=settings.LAGURU_LOGGIN["ROTATION"],
-            compression=settings.LAGURU_LOGGIN["COMPRESSION"],
+            rotation=settings.LOGURU_LOGGING["ROTATION"],
+            compression=settings.LOGURU_LOGGING["COMPRESSION"],
         )
         logger.add(
             f"{settings.BASE_DIR}/logs/warning.log",
             level="WARNING",
-            rotation=settings.LAGURU_LOGGIN["ROTATION"],
-            compression=settings.LAGURU_LOGGIN["COMPRESSION"],
+            rotation=settings.LOGURU_LOGGING["ROTATION"],
+            compression=settings.LOGURU_LOGGING["COMPRESSION"],
         )
 
     def __call__(self, request):

@@ -4,6 +4,7 @@ from .models import Event
 from django.conf import settings
 from events.constants import APP_URL
 from events.helpers import send_message, edit_message
+from loguru import logger
 
 
 @receiver(post_save, sender=Event)
@@ -16,11 +17,13 @@ def autoposting_receiver(sender, instance, created, *args, **kwargs):
             if response["ok"]:
                 instance.tg_message_id = response["result"]["message_id"]
                 instance.save()
-            # print(response)
+                logger.info(f"autoposting response: {response}")
+            else:
+                logger.error(f"autoposting response: {response}")
         else:
             link = f"{APP_URL}/{instance.pk}"
             text = f"***{instance.title}***\n{instance.short_text}\n\n{link}"
             response = edit_message(
                 text, instance.tg_message_id, settings.TELEGRAM_CHANNEL
             )
-            # print(response)
+            logger.info(f"autoposting response: {response}")
