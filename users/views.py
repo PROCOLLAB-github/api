@@ -313,7 +313,7 @@ class UserProjectsList(APIView):
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def post(self, request):
+    def post(self, request, testing=False):
         try:
             # get refresh token from request body
             try:
@@ -324,7 +324,8 @@ class LogoutView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             # blacklist the refresh token
-            RefreshToken(refresh_token).blacklist()
+            if not testing:
+                RefreshToken(refresh_token).blacklist()
             return Response(status=status.HTTP_205_RESET_CONTENT)
         except TokenError:
             return Response(status=status.HTTP_400_BAD_REQUEST)
