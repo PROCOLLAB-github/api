@@ -6,7 +6,7 @@
 # - node^16
 
 cd ..
-git clone git@github.com:PROCOLLAB-github/emails.git
+git clone https://github.com/PROCOLLAB-github/emails.git
 cd emails || exit
 
 npm ci
