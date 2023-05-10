@@ -4,11 +4,9 @@ import jwt
 from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.contrib.sites.shortcuts import get_current_site
 from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import redirect
-from django.urls import reverse
 from django_filters import rest_framework as filters
 from rest_framework import status
 from rest_framework.generics import (
@@ -19,14 +17,26 @@ from rest_framework.generics import (
     UpdateAPIView,
 )
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
 from core.permissions import IsOwnerOrReadOnly
-from core.utils import Email
+from events.models import Event
+from events.serializers import EventsListSerializer
 from projects.serializers import ProjectListSerializer
-from users.helpers import VERBOSE_ROLE_TYPES, VERBOSE_USER_TYPES
+from users.helpers import (
+    reset_email,
+    verify_email,
+    update_achievements,
+)
+from users.constants import (
+    VERBOSE_ROLE_TYPES,
+    VERBOSE_USER_TYPES,
+    VERIFY_EMAIL_REDIRECT_URL,
+    OnboardingStage,
+)
 from users.models import UserAchievement, LikesOnProject
 from users.permissions import IsAchievementOwnerOrReadOnly
 from users.serializers import (
@@ -37,8 +47,10 @@ from users.serializers import (
     UserDetailSerializer,
     UserListSerializer,
     VerifyEmailSerializer,
+    ResendVerifyEmailSerializer,
 )
 from .filters import UserFilter
+from .services.verification import VerificationTasks
 
 User = get_user_model()
 Project = apps.get_model("projects", "Project")
@@ -59,23 +71,7 @@ class UserList(ListCreateAPIView):
 
         user = User.objects.get(email=serializer.data["email"])
 
-        token = RefreshToken.for_user(user).access_token
-
-        relative_link = reverse("users:account_email_verification_sent")
-        current_site = get_current_site(request).domain
-        absolute_url = "http://" + current_site + relative_link + "?token=" + str(token)
-
-        email_body = "Hi, {} {}! Use link below verify your email {}".format(
-            user.first_name, user.last_name, absolute_url
-        )
-
-        data = {
-            "email_body": email_body,
-            "email_subject": "Verify your email",
-            "to_email": user.email,
-        }
-
-        Email.send_email(data)
+        verify_email(user, request)
 
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
@@ -123,24 +119,14 @@ class UserDetail(RetrieveUpdateDestroyAPIView):
     def put(self, request, pk):
         # bootleg version of updating achievements via user
         if request.data.get("achievements") is not None:
-            achievements = request.data.get("achievements")
-            # delete all old achievements
-            UserAchievement.objects.filter(user_id=pk).delete()
-            # create new achievements
-            UserAchievement.objects.bulk_create(
-                [
-                    UserAchievement(
-                        user_id=pk,
-                        title=achievement.get("title"),
-                        status=achievement.get("status"),
-                    )
-                    for achievement in achievements
-                ]
-            )
+            update_achievements(request.data.get("achievements"), pk)
         return super().put(request, pk)
 
     @transaction.atomic
     def patch(self, request, pk):
+        # bootleg version of updating achievements via user
+        if request.data.get("achievements") is not None:
+            update_achievements(request.data.get("achievements"), pk)
         return super().patch(request, pk)
 
 
@@ -171,7 +157,7 @@ class VerifyEmail(GenericAPIView):
 
     def get(self, request):
         token = request.GET.get("token")
-        REDIRECT_URL = "https://app.procollab.ru/auth/verification/"
+
         try:
             payload = jwt.decode(jwt=token, key=settings.SECRET_KEY, algorithms=["HS256"])
             user = User.objects.get(id=payload["user_id"])
@@ -183,20 +169,20 @@ class VerifyEmail(GenericAPIView):
                 user.save()
 
             return redirect(
-                f"{REDIRECT_URL}?access_token={access_token}&refresh_token={refresh_token}",
+                f"{VERIFY_EMAIL_REDIRECT_URL}?access_token={access_token}&refresh_token={refresh_token}",
                 status=status.HTTP_200_OK,
                 message="Succeed",
             )
 
         except jwt.ExpiredSignatureError:
             return redirect(
-                REDIRECT_URL,
+                VERIFY_EMAIL_REDIRECT_URL,
                 status=status.HTTP_400_BAD_REQUEST,
                 message="Activate Expired",
             )
         except jwt.DecodeError:
             return redirect(
-                REDIRECT_URL,
+                VERIFY_EMAIL_REDIRECT_URL,
                 status=status.HTTP_400_BAD_REQUEST,
                 message="Decode error",
             )
@@ -212,30 +198,7 @@ class EmailResetPassword(GenericAPIView):
 
         user = User.objects.get(email=serializer.data["email"])
 
-        access_token = RefreshToken.for_user(user).access_token
-        refresh_token = RefreshToken.for_user(user)
-
-        relative_link = reverse("users:password_reset_sent")
-
-        current_site = get_current_site(request).domain
-        absolute_url = (
-            "http://"
-            + current_site
-            + relative_link
-            + f"?access_token={access_token}&refresh_token={refresh_token}"
-        )
-
-        email_body = "Hi, {} {}! Use link below for reset password {}".format(
-            user.first_name, user.last_name, absolute_url
-        )
-
-        data = {
-            "email_body": email_body,
-            "email_subject": "Reset password",
-            "to_email": user.email,
-        }
-
-        Email.send_email(data)
+        reset_email(user, request)
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -364,4 +327,70 @@ class LogoutView(APIView):
             RefreshToken(refresh_token).blacklist()
             return Response(status=status.HTTP_205_RESET_CONTENT)
         except TokenError:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+class RegisteredEventsList(ListAPIView):
+    serializer_class = EventsListSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        events = Event.objects.filter(registered_users__pk=self.request.user.pk)
+        return events
+
+
+class SetUserOnboardingStage(APIView):
+    def put(self, request: Request, pk):
+        try:
+            if request.user.pk != pk:
+                return Response(
+                    status=status.HTTP_403_FORBIDDEN,
+                    data={"error": "You cannot edit other users!"},
+                )
+
+            new_stage = request.data["onboarding_stage"]
+
+            if new_stage not in [None, *range(1, 4)]:
+                return Response(
+                    status=status.HTTP_400_BAD_REQUEST,
+                    data={"error": "Wrong onboarding stage number!"},
+                )
+            # if the user was on the last stage and passed it
+            if (
+                request.user.onboarding_stage == OnboardingStage.account_type.value
+                and new_stage == OnboardingStage.completed.value
+            ):
+                VerificationTasks.create(request.user)
+
+            request.user.onboarding_stage = new_stage
+            request.user.save()
+
+            serialized_user = UserListSerializer(request.user)
+            data = serialized_user.data
+            return Response(status=status.HTTP_200_OK, data=data)
+        except Exception:
+            return Response(
+                status=status.HTTP_400_BAD_REQUEST, data={"error": "Something went wrong"}
+            )
+
+
+class ResendVerifyEmail(GenericAPIView):
+    permission_classes = [AllowAny]
+    serializer_class = ResendVerifyEmailSerializer
+
+    def post(self, request, *args, **kwargs):
+        try:
+            email = request.data["email"]
+            user = User.objects.get(email=email)
+
+            if not user.is_active:
+                verify_email(user, request)
+                return Response("Email sent!", status=status.HTTP_200_OK)
+
+            return Response("User already verified!", status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response(
+                "User with given email does not exists!", status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception:
             return Response(status=status.HTTP_400_BAD_REQUEST)

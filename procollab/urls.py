@@ -4,12 +4,12 @@ from django.contrib import admin
 from django.urls import include, path, re_path
 from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
-from rest_framework import permissions
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
     TokenVerifyView,
 )
+from core.permissions import IsStaffOrReadOnly
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -18,7 +18,7 @@ schema_view = get_schema_view(
         description="API for ProCollab",
     ),
     public=True,
-    permission_classes=[permissions.AllowAny],
+    permission_classes=[IsStaffOrReadOnly],
 )
 
 urlpatterns = [
@@ -45,6 +45,7 @@ urlpatterns = [
     path("invites/", include("invites.urls", namespace="invites")),
     path("auth/", include(("users.urls", "users"), namespace="users")),
     path("chats/", include("chats.urls", namespace="chats")),
+    path("events/", include("events.urls", namespace="events")),
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/token/verify/", TokenVerifyView.as_view(), name="token_verify"),

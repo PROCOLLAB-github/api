@@ -3,7 +3,7 @@ from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from users.helpers import (
+from users.constants import (
     ADMIN,
     EXPERT,
     INVESTOR,
@@ -11,6 +11,7 @@ from users.helpers import (
     MENTOR,
     VERBOSE_ROLE_TYPES,
     VERBOSE_USER_TYPES,
+    OnboardingStage,
 )
 from users.managers import (
     CustomUserManager,
@@ -82,6 +83,22 @@ class CustomUser(AbstractUser):
     city = models.CharField(max_length=255, null=True, blank=True)
     organization = models.CharField(max_length=255, null=True, blank=True)
     speciality = models.CharField(max_length=255, null=True, blank=True)
+    # default=null - it means that onboarding is completed
+    # fixme: mb replace to ChoiceField or FSMField(Finite State Machine)
+    onboarding_stage = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        editable=False,
+        default=OnboardingStage.intro.value,
+        verbose_name="Стадия онбординга",
+        help_text="0, 1, 2 - номера стадий онбординга, null(пустое) - онбординг пройден",
+    )
+    verification_date = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Дата верификации",
+    )
+
     datetime_updated = models.DateTimeField(null=False, auto_now=True)
     datetime_created = models.DateTimeField(null=False, auto_now_add=True)
 

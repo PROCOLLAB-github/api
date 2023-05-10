@@ -1,6 +1,12 @@
 from django.contrib import admin
 
-from chats.models import ProjectChat, DirectChat, ProjectChatMessage, DirectChatMessage
+from chats.models import (
+    ProjectChat,
+    DirectChat,
+    ProjectChatMessage,
+    DirectChatMessage,
+    FileToMessage,
+)
 
 
 @admin.display(description="Пользователи чата")
@@ -38,3 +44,17 @@ class ProjectChatMessageAdmin(admin.ModelAdmin):
 class DirectChatMessageAdmin(admin.ModelAdmin):
     list_display = ("id", "author", "chat", "created_at")
     list_display_links = ("id", "author", "chat")
+
+
+@admin.register(FileToMessage)
+class FileToMessageAdmin(admin.ModelAdmin):
+    list_display = (
+        "file",
+        "direct_message",
+        "project_message",
+    )
+    list_display_links = (
+        "file",
+        "direct_message",
+        "project_message",
+    )

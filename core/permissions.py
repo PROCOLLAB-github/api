@@ -43,3 +43,14 @@ class IsUserInChat(BasePermission):
         if request.user in obj.chat.users.all():
             return True
         return False
+
+
+class IsAuthenticatedOrWriteOnly(BasePermission):
+    """
+    Access if you Authenticated or for POST request
+    """
+
+    def has_object_permission(self, request, view, obj) -> bool:
+        if request.user and request.user.is_authenticated or request.method == "POST":
+            return True
+        return False

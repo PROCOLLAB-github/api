@@ -18,6 +18,13 @@ DEBUG = config("DEBUG", default=False, cast=bool)
 
 SENTRY_DSN = config("SENTRY_DSN", default="", cast=str)
 
+AUTOPOSTING_ON = config("AUTOPOSTING_ON", default=False, cast=bool)
+
+TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN", default="", cast=str)
+TELEGRAM_CHANNEL = config("TELEGRAM_CHANNEL", default="", cast=str)
+
+TAGGIT_CASE_INSENSITIVE = True
+
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost",
     "https://api.procollab.ru",
@@ -77,6 +84,7 @@ INSTALLED_APPS = [
     "metrics.apps.MetricsConfig",
     "invites.apps.InvitesConfig",
     "files.apps.FilesConfig",
+    "events.apps.EventsConfig",
     # Rest framework
     "rest_framework",
     "rest_framework_simplejwt",
@@ -88,6 +96,7 @@ INSTALLED_APPS = [
     "django_filters",
     "drf_yasg",
     "channels",
+    "taggit",
 ]
 
 MIDDLEWARE = [
@@ -122,7 +131,7 @@ ROOT_URLCONF = "procollab.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR, "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -243,10 +252,8 @@ USE_I18N = True
 
 USE_TZ = True
 
-# Static files (CSS, JavaScript, Images)
-
 STATIC_URL = "/static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_ROOT = BASE_DIR / "static"
 
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
@@ -257,8 +264,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
-    "ROTATE_REFRESH_TOKENS": False,
-    "BLACKLIST_AFTER_ROTATION": False,
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
     "UPDATE_LAST_LOGIN": False,
     "ALGORITHM": "HS256",
     "SIGNING_KEY": SECRET_KEY,
@@ -283,7 +290,7 @@ default_user_authentication_rule",
 }
 
 if DEBUG:
-    SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"] = timedelta(seconds=30)
+    SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"] = timedelta(weeks=2)
 
 SESSION_COOKIE_SECURE = False
 

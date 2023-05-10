@@ -74,7 +74,6 @@ class FileAPI:
     def _generate_selectel_swift_file_url(self) -> str:
         """
         Generates url for selcdn
-
         Returns:
             url: str looks like /hashedEmail/hashedFilename_hashedTime.extension
         """
@@ -84,3 +83,13 @@ class FileAPI:
             link
             + f"{abs(hash(self.user.email))}/{abs(hash(self.file.name))}_{abs(hash(time.time()))}{extension}"
         )
+
+
+def get_file_info(request):
+    name, ext = request.name.split(".")
+
+    return {
+        "size": request.size,
+        "name": name,
+        "extension": ext,
+    }

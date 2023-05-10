@@ -1,11 +1,17 @@
 from django.contrib.auth import get_user_model
+
 from rest_framework import status
-from rest_framework.generics import ListAPIView, ListCreateAPIView, RetrieveAPIView
+from rest_framework.generics import (
+    ListAPIView,
+    ListCreateAPIView,
+    RetrieveAPIView,
+)
 
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from chats.models import ProjectChat, DirectChat
+from chats.pagination import MessageListPagination
 from chats.serializers import (
     DirectChatListSerializer,
     DirectChatMessageListSerializer,
@@ -14,6 +20,8 @@ from chats.serializers import (
     ProjectChatDetailSerializer,
     DirectChatDetailSerializer,
 )
+from chats.utils import get_all_files
+from files.serializers import UserFileSerializer
 
 User = get_user_model()
 
@@ -94,11 +102,13 @@ class DirectChatDetail(RetrieveAPIView):
 class DirectChatMessageList(ListCreateAPIView):
     serializer_class = DirectChatMessageListSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = MessageListPagination
 
     def get_queryset(self):
         return (
             self.request.user.direct_chats.get(id=self.kwargs["pk"])
             .messages.filter(is_deleted=False)
+            .order_by("-created_at")
             .all()
         )
 
@@ -106,11 +116,13 @@ class DirectChatMessageList(ListCreateAPIView):
 class ProjectChatMessageList(ListCreateAPIView):
     serializer_class = ProjectChatMessageListSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = MessageListPagination
 
     def get_queryset(self):
         return (
             ProjectChat.objects.get(id=self.kwargs["pk"])
             .messages.filter(is_deleted=False)
+            .order_by("-created_at")
             .all()
         )
 
@@ -121,3 +133,23 @@ class ProjectChatMessageList(ListCreateAPIView):
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+
+class DirectChatFileList(ListCreateAPIView):
+    serializer_class = UserFileSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        messages = self.request.user.direct_chats.get(id=self.kwargs["pk"]).messages.all()
+
+        return get_all_files(messages)
+
+
+class ProjectChatFileList(ListCreateAPIView):
+    serializer_class = UserFileSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        messages = ProjectChat.objects.get(id=self.kwargs["pk"]).messages.all()
+
+        return get_all_files(messages)

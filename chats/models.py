@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import models
 
+from files.models import UserFile
 from projects.models import Project
 
 User = get_user_model()
@@ -196,6 +197,7 @@ class BaseMessage(models.Model):
     text = models.TextField(max_length=8192)
     is_read = models.BooleanField(default=False)
     is_deleted = models.BooleanField(default=False)
+    is_edited = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -282,3 +284,32 @@ class DirectChatMessage(BaseMessage):
     class Meta:
         verbose_name = "Сообщение в личном чате"
         verbose_name_plural = "Сообщения в личных чатах"
+
+
+class FileToMessage(models.Model):
+    file = models.OneToOneField(
+        UserFile,
+        on_delete=models.CASCADE,
+        related_name="file_to_message",
+        primary_key=True,
+        null=False,
+    )
+    direct_message = models.ForeignKey(
+        DirectChatMessage,
+        on_delete=models.CASCADE,
+        related_name="file_to_message",
+        null=True,
+    )
+    project_message = models.ForeignKey(
+        ProjectChatMessage,
+        on_delete=models.CASCADE,
+        related_name="file_to_message",
+        null=True,
+    )
+
+    def __str__(self):
+        return f"FileToMessage<{self.file}>"
+
+    class Meta:
+        verbose_name = "Связка файла и сообщения"
+        verbose_name_plural = "Связки файлов и сообщений"
