@@ -136,3 +136,4 @@ dmypy.json
 cache
 
 staticfiles
+/emails/
