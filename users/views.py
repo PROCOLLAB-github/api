@@ -29,11 +29,13 @@ from projects.serializers import ProjectListSerializer
 from users.helpers import (
     reset_email,
     verify_email,
+    update_achievements,
 )
 from users.constants import (
     VERBOSE_ROLE_TYPES,
     VERBOSE_USER_TYPES,
     VERIFY_EMAIL_REDIRECT_URL,
+    OnboardingStage,
 )
 from users.models import UserAchievement, LikesOnProject
 from users.permissions import IsAchievementOwnerOrReadOnly
@@ -45,8 +47,10 @@ from users.serializers import (
     UserDetailSerializer,
     UserListSerializer,
     VerifyEmailSerializer,
+    ResendVerifyEmailSerializer,
 )
 from .filters import UserFilter
+from .services.verification import VerificationTasks
 
 User = get_user_model()
 Project = apps.get_model("projects", "Project")
@@ -115,24 +119,14 @@ class UserDetail(RetrieveUpdateDestroyAPIView):
     def put(self, request, pk):
         # bootleg version of updating achievements via user
         if request.data.get("achievements") is not None:
-            achievements = request.data.get("achievements")
-            # delete all old achievements
-            UserAchievement.objects.filter(user_id=pk).delete()
-            # create new achievements
-            UserAchievement.objects.bulk_create(
-                [
-                    UserAchievement(
-                        user_id=pk,
-                        title=achievement.get("title"),
-                        status=achievement.get("status"),
-                    )
-                    for achievement in achievements
-                ]
-            )
+            update_achievements(request.data.get("achievements"), pk)
         return super().put(request, pk)
 
     @transaction.atomic
     def patch(self, request, pk):
+        # bootleg version of updating achievements via user
+        if request.data.get("achievements") is not None:
+            update_achievements(request.data.get("achievements"), pk)
         return super().patch(request, pk)
 
 
@@ -348,14 +342,29 @@ class RegisteredEventsList(ListAPIView):
 class SetUserOnboardingStage(APIView):
     def put(self, request: Request, pk):
         try:
-            request.user.onboarding_stage = request.data["onboarding_stage"]
-            request.user.save()
-            # print(request.user.pk, pk)
             if request.user.pk != pk:
                 return Response(
                     status=status.HTTP_403_FORBIDDEN,
                     data={"error": "You cannot edit other users!"},
                 )
+
+            new_stage = request.data["onboarding_stage"]
+
+            if new_stage not in [None, *range(1, 4)]:
+                return Response(
+                    status=status.HTTP_400_BAD_REQUEST,
+                    data={"error": "Wrong onboarding stage number!"},
+                )
+            # if the user was on the last stage and passed it
+            if (
+                request.user.onboarding_stage == OnboardingStage.account_type.value
+                and new_stage == OnboardingStage.completed.value
+            ):
+                VerificationTasks.create(request.user)
+
+            request.user.onboarding_stage = new_stage
+            request.user.save()
+
             serialized_user = UserListSerializer(request.user)
             data = serialized_user.data
             return Response(status=status.HTTP_200_OK, data=data)
@@ -367,8 +376,7 @@ class SetUserOnboardingStage(APIView):
 
 class ResendVerifyEmail(GenericAPIView):
     permission_classes = [AllowAny]
-    serializer_class = UserDetailSerializer
-    queryset = User.objects.all()
+    serializer_class = ResendVerifyEmailSerializer
 
     def post(self, request, *args, **kwargs):
         try:

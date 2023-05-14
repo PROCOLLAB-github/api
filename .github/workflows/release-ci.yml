@@ -122,6 +122,9 @@ jobs:
               echo "SELECTEL_CONTAINER_PASSWORD=${{ secrets.SELECTEL_CONTAINER_PASSWORD }}" >> .env &&
               echo "SELECTEL_CONTAINER_USERNAME=${{ secrets.SELECTEL_CONTAINER_USERNAME }}" >> .env &&
               
+              echo "CLICKUP_API_TOKEN=${{ secrets.CLICKUP_API_TOKEN }}" >> .env &&
+              echo "CLICKUP_SPACE_ID=${{ secrets.CLICKUP_SPACE_ID }}" >> .env &&
+              
               echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" >> .env &&
               
               docker-compose -f docker-compose.prod-ci.yml -p prod up -d

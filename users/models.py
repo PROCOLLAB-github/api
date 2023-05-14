@@ -11,6 +11,7 @@ from users.constants import (
     MENTOR,
     VERBOSE_ROLE_TYPES,
     VERBOSE_USER_TYPES,
+    OnboardingStage,
 )
 from users.managers import (
     CustomUserManager,
@@ -82,13 +83,15 @@ class CustomUser(AbstractUser):
     city = models.CharField(max_length=255, null=True, blank=True)
     organization = models.CharField(max_length=255, null=True, blank=True)
     speciality = models.CharField(max_length=255, null=True, blank=True)
-    # default=null - it means that onboarding is completed
+    # contacts = models.JSONField(null=True, blank=True)
+    # fixme: mb replace to ChoiceField or FSMField(Finite State Machine)
     onboarding_stage = models.PositiveSmallIntegerField(
         null=True,
         blank=True,
         editable=False,
+        default=OnboardingStage.intro.value,
         verbose_name="Стадия онбординга",
-        help_text="null(пустое) - онбординг пройден, 1, 2 и 3 - номера стадий онбординга",
+        help_text="0, 1, 2 - номера стадий онбординга, null(пустое) - онбординг пройден",
     )
     verification_date = models.DateField(
         null=True,

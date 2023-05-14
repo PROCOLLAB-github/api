@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib import admin
 
+from .helpers import send_verification_completed_email
 from .models import CustomUser, UserAchievement, Member, Mentor, Expert, Investor
 
 
@@ -124,6 +125,10 @@ class CustomUserAdmin(admin.ModelAdmin):
 
             if settings.DEBUG:
                 obj.is_active = True
+
+            # if user has just been confirmed
+            if obj.verification_date != old_user.verification_date:
+                send_verification_completed_email(obj)
 
         super().save_model(request, obj, form, change)
 

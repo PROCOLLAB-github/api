@@ -256,3 +256,7 @@ class VerifyEmailSerializer(serializers.Serializer):
 
 class PasswordSerializer(serializers.Serializer):
     new_password = serializers.CharField(required=True)
+
+
+class ResendVerifyEmailSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
