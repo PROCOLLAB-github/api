@@ -1,8 +1,7 @@
 from loguru import logger
 from django.conf import settings
 import logging
-from logs.utils import InterceptHandler
-from procollab.settings import LOGURU_LOGGING
+from core.log.utils import InterceptHandler
 
 
 class CustomLoguruMiddleware:
@@ -12,19 +11,19 @@ class CustomLoguruMiddleware:
 
         if settings.DEBUG:
             logger.add(
-                f"{settings.BASE_DIR}/logs/debug.log",
+                f"{settings.BASE_DIR}/log/debug.log",
                 level="DEBUG",
-                **LOGURU_LOGGING,
+                **settings.LOGURU_LOGGING,
             )
         logger.add(
-            f"{settings.BASE_DIR}/logs/info.log",
+            f"{settings.BASE_DIR}/log/info.log",
             level="INFO",
-            **LOGURU_LOGGING,
+            **settings.LOGURU_LOGGING,
         )
         logger.add(
-            f"{settings.BASE_DIR}/logs/warning.log",
+            f"{settings.BASE_DIR}/log/warning.log",
             level="WARNING",
-            **LOGURU_LOGGING,
+            **settings.LOGURU_LOGGING,
         )
 
     def __call__(self, request):
