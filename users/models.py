@@ -83,7 +83,7 @@ class CustomUser(AbstractUser):
     city = models.CharField(max_length=255, null=True, blank=True)
     organization = models.CharField(max_length=255, null=True, blank=True)
     speciality = models.CharField(max_length=255, null=True, blank=True)
-    # default=null - it means that onboarding is completed
+    # contacts = models.JSONField(null=True, blank=True)
     # fixme: mb replace to ChoiceField or FSMField(Finite State Machine)
     onboarding_stage = models.PositiveSmallIntegerField(
         null=True,
