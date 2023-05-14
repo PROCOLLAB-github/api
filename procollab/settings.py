@@ -99,7 +99,6 @@ INSTALLED_APPS = [
     "taggit",
 ]
 
-
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -314,4 +313,9 @@ SELECTEL_CONTAINER_PASSWORD = config(
     "SELECTEL_CONTAINER_PASSWORD", cast=str, default="PWD"
 )
 
-LOGURU_LOGGING = {"ROTATION": "10 KB", "COMPRESSION": "zip"}
+LOGURU_LOGGING = {
+    "rotation": "300 MB",
+    "compression": "zip",
+    "retention": "10 days",
+    "enqueue": True,
+}
