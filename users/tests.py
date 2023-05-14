@@ -151,3 +151,34 @@ class UserTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         user.refresh_from_db()
         self.assertEqual(user.user_type, user.user_type)
+
+    def test_edit_user_profile(self):
+        request = self.factory.post("auth/users/", USER_CREATE_DATA)
+        response = self.user_list_view(request)
+        user_id = response.data["id"]
+        user = CustomUser.objects.get(id=user_id)
+
+        request = self.factory.get("auth/users/projects/")
+        force_authenticate(request, user=user)
+        response = self.user_detail_view(request, pk=user.pk)
+        self.assertEqual(response.status_code, 200)
+
+        updated_user_data = {
+            "first_name": "New",
+            "last_name": "User",
+            "about_me": "maaan",
+            "city": "Moscow",
+            "organization": "OOH",
+        }
+
+        request = self.factory.patch(f"auth/users/{user.pk}/", updated_user_data)
+        force_authenticate(request, user=user)
+        response = self.user_detail_view(request, pk=user.pk)
+        self.assertEqual(response.status_code, 200)
+
+        user.refresh_from_db()
+        self.assertEqual(user.first_name, updated_user_data["first_name"])
+        self.assertEqual(user.last_name, updated_user_data["last_name"])
+        self.assertEqual(user.about_me, updated_user_data["about_me"])
+        self.assertEqual(user.city, updated_user_data["city"])
+        self.assertEqual(user.organization, updated_user_data["organization"])
