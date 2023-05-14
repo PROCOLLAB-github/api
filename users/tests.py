@@ -100,3 +100,20 @@ class UserTestCase(TestCase):
         self.assertEqual(response.status_code, 400)
         user.refresh_from_db()
         self.assertNotEqual(user.user_type, invalid_user_type)
+
+    def test_change_user_type_without_preferred_industries_from_member_to_expert(self):
+        request = self.factory.post("auth/users/", USER_CREATE_DATA)
+        response = self.user_list_view(request)
+        user_id = response.data["id"]
+        user = CustomUser.objects.get(id=user_id)
+
+        new_user_type = CustomUser.EXPERT
+        request = self.factory.patch(
+            f"auth/users/{user.pk}/", {"user_type": new_user_type}
+        )
+        force_authenticate(request, user=user)
+        response = self.user_detail_view(request, pk=user.pk)
+
+        self.assertEqual(response.status_code, 200)
+        user.refresh_from_db()
+        self.assertEqual(user.user_type, user.user_type)
