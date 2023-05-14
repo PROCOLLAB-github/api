@@ -83,3 +83,20 @@ class UserTestCase(TestCase):
         request = self.factory.get("auth/users/projects/")
         response = self.user_detail_view(request)
         self.assertEqual(response.status_code, 401)
+
+    def test_change_user_type_invalid(self):
+        request = self.factory.post("auth/users/", USER_CREATE_DATA)
+        response = self.user_list_view(request)
+        user_id = response.data["id"]
+        user = CustomUser.objects.get(id=user_id)
+
+        invalid_user_type = "invalid_type"
+        request = self.factory.patch(
+            f"auth/users/{user.pk}/", {"user_type": invalid_user_type}
+        )
+        force_authenticate(request, user=user)
+        response = self.user_detail_view(request, pk=user.pk)
+
+        self.assertEqual(response.status_code, 400)
+        user.refresh_from_db()
+        self.assertNotEqual(user.user_type, invalid_user_type)
