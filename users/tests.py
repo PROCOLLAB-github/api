@@ -3,7 +3,7 @@ from rest_framework.test import APIRequestFactory, force_authenticate
 from tests.constants import USER_CREATE_DATA
 
 from users.models import CustomUser
-from users.views import UserList, UserDetail, LogoutView
+from users.views import UserList, UserDetail, LogoutView, CurrentUser
 
 
 class UserTestCase(TestCase):
@@ -12,6 +12,7 @@ class UserTestCase(TestCase):
         self.user_list_view = UserList.as_view()
         self.user_detail_view = UserDetail.as_view()
         self.logout_view = LogoutView.as_view()
+        self.current_user_view = CurrentUser.as_view()
 
     def test_user_creation(self):
         request = self.factory.post("auth/users/", USER_CREATE_DATA)
@@ -84,7 +85,7 @@ class UserTestCase(TestCase):
         response = self.user_detail_view(request)
         self.assertEqual(response.status_code, 401)
 
-    def test_change_user_type_invalid(self):
+    def test_user_change_type_invalid(self):
         request = self.factory.post("auth/users/", USER_CREATE_DATA)
         response = self.user_list_view(request)
         user_id = response.data["id"]
@@ -101,7 +102,7 @@ class UserTestCase(TestCase):
         user.refresh_from_db()
         self.assertNotEqual(user.user_type, invalid_user_type)
 
-    def test_change_user_type_without_preferred_industries_from_member_to_expert(self):
+    def test_user_change_type_without_preferred_industries_from_member_to_expert(self):
         request = self.factory.post("auth/users/", USER_CREATE_DATA)
         response = self.user_list_view(request)
         user_id = response.data["id"]
@@ -118,7 +119,7 @@ class UserTestCase(TestCase):
         user.refresh_from_db()
         self.assertEqual(user.user_type, user.user_type)
 
-    def test_change_user_type_without_preferred_industries_from_member_to_mentor(self):
+    def test_user_change_type_without_preferred_industries_from_member_to_mentor(self):
         request = self.factory.post("auth/users/", USER_CREATE_DATA)
         response = self.user_list_view(request)
         user_id = response.data["id"]
@@ -135,7 +136,7 @@ class UserTestCase(TestCase):
         user.refresh_from_db()
         self.assertEqual(user.user_type, user.user_type)
 
-    def test_change_user_type_without_preferred_industries_from_member_to_investor(self):
+    def test_user_change_type_without_preferred_industries_from_member_to_investor(self):
         request = self.factory.post("auth/users/", USER_CREATE_DATA)
         response = self.user_list_view(request)
         user_id = response.data["id"]
@@ -152,7 +153,7 @@ class UserTestCase(TestCase):
         user.refresh_from_db()
         self.assertEqual(user.user_type, user.user_type)
 
-    def test_edit_user_profile(self):
+    def test_user_edit_profile(self):
         request = self.factory.post("auth/users/", USER_CREATE_DATA)
         response = self.user_list_view(request)
         user_id = response.data["id"]
@@ -182,3 +183,22 @@ class UserTestCase(TestCase):
         self.assertEqual(user.about_me, updated_user_data["about_me"])
         self.assertEqual(user.city, updated_user_data["city"])
         self.assertEqual(user.organization, updated_user_data["organization"])
+
+    def test_user_current(self):
+        request = self.factory.post("auth/users/", USER_CREATE_DATA)
+        response = self.user_list_view(request)
+        user_id = response.data["id"]
+        user = CustomUser.objects.get(id=user_id)
+
+        request = self.factory.get("auth/users/current/")
+        force_authenticate(request, user=user)
+        response = self.current_user_view(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["id"], user_id)
+        self.assertEqual(response.data["email"], user.email)
+
+        request = self.factory.get("auth/users/current/")
+        response = self.current_user_view(request)
+
+        self.assertEqual(response.status_code, 401)
