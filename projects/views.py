@@ -9,7 +9,7 @@ from rest_framework.views import APIView
 from core.permissions import IsStaffOrReadOnly
 from projects.filters import ProjectFilter
 from projects.constants import VERBOSE_STEPS
-from projects.helpers import get_recommended_users
+from projects.helpers import get_recommended_users, check_related_fields_update
 from projects.models import Project, Achievement
 from projects.permissions import (
     IsProjectLeaderOrReadOnlyForNonDrafts,
@@ -91,23 +91,11 @@ class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
         return Response(serializer.data)
 
     def put(self, request, pk, **kwargs):
-        # bootleg version of updating achievements via project
-        if request.data.get("achievements") is not None:
-            achievements = request.data.get("achievements")
-            # delete all old achievements
-            Achievement.objects.filter(project_id=pk).delete()
-            # create new achievements
-            Achievement.objects.bulk_create(
-                [
-                    Achievement(
-                        project_id=pk,
-                        title=achievement.get("title"),
-                        status=achievement.get("status"),
-                    )
-                    for achievement in achievements
-                ]
-            )
+        check_related_fields_update(request.data, pk)
+        return super(ProjectDetail, self).put(request, pk)
 
+    def patch(self, request, pk, **kwargs):
+        check_related_fields_update(request.data, pk)
         return super(ProjectDetail, self).put(request, pk)
 
 

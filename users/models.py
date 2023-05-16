@@ -83,7 +83,7 @@ class CustomUser(AbstractUser):
     city = models.CharField(max_length=255, null=True, blank=True)
     organization = models.CharField(max_length=255, null=True, blank=True)
     speciality = models.CharField(max_length=255, null=True, blank=True)
-    # default=null - it means that onboarding is completed
+    # contacts = models.JSONField(null=True, blank=True)
     # fixme: mb replace to ChoiceField or FSMField(Finite State Machine)
     onboarding_stage = models.PositiveSmallIntegerField(
         null=True,
@@ -324,3 +324,30 @@ def create_or_update_user_types(sender, instance, created, **kwargs):
             Expert.objects.create(user=instance)
         elif instance.user_type == CustomUser.INVESTOR:
             Investor.objects.create(user=instance)
+
+
+class UserLink(models.Model):
+    """
+    UserLink model
+
+    Represents the user's link to some resource.
+
+    Attributes:
+            user: ForeignKey instance of the CustomUser model.
+            link: URLField instance of the user's link to some resource.
+    """
+
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name="links",
+    )
+    link = models.URLField(null=False, blank=False)
+
+    def __str__(self):
+        return f"UserLink<{self.id}> - {self.user.first_name} {self.user.last_name}"
+
+    class Meta:
+        verbose_name = "Ссылка пользователя"
+        verbose_name_plural = "Ссылки пользователей"
+        unique_together = ("user", "link")

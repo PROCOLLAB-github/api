@@ -83,7 +83,12 @@ class UserDetailSerializer(serializers.ModelSerializer):
     mentor = MentorSerializer(required=False)
     achievements = AchievementListSerializer(required=False, many=True)
     key_skills = KeySkillsField(required=False)
+    links = serializers.SerializerMethodField()
     is_online = serializers.SerializerMethodField()
+
+    @classmethod
+    def get_links(cls, user: CustomUser):
+        return [user_link.link for user_link in user.links.all()]
 
     @classmethod
     def get_is_online(cls, user: CustomUser):
@@ -106,6 +111,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
             "organization",
             "about_me",
             "avatar",
+            "links",
             "city",
             "is_active",
             "is_online",
