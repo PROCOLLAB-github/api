@@ -5,7 +5,7 @@ from django.urls import reverse
 
 from core.utils import Email
 from users.constants import PROTOCOL
-from users.models import UserAchievement
+from users.models import UserAchievement, UserLink
 
 User = get_user_model()
 
@@ -91,7 +91,23 @@ def send_verification_completed_email(user: User):
     Email.send_email(data)
 
 
+def check_related_fields_update(data, pk):
+    """
+    Check if achievements or links were updated and update them.
+    """
+
+    if data.get("achievements") is not None:
+        update_achievements(data.get("achievements"), pk)
+
+    if data.get("links") is not None:
+        update_links(data.get("links"), pk)
+
+
 def update_achievements(achievements, pk):
+    """
+    Bootleg version of updating achievements via user
+    """
+
     # delete all old achievements
     UserAchievement.objects.filter(user_id=pk).delete()
     # create new achievements
@@ -103,5 +119,24 @@ def update_achievements(achievements, pk):
                 status=achievement.get("status"),
             )
             for achievement in achievements
+        ]
+    )
+
+
+def update_links(links, pk):
+    """
+    Bootleg version of updating links via user
+    """
+
+    # delete all old links
+    UserLink.objects.filter(user_id=pk).delete()
+    # create new links
+    UserLink.objects.bulk_create(
+        [
+            UserLink(
+                user_id=pk,
+                link=link,
+            )
+            for link in links
         ]
     )

@@ -2,7 +2,15 @@ from django.conf import settings
 from django.contrib import admin
 
 from .helpers import send_verification_completed_email
-from .models import CustomUser, UserAchievement, Member, Mentor, Expert, Investor
+from .models import (
+    CustomUser,
+    UserAchievement,
+    Member,
+    Mentor,
+    Expert,
+    Investor,
+    UserLink,
+)
 
 
 @admin.register(CustomUser)
@@ -136,3 +144,8 @@ class CustomUserAdmin(admin.ModelAdmin):
 @admin.register(UserAchievement)
 class UserAchievementAdmin(admin.ModelAdmin):
     list_display = ("id", "title", "status", "user")
+
+
+@admin.register(UserLink)
+class UserLinkAdmin(admin.ModelAdmin):
+    list_display = ("id", "user", "link")
