@@ -149,3 +149,4 @@ class UserAchievementAdmin(admin.ModelAdmin):
 @admin.register(UserLink)
 class UserLinkAdmin(admin.ModelAdmin):
     list_display = ("id", "user", "link")
+    list_display_links = ("id", "user", "link")

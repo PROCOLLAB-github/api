@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from projects.models import Project, Achievement, Collaborator
+from projects.models import Project, Achievement, Collaborator, ProjectLink
 
 
 @admin.register(Project)
@@ -19,6 +19,12 @@ class ProjectAdmin(admin.ModelAdmin):
 @admin.register(Achievement)
 class AchievementAdmin(admin.ModelAdmin):
     list_display = ("id", "title", "status", "project")
+
+
+@admin.register(ProjectLink)
+class ProjectLinkAdmin(admin.ModelAdmin):
+    list_display = ("id", "link", "project")
+    list_display_links = ("id", "link", "project")
 
 
 @admin.register(Collaborator)

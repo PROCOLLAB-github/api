@@ -67,6 +67,11 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     short_description = serializers.SerializerMethodField()
     industry_id = serializers.IntegerField(required=False)
     likes_count = serializers.SerializerMethodField(method_name="count_likes")
+    links = serializers.SerializerMethodField()
+
+    @classmethod
+    def get_links(cls, project):
+        return [link.link for link in project.links.all()]
 
     def validate(self, data):
         super().validate(data)
@@ -92,6 +97,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "description",
             "short_description",
             "achievements",
+            "links",
             "region",
             "step",
             "industry",

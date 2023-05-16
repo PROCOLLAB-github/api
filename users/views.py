@@ -123,7 +123,6 @@ class UserDetail(RetrieveUpdateDestroyAPIView):
     @transaction.atomic
     def patch(self, request, pk):
         check_related_fields_update(request.data, pk)
-
         return super().patch(request, pk)
 
 
