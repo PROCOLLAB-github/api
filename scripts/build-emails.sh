@@ -13,5 +13,5 @@ npm ci
 npm run build
 
 cd ..
-cp -R ./emails/dist ./email
+cp -R ./emails/dist ./static/email
 rm -rf ./emails
