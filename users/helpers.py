@@ -1,3 +1,6 @@
+import os
+
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.sites.shortcuts import get_current_site
@@ -69,26 +72,29 @@ def verify_email(user, request):
 
 
 def send_verification_completed_email(user: User):
-    # fixme
-    email_body = (
-        f"Поздравляю тебя, {user.first_name} {user.last_name}! Ты прошел верификацию и"
-        f" стал частью сообщества PROCOLLAB!"
-        f"Теперь ты сможешь пользоваться всем функционалом платформы, создавать проекты,"
-        f" искать команду, находить нужные мероприятия."
-        f"Следи за анонсами обновлений в нашей группе в ВК https://vk.com/PROCOLLAB "
-        f"И скорее переходи на саму платформу, чтобы уже сегодня начать создавать свой проект."
-        f"https://procollab.ru "
-        f"С уважением, "
-        f"Администрация PROCOLLAB"
-    )
+    fname = os.path.join(settings.STATIC_ROOT, "verification-succeed.html")
+    with open(fname, "r", encoding="utf-8") as f:
+        html_content = f.read()
+        email_body = (
+            f"Поздравляю тебя, {user.first_name} {user.last_name}! Ты прошел верификацию и"
+            f" стал частью сообщества PROCOLLAB!"
+            f"Теперь ты сможешь пользоваться всем функционалом платформы, создавать проекты,"
+            f" искать команду, находить нужные мероприятия."
+            f"Следи за анонсами обновлений в нашей группе в ВК https://vk.com/PROCOLLAB "
+            f"И скорее переходи на саму платформу, чтобы уже сегодня начать создавать свой проект."
+            f"https://procollab.ru "
+            f"С уважением, "
+            f"Администрация PROCOLLAB"
+        )
 
-    data = {
-        "email_body": email_body,
-        "email_subject": "Procollab | Верификация",
-        "to_email": user.email,
-    }
+        data = {
+            "email_body": email_body,
+            "email_subject": "Procollab | Верификация",
+            "to_email": user.email,
+            "html_content": html_content,
+        }
 
-    Email.send_email(data)
+        Email.send_email(data)
 
 
 def check_related_fields_update(data, pk):
