@@ -63,7 +63,7 @@ if SENTRY_DSN:
     )
 
 INSTALLED_APPS = [
-    # daphne is required for channels, should be installed before django.contrib.staticfiles
+    # daphne is required for channels, should be installed before django.contrib.static
     "daphne",
     # django apps
     "django.contrib.admin",

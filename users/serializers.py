@@ -3,6 +3,7 @@ from rest_framework import serializers
 from django.core.cache import cache
 
 from core.utils import get_user_online_cache_key
+from projects.models import Project
 from .models import CustomUser, Expert, Investor, Member, Mentor, UserAchievement
 
 
@@ -85,6 +86,13 @@ class UserDetailSerializer(serializers.ModelSerializer):
     key_skills = KeySkillsField(required=False)
     links = serializers.SerializerMethodField()
     is_online = serializers.SerializerMethodField()
+    projects = serializers.SerializerMethodField()
+
+    @classmethod
+    def get_projects(cls, user: CustomUser):
+        return UserProjectsSerializer(
+            [collab.project for collab in user.collaborations.all()], many=True
+        ).data
 
     @classmethod
     def get_links(cls, user: CustomUser):
@@ -122,6 +130,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
             "achievements",
             "verification_date",
             "onboarding_stage",
+            "projects",
         ]
 
     def update(self, instance, validated_data):
@@ -193,6 +202,28 @@ class UserDetailSerializer(serializers.ModelSerializer):
 
         instance.save()
         return instance
+
+
+class UserProjectsSerializer(serializers.ModelSerializer):
+    short_description = serializers.SerializerMethodField()
+
+    @classmethod
+    def get_short_description(cls, project):
+        return project.get_short_description()
+
+    class Meta:
+        model = Project
+        fields = [
+            "id",
+            "name",
+            "leader",
+            "short_description",
+            "image_address",
+            "industry",
+        ]
+        read_only_fields = [
+            "leader",
+        ]
 
 
 class UserListSerializer(serializers.ModelSerializer):
