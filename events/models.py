@@ -3,6 +3,8 @@ from django.db import models
 from taggit.managers import TaggableManager
 
 from events.constants import MAIN_URL, VERBOSE_EVENT_TYPE
+from events.managers import LikesOnEventManager
+
 
 User = get_user_model()
 
@@ -42,7 +44,7 @@ class Event(models.Model):
     favorites = models.ManyToManyField(User, blank=True, related_name="favorites")
     registered_users = models.ManyToManyField(User, blank=True, related_name="events")
     views = models.BigIntegerField(default=0, editable=False)
-    likes = models.ManyToManyField(User, blank=True, related_name="likes", editable=False)
+    # likes = models.ManyToManyField(User, blank=True, related_name="likes", editable=False)
 
     tags = TaggableManager()
 
@@ -52,3 +54,40 @@ class Event(models.Model):
     class Meta:
         verbose_name = "Мероприятие"
         verbose_name_plural = "Мероприятия"
+
+
+class LikesOnEvent(models.Model):
+    """
+    LikesOnEvent model
+    This model is used to store the user's likes on events.
+    Attributes:
+        user: ForeignKey instance of user.
+        event: ForeignKey instance of event.
+    """
+
+    is_liked = models.BooleanField(default=True)
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="likes_on_events",
+    )
+    event = models.ForeignKey(
+        Event,
+        on_delete=models.CASCADE,
+        related_name="likes",
+    )
+
+    objects = LikesOnEventManager()
+
+    def toggle_like(self):
+        self.is_liked = not self.is_liked
+        self.save()
+
+    def __str__(self):
+        return f"LikesOnEvent<{self.id}>"
+
+    class Meta:
+        verbose_name = "Лайк на мероприятие"
+        verbose_name_plural = "Лайки на мероприятия"
+        unique_together = ("user", "event")
