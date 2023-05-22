@@ -48,7 +48,7 @@ class Project(models.Model):
     leader = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name="leaders_projects",  # projects in which this user is the leader
+        related_name="leaders_projects",  # projects in which this user is the leader -
     )
 
     draft = models.BooleanField(blank=False, default=True)

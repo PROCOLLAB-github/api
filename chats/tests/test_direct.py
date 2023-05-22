@@ -8,6 +8,7 @@ from chats.models import DirectChatMessage
 
 
 class DirectTests(TestCase):
+    """Direct tests for chats"""
     @classmethod
     def setUpTestData(cls):
         user = get_user_model().objects.create(**TEST_USER1)
@@ -21,7 +22,7 @@ class DirectTests(TestCase):
 
     async def test_send_new_message_direct_with_myself(
         self,
-    ):  # Сообщения в чат с самим собой
+    ):  # Chat messages with yourself
         communicator = WebsocketCommunicator(ChatConsumer.as_asgi(), "/ws/chat/")
         communicator.scope["user"] = self.user
         connected, subprotocol = await communicator.connect()
@@ -41,7 +42,7 @@ class DirectTests(TestCase):
         self.assertFalse("error" in response.keys())
         content = response["content"]
         message = content["message"]
-        # Проверка input == output
+        # Checking input == output
         self.assertEqual(response["type"], data["type"])
         self.assertEqual(data["content"]["chat_id"], content["chat_id"])
         self.assertEqual(data["content"]["text"], message["text"])
@@ -49,7 +50,7 @@ class DirectTests(TestCase):
         self.assertEqual(data["content"]["is_edited"], message["is_edited"])
         self.assertFalse(message["is_deleted"])
 
-    async def test_send_new_message_to_orher_chat(self):  # Сообщение в чужой чат
+    async def test_send_new_message_to_other_chat(self):  # Message in someone else's chat
         await sync_to_async(get_user_model().objects.create)(**TEST_USER2)
         user = await sync_to_async(get_user_model().objects.create)(**TEST_USER3)
         communicator = WebsocketCommunicator(ChatConsumer.as_asgi(), "/ws/chat/")
@@ -72,7 +73,7 @@ class DirectTests(TestCase):
 
     async def test_is_edited_new_message_direct_with_myself(
         self,
-    ):  # Проверка на редактированность нового сообщения
+    ):  # Checking if a new message has been edited
         communicator = WebsocketCommunicator(ChatConsumer.as_asgi(), "/ws/chat/")
         communicator.scope["user"] = self.user
         connected, subprotocol = await communicator.connect()
@@ -92,7 +93,7 @@ class DirectTests(TestCase):
         message = response["content"]["message"]
         self.assertTrue(message["is_edited"] != data["content"]["is_edited"])
 
-    async def test_new_message_with_two_users(self):  # Чат на двоих новое сообщение
+    async def test_new_message_with_two_users(self):  # New message for private messages
         await sync_to_async(get_user_model().objects.create)(**TEST_USER2)
         communicator = WebsocketCommunicator(ChatConsumer.as_asgi(), "/ws/chat/")
         communicator.scope["user"] = self.user
@@ -114,7 +115,7 @@ class DirectTests(TestCase):
 
     async def test_read_message_with_new_user(
         self,
-    ):  # Чтение чужих сообщений в своём чате
+    ):  # Reading other people's messages in your chat
         user = await sync_to_async(get_user_model().objects.create)(**TEST_USER2)
         communicator = WebsocketCommunicator(ChatConsumer.as_asgi(), "/ws/chat/")
         communicator.scope["user"] = user
@@ -154,7 +155,7 @@ class DirectTests(TestCase):
         self.assertFalse("error" in response.keys())
         self.assertTrue(direct_message.is_read)
 
-    async def test_read_message_with_myself(self):  # Чтение своих сообщений
+    async def test_read_message_with_myself(self):
         user = await sync_to_async(get_user_model().objects.create)(**TEST_USER2)
         communicator = WebsocketCommunicator(ChatConsumer.as_asgi(), "/ws/chat/")
         communicator.scope["user"] = user
@@ -191,7 +192,7 @@ class DirectTests(TestCase):
 
     async def test_read_someone_elses_message(
         self,
-    ):  # Чтение чужих сообщение в чужом чате
+    ):  # Reading someone else's message in someone else's chat
         await sync_to_async(get_user_model().objects.create)(**TEST_USER2)
         user = await sync_to_async(get_user_model().objects.create)(**TEST_USER3)
         communicator = WebsocketCommunicator(ChatConsumer.as_asgi(), "/ws/chat/")
@@ -232,7 +233,7 @@ class DirectTests(TestCase):
         self.assertTrue("error" in response.keys())
         self.assertFalse(direct_message.is_read)
 
-    async def test_edit_my_message_in_myself(self):  # Редактирование в чате с самим собой
+    async def test_edit_my_message_in_myself(self):
         communicator = WebsocketCommunicator(ChatConsumer.as_asgi(), "/ws/chat/")
         communicator.scope["user"] = self.user
         connected, subprotocol = await communicator.connect()
@@ -267,7 +268,7 @@ class DirectTests(TestCase):
         self.assertTrue(direct_message.is_edited)
         self.assertEqual(direct_message.text, text)
 
-    async def test_edit_my_message(self):  # Редактирование в чате с кем-то
+    async def test_edit_my_message(self):  # Editing while chatting with someone
         await sync_to_async(get_user_model().objects.create)(**TEST_USER2)
         communicator = WebsocketCommunicator(ChatConsumer.as_asgi(), "/ws/chat/")
         communicator.scope["user"] = self.user
@@ -305,7 +306,7 @@ class DirectTests(TestCase):
 
     async def test_edit_other_message(
         self,
-    ):  # Редактирование чужих сообщений в своём чате
+    ):  # Editing other people's messages in your chat
         user = await sync_to_async(get_user_model().objects.create)(**TEST_USER2)
         communicator = WebsocketCommunicator(ChatConsumer.as_asgi(), "/ws/chat/")
         communicator.scope["user"] = self.user
@@ -346,9 +347,9 @@ class DirectTests(TestCase):
         self.assertFalse(direct_message.is_edited)
         self.assertTrue(direct_message.text != text)
 
-    async def test_edit_other_message_in_other_char(
+    async def test_edit_other_message_in_other_chat(
         self,
-    ):  # Редактирование чужих сообщений в чужом чате
+    ):
         await sync_to_async(get_user_model().objects.create)(**TEST_USER2)
         user = await sync_to_async(get_user_model().objects.create)(**TEST_USER3)
         communicator = WebsocketCommunicator(ChatConsumer.as_asgi(), "/ws/chat/")
@@ -393,7 +394,7 @@ class DirectTests(TestCase):
 
     async def test_delete_message_in_myself(
         self,
-    ):  # Удаление сообщений в чате с самим собой
+    ):
         communicator = WebsocketCommunicator(ChatConsumer.as_asgi(), "/ws/chat/")
         communicator.scope["user"] = self.user
         connected, subprotocol = await communicator.connect()
@@ -425,7 +426,7 @@ class DirectTests(TestCase):
         direct_message = await sync_to_async(DirectChatMessage.objects.get)(id=1)
         self.assertTrue(direct_message.is_deleted)
 
-    async def test_delete_message(self):  # Удаление сообщений в чате с кем-то
+    async def test_delete_message(self):  # Delete messages in a chat with someone
         await sync_to_async(get_user_model().objects.create)(**TEST_USER2)
         communicator = WebsocketCommunicator(ChatConsumer.as_asgi(), "/ws/chat/")
         communicator.scope["user"] = self.user
@@ -458,7 +459,7 @@ class DirectTests(TestCase):
         direct_message = await sync_to_async(DirectChatMessage.objects.get)(id=1)
         self.assertTrue(direct_message.is_deleted)
 
-    async def test_delete_other_message(self):  # Удаление чужих сообщений в чате с кем-то
+    async def test_delete_other_message(self):  # Delete someone else's messages in a chat with someone
         user = await sync_to_async(get_user_model().objects.create)(**TEST_USER2)
         communicator = WebsocketCommunicator(ChatConsumer.as_asgi(), "/ws/chat/")
         communicator.scope["user"] = self.user
@@ -498,7 +499,7 @@ class DirectTests(TestCase):
 
     async def test_delete_other_message_in_other_chat(
         self,
-    ):  # Удаление чужих сообщений в чужом чате
+    ):  # Deleting someone else's messages in someone else's chat
         await sync_to_async(get_user_model().objects.create)(**TEST_USER2)
         user = await sync_to_async(get_user_model().objects.create)(**TEST_USER3)
         communicator = WebsocketCommunicator(ChatConsumer.as_asgi(), "/ws/chat/")
