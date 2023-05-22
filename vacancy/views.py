@@ -117,7 +117,7 @@ class VacancyResponseAccept(generics.GenericAPIView):
             role=vacancy.role,
         )
         new_collaborator.save()
-        # vacancy.project.collaborator_set.add(vacancy_request.user)
+        # vacancy.project.collaborator_set.add(vacancy_request.user) -
         vacancy.project.save()
         vacancy_request.save()
         return Response(status=status.HTTP_200_OK)
