@@ -17,6 +17,7 @@ from rest_framework.generics import (
     UpdateAPIView,
 )
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
@@ -26,10 +27,15 @@ from events.models import Event
 from events.serializers import EventsListSerializer
 from projects.serializers import ProjectListSerializer
 from users.helpers import (
-    VERBOSE_ROLE_TYPES,
-    VERBOSE_USER_TYPES,
     reset_email,
     verify_email,
+    check_related_fields_update,
+)
+from users.constants import (
+    VERBOSE_ROLE_TYPES,
+    VERBOSE_USER_TYPES,
+    VERIFY_EMAIL_REDIRECT_URL,
+    OnboardingStage,
 )
 from users.models import UserAchievement, LikesOnProject
 from users.permissions import IsAchievementOwnerOrReadOnly
@@ -41,8 +47,10 @@ from users.serializers import (
     UserDetailSerializer,
     UserListSerializer,
     VerifyEmailSerializer,
+    ResendVerifyEmailSerializer,
 )
 from .filters import UserFilter
+from .services.verification import VerificationTasks
 
 User = get_user_model()
 Project = apps.get_model("projects", "Project")
@@ -109,26 +117,12 @@ class UserDetail(RetrieveUpdateDestroyAPIView):
 
     @transaction.atomic
     def put(self, request, pk):
-        # bootleg version of updating achievements via user
-        if request.data.get("achievements") is not None:
-            achievements = request.data.get("achievements")
-            # delete all old achievements
-            UserAchievement.objects.filter(user_id=pk).delete()
-            # create new achievements
-            UserAchievement.objects.bulk_create(
-                [
-                    UserAchievement(
-                        user_id=pk,
-                        title=achievement.get("title"),
-                        status=achievement.get("status"),
-                    )
-                    for achievement in achievements
-                ]
-            )
+        check_related_fields_update(request.data, pk)
         return super().put(request, pk)
 
     @transaction.atomic
     def patch(self, request, pk):
+        check_related_fields_update(request.data, pk)
         return super().patch(request, pk)
 
 
@@ -159,7 +153,7 @@ class VerifyEmail(GenericAPIView):
 
     def get(self, request):
         token = request.GET.get("token")
-        REDIRECT_URL = "https://app.procollab.ru/auth/verification/"
+
         try:
             payload = jwt.decode(jwt=token, key=settings.SECRET_KEY, algorithms=["HS256"])
             user = User.objects.get(id=payload["user_id"])
@@ -171,20 +165,20 @@ class VerifyEmail(GenericAPIView):
                 user.save()
 
             return redirect(
-                f"{REDIRECT_URL}?access_token={access_token}&refresh_token={refresh_token}",
+                f"{VERIFY_EMAIL_REDIRECT_URL}?access_token={access_token}&refresh_token={refresh_token}",
                 status=status.HTTP_200_OK,
                 message="Succeed",
             )
 
         except jwt.ExpiredSignatureError:
             return redirect(
-                REDIRECT_URL,
+                VERIFY_EMAIL_REDIRECT_URL,
                 status=status.HTTP_400_BAD_REQUEST,
                 message="Activate Expired",
             )
         except jwt.DecodeError:
             return redirect(
-                REDIRECT_URL,
+                VERIFY_EMAIL_REDIRECT_URL,
                 status=status.HTTP_400_BAD_REQUEST,
                 message="Decode error",
             )
@@ -339,3 +333,60 @@ class RegisteredEventsList(ListAPIView):
     def get_queryset(self):
         events = Event.objects.filter(registered_users__pk=self.request.user.pk)
         return events
+
+
+class SetUserOnboardingStage(APIView):
+    def put(self, request: Request, pk):
+        try:
+            if request.user.pk != pk:
+                return Response(
+                    status=status.HTTP_403_FORBIDDEN,
+                    data={"error": "You cannot edit other users!"},
+                )
+
+            new_stage = request.data["onboarding_stage"]
+
+            if new_stage not in [None, *range(1, 4)]:
+                return Response(
+                    status=status.HTTP_400_BAD_REQUEST,
+                    data={"error": "Wrong onboarding stage number!"},
+                )
+            # if the user was on the last stage and passed it
+            if (
+                request.user.onboarding_stage == OnboardingStage.account_type.value
+                and new_stage == OnboardingStage.completed.value
+            ):
+                VerificationTasks.create(request.user)
+
+            request.user.onboarding_stage = new_stage
+            request.user.save()
+
+            serialized_user = UserListSerializer(request.user)
+            data = serialized_user.data
+            return Response(status=status.HTTP_200_OK, data=data)
+        except Exception:
+            return Response(
+                status=status.HTTP_400_BAD_REQUEST, data={"error": "Something went wrong"}
+            )
+
+
+class ResendVerifyEmail(GenericAPIView):
+    permission_classes = [AllowAny]
+    serializer_class = ResendVerifyEmailSerializer
+
+    def post(self, request, *args, **kwargs):
+        try:
+            email = request.data["email"]
+            user = User.objects.get(email=email)
+
+            if not user.is_active:
+                verify_email(user, request)
+                return Response("Email sent!", status=status.HTTP_200_OK)
+
+            return Response("User already verified!", status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response(
+                "User with given email does not exists!", status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception:
+            return Response(status=status.HTTP_400_BAD_REQUEST)

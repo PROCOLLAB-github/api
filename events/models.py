@@ -44,7 +44,7 @@ class Event(models.Model):
     favorites = models.ManyToManyField(User, blank=True, related_name="favorites")
     registered_users = models.ManyToManyField(User, blank=True, related_name="events")
     views = models.BigIntegerField(default=0, editable=False)
-    # likes = models.ManyToManyField(User, blank=True, related_name="likes", editable=False)
+    # likes = models.ManyToManyField(User, blank=True, related_name="likes", editable=False) -
 
     tags = TaggableManager()
 

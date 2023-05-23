@@ -3,6 +3,7 @@ from rest_framework import serializers
 from django.core.cache import cache
 
 from core.utils import get_user_online_cache_key
+from projects.models import Project
 from .models import CustomUser, Expert, Investor, Member, Mentor, UserAchievement
 
 
@@ -83,7 +84,19 @@ class UserDetailSerializer(serializers.ModelSerializer):
     mentor = MentorSerializer(required=False)
     achievements = AchievementListSerializer(required=False, many=True)
     key_skills = KeySkillsField(required=False)
+    links = serializers.SerializerMethodField()
     is_online = serializers.SerializerMethodField()
+    projects = serializers.SerializerMethodField()
+
+    @classmethod
+    def get_projects(cls, user: CustomUser):
+        return UserProjectsSerializer(
+            [collab.project for collab in user.collaborations.all()], many=True
+        ).data
+
+    @classmethod
+    def get_links(cls, user: CustomUser):
+        return [user_link.link for user_link in user.links.all()]
 
     @classmethod
     def get_is_online(cls, user: CustomUser):
@@ -106,6 +119,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
             "organization",
             "about_me",
             "avatar",
+            "links",
             "city",
             "is_active",
             "is_online",
@@ -114,6 +128,9 @@ class UserDetailSerializer(serializers.ModelSerializer):
             "expert",
             "mentor",
             "achievements",
+            "verification_date",
+            "onboarding_stage",
+            "projects",
         ]
 
     def update(self, instance, validated_data):
@@ -187,6 +204,28 @@ class UserDetailSerializer(serializers.ModelSerializer):
         return instance
 
 
+class UserProjectsSerializer(serializers.ModelSerializer):
+    short_description = serializers.SerializerMethodField()
+
+    @classmethod
+    def get_short_description(cls, project):
+        return project.get_short_description()
+
+    class Meta:
+        model = Project
+        fields = [
+            "id",
+            "name",
+            "leader",
+            "short_description",
+            "image_address",
+            "industry",
+        ]
+        read_only_fields = [
+            "leader",
+        ]
+
+
 class UserListSerializer(serializers.ModelSerializer):
     member = MemberSerializer(required=False)
     key_skills = KeySkillsField(required=False)
@@ -221,9 +260,15 @@ class UserListSerializer(serializers.ModelSerializer):
             "is_active",
             "is_online",
             "member",
+            "onboarding_stage",
+            "verification_date",
             "password",
         ]
-        extra_kwargs = {"password": {"write_only": True}}
+        extra_kwargs = {
+            "password": {"write_only": True},
+            "onboarding_stage": {"read_only": True},
+            "verification_date": {"read_only": True},
+        }
 
 
 class AchievementDetailSerializer(serializers.ModelSerializer):
@@ -248,3 +293,7 @@ class VerifyEmailSerializer(serializers.Serializer):
 
 class PasswordSerializer(serializers.Serializer):
     new_password = serializers.CharField(required=True)
+
+
+class ResendVerifyEmailSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)

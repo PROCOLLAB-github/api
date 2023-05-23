@@ -36,7 +36,7 @@ class ProjectManager(Manager):
                 # Or override the default QuerySet to always ask the DB only count after all the filters.
                 # (ticket referring to the reason why you can't
                 # prefetch N items easily https://code.djangoproject.com/ticket/26780)
-                # (seems like in django 4.2.0 it'll be fixed but at the time of writing the latest version is 4.1.3
+                # (seems like in django 4.2.0 it'll be fixed but at the time of writing the latest version is 4.1.3 -
                 Prefetch("collaborator_set"),
             )
         )

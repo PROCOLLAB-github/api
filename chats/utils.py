@@ -17,7 +17,7 @@ User = get_user_model()
 
 def clean_message_text(text: str) -> str:
     """
-    Cleans message text.
+    Cleans message text. -
     """
 
     return text.strip()
@@ -25,7 +25,7 @@ def clean_message_text(text: str) -> str:
 
 def validate_message_text(text: str) -> bool:
     """
-    Validates message text.
+    Validates message text. -
     """
     # TODO: add bad word filter
     return 0 < len(text) <= 8192
@@ -118,7 +118,7 @@ async def match_files_and_messages(file_urls, messages):
 
 
 def get_all_files(messages):
-    # looks like something bad
+    # looks like something bad -
     files = []
     for message in messages:
         if hasattr(message, "file_to_message"):

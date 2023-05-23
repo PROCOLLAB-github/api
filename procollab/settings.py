@@ -63,7 +63,7 @@ if SENTRY_DSN:
     )
 
 INSTALLED_APPS = [
-    # daphne is required for channels, should be installed before django.contrib.staticfiles
+    # daphne is required for channels, should be installed before django.contrib.static
     "daphne",
     # django apps
     "django.contrib.admin",
@@ -252,10 +252,8 @@ USE_I18N = True
 
 USE_TZ = True
 
-# Static files (CSS, JavaScript, Images)
-
 STATIC_URL = "/static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_ROOT = BASE_DIR / "static"
 
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 

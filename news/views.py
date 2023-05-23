@@ -24,7 +24,7 @@ class NewsDetail(generics.RetrieveUpdateDestroyAPIView):
 class NewsTagList(generics.ListAPIView):
     queryset = NewsTag.objects.all()
     serializer_class = NewsTagSerializer
-    # no permission classes listed since the thing is always read-only
+    # no permission classes listed since the thing is always read-only -
 
 
 class NewsTagDetail(generics.RetrieveAPIView):

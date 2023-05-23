@@ -48,7 +48,7 @@ class Project(models.Model):
     leader = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name="leaders_projects",  # projects in which this user is the leader
+        related_name="leaders_projects",  # projects in which this user is the leader -
     )
 
     draft = models.BooleanField(blank=False, default=True)
@@ -93,6 +93,31 @@ class Project(models.Model):
     class Meta:
         verbose_name = "Проект"
         verbose_name_plural = "Проекты"
+
+
+class ProjectLink(models.Model):
+    """
+    Project link model
+
+    Attributes:
+        project: A ForeignKey referring to the Project model.
+        link: A URLField link to the project.
+    """
+
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name="links",
+    )
+    link = models.URLField(null=False, blank=False)
+
+    def __str__(self):
+        return f"ProjectLink<{self.id}> - {self.project.name}"
+
+    class Meta:
+        verbose_name = "Ссылка проекта"
+        verbose_name_plural = "Ссылки проектов"
+        unique_together = ("project", "link")
 
 
 class Achievement(models.Model):

@@ -16,11 +16,11 @@ def autoposting_receiver(sender, instance, created, *args, **kwargs):
             if response["ok"]:
                 instance.tg_message_id = response["result"]["message_id"]
                 instance.save()
-            # print(response)
+            # print(response) -
         else:
             link = f"{APP_URL}/{instance.pk}"
             text = f"***{instance.title}***\n{instance.short_text}\n\n{link}"
             response = edit_message(
                 text, instance.tg_message_id, settings.TELEGRAM_CHANNEL
             )
-            # print(response)
+            # print(response) -
