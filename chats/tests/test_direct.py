@@ -50,7 +50,7 @@ class DirectTests(TestCase):
         self.assertEqual(data["content"]["is_edited"], message["is_edited"])
         self.assertFalse(message["is_deleted"])
 
-    async def test_send_new_message_to_orher_chat(self):  # Message in someone else's chat
+    async def test_send_new_message_to_other_chat(self):  # Message in someone else's chat
         await sync_to_async(get_user_model().objects.create)(**TEST_USER2)
         user = await sync_to_async(get_user_model().objects.create)(**TEST_USER3)
         communicator = WebsocketCommunicator(ChatConsumer.as_asgi(), "/ws/chat/")
@@ -347,7 +347,7 @@ class DirectTests(TestCase):
         self.assertFalse(direct_message.is_edited)
         self.assertTrue(direct_message.text != text)
 
-    async def test_edit_other_message_in_other_char(
+    async def test_edit_other_message_in_other_chat(
         self,
     ):
         await sync_to_async(get_user_model().objects.create)(**TEST_USER2)

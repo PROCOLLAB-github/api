@@ -165,6 +165,7 @@ class ProjectListSerializer(serializers.ModelSerializer):
             "vacancies",
             "datetime_created",
             "likes_count",
+            "views_count",
         ]
 
         read_only_fields = [
