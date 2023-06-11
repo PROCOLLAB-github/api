@@ -5,7 +5,7 @@ from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
 from django.db.models import UniqueConstraint
 
-from core.models import Like
+from core.models import Like, View
 from industries.models import Industry
 from projects.constants import VERBOSE_STEPS
 from projects.managers import AchievementManager, ProjectManager
@@ -192,6 +192,7 @@ class Collaborator(models.Model):
         ]
 
 
+# fixme: move project news to another app?
 class ProjectNews(models.Model):
     """
     Project news model
@@ -202,17 +203,29 @@ class ProjectNews(models.Model):
         on_delete=models.CASCADE,
         related_name="news",
     )
-    text = models.TextField(null=False, blank=False)
-    # todo
-    views_count = models.PositiveIntegerField(default=0)
-    likes = GenericRelation(Like, related_query_name="project_news")
+    text = models.TextField(
+        null=False,
+        blank=False,
+    )
+    views = GenericRelation(
+        View,
+        related_query_name="project_views",
+    )
+    likes = GenericRelation(
+        Like,
+        related_query_name="project_news",
+    )
     # todo: files
 
     datetime_created = models.DateTimeField(
-        verbose_name="Дата создания", null=False, auto_now_add=True
+        verbose_name="Дата создания",
+        null=False,
+        auto_now_add=True,
     )
     datetime_updated = models.DateTimeField(
-        verbose_name="Дата изменения", null=False, auto_now=True
+        verbose_name="Дата изменения",
+        null=False,
+        auto_now=True,
     )
 
     class Meta:

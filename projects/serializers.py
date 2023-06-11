@@ -1,8 +1,8 @@
 from django.contrib.auth import get_user_model
-from django.contrib.contenttypes.models import ContentType
 from rest_framework import serializers
 
 from core.fields import CustomListField
+from core.services import get_views_count, get_likes_count
 from industries.models import Industry
 from projects.models import Project, Achievement, Collaborator, ProjectNews
 from projects.validators import validate_project
@@ -211,6 +211,7 @@ class AchievementDetailSerializer(serializers.ModelSerializer):
 
 
 class ProjectNewsListSerializer(serializers.ModelSerializer):
+    views_count = serializers.SerializerMethodField()
     likes_count = serializers.SerializerMethodField()
     project_name = serializers.SerializerMethodField()
     project_image_address = serializers.SerializerMethodField()
@@ -221,11 +222,11 @@ class ProjectNewsListSerializer(serializers.ModelSerializer):
     def get_project_image_address(self, obj):
         return obj.project.image_address
 
+    def get_views_count(self, obj):
+        return get_views_count(obj)
+
     def get_likes_count(self, obj):
-        obj_type = ContentType.objects.get_for_model(obj)
-        return User.objects.filter(
-            likes__content_type=obj_type, likes__object_id=obj.id
-        ).count()
+        return get_likes_count(obj)
 
     class Meta:
         model = ProjectNews
@@ -241,6 +242,7 @@ class ProjectNewsListSerializer(serializers.ModelSerializer):
 
 
 class ProjectNewsDetailSerializer(serializers.ModelSerializer):
+    views_count = serializers.SerializerMethodField()
     likes_count = serializers.SerializerMethodField()
     project_name = serializers.SerializerMethodField()
     project_image_address = serializers.SerializerMethodField()
@@ -251,11 +253,11 @@ class ProjectNewsDetailSerializer(serializers.ModelSerializer):
     def get_project_image_address(self, obj):
         return obj.project.image_address
 
+    def get_views_count(self, obj):
+        return get_views_count(obj)
+
     def get_likes_count(self, obj):
-        obj_type = ContentType.objects.get_for_model(obj)
-        return User.objects.filter(
-            likes__content_type=obj_type, likes__object_id=obj.id
-        ).count()
+        return get_likes_count(obj)
 
     class Meta:
         model = ProjectNews

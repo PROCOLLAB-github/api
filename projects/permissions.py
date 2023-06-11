@@ -67,7 +67,7 @@ class HasInvolvementInProjectOrReadOnly(BasePermission):
             return False
 
 
-class IsNewsAuthorIsProjectLeader(BasePermission):
+class IsNewsAuthorIsProjectLeaderOrReadOnly(BasePermission):
     """
     Allows access to update project news only to leader.
     """

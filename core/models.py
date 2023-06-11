@@ -24,6 +24,7 @@ class Like(Model):
     )
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey("content_type", "object_id")
+    # is liked?
 
     class Meta:
         unique_together = ("user", "content_type", "object_id")
@@ -32,3 +33,33 @@ class Like(Model):
 
     def __str__(self):
         return f"Like<{self.user} - {self.content_object}>"
+
+
+class View(Model):
+    """
+    Generic View model based on contenttype
+
+    Indicates if user has viewed the object
+
+    """
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="views",
+    )
+    content_type = models.ForeignKey(
+        ContentType,
+        on_delete=models.CASCADE,
+        related_name="views",
+    )
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey("content_type", "object_id")
+
+    class Meta:
+        unique_together = ("user", "content_type", "object_id")
+        verbose_name = "Просмотр"
+        verbose_name_plural = "Просмотры"
+
+    def __str__(self):
+        return f"View<{self.user} - {self.content_object}>"
