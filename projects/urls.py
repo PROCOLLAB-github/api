@@ -12,6 +12,7 @@ from projects.views import (
     ProjectRecommendedUsers,
     SetLikeOnProject,
     ProjectNewsList,
+    ProjectNewsDetail,
 )
 
 app_name = "projects"
@@ -20,6 +21,7 @@ urlpatterns = [
     path("", ProjectList.as_view()),
     path("<int:pk>/like/", SetLikeOnProject.as_view()),
     path("<int:pk>/news/", ProjectNewsList.as_view()),
+    path("<int:project_pk>/news/<int:pk>/", ProjectNewsDetail.as_view()),
     path("<int:pk>/collaborators/", ProjectCollaborators.as_view()),
     path("<int:pk>/", ProjectDetail.as_view()),
     path("<int:pk>/recommended_users", ProjectRecommendedUsers.as_view()),

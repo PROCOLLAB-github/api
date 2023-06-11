@@ -238,3 +238,34 @@ class ProjectNewsListSerializer(serializers.ModelSerializer):
             "views_count",
             "likes_count",
         ]
+
+
+class ProjectNewsDetailSerializer(serializers.ModelSerializer):
+    likes_count = serializers.SerializerMethodField()
+    project_name = serializers.SerializerMethodField()
+    project_image_address = serializers.SerializerMethodField()
+
+    def get_project_name(self, obj):
+        return obj.project.name
+
+    def get_project_image_address(self, obj):
+        return obj.project.image_address
+
+    def get_likes_count(self, obj):
+        obj_type = ContentType.objects.get_for_model(obj)
+        return User.objects.filter(
+            likes__content_type=obj_type, likes__object_id=obj.id
+        ).count()
+
+    class Meta:
+        model = ProjectNews
+        fields = [
+            "id",
+            "project_name",
+            "project_image_address",
+            "text",
+            "datetime_created",
+            "datetime_updated",
+            "views_count",
+            "likes_count",
+        ]

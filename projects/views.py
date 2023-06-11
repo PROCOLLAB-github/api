@@ -15,6 +15,7 @@ from projects.permissions import (
     IsProjectLeaderOrReadOnlyForNonDrafts,
     HasInvolvementInProjectOrReadOnly,
     IsProjectLeader,
+    IsNewsAuthorIsProjectLeader,
 )
 from projects.serializers import (
     ProjectDetailSerializer,
@@ -23,6 +24,7 @@ from projects.serializers import (
     AchievementDetailSerializer,
     ProjectCollaboratorSerializer,
     ProjectNewsListSerializer,
+    ProjectNewsDetailSerializer,
 )
 from users.models import LikesOnProject
 from users.serializers import UserListSerializer
@@ -227,10 +229,23 @@ class ProjectVacancyResponses(generics.GenericAPIView):
 
 
 class ProjectNewsList(generics.ListCreateAPIView):
-    queryset = ProjectNews.objects.all()
     serializer_class = ProjectNewsListSerializer
-    permission_classes = [IsProjectLeaderOrReadOnlyForNonDrafts]
+    permission_classes = [IsNewsAuthorIsProjectLeader]
 
     def perform_create(self, serializer):
         project = Project.objects.get(pk=self.kwargs["pk"])
         serializer.save(project=project)
+
+    def get_queryset(self):
+        project = Project.objects.get(pk=self.kwargs["pk"])
+        return ProjectNews.objects.filter(project=project)
+
+
+class ProjectNewsDetail(generics.RetrieveUpdateDestroyAPIView):
+    queryset = ProjectNews.objects.all()
+    serializer_class = ProjectNewsDetailSerializer
+    permission_classes = [IsNewsAuthorIsProjectLeader]
+
+    def get_queryset(self):
+        project = Project.objects.get(pk=self.kwargs["project_pk"])
+        return ProjectNews.objects.filter(project=project).all()

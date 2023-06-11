@@ -1,5 +1,7 @@
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 
+from projects.models import Project
+
 
 class IsProjectLeaderOrReadOnlyForNonDrafts(BasePermission):
     """
@@ -7,6 +9,7 @@ class IsProjectLeaderOrReadOnlyForNonDrafts(BasePermission):
     """
 
     def has_permission(self, request, view) -> bool:
+        # fixme:
         if request.method in SAFE_METHODS or (request.user and request.user.id):
             return True
         return False
@@ -14,6 +17,7 @@ class IsProjectLeaderOrReadOnlyForNonDrafts(BasePermission):
     def has_object_permission(self, request, view, obj):
         if (request.method in SAFE_METHODS and not obj.draft) or (
             obj.leader == request.user
+            # fixme:
             or obj.collaborator_set.filter(user=request.user).exists()
             or obj.invite_set.filter(user=request.user).exists()
         ):
@@ -61,3 +65,25 @@ class HasInvolvementInProjectOrReadOnly(BasePermission):
             ):
                 return True
             return False
+
+
+class IsNewsAuthorIsProjectLeader(BasePermission):
+    """
+    Allows access to update project news only to leader.
+    """
+
+    def has_permission(self, request, view) -> bool:
+        try:
+            project = Project.objects.get(pk=view.kwargs["project_pk"])
+            if request.method in SAFE_METHODS or (request.user == project.leader):
+                return True
+        except Project.DoesNotExist:
+            pass
+        return False
+
+    def has_object_permission(self, request, view, obj):
+        if (
+            request.method in SAFE_METHODS and not obj.project.draft
+        ) or obj.project.leader == request.user:
+            return True
+        return False
