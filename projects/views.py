@@ -10,7 +10,7 @@ from core.permissions import IsStaffOrReadOnly
 from projects.filters import ProjectFilter
 from projects.constants import VERBOSE_STEPS
 from projects.helpers import get_recommended_users, check_related_fields_update
-from projects.models import Project, Achievement
+from projects.models import Project, Achievement, ProjectNews
 from projects.permissions import (
     IsProjectLeaderOrReadOnlyForNonDrafts,
     HasInvolvementInProjectOrReadOnly,
@@ -22,6 +22,7 @@ from projects.serializers import (
     ProjectListSerializer,
     AchievementDetailSerializer,
     ProjectCollaboratorSerializer,
+    ProjectNewsListSerializer,
 )
 from users.models import LikesOnProject
 from users.serializers import UserListSerializer
@@ -223,3 +224,13 @@ class ProjectVacancyResponses(generics.GenericAPIView):
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+
+
+class ProjectNewsList(generics.ListCreateAPIView):
+    queryset = ProjectNews.objects.all()
+    serializer_class = ProjectNewsListSerializer
+    permission_classes = [IsProjectLeaderOrReadOnlyForNonDrafts]
+
+    def perform_create(self, serializer):
+        project = Project.objects.get(pk=self.kwargs["pk"])
+        serializer.save(project=project)

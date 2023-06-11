@@ -17,7 +17,7 @@ class ProjectAdmin(admin.ModelAdmin):
 
 
 @admin.register(ProjectNews)
-class ProjectNews(admin.ModelAdmin):
+class ProjectNewsAdmin(admin.ModelAdmin):
     list_display = (
         "id",
         "project",

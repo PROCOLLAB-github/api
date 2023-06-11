@@ -1,11 +1,15 @@
+from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.models import ContentType
 from rest_framework import serializers
 
 from core.fields import CustomListField
 from industries.models import Industry
-from projects.models import Project, Achievement, Collaborator
+from projects.models import Project, Achievement, Collaborator, ProjectNews
 from projects.validators import validate_project
 from users.models import LikesOnProject
 from vacancy.serializers import ProjectVacancyListSerializer
+
+User = get_user_model()
 
 
 class AchievementListSerializer(serializers.ModelSerializer):
@@ -204,3 +208,33 @@ class AchievementDetailSerializer(serializers.ModelSerializer):
             "projects",
         ]
         ref_name = "Projects"
+
+
+class ProjectNewsListSerializer(serializers.ModelSerializer):
+    likes_count = serializers.SerializerMethodField()
+    project_name = serializers.SerializerMethodField()
+    project_image_address = serializers.SerializerMethodField()
+
+    def get_project_name(self, obj):
+        return obj.project.name
+
+    def get_project_image_address(self, obj):
+        return obj.project.image_address
+
+    def get_likes_count(self, obj):
+        obj_type = ContentType.objects.get_for_model(obj)
+        return User.objects.filter(
+            likes__content_type=obj_type, likes__object_id=obj.id
+        ).count()
+
+    class Meta:
+        model = ProjectNews
+        fields = [
+            "id",
+            "project_name",
+            "project_image_address",
+            "text",
+            "datetime_created",
+            "views_count",
+            "likes_count",
+        ]
