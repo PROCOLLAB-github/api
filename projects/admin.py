@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from projects.models import Project, Achievement, Collaborator, ProjectLink
+from projects.models import Project, Achievement, Collaborator, ProjectLink, ProjectNews
 
 
 @admin.register(Project)
@@ -13,6 +13,20 @@ class ProjectAdmin(admin.ModelAdmin):
     list_display_links = (
         "id",
         "name",
+    )
+
+
+@admin.register(ProjectNews)
+class ProjectNewsAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "project",
+        "datetime_created",
+    )
+    list_display_links = (
+        "id",
+        "project",
+        "datetime_created",
     )
 
 
