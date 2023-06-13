@@ -1,11 +1,15 @@
+from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from core.fields import CustomListField
+from core.services import get_views_count, get_likes_count
 from industries.models import Industry
-from projects.models import Project, Achievement, Collaborator
+from projects.models import Project, Achievement, Collaborator, ProjectNews
 from projects.validators import validate_project
 from users.models import LikesOnProject
 from vacancy.serializers import ProjectVacancyListSerializer
+
+User = get_user_model()
 
 
 class AchievementListSerializer(serializers.ModelSerializer):
@@ -204,3 +208,66 @@ class AchievementDetailSerializer(serializers.ModelSerializer):
             "projects",
         ]
         ref_name = "Projects"
+
+
+class ProjectNewsListSerializer(serializers.ModelSerializer):
+    views_count = serializers.SerializerMethodField()
+    likes_count = serializers.SerializerMethodField()
+    project_name = serializers.SerializerMethodField()
+    project_image_address = serializers.SerializerMethodField()
+
+    def get_project_name(self, obj):
+        return obj.project.name
+
+    def get_project_image_address(self, obj):
+        return obj.project.image_address
+
+    def get_views_count(self, obj):
+        return get_views_count(obj)
+
+    def get_likes_count(self, obj):
+        return get_likes_count(obj)
+
+    class Meta:
+        model = ProjectNews
+        fields = [
+            "id",
+            "project_name",
+            "project_image_address",
+            "text",
+            "datetime_created",
+            "views_count",
+            "likes_count",
+        ]
+
+
+class ProjectNewsDetailSerializer(serializers.ModelSerializer):
+    views_count = serializers.SerializerMethodField()
+    likes_count = serializers.SerializerMethodField()
+    project_name = serializers.SerializerMethodField()
+    project_image_address = serializers.SerializerMethodField()
+
+    def get_project_name(self, obj):
+        return obj.project.name
+
+    def get_project_image_address(self, obj):
+        return obj.project.image_address
+
+    def get_views_count(self, obj):
+        return get_views_count(obj)
+
+    def get_likes_count(self, obj):
+        return get_likes_count(obj)
+
+    class Meta:
+        model = ProjectNews
+        fields = [
+            "id",
+            "project_name",
+            "project_image_address",
+            "text",
+            "datetime_created",
+            "datetime_updated",
+            "views_count",
+            "likes_count",
+        ]
