@@ -13,6 +13,7 @@ from projects.filters import ProjectFilter
 from projects.constants import VERBOSE_STEPS
 from projects.helpers import get_recommended_users, check_related_fields_update
 from projects.models import Project, Achievement, ProjectNews
+from projects.pagination import ProjectNewsPagination
 from projects.permissions import (
     IsProjectLeaderOrReadOnlyForNonDrafts,
     HasInvolvementInProjectOrReadOnly,
@@ -233,6 +234,7 @@ class ProjectVacancyResponses(generics.GenericAPIView):
 class ProjectNewsList(generics.ListCreateAPIView):
     serializer_class = ProjectNewsListSerializer
     permission_classes = [IsNewsAuthorIsProjectLeaderOrReadOnly]
+    pagination_class = ProjectNewsPagination
 
     def perform_create(self, serializer):
         project = Project.objects.get(pk=self.kwargs.get("project_pk"))
