@@ -6,6 +6,7 @@ from django.db import models
 from django.db.models import UniqueConstraint
 
 from core.models import Like, View
+from files.models import UserFile
 from industries.models import Industry
 from projects.constants import VERBOSE_STEPS
 from projects.managers import AchievementManager, ProjectManager
@@ -207,6 +208,9 @@ class ProjectNews(models.Model):
         null=False,
         blank=False,
     )
+    # todo: remove files unused files
+    files = models.ManyToManyField(UserFile, related_name="projects_news", blank=True)
+
     views = GenericRelation(
         View,
         related_query_name="project_views",
@@ -215,7 +219,6 @@ class ProjectNews(models.Model):
         Like,
         related_query_name="project_news",
     )
-    # todo: files
 
     datetime_created = models.DateTimeField(
         verbose_name="Дата создания",
