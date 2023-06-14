@@ -28,6 +28,8 @@ class ProjectNewsAdmin(admin.ModelAdmin):
         "project",
         "datetime_created",
     )
+    # todo: set up admin panel for files
+    filter_horizontal = ("files",)
 
 
 @admin.register(Achievement)

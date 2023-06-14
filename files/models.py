@@ -9,13 +9,16 @@ class UserFile(models.Model):
     UserFile model
 
     Attributes:
-        user: User who uploaded the file
         link: Link to the file on the CDN
+        user: User who uploaded the file
         datetime_uploaded: Datetime when the file was uploaded
+        name: Name of the file
+        extension: Extension of the file
+        size: Size of the file in bytes
     """
 
-    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     link = models.URLField(primary_key=True, null=False)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     datetime_uploaded = models.DateTimeField(auto_now_add=True)
     name = models.TextField(blank=False, default="file")
     extension = models.TextField(blank=True, default="")
