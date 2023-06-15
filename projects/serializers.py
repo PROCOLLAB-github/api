@@ -238,6 +238,7 @@ class ProjectNewsListSerializer(serializers.ModelSerializer):
             "datetime_created",
             "views_count",
             "likes_count",
+            "files",
         ]
 
 
@@ -270,4 +271,5 @@ class ProjectNewsDetailSerializer(serializers.ModelSerializer):
             "datetime_updated",
             "views_count",
             "likes_count",
+            "files",
         ]
