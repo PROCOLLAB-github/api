@@ -244,6 +244,12 @@ class ProjectNewsList(generics.ListCreateAPIView):
         project = Project.objects.get(pk=self.kwargs.get("project_pk"))
         return ProjectNews.objects.filter(project=project)
 
+    def get(self, request, *args, **kwargs):
+        news = self.paginate_queryset(self.get_queryset())
+        context = {"user": request.user}
+        serializer = ProjectNewsListSerializer(news, context=context, many=True)
+        return self.get_paginated_response(serializer.data)
+
 
 class ProjectNewsDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = ProjectNews.objects.all()
@@ -256,6 +262,14 @@ class ProjectNewsDetail(generics.RetrieveUpdateDestroyAPIView):
             return ProjectNews.objects.filter(project=project).all()
         except Project.DoesNotExist:
             return []
+
+    def get(self, request, *args, **kwargs):
+        try:
+            news = self.get_queryset().get(pk=self.kwargs["pk"])
+            context = {"user": request.user}
+            return Response(ProjectNewsDetailSerializer(news, context=context).data)
+        except ProjectNews.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
 
 
 class ProjectNewsDetailSetViewed(generics.CreateAPIView):

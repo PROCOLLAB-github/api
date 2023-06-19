@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from core.fields import CustomListField
-from core.services import get_views_count, get_likes_count
+from core.services import get_views_count, get_likes_count, is_fan
 from industries.models import Industry
 from projects.models import Project, Achievement, Collaborator, ProjectNews
 from projects.validators import validate_project
@@ -215,6 +215,7 @@ class ProjectNewsListSerializer(serializers.ModelSerializer):
     likes_count = serializers.SerializerMethodField()
     project_name = serializers.SerializerMethodField()
     project_image_address = serializers.SerializerMethodField()
+    is_user_liked = serializers.SerializerMethodField()
 
     def get_project_name(self, obj):
         return obj.project.name
@@ -227,6 +228,12 @@ class ProjectNewsListSerializer(serializers.ModelSerializer):
 
     def get_likes_count(self, obj):
         return get_likes_count(obj)
+
+    def get_is_user_liked(self, obj):
+        user = self.context.get("user")
+        if user:
+            return is_fan(obj, user)
+        return False
 
     class Meta:
         model = ProjectNews
@@ -238,6 +245,7 @@ class ProjectNewsListSerializer(serializers.ModelSerializer):
             "datetime_created",
             "views_count",
             "likes_count",
+            "is_user_liked",
             "files",
         ]
 
@@ -247,6 +255,7 @@ class ProjectNewsDetailSerializer(serializers.ModelSerializer):
     likes_count = serializers.SerializerMethodField()
     project_name = serializers.SerializerMethodField()
     project_image_address = serializers.SerializerMethodField()
+    is_user_liked = serializers.SerializerMethodField()
 
     def get_project_name(self, obj):
         return obj.project.name
@@ -259,6 +268,12 @@ class ProjectNewsDetailSerializer(serializers.ModelSerializer):
 
     def get_likes_count(self, obj):
         return get_likes_count(obj)
+
+    def get_is_user_liked(self, obj):
+        user = self.context.get("user")
+        if user:
+            return is_fan(obj, user)
+        return False
 
     class Meta:
         model = ProjectNews
@@ -271,5 +286,6 @@ class ProjectNewsDetailSerializer(serializers.ModelSerializer):
             "datetime_updated",
             "views_count",
             "likes_count",
+            "is_user_liked",
             "files",
         ]
