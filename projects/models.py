@@ -99,9 +99,9 @@ class Project(models.Model):
         UserFile,
         default=DefaultProjectCover.get_random_file,
         on_delete=models.SET_DEFAULT,
+        related_name="project_cover",
         null=False,
         blank=False,
-        related_name="project_cover",
     )
 
     datetime_created = models.DateTimeField(
