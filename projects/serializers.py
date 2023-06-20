@@ -3,6 +3,7 @@ from rest_framework import serializers
 
 from core.fields import CustomListField
 from core.services import get_views_count, get_likes_count, is_fan
+from files.serializers import UserFileSerializer
 from industries.models import Industry
 from projects.models import Project, Achievement, Collaborator, ProjectNews
 from projects.validators import validate_project
@@ -64,6 +65,7 @@ class ProjectCollaboratorSerializer(serializers.ModelSerializer):
 
 class ProjectDetailSerializer(serializers.ModelSerializer):
     achievements = AchievementListSerializer(many=True, read_only=True)
+    cover = UserFileSerializer(required=False)
     collaborators = CollaboratorSerializer(
         source="collaborator_set", many=True, read_only=True
     )
@@ -116,6 +118,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "datetime_updated",
             "views_count",
             "likes_count",
+            "cover",
         ]
         read_only_fields = [
             "leader",
