@@ -139,6 +139,12 @@ class ProjectListSerializer(serializers.ModelSerializer):
         method_name="get_collaborator_count"
     )
     vacancies = ProjectVacancyListSerializer(many=True, read_only=True)
+    views_count = serializers.SerializerMethodField(method_name="count_views")
+
+    def count_views(self, project):
+        # FIXME
+        # TODO: add caching here at least every 5 minutes, otherwise will be heavy load
+        return View.objects.filter(content_type=Project, content_object=project).count()
 
     short_description = serializers.SerializerMethodField()
 
@@ -179,9 +185,7 @@ class ProjectListSerializer(serializers.ModelSerializer):
             "views_count",
         ]
 
-        read_only_fields = [
-            "leader",
-        ]
+        read_only_fields = ["leader", "views_count"]
 
     def is_valid(self, *, raise_exception=False):
         return super().is_valid(raise_exception=raise_exception)
