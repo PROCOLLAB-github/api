@@ -234,3 +234,36 @@ class ProjectNews(models.Model):
     class Meta:
         verbose_name = "Новость проекта"
         verbose_name_plural = "Новости проекта"
+
+
+class DefaultProjectCover(models.Model):
+    """
+    Default cover model for projects, is chosen randomly at project creation
+
+    Attributes:
+        image: A ForeignKey referencing the image of the cover.
+        datetime_created: A DateTimeField indicating date of creation.
+        datetime_updated: A DateTimeField indicating date of update.
+    """
+
+    image = models.ForeignKey(
+        UserFile,
+        on_delete=models.CASCADE,
+        related_name="default_covers",
+    )
+
+    datetime_created = models.DateTimeField(
+        verbose_name="Дата создания",
+        null=False,
+        auto_now_add=True,
+    )
+    datetime_updated = models.DateTimeField(
+        verbose_name="Дата изменения",
+        null=False,
+        auto_now=True,
+    )
+
+    class Meta:
+        abstract = True
+        verbose_name = "Обложка проекта"
+        verbose_name_plural = "Обложки проектов"
