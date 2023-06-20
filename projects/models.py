@@ -48,7 +48,6 @@ class DefaultProjectCover(models.Model):
         return cls.objects.order_by("?").first().image
 
     class Meta:
-        abstract = True
         verbose_name = "Обложка проекта"
         verbose_name_plural = "Обложки проектов"
 
