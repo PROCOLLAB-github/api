@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.models import ContentType
 from rest_framework import serializers
 
 from core.fields import CustomListField
@@ -93,7 +94,9 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     def count_views(self, project):
         # FIXME
         # TODO: add caching here at least every 5 minutes, otherwise will be heavy load
-        return View.objects.filter(content_type=Project, content_object=project).count()
+        return View.objects.filter(
+            content_type=ContentType.objects.get_for_model(Project), object_id=project.pk
+        ).count()
 
     def update(self, instance, validated_data):
         instance = super().update(instance, validated_data)
@@ -144,7 +147,9 @@ class ProjectListSerializer(serializers.ModelSerializer):
     def count_views(self, project):
         # FIXME
         # TODO: add caching here at least every 5 minutes, otherwise will be heavy load
-        return View.objects.filter(content_type=Project, content_object=project).count()
+        return View.objects.filter(
+            content_type=ContentType.objects.get_for_model(Project), object_id=project.pk
+        ).count()
 
     short_description = serializers.SerializerMethodField()
 
