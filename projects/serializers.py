@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from core.fields import CustomListField
+from core.models import View
 from core.services import get_views_count, get_likes_count, is_fan
 from industries.models import Industry
 from projects.models import Project, Achievement, Collaborator, ProjectNews
@@ -71,6 +72,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     short_description = serializers.SerializerMethodField()
     industry_id = serializers.IntegerField(required=False)
     likes_count = serializers.SerializerMethodField(method_name="count_likes")
+    views_count = serializers.SerializerMethodField(method_name="count_views")
     links = serializers.SerializerMethodField()
 
     @classmethod
@@ -87,6 +89,11 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
 
     def count_likes(self, project):
         return LikesOnProject.objects.filter(project=project, is_liked=True).count()
+
+    def count_views(self, project):
+        # FIXME
+        # TODO: add caching here at least every 5 minutes, otherwise will be heavy load
+        return View.objects.filter(content_type=Project, content_object=project).count()
 
     def update(self, instance, validated_data):
         instance = super().update(instance, validated_data)

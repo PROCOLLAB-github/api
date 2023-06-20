@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.models import View
 from core.permissions import IsStaffOrReadOnly
 from core.serializers import SetLikedSerializer
 from core.services import add_view, set_like
@@ -92,7 +93,10 @@ class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
-        instance.increment_views_count()
+        # create (or not, if it exists) a view object for project
+        View.objects.get_or_create(
+            user=request.user, content_type=Project, content_object=instance
+        )
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
