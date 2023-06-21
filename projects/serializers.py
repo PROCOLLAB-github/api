@@ -1,7 +1,9 @@
 from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.models import ContentType
 from rest_framework import serializers
 
 from core.fields import CustomListField
+from core.models import View
 from core.services import get_views_count, get_likes_count, is_fan
 from industries.models import Industry
 from projects.models import Project, Achievement, Collaborator, ProjectNews
@@ -71,6 +73,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     short_description = serializers.SerializerMethodField()
     industry_id = serializers.IntegerField(required=False)
     likes_count = serializers.SerializerMethodField(method_name="count_likes")
+    views_count = serializers.SerializerMethodField(method_name="count_views")
     links = serializers.SerializerMethodField()
 
     @classmethod
@@ -87,6 +90,13 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
 
     def count_likes(self, project):
         return LikesOnProject.objects.filter(project=project, is_liked=True).count()
+
+    def count_views(self, project):
+        # FIXME
+        # TODO: add caching here at least every 5 minutes, otherwise will be heavy load
+        return View.objects.filter(
+            content_type=ContentType.objects.get_for_model(Project), object_id=project.pk
+        ).count()
 
     def update(self, instance, validated_data):
         instance = super().update(instance, validated_data)
@@ -132,6 +142,14 @@ class ProjectListSerializer(serializers.ModelSerializer):
         method_name="get_collaborator_count"
     )
     vacancies = ProjectVacancyListSerializer(many=True, read_only=True)
+    views_count = serializers.SerializerMethodField(method_name="count_views")
+
+    def count_views(self, project):
+        # FIXME
+        # TODO: add caching here at least every 5 minutes, otherwise will be heavy load
+        return View.objects.filter(
+            content_type=ContentType.objects.get_for_model(Project), object_id=project.pk
+        ).count()
 
     short_description = serializers.SerializerMethodField()
 
@@ -172,9 +190,7 @@ class ProjectListSerializer(serializers.ModelSerializer):
             "views_count",
         ]
 
-        read_only_fields = [
-            "leader",
-        ]
+        read_only_fields = ["leader", "views_count"]
 
     def is_valid(self, *, raise_exception=False):
         return super().is_valid(raise_exception=raise_exception)
