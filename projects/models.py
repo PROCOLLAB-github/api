@@ -29,6 +29,8 @@ class DefaultProjectCover(models.Model):
         UserFile,
         on_delete=models.CASCADE,
         related_name="default_covers",
+        null=True,
+        blank=True,
     )
 
     datetime_created = models.DateTimeField(
@@ -100,8 +102,8 @@ class Project(models.Model):
         default=DefaultProjectCover.get_random_file,
         on_delete=models.SET_DEFAULT,
         related_name="project_cover",
-        null=False,
-        blank=False,
+        null=True,
+        blank=True,
     )
 
     datetime_created = models.DateTimeField(

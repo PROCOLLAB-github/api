@@ -1,4 +1,5 @@
 import mimetypes
+import sys
 from datetime import timedelta
 from pathlib import Path
 
@@ -19,6 +20,8 @@ DEBUG = config("DEBUG", default=False, cast=bool)
 SENTRY_DSN = config("SENTRY_DSN", default="", cast=str)
 
 AUTOPOSTING_ON = config("AUTOPOSTING_ON", default=False, cast=bool)
+
+TESTING = len(sys.argv) > 1 and sys.argv[1] == "test"
 
 TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN", default="", cast=str)
 TELEGRAM_CHANNEL = config("TELEGRAM_CHANNEL", default="", cast=str)
