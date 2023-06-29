@@ -228,3 +228,4 @@ class ProjectNews(models.Model):
     class Meta:
         verbose_name = "Новость проекта"
         verbose_name_plural = "Новости проекта"
+        ordering = ["-datetime_created"]
