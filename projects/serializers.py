@@ -1,14 +1,11 @@
 from django.contrib.auth import get_user_model
-from django.contrib.contenttypes.models import ContentType
 from rest_framework import serializers
 
 from core.fields import CustomListField
-from core.models import View
 from core.services import get_views_count, get_likes_count, is_fan
 from industries.models import Industry
 from projects.models import Project, Achievement, Collaborator, ProjectNews
 from projects.validators import validate_project
-from users.models import LikesOnProject
 from vacancy.serializers import ProjectVacancyListSerializer
 
 User = get_user_model()
@@ -89,14 +86,14 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
         return project.get_short_description()
 
     def count_likes(self, project):
-        return LikesOnProject.objects.filter(project=project, is_liked=True).count()
+        # FIXME
+        # TODO: add caching here at least every 5 minutes, otherwise this will be heavy load
+        return get_likes_count(project)
 
     def count_views(self, project):
         # FIXME
-        # TODO: add caching here at least every 5 minutes, otherwise will be heavy load
-        return View.objects.filter(
-            content_type=ContentType.objects.get_for_model(Project), object_id=project.pk
-        ).count()
+        # TODO: add caching here at least every 5 minutes, otherwise this will be heavy load
+        return get_views_count(project)
 
     def update(self, instance, validated_data):
         instance = super().update(instance, validated_data)
@@ -147,9 +144,7 @@ class ProjectListSerializer(serializers.ModelSerializer):
     def count_views(self, project):
         # FIXME
         # TODO: add caching here at least every 5 minutes, otherwise will be heavy load
-        return View.objects.filter(
-            content_type=ContentType.objects.get_for_model(Project), object_id=project.pk
-        ).count()
+        return get_views_count(project)
 
     short_description = serializers.SerializerMethodField()
 
@@ -162,7 +157,7 @@ class ProjectListSerializer(serializers.ModelSerializer):
         return len(obj.collaborator_set.all())
 
     def count_likes(self, obj):
-        return LikesOnProject.objects.filter(project=obj, is_liked=True).count()
+        return get_likes_count(obj)
 
     def get_collaborators(self, obj):
         max_collaborator_count = 4
