@@ -272,6 +272,19 @@ class ProjectNewsDetail(generics.RetrieveUpdateDestroyAPIView):
         except ProjectNews.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
 
+    def update(self, request, *args, **kwargs):
+        try:
+            news = self.get_queryset().get(pk=self.kwargs["pk"])
+            context = {"user": request.user}
+            serializer = ProjectNewsDetailSerializer(
+                news, data=request.data, context=context
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data)
+        except ProjectNews.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
 
 class ProjectNewsDetailSetViewed(generics.CreateAPIView):
     queryset = ProjectNews.objects.all()
