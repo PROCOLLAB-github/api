@@ -92,8 +92,11 @@ class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
-        # create (or not, if it exists) a view object for project
-        add_view(instance, request.user)
+        if request.user.is_authenticated:
+            add_view(instance, request.user)
+        else:
+            # TODO: add view adding for users who are not logged in
+            pass
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
@@ -269,6 +272,19 @@ class ProjectNewsDetail(generics.RetrieveUpdateDestroyAPIView):
             news = self.get_queryset().get(pk=self.kwargs["pk"])
             context = {"user": request.user}
             return Response(ProjectNewsDetailSerializer(news, context=context).data)
+        except ProjectNews.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+    def update(self, request, *args, **kwargs):
+        try:
+            news = self.get_queryset().get(pk=self.kwargs["pk"])
+            context = {"user": request.user}
+            serializer = ProjectNewsDetailSerializer(
+                news, data=request.data, context=context
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data)
         except ProjectNews.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
 
