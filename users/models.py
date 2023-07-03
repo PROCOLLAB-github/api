@@ -59,10 +59,10 @@ class CustomUser(AbstractUser):
     INVESTOR = INVESTOR
 
     username = None
-    email = models.EmailField(blank=False, unique=True)
-    first_name = models.CharField(max_length=255, blank=False)
-    last_name = models.CharField(max_length=255, blank=False)
-    password = models.CharField(max_length=255, blank=False)
+    email = models.EmailField(unique=True)
+    first_name = models.CharField(max_length=255)
+    last_name = models.CharField(max_length=255)
+    password = models.CharField(max_length=255)
     is_active = models.BooleanField(default=False, editable=False)
     user_type = models.PositiveSmallIntegerField(
         choices=VERBOSE_USER_TYPES,
@@ -73,8 +73,6 @@ class CustomUser(AbstractUser):
     key_skills = models.CharField(max_length=512, null=True, blank=True)
     avatar = models.URLField(null=True, blank=True)
     birthday = models.DateField(
-        null=False,
-        blank=False,
         validators=[user_birthday_validator],
     )
     about_me = models.TextField(null=True, blank=True)
@@ -99,8 +97,8 @@ class CustomUser(AbstractUser):
         verbose_name="Дата верификации",
     )
 
-    datetime_updated = models.DateTimeField(null=False, auto_now=True)
-    datetime_created = models.DateTimeField(null=False, auto_now_add=True)
+    datetime_updated = models.DateTimeField(auto_now=True)
+    datetime_created = models.DateTimeField(auto_now_add=True)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
