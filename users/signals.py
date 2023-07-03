@@ -18,3 +18,4 @@ def create_or_update_user_types(sender, instance, created, **kwargs):
 
     # update ordering
     instance.ordering_score = instance.calculate_ordering_score()
+    instance.save()
