@@ -15,7 +15,8 @@ def create_or_update_user_types(sender, instance, created, **kwargs):
             Expert.objects.create(user=instance)
         elif instance.user_type == CustomUser.INVESTOR:
             Investor.objects.create(user=instance)
-
-    # update ordering
-    instance.ordering_score = instance.calculate_ordering_score()
-    instance.save()
+    # check that the change wasn't about ordering scores
+    current_ordering_score = instance.calculate_ordering_score()
+    if instance.ordering_score != current_ordering_score:
+        instance.ordering_score = current_ordering_score
+        instance.save()
