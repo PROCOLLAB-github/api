@@ -6,9 +6,6 @@ from users.models import CustomUser, Member, Mentor, Expert, Investor
 
 @receiver(post_save, sender=CustomUser)
 def create_or_update_user_types(sender, instance, created, **kwargs):
-    # update ordering
-    instance.ordering_score = instance.calculate_ordering_score()
-
     if created:
         if instance.user_type == CustomUser.MEMBER:
             Member.objects.create(user=instance)
@@ -18,3 +15,6 @@ def create_or_update_user_types(sender, instance, created, **kwargs):
             Expert.objects.create(user=instance)
         elif instance.user_type == CustomUser.INVESTOR:
             Investor.objects.create(user=instance)
+
+    # update ordering
+    instance.ordering_score = instance.calculate_ordering_score()
