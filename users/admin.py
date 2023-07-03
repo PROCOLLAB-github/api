@@ -102,6 +102,8 @@ class CustomUserAdmin(admin.ModelAdmin):
         "city",
     )
 
+    readonly_fields = ("ordering_score",)
+
     def save_model(self, request, obj, form, change):
         # if user_type changed, then delete all related fields
         if change:

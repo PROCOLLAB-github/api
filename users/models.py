@@ -1,7 +1,5 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-from django.db.models.signals import post_save
-from django.dispatch import receiver
 
 from users.constants import (
     ADMIN,
@@ -340,22 +338,6 @@ class Investor(AbstractUserWithRole):
 
     def __str__(self):
         return f"Investor<{self.id}> - {self.user.first_name} {self.user.last_name}"
-
-
-@receiver(post_save, sender=CustomUser)
-def create_or_update_user_types(sender, instance, created, **kwargs):
-    # update ordering
-    instance.ordering_score = instance.calculate_ordering_score()
-
-    if created:
-        if instance.user_type == CustomUser.MEMBER:
-            Member.objects.create(user=instance)
-        elif instance.user_type == CustomUser.MENTOR:
-            Mentor.objects.create(user=instance)
-        elif instance.user_type == CustomUser.EXPERT:
-            Expert.objects.create(user=instance)
-        elif instance.user_type == CustomUser.INVESTOR:
-            Investor.objects.create(user=instance)
 
 
 class UserLink(models.Model):
