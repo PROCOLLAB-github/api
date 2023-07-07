@@ -26,6 +26,7 @@ class PartnerProgram(models.Model):
         datetime_updated: A DateTimeField indicating date of update.
     """
 
+    # links
     name = models.TextField(
         verbose_name="Название",
     )
@@ -111,6 +112,10 @@ class PartnerProgramUserProfile(models.Model):
         on_delete=models.CASCADE,
         related_name="partner_program_user_profile",
     )
+    # views
+    # likes
+    # links
+    # stats
     partner_program_data = models.JSONField()
     datetime_created = models.DateTimeField(auto_now_add=True)
     datetime_updated = models.DateTimeField(auto_now=True)

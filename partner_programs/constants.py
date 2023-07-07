@@ -1,4 +1,6 @@
-DEFAULT_DATA_SCHEMA = {"phone_number": "+79999999999"}
+DEFAULT_DATA_SCHEMA = {
+    "field": {"type": "text"},
+}
 
 
 def get_default_data_schema():
