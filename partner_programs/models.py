@@ -26,13 +26,6 @@ class PartnerProgram(models.Model):
         datetime_updated: A DateTimeField indicating date of update.
     """
 
-    link = models.ForeignKey(
-        "core.Link",
-        on_delete=models.CASCADE,
-        related_name="partner_programs",
-        verbose_name="Ссылка",
-    )
-
     name = models.TextField(
         verbose_name="Название",
     )
@@ -80,6 +73,9 @@ class PartnerProgram(models.Model):
         verbose_name="Участники программы",
         through="PartnerProgramUserProfile",
     )
+    datetime_registration_ends = models.DateTimeField(
+        verbose_name="Дата окончания регистрации",
+    )
     datetime_started = models.DateTimeField(
         verbose_name="Дата начала",
     )
@@ -118,10 +114,7 @@ class PartnerProgramUserProfile(models.Model):
         on_delete=models.CASCADE,
         related_name="partner_program_user_profile",
     )
-    # views
-    # likes
-    # links
-    # stats
+    # TODO: add amount of projects of this Program that user created
     partner_program_data = models.JSONField()
     datetime_created = models.DateTimeField(auto_now_add=True)
     datetime_updated = models.DateTimeField(auto_now=True)
