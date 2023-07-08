@@ -26,7 +26,13 @@ class PartnerProgram(models.Model):
         datetime_updated: A DateTimeField indicating date of update.
     """
 
-    # links
+    link = models.ForeignKey(
+        "core.Link",
+        on_delete=models.CASCADE,
+        related_name="partner_programs",
+        verbose_name="Ссылка",
+    )
+
     name = models.TextField(
         verbose_name="Название",
     )
