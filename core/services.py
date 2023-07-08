@@ -47,6 +47,8 @@ def set_like(obj, user, is_liked):
 
 
 def add_view(obj, user):
+    # TODO: add docstring
+    # TODO: add caching
     obj_type = ContentType.objects.get_for_model(obj)
     view, is_created = View.objects.get_or_create(
         content_type=obj_type, object_id=obj.id, user=user

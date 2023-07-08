@@ -38,6 +38,7 @@ class Project(models.Model):
     description = models.TextField(null=True, blank=True)
     region = models.CharField(max_length=256, null=True, blank=True)
     step = models.PositiveSmallIntegerField(choices=VERBOSE_STEPS, null=True, blank=True)
+    hidden_score = models.PositiveSmallIntegerField(default=100)
 
     industry = models.ForeignKey(
         Industry,
@@ -89,6 +90,7 @@ class Project(models.Model):
         return f"Project<{self.id}> - {self.name}"
 
     class Meta:
+        ordering = ["-hidden_score", "-datetime_created"]
         verbose_name = "Проект"
         verbose_name_plural = "Проекты"
 

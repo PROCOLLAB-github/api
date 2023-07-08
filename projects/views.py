@@ -94,6 +94,9 @@ class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
         instance = self.get_object()
         if request.user.is_authenticated:
             add_view(instance, request.user)
+        else:
+            # TODO: add view adding for users who are not logged in
+            pass
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
