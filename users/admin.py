@@ -22,6 +22,7 @@ class CustomUserAdmin(admin.ModelAdmin):
                 "fields": (
                     "user_type",
                     "verification_date",
+                    "ordering_score",
                 )
             },
         ),
@@ -82,7 +83,14 @@ class CustomUserAdmin(admin.ModelAdmin):
         ),
     )
 
-    list_display = ("id", "email", "last_name", "first_name", "is_active")
+    list_display = (
+        "id",
+        "email",
+        "last_name",
+        "first_name",
+        "ordering_score",
+        "is_active",
+    )
     list_display_links = (
         "id",
         "email",

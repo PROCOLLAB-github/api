@@ -2,10 +2,10 @@
 
 from django.db import migrations, models
 
+from users.models import CustomUser
+
 
 def set_up_ordering_score(apps, schema_editor):
-    CustomUser = apps.get_model("users", "CustomUser")
-
     for user in CustomUser.objects.all():
         user.ordering_score = user.calculate_ordering_score()
         user.save()
