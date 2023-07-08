@@ -1,7 +1,5 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-from django.db.models.signals import post_save
-from django.dispatch import receiver
 
 from users.constants import (
     ADMIN,
@@ -69,6 +67,10 @@ class CustomUser(AbstractUser):
         default=get_default_user_type,
     )
 
+    ordering_score = models.PositiveIntegerField(
+        default=0,
+        editable=False,
+    )
     patronymic = models.CharField(max_length=255, null=True, blank=True)
     key_skills = models.CharField(max_length=512, null=True, blank=True)
     avatar = models.URLField(null=True, blank=True)
@@ -105,6 +107,30 @@ class CustomUser(AbstractUser):
 
     objects = CustomUserManager()
 
+    def calculate_ordering_score(self) -> int:
+        """
+        Calculate ordering score of the user, e.g. how full their profile is.
+
+        Returns:
+            int: ordering score of the user.
+        """
+        score = 0
+        if self.avatar:
+            score += 10
+        if self.key_skills:
+            score += 7
+        if self.about_me:
+            score += 6
+        if self.region:
+            score += 4
+        if self.city:
+            score += 4
+        if self.organization:
+            score += 6
+        if self.speciality:
+            score += 7
+        return score
+
     def get_project_chats(self) -> list:
         collaborations = self.collaborations.all()
         projects = []
@@ -124,6 +150,9 @@ class CustomUser(AbstractUser):
     class Meta:
         verbose_name = "Пользователь"
         verbose_name_plural = "Пользователи"
+        # order by count of fields inputted, like avatar, key_skills, about_me, etc.
+        # first show users with all fields inputted, then with 1 field inputted, etc.
+        ordering = ["-ordering_score"]
 
 
 class UserAchievement(models.Model):
@@ -309,19 +338,6 @@ class Investor(AbstractUserWithRole):
 
     def __str__(self):
         return f"Investor<{self.id}> - {self.user.first_name} {self.user.last_name}"
-
-
-@receiver(post_save, sender=CustomUser)
-def create_or_update_user_types(sender, instance, created, **kwargs):
-    if created:
-        if instance.user_type == CustomUser.MEMBER:
-            Member.objects.create(user=instance)
-        elif instance.user_type == CustomUser.MENTOR:
-            Mentor.objects.create(user=instance)
-        elif instance.user_type == CustomUser.EXPERT:
-            Expert.objects.create(user=instance)
-        elif instance.user_type == CustomUser.INVESTOR:
-            Investor.objects.create(user=instance)
 
 
 class UserLink(models.Model):
