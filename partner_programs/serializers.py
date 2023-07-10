@@ -1,7 +1,10 @@
+from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from core.services import get_likes_count, get_views_count, get_links
+from core.services import get_likes_count, get_links, get_views_count
 from partner_programs.models import PartnerProgram
+
+User = get_user_model()
 
 
 class PartnerProgramListSerializer(serializers.ModelSerializer):
@@ -85,3 +88,12 @@ class PartnerProgramDetailSerializer(serializers.ModelSerializer):
             "views_count",
             "likes_count",
         )
+
+
+class PartnerProgramNewUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+
+
+class PartnerProgramUserSerializer(serializers.Serializer):
+    program_data = serializers.JSONField(required=True)
