@@ -1,7 +1,10 @@
+from typing import Union
+
+
 import requests
 import time
 import magic
-from django.core.files.uploadedfile import TemporaryUploadedFile
+from django.core.files.uploadedfile import TemporaryUploadedFile, InMemoryUploadedFile
 
 from files.exceptions import SelectelUploadError
 from files.models import UserFile
@@ -16,7 +19,9 @@ from procollab.settings import (
 
 
 class FileAPI:
-    def __init__(self, file: TemporaryUploadedFile, user) -> None:
+    def __init__(
+        self, file: Union[TemporaryUploadedFile, InMemoryUploadedFile], user
+    ) -> None:
         self.file = file  # it's TemporaryUploadedFile, and it will be
         # removed after first .close() call, so we must read this file only once
         self.user = user
@@ -31,7 +36,7 @@ class FileAPI:
 
     def upload(self) -> str:
         url = self._upload_via_selectel_swift()
-        info = get_file_info(self.file)
+        info = self.get_file_info(self.file)
         UserFile.objects.create(
             user=self.user,
             link=url,
@@ -42,6 +47,24 @@ class FileAPI:
         )
         self.file_object.close()
         return url
+
+    def get_file_info(
+        self, file: Union[TemporaryUploadedFile, InMemoryUploadedFile]
+    ) -> dict:
+        name, ext = file.name.split(".")
+
+        return {
+            "size": file.size,
+            "name": name,
+            "extension": ext,
+            "mime_type": self.get_file_mime_type(),
+        }
+
+    def get_file_mime_type(self):
+        if isinstance(self.file, InMemoryUploadedFile):
+            return magic.from_buffer(self.file_object.read(), mime=True)
+        else:
+            return magic.from_file(self.file.temporary_file_path(), mime=True)
 
     def _upload_via_selectel_swift(self) -> str:
         token = self._get_selectel_swift_token()
@@ -102,18 +125,3 @@ class FileAPI:
             link
             + f"{abs(hash(self.user.email))}/{abs(hash(self.file.name))}_{abs(hash(time.time()))}{extension}"
         )
-
-
-def get_file_info(file: TemporaryUploadedFile) -> dict:
-    name, ext = file.name.split(".")
-
-    return {
-        "size": file.size,
-        "name": name,
-        "extension": ext,
-        "mime_type": get_file_mime_type(file),
-    }
-
-
-def get_file_mime_type(file: TemporaryUploadedFile):
-    return magic.from_file(file.temporary_file_path(), mime=True)
