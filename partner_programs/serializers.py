@@ -27,6 +27,7 @@ class PartnerProgramListSerializer(serializers.ModelSerializer):
         return program.description[:100]
 
     def get_is_user_liked(self, obj):
+        # fixme: copy-paste in every serializer...
         user = self.context.get("user")
         if user:
             return is_fan(obj, user)
@@ -54,6 +55,7 @@ class PartnerProgramDetailSerializer(serializers.ModelSerializer):
     likes_count = serializers.SerializerMethodField(method_name="count_likes")
     views_count = serializers.SerializerMethodField(method_name="count_views")
     links = serializers.SerializerMethodField(method_name="get_links")
+    is_user_liked = serializers.SerializerMethodField(method_name="get_is_user_liked")
 
     def count_likes(self, program):
         return get_likes_count(program)
@@ -65,6 +67,13 @@ class PartnerProgramDetailSerializer(serializers.ModelSerializer):
         # FIXME
         # TODO: add caching here at least every 5 minutes, otherwise this will be heavy load
         return get_links(program)
+
+    def get_is_user_liked(self, obj):
+        # fixme: copy-paste in every serializer...
+        user = self.context.get("user")
+        if user:
+            return is_fan(obj, user)
+        return False
 
     class Meta:
         model = PartnerProgram
@@ -80,7 +89,6 @@ class PartnerProgramDetailSerializer(serializers.ModelSerializer):
             "cover_image_address",
             "advertisement_image_address",
             "presentation_address",
-            "data_schema",
             "users",
             "datetime_registration_ends",
             "datetime_started",
@@ -89,6 +97,7 @@ class PartnerProgramDetailSerializer(serializers.ModelSerializer):
             "datetime_updated",
             "views_count",
             "likes_count",
+            "is_user_liked",
         )
 
 
@@ -111,3 +120,7 @@ class PartnerProgramNewUserSerializer(serializers.ModelSerializer):
 
 class PartnerProgramUserSerializer(serializers.Serializer):
     program_data = serializers.JSONField(required=True)
+
+
+class PartnerProgramDataSchemaSerializer(serializers.Serializer):
+    data_schema = serializers.JSONField(required=True)

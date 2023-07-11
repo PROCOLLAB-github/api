@@ -11,6 +11,7 @@ from partner_programs.serializers import (
     PartnerProgramListSerializer,
     PartnerProgramNewUserSerializer,
     PartnerProgramUserSerializer,
+    PartnerProgramDataSchemaSerializer,
 )
 
 User = get_user_model()
@@ -33,6 +34,7 @@ class PartnerProgramDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = PartnerProgram.objects.all()
     serializer_class = PartnerProgramDetailSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    # todo: if user is registered user full serializer, else - short serializer
 
 
 class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
@@ -82,3 +84,9 @@ class PartnerProgramRegister(generics.GenericAPIView):
                 data={"detail": "User already registered to this program."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+
+class PartnerProgramDataSchema(generics.RetrieveAPIView):
+    queryset = PartnerProgram.objects.all()
+    serializer_class = PartnerProgramDataSchemaSerializer
+    permission_classes = [permissions.IsAuthenticated]
