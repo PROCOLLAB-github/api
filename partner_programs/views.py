@@ -60,13 +60,40 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
     serializer_class = PartnerProgramNewUserSerializer
 
     def post(self, request, *args, **kwargs):
-        # todo
-        # register new user
-        # create PartnerProgram m2m table if not created
-        # add user to m2m
-        # program = PartnerProgram.objects.get(pk=kwargs["pk"])
-        # user = User()
-        return Response(status=status.HTTP_201_CREATED)
+        try:
+            program = PartnerProgram.objects.get(pk=kwargs["pk"])
+            data = request.data
+            user_fields = (
+                "email",
+                "password",
+                "first_name",
+                "last_name",
+                "patronymic",
+                "birthday",
+                "city",
+            )
+            # fixme: should we set verification_date?, if no then we need to ad them to ClickUp list
+            user = User(
+                **{field_name: data[field_name] for field_name in user_fields},
+                is_active=True,  # bypass email verification
+                onboarding_stage=None,  # bypass onboarding
+            )
+            user.save()
+
+            user_profile_program_data = {
+                field_name: data.get(field_name)
+                for field_name in data
+                if field_name not in user_fields
+            }
+            added_user_profile = PartnerProgramUserProfile(
+                partner_program_data=user_profile_program_data,
+                user=user,
+                partner_program=program,
+            )
+            added_user_profile.save()
+            return Response(status=status.HTTP_201_CREATED)
+        except PartnerProgram.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
 
 
 class PartnerProgramRegister(generics.GenericAPIView):
@@ -100,7 +127,8 @@ class PartnerProgramRegister(generics.GenericAPIView):
             )
 
 
-class PartnerProgramSetViewed(generics.CreateAPIView):
+class PartnerProgramSetViewed(generics.GenericAPIView):
+    # fixme
     # serializer_class = SetViewedSerializer
     permission_classes = [IsAuthenticated]
 
