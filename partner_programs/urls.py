@@ -6,6 +6,8 @@ from partner_programs.views import (
     PartnerProgramCreateUserAndRegister,
     PartnerProgramRegister,
     PartnerProgramDataSchema,
+    PartnerProgramSetLiked,
+    PartnerProgramSetViewed,
 )
 
 app_name = "partner_programs"
@@ -16,6 +18,6 @@ urlpatterns = [
     path("<int:pk>/schema/", PartnerProgramDataSchema.as_view()),
     path("<int:pk>/register/", PartnerProgramRegister.as_view()),
     path("<int:pk>/register_new/", PartnerProgramCreateUserAndRegister.as_view()),
-    # todo: set_liked
-    # todo: set_viewed
+    path("<int:pk>/set_liked/", PartnerProgramSetLiked.as_view()),
+    path("<int:pk>/set_viewed/", PartnerProgramSetViewed.as_view()),
 ]

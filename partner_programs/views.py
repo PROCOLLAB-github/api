@@ -4,6 +4,8 @@ from rest_framework import generics, permissions, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
+from core.serializers import SetLikedSerializer
+from core.services import set_like, add_view
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 from partner_programs.pagination import PartnerProgramPagination
 from partner_programs.serializers import (
@@ -64,7 +66,6 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
         # add user to m2m
         # program = PartnerProgram.objects.get(pk=kwargs["pk"])
         # user = User()
-        # print(request.data)
         return Response(status=status.HTTP_201_CREATED)
 
 
@@ -97,6 +98,32 @@ class PartnerProgramRegister(generics.GenericAPIView):
                 data={"detail": "User already registered to this program."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+
+class PartnerProgramSetViewed(generics.CreateAPIView):
+    # serializer_class = SetViewedSerializer
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        try:
+            program = PartnerProgram.objects.get(pk=self.kwargs["pk"])
+            add_view(program, request.user)
+            return Response(status=status.HTTP_200_OK)
+        except PartnerProgram.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+
+class PartnerProgramSetLiked(generics.CreateAPIView):
+    serializer_class = SetLikedSerializer
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        try:
+            program = PartnerProgram.objects.get(pk=self.kwargs["pk"])
+            set_like(program, request.user, request.data.get("is_liked"))
+            return Response(status=status.HTTP_200_OK)
+        except PartnerProgram.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
 
 
 class PartnerProgramDataSchema(generics.RetrieveAPIView):
