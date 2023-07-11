@@ -291,6 +291,7 @@ class ProjectNewsDetail(generics.RetrieveUpdateDestroyAPIView):
 
 class ProjectNewsDetailSetViewed(generics.CreateAPIView):
     queryset = ProjectNews.objects.all()
+    # fixme
     # serializer_class = SetViewedSerializer
     permission_classes = [IsAuthenticated]
 
