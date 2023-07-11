@@ -45,4 +45,8 @@ class PartnerProgramUserProfileAdmin(admin.ModelAdmin):
         "datetime_created",
     )
     list_filter = ("partner_program",)
+    raw_id_fields = (
+        "user",
+        "partner_program",
+    )
     date_hierarchy = "datetime_created"

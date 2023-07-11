@@ -91,8 +91,20 @@ class PartnerProgramDetailSerializer(serializers.ModelSerializer):
 
 
 class PartnerProgramNewUserSerializer(serializers.ModelSerializer):
+    """Serializer for creating new user and register him to program."""
+
+    program_data = serializers.JSONField(required=True)
+
     class Meta:
         model = User
+        fields = (
+            "email",
+            "password",
+            "first_name",
+            "last_name",
+            "patronymic",
+            "program_data",
+        )
 
 
 class PartnerProgramUserSerializer(serializers.Serializer):

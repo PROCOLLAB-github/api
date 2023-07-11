@@ -1,14 +1,18 @@
+from django.contrib.auth import get_user_model
+from django.db import IntegrityError
 from rest_framework import generics, permissions, status
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from partner_programs.models import PartnerProgram
+from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 from partner_programs.serializers import (
-    PartnerProgramListSerializer,
     PartnerProgramDetailSerializer,
-    PartnerProgramUserSerializer,
+    PartnerProgramListSerializer,
     PartnerProgramNewUserSerializer,
+    PartnerProgramUserSerializer,
 )
+
+User = get_user_model()
 
 
 class PartnerProgramList(generics.ListCreateAPIView):
@@ -32,22 +36,41 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
     serializer_class = PartnerProgramNewUserSerializer
 
     def post(self, request, *args, **kwargs):
-        # program = PartnerProgram.objects.get(pk=kwargs["pk"])
-        # todo
         # register new user
         # create PartnerProgram m2m table if not created
         # add user to m2m
+        # program = PartnerProgram.objects.get(pk=kwargs["pk"])
+        # user = User()
+        # print(request.data)
         return Response(status=status.HTTP_201_CREATED)
 
 
 class PartnerProgramRegister(generics.GenericAPIView):
     """
-    Register user to program and save additional data
+    Register user to program and save additional program data
     """
 
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
     serializer_class = PartnerProgramUserSerializer
 
     def post(self, request, *args, **kwargs):
-        # todo
-        return Response(status=status.HTTP_201_CREATED)
+        try:
+            program = PartnerProgram.objects.get(pk=kwargs["pk"])
+            user_to_add = request.user
+            user_profile_program_data = request.data
+
+            added_user_profile = PartnerProgramUserProfile(
+                partner_program_data=user_profile_program_data,
+                user=user_to_add,
+                partner_program=program,
+            )
+            added_user_profile.save()
+
+            return Response(status=status.HTTP_201_CREATED)
+        except PartnerProgram.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        except IntegrityError:
+            return Response(
+                data={"detail": "User already registered to this program."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
