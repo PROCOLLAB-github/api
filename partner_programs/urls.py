@@ -14,4 +14,6 @@ urlpatterns = [
     path("<int:pk>/", PartnerProgramDetail.as_view()),
     path("<int:pk>/register/", PartnerProgramRegister.as_view()),
     path("<int:pk>/register_new/", PartnerProgramCreateUserAndRegister.as_view()),
+    # todo: set_liked
+    # todo: set_viewed
 ]

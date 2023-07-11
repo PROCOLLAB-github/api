@@ -241,6 +241,7 @@ class ProjectNewsListSerializer(serializers.ModelSerializer):
         return get_likes_count(obj)
 
     def get_is_user_liked(self, obj):
+        # fixme: move this method to helpers somewhere
         user = self.context.get("user")
         if user:
             return is_fan(obj, user)

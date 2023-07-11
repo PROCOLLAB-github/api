@@ -5,6 +5,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
+from partner_programs.pagination import PartnerProgramPagination
 from partner_programs.serializers import (
     PartnerProgramDetailSerializer,
     PartnerProgramListSerializer,
@@ -19,6 +20,13 @@ class PartnerProgramList(generics.ListCreateAPIView):
     queryset = PartnerProgram.objects.all()
     serializer_class = PartnerProgramListSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    pagination_class = PartnerProgramPagination
+
+    def get(self, request, *args, **kwargs):
+        programs = self.paginate_queryset(self.get_queryset())
+        context = {"user": request.user}
+        serializer = PartnerProgramListSerializer(programs, context=context, many=True)
+        return self.get_paginated_response(serializer.data)
 
 
 class PartnerProgramDetail(generics.RetrieveUpdateDestroyAPIView):

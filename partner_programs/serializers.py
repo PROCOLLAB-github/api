@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from core.services import get_likes_count, get_links, get_views_count
+from core.services import get_likes_count, get_links, get_views_count, is_fan
 from partner_programs.models import PartnerProgram
 
 User = get_user_model()
@@ -12,7 +12,10 @@ class PartnerProgramListSerializer(serializers.ModelSerializer):
 
     likes_count = serializers.SerializerMethodField(method_name="count_likes")
     views_count = serializers.SerializerMethodField(method_name="count_views")
-    links = serializers.SerializerMethodField(method_name="get_links")
+    short_description = serializers.SerializerMethodField(
+        method_name="get_short_description"
+    )
+    is_user_liked = serializers.SerializerMethodField(method_name="get_is_user_liked")
 
     def count_likes(self, program):
         return get_likes_count(program)
@@ -20,29 +23,28 @@ class PartnerProgramListSerializer(serializers.ModelSerializer):
     def count_views(self, program):
         return get_views_count(program)
 
-    def get_links(self, program):
-        # FIXME
-        # TODO: add caching here at least every 5 minutes, otherwise this will be heavy load
-        return get_links(program)
+    def get_short_description(self, program):
+        return program.description[:100]
+
+    def get_is_user_liked(self, obj):
+        user = self.context.get("user")
+        if user:
+            return is_fan(obj, user)
+        return False
 
     class Meta:
         model = PartnerProgram
         fields = (
             "id",
             "name",
-            "tag",
-            "links",
-            "description",
-            "city",
-            "links",
             "image_address",
-            "advertisement_image_address",
-            "users",
+            "short_description",
             "datetime_registration_ends",
             "datetime_started",
             "datetime_finished",
             "views_count",
             "likes_count",
+            "is_user_liked",
         )
 
 
