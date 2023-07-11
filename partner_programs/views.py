@@ -7,11 +7,12 @@ from rest_framework.response import Response
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 from partner_programs.pagination import PartnerProgramPagination
 from partner_programs.serializers import (
-    PartnerProgramDetailSerializer,
     PartnerProgramListSerializer,
     PartnerProgramNewUserSerializer,
     PartnerProgramUserSerializer,
     PartnerProgramDataSchemaSerializer,
+    PartnerProgramForMemberSerializer,
+    PartnerProgramForUnregisteredUserSerializer,
 )
 
 User = get_user_model()
@@ -30,11 +31,22 @@ class PartnerProgramList(generics.ListCreateAPIView):
         return self.get_paginated_response(serializer.data)
 
 
-class PartnerProgramDetail(generics.RetrieveUpdateDestroyAPIView):
+class PartnerProgramDetail(generics.RetrieveAPIView):
     queryset = PartnerProgram.objects.all()
-    serializer_class = PartnerProgramDetailSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-    # todo: if user is registered user full serializer, else - short serializer
+
+    def get(self, request, *args, **kwargs):
+        try:
+            program = PartnerProgram.objects.get(pk=kwargs["pk"])
+            is_user_member = program.users.filter(pk=request.user.pk).exists()
+            if is_user_member:
+                serializer_class = PartnerProgramForMemberSerializer
+            else:
+                serializer_class = PartnerProgramForUnregisteredUserSerializer
+            data = serializer_class(program).data
+            return Response(data=data, status=status.HTTP_200_OK)
+        except PartnerProgram.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
 
 
 class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
@@ -46,6 +58,7 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
     serializer_class = PartnerProgramNewUserSerializer
 
     def post(self, request, *args, **kwargs):
+        # todo
         # register new user
         # create PartnerProgram m2m table if not created
         # add user to m2m

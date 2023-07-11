@@ -49,16 +49,11 @@ class PartnerProgramListSerializer(serializers.ModelSerializer):
         )
 
 
-class PartnerProgramDetailSerializer(serializers.ModelSerializer):
-    """Serializer for PartnerProgram model for detail view."""
+class PartnerProgramForMemberSerializer(serializers.ModelSerializer):
+    """Serializer for PartnerProgram model for member of this program"""
 
-    likes_count = serializers.SerializerMethodField(method_name="count_likes")
     views_count = serializers.SerializerMethodField(method_name="count_views")
     links = serializers.SerializerMethodField(method_name="get_links")
-    is_user_liked = serializers.SerializerMethodField(method_name="get_is_user_liked")
-
-    def count_likes(self, program):
-        return get_likes_count(program)
 
     def count_views(self, program):
         return get_views_count(program)
@@ -81,23 +76,30 @@ class PartnerProgramDetailSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "tag",
-            "links",
             "description",
             "city",
             "links",
             "image_address",
             "cover_image_address",
+            "presentation_address",
+            "views_count",
+        )
+
+
+class PartnerProgramForUnregisteredUserSerializer(serializers.ModelSerializer):
+    """Serializer for PartnerProgram model for unregistered users in the program"""
+
+    class Meta:
+        model = PartnerProgram
+        fields = (
+            "id",
+            "name",
+            "tag",
+            "city",
+            "image_address",
+            "cover_image_address",
             "advertisement_image_address",
             "presentation_address",
-            "users",
-            "datetime_registration_ends",
-            "datetime_started",
-            "datetime_finished",
-            "datetime_created",
-            "datetime_updated",
-            "views_count",
-            "likes_count",
-            "is_user_liked",
         )
 
 
