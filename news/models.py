@@ -1,3 +1,4 @@
+from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 
@@ -56,8 +57,13 @@ class News(models.Model):
     tags = models.ManyToManyField(NewsTag, blank=True, verbose_name="Список тегов")
 
     # generic relation to project/program/ something else possibly
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    content_type = models.ForeignKey(
+        ContentType,
+        on_delete=models.CASCADE,
+        related_name="news",
+    )
     object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey("content_type", "object_id")
 
     datetime_created = models.DateTimeField(
         verbose_name="Дата создания", null=False, auto_now_add=True
