@@ -58,11 +58,9 @@ class News(models.Model):
 
     # generic relation to project/program/ something else possibly
     content_type = models.ForeignKey(
-        ContentType,
-        on_delete=models.CASCADE,
-        related_name="news",
+        ContentType, on_delete=models.CASCADE, related_name="news", null=True, blank=True
     )
-    object_id = models.PositiveIntegerField()
+    object_id = models.PositiveIntegerField(null=True, blank=True)
     content_object = GenericForeignKey("content_type", "object_id")
 
     datetime_created = models.DateTimeField(
