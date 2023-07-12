@@ -16,7 +16,6 @@ class Migration(migrations.Migration):
             model_name="news",
             name="content_type",
             field=models.ForeignKey(
-                default=0,
                 on_delete=django.db.models.deletion.CASCADE,
                 to="contenttypes.contenttype",
             ),
