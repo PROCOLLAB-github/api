@@ -116,4 +116,4 @@ def get_file_info(file: TemporaryUploadedFile) -> dict:
 
 
 def get_file_mime_type(file: TemporaryUploadedFile):
-    return magic.from_file(file.temporary_file_path(), mime=True)
+    return magic.from_file(file.name, mime=True)
