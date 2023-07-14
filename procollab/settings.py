@@ -5,7 +5,8 @@ from pathlib import Path
 import sentry_sdk
 from decouple import config
 from sentry_sdk.integrations.django import DjangoIntegration
-import os
+
+
 mimetypes.add_type("application/javascript", ".js", True)
 mimetypes.add_type("text/css", ".css", True)
 mimetypes.add_type("text/html", ".html", True)
@@ -41,7 +42,7 @@ ALLOWED_HOSTS = [
     "api.procollab.ru",
     "app.procollab.ru",
     "procollab.ru",
-    "web", # From Docker
+    "web",  # From Docker
 ]
 
 PASSWORD_HASHERS = [
@@ -172,14 +173,14 @@ if DEBUG:
     DATABASES = {
         "default": {
             "ENGINE": "django_prometheus.db.backends.sqlite3",
-            "NAME": 'db.sqlite3',
+            "NAME": "db.sqlite3",
         }
     }
 
     CACHES = {
-        'default': {
-            'BACKEND': 'django_prometheus.cache.backends.filebased.FileBasedCache',
-            'LOCATION': '/var/tmp/django_cache',
+        "default": {
+            "BACKEND": "django_prometheus.cache.backends.filebased.FileBasedCache",
+            "LOCATION": "/var/tmp/django_cache",
         }
     }
 
@@ -317,4 +318,22 @@ SELECTEL_CONTAINER_PASSWORD = config(
     "SELECTEL_CONTAINER_PASSWORD", cast=str, default="PWD"
 )
 
-PROMETHEUS_LATENCY_BUCKETS = (0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10.0, 25.0, 50.0, 75.0, float("inf"),)
+PROMETHEUS_LATENCY_BUCKETS = (
+    0.01,
+    0.025,
+    0.05,
+    0.075,
+    0.1,
+    0.25,
+    0.5,
+    0.75,
+    1.0,
+    2.5,
+    5.0,
+    7.5,
+    10.0,
+    25.0,
+    50.0,
+    75.0,
+    float("inf"),
+)
