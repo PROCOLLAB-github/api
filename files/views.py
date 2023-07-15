@@ -18,7 +18,7 @@ class FileView(generics.GenericAPIView):
     def post(self, request):
         """creates a UserFile object and uploads the file to selectel"""
         try:
-            file_api = FileAPI(request.FILES["file"])
+            file_api = FileAPI(request.FILES["file"], request.user)
             url, info = file_api.upload()
             UserFile.objects.create(
                 user=request.user,
