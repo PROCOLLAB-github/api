@@ -212,7 +212,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
 
 class UserProjectsSerializer(serializers.ModelSerializer):
     short_description = serializers.SerializerMethodField()
-    views_count = serializers.SerializerMethodField()
+    views_count = serializers.SerializerMethodField(method_name="get_views_count")
 
     @classmethod
     def get_views_count(cls, project):
@@ -231,8 +231,9 @@ class UserProjectsSerializer(serializers.ModelSerializer):
             "short_description",
             "image_address",
             "industry",
+            "views_count",
         ]
-        read_only_fields = ["leader", "views_count"]
+        read_only_fields = ["leader"]
 
 
 class UserListSerializer(serializers.ModelSerializer):

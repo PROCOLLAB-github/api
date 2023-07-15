@@ -17,13 +17,9 @@ class FileView(generics.GenericAPIView):
     @transaction.atomic
     def post(self, request):
         """creates a UserFile object and uploads the file to selectel"""
-        try:
-            file_api = FileAPI(request.FILES["file"], request.user)
-            url = file_api.upload()
-            return Response({"url": url}, status=status.HTTP_201_CREATED)
-        except Exception as error:
-            print(error)
-            return Response("Failed to upload file", status=status.HTTP_409_CONFLICT)
+        file_api = FileAPI(request.FILES["file"], request.user)
+        url = file_api.upload()
+        return Response({"url": url}, status=status.HTTP_201_CREATED)
 
 
 def delete(self, request, *args, **kwargs):

@@ -38,7 +38,7 @@ class FileAPI:
             name=info["name"],
             size=info["size"],
             extension=info["extension"],
-            mime_type=info["mime_type"],
+            # mime_type=info["mime_type"],
         )
         self.file_object.close()
         return url
@@ -111,9 +111,9 @@ def get_file_info(file: TemporaryUploadedFile) -> dict:
         "size": file.size,
         "name": name,
         "extension": ext,
-        "mime_type": get_file_mime_type(file),
+        # "mime_type": get_file_mime_type(file),
     }
 
 
 def get_file_mime_type(file: TemporaryUploadedFile):
-    return magic.from_file(file.temporary_file_path(), mime=True)
+    return magic.from_file(file.name, mime=True)
