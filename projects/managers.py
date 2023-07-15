@@ -19,6 +19,7 @@ class ProjectManager(Manager):
                     "leader",
                     queryset=CustomUser.objects.only("id").all(),
                 ),
+                # TODO: is this fixed now? can we uncomment this?
                 # Prefetch(
                 #     "collaborator_set",
                 #     queryset=Collaborator.objects.filter(

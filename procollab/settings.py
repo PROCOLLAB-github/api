@@ -86,6 +86,7 @@ INSTALLED_APPS = [
     "invites.apps.InvitesConfig",
     "files.apps.FilesConfig",
     "events.apps.EventsConfig",
+    "partner_programs.apps.PartnerProgramsConfig",
     # Rest framework
     "rest_framework",
     "rest_framework_simplejwt",
@@ -256,7 +257,7 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "static"
 
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
 
 # Default primary key field type
 

@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 
-from core.models import Like, View
+from core.models import Like, View, Link
 
 User = get_user_model()
 
@@ -86,3 +86,21 @@ def set_viewed(obj, user, is_viewed):
         add_view(obj, user)
     else:
         remove_view(obj, user)
+
+
+def add_link(obj, link: str):
+    obj_type = ContentType.objects.get_for_model(obj)
+    like, is_created = Link.objects.get_or_create(
+        content_type=obj_type, object_id=obj.id, link=link
+    )
+    return like
+
+
+def remove_link(obj, link):
+    obj_type = ContentType.objects.get_for_model(obj)
+    Like.objects.filter(content_type=obj_type, object_id=obj.id, link=link).delete()
+
+
+def get_links(obj):
+    obj_type = ContentType.objects.get_for_model(obj)
+    return Link.objects.filter(content_type=obj_type, object_id=obj.id)
