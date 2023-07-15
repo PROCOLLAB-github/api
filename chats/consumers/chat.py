@@ -65,7 +65,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         await self.accept()
 
     async def disconnect(self, close_code):
-        """User disconnected from websocket, Don't have to do anything here"""
+        """User disconnected from websocket"""
         pass
 
     async def receive_json(self, content, **kwargs):

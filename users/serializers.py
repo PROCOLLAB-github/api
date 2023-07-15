@@ -2,6 +2,7 @@ from django.forms.models import model_to_dict
 from rest_framework import serializers
 from django.core.cache import cache
 
+from core.services import get_views_count
 from core.utils import get_user_online_cache_key
 from projects.models import Project
 from .models import CustomUser, Expert, Investor, Member, Mentor, UserAchievement
@@ -211,6 +212,11 @@ class UserDetailSerializer(serializers.ModelSerializer):
 
 class UserProjectsSerializer(serializers.ModelSerializer):
     short_description = serializers.SerializerMethodField()
+    views_count = serializers.SerializerMethodField()
+
+    @classmethod
+    def get_views_count(cls, project):
+        return get_views_count(project)
 
     @classmethod
     def get_short_description(cls, project):
@@ -226,9 +232,7 @@ class UserProjectsSerializer(serializers.ModelSerializer):
             "image_address",
             "industry",
         ]
-        read_only_fields = [
-            "leader",
-        ]
+        read_only_fields = ["leader", "views_count"]
 
 
 class UserListSerializer(serializers.ModelSerializer):

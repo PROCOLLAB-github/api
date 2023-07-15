@@ -86,6 +86,7 @@ INSTALLED_APPS = [
     "invites.apps.InvitesConfig",
     "files.apps.FilesConfig",
     "events.apps.EventsConfig",
+    "partner_programs.apps.PartnerProgramsConfig",
     # Rest framework
     "rest_framework",
     "rest_framework_simplejwt",
