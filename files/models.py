@@ -27,3 +27,7 @@ class UserFile(models.Model):
 
     def __str__(self):
         return f"UserFile by {self.user}, {self.link}"
+
+    class Meta:
+        verbose_name = "Файл"
+        verbose_name_plural = "Файлы"

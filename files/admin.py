@@ -1,10 +1,23 @@
-from django.contrib import admin
+import reprlib
 
+from django.contrib import admin
+from django.forms import ModelForm, FileField
+
+from files.helpers import FileAPI
 from files.models import UserFile
+
+
+class UserFileForm(ModelForm):
+    file = FileField(required=True)
+
+    class Meta:
+        model = UserFile
+        fields = "__all__"
 
 
 @admin.register(UserFile)
 class UserFileAdmin(admin.ModelAdmin):
+    form = UserFileForm
     list_display = (
         "short_link",
         "filename",
@@ -34,4 +47,26 @@ class UserFileAdmin(admin.ModelAdmin):
 
     @admin.display(empty_value="Empty link")
     def short_link(self, obj):
-        return obj.link[15:40] + "..." + obj.link[-20:]
+        return reprlib.repr(obj.link.lstrip("https://")).strip("'")
+
+    def get_fieldsets(self, request, obj=None):
+        fieldsets = super().get_fieldsets(request, obj)
+        file_field_index = fieldsets[0][1]["fields"].index("file")
+        if obj:
+            # remove file field if file is already uploaded
+            del fieldsets[0][1]["fields"][file_field_index]
+        else:
+            # remove other field
+            fieldsets[0][1]["fields"] = ["file"]
+        return fieldsets
+
+    def save_model(self, request, obj, form, change):
+        file_api = FileAPI(request.FILES["file"], request.user)
+        url, info = file_api.upload()
+        obj.link = url
+        obj.user = request.user
+        obj.name = info["name"]
+        obj.size = info["size"]
+        obj.extension = info["extension"]
+        obj.mime_type = info["mime_type"]
+        super().save_model(request, obj, form, change)
