@@ -3,7 +3,6 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
 
 from core.constants import VIEWS_CACHING_TIMEOUT, LIKES_CACHING_TIMEOUT
-from core.models import Like, View
 from core.models import Like, View, Link
 
 User = get_user_model()
