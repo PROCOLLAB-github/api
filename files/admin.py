@@ -2,7 +2,6 @@ import reprlib
 
 from django.contrib import admin
 from django.forms import ModelForm, FileField
-from django.shortcuts import redirect
 
 from files.helpers import FileAPI
 from files.models import UserFile
@@ -10,11 +9,6 @@ from files.models import UserFile
 
 class UserFileForm(ModelForm):
     file = FileField(required=True)
-
-    def save(self, commit=True):
-        if self.cleaned_data.get("file"):
-            print(self.cleaned_data.get("file"))
-        return super().save(commit)
 
     class Meta:
         model = UserFile
@@ -66,17 +60,13 @@ class UserFileAdmin(admin.ModelAdmin):
             fieldsets[0][1]["fields"] = ["file"]
         return fieldsets
 
-    def response_add(self, request, obj, post_url_continue=None):
-        if obj is None:
-            file_api = FileAPI(request.FILES["file"], request.user)
-            url = file_api.upload()
-            return redirect(f"/admin/files/userfile/{url}")
-        return super().response_add(request, obj, post_url_continue)
-
     def save_model(self, request, obj, form, change):
-        if not obj.pk:
-            return
-            # file_api = FileAPI(request.FILES["file"], request.user)
-            # url = file_api.upload()
-            # obj = UserFile.objects.get(pk=url)
+        file_api = FileAPI(request.FILES["file"], request.user)
+        url, info = file_api.upload()
+        obj.link = url
+        obj.user = request.user
+        obj.name = info["name"]
+        obj.size = info["size"]
+        obj.extension = info["extension"]
+        obj.mime_type = info["mime_type"]
         super().save_model(request, obj, form, change)

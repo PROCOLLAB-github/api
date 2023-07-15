@@ -1,13 +1,11 @@
 from typing import Union
 
-
 import requests
 import time
 import magic
 from django.core.files.uploadedfile import TemporaryUploadedFile, InMemoryUploadedFile
 
 from files.exceptions import SelectelUploadError
-from files.models import UserFile
 
 from procollab.settings import (
     DEBUG,
@@ -19,6 +17,7 @@ from procollab.settings import (
 
 
 class FileAPI:
+    # fixme: looks terrible
     def __init__(
         self, file: Union[TemporaryUploadedFile, InMemoryUploadedFile], user
     ) -> None:
@@ -34,25 +33,19 @@ class FileAPI:
         response = requests.delete(url, headers={"X-Auth-Token": token})
         return response.status_code
 
-    def upload(self) -> str:
+    def upload(self) -> tuple[str, dict]:
         url = self._upload_via_selectel_swift()
+        # todo: type hints for this dummy dict
         info = self.get_file_info(self.file)
-        UserFile.objects.create(
-            user=self.user,
-            link=url,
-            name=info["name"],
-            size=info["size"],
-            extension=info["extension"],
-            mime_type=info["mime_type"],
-        )
         self.file_object.close()
-        return url
+        return url, info
 
     def get_file_info(
         self, file: Union[TemporaryUploadedFile, InMemoryUploadedFile]
     ) -> dict:
         name, ext = file.name.split(".")
 
+        # fixme:
         return {
             "size": file.size,
             "name": name,
