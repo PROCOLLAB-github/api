@@ -15,13 +15,14 @@ services:
     environment:
       HOST: 0.0.0.0
   grafana:
-    image: grafana/grafana:8.5.3-ubuntu
+    image: grafana/grafana:latest
     ports:
       - "3000:3000"
     volumes:
       - grafana-data:/var/lib/grafana
       - grafana-configs:/etc/grafana
   prometheus:
+    container_name: prometheus
     image: prom/prometheus:v2.36.0
     ports:
       - "9090:9090"
