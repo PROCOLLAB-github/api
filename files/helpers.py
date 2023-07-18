@@ -6,6 +6,7 @@ import magic
 from django.core.files.uploadedfile import TemporaryUploadedFile, InMemoryUploadedFile
 
 from files.exceptions import SelectelUploadError
+from files.typings import UserFileInfo
 
 from procollab.settings import (
     DEBUG,
@@ -33,25 +34,19 @@ class FileAPI:
         response = requests.delete(url, headers={"X-Auth-Token": token})
         return response.status_code
 
-    def upload(self) -> tuple[str, dict]:
+    def upload(self) -> tuple[str, UserFileInfo]:
         url = self._upload_via_selectel_swift()
-        # todo: type hints for this dummy dict
         info = self.get_file_info(self.file)
         self.file_object.close()
         return url, info
 
     def get_file_info(
         self, file: Union[TemporaryUploadedFile, InMemoryUploadedFile]
-    ) -> dict:
+    ) -> UserFileInfo:
         name, ext = file.name.split(".")
-
-        # fixme:
-        return {
-            "size": file.size,
-            "name": name,
-            "extension": ext,
-            "mime_type": self.get_file_mime_type(),
-        }
+        return UserFileInfo(
+            size=file.size, name=name, extension=ext, mime_type=self.get_file_mime_type()
+        )
 
     def get_file_mime_type(self):
         if isinstance(self.file, InMemoryUploadedFile):

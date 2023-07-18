@@ -65,8 +65,12 @@ class UserFileAdmin(admin.ModelAdmin):
         url, info = file_api.upload()
         obj.link = url
         obj.user = request.user
-        obj.name = info["name"]
-        obj.size = info["size"]
-        obj.extension = info["extension"]
-        obj.mime_type = info["mime_type"]
+        obj.name = info.name
+        obj.size = info.size
+        obj.extension = info.extension
+        obj.mime_type = info.mime_type
         super().save_model(request, obj, form, change)
+
+    def delete_model(self, request, obj):
+        FileAPI.delete(obj.link)
+        obj.delete()

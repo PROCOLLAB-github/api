@@ -46,6 +46,7 @@ class PartnerProgramDetail(generics.RetrieveAPIView):
             else:
                 serializer_class = PartnerProgramForUnregisteredUserSerializer
             data = serializer_class(program).data
+            data["is_user_member"] = is_user_member
             return Response(data=data, status=status.HTTP_200_OK)
         except PartnerProgram.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
