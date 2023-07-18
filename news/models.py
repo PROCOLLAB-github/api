@@ -20,8 +20,7 @@ class News(models.Model):
         null=False,
         blank=False,
     )
-    # todo: remove files unused files
-    files = models.ManyToManyField(UserFile, related_name="projects_news", blank=True)
+    files = models.ManyToManyField(UserFile, related_name="news", blank=True)
 
     views = GenericRelation(
         View,
