@@ -15,6 +15,7 @@ from rest_framework.generics import (
     ListCreateAPIView,
     RetrieveUpdateDestroyAPIView,
     UpdateAPIView,
+    RetrieveAPIView,
 )
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
@@ -25,6 +26,8 @@ from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 from core.permissions import IsOwnerOrReadOnly
 from events.models import Event
 from events.serializers import EventsListSerializer
+from partner_programs.models import PartnerProgram
+from partner_programs.serializers import UserProgramsSerializer
 from projects.serializers import ProjectListSerializer
 from users.helpers import (
     reset_email,
@@ -124,6 +127,20 @@ class UserDetail(RetrieveUpdateDestroyAPIView):
     def patch(self, request, pk):
         check_related_fields_update(request.data, pk)
         return super().patch(request, pk)
+
+
+class CurrentUserPrograms(RetrieveAPIView):
+    queryset = PartnerProgram.objects.all()
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserProgramsSerializer
+
+    def get(self, request, *args, **kwargs):
+        user = User.objects.get(id=request.user.id)
+        programs = [
+            profile.partner_program for profile in user.partner_program_profiles.all()
+        ]
+        serializer = self.get_serializer(programs, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class CurrentUser(GenericAPIView):

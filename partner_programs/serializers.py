@@ -126,3 +126,13 @@ class PartnerProgramUserSerializer(serializers.Serializer):
 
 class PartnerProgramDataSchemaSerializer(serializers.Serializer):
     data_schema = serializers.JSONField(required=True)
+
+
+class UserProgramsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PartnerProgram
+        fields = [
+            "id",
+            "name",
+            "tag",
+        ]
