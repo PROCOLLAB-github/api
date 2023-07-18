@@ -136,6 +136,7 @@ class CurrentUserPrograms(RetrieveAPIView):
 
     def get(self, request, *args, **kwargs):
         user = User.objects.get(id=request.user.id)
+        # fixme: mb hide finished programs
         programs = [
             profile.partner_program for profile in user.partner_program_profiles.all()
         ]
