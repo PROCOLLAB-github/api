@@ -50,8 +50,6 @@ class NewsDetail(generics.RetrieveUpdateDestroyAPIView, NewsQuerysetMixin):
 
 
 class NewsDetailSetViewed(generics.CreateAPIView, NewsQuerysetMixin):
-    queryset = ProjectNews.objects.all()
-    # fixme
     serializer_class = SetViewedSerializer
     permission_classes = [IsAuthenticated]
 
