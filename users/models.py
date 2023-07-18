@@ -165,8 +165,8 @@ class UserAchievement(models.Model):
         user: A ForeignKey referring to the CustomUser model.
     """
 
-    title = models.CharField(max_length=256, null=False)
-    status = models.CharField(max_length=256, null=False)
+    title = models.CharField(max_length=256)
+    status = models.CharField(max_length=256)
 
     user = models.ForeignKey(
         CustomUser,
@@ -356,7 +356,7 @@ class UserLink(models.Model):
         on_delete=models.CASCADE,
         related_name="links",
     )
-    link = models.URLField(null=False, blank=False)
+    link = models.URLField()
 
     def __str__(self):
         return f"UserLink<{self.id}> - {self.user.first_name} {self.user.last_name}"
