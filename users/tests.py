@@ -57,4 +57,4 @@ class UserTestCase(TestCase):
         force_authenticate(request, user=user)
         response = self.user_detail_view(request, pk=user.pk)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["first_name"], "Test2")
+        self.assertEqual(response.data["first_name"], "Сергей")
