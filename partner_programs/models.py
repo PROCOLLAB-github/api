@@ -65,7 +65,6 @@ class PartnerProgram(models.Model):
         help_text="Ключи - имена полей, значения - тип поля ввода",
         default=get_default_data_schema,
     )
-
     users = models.ManyToManyField(
         User,
         related_name="partner_programs",
