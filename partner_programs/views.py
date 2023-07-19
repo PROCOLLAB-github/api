@@ -70,19 +70,30 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
                 return Response(status=status.HTTP_200_OK)
             print(data)
             user_fields = (
-                "email",
+                # "email",
                 "password",
                 "first_name",
                 "last_name",
                 "patronymic",
                 "city",
             )
+            # cringe tilda
+            email = data.get("email")
+            if not email:
+                email = data.get("email_")
+            if not email:
+                return Response(
+                    data={"detail": "You need to pass an email address."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             # fixme: should we set verification_date?, if no then we need to ad them to ClickUp list
             user = User.objects.create(
                 **{field_name: data[field_name] for field_name in user_fields},
                 birthday=date_to_iso(data["birthday"]),
                 is_active=True,  # bypass email verification
                 onboarding_stage=None,  # bypass onboarding
+                email=email,
             )
 
             user_profile_program_data = {
