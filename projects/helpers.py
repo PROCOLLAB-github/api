@@ -2,6 +2,7 @@ from random import sample
 
 from django.contrib.auth import get_user_model
 
+from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 from projects.constants import RECOMMENDATIONS_COUNT
 from projects.models import Project, ProjectLink, Achievement
 
@@ -84,3 +85,16 @@ def update_links(links, pk):
             for link in links
         ]
     )
+
+
+def update_partner_program(
+    partner_program_id: int, user: "User", instance: "Project"
+) -> None:
+    if partner_program_id:
+        partner_program = PartnerProgram.objects.get(pk=partner_program_id)
+        partner_program_profile = PartnerProgramUserProfile.objects.get(
+            user=user,
+            partner_program=partner_program,
+        )
+        partner_program_profile.project = instance
+        partner_program_profile.save()

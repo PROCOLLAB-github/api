@@ -9,9 +9,14 @@ from rest_framework.views import APIView
 from core.permissions import IsStaffOrReadOnly
 from core.serializers import SetLikedSerializer
 from core.services import add_view, set_like
+from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 from projects.filters import ProjectFilter
 from projects.constants import VERBOSE_STEPS
-from projects.helpers import get_recommended_users, check_related_fields_update
+from projects.helpers import (
+    get_recommended_users,
+    check_related_fields_update,
+    update_partner_program,
+)
 from projects.models import Project, Achievement, ProjectNews
 from projects.pagination import ProjectNewsPagination
 from projects.permissions import (
@@ -51,6 +56,21 @@ class ProjectList(generics.ListCreateAPIView):
         serializer.validated_data["leader"] = request.user
 
         self.perform_create(serializer)
+
+        try:
+            partner_program_id = request.data.get("partner_program_id")
+            update_partner_program(partner_program_id, request.user, serializer.instance)
+        except PartnerProgram.DoesNotExist:
+            return Response(
+                {"detail": "Partner program with this id does not exist"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except PartnerProgramUserProfile.DoesNotExist:
+            return Response(
+                {"detail": "User is not a member of this partner program"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
@@ -101,6 +121,20 @@ class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
         return Response(serializer.data)
 
     def put(self, request, pk, **kwargs):
+        # fixme: add partner_program_id to docs
+        try:
+            partner_program_id = request.data.get("partner_program_id")
+            update_partner_program(partner_program_id, request.user, self.get_object())
+        except PartnerProgram.DoesNotExist:
+            return Response(
+                {"detail": "Partner program with this id does not exist"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except PartnerProgramUserProfile.DoesNotExist:
+            return Response(
+                {"detail": "User is not a member of this partner program"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         check_related_fields_update(request.data, pk)
         return super(ProjectDetail, self).put(request, pk)
 
