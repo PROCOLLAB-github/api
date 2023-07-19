@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.db import models
 
 from partner_programs.constants import get_default_data_schema
+from projects.models import Project
 
 User = get_user_model()
 
@@ -107,14 +108,22 @@ class PartnerProgramUserProfile(models.Model):
     """
 
     user = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="partner_program_profile"
+        User,
+        on_delete=models.SET_NULL,
+        related_name="partner_program_profiles",
+        null=True,
+    )
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.SET_NULL,
+        related_name="partner_program_profiles",
+        null=True,
     )
     partner_program = models.ForeignKey(
         PartnerProgram,
         on_delete=models.CASCADE,
-        related_name="partner_program_user_profile",
+        related_name="partner_program_profiles",
     )
-    # TODO: add amount of projects of this Program that user created
     partner_program_data = models.JSONField()
     datetime_created = models.DateTimeField(auto_now_add=True)
     datetime_updated = models.DateTimeField(auto_now=True)
@@ -128,6 +137,4 @@ class PartnerProgramUserProfile(models.Model):
         )
 
     def __str__(self):
-        return (
-            f"PartnerProgramUserProfile<{self.pk}> - {self.user} {self.partner_program}"
-        )
+        return f"PartnerProgramUserProfile<{self.pk}> - {self.user} {self.project} {self.partner_program}"
