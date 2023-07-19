@@ -93,7 +93,7 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
             return Response(status=status.HTTP_201_CREATED)
         except PartnerProgram.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
-        except User.IntegrityError:
+        except IntegrityError:
             return Response(
                 data={"detail": "User with this email already exists."},
                 status=status.HTTP_400_BAD_REQUEST,
