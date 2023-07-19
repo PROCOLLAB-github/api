@@ -64,8 +64,6 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
         try:
             program = PartnerProgram.objects.get(pk=kwargs["pk"])
             data = request.data
-            if data.get("test") == "test":
-                return Response(status=status.HTTP_200_OK)
 
             user_fields = (
                 "email",
