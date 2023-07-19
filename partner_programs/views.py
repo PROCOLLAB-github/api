@@ -74,27 +74,30 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
                 "city",
             )
             # fixme: should we set verification_date?, if no then we need to ad them to ClickUp list
-            user = User(
+            user = User.objects.create(
                 **{field_name: data[field_name] for field_name in user_fields},
                 is_active=True,  # bypass email verification
                 onboarding_stage=None,  # bypass onboarding
             )
-            user.save()
 
             user_profile_program_data = {
                 field_name: data.get(field_name)
                 for field_name in data
                 if field_name not in user_fields
             }
-            added_user_profile = PartnerProgramUserProfile(
+            PartnerProgramUserProfile.objects.create(
                 partner_program_data=user_profile_program_data,
                 user=user,
                 partner_program=program,
             )
-            added_user_profile.save()
             return Response(status=status.HTTP_201_CREATED)
         except PartnerProgram.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
+        except User.IntegrityError:
+            return Response(
+                data={"detail": "User with this email already exists."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
     def get(self, request, *args, **kwargs):
         return Response(status=status.HTTP_200_OK)
