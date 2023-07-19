@@ -6,6 +6,7 @@ from rest_framework.response import Response
 
 from core.serializers import SetLikedSerializer
 from core.services import set_like, add_view
+from partner_programs.helpers import date_to_iso
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 from partner_programs.pagination import PartnerProgramPagination
 from partner_programs.serializers import (
@@ -68,7 +69,7 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
             if data.get("test") == "test":
                 return Response(status=status.HTTP_200_OK)
             print(data)
-
+            data["birthday"] = date_to_iso(data["birthday"])
             user_fields = (
                 "email",
                 "password",
