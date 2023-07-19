@@ -96,6 +96,9 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
         except PartnerProgram.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
 
+    def get(self, request, *args, **kwargs):
+        return Response(status=status.HTTP_200_OK)
+
 
 class PartnerProgramRegister(generics.GenericAPIView):
     """
