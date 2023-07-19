@@ -86,13 +86,9 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
         return project.get_short_description()
 
     def count_likes(self, project):
-        # FIXME
-        # TODO: add caching here at least every 5 minutes, otherwise this will be heavy load
         return get_likes_count(project)
 
     def count_views(self, project):
-        # FIXME
-        # TODO: add caching here at least every 5 minutes, otherwise this will be heavy load
         return get_views_count(project)
 
     def update(self, instance, validated_data):
@@ -135,18 +131,15 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
 class ProjectListSerializer(serializers.ModelSerializer):
     collaborators = serializers.SerializerMethodField(method_name="get_collaborators")
     likes_count = serializers.SerializerMethodField(method_name="count_likes")
+    views_count = serializers.SerializerMethodField(method_name="count_views")
     collaborator_count = serializers.SerializerMethodField(
         method_name="get_collaborator_count"
     )
     vacancies = ProjectVacancyListSerializer(many=True, read_only=True)
-    views_count = serializers.SerializerMethodField(method_name="count_views")
+    short_description = serializers.SerializerMethodField()
 
     def count_views(self, project):
-        # FIXME
-        # TODO: add caching here at least every 5 minutes, otherwise will be heavy load
         return get_views_count(project)
-
-    short_description = serializers.SerializerMethodField()
 
     @classmethod
     def get_short_description(cls, project):
@@ -185,7 +178,7 @@ class ProjectListSerializer(serializers.ModelSerializer):
             "views_count",
         ]
 
-        read_only_fields = ["leader", "views_count"]
+        read_only_fields = ["leader", "views_count", "likes_count"]
 
     def is_valid(self, *, raise_exception=False):
         return super().is_valid(raise_exception=raise_exception)

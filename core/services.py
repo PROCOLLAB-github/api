@@ -43,7 +43,7 @@ def get_likes_count(obj):
             likes__content_type=obj_type, likes__object_id=obj.id
         ).count()
         # cache for LIKES_CACHING_TIMEOUT seconds
-        cache.set(f"views_count_{obj_type}_{obj.id}", likes_count, LIKES_CACHING_TIMEOUT)
+        cache.set(f"likes_count_{obj_type}_{obj.id}", likes_count, LIKES_CACHING_TIMEOUT)
     return likes_count
 
 
@@ -85,7 +85,7 @@ def get_viewers(obj):
 def get_views_count(obj):
     obj_type = ContentType.objects.get_for_model(obj)
     # cache this
-    views_count = cache.get(f"views_count_{obj_type}_{obj.id}")
+    views_count = cache.get(f"views_count_{obj_type}_{obj.id}", None)
     if views_count is None:
         views_count = User.objects.filter(
             views__content_type=obj_type, views__object_id=obj.id
