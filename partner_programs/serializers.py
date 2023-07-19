@@ -59,7 +59,6 @@ class PartnerProgramForMemberSerializer(serializers.ModelSerializer):
         return get_views_count(program)
 
     def get_links(self, program):
-        # FIXME
         # TODO: add caching here at least every 5 minutes, otherwise this will be heavy load
         return get_links(program)
 
