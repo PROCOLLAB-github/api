@@ -27,7 +27,10 @@ from core.permissions import IsOwnerOrReadOnly
 from events.models import Event
 from events.serializers import EventsListSerializer
 from partner_programs.models import PartnerProgram
-from partner_programs.serializers import UserProgramsSerializer
+from partner_programs.serializers import (
+    UserProgramsSerializer,
+    PartnerProgramListSerializer,
+)
 from projects.serializers import ProjectListSerializer
 from users.helpers import (
     reset_email,
@@ -129,10 +132,25 @@ class UserDetail(RetrieveUpdateDestroyAPIView):
         return super().patch(request, pk)
 
 
-class CurrentUserPrograms(RetrieveAPIView):
+class CurrentUserProgramsTags(RetrieveAPIView):
     queryset = PartnerProgram.objects.all()
     permission_classes = [IsAuthenticated]
     serializer_class = UserProgramsSerializer
+
+    def get(self, request, *args, **kwargs):
+        user = User.objects.get(id=request.user.id)
+        # fixme: mb hide finished programs
+        programs = [
+            profile.partner_program for profile in user.partner_program_profiles.all()
+        ]
+        serializer = self.get_serializer(programs, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class CurrentUserPrograms(RetrieveAPIView):
+    queryset = PartnerProgram.objects.all()
+    permission_classes = [IsAuthenticated]
+    serializer_class = PartnerProgramListSerializer
 
     def get(self, request, *args, **kwargs):
         user = User.objects.get(id=request.user.id)
