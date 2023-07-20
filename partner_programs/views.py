@@ -1,20 +1,22 @@
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
+from django.utils import timezone
 from rest_framework import generics, permissions, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from core.serializers import SetLikedSerializer
-from core.services import set_like, add_view
+from core.services import add_view, set_like
+from partner_programs.helpers import date_to_iso
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 from partner_programs.pagination import PartnerProgramPagination
 from partner_programs.serializers import (
-    PartnerProgramListSerializer,
-    PartnerProgramNewUserSerializer,
-    PartnerProgramUserSerializer,
     PartnerProgramDataSchemaSerializer,
     PartnerProgramForMemberSerializer,
     PartnerProgramForUnregisteredUserSerializer,
+    PartnerProgramListSerializer,
+    PartnerProgramNewUserSerializer,
+    PartnerProgramUserSerializer,
 )
 
 User = get_user_model()
@@ -64,21 +66,45 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
         try:
             program = PartnerProgram.objects.get(pk=kwargs["pk"])
             data = request.data
+            # tilda cringe
+            if data.get("test") == "test":
+                return Response(status=status.HTTP_200_OK)
+            print(data)
             user_fields = (
-                "email",
-                "password",
+                # "email",
+                # "password",
                 "first_name",
                 "last_name",
                 "patronymic",
-                "birthday",
                 "city",
             )
-            # fixme: should we set verification_date?, if no then we need to ad them to ClickUp list
+            # cringe tilda
+            email = data.get("email")
+            if not email:
+                email = data.get("email_")
+            if not email:
+                return Response(
+                    data={"detail": "You need to pass an email address."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             user = User.objects.create(
                 **{field_name: data[field_name] for field_name in user_fields},
+                birthday=date_to_iso(data["birthday"]),
                 is_active=True,  # bypass email verification
                 onboarding_stage=None,  # bypass onboarding
+                verification_date=timezone.now(),  # bypass ClickUp verification
+                email=email,
             )
+            # fixme: какое же дерьмо в этой вьюшке творится, извините я поправлю после дедлайна
+            password = data.get("password")
+            if not password:
+                return Response(
+                    data={"detail": "You need to pass a password."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            user.set_password(password)
+            user.save()
 
             user_profile_program_data = {
                 field_name: data.get(field_name)
