@@ -5,8 +5,8 @@ from django.db.migrations import RunPython
 
 
 def project_news_to_news_news(apps, schema_editor):
-    # get all project.projectnews objects
-    ProjectNews = apps.get_model("projects", "ProjectNews")
+    # add ProjectNews model to news app via schema_editor
+    ProjectNews = apps.get_model("projects.ProjectNews")
     News = apps.get_model("news", "News")
     ContentType = apps.get_model("contenttypes", "ContentType")
     for project_news in ProjectNews.objects.all():
@@ -29,6 +29,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("news", "0006_alter_news_options_remove_news_cover_url_and_more"),
+        ("projects", "0013_projectnews")
     ]
 
     operations = [
