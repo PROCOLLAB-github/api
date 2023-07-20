@@ -1,5 +1,6 @@
 from django.urls import path
 
+from news.views import NewsList, NewsDetail
 from projects.views import (
     ProjectDetail,
     ProjectList,
@@ -11,8 +12,6 @@ from projects.views import (
     ProjectVacancyResponses,
     ProjectRecommendedUsers,
     SetLikeOnProject,
-    ProjectNewsList,
-    ProjectNewsDetail,
     ProjectNewsDetailSetViewed,
     ProjectNewsDetailSetLiked,
 )
@@ -22,8 +21,8 @@ app_name = "projects"
 urlpatterns = [
     path("", ProjectList.as_view()),
     path("<int:pk>/like/", SetLikeOnProject.as_view()),
-    path("<int:project_pk>/news/", ProjectNewsList.as_view()),
-    path("<int:project_pk>/news/<int:pk>/", ProjectNewsDetail.as_view()),
+    path("<int:project_pk>/news/", NewsList.as_view()),
+    path("<int:project_pk>/news/<int:pk>/", NewsDetail.as_view()),
     path(
         "<int:project_pk>/news/<int:pk>/set_viewed/", ProjectNewsDetailSetViewed.as_view()
     ),
