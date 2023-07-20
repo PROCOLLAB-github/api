@@ -1,6 +1,7 @@
 from django.db.models import Count
 from django_filters import rest_framework as filters
 
+from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 from projects.models import Project
 
 
@@ -13,7 +14,7 @@ class ProjectFilter(filters.FilterSet):
         industry (int), step (int), region (str), name__contains (str),
          description__contains (str), collaborator__user__in (List[int]),
          datetime_created__gt (datetime.datetime), step (int), any_vacancies (bool),
-         member_count__gt (int), member_count__lt (int), leader (int)
+         member_count__gt (int), member_count__lt (int), leader (int), partner_program (int)
 
     Examples:
         ?industry=1&name__contains=clown
@@ -50,6 +51,24 @@ class ProjectFilter(filters.FilterSet):
             ).distinct()
         return queryset
 
+    @classmethod
+    def filter_by_partner_program(cls, queryset, name, value):
+        program_id = value
+        try:
+            program = PartnerProgram.objects.get(pk=program_id)
+            profiles_qs = (
+                PartnerProgramUserProfile.objects.filter(
+                    partner_program=program, project__isnull=False
+                )
+                .select_related("project")
+                .all()
+            )
+
+            return queryset.filter(pk__in=[profile.project.pk for profile in profiles_qs])
+
+        except PartnerProgram.DoesNotExist:
+            return Project.objects.none()
+
     name__contains = filters.Filter(field_name="name", lookup_expr="contains")
     description__contains = filters.Filter(
         field_name="description", lookup_expr="contains"
@@ -70,7 +89,17 @@ class ProjectFilter(filters.FilterSet):
         field_name="collaborator", method="filter_collaborator_count_lte"
     )
     step = filters.NumberFilter(field_name="step")
+    partner_program = filters.NumberFilter(
+        field_name="partner_program", method="filter_by_partner_program"
+    )
 
     class Meta:
         model = Project
-        fields = ("industry", "step", "region", "leader", "step")
+        fields = (
+            "industry",
+            "step",
+            "region",
+            "leader",
+            "step",
+            "partner_program",
+        )
