@@ -71,7 +71,7 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
             print(data)
             user_fields = (
                 # "email",
-                "password",
+                # "password",
                 "first_name",
                 "last_name",
                 "patronymic",
@@ -95,6 +95,15 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
                 onboarding_stage=None,  # bypass onboarding
                 email=email,
             )
+            # fixme: какое же дерьмо в этой вьюшке творится, извините я поправлю после дедлайна
+            password = data.get("password")
+            if not password:
+                return Response(
+                    data={"detail": "You need to pass a password."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            user.set_password(password)
+            user.save()
 
             user_profile_program_data = {
                 field_name: data.get(field_name)
