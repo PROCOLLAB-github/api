@@ -60,7 +60,8 @@ class PartnerProgramForMemberSerializer(serializers.ModelSerializer):
 
     def get_links(self, program):
         # TODO: add caching here at least every 5 minutes, otherwise this will be heavy load
-        return get_links(program)
+        # fixme: create LinksSerializer mb?
+        return [link.link for link in get_links(program)]
 
     def get_is_user_liked(self, obj):
         # fixme: copy-paste in every serializer...
