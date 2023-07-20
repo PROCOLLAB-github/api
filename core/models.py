@@ -24,7 +24,11 @@ class Link(Model):
     content_object = GenericForeignKey("content_type", "object_id")
 
     class Meta:
-        unique_together = ("content_type", "object_id")
+        unique_together = (
+            "link",
+            "content_type",
+            "object_id",
+        )
         verbose_name = "Ссылка"
         verbose_name_plural = "Ссылки"
 
@@ -51,7 +55,11 @@ class Like(Model):
     content_object = GenericForeignKey("content_type", "object_id")
 
     class Meta:
-        unique_together = ("user", "content_type", "object_id")
+        unique_together = (
+            "user",
+            "content_type",
+            "object_id",
+        )
         verbose_name = "Лайк"
         verbose_name_plural = "Лайки"
 
@@ -81,7 +89,11 @@ class View(Model):
     content_object = GenericForeignKey("content_type", "object_id")
 
     class Meta:
-        unique_together = ("user", "content_type", "object_id")
+        unique_together = (
+            "user",
+            "content_type",
+            "object_id",
+        )
         verbose_name = "Просмотр"
         verbose_name_plural = "Просмотры"
 
