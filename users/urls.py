@@ -18,6 +18,8 @@ from users.views import (
     RegisteredEventsList,
     SetUserOnboardingStage,
     ResendVerifyEmail,
+    CurrentUserPrograms,
+    CurrentUserProgramsTags,
 )
 
 app_name = "users"
@@ -35,6 +37,8 @@ urlpatterns = [
     path("users/<int:pk>/set_onboarding_stage/", SetUserOnboardingStage.as_view()),
     path("users/reset-password/", EmailResetPassword.as_view()),
     path("users/current/", CurrentUser.as_view()),
+    path("users/current/programs/", CurrentUserPrograms.as_view()),
+    path("users/current/programs/tags/", CurrentUserProgramsTags.as_view()),
     path("users/current/events/", RegisteredEventsList.as_view()),
     path("users/achievements/", AchievementList.as_view()),
     path("users/achievements/<int:pk>/", AchievementDetail.as_view()),
