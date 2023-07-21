@@ -189,7 +189,6 @@ class Collaborator(models.Model):
         ]
 
 
-# fixme: move project news to another app?
 class ProjectNews(models.Model):
     """
     Project news model
