@@ -19,6 +19,7 @@ class ProjectManager(Manager):
                     "leader",
                     queryset=CustomUser.objects.only("id").all(),
                 ),
+                "partner_program_profiles",
             )
         )
 

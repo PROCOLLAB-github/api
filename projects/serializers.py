@@ -136,6 +136,14 @@ class ProjectListSerializer(serializers.ModelSerializer):
     )
     vacancies = ProjectVacancyListSerializer(many=True, read_only=True)
     short_description = serializers.SerializerMethodField()
+    partner_programs_tags = serializers.SerializerMethodField()
+
+    @classmethod
+    def get_partner_programs_tags(cls, project):
+        profiles_qs = project.partner_program_profiles.select_related(
+            "partner_program"
+        ).only("partner_program__tag")
+        return [profile.partner_program.tag for profile in profiles_qs]
 
     def count_views(self, project):
         return get_views_count(project)
@@ -168,6 +176,7 @@ class ProjectListSerializer(serializers.ModelSerializer):
             "datetime_created",
             "likes_count",
             "views_count",
+            "partner_programs_tags",
         ]
 
         read_only_fields = ["leader", "views_count", "likes_count"]
