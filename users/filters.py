@@ -1,6 +1,9 @@
+from django.contrib.auth import get_user_model
 from django_filters import rest_framework as filters
 
-from users.models import CustomUser
+from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
+
+User = get_user_model()
 
 
 class UserFilter(filters.FilterSet):
@@ -21,15 +24,36 @@ class UserFilter(filters.FilterSet):
 
     """
 
+    @classmethod
+    def filter_by_partner_program(cls, queryset, name, value):
+        program_id = value
+        try:
+            program = PartnerProgram.objects.get(pk=program_id)
+            profiles_qs = (
+                PartnerProgramUserProfile.objects.filter(
+                    partner_program=program, user__isnull=False
+                )
+                .select_related("user")
+                .all()
+            )
+
+            return queryset.filter(pk__in=[profile.user.pk for profile in profiles_qs])
+
+        except PartnerProgram.DoesNotExist:
+            return User.objects.none()
+
     about_me__contains = filters.Filter(field_name="about_me", lookup_expr="contains")
     key_skills__contains = filters.Filter(field_name="key_skills", lookup_expr="contains")
     useful_to_project__contains = filters.Filter(
         field_name="useful_to_project", lookup_expr="contains"
     )
     user_type = filters.BaseInFilter(field_name="user_type", lookup_expr="in")
+    partner_program = filters.NumberFilter(
+        field_name="partner_program", method="filter_by_partner_program"
+    )
 
     class Meta:
-        model = CustomUser
+        model = User
         fields = (
             "first_name",
             "last_name",
