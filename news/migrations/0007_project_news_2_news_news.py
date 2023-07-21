@@ -9,20 +9,41 @@ def project_news_to_news_news(apps, schema_editor):
     ProjectNews = apps.get_model("projects.ProjectNews")
     News = apps.get_model("news", "News")
     ContentType = apps.get_model("contenttypes", "ContentType")
+    project_content_type = ContentType.objects.get(
+        app_label="projects", model="project"
+    )
+    project_news_content_type = ContentType.objects.get(
+        app_label="projects", model="projectnews"
+    )
+    news_content_type = ContentType.objects.get(app_label="news", model="news")
+    Like = apps.get_model("core", "Like")
+    View = apps.get_model("core", "View")
     for project_news in ProjectNews.objects.all():
-        project_content_type = ContentType.objects.get(
-            app_label="projects", model="project"
-        )
-        News.objects.create(
+        obj = News.objects.create(
             text=project_news.text,
             content_type=project_content_type,
             object_id=project_news.project.id,
-            files=project_news.files.all(),
-            views=project_news.views.all(),
-            likes=project_news.likes.all(),
             datetime_created=project_news.datetime_created,
             datetime_updated=project_news.datetime_updated
         )
+        obj.files.set(project_news.files.all())
+        likes = Like.objects.filter(
+            content_type=project_news_content_type,
+            object_id=project_news.id,
+        )
+        views = View.objects.filter(
+            content_type=project_news_content_type,
+            object_id=project_news.id,
+        )
+        for i in likes:
+            i.content_type = news_content_type
+            i.object_id = obj.id
+            i.save()
+        for i in views:
+            i.content_type = news_content_type
+            i.object_id = obj.id
+            i.save()
+        obj.save()
 
 
 class Migration(migrations.Migration):
@@ -33,5 +54,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        RunPython(project_news_to_news_news)
+        RunPython(project_news_to_news_news, reverse_code=migrations.RunPython.noop)
     ]
