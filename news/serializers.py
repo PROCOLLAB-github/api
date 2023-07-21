@@ -7,14 +7,14 @@ from news.models import News
 class NewsListSerializer(serializers.ModelSerializer):
     views_count = serializers.SerializerMethodField()
     likes_count = serializers.SerializerMethodField()
-    content_object_name = serializers.SerializerMethodField()
-    content_object_image_address = serializers.SerializerMethodField()
+    name = serializers.SerializerMethodField()
+    image_address = serializers.SerializerMethodField()
     is_user_liked = serializers.SerializerMethodField()
 
-    def get_content_object_name(self, obj):
+    def get_name(self, obj):
         return obj.content_object.name
 
-    def get_content_object_image_address(self, obj):
+    def get_image_address(self, obj):
         return obj.content_object.image_address
 
     def get_views_count(self, obj):
@@ -34,8 +34,8 @@ class NewsListSerializer(serializers.ModelSerializer):
         model = News
         fields = [
             "id",
-            "content_object_name",
-            "content_object_image_address",
+            "name",
+            "image_address",
             "text",
             "datetime_created",
             "views_count",
@@ -48,14 +48,14 @@ class NewsListSerializer(serializers.ModelSerializer):
 class NewsDetailSerializer(serializers.ModelSerializer):
     views_count = serializers.SerializerMethodField()
     likes_count = serializers.SerializerMethodField()
-    content_object_name = serializers.SerializerMethodField()
-    content_object_image_address = serializers.SerializerMethodField()
+    name = serializers.SerializerMethodField()
+    image_address = serializers.SerializerMethodField()
     is_user_liked = serializers.SerializerMethodField()
 
-    def get_content_object_name(self, obj):
+    def get_name(self, obj):
         return obj.content_object.name
 
-    def get_content_object_image_address(self, obj):
+    def get_image_address(self, obj):
         return obj.content_object.image_address
 
     def get_views_count(self, obj):
@@ -74,8 +74,8 @@ class NewsDetailSerializer(serializers.ModelSerializer):
         model = News
         fields = [
             "id",
-            "content_object_name",
-            "content_object_image_address",
+            "name",
+            "image_address",
             "text",
             "datetime_created",
             "datetime_updated",
