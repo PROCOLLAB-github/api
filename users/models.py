@@ -16,7 +16,7 @@ from users.managers import (
     UserAchievementManager,
     LikesOnProjectManager,
 )
-from users.validators import user_birthday_validator
+from users.validators import user_birthday_validator, user_name_validator
 
 
 def get_default_user_type():
@@ -58,8 +58,8 @@ class CustomUser(AbstractUser):
 
     username = None
     email = models.EmailField(unique=True)
-    first_name = models.CharField(max_length=255)
-    last_name = models.CharField(max_length=255)
+    first_name = models.CharField(max_length=255, validators=[user_name_validator])
+    last_name = models.CharField(max_length=255, validators=[user_name_validator])
     password = models.CharField(max_length=255)
     is_active = models.BooleanField(default=False, editable=False)
     user_type = models.PositiveSmallIntegerField(
@@ -71,7 +71,9 @@ class CustomUser(AbstractUser):
         default=0,
         editable=False,
     )
-    patronymic = models.CharField(max_length=255, null=True, blank=True)
+    patronymic = models.CharField(
+        max_length=255, validators=[user_name_validator], null=True, blank=True
+    )
     key_skills = models.CharField(max_length=512, null=True, blank=True)
     avatar = models.URLField(null=True, blank=True)
     birthday = models.DateField(

@@ -5,9 +5,9 @@ from django.db import models
 class NewsManager(models.Manager):
     def get_news(self, obj):
         obj_type = ContentType.objects.get_for_model(obj)
-        return self.get_queryset().filter(content_type=obj_type, object_id=obj.id)
+        return self.get_queryset().filter(content_type=obj_type, object_id=obj.pk)
 
     def add_news(self, obj, **kwargs):
         obj_type = ContentType.objects.get_for_model(obj)
-        news = self.create(content_type=obj_type, object_id=obj.id, **kwargs)
+        news = self.create(content_type=obj_type, object_id=obj.pk, **kwargs)
         return news

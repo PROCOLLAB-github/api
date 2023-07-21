@@ -37,6 +37,7 @@ class CustomUserManager(UserManager):
             .select_related("member", "investor", "expert", "mentor")
             .prefetch_related(
                 "achievements",
+                "collaborations",
             )
             .all()
         )
