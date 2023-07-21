@@ -61,7 +61,7 @@ class ProjectFilter(filters.FilterSet):
                     partner_program=program, project__isnull=False
                 )
                 .select_related("project")
-                .all()
+                .only("project")
             )
 
             return queryset.filter(pk__in=[profile.project.pk for profile in profiles_qs])

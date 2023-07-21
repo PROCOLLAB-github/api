@@ -34,7 +34,7 @@ class UserFilter(filters.FilterSet):
                     partner_program=program, user__isnull=False
                 )
                 .select_related("user")
-                .all()
+                .only("user")
             )
 
             return queryset.filter(pk__in=[profile.user.pk for profile in profiles_qs])
