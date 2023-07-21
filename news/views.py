@@ -8,11 +8,10 @@ from news.models import News
 from news.pagination import NewsPagination
 from news.permissions import IsNewsCreatorOrReadOnly
 from news.serializers import NewsListSerializer, NewsDetailSerializer
-from partner_programs.mixins import NewsQuerysetMixin
-from projects.models import ProjectNews
+from news.mixins import NewsQuerysetMixin
 
 
-class NewsList(generics.ListCreateAPIView, NewsQuerysetMixin):
+class NewsList(NewsQuerysetMixin, generics.ListCreateAPIView):
     serializer_class = NewsListSerializer
     permission_classes = [IsNewsCreatorOrReadOnly]
     pagination_class = NewsPagination
@@ -24,7 +23,7 @@ class NewsList(generics.ListCreateAPIView, NewsQuerysetMixin):
         return self.get_paginated_response(serializer.data)
 
 
-class NewsDetail(generics.RetrieveUpdateDestroyAPIView, NewsQuerysetMixin):
+class NewsDetail(NewsQuerysetMixin, generics.RetrieveUpdateDestroyAPIView):
     serializer_class = NewsDetailSerializer
     permission_classes = [IsNewsCreatorOrReadOnly]
 
@@ -45,11 +44,11 @@ class NewsDetail(generics.RetrieveUpdateDestroyAPIView, NewsQuerysetMixin):
             serializer.is_valid(raise_exception=True)
             serializer.save()
             return Response(serializer.data)
-        except ProjectNews.DoesNotExist:
+        except News.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
 
 
-class NewsDetailSetViewed(generics.CreateAPIView, NewsQuerysetMixin):
+class NewsDetailSetViewed(NewsQuerysetMixin, generics.CreateAPIView):
     serializer_class = SetViewedSerializer
     permission_classes = [IsAuthenticated]
 
@@ -58,11 +57,11 @@ class NewsDetailSetViewed(generics.CreateAPIView, NewsQuerysetMixin):
             news = self.get_queryset().get(pk=self.kwargs["pk"])
             add_view(news, request.user)
             return Response(status=status.HTTP_200_OK)
-        except ProjectNews.DoesNotExist:
+        except News.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
 
 
-class NewsDetailSetLiked(generics.CreateAPIView, NewsQuerysetMixin):
+class NewsDetailSetLiked(NewsQuerysetMixin, generics.CreateAPIView):
     serializer_class = SetLikedSerializer
     permission_classes = [IsAuthenticated]
 
@@ -71,5 +70,5 @@ class NewsDetailSetLiked(generics.CreateAPIView, NewsQuerysetMixin):
             news = self.get_queryset().get(pk=self.kwargs["pk"])
             set_like(news, request.user, request.data.get("is_liked"))
             return Response(status=status.HTTP_200_OK)
-        except ProjectNews.DoesNotExist:
+        except News.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
