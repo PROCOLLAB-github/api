@@ -94,7 +94,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
         return UserProjectsSerializer(
             [
                 collab.project
-                for collab in user.collaborations.all()
+                for collab in user.collaborations.select_related("project").all()
                 if not collab.project.draft
             ],
             many=True,

@@ -129,7 +129,6 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
 
 
 class ProjectListSerializer(serializers.ModelSerializer):
-    collaborators = serializers.SerializerMethodField(method_name="get_collaborators")
     likes_count = serializers.SerializerMethodField(method_name="count_likes")
     views_count = serializers.SerializerMethodField(method_name="count_views")
     collaborator_count = serializers.SerializerMethodField(
@@ -137,6 +136,14 @@ class ProjectListSerializer(serializers.ModelSerializer):
     )
     vacancies = ProjectVacancyListSerializer(many=True, read_only=True)
     short_description = serializers.SerializerMethodField()
+    partner_programs_tags = serializers.SerializerMethodField()
+
+    @classmethod
+    def get_partner_programs_tags(cls, project):
+        profiles_qs = project.partner_program_profiles.select_related(
+            "partner_program"
+        ).only("partner_program__tag")
+        return [profile.partner_program.tag for profile in profiles_qs]
 
     def count_views(self, project):
         return get_views_count(project)
@@ -152,12 +159,6 @@ class ProjectListSerializer(serializers.ModelSerializer):
     def count_likes(self, obj):
         return get_likes_count(obj)
 
-    def get_collaborators(self, obj):
-        max_collaborator_count = 4
-        return CollaboratorSerializer(
-            instance=obj.collaborator_set.all()[:max_collaborator_count], many=True
-        ).data
-
     class Meta:
         model = Project
         fields = [
@@ -171,11 +172,11 @@ class ProjectListSerializer(serializers.ModelSerializer):
             "draft",
             "industry",
             "collaborator_count",
-            "collaborators",
             "vacancies",
             "datetime_created",
             "likes_count",
             "views_count",
+            "partner_programs_tags",
         ]
 
         read_only_fields = ["leader", "views_count", "likes_count"]

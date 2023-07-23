@@ -53,8 +53,8 @@ class UserTestCase(TestCase):
         response = self.user_detail_view(request, pk=user.pk)
         self.assertEqual(response.status_code, 200)
 
-        request = self.factory.patch(f"auth/users/{user.pk}/", {"first_name": "Test2"})
+        request = self.factory.patch(f"auth/users/{user.pk}/", {"first_name": "Сергей"})
         force_authenticate(request, user=user)
         response = self.user_detail_view(request, pk=user.pk)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["first_name"], "Test2")
+        self.assertEqual(response.data["first_name"], "Сергей")
