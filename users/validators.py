@@ -20,7 +20,7 @@ def user_name_validator(name):
     for letter in name:
         if letter.upper() not in valid_name_chars:
             raise ValidationError(
-                "Имя содержит недопустимые символы. Могут быть только символы киррилического алфавита."
+                "Имя содержит недопустимые символы. Могут быть только символы кириллического алфавита."
             )
     if len(name) < 2:
         raise ValidationError("Имя слишком короткое")

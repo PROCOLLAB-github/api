@@ -72,6 +72,14 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     likes_count = serializers.SerializerMethodField(method_name="count_likes")
     views_count = serializers.SerializerMethodField(method_name="count_views")
     links = serializers.SerializerMethodField()
+    partner_programs_tags = serializers.SerializerMethodField()
+
+    @classmethod
+    def get_partner_programs_tags(cls, project):
+        profiles_qs = project.partner_program_profiles.select_related(
+            "partner_program"
+        ).only("partner_program__tag")
+        return [profile.partner_program.tag for profile in profiles_qs]
 
     @classmethod
     def get_links(cls, project):
@@ -119,6 +127,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "datetime_updated",
             "views_count",
             "likes_count",
+            "partner_programs_tags",
         ]
         read_only_fields = [
             "leader",

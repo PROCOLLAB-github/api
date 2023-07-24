@@ -139,6 +139,20 @@ class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
         return super(ProjectDetail, self).put(request, pk)
 
     def patch(self, request, pk, **kwargs):
+        # fixme: add partner_program_id to docs
+        try:
+            partner_program_id = request.data.get("partner_program_id")
+            update_partner_program(partner_program_id, request.user, self.get_object())
+        except PartnerProgram.DoesNotExist:
+            return Response(
+                {"detail": "Partner program with this id does not exist"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except PartnerProgramUserProfile.DoesNotExist:
+            return Response(
+                {"detail": "User is not a member of this partner program"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         check_related_fields_update(request.data, pk)
         return super(ProjectDetail, self).put(request, pk)
 
