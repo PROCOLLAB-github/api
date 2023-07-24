@@ -12,14 +12,14 @@ class NewsQuerysetMixin:
         try:
             project = Project.objects.get(pk=self.kwargs.get("project_pk"))
         except Project.DoesNotExist:
-            return []
+            return News.objects.none()
         return News.objects.get_news(obj=project)
 
     def get_queryset_for_program(self):
         try:
             program = PartnerProgram.objects.get(pk=self.kwargs.get("partnerprogram_pk"))
         except PartnerProgram.DoesNotExist:
-            return []
+            return News.objects.none()
         return News.objects.get_news(obj=program)
 
     def get_queryset(self):
@@ -30,4 +30,4 @@ class NewsQuerysetMixin:
             # it's a partner program
             return self.get_queryset_for_program()
         else:
-            return []
+            return News.objects.none()
