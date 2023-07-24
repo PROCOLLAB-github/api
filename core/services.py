@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
 
-from core.constants import VIEWS_CACHING_TIMEOUT, LIKES_CACHING_TIMEOUT
+from core.constants import VIEWS_CACHING_TIMEOUT
 from core.models import Like, View, Link
 
 User = get_user_model()
@@ -36,15 +36,18 @@ def get_fans(obj):
 
 def get_likes_count(obj):
     obj_type = ContentType.objects.get_for_model(obj)
-    # cache this
-    likes_count = cache.get(f"likes_count_{obj_type}_{obj.id}")
-    if likes_count is None:
-        likes_count = User.objects.filter(
-            likes__content_type=obj_type, likes__object_id=obj.id
-        ).count()
-        # cache for LIKES_CACHING_TIMEOUT seconds
-        cache.set(f"likes_count_{obj_type}_{obj.id}", likes_count, LIKES_CACHING_TIMEOUT)
-    return likes_count
+    # todo: temp comment
+    # likes_count = cache.get(f"likes_count_{obj_type}_{obj.id}")
+    # if likes_count is None:
+    #     likes_count = User.objects.filter(
+    #         likes__content_type=obj_type, likes__object_id=obj.id
+    #     ).count()
+    #     # cache for LIKES_CACHING_TIMEOUT seconds
+    #     cache.set(f"likes_count_{obj_type}_{obj.id}", likes_count, LIKES_CACHING_TIMEOUT)
+    return User.objects.filter(
+        likes__content_type=obj_type, likes__object_id=obj.id
+    ).count()
+    # return likes_count
 
 
 def set_like(obj, user, is_liked):
