@@ -45,6 +45,7 @@ services:
       - '--collector.filesystem.mount-points-exclude'
       - '^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)'
   nginx:
+    container_name: nginx
     build: ./nginx
     ports:
       - 8000:80
