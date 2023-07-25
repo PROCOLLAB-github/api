@@ -27,7 +27,9 @@ TELEGRAM_CHANNEL = config("TELEGRAM_CHANNEL", default="", cast=str)
 TAGGIT_CASE_INSENSITIVE = True
 
 CSRF_TRUSTED_ORIGINS = [
-    "http://localhost",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://0.0.0.0:8000",
     "https://api.procollab.ru",
     "https://procollab.ru",
     "https://www.procollab.ru",
@@ -41,6 +43,7 @@ ALLOWED_HOSTS = [
     "0.0.0.0",
     "api.procollab.ru",
     "app.procollab.ru",
+    "dev.procollab.ru",
     "procollab.ru",
     "web",  # From Docker
 ]
