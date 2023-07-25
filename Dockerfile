@@ -5,8 +5,6 @@ WORKDIR /build
 
 COPY ./scripts ./scripts
 
-RUN ["chmod", "+x", "./scripts/build-emails.sh"]
-RUN bash ./scripts/build-emails.sh
 
 FROM python:3.9
 
@@ -31,8 +29,6 @@ COPY poetry.lock pyproject.toml /procollab/
 
 RUN poetry config virtualenvs.create false \
     && poetry install  --no-root
-
-COPY --from=emails /email ./emails/
 
 EXPOSE 8000
 
