@@ -1,12 +1,19 @@
-from django.core.mail import EmailMessage
+from django.core.mail import EmailMultiAlternatives
 
 
 class Email:
+    """
+    Send email messages
+    """
     @staticmethod
     def send_email(data):
-        email = EmailMessage(
-            subject=data["email_subject"], body=data["email_body"], to=[data["to_email"]]
+        email = EmailMultiAlternatives(
+            subject=data["email_subject"],
+            body=data["email_body"],
+            to=[data["to_email"]],
         )
+        if data.get("html_content"):
+            email.attach_alternative(data["html_content"], "text/html")
         email.send()
 
 

@@ -1,7 +1,5 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-from django.db.models.signals import post_save
-from django.dispatch import receiver
 
 from users.constants import (
     ADMIN,
@@ -18,7 +16,7 @@ from users.managers import (
     UserAchievementManager,
     LikesOnProjectManager,
 )
-from users.validators import user_birthday_validator
+from users.validators import user_birthday_validator, user_name_validator
 
 
 def get_default_user_type():
@@ -59,22 +57,26 @@ class CustomUser(AbstractUser):
     INVESTOR = INVESTOR
 
     username = None
-    email = models.EmailField(blank=False, unique=True)
-    first_name = models.CharField(max_length=255, blank=False)
-    last_name = models.CharField(max_length=255, blank=False)
-    password = models.CharField(max_length=255, blank=False)
+    email = models.EmailField(unique=True)
+    first_name = models.CharField(max_length=255, validators=[user_name_validator])
+    last_name = models.CharField(max_length=255, validators=[user_name_validator])
+    password = models.CharField(max_length=255)
     is_active = models.BooleanField(default=False, editable=False)
     user_type = models.PositiveSmallIntegerField(
         choices=VERBOSE_USER_TYPES,
         default=get_default_user_type,
     )
 
-    patronymic = models.CharField(max_length=255, null=True, blank=True)
+    ordering_score = models.PositiveIntegerField(
+        default=0,
+        editable=False,
+    )
+    patronymic = models.CharField(
+        max_length=255, validators=[user_name_validator], null=True, blank=True
+    )
     key_skills = models.CharField(max_length=512, null=True, blank=True)
     avatar = models.URLField(null=True, blank=True)
     birthday = models.DateField(
-        null=False,
-        blank=False,
         validators=[user_birthday_validator],
     )
     about_me = models.TextField(null=True, blank=True)
@@ -99,13 +101,37 @@ class CustomUser(AbstractUser):
         verbose_name="Дата верификации",
     )
 
-    datetime_updated = models.DateTimeField(null=False, auto_now=True)
-    datetime_created = models.DateTimeField(null=False, auto_now_add=True)
+    datetime_updated = models.DateTimeField(auto_now=True)
+    datetime_created = models.DateTimeField(auto_now_add=True)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
 
     objects = CustomUserManager()
+
+    def calculate_ordering_score(self) -> int:
+        """
+        Calculate ordering score of the user, e.g. how full their profile is.
+
+        Returns:
+            int: ordering score of the user.
+        """
+        score = 0
+        if self.avatar:
+            score += 10
+        if self.key_skills:
+            score += 7
+        if self.about_me:
+            score += 6
+        if self.region:
+            score += 4
+        if self.city:
+            score += 4
+        if self.organization:
+            score += 6
+        if self.speciality:
+            score += 7
+        return score
 
     def get_project_chats(self) -> list:
         collaborations = self.collaborations.all()
@@ -126,6 +152,9 @@ class CustomUser(AbstractUser):
     class Meta:
         verbose_name = "Пользователь"
         verbose_name_plural = "Пользователи"
+        # order by count of fields inputted, like avatar, key_skills, about_me, etc.
+        # first show users with all fields inputted, then with 1 field inputted, etc.
+        ordering = ["-ordering_score"]
 
 
 class UserAchievement(models.Model):
@@ -138,8 +167,8 @@ class UserAchievement(models.Model):
         user: A ForeignKey referring to the CustomUser model.
     """
 
-    title = models.CharField(max_length=256, null=False)
-    status = models.CharField(max_length=256, null=False)
+    title = models.CharField(max_length=256)
+    status = models.CharField(max_length=256)
 
     user = models.ForeignKey(
         CustomUser,
@@ -313,14 +342,28 @@ class Investor(AbstractUserWithRole):
         return f"Investor<{self.id}> - {self.user.first_name} {self.user.last_name}"
 
 
-@receiver(post_save, sender=CustomUser)
-def create_or_update_user_types(sender, instance, created, **kwargs):
-    if created:
-        if instance.user_type == CustomUser.MEMBER:
-            Member.objects.create(user=instance)
-        elif instance.user_type == CustomUser.MENTOR:
-            Mentor.objects.create(user=instance)
-        elif instance.user_type == CustomUser.EXPERT:
-            Expert.objects.create(user=instance)
-        elif instance.user_type == CustomUser.INVESTOR:
-            Investor.objects.create(user=instance)
+class UserLink(models.Model):
+    """
+    UserLink model
+
+    Represents the user's link to some resource.
+
+    Attributes:
+            user: ForeignKey instance of the CustomUser model.
+            link: URLField instance of the user's link to some resource.
+    """
+
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name="links",
+    )
+    link = models.URLField()
+
+    def __str__(self):
+        return f"UserLink<{self.id}> - {self.user.first_name} {self.user.last_name}"
+
+    class Meta:
+        verbose_name = "Ссылка пользователя"
+        verbose_name_plural = "Ссылки пользователей"
+        unique_together = ("user", "link")

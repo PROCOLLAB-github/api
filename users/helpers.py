@@ -5,7 +5,7 @@ from django.urls import reverse
 
 from core.utils import Email
 from users.constants import PROTOCOL
-from users.models import UserAchievement
+from users.models import UserAchievement, UserLink
 
 User = get_user_model()
 
@@ -69,29 +69,57 @@ def verify_email(user, request):
 
 
 def send_verification_completed_email(user: User):
-    # fixme
-    email_body = (
-        f"Поздравляю тебя, {user.first_name} {user.last_name}! Ты прошел верификацию и"
-        f" стал частью сообщества PROCOLLAB!"
-        f"Теперь ты сможешь пользоваться всем функционалом платформы, создавать проекты,"
-        f" искать команду, находить нужные мероприятия."
-        f"Следи за анонсами обновлений в нашей группе в ВК https://vk.com/PROCOLLAB "
-        f"И скорее переходи на саму платформу, чтобы уже сегодня начать создавать свой проект."
-        f"https://procollab.ru "
-        f"С уважением, "
-        f"Администрация PROCOLLAB"
-    )
+    # fname = os.path.join(settings.STATIC_ROOT, "verification-succeed.html")
+    # with open(fname, "r", encoding="utf-8") as f:
+    #     html_content = f.read()
+    email_body = f"""Поздравляем тебя, {user.first_name} {user.last_name}!
+
+Ты прошел верификацию и стал частью сообщества PROCOLLAB!
+
+Теперь ты сможешь пользоваться всем функционалом платформы:
+создавать проекты
+искать команду
+находить нужные мероприятия
+искать менторскую поддержку
+и многое другое…
+
+Следи за анонсами обновлений в нашей группе в ВК — https://vk.com/PROCOLLAB
+
+И скорее переходи на саму платформу, чтобы уже сегодня начать создавать свой проект — https://procollab.ru
+
+
+
+С уважением,
+PROCOLLAB
+"""
 
     data = {
         "email_body": email_body,
         "email_subject": "Procollab | Верификация",
         "to_email": user.email,
+        # "html_content": html_content,
     }
 
     Email.send_email(data)
 
 
+def check_related_fields_update(data, pk):
+    """
+    Check if achievements or links were updated and update them.
+    """
+
+    if data.get("achievements") is not None:
+        update_achievements(data.get("achievements"), pk)
+
+    if data.get("links") is not None:
+        update_links(data.get("links"), pk)
+
+
 def update_achievements(achievements, pk):
+    """
+    Bootleg version of updating achievements via user
+    """
+
     # delete all old achievements
     UserAchievement.objects.filter(user_id=pk).delete()
     # create new achievements
@@ -103,5 +131,24 @@ def update_achievements(achievements, pk):
                 status=achievement.get("status"),
             )
             for achievement in achievements
+        ]
+    )
+
+
+def update_links(links, pk):
+    """
+    Bootleg version of updating links via user
+    """
+
+    # delete all old links
+    UserLink.objects.filter(user_id=pk).delete()
+    # create new links
+    UserLink.objects.bulk_create(
+        [
+            UserLink(
+                user_id=pk,
+                link=link,
+            )
+            for link in links
         ]
     )

@@ -2,7 +2,9 @@ from django.forms.models import model_to_dict
 from rest_framework import serializers
 from django.core.cache import cache
 
+from core.services import get_views_count
 from core.utils import get_user_online_cache_key
+from projects.models import Project
 from .models import CustomUser, Expert, Investor, Member, Mentor, UserAchievement
 
 
@@ -83,7 +85,24 @@ class UserDetailSerializer(serializers.ModelSerializer):
     mentor = MentorSerializer(required=False)
     achievements = AchievementListSerializer(required=False, many=True)
     key_skills = KeySkillsField(required=False)
+    links = serializers.SerializerMethodField()
     is_online = serializers.SerializerMethodField()
+    projects = serializers.SerializerMethodField()
+
+    @classmethod
+    def get_projects(cls, user: CustomUser):
+        return UserProjectsSerializer(
+            [
+                collab.project
+                for collab in user.collaborations.select_related("project").all()
+                if not collab.project.draft
+            ],
+            many=True,
+        ).data
+
+    @classmethod
+    def get_links(cls, user: CustomUser):
+        return [user_link.link for user_link in user.links.all()]
 
     @classmethod
     def get_is_online(cls, user: CustomUser):
@@ -106,6 +125,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
             "organization",
             "about_me",
             "avatar",
+            "links",
             "city",
             "is_active",
             "is_online",
@@ -116,6 +136,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
             "achievements",
             "verification_date",
             "onboarding_stage",
+            "projects",
         ]
 
     def update(self, instance, validated_data):
@@ -187,6 +208,32 @@ class UserDetailSerializer(serializers.ModelSerializer):
 
         instance.save()
         return instance
+
+
+class UserProjectsSerializer(serializers.ModelSerializer):
+    short_description = serializers.SerializerMethodField()
+    views_count = serializers.SerializerMethodField(method_name="get_views_count")
+
+    @classmethod
+    def get_views_count(cls, project):
+        return get_views_count(project)
+
+    @classmethod
+    def get_short_description(cls, project):
+        return project.get_short_description()
+
+    class Meta:
+        model = Project
+        fields = [
+            "id",
+            "name",
+            "leader",
+            "short_description",
+            "image_address",
+            "industry",
+            "views_count",
+        ]
+        read_only_fields = ["leader"]
 
 
 class UserListSerializer(serializers.ModelSerializer):

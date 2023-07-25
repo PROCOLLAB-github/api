@@ -52,9 +52,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         async for project_id in project_ids_list:
             # FIXME: if a user is a leader but not a collaborator, this doesn't work
             #  upd: it seems not possible to be a leader without being a collaborator
-            # join room for each project
-            # It's currently not possible to do this in a single call,
-            #  so we have to do it in a loop (e.g. that's O(N) calls to layer backend, redis cache that would be)
+            # join room for each project -
+            # It's currently not possible to do this in a single call, -
+            #  so we have to do it in a loop (e.g. that's O(N) calls to layer backend, redis cache that would be) -
             await self.channel_layer.group_add(
                 f"{EventGroupType.CHATS_RELATED}_{project_id}", self.channel_name
             )
@@ -65,7 +65,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         await self.accept()
 
     async def disconnect(self, close_code):
-        """User disconnected from websocket, Don't have to do anything here"""
+        """User disconnected from websocket"""
         pass
 
     async def receive_json(self, content, **kwargs):

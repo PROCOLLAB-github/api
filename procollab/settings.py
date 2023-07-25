@@ -65,7 +65,7 @@ if SENTRY_DSN:
     )
 
 INSTALLED_APPS = [
-    # daphne is required for channels, should be installed before django.contrib.staticfiles
+    # daphne is required for channels, should be installed before django.contrib.static
     "daphne",
     # django apps
     "django.contrib.admin",
@@ -77,6 +77,7 @@ INSTALLED_APPS = [
     "debug_toolbar",
     "django_rest_passwordreset",
     # My apps
+    "core.apps.CoreConfig",
     "industries.apps.IndustriesConfig",
     "users.apps.UsersConfig",
     "projects.apps.ProjectsConfig",
@@ -87,6 +88,7 @@ INSTALLED_APPS = [
     "invites.apps.InvitesConfig",
     "files.apps.FilesConfig",
     "events.apps.EventsConfig",
+    "partner_programs.apps.PartnerProgramsConfig",
     # Rest framework
     "rest_framework",
     "rest_framework_simplejwt",
@@ -261,7 +263,7 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "static"
 
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
 
 # Default primary key field type
 

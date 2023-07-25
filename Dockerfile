@@ -1,12 +1,4 @@
-FROM node:16 as emails
-
-RUN mkdir build
-WORKDIR /build
-
-COPY ./scripts ./scripts
-
-
-FROM python:3.9
+FROM python:3.11
 
 RUN apt update --no-install-recommends -y
 
