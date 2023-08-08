@@ -152,7 +152,7 @@ class DirectChatFileList(ListCreateAPIView):
 
 class ProjectChatFileList(ListCreateAPIView):
     serializer_class = UserFileSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsProjectChatMember]
 
     def get_queryset(self):
         messages = ProjectChat.objects.get(id=self.kwargs["pk"]).messages.all()
