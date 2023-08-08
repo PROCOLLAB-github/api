@@ -26,7 +26,7 @@ class KeySkillsField(serializers.Field):
 class CustomListField(serializers.ListField):
     # костыль
     def to_representation(self, data):
-        if type(data) == list:
+        if isinstance(data, list):
             return data
         return [
             i.replace("'", "") for i in data.strip("][").split(", ") if i.replace("'", "")

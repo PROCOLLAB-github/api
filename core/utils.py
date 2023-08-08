@@ -5,6 +5,7 @@ class Email:
     """
     Send email messages
     """
+
     @staticmethod
     def send_email(data):
         email = EmailMultiAlternatives(
