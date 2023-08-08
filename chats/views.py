@@ -62,6 +62,10 @@ class DirectChatDetail(RetrieveAPIView):
 
             user1_id, user2_id = map(int, self.kwargs["pk"].split("_"))
 
+            assert (
+                request.user.id == user1_id or request.user.id == user2_id
+            ), "current user id is not present in pk"
+
             user1 = User.objects.get(pk=user1_id)
             user2 = User.objects.get(pk=user2_id)
 
@@ -116,7 +120,7 @@ class DirectChatMessageList(ListCreateAPIView):
 
 class ProjectChatMessageList(ListCreateAPIView):
     serializer_class = ProjectChatMessageListSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsProjectChatMember]
     pagination_class = MessageListPagination
 
     def get_queryset(self):

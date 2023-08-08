@@ -70,6 +70,9 @@ class Project(models.Model):
     def get_short_description(self) -> Optional[str]:
         return self.description[:90] if self.description else None
 
+    def get_collaborators_user_list(self) -> list[User]:
+        return [collaborator.user for collaborator in self.collaborator_set.all()]
+
     def save(
         self, force_insert=False, force_update=False, using=None, update_fields=None
     ):
