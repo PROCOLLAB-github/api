@@ -12,6 +12,7 @@ from rest_framework.response import Response
 
 from chats.models import ProjectChat, DirectChat
 from chats.pagination import MessageListPagination
+from chats.permissions import IsProjectChatMember
 from chats.serializers import (
     DirectChatListSerializer,
     DirectChatMessageListSerializer,
@@ -47,7 +48,7 @@ class ProjectChatList(ListAPIView):
 class ProjectChatDetail(RetrieveAPIView):
     queryset = ProjectChat.objects.all()
     serializer_class = ProjectChatDetailSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsProjectChatMember]
 
 
 class DirectChatDetail(RetrieveAPIView):
