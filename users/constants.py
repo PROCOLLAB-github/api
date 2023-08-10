@@ -19,13 +19,13 @@ INVESTOR = 4
 VERBOSE_USER_TYPES = (
     (MEMBER, "Участник"),
     (MENTOR, "Ментор"),
-    (EXPERT, "Эксперт"),
+    (EXPERT, "Консультант"),
     (INVESTOR, "Инвестор"),
 )
 
 VERBOSE_ROLE_TYPES = (
     (MENTOR, "Ментор"),
-    (EXPERT, "Эксперт"),
+    (EXPERT, "Консультант"),
     (INVESTOR, "Инвестор"),
 )
 
