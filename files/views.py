@@ -21,16 +21,16 @@ class FileView(generics.GenericAPIView):
         """
 
         file_api = FileAPI(request.FILES["file"], request.user)
-        url, info = file_api.upload()
+        info = file_api.upload()
         UserFile.objects.create(
             user=request.user,
-            link=url,
+            link=info.url,
             name=info.name,
             size=info.size,
             extension=info.extension,
             mime_type=info.mime_type,
         )
-        return Response({"url": url}, status=status.HTTP_201_CREATED)
+        return Response({"url": info.url}, status=status.HTTP_201_CREATED)
 
 
 def delete(self, request, *args, **kwargs):

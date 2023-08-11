@@ -62,8 +62,8 @@ class UserFileAdmin(admin.ModelAdmin):
 
     def save_model(self, request, obj, form, change):
         file_api = FileAPI(request.FILES["file"], request.user)
-        url, info = file_api.upload()
-        obj.link = url
+        info = file_api.upload()
+        obj.link = info.url
         obj.user = request.user
         obj.name = info.name
         obj.size = info.size
@@ -74,3 +74,8 @@ class UserFileAdmin(admin.ModelAdmin):
     def delete_model(self, request, obj):
         FileAPI.delete(obj.link)
         obj.delete()
+
+    def delete_queryset(self, request, queryset):
+        for obj in queryset:
+            FileAPI.delete(obj.link)
+            obj.delete()
