@@ -1,6 +1,5 @@
 import time
 
-import magic
 import requests
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
@@ -25,24 +24,16 @@ class File:
         self.size = file.size
         self.name = File._get_name(file)
         self.extension = File._get_extension(file)
-        self.mime_type = File._get_mime_type(file)
         self.buffer = file.open(mode="rb")
         self.content_type = file.content_type
 
         # we can compress given type of image
-        if self.mime_type in SUPPORTED_IMAGES_TYPES:
+        if self.content_type in SUPPORTED_IMAGES_TYPES:
             webp_image = convert_image_to_webp(file)
             self.buffer = webp_image.buffer()
             self.size = webp_image.size
-            self.mime_type = "image/webp"
+            self.content_type = "image/webp"
             self.extension = "webp"
-
-    @staticmethod
-    def _get_mime_type(file: TemporaryUploadedFile | InMemoryUploadedFile):
-        if isinstance(file, InMemoryUploadedFile):
-            buffer = file.open(mode="rb")
-            return magic.from_buffer(buffer.read(), mime=True)
-        return magic.from_file(file.temporary_file_path(), mime=True)
 
     @staticmethod
     def _get_extension(file) -> str:
@@ -80,7 +71,7 @@ class FileAPI:
             url=url,
             name=self.file.name,
             extension=self.file.extension,
-            mime_type=self.file.mime_type,
+            mime_type=self.file.content_type,
             size=self.file.size,
         )
 

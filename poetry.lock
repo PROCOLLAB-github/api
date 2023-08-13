@@ -1595,17 +1595,6 @@ files = [
 ]
 
 [[package]]
-name = "python-magic"
-version = "0.4.27"
-description = "File type identification using libmagic"
-optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
-files = [
-    {file = "python-magic-0.4.27.tar.gz", hash = "sha256:c1ba14b08e4a5f5c31a302b7721239695b2f0f058d125bd5ce1ee36b9d9d3c3b"},
-    {file = "python_magic-0.4.27-py2.py3-none-any.whl", hash = "sha256:c212960ad306f700aa0d01e5d7a325d20548ff97eb9920dcd29513174f0294d3"},
-]
-
-[[package]]
 name = "python-magic-bin"
 version = "0.4.14"
 description = "File type identification using libmagic binary package"
@@ -2155,4 +2144,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "6932c172e13901ec8baa18a0b6fd588b812e8e9f8bb69c4c1fda9fa1bb8ff418"
+content-hash = "f0155331ae508e7484927daf6ab47d38c389b0abbf0123c48170e278cb9222c2"
