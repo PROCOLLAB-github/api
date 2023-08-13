@@ -3,7 +3,7 @@ import reprlib
 from django.contrib import admin
 from django.forms import ModelForm, FileField
 
-from files.helpers import FileAPI
+from files.service import FileAPI
 from files.models import UserFile
 
 
@@ -40,6 +40,7 @@ class UserFileAdmin(admin.ModelAdmin):
     )
 
     date_hierarchy = "datetime_uploaded"
+    ordering = ("-datetime_uploaded",)
 
     @admin.display(empty_value="Empty filename")
     def filename(self, obj):
@@ -78,4 +79,4 @@ class UserFileAdmin(admin.ModelAdmin):
     def delete_queryset(self, request, queryset):
         for obj in queryset:
             FileAPI.delete(obj.link)
-            obj.delete()
+        queryset.delete()
