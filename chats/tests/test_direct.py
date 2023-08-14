@@ -9,6 +9,7 @@ from chats.models import DirectChatMessage
 
 class DirectTests(TestCase):
     """Direct tests for chats"""
+
     @classmethod
     def setUpTestData(cls):
         user = get_user_model().objects.create(**TEST_USER1)
@@ -459,7 +460,9 @@ class DirectTests(TestCase):
         direct_message = await sync_to_async(DirectChatMessage.objects.get)(id=1)
         self.assertTrue(direct_message.is_deleted)
 
-    async def test_delete_other_message(self):  # Delete someone else's messages in a chat with someone
+    async def test_delete_other_message(
+        self,
+    ):  # Delete someone else's messages in a chat with someone
         user = await sync_to_async(get_user_model().objects.create)(**TEST_USER2)
         communicator = WebsocketCommunicator(ChatConsumer.as_asgi(), "/ws/chat/")
         communicator.scope["user"] = self.user

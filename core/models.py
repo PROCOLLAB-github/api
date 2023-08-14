@@ -7,6 +7,35 @@ from django.db import models
 User = get_user_model()
 
 
+class Link(Model):
+    """
+    Generic Link model based on contenttype
+    """
+
+    link = models.URLField(
+        verbose_name="Ссылка",
+    )
+    content_type = models.ForeignKey(
+        ContentType,
+        on_delete=models.CASCADE,
+        related_name="links",
+    )
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey("content_type", "object_id")
+
+    class Meta:
+        unique_together = (
+            "link",
+            "content_type",
+            "object_id",
+        )
+        verbose_name = "Ссылка"
+        verbose_name_plural = "Ссылки"
+
+    def __str__(self):
+        return f"Link for {self.content_object} - {self.link}"
+
+
 class Like(Model):
     """
     Generic Like model based on contenttype
@@ -26,7 +55,11 @@ class Like(Model):
     content_object = GenericForeignKey("content_type", "object_id")
 
     class Meta:
-        unique_together = ("user", "content_type", "object_id")
+        unique_together = (
+            "user",
+            "content_type",
+            "object_id",
+        )
         verbose_name = "Лайк"
         verbose_name_plural = "Лайки"
 
@@ -56,7 +89,11 @@ class View(Model):
     content_object = GenericForeignKey("content_type", "object_id")
 
     class Meta:
-        unique_together = ("user", "content_type", "object_id")
+        unique_together = (
+            "user",
+            "content_type",
+            "object_id",
+        )
         verbose_name = "Просмотр"
         verbose_name_plural = "Просмотры"
 

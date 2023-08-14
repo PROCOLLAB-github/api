@@ -78,6 +78,7 @@ class Project(models.Model):
     description = models.TextField(null=True, blank=True)
     region = models.CharField(max_length=256, null=True, blank=True)
     step = models.PositiveSmallIntegerField(choices=VERBOSE_STEPS, null=True, blank=True)
+    hidden_score = models.PositiveSmallIntegerField(default=100)
 
     industry = models.ForeignKey(
         Industry,
@@ -115,14 +116,11 @@ class Project(models.Model):
 
     objects = ProjectManager()
 
-    views_count = models.PositiveIntegerField(default=0)
-
-    def increment_views_count(self):
-        self.views_count += 1
-        self.save()
-
     def get_short_description(self) -> Optional[str]:
         return self.description[:90] if self.description else None
+
+    def get_collaborators_user_list(self) -> list[User]:
+        return [collaborator.user for collaborator in self.collaborator_set.all()]
 
     def save(
         self, force_insert=False, force_update=False, using=None, update_fields=None
@@ -144,6 +142,7 @@ class Project(models.Model):
         return f"Project<{self.id}> - {self.name}"
 
     class Meta:
+        ordering = ["-hidden_score", "-datetime_created"]
         verbose_name = "Проект"
         verbose_name_plural = "Проекты"
 
@@ -242,7 +241,6 @@ class Collaborator(models.Model):
         ]
 
 
-# fixme: move project news to another app?
 class ProjectNews(models.Model):
     """
     Project news model
@@ -283,3 +281,4 @@ class ProjectNews(models.Model):
     class Meta:
         verbose_name = "Новость проекта"
         verbose_name_plural = "Новости проекта"
+        ordering = ["-datetime_created"]

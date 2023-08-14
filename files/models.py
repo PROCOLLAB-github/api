@@ -22,7 +22,12 @@ class UserFile(models.Model):
     datetime_uploaded = models.DateTimeField(auto_now_add=True)
     name = models.TextField(blank=False, default="file")
     extension = models.TextField(blank=True, default="")
+    mime_type = models.CharField(max_length=256, default="")
     size = models.PositiveBigIntegerField(null=False, blank=True, default=1)
 
     def __str__(self):
         return f"UserFile by {self.user}, {self.link}"
+
+    class Meta:
+        verbose_name = "Файл"
+        verbose_name_plural = "Файлы"

@@ -9,9 +9,14 @@ from rest_framework.views import APIView
 from core.permissions import IsStaffOrReadOnly
 from core.serializers import SetLikedSerializer
 from core.services import add_view, set_like
+from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 from projects.filters import ProjectFilter
 from projects.constants import VERBOSE_STEPS
-from projects.helpers import get_recommended_users, check_related_fields_update
+from projects.helpers import (
+    get_recommended_users,
+    check_related_fields_update,
+    update_partner_program,
+)
 from projects.models import Project, Achievement, ProjectNews
 from projects.pagination import ProjectNewsPagination
 from projects.permissions import (
@@ -51,6 +56,21 @@ class ProjectList(generics.ListCreateAPIView):
         serializer.validated_data["leader"] = request.user
 
         self.perform_create(serializer)
+
+        try:
+            partner_program_id = request.data.get("partner_program_id")
+            update_partner_program(partner_program_id, request.user, serializer.instance)
+        except PartnerProgram.DoesNotExist:
+            return Response(
+                {"detail": "Partner program with this id does not exist"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except PartnerProgramUserProfile.DoesNotExist:
+            return Response(
+                {"detail": "User is not a member of this partner program"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
@@ -92,15 +112,47 @@ class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
-        instance.increment_views_count()
+        if request.user.is_authenticated:
+            add_view(instance, request.user)
+        else:
+            # TODO: add view adding for users who are not logged in
+            pass
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
     def put(self, request, pk, **kwargs):
+        # fixme: add partner_program_id to docs
+        try:
+            partner_program_id = request.data.get("partner_program_id")
+            update_partner_program(partner_program_id, request.user, self.get_object())
+        except PartnerProgram.DoesNotExist:
+            return Response(
+                {"detail": "Partner program with this id does not exist"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except PartnerProgramUserProfile.DoesNotExist:
+            return Response(
+                {"detail": "User is not a member of this partner program"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         check_related_fields_update(request.data, pk)
         return super(ProjectDetail, self).put(request, pk)
 
     def patch(self, request, pk, **kwargs):
+        # fixme: add partner_program_id to docs
+        try:
+            partner_program_id = request.data.get("partner_program_id")
+            update_partner_program(partner_program_id, request.user, self.get_object())
+        except PartnerProgram.DoesNotExist:
+            return Response(
+                {"detail": "Partner program with this id does not exist"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except PartnerProgramUserProfile.DoesNotExist:
+            return Response(
+                {"detail": "User is not a member of this partner program"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         check_related_fields_update(request.data, pk)
         return super(ProjectDetail, self).put(request, pk)
 
@@ -271,9 +323,23 @@ class ProjectNewsDetail(generics.RetrieveUpdateDestroyAPIView):
         except ProjectNews.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
 
+    def update(self, request, *args, **kwargs):
+        try:
+            news = self.get_queryset().get(pk=self.kwargs["pk"])
+            context = {"user": request.user}
+            serializer = ProjectNewsDetailSerializer(
+                news, data=request.data, context=context
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data)
+        except ProjectNews.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
 
 class ProjectNewsDetailSetViewed(generics.CreateAPIView):
     queryset = ProjectNews.objects.all()
+    # fixme
     # serializer_class = SetViewedSerializer
     permission_classes = [IsAuthenticated]
 

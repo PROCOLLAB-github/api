@@ -1,6 +1,12 @@
+from typing import Union
+
 import requests
 import time
+import magic
+from django.core.files.uploadedfile import TemporaryUploadedFile, InMemoryUploadedFile
+
 from files.exceptions import SelectelUploadError
+from files.typings import UserFileInfo
 
 from procollab.settings import (
     DEBUG,
@@ -12,9 +18,14 @@ from procollab.settings import (
 
 
 class FileAPI:
-    def __init__(self, file, user) -> None:
-        self.file = file
+    # fixme: looks terrible
+    def __init__(
+        self, file: Union[TemporaryUploadedFile, InMemoryUploadedFile], user
+    ) -> None:
+        self.file = file  # it's TemporaryUploadedFile, and it will be
+        # removed after first .close() call, so we must read this file only once
         self.user = user
+        self.file_object = self.file.open(mode="rb")
 
     @staticmethod
     def delete(url: str) -> int:
@@ -23,21 +34,40 @@ class FileAPI:
         response = requests.delete(url, headers={"X-Auth-Token": token})
         return response.status_code
 
-    def upload(self):
-        return self._upload_via_selectel_swift()
+    def upload(self) -> tuple[str, UserFileInfo]:
+        url = self._upload_via_selectel_swift()
+        info = self.get_file_info(self.file)
+        self.file_object.close()
+        return url, info
 
-    def _upload_via_selectel_swift(self) -> tuple[int, str]:
+    def get_file_info(
+        self, file: Union[TemporaryUploadedFile, InMemoryUploadedFile]
+    ) -> UserFileInfo:
+        name, ext = file.name.split(".")
+        return UserFileInfo(
+            size=file.size, name=name, extension=ext, mime_type=self.get_file_mime_type()
+        )
+
+    def get_file_mime_type(self):
+        if isinstance(self.file, InMemoryUploadedFile):
+            return magic.from_buffer(self.file_object.read(), mime=True)
+        else:
+            return magic.from_file(self.file.temporary_file_path(), mime=True)
+
+    def _upload_via_selectel_swift(self) -> str:
         token = self._get_selectel_swift_token()
         url = self._generate_selectel_swift_file_url()
 
-        with self.file.open(mode="rb") as file_object:
-            response = requests.put(
-                url,
-                headers={"X-Auth-Token": token, "Content-Type": file_object.content_type},
-                data=file_object.read(),
-            )
+        requests.put(
+            url,
+            headers={
+                "X-Auth-Token": token,
+                "Content-Type": self.file_object.content_type,
+            },
+            data=self.file_object.read(),
+        )
 
-        return response.status_code, url
+        return url
 
     def _generate_selectel_swift_link(sefl):
         link = f"https://api.selcdn.ru/v1/SEL_{SELECTEL_ACCOUNT_ID}/{SELECTEL_CONTAINER_NAME}/"
@@ -61,10 +91,10 @@ class FileAPI:
                 }
             }
         }
-        r = requests.post("https://api.selcdn.ru/v3/auth/tokens", json=data)
-        if r.status_code not in [200, 201]:
+        response = requests.post("https://api.selcdn.ru/v3/auth/tokens", json=data)
+        if response.status_code not in [200, 201]:
             raise SelectelUploadError("Couldn't generate a token for selcdn")
-        return r.headers["x-subject-token"]
+        return response.headers["x-subject-token"]
 
     def _get_file_extension(self) -> str:
         if len(self.file.name.split(".")) > 1:
@@ -83,13 +113,3 @@ class FileAPI:
             link
             + f"{abs(hash(self.user.email))}/{abs(hash(self.file.name))}_{abs(hash(time.time()))}{extension}"
         )
-
-
-def get_file_info(request):
-    name, ext = request.name.split(".")
-
-    return {
-        "size": request.size,
-        "name": name,
-        "extension": ext,
-    }

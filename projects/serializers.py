@@ -7,7 +7,6 @@ from files.serializers import UserFileSerializer
 from industries.models import Industry
 from projects.models import Project, Achievement, Collaborator, ProjectNews
 from projects.validators import validate_project
-from users.models import LikesOnProject
 from vacancy.serializers import ProjectVacancyListSerializer
 
 User = get_user_model()
@@ -73,7 +72,16 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     short_description = serializers.SerializerMethodField()
     industry_id = serializers.IntegerField(required=False)
     likes_count = serializers.SerializerMethodField(method_name="count_likes")
+    views_count = serializers.SerializerMethodField(method_name="count_views")
     links = serializers.SerializerMethodField()
+    partner_programs_tags = serializers.SerializerMethodField()
+
+    @classmethod
+    def get_partner_programs_tags(cls, project):
+        profiles_qs = project.partner_program_profiles.select_related(
+            "partner_program"
+        ).only("partner_program__tag")
+        return [profile.partner_program.tag for profile in profiles_qs]
 
     @classmethod
     def get_links(cls, project):
@@ -88,7 +96,10 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
         return project.get_short_description()
 
     def count_likes(self, project):
-        return LikesOnProject.objects.filter(project=project, is_liked=True).count()
+        return get_likes_count(project)
+
+    def count_views(self, project):
+        return get_views_count(project)
 
     def update(self, instance, validated_data):
         instance = super().update(instance, validated_data)
@@ -119,6 +130,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "views_count",
             "likes_count",
             "cover",
+            "partner_programs_tags"
         ]
         read_only_fields = [
             "leader",
@@ -129,14 +141,24 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
 
 
 class ProjectListSerializer(serializers.ModelSerializer):
-    collaborators = serializers.SerializerMethodField(method_name="get_collaborators")
     likes_count = serializers.SerializerMethodField(method_name="count_likes")
+    views_count = serializers.SerializerMethodField(method_name="count_views")
     collaborator_count = serializers.SerializerMethodField(
         method_name="get_collaborator_count"
     )
     vacancies = ProjectVacancyListSerializer(many=True, read_only=True)
-
     short_description = serializers.SerializerMethodField()
+    partner_programs_tags = serializers.SerializerMethodField()
+
+    @classmethod
+    def get_partner_programs_tags(cls, project):
+        profiles_qs = project.partner_program_profiles.select_related(
+            "partner_program"
+        ).only("partner_program__tag")
+        return [profile.partner_program.tag for profile in profiles_qs]
+
+    def count_views(self, project):
+        return get_views_count(project)
 
     @classmethod
     def get_short_description(cls, project):
@@ -147,13 +169,7 @@ class ProjectListSerializer(serializers.ModelSerializer):
         return len(obj.collaborator_set.all())
 
     def count_likes(self, obj):
-        return LikesOnProject.objects.filter(project=obj, is_liked=True).count()
-
-    def get_collaborators(self, obj):
-        max_collaborator_count = 4
-        return CollaboratorSerializer(
-            instance=obj.collaborator_set.all()[:max_collaborator_count], many=True
-        ).data
+        return get_likes_count(obj)
 
     class Meta:
         model = Project
@@ -168,16 +184,14 @@ class ProjectListSerializer(serializers.ModelSerializer):
             "draft",
             "industry",
             "collaborator_count",
-            "collaborators",
             "vacancies",
             "datetime_created",
             "likes_count",
             "views_count",
+            "partner_programs_tags",
         ]
 
-        read_only_fields = [
-            "leader",
-        ]
+        read_only_fields = ["leader", "views_count", "likes_count"]
 
     def is_valid(self, *, raise_exception=False):
         return super().is_valid(raise_exception=raise_exception)
@@ -233,6 +247,7 @@ class ProjectNewsListSerializer(serializers.ModelSerializer):
         return get_likes_count(obj)
 
     def get_is_user_liked(self, obj):
+        # fixme: move this method to helpers somewhere
         user = self.context.get("user")
         if user:
             return is_fan(obj, user)
