@@ -4,7 +4,7 @@ import requests
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
 
-from files.constants import SUPPORTED_IMAGES_TYPES
+from files.constants import SUPPORTED_IMAGES_TYPES, SELECTEL_AUTH_TOKEN_URL
 from files.exceptions import SelectelUploadError
 from files.helpers import convert_image_to_webp
 from files.typings import FileAPIUploadInfo
@@ -36,17 +36,17 @@ class File:
             self.extension = "webp"
 
     @staticmethod
-    def _get_extension(file) -> str:
-        if len(file.name.split(".")) > 1:
-            return file.name.split(".")[-1]
-        return ""
-
-    @staticmethod
     def _get_name(file) -> str:
         name_parts = file.name.split(".")
         if len(name_parts) == 1:
             return name_parts[0]
         return ".".join(name_parts[:-1])
+
+    @staticmethod
+    def _get_extension(file) -> str:
+        if len(file.name.split(".")) > 1:
+            return file.name.split(".")[-1]
+        return ""
 
 
 class FileAPI:
@@ -128,7 +128,7 @@ class FileAPI:
                 }
             }
         }
-        response = requests.post("https://api.selcdn.ru/v3/auth/tokens", json=data)
+        response = requests.post(SELECTEL_AUTH_TOKEN_URL, json=data)
         if response.status_code not in [200, 201]:
             raise SelectelUploadError("Couldn't generate a token for selcdn")
         return response.headers["x-subject-token"]
