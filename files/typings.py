@@ -5,7 +5,7 @@ Bytes: TypeAlias = int
 
 
 @dataclass(slots=True, frozen=True)
-class FileAPIUploadInfo:
+class FileInfo:
     url: str
     size: Bytes
     name: str

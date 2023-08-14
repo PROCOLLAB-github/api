@@ -3,7 +3,7 @@ import reprlib
 from django.contrib import admin
 from django.forms import ModelForm, FileField
 
-from files.service import FileAPI
+from files.service import CDN, SelectelSwiftStorage
 from files.models import UserFile
 
 
@@ -42,6 +42,8 @@ class UserFileAdmin(admin.ModelAdmin):
     date_hierarchy = "datetime_uploaded"
     ordering = ("-datetime_uploaded",)
 
+    cdn = CDN(storage=SelectelSwiftStorage())
+
     @admin.display(empty_value="Empty filename")
     def filename(self, obj):
         return obj.name
@@ -62,8 +64,7 @@ class UserFileAdmin(admin.ModelAdmin):
         return fieldsets
 
     def save_model(self, request, obj, form, change):
-        file_api = FileAPI(request.FILES["file"], request.user)
-        info = file_api.upload()
+        info = self.cdn.upload(request.FILES["file"], request.user)
         obj.link = info.url
         obj.user = request.user
         obj.name = info.name
@@ -73,10 +74,10 @@ class UserFileAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
     def delete_model(self, request, obj):
-        FileAPI.delete(obj.link)
+        self.cdn.delete(obj.link)
         obj.delete()
 
     def delete_queryset(self, request, queryset):
         for obj in queryset:
-            FileAPI.delete(obj.link)
+            self.cdn.delete(obj.link)
         queryset.delete()

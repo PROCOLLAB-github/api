@@ -1,20 +1,17 @@
 import time
+from abc import ABC, abstractmethod
 
 import requests
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
+from requests import Response
 
-from files.constants import SUPPORTED_IMAGES_TYPES, SELECTEL_AUTH_TOKEN_URL
+from files.constants import SUPPORTED_IMAGES_TYPES
 from files.exceptions import SelectelUploadError
 from files.helpers import convert_image_to_webp
-from files.typings import FileAPIUploadInfo
-from procollab.settings import (
-    DEBUG,
-    SELECTEL_ACCOUNT_ID,
-    SELECTEL_CONTAINER_NAME,
-    SELECTEL_CONTAINER_PASSWORD,
-    SELECTEL_CONTAINER_USERNAME,
-)
+from files.typings import FileInfo
+from procollab.settings import SELECTEL_SWIFT_URL
 
 User = get_user_model()
 
@@ -49,86 +46,95 @@ class File:
         return ""
 
 
-class FileAPI:
-    def __init__(
-        self,
-        file: TemporaryUploadedFile | InMemoryUploadedFile,
-        user: User,
-    ) -> None:
-        self.file = File(file)
-        self.user = user
+class Storage(ABC):
+    @abstractmethod
+    def delete(self, url: str) -> Response:
+        pass
 
-    @staticmethod
-    def delete(url: str) -> int:
-        """Deletes file from selcdn"""
-        token = FileAPI._get_selectel_swift_token()
-        response = requests.delete(url, headers={"X-Auth-Token": token})
-        return response.status_code
+    @abstractmethod
+    def upload(self, file: File, user: User) -> FileInfo:
+        pass
 
-    def upload(self) -> FileAPIUploadInfo:
-        url = self._upload_via_selectel_swift()
-        return FileAPIUploadInfo(
+
+class SelectelSwiftStorage(Storage):
+    def delete(self, url: str) -> Response:
+        token = self._get_auth_token()
+        return requests.delete(url, headers={"X-Auth-Token": token})
+
+    def upload(self, file: File, user: User) -> FileInfo:
+        url = self._upload(file, user)
+        return FileInfo(
             url=url,
-            name=self.file.name,
-            extension=self.file.extension,
-            mime_type=self.file.content_type,
-            size=self.file.size,
+            name=file.name,
+            extension=file.extension,
+            mime_type=file.content_type,
+            size=file.size,
         )
 
-    def _upload_via_selectel_swift(self) -> str:
-        token = self._get_selectel_swift_token()
-        url = self._generate_selectel_swift_file_url()
+    def _upload(self, file: File, user: User) -> str:
+        token = self._get_auth_token()
+        url = self._generate_url(file, user)
 
         requests.put(
             url,
             headers={
                 "X-Auth-Token": token,
-                "Content-Type": self.file.content_type,
+                "Content-Type": file.content_type,
             },
-            data=self.file.buffer,
+            data=file.buffer,
         )
 
         return url
 
-    def _generate_selectel_swift_file_url(self) -> str:
+    def _generate_url(self, file: File, user: User) -> str:
         """
         Generates url for selcdn
         Returns:
             url: str looks like /hashedEmail/hashedFilename_hashedTime.extension
         """
-        link = self._generate_selectel_swift_link()
         return (
-            f"{link}"
-            f"{abs(hash(self.user.email))}"
-            f"/{abs(hash(self.file.name))}"
+            f"{SELECTEL_SWIFT_URL}"
+            f"{abs(hash(user.email))}"
+            f"/{abs(hash(file.name))}"
             f"_{abs(hash(time.time()))}"
-            f".{self.file.extension}"
+            f".{file.extension}"
         )
 
     @staticmethod
-    def _generate_selectel_swift_link():
-        link = f"https://api.selcdn.ru/v1/SEL_{SELECTEL_ACCOUNT_ID}/{SELECTEL_CONTAINER_NAME}/"
-        if DEBUG:
-            link += "debug/"
-        return link
+    def _get_auth_token():
+        """
+        Returns auth token
+        """
 
-    @staticmethod
-    def _get_selectel_swift_token():
-        """Returns auth token for selcdn"""
         data = {
             "auth": {
                 "identity": {
                     "methods": ["password"],
                     "password": {
                         "user": {
-                            "id": SELECTEL_CONTAINER_USERNAME,
-                            "password": SELECTEL_CONTAINER_PASSWORD,
+                            "id": settings.SELECTEL_CONTAINER_USERNAME,
+                            "password": settings.SELECTEL_CONTAINER_PASSWORD,
                         }
                     },
                 }
             }
         }
-        response = requests.post(SELECTEL_AUTH_TOKEN_URL, json=data)
+        response = requests.post(settings.SELECTEL_AUTH_TOKEN_URL, json=data)
         if response.status_code not in [200, 201]:
-            raise SelectelUploadError("Couldn't generate a token for selcdn")
+            raise SelectelUploadError(
+                "Couldn't generate a token for Selectel Swift API (selcdn)"
+            )
         return response.headers["x-subject-token"]
+
+
+class CDN:
+    def __init__(self, storage: Storage) -> None:
+        self.storage = storage
+
+    def delete(self, url: str) -> Response:
+        return self.storage.delete(url)
+
+    def upload(
+        self, file: TemporaryUploadedFile | InMemoryUploadedFile, user: User
+    ) -> FileInfo:
+        return self.storage.upload(File(file), user)

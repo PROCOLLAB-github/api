@@ -313,3 +313,10 @@ SELECTEL_CONTAINER_USERNAME = config(
 SELECTEL_CONTAINER_PASSWORD = config(
     "SELECTEL_CONTAINER_PASSWORD", cast=str, default="PWD"
 )
+
+SELECTEL_AUTH_TOKEN_URL = "https://api.selcdn.ru/v3/auth/tokens"
+SELECTEL_SWIFT_URL = (
+    f"https://api.selcdn.ru/v1/SEL_{SELECTEL_ACCOUNT_ID}/{SELECTEL_CONTAINER_NAME}/"
+)
+if DEBUG:
+    SELECTEL_SWIFT_URL += "debug/"
