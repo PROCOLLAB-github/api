@@ -56,6 +56,7 @@ from users.serializers import (
     ResendVerifyEmailSerializer,
 )
 from .filters import UserFilter
+from .pagination import UsersPagination
 from .services.verification import VerificationTasks
 
 User = get_user_model()
@@ -66,6 +67,7 @@ class UserList(ListCreateAPIView):
     queryset = User.objects.get_active()
     permission_classes = [AllowAny]  # FIXME: change to IsAuthorized
     serializer_class = UserListSerializer
+    pagination_class = UsersPagination
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = UserFilter
 
