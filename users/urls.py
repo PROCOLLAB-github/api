@@ -18,8 +18,6 @@ from users.views import (
     ResendVerifyEmail,
     CurrentUserPrograms,
     CurrentUserProgramsTags,
-    ResetCurrentUserPassword,
-    EmailResetPassword,
 )
 
 app_name = "users"
@@ -36,7 +34,7 @@ urlpatterns = [
     path("users/<int:pk>/", UserDetail.as_view()),
     path("users/<int:pk>/set_onboarding_stage/", SetUserOnboardingStage.as_view()),
     path("users/current/", CurrentUser.as_view()),
-    path("users/current/email_reset_password/", EmailResetPassword.as_view()),
+    # path("users/current/email_reset_password/", EmailResetPassword.as_view()),
     # todo: change password view
     path("users/current/programs/", CurrentUserPrograms.as_view()),
     path("users/current/programs/tags/", CurrentUserProgramsTags.as_view()),
@@ -59,14 +57,14 @@ urlpatterns = [
         VerifyEmail.as_view(),
         name="account_confirm_email",
     ),
-    re_path(
-        r"^password-reset/",
-        ResetCurrentUserPassword.as_view(),
-        name="password_reset_sent",
-    ),
-    re_path(
-        r"^password-reset/(?P<key>[-:\w]+)/$",
-        ResetCurrentUserPassword.as_view(),
-        name="password_reset",
-    ),
+    # re_path(
+    #     r"^password-reset/",
+    #     ResetCurrentUserPassword.as_view(),
+    #     name="password_reset_sent",
+    # ),
+    # re_path(
+    #     r"^password-reset/(?P<key>[-:\w]+)/$",
+    #     ResetCurrentUserPassword.as_view(),
+    #     name="password_reset",
+    # ),
 ]
