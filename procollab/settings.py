@@ -73,7 +73,6 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "debug_toolbar",
-    "django_rest_passwordreset",
     # My apps
     "core.apps.CoreConfig",
     "industries.apps.IndustriesConfig",
@@ -92,6 +91,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
     "django_cleanup.apps.CleanupConfig",
+    "django_rest_passwordreset",
     # "rest_framework.authtoken",
     # Plugins
     "corsheaders",
