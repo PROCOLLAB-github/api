@@ -21,7 +21,6 @@ jobs:
               docker image prune -a -f &&
               git checkout dev &&
               git pull &&
-              docker-compose -f docker-compose.dev-ci.yml &&
               
               rm -f .env &&
               touch .env &&
@@ -48,4 +47,4 @@ jobs:
               
               echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" >> .env &&
               
-              docker-compose -f docker-compose.prod-ci.yml -p prod up -d
+              docker-compose -f docker-compose.dev-ci.yml up -d
