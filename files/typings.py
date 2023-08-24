@@ -5,7 +5,8 @@ Bytes: TypeAlias = int
 
 
 @dataclass(slots=True, frozen=True)
-class UserFileInfo:
+class FileInfo:
+    url: str
     size: Bytes
     name: str
     extension: str

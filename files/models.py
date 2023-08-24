@@ -1,3 +1,5 @@
+import reprlib
+
 from django.contrib.auth import get_user_model
 from django.db import models
 
@@ -26,7 +28,8 @@ class UserFile(models.Model):
     size = models.PositiveBigIntegerField(null=False, blank=True, default=1)
 
     def __str__(self):
-        return f"UserFile by {self.user}, {self.link}"
+        filename_with_extension = f"{self.name}.{self.extension}"
+        return f"UserFile<{reprlib.repr(filename_with_extension)}>"
 
     class Meta:
         verbose_name = "Файл"

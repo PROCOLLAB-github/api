@@ -237,7 +237,7 @@ class EmailResetPassword(GenericAPIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class ResetPassword(UpdateAPIView):
+class ResetCurrentUserPassword(UpdateAPIView):
     serializer_class = PasswordSerializer
     permission_classes = [AllowAny]
 
@@ -261,10 +261,13 @@ class ResetPassword(UpdateAPIView):
         try:
             refresh_token = request.GET.get("refresh_token")
             access_token = request.GET.get("access_token")
+
             payload = jwt.decode(
                 jwt=access_token, key=settings.SECRET_KEY, algorithms=["HS256"]
             )
             user = User.objects.get(id=payload["user_id"])
+
+            # fixme
             last_update = user.datetime_updated
             frequency_update = datetime.utcnow().minute - last_update.minute
             if frequency_update <= 10:
@@ -279,20 +282,20 @@ class ResetPassword(UpdateAPIView):
 
             RefreshToken(refresh_token).blacklist()
             return redirect(
-                "https://procollab.ru/auth/reset_password/",
+                "https://app.procollab.ru/auth/reset_password/",
                 status=status.HTTP_200_OK,
                 message="Succeed",
             )
 
         except jwt.ExpiredSignatureError:
             return redirect(
-                "https://procollab.ru/auth/reset_password/",
+                "https://app.procollab.ru/auth/reset_password/",
                 status=status.HTTP_400_BAD_REQUEST,
                 message="Activate Expired",
             )
         except jwt.DecodeError:
             return redirect(
-                "https://procollab.ru/auth/reset_password/",
+                "https://app.procollab.ru/auth/reset_password/",
                 status=status.HTTP_400_BAD_REQUEST,
                 message="Decode error",
             )
