@@ -17,8 +17,6 @@ jobs:
             password: ${{ secrets.DEV_SERVER_PASSWORD }}
             command: |
               cd /root/api &&
-              docker container prune -f &&
-              docker image prune -a -f &&
               git checkout dev &&
               git pull &&
               
@@ -47,4 +45,4 @@ jobs:
               
               echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" >> .env &&
               
-              docker-compose -f docker-compose.dev-ci.yml up -d
+              docker-compose -f docker-compose.dev-ci.yml up -d --build --force-recreate
