@@ -1,0 +1,91 @@
+name: 'Deploy dev server'
+
+on:
+  push:
+    branches: 
+      - dev
+
+jobs:
+  test:
+    name: 'Test before deploy'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.11
+
+      - name: cache poetry install
+        uses: actions/cache@v2
+        with:
+          path: ~/.local
+          key: poetry-1.2.2-0
+
+      - uses: snok/install-poetry@v1
+        with:
+          version: 1.2.2
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: cache deps
+        id: cache-deps
+        uses: actions/cache@v2
+        with:
+          path: .venv
+          key: pydeps-${{ hashFiles('**/poetry.lock') }}
+
+      - run: poetry install --no-root
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+
+      - run: poetry run pip install setuptools
+
+      - name: Run tests
+        run: poetry run python manage.py test
+        env:
+          DEBUG: True
+  run:
+      runs-on: ubuntu-latest
+      needs: [ build ]
+      steps:
+        - name: run on server
+          uses: garygrossgarten/github-action-ssh@release
+          with:
+            host: ${{ secrets.DEV_SERVER_HOST }}
+            username: ${{ secrets.DEV_SERVER_USER }}
+            password: ${{ secrets.DEV_SERVER_PASSWORD }}
+            command: |
+              cd /root/api &&
+              docker container prune -f &&
+              docker image prune -a -f &&
+              git checkout dev &&
+              git pull &&
+              docker-compose -f docker-compose.dev-ci.yml &&
+              
+              rm -f .env &&
+              touch .env &&
+              
+              echo "DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" >> .env &&
+              
+              echo "DATABASE_NAME=${{ secrets.DATABASE_NAME }}" >> .env &&
+              echo "DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}" >> .env &&
+              echo "DATABASE_USER=${{ secrets.DATABASE_USER }}" >> .env &&
+              echo "DATABASE_HOST=${{ secrets.DATABASE_HOST }}" >> .env &&
+              echo "DATABASE_PORT=${{ secrets.DATABASE_PORT }}" >> .env &&
+              
+              echo "EMAIL_USER=${{ secrets.EMAIL_USER }}" >> .env &&
+              echo "EMAIL_PASSWORD=${{ secrets.EMAIL_PASSWORD }}" >> .env &&
+              echo "EMAIL_HOST=${{ secrets.EMAIL_HOST }}" >> .env &&
+              echo "EMAIL_PORT=${{ secrets.EMAIL_PORT }}" >> .env &&
+              echo "SELECTEL_ACCOUNT_ID=${{ secrets.SELECTEL_ACCOUNT_ID }}" >> .env &&
+              echo "SELECTEL_CONTAINER_NAME=${{ secrets.SELECTEL_CONTAINER_NAME }}" >> .env &&
+              echo "SELECTEL_CONTAINER_PASSWORD=${{ secrets.SELECTEL_CONTAINER_PASSWORD }}" >> .env &&
+              echo "SELECTEL_CONTAINER_USERNAME=${{ secrets.SELECTEL_CONTAINER_USERNAME }}" >> .env &&
+              
+              echo "CLICKUP_API_TOKEN=${{ secrets.CLICKUP_API_TOKEN }}" >> .env &&
+              echo "CLICKUP_SPACE_ID=${{ secrets.CLICKUP_SPACE_ID }}" >> .env &&
+              
+              echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" >> .env &&
+              
+              docker-compose -f docker-compose.prod-ci.yml -p prod up -d
