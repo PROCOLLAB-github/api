@@ -41,6 +41,7 @@ ALLOWED_HOSTS = [
     "api.procollab.ru",
     "app.procollab.ru",
     "procollab.ru",
+    "dev.procollab.ru"
 ]
 
 PASSWORD_HASHERS = [
