@@ -31,6 +31,7 @@ CSRF_TRUSTED_ORIGINS = [
     "https://procollab.ru",
     "https://www.procollab.ru",
     "https://app.procollab.ru",
+    "https://dev.procollab.ru"
 ]
 
 ALLOWED_HOSTS = [
@@ -41,6 +42,7 @@ ALLOWED_HOSTS = [
     "api.procollab.ru",
     "app.procollab.ru",
     "procollab.ru",
+    "dev.procollab.ru"
 ]
 
 PASSWORD_HASHERS = [

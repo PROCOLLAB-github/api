@@ -73,22 +73,6 @@ class Project(models.Model):
     def get_collaborators_user_list(self) -> list[User]:
         return [collaborator.user for collaborator in self.collaborator_set.all()]
 
-    def save(
-        self, force_insert=False, force_update=False, using=None, update_fields=None
-    ):
-        # if every field is filled, set draft to false
-        if (
-            self.name
-            and self.description
-            and self.region
-            and (self.step is not None)
-            and self.industry
-            and self.presentation_address
-            and self.image_address
-        ):
-            self.draft = False
-        super().save(force_insert, force_update, using, update_fields)
-
     def __str__(self):
         return f"Project<{self.id}> - {self.name}"
 
