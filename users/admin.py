@@ -122,7 +122,8 @@ class CustomUserAdmin(admin.ModelAdmin):
                     elif old_user.user_type == CustomUser.INVESTOR:
                         old_user.investor.delete()
                 except Exception:
-                    print(f"User type `{old_user.user_type}` is not supported!")
+                    # ???
+                    pass
 
                 if obj.user_type == CustomUser.MEMBER:
                     Member.objects.create(user=old_user)
