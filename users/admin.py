@@ -74,12 +74,7 @@ class CustomUserAdmin(admin.ModelAdmin):
         ),
         (
             "Важные даты",
-            {
-                "fields": (
-                    "last_login",
-                    "date_joined",
-                )
-            },
+            {"fields": ("last_login", "date_joined", "verification_date")},
         ),
     )
 
