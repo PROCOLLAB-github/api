@@ -23,13 +23,13 @@ jobs:
               rm -f .env &&
               touch .env &&
               
-              echo "DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" >> .env &&
+              echo "DJANGO_SECRET_KEY=${{ secrets.DEV_DJANGO_SECRET_KEY }}" >> .env &&
               
-              echo "DATABASE_NAME=${{ secrets.DATABASE_NAME }}" >> .env &&
-              echo "DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}" >> .env &&
-              echo "DATABASE_USER=${{ secrets.DATABASE_USER }}" >> .env &&
-              echo "DATABASE_HOST=${{ secrets.DATABASE_HOST }}" >> .env &&
-              echo "DATABASE_PORT=${{ secrets.DATABASE_PORT }}" >> .env &&
+              echo "DATABASE_NAME=${{ secrets.DEV_DATABASE_NAME }}" >> .env &&
+              echo "DATABASE_PASSWORD=${{ secrets.DEV_DATABASE_PASSWORD }}" >> .env &&
+              echo "DATABASE_USER=${{ secrets.DEV_DATABASE_USER }}" >> .env &&
+              echo "DATABASE_HOST=${{ secrets.DEV_DATABASE_HOST }}" >> .env &&
+              echo "DATABASE_PORT=${{ secrets.DEV_DATABASE_PORT }}" >> .env &&
               
               echo "EMAIL_USER=${{ secrets.EMAIL_USER }}" >> .env &&
               echo "EMAIL_PASSWORD=${{ secrets.EMAIL_PASSWORD }}" >> .env &&
