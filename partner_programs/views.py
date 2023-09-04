@@ -73,7 +73,6 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
             # tilda cringe
             if data.get("test") == "test":
                 return Response(status=status.HTTP_200_OK)
-            print(data)
             user_fields = (
                 # "email",
                 # "password",

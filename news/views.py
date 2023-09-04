@@ -9,12 +9,24 @@ from news.pagination import NewsPagination
 from news.permissions import IsNewsCreatorOrReadOnly
 from news.serializers import NewsListSerializer, NewsDetailSerializer
 from news.mixins import NewsQuerysetMixin
+from projects.models import Project
 
 
 class NewsList(NewsQuerysetMixin, generics.ListCreateAPIView):
     serializer_class = NewsListSerializer
     permission_classes = [IsNewsCreatorOrReadOnly]
     pagination_class = NewsPagination
+
+    def post(self, request, *args, **kwargs):
+        if kwargs.get("project_pk"):
+            project = Project.objects.get(pk=kwargs["project_pk"])
+            news = News.objects.add_news(project, **request.data)
+            return Response(
+                NewsDetailSerializer(news).data, status=status.HTTP_201_CREATED
+            )
+        else:
+            # creating partner program news, not implemented yet
+            raise NotImplementedError()
 
     def get(self, request, *args, **kwargs):
         news = self.paginate_queryset(self.get_queryset())
