@@ -205,6 +205,7 @@ class ProjectCountView(generics.GenericAPIView):
                 "all": self.get_queryset().filter(draft=False).count(),
                 "my": self.get_queryset()
                 .filter(Q(leader_id=request.user.id) | Q(collaborator__user=request.user))
+                .distinct()
                 .count(),
             },
             status=status.HTTP_200_OK,
