@@ -124,12 +124,15 @@ class ProjectChatMessageList(ListCreateAPIView):
     pagination_class = MessageListPagination
 
     def get_queryset(self):
-        return (
-            ProjectChat.objects.get(id=self.kwargs["pk"])
-            .messages.filter(is_deleted=False)
-            .order_by("-created_at")
-            .all()
-        )
+        try:
+            return (
+                ProjectChat.objects.get(id=self.kwargs["pk"])
+                .messages.filter(is_deleted=False)
+                .order_by("-created_at")
+                .all()
+            )
+        except ProjectChat.DoesNotExist:
+            return ProjectChat.objects.none()
 
     def post(self, request, *args, **kwargs):
         # TODO: try to create a message in a chat. If chat doesn't exist, create it and then create a message.
