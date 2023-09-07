@@ -22,6 +22,7 @@ from chats.serializers import (
     DirectChatDetailSerializer,
 )
 from chats.utils import get_all_files
+from files.models import UserFile
 from files.serializers import UserFileSerializer
 
 User = get_user_model()
@@ -158,6 +159,8 @@ class ProjectChatFileList(ListCreateAPIView):
     permission_classes = [IsProjectChatMember]
 
     def get_queryset(self):
-        messages = ProjectChat.objects.get(id=self.kwargs["pk"]).messages.all()
-
-        return get_all_files(messages)
+        try:
+            messages = ProjectChat.objects.get(id=self.kwargs["pk"]).messages.all()
+            return get_all_files(messages)
+        except ProjectChat.DoesNotExist:
+            return UserFile.objects.none()
