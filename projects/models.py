@@ -15,6 +15,45 @@ from users.models import CustomUser
 User = get_user_model()
 
 
+class DefaultProjectCover(models.Model):
+    """
+    Default cover model for projects, is chosen randomly at project creation
+
+    Attributes:
+        image: A ForeignKey referencing the image of the cover.
+        datetime_created: A DateTimeField indicating date of creation.
+        datetime_updated: A DateTimeField indicating date of update.
+    """
+
+    image = models.ForeignKey(
+        UserFile,
+        on_delete=models.CASCADE,
+        related_name="default_covers",
+        null=True,
+        blank=True,
+    )
+
+    datetime_created = models.DateTimeField(
+        verbose_name="Дата создания",
+        null=False,
+        auto_now_add=True,
+    )
+    datetime_updated = models.DateTimeField(
+        verbose_name="Дата изменения",
+        null=False,
+        auto_now=True,
+    )
+
+    @classmethod
+    def get_random_file(cls):
+        # FIXME: this is not efficient, but for ~10 default covers it should be ok
+        return cls.objects.order_by("?").first().image
+
+    class Meta:
+        verbose_name = "Обложка проекта"
+        verbose_name_plural = "Обложки проектов"
+
+
 class Project(models.Model):
     """
     Project model
@@ -30,6 +69,7 @@ class Project(models.Model):
         image_address: A URLField image URL address.
         leader: A ForeignKey referring to the User model.
         draft: A boolean indicating if Project is a draft.
+        cover: A ForeignKey referring to the UserFile model, which is the image cover of the project.
         datetime_created: A DateTimeField indicating date of creation.
         datetime_updated: A DateTimeField indicating date of update.
     """
@@ -57,6 +97,15 @@ class Project(models.Model):
     )
 
     draft = models.BooleanField(blank=False, default=True)
+
+    cover = models.ForeignKey(
+        UserFile,
+        default=DefaultProjectCover.get_random_file,
+        on_delete=models.SET_DEFAULT,
+        related_name="project_cover",
+        null=True,
+        blank=True,
+    )
 
     datetime_created = models.DateTimeField(
         verbose_name="Дата создания", null=False, auto_now_add=True
