@@ -9,5 +9,8 @@ class NewsManager(models.Manager):
 
     def add_news(self, obj, **kwargs):
         obj_type = ContentType.objects.get_for_model(obj)
+        kwargs = dict(kwargs)
+        files = kwargs.pop("files", [])
         news = self.create(content_type=obj_type, object_id=obj.pk, **kwargs)
+        news.files.set(files)
         return news

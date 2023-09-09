@@ -42,6 +42,7 @@ class PartnerProgramDetail(generics.RetrieveAPIView):
     def get(self, request, *args, **kwargs):
         try:
             program = PartnerProgram.objects.get(pk=kwargs["pk"])
+            # fixme
             is_user_member = program.users.filter(pk=request.user.pk).exists()
             if is_user_member:
                 serializer_class = PartnerProgramForMemberSerializer
@@ -49,6 +50,9 @@ class PartnerProgramDetail(generics.RetrieveAPIView):
                 serializer_class = PartnerProgramForUnregisteredUserSerializer
             data = serializer_class(program).data
             data["is_user_member"] = is_user_member
+            if request.user.is_authenticated:
+                add_view(program, request.user)
+
             return Response(data=data, status=status.HTTP_200_OK)
         except PartnerProgram.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
@@ -69,7 +73,6 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
             # tilda cringe
             if data.get("test") == "test":
                 return Response(status=status.HTTP_200_OK)
-            print(data)
             user_fields = (
                 # "email",
                 # "password",

@@ -1,5 +1,3 @@
-from datetime import datetime
-
 import jwt
 from django.apps import apps
 from django.conf import settings
@@ -14,7 +12,6 @@ from rest_framework.generics import (
     ListAPIView,
     ListCreateAPIView,
     RetrieveUpdateDestroyAPIView,
-    UpdateAPIView,
     RetrieveAPIView,
 )
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -33,7 +30,6 @@ from partner_programs.serializers import (
 )
 from projects.serializers import ProjectListSerializer
 from users.helpers import (
-    reset_email,
     verify_email,
     check_related_fields_update,
 )
@@ -48,14 +44,13 @@ from users.permissions import IsAchievementOwnerOrReadOnly
 from users.serializers import (
     AchievementDetailSerializer,
     AchievementListSerializer,
-    EmailSerializer,
-    PasswordSerializer,
     UserDetailSerializer,
     UserListSerializer,
     VerifyEmailSerializer,
     ResendVerifyEmailSerializer,
 )
 from .filters import UserFilter
+from .pagination import UsersPagination
 from .services.verification import VerificationTasks
 
 User = get_user_model()
@@ -66,6 +61,7 @@ class UserList(ListCreateAPIView):
     queryset = User.objects.get_active()
     permission_classes = [AllowAny]  # FIXME: change to IsAuthorized
     serializer_class = UserListSerializer
+    pagination_class = UsersPagination
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = UserFilter
 
@@ -215,82 +211,6 @@ class VerifyEmail(GenericAPIView):
         except jwt.DecodeError:
             return redirect(
                 VERIFY_EMAIL_REDIRECT_URL,
-                status=status.HTTP_400_BAD_REQUEST,
-                message="Decode error",
-            )
-
-
-class EmailResetPassword(GenericAPIView):
-    serializer_class = EmailSerializer
-    permission_classes = [AllowAny]
-
-    def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid()
-
-        user = User.objects.get(email=serializer.data["email"])
-
-        reset_email(user, request)
-
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-
-class ResetPassword(UpdateAPIView):
-    serializer_class = PasswordSerializer
-    permission_classes = [AllowAny]
-
-    def get(self, request, *args, **kwargs):
-        refresh_token = request.GET.get("refresh_token")
-        try:
-            RefreshToken(refresh_token).check_blacklist()
-        except TokenError:
-            return redirect(
-                "https://procollab.ru/auth/reset_password/",
-                status=status.HTTP_400_BAD_REQUEST,
-                message="Used token",
-            )
-
-        return Response({"message": "Enter new password"})
-
-    def update(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid()
-
-        try:
-            refresh_token = request.GET.get("refresh_token")
-            access_token = request.GET.get("access_token")
-            payload = jwt.decode(
-                jwt=access_token, key=settings.SECRET_KEY, algorithms=["HS256"]
-            )
-            user = User.objects.get(id=payload["user_id"])
-            last_update = user.datetime_updated
-            frequency_update = datetime.utcnow().minute - last_update.minute
-            if frequency_update <= 10:
-                return redirect(
-                    "https://procollab.ru/auth/reset_password/",
-                    status=status.HTTP_400_BAD_REQUEST,
-                    message="You can't change your password so often",
-                )
-
-            user.set_password(serializer.data["new_password"])
-            user.save()
-
-            RefreshToken(refresh_token).blacklist()
-            return redirect(
-                "https://procollab.ru/auth/reset_password/",
-                status=status.HTTP_200_OK,
-                message="Succeed",
-            )
-
-        except jwt.ExpiredSignatureError:
-            return redirect(
-                "https://procollab.ru/auth/reset_password/",
-                status=status.HTTP_400_BAD_REQUEST,
-                message="Activate Expired",
-            )
-        except jwt.DecodeError:
-            return redirect(
-                "https://procollab.ru/auth/reset_password/",
                 status=status.HTTP_400_BAD_REQUEST,
                 message="Decode error",
             )

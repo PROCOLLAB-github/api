@@ -12,6 +12,7 @@ from rest_framework.response import Response
 
 from chats.models import ProjectChat, DirectChat
 from chats.pagination import MessageListPagination
+from chats.permissions import IsProjectChatMember
 from chats.serializers import (
     DirectChatListSerializer,
     DirectChatMessageListSerializer,
@@ -21,6 +22,7 @@ from chats.serializers import (
     DirectChatDetailSerializer,
 )
 from chats.utils import get_all_files
+from files.models import UserFile
 from files.serializers import UserFileSerializer
 
 User = get_user_model()
@@ -47,7 +49,7 @@ class ProjectChatList(ListAPIView):
 class ProjectChatDetail(RetrieveAPIView):
     queryset = ProjectChat.objects.all()
     serializer_class = ProjectChatDetailSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsProjectChatMember]
 
 
 class DirectChatDetail(RetrieveAPIView):
@@ -60,6 +62,10 @@ class DirectChatDetail(RetrieveAPIView):
             assert "_" in self.kwargs["pk"], "pk must contain underscore"
 
             user1_id, user2_id = map(int, self.kwargs["pk"].split("_"))
+
+            assert (
+                request.user.id == user1_id or request.user.id == user2_id
+            ), "current user id is not present in pk"
 
             user1 = User.objects.get(pk=user1_id)
             user2 = User.objects.get(pk=user2_id)
@@ -115,16 +121,19 @@ class DirectChatMessageList(ListCreateAPIView):
 
 class ProjectChatMessageList(ListCreateAPIView):
     serializer_class = ProjectChatMessageListSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsProjectChatMember]
     pagination_class = MessageListPagination
 
     def get_queryset(self):
-        return (
-            ProjectChat.objects.get(id=self.kwargs["pk"])
-            .messages.filter(is_deleted=False)
-            .order_by("-created_at")
-            .all()
-        )
+        try:
+            return (
+                ProjectChat.objects.get(id=self.kwargs["pk"])
+                .messages.filter(is_deleted=False)
+                .order_by("-created_at")
+                .all()
+            )
+        except ProjectChat.DoesNotExist:
+            return ProjectChat.objects.none()
 
     def post(self, request, *args, **kwargs):
         # TODO: try to create a message in a chat. If chat doesn't exist, create it and then create a message.
@@ -147,9 +156,11 @@ class DirectChatFileList(ListCreateAPIView):
 
 class ProjectChatFileList(ListCreateAPIView):
     serializer_class = UserFileSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsProjectChatMember]
 
     def get_queryset(self):
-        messages = ProjectChat.objects.get(id=self.kwargs["pk"]).messages.all()
-
-        return get_all_files(messages)
+        try:
+            messages = ProjectChat.objects.get(id=self.kwargs["pk"]).messages.all()
+            return get_all_files(messages)
+        except ProjectChat.DoesNotExist:
+            return UserFile.objects.none()

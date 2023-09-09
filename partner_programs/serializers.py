@@ -24,7 +24,7 @@ class PartnerProgramListSerializer(serializers.ModelSerializer):
         return get_views_count(program)
 
     def get_short_description(self, program):
-        return program.description[:100]
+        return program.description[:125]
 
     def get_is_user_liked(self, obj):
         # fixme: copy-paste in every serializer...
