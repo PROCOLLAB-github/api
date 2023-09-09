@@ -34,7 +34,7 @@ CSRF_TRUSTED_ORIGINS = [
     "https://procollab.ru",
     "https://www.procollab.ru",
     "https://app.procollab.ru",
-    "https://dev.procollab.ru"
+    "https://dev.procollab.ru",
 ]
 
 ALLOWED_HOSTS = [
@@ -122,7 +122,9 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "debug_toolbar.middleware.DebugToolbarMiddleware",
     "django_prometheus.middleware.PrometheusAfterMiddleware",
+    "core.log.middleware.CustomLoguruMiddleware",
 ]
+
 
 # CORS_ALLOWED_ORIGINS = [
 #     "http://localhost:4200",
@@ -329,6 +331,15 @@ SELECTEL_AUTH_TOKEN_URL = "https://api.selcdn.ru/v3/auth/tokens"
 SELECTEL_SWIFT_URL = (
     f"https://api.selcdn.ru/v1/SEL_{SELECTEL_ACCOUNT_ID}/{SELECTEL_CONTAINER_NAME}/"
 )
+
+LOGURU_LOGGING = {
+    "rotation": "300 MB",
+    "compression": "zip",
+    "retention": "10 days",
+    "enqueue": True,
+}
+
+
 if DEBUG:
     SELECTEL_SWIFT_URL += "debug/"
 
