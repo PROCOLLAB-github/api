@@ -9,6 +9,8 @@ from industries.views import IndustryDetail, IndustryList
 
 
 class IndustryTestCase(TestCase):
+    """Tests for industries+"""
+
     def setUp(self):
         self.factory = APIRequestFactory()
 

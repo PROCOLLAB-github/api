@@ -2,7 +2,15 @@ from django.conf import settings
 from django.contrib import admin
 
 from .helpers import send_verification_completed_email
-from .models import CustomUser, UserAchievement, Member, Mentor, Expert, Investor
+from .models import (
+    CustomUser,
+    UserAchievement,
+    Member,
+    Mentor,
+    Expert,
+    Investor,
+    UserLink,
+)
 
 
 @admin.register(CustomUser)
@@ -14,6 +22,7 @@ class CustomUserAdmin(admin.ModelAdmin):
                 "fields": (
                     "user_type",
                     "verification_date",
+                    "ordering_score",
                 )
             },
         ),
@@ -65,16 +74,18 @@ class CustomUserAdmin(admin.ModelAdmin):
         ),
         (
             "Важные даты",
-            {
-                "fields": (
-                    "last_login",
-                    "date_joined",
-                )
-            },
+            {"fields": ("last_login", "date_joined")},
         ),
     )
 
-    list_display = ("id", "email", "last_name", "first_name", "is_active")
+    list_display = (
+        "id",
+        "email",
+        "last_name",
+        "first_name",
+        "ordering_score",
+        "is_active",
+    )
     list_display_links = (
         "id",
         "email",
@@ -94,6 +105,8 @@ class CustomUserAdmin(admin.ModelAdmin):
         "city",
     )
 
+    readonly_fields = ("ordering_score",)
+
     def save_model(self, request, obj, form, change):
         # if user_type changed, then delete all related fields
         if change:
@@ -109,7 +122,8 @@ class CustomUserAdmin(admin.ModelAdmin):
                     elif old_user.user_type == CustomUser.INVESTOR:
                         old_user.investor.delete()
                 except Exception:
-                    print(f"User type `{old_user.user_type}` is not supported!")
+                    # ???
+                    pass
 
                 if obj.user_type == CustomUser.MEMBER:
                     Member.objects.create(user=old_user)
@@ -136,3 +150,9 @@ class CustomUserAdmin(admin.ModelAdmin):
 @admin.register(UserAchievement)
 class UserAchievementAdmin(admin.ModelAdmin):
     list_display = ("id", "title", "status", "user")
+
+
+@admin.register(UserLink)
+class UserLinkAdmin(admin.ModelAdmin):
+    list_display = ("id", "user", "link")
+    list_display_links = ("id", "user", "link")

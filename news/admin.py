@@ -1,21 +1,59 @@
 from django.contrib import admin
 
-from news.models import News, NewsTag
+from news.models import News
 
 
 @admin.register(News)
 class NewsAdmin(admin.ModelAdmin):
-    list_display = ("id", "title", "tags_str")
+    # todo
+    list_display = (
+        "id",
+        "content_type",
+        "object_id",
+        "text",
+        "datetime_created",
+        "datetime_updated",
+    )
     list_display_links = (
         "id",
-        "title",
+        "content_type",
+        "object_id",
+        "text",
+        "datetime_created",
+        "datetime_updated",
     )
-
-
-@admin.register(NewsTag)
-class NewsTagAdmin(admin.ModelAdmin):
-    list_display = ("name", "description", "datetime_created", "datetime_updated", "id")
-    list_display_links = (
-        "id",
-        "name",
+    list_filter = (
+        "datetime_created",
+        "datetime_updated",
     )
+    search_fields = ("text",)
+    readonly_fields = (
+        "datetime_created",
+        "datetime_updated",
+    )
+    # fieldsets = (
+    #     (
+    #         None,
+    #         {
+    #             "fields": (
+    #                 "content_type",
+    #                 "object_id",
+    #                 "text",
+    #                 "files",
+    #             )
+    #         },
+    #     ),
+    #     (
+    #         "Даты",
+    #         {
+    #             "fields": (
+    #                 "datetime_created",
+    #                 "datetime_updated",
+    #             )
+    #         },
+    #     ),
+    # )
+    # filter_horizontal = (
+    #     "files",
+    # )
+    # save_on_top = True

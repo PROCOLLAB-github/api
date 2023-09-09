@@ -1,14 +1,57 @@
 from typing import Optional
 
 from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
 from django.db.models import UniqueConstraint
+
+from core.models import Like, View
+from files.models import UserFile
 from industries.models import Industry
 from projects.constants import VERBOSE_STEPS
 from projects.managers import AchievementManager, ProjectManager
 from users.models import CustomUser
 
 User = get_user_model()
+
+
+class DefaultProjectCover(models.Model):
+    """
+    Default cover model for projects, is chosen randomly at project creation
+
+    Attributes:
+        image: A ForeignKey referencing the image of the cover.
+        datetime_created: A DateTimeField indicating date of creation.
+        datetime_updated: A DateTimeField indicating date of update.
+    """
+
+    image = models.ForeignKey(
+        UserFile,
+        on_delete=models.CASCADE,
+        related_name="default_covers",
+        null=True,
+        blank=True,
+    )
+
+    datetime_created = models.DateTimeField(
+        verbose_name="Дата создания",
+        null=False,
+        auto_now_add=True,
+    )
+    datetime_updated = models.DateTimeField(
+        verbose_name="Дата изменения",
+        null=False,
+        auto_now=True,
+    )
+
+    @classmethod
+    def get_random_file(cls):
+        # FIXME: this is not efficient, but for ~10 default covers it should be ok
+        return cls.objects.order_by("?").first().image
+
+    class Meta:
+        verbose_name = "Обложка проекта"
+        verbose_name_plural = "Обложки проектов"
 
 
 class Project(models.Model):
@@ -26,6 +69,7 @@ class Project(models.Model):
         image_address: A URLField image URL address.
         leader: A ForeignKey referring to the User model.
         draft: A boolean indicating if Project is a draft.
+        cover: A ForeignKey referring to the UserFile model, which is the image cover of the project.
         datetime_created: A DateTimeField indicating date of creation.
         datetime_updated: A DateTimeField indicating date of update.
     """
@@ -34,6 +78,7 @@ class Project(models.Model):
     description = models.TextField(null=True, blank=True)
     region = models.CharField(max_length=256, null=True, blank=True)
     step = models.PositiveSmallIntegerField(choices=VERBOSE_STEPS, null=True, blank=True)
+    hidden_score = models.PositiveSmallIntegerField(default=100)
 
     industry = models.ForeignKey(
         Industry,
@@ -48,10 +93,19 @@ class Project(models.Model):
     leader = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name="leaders_projects",  # projects in which this user is the leader
+        related_name="leaders_projects",  # projects in which this user is the leader -
     )
 
     draft = models.BooleanField(blank=False, default=True)
+
+    cover = models.ForeignKey(
+        UserFile,
+        default=DefaultProjectCover.get_random_file,
+        on_delete=models.SET_DEFAULT,
+        related_name="project_cover",
+        null=True,
+        blank=True,
+    )
 
     datetime_created = models.DateTimeField(
         verbose_name="Дата создания", null=False, auto_now_add=True
@@ -62,37 +116,44 @@ class Project(models.Model):
 
     objects = ProjectManager()
 
-    views_count = models.PositiveIntegerField(default=0)
-
-    def increment_views_count(self):
-        self.views_count += 1
-        self.save()
-
     def get_short_description(self) -> Optional[str]:
         return self.description[:90] if self.description else None
 
-    def save(
-        self, force_insert=False, force_update=False, using=None, update_fields=None
-    ):
-        # if every field is filled, set draft to false
-        if (
-            self.name
-            and self.description
-            and self.region
-            and (self.step is not None)
-            and self.industry
-            and self.presentation_address
-            and self.image_address
-        ):
-            self.draft = False
-        super().save(force_insert, force_update, using, update_fields)
+    def get_collaborators_user_list(self) -> list[User]:
+        return [collaborator.user for collaborator in self.collaborator_set.all()]
 
     def __str__(self):
         return f"Project<{self.id}> - {self.name}"
 
     class Meta:
+        ordering = ["-hidden_score", "-datetime_created"]
         verbose_name = "Проект"
         verbose_name_plural = "Проекты"
+
+
+class ProjectLink(models.Model):
+    """
+    Project link model
+
+    Attributes:
+        project: A ForeignKey referring to the Project model.
+        link: A URLField link to the project.
+    """
+
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name="links",
+    )
+    link = models.URLField(null=False, blank=False)
+
+    def __str__(self):
+        return f"ProjectLink<{self.id}> - {self.project.name}"
+
+    class Meta:
+        verbose_name = "Ссылка проекта"
+        verbose_name_plural = "Ссылки проектов"
+        unique_together = ("project", "link")
 
 
 class Achievement(models.Model):
@@ -162,3 +223,46 @@ class Collaborator(models.Model):
                 name="unique_collaborator",
             )
         ]
+
+
+class ProjectNews(models.Model):
+    """
+    Project news model
+    """
+
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name="news",
+    )
+    text = models.TextField(
+        null=False,
+        blank=False,
+    )
+    # todo: remove files unused files
+    files = models.ManyToManyField(UserFile, related_name="projects_news", blank=True)
+
+    views = GenericRelation(
+        View,
+        related_query_name="project_views",
+    )
+    likes = GenericRelation(
+        Like,
+        related_query_name="project_news",
+    )
+
+    datetime_created = models.DateTimeField(
+        verbose_name="Дата создания",
+        null=False,
+        auto_now_add=True,
+    )
+    datetime_updated = models.DateTimeField(
+        verbose_name="Дата изменения",
+        null=False,
+        auto_now=True,
+    )
+
+    class Meta:
+        verbose_name = "Новость проекта"
+        verbose_name_plural = "Новости проекта"
+        ordering = ["-datetime_created"]

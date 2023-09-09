@@ -43,7 +43,6 @@ class DirectChatDetailSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "users",
-            "messages",
         ]
 
 
@@ -82,7 +81,6 @@ class ProjectChatDetailSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "image_address",
-            "messages",
             "users",
         ]
 

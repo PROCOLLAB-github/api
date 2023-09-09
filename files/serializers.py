@@ -9,6 +9,7 @@ class UserFileSerializer(ModelSerializer):
         fields = [
             "name",
             "extension",
+            "mime_type",
             "size",
             "link",
             "user",

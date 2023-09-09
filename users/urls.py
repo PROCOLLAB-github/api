@@ -1,11 +1,9 @@
-from django.urls import path, re_path
+from django.urls import path, re_path, include
 
 from users.views import (
     AchievementDetail,
     AchievementList,
     CurrentUser,
-    EmailResetPassword,
-    ResetPassword,
     SpecialistsList,
     UserAdditionalRolesView,
     UserDetail,
@@ -18,6 +16,8 @@ from users.views import (
     RegisteredEventsList,
     SetUserOnboardingStage,
     ResendVerifyEmail,
+    CurrentUserPrograms,
+    CurrentUserProgramsTags,
 )
 
 app_name = "users"
@@ -33,8 +33,10 @@ urlpatterns = [
     path("users/types/", UserTypesView.as_view()),
     path("users/<int:pk>/", UserDetail.as_view()),
     path("users/<int:pk>/set_onboarding_stage/", SetUserOnboardingStage.as_view()),
-    path("users/reset-password/", EmailResetPassword.as_view()),
     path("users/current/", CurrentUser.as_view()),
+    # todo: change password view
+    path("users/current/programs/", CurrentUserPrograms.as_view()),
+    path("users/current/programs/tags/", CurrentUserProgramsTags.as_view()),
     path("users/current/events/", RegisteredEventsList.as_view()),
     path("users/achievements/", AchievementList.as_view()),
     path("users/achievements/<int:pk>/", AchievementDetail.as_view()),
@@ -54,14 +56,8 @@ urlpatterns = [
         VerifyEmail.as_view(),
         name="account_confirm_email",
     ),
-    re_path(
-        r"^password-reset/",
-        ResetPassword.as_view(),
-        name="password_reset_sent",
-    ),
-    re_path(
-        r"^password-reset/(?P<key>[-:\w]+)/$",
-        ResetPassword.as_view(),
-        name="password_reset",
+    path(
+        "reset_password/",
+        include("django_rest_passwordreset.urls", namespace="password_reset"),
     ),
 ]
