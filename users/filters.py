@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.db.models import Q
 from django_filters import rest_framework as filters
 
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
@@ -42,6 +43,24 @@ class UserFilter(filters.FilterSet):
         except PartnerProgram.DoesNotExist:
             return User.objects.none()
 
+    @classmethod
+    def filter_by_fullname(cls, queryset, name, value):
+        words = value.split(" ")
+        first_word = words[0]
+        if len(words) >= 2:
+            # if there are more than 2 words, we assume that the first two are first_name and last_name
+            first_word, second_word = words[0], words[1]
+            # we search for both first_name and last_name in both orders
+            return queryset.filter(
+                Q(first_name__icontains=first_word)
+                | Q(last_name__icontains=second_word)
+                | Q(first_name__icontains=second_word)
+                | Q(last_name__icontains=first_word)
+            )
+        return queryset.filter(
+            Q(first_name__icontains=first_word) | Q(last_name__icontains=first_word)
+        )
+
     about_me__contains = filters.Filter(field_name="about_me", lookup_expr="contains")
     key_skills__contains = filters.Filter(field_name="key_skills", lookup_expr="contains")
     useful_to_project__contains = filters.Filter(
@@ -51,6 +70,7 @@ class UserFilter(filters.FilterSet):
     partner_program = filters.NumberFilter(
         field_name="partner_program", method="filter_by_partner_program"
     )
+    fullname = filters.CharFilter(method="filter_by_fullname")
 
     class Meta:
         model = User
