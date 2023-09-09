@@ -45,7 +45,7 @@ class UserFilter(filters.FilterSet):
 
     @classmethod
     def filter_by_fullname(cls, queryset, name, value):
-        words = value.split(" ")
+        words = value.split()
         first_word = words[0]
         if len(words) >= 2:
             # if there are more than 2 words, we assume that the first two are first_name and last_name
