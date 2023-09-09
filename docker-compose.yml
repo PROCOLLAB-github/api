@@ -32,6 +32,7 @@ services:
       - prom-data:/prometheus
       - ./prometheus:/etc/prometheus
   node-exporter:
+    container_name: node-exporter
     image: prom/node-exporter:v1.3.1
     ports:
       - "9100"
