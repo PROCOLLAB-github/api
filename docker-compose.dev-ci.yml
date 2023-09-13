@@ -8,6 +8,8 @@ services:
       dockerfile: ./Dockerfile
     image: ghcr.io/procollab-github/api:latest
     restart: always
+    volumes:
+      - log:/procollab/log
     env_file:
       - .env
     environment:
@@ -55,3 +57,4 @@ volumes:
   grafana-configs:
   prom-data:
   prom-configs:
+  log:
