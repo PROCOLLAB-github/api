@@ -12,11 +12,11 @@ from users.serializers import UserListSerializer, UserDetailSerializer
 
 class DirectChatListSerializer(serializers.ModelSerializer):
     last_message = serializers.SerializerMethodField()
-    users = serializers.SerializerMethodField(read_only=True)
+    opponent = serializers.SerializerMethodField()
 
-    @classmethod
-    def get_users(cls, chat: ProjectChat):
-        return UserListSerializer(chat.get_users(), many=True).data
+    def get_opponent(self, chat: DirectChat):
+        user = self.context.get("opponent")
+        return UserDetailSerializer(user).data
 
     @classmethod
     def get_last_message(cls, chat: DirectChat):
@@ -26,23 +26,23 @@ class DirectChatListSerializer(serializers.ModelSerializer):
         model = DirectChat
         fields = [
             "id",
-            "users",
+            "opponent",
             "last_message",
         ]
 
 
 class DirectChatDetailSerializer(serializers.ModelSerializer):
-    users = serializers.SerializerMethodField(read_only=True)
+    opponent = serializers.SerializerMethodField()
 
-    @classmethod
-    def get_users(cls, chat: ProjectChat):
-        return UserListSerializer(chat.get_users(), many=True).data
+    def get_opponent(self, chat: DirectChat):
+        user = self.context.get("opponent")
+        return UserDetailSerializer(user).data
 
     class Meta:
         model = DirectChat
         fields = [
             "id",
-            "users",
+            "opponent",
         ]
 
 

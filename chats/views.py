@@ -36,6 +36,31 @@ class DirectChatList(ListAPIView):
         user = self.request.user
         return user.direct_chats.all()
 
+    def get(self, request, *args, **kwargs):
+        chats = self.get_queryset()
+        serialized_chats = []
+        for chat in chats:
+            # fixme: move to function like get_user() and get_opponent()
+            chat_id = chat.id
+            user1_id, user2_id = map(int, chat_id.split("_"))
+
+            try:
+                user1 = User.objects.get(pk=user1_id)
+                user2 = User.objects.get(pk=user2_id)
+            except User.DoesNotExist:
+                # fixme: show deleted profile
+                continue
+
+            if user1 == request.user:
+                opponent = user2
+            else:  # fixme: if user1 == user2
+                opponent = user1
+
+            context = {"opponent": opponent}
+            serialized_chat = DirectChatListSerializer(chat, context=context).data
+            serialized_chats.append(serialized_chat)
+        return Response(serialized_chats, status=status.HTTP_200_OK)
+
 
 class ProjectChatList(ListAPIView):
     serializer_class = ProjectChatListSerializer
@@ -70,16 +95,17 @@ class DirectChatDetail(RetrieveAPIView):
             user1 = User.objects.get(pk=user1_id)
             user2 = User.objects.get(pk=user2_id)
 
-            data = DirectChatDetailSerializer(DirectChat.get_chat(user1, user2)).data
-
             if user1 == request.user:
-                # may be is better to use serializer or return dict -
-                # {"first_name": user2.first_name, "last_name": user2.last_name}
-                data["name"] = f"{user2.first_name} {user2.last_name}"
-                data["image_address"] = user2.avatar
+                opponent = user2
             else:
-                data["name"] = f"{user1.first_name} {user1.last_name}"
-                data["image_address"] = user1.avatar
+                opponent = user1
+            context = {"opponent": opponent}
+            data = DirectChatDetailSerializer(
+                DirectChat.get_chat(user1, user2), context=context
+            ).data
+
+            data["name"] = f"{opponent.first_name} {opponent.last_name}"
+            data["image_address"] = opponent.avatar
 
             return Response(
                 status=status.HTTP_200_OK,

@@ -6,6 +6,7 @@ import sentry_sdk
 from decouple import config
 from sentry_sdk.integrations.django import DjangoIntegration
 
+
 mimetypes.add_type("application/javascript", ".js", True)
 mimetypes.add_type("text/css", ".css", True)
 mimetypes.add_type("text/html", ".html", True)
@@ -26,12 +27,14 @@ TELEGRAM_CHANNEL = config("TELEGRAM_CHANNEL", default="", cast=str)
 TAGGIT_CASE_INSENSITIVE = True
 
 CSRF_TRUSTED_ORIGINS = [
-    "http://localhost",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://0.0.0.0:8000",
     "https://api.procollab.ru",
     "https://procollab.ru",
     "https://www.procollab.ru",
     "https://app.procollab.ru",
-    "https://dev.procollab.ru"
+    "https://dev.procollab.ru",
 ]
 
 ALLOWED_HOSTS = [
@@ -41,8 +44,10 @@ ALLOWED_HOSTS = [
     "0.0.0.0",
     "api.procollab.ru",
     "app.procollab.ru",
+    "dev.procollab.ru",
     "procollab.ru",
-    "dev.procollab.ru"
+    "dev.procollab.ru",
+    "web",  # From Docker
 ]
 
 PASSWORD_HASHERS = [
@@ -101,9 +106,11 @@ INSTALLED_APPS = [
     "drf_yasg",
     "channels",
     "taggit",
+    "django_prometheus",
 ]
 
 MIDDLEWARE = [
+    "django_prometheus.middleware.PrometheusBeforeMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -114,7 +121,10 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "debug_toolbar.middleware.DebugToolbarMiddleware",
+    "django_prometheus.middleware.PrometheusAfterMiddleware",
+    "core.log.middleware.CustomLoguruMiddleware",
 ]
+
 
 # CORS_ALLOWED_ORIGINS = [
 #     "http://localhost:4200",
@@ -171,14 +181,15 @@ ASGI_APPLICATION = "procollab.asgi.application"
 if DEBUG:
     DATABASES = {
         "default": {
-            "ENGINE": "django.db.backends.sqlite3",
+            "ENGINE": "django_prometheus.db.backends.sqlite3",
             "NAME": "db.sqlite3",
         }
     }
 
     CACHES = {
         "default": {
-            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "BACKEND": "django_prometheus.cache.backends.filebased.FileBasedCache",
+            "LOCATION": "/var/tmp/django_cache",
         }
     }
 
@@ -217,7 +228,7 @@ else:
 
     DATABASES = {
         "default": {
-            "ENGINE": "django.db.backends.postgresql",
+            "ENGINE": "django_prometheus.db.backends.postgresql",
             "NAME": config("DATABASE_NAME", default="postgres", cast=str),
             "USER": config("DATABASE_USER", default="postgres", cast=str),
             "PASSWORD": config("DATABASE_PASSWORD", default="postgres", cast=str),
@@ -320,5 +331,34 @@ SELECTEL_AUTH_TOKEN_URL = "https://api.selcdn.ru/v3/auth/tokens"
 SELECTEL_SWIFT_URL = (
     f"https://api.selcdn.ru/v1/SEL_{SELECTEL_ACCOUNT_ID}/{SELECTEL_CONTAINER_NAME}/"
 )
+
+LOGURU_LOGGING = {
+    "rotation": "300 MB",
+    "compression": "zip",
+    "retention": "10 days",
+    "enqueue": True,
+}
+
+
 if DEBUG:
     SELECTEL_SWIFT_URL += "debug/"
+
+PROMETHEUS_LATENCY_BUCKETS = (
+    0.01,
+    0.025,
+    0.05,
+    0.075,
+    0.1,
+    0.25,
+    0.5,
+    0.75,
+    1.0,
+    2.5,
+    5.0,
+    7.5,
+    10.0,
+    25.0,
+    50.0,
+    75.0,
+    float("inf"),
+)
