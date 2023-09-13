@@ -14,7 +14,7 @@ class DirectChatListSerializer(serializers.ModelSerializer):
     last_message = serializers.SerializerMethodField()
     opponent = serializers.SerializerMethodField()
 
-    def get_opponent(self):
+    def get_opponent(self, chat: DirectChat):
         user = self.context.get("opponent")
         return UserDetailSerializer(user).data
 
@@ -32,17 +32,17 @@ class DirectChatListSerializer(serializers.ModelSerializer):
 
 
 class DirectChatDetailSerializer(serializers.ModelSerializer):
-    users = serializers.SerializerMethodField(read_only=True)
+    opponent = serializers.SerializerMethodField()
 
-    @classmethod
-    def get_users(cls, chat: DirectChat):
-        return UserListSerializer(chat.get_users(), many=True).data
+    def get_opponent(self, chat: DirectChat):
+        user = self.context.get("opponent")
+        return UserDetailSerializer(user).data
 
     class Meta:
         model = DirectChat
         fields = [
             "id",
-            "users",
+            "opponent",
         ]
 
 
