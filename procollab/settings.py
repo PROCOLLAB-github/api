@@ -335,7 +335,7 @@ SELECTEL_SWIFT_URL = (
 LOGURU_LOGGING = {
     "rotation": "300 MB",
     "compression": "zip",
-    "retention": "10 days",
+    "retention": "60 days",
     "enqueue": True,
 }
 
