@@ -1,0 +1,8 @@
+{% extends "admin/change_list.html" %}
+
+{% block object-tools %}
+  <form action="{% url 'admin:export_partners_programs' %}" method="GET">
+    <input type="submit" value="Export data." />
+  </form>
+{{ block.super }}
+{% endblock %}
