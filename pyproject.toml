@@ -60,7 +60,6 @@ webp = "^0.1.6"
 django-prometheus = "^2.3.1"
 loguru = "^0.7.1"
 tablib = {extras = ["xlsx"], version = "^3.5.0"}
-pandas = "^2.1.0"
 
 
 [build-system]
