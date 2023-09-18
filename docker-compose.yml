@@ -52,6 +52,8 @@ services:
   nginx:
     container_name: nginx
     build: ./nginx
+    depends_on:
+      - web
     ports:
       - 8000:80
 volumes:
