@@ -14,11 +14,13 @@ services:
       - .env
     environment:
       HOST: 0.0.0.0
+    expose:
+      - 8000
   grafana:
     container_name: grafana
     image: grafana/grafana:latest
-    ports:
-      - "3000"
+    expose:
+      - 3000
     volumes:
       - grafana-data:/var/lib/grafana
       - grafana-configs:/etc/grafana
@@ -28,16 +30,16 @@ services:
   prometheus:
     container_name: prometheus
     image: prom/prometheus:v2.36.0
-    ports:
-      - "9090"
+    expose:
+      - 9090
     volumes:
       - prom-data:/prometheus
       - ./prometheus:/etc/prometheus
   node-exporter:
     container_name: node-exporter
     image: prom/node-exporter:v1.3.1
-    ports:
-      - "9100"
+    expose:
+      - 9100
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
