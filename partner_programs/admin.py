@@ -2,7 +2,8 @@ import tablib
 
 from django.contrib import admin
 from django.http import HttpResponse
-from django.urls import re_path
+from django.urls import path
+from django.utils import timezone
 
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 
@@ -32,84 +33,72 @@ class PartnerProgramAdmin(admin.ModelAdmin):
 
     filter_horizontal = ("users",)
     date_hierarchy = "datetime_started"
+    change_form_template = "admin/partner_programs/programs_change_form.html"
+
+    def get_urls(self):
+        default_urls = super(PartnerProgramAdmin, self).get_urls()
+        custom_urls = [
+            path(
+                "export/<int:object_id>/",
+                self.admin_site.admin_view(self.get_export_file_view),
+                name="export_profiles",
+            )
+        ]
+        return custom_urls + default_urls
+
+    def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
+        extra_context = {"object_id": int(object_id)}
+        res = super(PartnerProgramAdmin, self).changeform_view(
+            request, object_id, extra_context=extra_context
+        )
+        return res
+
+    def get_export_file_view(self, request, object_id):
+        program = PartnerProgram.objects.get(pk=object_id)
+        return self.get_export_file(program)
+
+    def get_export_file(self, obj: PartnerProgram):
+        json_schema = obj.data_schema
+        profiles = PartnerProgramUserProfile.objects.filter(partner_program=obj)
+        to_delete_from_json_scheme = []
+        column_names = ["Имя", "Фамилия", "Отчество", "Почта", "Дата рождения"]
+        for i in json_schema:
+            if "name" not in json_schema[i]:
+                to_delete_from_json_scheme.append(i)
+            else:
+                column_names.append(json_schema[i]["name"])
+
+        for i in to_delete_from_json_scheme:
+            del json_schema[i]
+
+        response_data = tablib.Dataset(headers=column_names)
+        for profile in profiles:
+            row = [
+                profile.user.first_name,
+                profile.user.last_name,
+                profile.user.patronymic,
+                profile.user.email,
+                str(profile.user.birthday),
+            ]
+
+            json_data = profile.partner_program_data
+            for key in json_schema:
+                row.append(json_data.get(key, ""))
+            response_data.append(row)
+
+        binary_data = response_data.export("xlsx")
+        file_name = timezone.now().strftime("%d-%m-%Y %H:%M:%S")
+        print(file_name)
+        response = HttpResponse(
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f'attachment; filename="{file_name}.xlsx"'},
+        )
+        response.write(binary_data)
+        return response
 
 
 @admin.register(PartnerProgramUserProfile)
 class PartnerProgramUserProfileAdmin(admin.ModelAdmin):
-    def get_urls(self):
-        urls = super(PartnerProgramUserProfileAdmin, self).get_urls()
-        custom_urls = [
-            re_path(
-                "export/$",
-                self.admin_site.admin_view(self.get_export_file),
-                name="export_partners_programs",
-            ),
-            re_path(
-                "export/get_file/$",
-                self.admin_site.admin_view(self.get_export_file),
-                name="export_partners_file",
-            ),
-        ]
-        return custom_urls + urls
-
-    def get_export_file(self, request):
-        column_order = [
-            "Имя",
-            "Фамилия",
-            "Отчество",
-            "Почта",
-            "Номер телефона",
-            "Дата рождения",
-            "Тип населенного пункта",
-            "Регион",
-            "Город",
-            "ФИО родителя",
-            "Почта родителя",
-            "Номер родителя",
-            "Название проекта",
-            "Презентация проекта",
-            "Число участников",
-            "Наличие наставника",
-            "Место работы и должность наставника",
-        ]
-        response_data = tablib.Dataset(headers=column_order)
-
-        all_profiles = PartnerProgramUserProfile.objects.all()
-
-        for profile in all_profiles:
-            schema = profile.partner_program.data_schema
-            keys_in_scheme = {}
-            for key in schema:
-                keys_in_scheme[schema[key]["name"]] = key
-            json_data = profile.partner_program_data
-            row = []
-            row.extend(
-                [
-                    profile.user.first_name,
-                    profile.user.last_name,
-                    profile.user.patronymic,
-                    profile.user.email,
-                ]
-            )
-            json_data["birthday"] = str(profile.user.birthday)
-            keys_in_scheme["День рождения"] = str(profile.user.birthday)
-            for column_name in column_order[4:]:
-                current_value = ""
-                if column_name in keys_in_scheme:
-                    key = keys_in_scheme[column_name]
-                    if key in json_data:
-                        current_value = json_data[key]
-                row.append(current_value)
-            response_data.append(row)
-
-        binary_data = response_data.export("xlsx")
-
-        response = HttpResponse(
-            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": 'attachment; filename="export.xlsx"'},
-        )
-        response.write(binary_data)
-        return response
 
     list_display = (
         "id",
@@ -130,4 +119,4 @@ class PartnerProgramUserProfileAdmin(admin.ModelAdmin):
         "partner_program",
     )
     date_hierarchy = "datetime_created"
-    change_list_template = "partner_programs/admin/profiles_change_list.html"
+
