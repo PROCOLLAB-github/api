@@ -22,8 +22,6 @@ COPY poetry.lock pyproject.toml /procollab/
 RUN poetry config virtualenvs.create false \
     && poetry install  --no-root
 
-EXPOSE 8000
-
 RUN mkdir /procollab/staticfiles
 RUN mkdir /procollab/static
 
