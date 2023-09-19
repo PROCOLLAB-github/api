@@ -130,4 +130,4 @@ class PartnerProgramUserProfileAdmin(admin.ModelAdmin):
         "partner_program",
     )
     date_hierarchy = "datetime_created"
-    change_list_template = "admin/partner_programs/profiles_change_list.html"
+    change_list_template = "partner_programs/admin/profiles_change_list.html"
