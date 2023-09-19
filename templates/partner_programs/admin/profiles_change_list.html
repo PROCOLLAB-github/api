@@ -2,7 +2,7 @@
 
 {% block object-tools %}
   <form action="{% url 'admin:export_partners_programs' %}" method="GET">
-    <input type="submit" value="Экспорт." />
+    <input type="submit" value="Экспортировать в xlsx" />
   </form>
 {{ block.super }}
 {% endblock %}
