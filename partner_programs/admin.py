@@ -119,4 +119,3 @@ class PartnerProgramUserProfileAdmin(admin.ModelAdmin):
         "partner_program",
     )
     date_hierarchy = "datetime_created"
-
