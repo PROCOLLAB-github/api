@@ -33,7 +33,7 @@ class PartnerProgramAdmin(admin.ModelAdmin):
 
     filter_horizontal = ("users",)
     date_hierarchy = "datetime_started"
-    change_form_template = "admin/partner_programs/programs_change_form.html"
+    change_form_template = "partner_programs/admin/programs_change_form.html"
 
     def get_urls(self):
         default_urls = super(PartnerProgramAdmin, self).get_urls()
