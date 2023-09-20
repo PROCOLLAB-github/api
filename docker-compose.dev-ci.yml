@@ -1,19 +1,64 @@
-version: "3.4"
+version: '3.9'
+ 
 services:
-  server:
-    ports:
-      - "8000:8000"
+  web:
+    container_name: web
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: ./Dockerfile
+    image: ghcr.io/procollab-github/api:latest
+    restart: always
+    volumes:
+      - log:/procollab/log
     env_file:
       - .env
-    restart: always
-    networks:
-      template-network:
-
-networks:
-  template-network:
-
+    environment:
+      HOST: 0.0.0.0
+    expose:
+      - 8000
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:latest
+    expose:
+      - 3000
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - grafana-configs:/etc/grafana
+    environment:
+      - GF_SERVER_ROOT_URL=%(protocol)s://%(domain)s:%(http_port)s/grafana
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus:v2.36.0
+    expose:
+      - 9090
+    volumes:
+      - prom-data:/prometheus
+      - ./prometheus:/etc/prometheus
+  node-exporter:
+    container_name: node-exporter
+    image: prom/node-exporter:v1.3.1
+    expose:
+      - 9100
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude'
+      - '^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)'
+  nginx:
+    container_name: nginx
+    build: ./nginx
+    depends_on:
+      - web
+    ports:
+      - 8000:80
 volumes:
-  db-volume:
+  grafana-data:
+  grafana-configs:
+  prom-data:
+  prom-configs:
+  log:

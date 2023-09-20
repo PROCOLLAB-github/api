@@ -22,6 +22,7 @@ from chats.serializers import (
     DirectChatDetailSerializer,
 )
 from chats.utils import get_all_files
+from files.models import UserFile
 from files.serializers import UserFileSerializer
 
 User = get_user_model()
@@ -34,6 +35,31 @@ class DirectChatList(ListAPIView):
     def get_queryset(self):
         user = self.request.user
         return user.direct_chats.all()
+
+    def get(self, request, *args, **kwargs):
+        chats = self.get_queryset()
+        serialized_chats = []
+        for chat in chats:
+            # fixme: move to function like get_user() and get_opponent()
+            chat_id = chat.id
+            user1_id, user2_id = map(int, chat_id.split("_"))
+
+            try:
+                user1 = User.objects.get(pk=user1_id)
+                user2 = User.objects.get(pk=user2_id)
+            except User.DoesNotExist:
+                # fixme: show deleted profile
+                continue
+
+            if user1 == request.user:
+                opponent = user2
+            else:  # fixme: if user1 == user2
+                opponent = user1
+
+            context = {"opponent": opponent}
+            serialized_chat = DirectChatListSerializer(chat, context=context).data
+            serialized_chats.append(serialized_chat)
+        return Response(serialized_chats, status=status.HTTP_200_OK)
 
 
 class ProjectChatList(ListAPIView):
@@ -69,16 +95,17 @@ class DirectChatDetail(RetrieveAPIView):
             user1 = User.objects.get(pk=user1_id)
             user2 = User.objects.get(pk=user2_id)
 
-            data = DirectChatDetailSerializer(DirectChat.get_chat(user1, user2)).data
-
             if user1 == request.user:
-                # may be is better to use serializer or return dict -
-                # {"first_name": user2.first_name, "last_name": user2.last_name}
-                data["name"] = f"{user2.first_name} {user2.last_name}"
-                data["image_address"] = user2.avatar
+                opponent = user2
             else:
-                data["name"] = f"{user1.first_name} {user1.last_name}"
-                data["image_address"] = user1.avatar
+                opponent = user1
+            context = {"opponent": opponent}
+            data = DirectChatDetailSerializer(
+                DirectChat.get_chat(user1, user2), context=context
+            ).data
+
+            data["name"] = f"{opponent.first_name} {opponent.last_name}"
+            data["image_address"] = opponent.avatar
 
             return Response(
                 status=status.HTTP_200_OK,
@@ -124,12 +151,15 @@ class ProjectChatMessageList(ListCreateAPIView):
     pagination_class = MessageListPagination
 
     def get_queryset(self):
-        return (
-            ProjectChat.objects.get(id=self.kwargs["pk"])
-            .messages.filter(is_deleted=False)
-            .order_by("-created_at")
-            .all()
-        )
+        try:
+            return (
+                ProjectChat.objects.get(id=self.kwargs["pk"])
+                .messages.filter(is_deleted=False)
+                .order_by("-created_at")
+                .all()
+            )
+        except ProjectChat.DoesNotExist:
+            return ProjectChat.objects.none()
 
     def post(self, request, *args, **kwargs):
         # TODO: try to create a message in a chat. If chat doesn't exist, create it and then create a message.
@@ -155,6 +185,8 @@ class ProjectChatFileList(ListCreateAPIView):
     permission_classes = [IsProjectChatMember]
 
     def get_queryset(self):
-        messages = ProjectChat.objects.get(id=self.kwargs["pk"]).messages.all()
-
-        return get_all_files(messages)
+        try:
+            messages = ProjectChat.objects.get(id=self.kwargs["pk"]).messages.all()
+            return get_all_files(messages)
+        except ProjectChat.DoesNotExist:
+            return UserFile.objects.none()
