@@ -57,19 +57,21 @@ class PartnerProgramAdmin(admin.ModelAdmin):
         program = PartnerProgram.objects.get(pk=object_id)
         return self.get_export_file(program)
 
-    def get_export_file(self, obj: PartnerProgram):
-        json_schema = obj.data_schema
-        profiles = PartnerProgramUserProfile.objects.filter(partner_program=obj)
+    def get_export_file(self, partner_program: PartnerProgram):
+        json_schema = partner_program.data_schema
+        profiles = PartnerProgramUserProfile.objects.filter(
+            partner_program=partner_program
+        )
         to_delete_from_json_scheme = []
         column_names = ["Имя", "Фамилия", "Отчество", "Почта", "Дата рождения"]
-        for i in json_schema:
-            if "name" not in json_schema[i]:
-                to_delete_from_json_scheme.append(i)
+        for field_key in json_schema:
+            if "name" not in json_schema[field_key]:
+                to_delete_from_json_scheme.append(field_key)
             else:
-                column_names.append(json_schema[i]["name"])
+                column_names.append(json_schema[field_key]["name"])
 
-        for i in to_delete_from_json_scheme:
-            del json_schema[i]
+        for field_key in to_delete_from_json_scheme:
+            del json_schema[field_key]
 
         response_data = tablib.Dataset(headers=column_names)
         for profile in profiles:
@@ -87,8 +89,9 @@ class PartnerProgramAdmin(admin.ModelAdmin):
             response_data.append(row)
 
         binary_data = response_data.export("xlsx")
-        file_name = timezone.now().strftime("%d-%m-%Y %H:%M:%S")
-        print(file_name)
+        file_name = (
+            f'{partner_program.name} {timezone.now().strftime("%d-%m-%Y %H:%M:%S")}'
+        )
         response = HttpResponse(
             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={"Content-Disposition": f'attachment; filename="{file_name}.xlsx"'},
