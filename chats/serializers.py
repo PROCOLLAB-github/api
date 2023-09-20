@@ -22,13 +22,19 @@ class DirectChatListSerializer(serializers.ModelSerializer):
     def get_last_message(cls, chat: DirectChat):
         return DirectChatMessageListSerializer(chat.get_last_message()).data
 
+    def get_title(self, chat: DirectChat):
+        request = self.context.get("request")
+        user = request.user
+        return chat.get_other_user(user).get_full_name()
+
+    def get_image_address(self, chat: DirectChat):
+        request = self.context.get("request")
+        user = request.user
+        return chat.get_other_user(user).avatar
+
     class Meta:
         model = DirectChat
-        fields = [
-            "id",
-            "users",
-            "last_message",
-        ]
+        fields = ["id", "users", "last_message", "title", "image_address"]
 
 
 class DirectChatDetailSerializer(serializers.ModelSerializer):
@@ -53,9 +59,17 @@ class ProjectChatListSerializer(serializers.ModelSerializer):
     def get_last_message(cls, chat: ProjectChat):
         return ProjectChatMessageListSerializer(chat.get_last_message()).data
 
+    @classmethod
+    def get_image_address(cls, chat: ProjectChat):
+        return chat.project.image_address
+
+    @classmethod
+    def get_name(cls, chat: ProjectChat):
+        return chat.project.name
+
     class Meta:
         model = ProjectChat
-        fields = ["id", "project", "last_message"]
+        fields = ["id", "project", "last_message", "name", "image_address"]
 
 
 class ProjectChatDetailSerializer(serializers.ModelSerializer):
