@@ -34,3 +34,4 @@ class UserFile(models.Model):
     class Meta:
         verbose_name = "Файл"
         verbose_name_plural = "Файлы"
+        ordering = ["datetime_uploaded"]

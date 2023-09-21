@@ -130,7 +130,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "views_count",
             "likes_count",
             "cover",
-            "partner_programs_tags"
+            "partner_programs_tags",
         ]
         read_only_fields = [
             "leader",

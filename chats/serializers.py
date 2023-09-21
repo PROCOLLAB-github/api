@@ -13,10 +13,20 @@ from users.serializers import UserListSerializer, UserDetailSerializer
 class DirectChatListSerializer(serializers.ModelSerializer):
     last_message = serializers.SerializerMethodField()
     opponent = serializers.SerializerMethodField()
+    name = serializers.SerializerMethodField(read_only=True)
+    image_address = serializers.SerializerMethodField(read_only=True)
 
     def get_opponent(self, chat: DirectChat):
         user = self.context.get("opponent")
         return UserDetailSerializer(user).data
+
+    def get_name(self, chat: DirectChat):
+        user = self.context.get("opponent")
+        return user.get_full_name()
+
+    def get_image_address(self, chat: DirectChat):
+        user = self.context.get("opponent")
+        return user.avatar
 
     @classmethod
     def get_last_message(cls, chat: DirectChat):
@@ -24,11 +34,7 @@ class DirectChatListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DirectChat
-        fields = [
-            "id",
-            "opponent",
-            "last_message",
-        ]
+        fields = ["id", "opponent", "last_message", "name", "image_address"]
 
 
 class DirectChatDetailSerializer(serializers.ModelSerializer):
@@ -48,6 +54,16 @@ class DirectChatDetailSerializer(serializers.ModelSerializer):
 
 class ProjectChatListSerializer(serializers.ModelSerializer):
     last_message = serializers.SerializerMethodField(read_only=True)
+    name = serializers.SerializerMethodField(read_only=True)
+    image_address = serializers.SerializerMethodField(read_only=True)
+
+    @classmethod
+    def get_image_address(cls, chat: ProjectChat):
+        return chat.project.image_address
+
+    @classmethod
+    def get_name(cls, chat: ProjectChat):
+        return chat.project.name
 
     @classmethod
     def get_last_message(cls, chat: ProjectChat):
@@ -55,7 +71,7 @@ class ProjectChatListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ProjectChat
-        fields = ["id", "project", "last_message"]
+        fields = ["id", "project", "last_message", "image_address", "name"]
 
 
 class ProjectChatDetailSerializer(serializers.ModelSerializer):

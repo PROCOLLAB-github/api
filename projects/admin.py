@@ -1,6 +1,13 @@
 from django.contrib import admin
 
-from projects.models import DefaultProjectCover, Project, Achievement, Collaborator, ProjectLink, ProjectNews
+from projects.models import (
+    DefaultProjectCover,
+    Project,
+    Achievement,
+    Collaborator,
+    ProjectLink,
+    ProjectNews,
+)
 
 
 @admin.register(Project)
