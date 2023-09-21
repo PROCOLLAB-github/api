@@ -17,7 +17,9 @@ User = get_user_model()
 
 
 class File:
-    def __init__(self, file: TemporaryUploadedFile | InMemoryUploadedFile):
+    def __init__(
+        self, file: TemporaryUploadedFile | InMemoryUploadedFile, quality: int = 70
+    ):
         self.size = file.size
         self.name = File._get_name(file)
         self.extension = File._get_extension(file)
@@ -26,7 +28,7 @@ class File:
 
         # we can compress given type of image
         if self.content_type in SUPPORTED_IMAGES_TYPES:
-            webp_image = convert_image_to_webp(file)
+            webp_image = convert_image_to_webp(file, quality)
             self.buffer = webp_image.buffer()
             self.size = webp_image.size
             self.content_type = "image/webp"
@@ -135,6 +137,9 @@ class CDN:
         return self.storage.delete(url)
 
     def upload(
-        self, file: TemporaryUploadedFile | InMemoryUploadedFile, user: User
+        self,
+        file: TemporaryUploadedFile | InMemoryUploadedFile,
+        user: User,
+        quality: int = 70,
     ) -> FileInfo:
-        return self.storage.upload(File(file), user)
+        return self.storage.upload(File(file, quality), user)
