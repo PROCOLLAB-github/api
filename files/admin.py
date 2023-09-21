@@ -64,7 +64,7 @@ class UserFileAdmin(admin.ModelAdmin):
         return fieldsets
 
     def save_model(self, request, obj, form, change):
-        info = self.cdn.upload(request.FILES["file"], request.user)
+        info = self.cdn.upload(request.FILES["file"], request.user, quality=100)
         obj.link = info.url
         obj.user = request.user
         obj.name = info.name
