@@ -42,9 +42,6 @@ def verify_email(user, request):
 
 
 def send_verification_completed_email(user: User):
-    # fname = os.path.join(settings.STATIC_ROOT, "verification-succeed.html")
-    # with open(fname, "r", encoding="utf-8") as f:
-    #     html_content = f.read()
     email_body = f"""Поздравляем тебя, {user.first_name} {user.last_name}!
 
 Ты прошел верификацию и стал частью сообщества PROCOLLAB!
