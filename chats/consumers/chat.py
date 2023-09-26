@@ -3,7 +3,7 @@ import json
 from typing import Optional
 
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
-from django.core.cache import cache
+from django.core import cache
 from django.utils import timezone
 
 from chats.exceptions import ChatException

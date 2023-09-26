@@ -9,6 +9,7 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
     TokenVerifyView,
 )
+
 from core.permissions import IsStaffOrReadOnly
 
 schema_view = get_schema_view(
