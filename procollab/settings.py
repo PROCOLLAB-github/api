@@ -7,6 +7,18 @@ from decouple import config
 from sentry_sdk.integrations.django import DjangoIntegration
 
 
+# Celery Configuration Options
+CELERY_TIMEZONE = "Europe/Moscow"
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60
+CELERY_BROKER_URL = config(
+    "CELERY_BROKER_URL", cast=str, default="redis://localhost:6379/0"
+)
+CELERY_RESULT_BACKEND = config("CELERY_RESULT_BACKEND", cast=str, default="redis")
+# CELERY_ACCEPT_CONTENT = ["application/json"]
+CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+
+
 mimetypes.add_type("application/javascript", ".js", True)
 mimetypes.add_type("text/css", ".css", True)
 mimetypes.add_type("text/html", ".html", True)
@@ -93,6 +105,7 @@ INSTALLED_APPS = [
     "files.apps.FilesConfig",
     "events.apps.EventsConfig",
     "partner_programs.apps.PartnerProgramsConfig",
+    "mailing",
     # Rest framework
     "rest_framework",
     "rest_framework_simplejwt",
@@ -345,24 +358,3 @@ PROMETHEUS_LATENCY_BUCKETS = (
     75.0,
     float("inf"),
 )
-
-
-# Celery Configuration Options
-CELERY_TIMEZONE = "Europe/Moscow"
-CELERY_TASK_TRACK_STARTED = True
-CELERY_TASK_TIME_LIMIT = 30 * 60
-CELERY_BROKER_URL = config(
-    "CELERY_BROKER_URL", cast=str, default="redis://localhost:6379"
-)
-CELERY_RESULT_BACKEND = config(
-    "CELERY_RESULT_BACKEND", cast=str, default="redis://localhost:6379"
-)
-# CELERY_ACCEPT_CONTENT = ["application/json"]
-CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
-
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": f"redis://{REDIS_HOST}:6379",
-    }
-}
