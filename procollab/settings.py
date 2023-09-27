@@ -312,6 +312,10 @@ EMAIL_PORT = config("EMAIL_PORT", default=587, cast=int)
 EMAIL_HOST_USER = config("EMAIL_USER", cast=str, default="example@mail.ru")
 EMAIL_HOST_PASSWORD = config("EMAIL_PASSWORD", cast=str, default="password")
 
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+SERVER_EMAIL = EMAIL_HOST_USER
+EMAIL_ADMIN = EMAIL_HOST_USER
+
 SELECTEL_ACCOUNT_ID = config("SELECTEL_ACCOUNT_ID", cast=str, default="123456")
 SELECTEL_CONTAINER_NAME = config(
     "SELECTEL_CONTAINER_NAME", cast=str, default="procollab_media"
