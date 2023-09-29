@@ -6,5 +6,5 @@ from .utils import MailSender
 
 def some_task(request):
     res = CustomUser.objects.all()
-    MailSender.send(res, "test_subject", "password_reset_email.html")
-    return JsonResponse({"kek": "lol"})
+    MailSender.send(res, "test_subject", "templates/email/password_reset_email.html")
+    return JsonResponse({"detail": "ok"})
