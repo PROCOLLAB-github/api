@@ -31,13 +31,15 @@ def password_reset_token_created(sender, instance, reset_password_token, *args, 
         f"https://app.procollab.ru/auth/reset_password/?token={reset_password_token.key}"
     )
     context = {
-        "user": reset_password_token.user,
+        "first_name": reset_password_token.user.first_name,
         "email": reset_password_token.user.email,
         "reset_password_url": reset_password_url,
     }
 
-    email_html_message = render_to_string("email/password_reset_email.html", context)
-    email_plaintext_message = render_to_string("email/password_reset_email.txt", context)
+    # email_html_message = render_to_string("email/password_reset_email.html", context)
+    # email_plaintext_message = render_to_string("email/password_reset_email.txt", context)
+    email_html_message = render_to_string("email/reset-password.html", context)
+    email_plaintext_message = render_to_string("email/reset-password.html", context)
 
     msg = EmailMultiAlternatives(
         "Сброс пароля | Procollab",

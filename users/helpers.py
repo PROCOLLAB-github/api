@@ -1,9 +1,10 @@
 from django.contrib.auth import get_user_model
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.sites.shortcuts import get_current_site
 from django.urls import reverse
 
-from core.utils import Email
 from users.constants import PROTOCOL
 from users.models import UserAchievement, UserLink
 
@@ -18,62 +19,35 @@ def verify_email(user, request):
 
     absolute_url = f"{PROTOCOL}://{current_site}{relative_link}?token={token}"
 
-    email_body = (
-        f"Подтверждение адреса электронной почты"
-        f"\n\n"
-        f"Здравствйте, {user.first_name} {user.last_name}!"
-        f"\n"
-        f"Ваш адрес электронной почты был "
-        f"связан с созданием Procollab аккаунта. "
-        f"Для подтверждения адреса перейдите по ссылке:\n{absolute_url}"
-        f"\n\n"
-        f"Если данное сообщение пришло вам по ошибке, проигнорируйте его."
-        f"\n"
-        f"С уважением, команда Procollab!"
-    )
-
-    data = {
-        "email_body": email_body,
-        "email_subject": "Procollab | Подтверждение почты",
-        "to_email": user.email,
+    context = {
+        "absolute_url": absolute_url,
     }
+    email_html_message = render_to_string("email/confirm-email.html", context)
+    email_plaintext_message = render_to_string("email/confirm-email.txt", context)
 
-    Email.send_email(data)
+    msg = EmailMultiAlternatives(
+        "Подтверждение почты | Procollab",
+        email_plaintext_message,
+        "procollab2022@gmail.com",
+        [user.email],
+    )
+    msg.attach_alternative(email_html_message, "text/html")
+    msg.send()
 
 
 def send_verification_completed_email(user: User):
-    # fname = os.path.join(settings.STATIC_ROOT, "verification-succeed.html")
-    # with open(fname, "r", encoding="utf-8") as f:
-    #     html_content = f.read()
-    email_body = f"""Поздравляем тебя, {user.first_name} {user.last_name}!
+    context = {}
+    email_html_message = render_to_string("email/verification-succeed.html", context)
+    email_plaintext_message = render_to_string("email/verification-succeed.txt", context)
 
-Ты прошел верификацию и стал частью сообщества PROCOLLAB!
-
-Теперь ты сможешь пользоваться всем функционалом платформы:
-создавать проекты
-искать команду
-находить нужные мероприятия
-искать менторскую поддержку
-и многое другое…
-
-Следи за анонсами обновлений в нашей группе в ВК — https://vk.com/PROCOLLAB
-
-И скорее переходи на саму платформу, чтобы уже сегодня начать создавать свой проект — https://procollab.ru
-
-
-
-С уважением,
-PROCOLLAB
-"""
-
-    data = {
-        "email_body": email_body,
-        "email_subject": "Procollab | Верификация",
-        "to_email": user.email,
-        # "html_content": html_content,
-    }
-
-    Email.send_email(data)
+    msg = EmailMultiAlternatives(
+        "Аккаунт подтвержден | Procollab",
+        email_plaintext_message,
+        "procollab2022@gmail.com",
+        [user.email],
+    )
+    msg.attach_alternative(email_html_message, "text/html")
+    msg.send()
 
 
 def check_related_fields_update(data, pk):
