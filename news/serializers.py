@@ -42,8 +42,8 @@ class NewsListSerializer(serializers.ModelSerializer):
             "datetime_created",
             "views_count",
             "likes_count",
-            "is_user_liked",
             "files",
+            "is_user_liked",
         ]
 
 
