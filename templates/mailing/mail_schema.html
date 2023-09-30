@@ -1,0 +1,197 @@
+{% extends "admin/base.html" %}
+{%  load i18n %}
+{% block content %}
+    <form action="{% url 'mailing:send_mail' %}" method="post">{% csrf_token %}
+    <label for="schema-select">Выберите схему для отправки: </label>
+
+    <select name="schemas" id="schema-select">
+    <option value="">--Выберите схему--</option>
+    {% for schema in schemas %}
+        {% if schema.selected %}
+            <option value="{{schema.id}}" selected='selected'>{{ schema.title }}</option>
+        {% else %}
+            <option value="{{schema.id}}" >{{ schema.title }}</option>
+        {% endif %}
+    {% endfor %}
+    </select>
+    <br>
+    Выберите пользователей для отправки:
+    <div class="checkselect">
+        {%  for user in picked_users %}
+            <label><input type="checkbox" name="users" value="{{ user.id }}" checked>{{ user.title }}</label>
+        {% endfor %}
+        {%  for user in unpicked_users %}
+            <label><input type="checkbox" name="users" value="{{ user.id }}">{{ user.title }}</label>
+        {% endfor %}
+    </div>
+    <br>
+        <label>Тема письма:  <input type="text" name="subject" id="subject" required='required'></label>
+    <br>
+    <br>
+    <div id="template-fields">
+        Поля шаблона:
+        {%  for filed in template_fields %}
+        <br>
+            <label>{{ filed.title }}:</label>
+            <br>
+            <input type="text" id="field-{{ filed.key }}" name ="field-{{ filed.key }}" value="{{ filed.default }}">
+        <br>
+        {% endfor %}
+    </div>
+    <input type="submit" value="Отправить."/>
+    </form>
+    <style>
+
+.checkselect {
+	position: relative;
+	display: inline-block;
+	min-width: 200px;
+	text-align: left;
+}
+.checkselect-control {
+	position: relative;
+	padding: 0 !important;
+}
+.checkselect-control select {
+	position: relative;
+	display: inline-block;
+	width: 100%;
+	margin: 0;
+	padding-left: 5px;
+	height: 30px;
+}
+.checkselect-over {
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	cursor: pointer;
+}
+.checkselect-popup {
+	display: none;
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+	width: 100%;
+	height: auto;
+	max-height: 200px;
+	position: absolute;
+	top: 100%;
+	left: 0px;
+	border: 1px solid #dadada;
+	border-top: none;
+	background: black;
+	z-index: 9999;
+	overflow: auto;
+	user-select: none;
+}
+.checkselect label {
+	position: relative;
+	display: block;
+	margin: 0;
+	padding: 4px 6px 4px 25px;
+	font-weight: normal;
+	font-size: 1em;
+	line-height: 1.1;
+	cursor: pointer;
+}
+.checkselect-popup input {
+	position: absolute;
+	top: 5px;
+	left: 8px;
+	margin: 0 !important;
+	padding: 0;
+}
+.checkselect-popup label:hover {
+	background: #03a2ff;
+	color: #fff;
+}
+.checkselect-popup fieldset {
+	display: block;
+	margin:  0;
+	padding: 0;
+	border: none;
+}
+.checkselect-popup fieldset input {
+	left: 15px;
+}
+.checkselect-popup fieldset label {
+	padding-left: 32px;
+}
+.checkselect-popup legend {
+	display: block;
+	margin: 0;
+	padding: 5px 8px;
+	font-weight: 700;
+	font-size: 1em;
+	line-height: 1.1;
+}
+</style>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script>
+    (function($) {
+	function setChecked(target) {
+		var checked = $(target).find("input[type='checkbox']:checked").length;
+		if (checked) {
+			$(target).find('select option:first').html('Выбрано: ' + checked);
+		} else {
+			$(target).find('select option:first').html('Выберите из списка');
+		}
+	}
+
+	$.fn.checkselect = function() {
+		this.wrapInner('<div class="checkselect-popup"></div>');
+		this.prepend(
+			'<div class="checkselect-control">' +
+				'<select class="form-control"><option></option></select>' +
+				'<div class="checkselect-over"></div>' +
+			'</div>'
+		);
+
+		this.each(function(){
+			setChecked(this);
+		});
+		this.find('input[type="checkbox"]').click(function(){
+			setChecked($(this).parents('.checkselect'));
+		});
+
+		this.parent().find('.checkselect-control').on('click', function(){
+			$popup = $(this).next();
+			$('.checkselect-popup').not($popup).css('display', 'none');
+			if ($popup.is(':hidden')) {
+				$popup.css('display', 'block');
+				$(this).find('select').focus();
+			} else {
+				$popup.css('display', 'none');
+			}
+		});
+
+		$('html, body').on('click', function(e){
+			if ($(e.target).closest('.checkselect').length == 0){
+				$('.checkselect-popup').css('display', 'none');
+			}
+		});
+	};
+})(jQuery);
+
+$('.checkselect').checkselect();
+$('#schema-select').on('change', '', function (e){
+    let selected_schema_id = this.value;
+    let url_mask = "{% url 'mailing:template_fields' schema_id=1 %}".replace(/1/, selected_schema_id.toString());
+    $.getJSON(url_mask, function(data, status){
+        let html_data = ''
+        $.each(data, function(key, val){
+            val.forEach((element) => {
+                html_data += '<br>' +
+                '<label>' + element['title']+': </label><br>'+
+                `<input type="text" id="field-${element['key']}" name ="field-${element['key']}" value="${element['default']}"><br>`
+                }
+            )
+        });
+        $('#template-fields').html(html_data)
+    });
+})
+</script>
+
+{% endblock %}
