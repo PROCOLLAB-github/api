@@ -4,7 +4,7 @@ from django.contrib import admin
 from django.http import HttpResponse
 from django.urls import path
 from django.utils import timezone
-
+from mailing.views import MailingTemplateRender
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 
 
@@ -42,9 +42,22 @@ class PartnerProgramAdmin(admin.ModelAdmin):
                 "export/<int:object_id>/",
                 self.admin_site.admin_view(self.get_export_file_view),
                 name="export_profiles",
-            )
+            ),
+            path(
+                "mailing/<int:partner_program>/",
+                self.admin_site.admin_view(self.mailing),
+                name="partner_programs_mailing",
+            ),
         ]
         return custom_urls + default_urls
+
+    def mailing(self, request, partner_program):
+        print("kekekekekek")
+        profiles = PartnerProgramUserProfile.objects.filter(
+            partner_program=partner_program
+        )
+        users = [profile.user for profile in profiles]
+        return MailingTemplateRender().render_template(request, None, users, None)
 
     def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
         extra_context = {"object_id": int(object_id)}

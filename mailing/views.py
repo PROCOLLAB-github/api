@@ -25,16 +25,33 @@ class SendMailView(APIView):
 
 
 class MailingSchemaView(APIView):
+    def get(self, request):
+        return MailingTemplateRender().render_template(request)
+
+
+def template_fields(request, schema_id):
+    return JsonResponse(
+        dict(MailingTemplateRender().get_template_fields_context(schema_id))
+    )
+
+
+class MailingTemplateRender:
     template_name = "templates/mailing/mail_schema.html"
 
-    def get(self, request):
+    def render_template(
+        self,
+        request,
+        schema_id: int | None = None,
+        picked_users: list[CustomUser] | django.db.models.QuerySet = None,
+        unpicked_users: list[CustomUser] | django.db.models.QuerySet = None,
+    ):
         return render(
             request,
             self.template_name,
             self._get_context(
-                1,
-                None,
-                CustomUser.objects.all(),
+                schema_id,
+                picked_users,
+                unpicked_users,
             ),
         )
 
@@ -84,8 +101,11 @@ class MailingSchemaView(APIView):
         }
 
     def get_template_fields_context(self, schema_id):
-        schema = MailingSchema.objects.get(pk=schema_id).schema
         context = {"template_fields": []}
+        if schema_id is None:
+            return list(context.items())
+        schema = MailingSchema.objects.get(pk=schema_id).schema
+
         for key in schema:
             context["template_fields"].append(
                 {
@@ -95,7 +115,3 @@ class MailingSchemaView(APIView):
                 }
             )
         return list(context.items())
-
-
-def template_fields(request, schema_id):
-    return JsonResponse(dict(MailingSchemaView().get_template_fields_context(schema_id)))
