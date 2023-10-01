@@ -10,7 +10,7 @@ from .models import MailingSchema
 
 class SendMailView(APIView):
     def post(self, request):
-        users = request.POST["users[]"]
+        users = request.POST.getlist("users[]")
         schema_id = request.POST["schemas"]
         subject = request.POST["subject"]
         mail_schema = MailingSchema.objects.get(pk=schema_id)
