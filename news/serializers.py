@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from core.services import is_fan, get_likes_count, get_views_count
+from files.serializers import UserFileSerializer
 from news.models import News
 
 
@@ -10,6 +11,7 @@ class NewsListSerializer(serializers.ModelSerializer):
     name = serializers.SerializerMethodField()
     image_address = serializers.SerializerMethodField()
     is_user_liked = serializers.SerializerMethodField()
+    files = UserFileSerializer(many=True)
 
     def get_name(self, obj):
         return obj.content_object.name
@@ -40,8 +42,8 @@ class NewsListSerializer(serializers.ModelSerializer):
             "datetime_created",
             "views_count",
             "likes_count",
-            "is_user_liked",
             "files",
+            "is_user_liked",
         ]
 
 
