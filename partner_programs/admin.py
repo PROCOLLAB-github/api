@@ -52,11 +52,10 @@ class PartnerProgramAdmin(admin.ModelAdmin):
         return custom_urls + default_urls
 
     def mailing(self, request, partner_program):
-        print("kekekekekek")
         profiles = PartnerProgramUserProfile.objects.filter(
             partner_program=partner_program
         )
-        users = [profile.user for profile in profiles]
+        users = [profile.user for profile in profiles if profile.user is not None]
         return MailingTemplateRender().render_template(request, None, users, None)
 
     def changeform_view(self, request, object_id=None, form_url="", extra_context=None):

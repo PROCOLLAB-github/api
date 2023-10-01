@@ -7,7 +7,6 @@ from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 
 from users.models import CustomUser
-from .models import MailingSchema
 
 
 class MailSender:
@@ -15,7 +14,7 @@ class MailSender:
     def send(
         users: django.db.models.QuerySet | List[CustomUser],
         subject: str,
-        mailing_schema_id: id,
+        template_path: str,
         template_context: Union[
             Dict,
             List,
@@ -27,7 +26,7 @@ class MailSender:
         Throws an error if template render is unsuccessful.
         Args:
             users: - The list of users who should receive the email.
-            mailing_schema_id: PK of MailingSchema model.
+            template_path: str of template_path
             subject: Subject of mail.
             template_context: Context for template render.
             connection: Connection to mail backend
@@ -35,8 +34,7 @@ class MailSender:
         if template_context is None:
             template_context = {}
 
-        schema = MailingSchema.objects.get(pk=mailing_schema_id)
-        template_path = pathlib.Path(schema.template.path).absolute()
+        template_path = pathlib.Path(template_path).absolute()
         html_msg = render_to_string(template_path, template_context)
         plain_msg = render_to_string(template_path, template_context)
         emails = [user.email for user in users]

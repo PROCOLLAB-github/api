@@ -10,7 +10,7 @@ from .models import MailingSchema
 
 class SendMailView(APIView):
     def post(self, request):
-        users = request.POST["users"]
+        users = request.POST["users[]"]
         schema_id = request.POST["schemas"]
         subject = request.POST["subject"]
         mail_schema = MailingSchema.objects.get(pk=schema_id)
@@ -20,7 +20,7 @@ class SendMailView(APIView):
             if key_in_post in request.POST:
                 context[key] = request.POST[key_in_post]
         users_to_send = CustomUser.objects.filter(pk__in=users)
-        MailSender.send(users_to_send, subject, schema_id)
+        MailSender.send(users_to_send, subject, mail_schema.template.path)
         return JsonResponse({"detail": "ok"})
 
 

@@ -18,10 +18,10 @@
     Выберите пользователей для отправки:
     <div class="checkselect">
         {%  for user in picked_users %}
-            <label><input type="checkbox" name="users" value="{{ user.id }}" checked>{{ user.title }}</label>
+            <label><input type="checkbox" name="users[]" value="{{ user.id }}" checked>{{ user.title }}</label>
         {% endfor %}
         {%  for user in unpicked_users %}
-            <label><input type="checkbox" name="users" value="{{ user.id }}">{{ user.title }}</label>
+            <label><input type="checkbox" name="users[]" value="{{ user.id }}">{{ user.title }}</label>
         {% endfor %}
     </div>
     <br>
