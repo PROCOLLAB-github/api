@@ -75,6 +75,8 @@ class PartnerProgramAdmin(admin.ModelAdmin):
 
         response_data = tablib.Dataset(headers=column_names)
         for profile in profiles:
+            if profile.user is None:
+                continue
             row = [
                 profile.user.first_name,
                 profile.user.last_name,
