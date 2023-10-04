@@ -33,7 +33,7 @@ def migration(apps, schema_editor):
             webp_file = convert_image_to_webp(pil_image, quality=80)
             storage.delete(i.link)
 
-            new_url = i.link.split(".")[0] + ".webp"
+            new_url = str(i.link).rsplit(".", 1)[0] + ".webp"
             token = storage._get_auth_token()
             requests.put(
                 new_url,
