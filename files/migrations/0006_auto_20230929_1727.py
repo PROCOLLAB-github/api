@@ -41,7 +41,7 @@ def migration(apps, schema_editor):
                     "X-Auth-Token": token,
                     "Content-Type": "image/webp",
                 },
-                data=webp_file.buffer,
+                data=webp_file.__bytes__,
             )
             i.link = new_url
             i.extension = 'webp'
