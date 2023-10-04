@@ -75,13 +75,16 @@ class PartnerProgramAdmin(admin.ModelAdmin):
 
         response_data = tablib.Dataset(headers=column_names)
         for profile in profiles:
-            row = [
-                profile.user.first_name,
-                profile.user.last_name,
-                profile.user.patronymic,
-                profile.user.email,
-                str(profile.user.birthday),
-            ]
+            if profile.user is None:
+                row = [""] * 5
+            else:
+                row = [
+                    profile.user.first_name,
+                    profile.user.last_name,
+                    profile.user.patronymic,
+                    profile.user.email,
+                    str(profile.user.birthday),
+                ]
 
             json_data = profile.partner_program_data
             for key in json_schema:
