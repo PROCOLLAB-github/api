@@ -4,16 +4,31 @@ from io import BytesIO
 from django.db import migrations
 import requests
 import webp
+from typing import Optional
 
 from PIL import Image
 
 from files.service import SelectelSwiftStorage
 
 
-def convert_image_to_webp(pil_image: Image, quality: int) -> bytes:
-    config = webp.WebPConfig.new(preset=webp.WebPPreset.PHOTO, quality=quality)
-    webp_image = webp.WebPPicture.from_pil(pil_image)
-    return webp_image.encode(config)
+def convert_image_to_webp(pil_image: Image, quality: int) -> Optional[BytesIO]:
+    """
+    Convert a PIL Image to WebP format.
+
+    Parameters:
+    - pil_image (PIL.Image): A PIL Image object to be converted.
+    - quality (int): The quality of the converted WebP image, 0 to 100.
+
+    Returns:
+    - bytes: The converted WebP image in bytes, or None if the conversion fails.
+    """
+    try:
+        config = webp.WebPConfig.new(preset=webp.WebPPreset.PHOTO, quality=quality)
+        webp_data = webp.WebPPicture.from_pil(pil_image).encode(config=config)
+        return BytesIO(webp_data.buffer())
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None
 
 
 def migration(apps, schema_editor):
@@ -31,6 +46,7 @@ def migration(apps, schema_editor):
             pil_image.thumbnail((512, 512), Image.ANTIALIAS)
             # convert image to webp
             webp_file = convert_image_to_webp(pil_image, quality=80)
+            # delete old file
             storage.delete(i.link)
 
             new_url = str(i.link).rsplit(".", 1)[0] + ".webp"
@@ -41,11 +57,11 @@ def migration(apps, schema_editor):
                     "X-Auth-Token": token,
                     "Content-Type": "image/webp",
                 },
-                data=webp_file.__bytes__,
+                data=webp_file,
             )
             i.link = new_url
-            i.extension = 'webp'
-            i.mime_type = 'image/webp'
+            i.extension = "webp"
+            i.mime_type = "image/webp"
             i.save()
 
 
