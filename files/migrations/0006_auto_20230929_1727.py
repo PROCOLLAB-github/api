@@ -32,20 +32,18 @@ def migration(apps, schema_editor):
             # convert image to webp
             webp_file = convert_image_to_webp(pil_image, quality=80)
             storage.delete(i.link)
-            storage.upload()
+
+            new_url = i.link.split(".")[0] + ".webp"
             token = storage._get_auth_token()
-
-            link_with_webp = i.link.split(".")[0] + ".webp"
-
             requests.put(
-                link_with_webp,
+                new_url,
                 headers={
                     "X-Auth-Token": token,
                     "Content-Type": "image/webp",
                 },
                 data=webp_file.buffer,
             )
-            i.link = link_with_webp
+            i.link = new_url
             i.extension = 'webp'
             i.mime_type = 'image/webp'
             i.save()
