@@ -27,6 +27,9 @@ def migration(apps, schema_editor):
             # download file and convert it to PIL image
             file = requests.get(i.link)
             pil_image = Image.open(BytesIO(file.content))
+            # make image be 512 by 512. cut coreners if needed
+            pil_image.thumbnail((512, 512), Image.ANTIALIAS)
+            # convert image to webp
             webp_file = convert_image_to_webp(pil_image, quality=80)
             storage.delete(i.link)
             storage.upload()
@@ -38,11 +41,13 @@ def migration(apps, schema_editor):
                 link_with_webp,
                 headers={
                     "X-Auth-Token": token,
-                    "Content-Type": file.content_type,
+                    "Content-Type": "image/webp",
                 },
-                data=file.buffer,
+                data=webp_file.buffer,
             )
             i.link = link_with_webp
+            i.extension = 'webp'
+            i.mime_type = 'image/webp'
             i.save()
 
 
