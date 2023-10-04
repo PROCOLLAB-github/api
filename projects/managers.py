@@ -13,15 +13,8 @@ class ProjectManager(Manager):
         return (
             self.get_queryset()
             .filter(draft=False)
+            .select_related("industry", "leader")
             .prefetch_related(
-                Prefetch(
-                    "industry",
-                    queryset=Industry.objects.only("name").all(),
-                ),
-                Prefetch(
-                    "leader",
-                    queryset=CustomUser.objects.only("id").all(),
-                ),
                 "partner_program_profiles",
             )
         )
