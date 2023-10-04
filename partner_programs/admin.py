@@ -88,7 +88,9 @@ class PartnerProgramAdmin(admin.ModelAdmin):
 
             json_data = profile.partner_program_data
             for key in json_schema:
-                row.append(json_data.get(key, ""))
+                row.append(
+                    json_data.get(key.encode("ascii", errors="ignore").decode(), "")
+                )
             response_data.append(row)
 
         binary_data = response_data.export("xlsx")
@@ -123,5 +125,9 @@ class PartnerProgramUserProfileAdmin(admin.ModelAdmin):
         "user",
         "project",
         "partner_program",
+    )
+    search_fields = (
+        "user__first_name",
+        "user__last_name",
     )
     date_hierarchy = "datetime_created"
