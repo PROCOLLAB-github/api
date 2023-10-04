@@ -92,7 +92,7 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
                 )
 
             user = User.objects.create(
-                **{field_name: data[field_name] for field_name in user_fields},
+                **{field_name: data.get(field_name, "") for field_name in user_fields},
                 birthday=date_to_iso(data["birthday"]),
                 is_active=True,  # bypass email verification
                 onboarding_stage=None,  # bypass onboarding
