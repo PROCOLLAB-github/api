@@ -56,4 +56,6 @@ class Migration(migrations.Migration):
         ("files", "0005_alter_userfile_options"),
     ]
 
-    operations = []
+    operations = [
+        migrations.RunPython(migration),
+    ]
