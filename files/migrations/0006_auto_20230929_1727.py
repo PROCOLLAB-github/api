@@ -38,6 +38,7 @@ def migration(apps, schema_editor):
     for i in files:
         # get all files that end in a .png or .jpg
         if i.link.endswith(".png") or i.link.endswith(".jpg"):
+            old_link = i.link
             # convert .png/.jpg to .webp
             # download file and convert it to PIL image
             file = requests.get(i.link)
@@ -63,6 +64,8 @@ def migration(apps, schema_editor):
             i.extension = "webp"
             i.mime_type = "image/webp"
             i.save()
+            # delete the one with the old url
+            UserFile.objects.get(link=old_link).delete()
 
 
 class Migration(migrations.Migration):
