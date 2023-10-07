@@ -6,6 +6,7 @@ import sentry_sdk
 from decouple import config
 from sentry_sdk.integrations.django import DjangoIntegration
 
+
 mimetypes.add_type("application/javascript", ".js", True)
 mimetypes.add_type("text/css", ".css", True)
 mimetypes.add_type("text/html", ".html", True)
@@ -125,6 +126,7 @@ MIDDLEWARE = [
     "core.log.middleware.CustomLoguruMiddleware",
 ]
 
+
 # CORS_ALLOWED_ORIGINS = [
 #     "http://localhost:4200",
 #     "http://127.0.0.1:4200",
@@ -177,8 +179,6 @@ REST_FRAMEWORK = {
 
 ASGI_APPLICATION = "procollab.asgi.application"
 
-REDIS_HOST = config("REDIS_HOST", cast=str, default="127.0.0.1")
-
 if DEBUG:
     DATABASES = {
         "default": {
@@ -194,7 +194,7 @@ if DEBUG:
         }
     }
 
-    CHANNEL_LERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
+    CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
 else:
     # fixme
     CACHES = {
@@ -317,10 +317,6 @@ EMAIL_PORT = config("EMAIL_PORT", default=587, cast=int)
 EMAIL_HOST_USER = config("EMAIL_USER", cast=str, default="example@mail.ru")
 EMAIL_HOST_PASSWORD = config("EMAIL_PASSWORD", cast=str, default="password")
 
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
-SERVER_EMAIL = EMAIL_HOST_USER
-EMAIL_ADMIN = EMAIL_HOST_USER
-
 SELECTEL_ACCOUNT_ID = config("SELECTEL_ACCOUNT_ID", cast=str, default="123456")
 SELECTEL_CONTAINER_NAME = config(
     "SELECTEL_CONTAINER_NAME", cast=str, default="procollab_media"
@@ -343,6 +339,7 @@ LOGURU_LOGGING = {
     "retention": "60 days",
     "enqueue": True,
 }
+
 
 if DEBUG:
     SELECTEL_SWIFT_URL += "debug/"
