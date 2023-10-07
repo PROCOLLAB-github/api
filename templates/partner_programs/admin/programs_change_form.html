@@ -1,19 +1,27 @@
 {% extends "admin/change_form.html" %}
-{%  load i18n %}
+{% load i18n %}
 
-{% block submit_buttons_bottom  %}
+{% block submit_buttons_bottom %}
 
 
     {{ block.super }}
     <div class="submit-row">
         <input type="button" class="export-btn" value="Экспорт" onclick="export_profiles()"/>
     </div>
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+
+
+    <div class="submit-row">
+        <input type="button" class="export-btn" value="Рассылка" onclick="mailing()"/>
+    </div>
     <script>
-    function export_profiles(){
-        window.open("{% url 'admin:export_profiles' object_id %}", '_blank').focus()
-    }
-</script>
+        function export_profiles() {
+            window.open("{% url 'admin:export_profiles' object_id %}", '_blank').focus()
+        }
+
+        function mailing() {
+            window.open("{% url 'admin:partner_programs_mailing' object_id %}", '_blank').focus()
+        }
+    </script>
 
 {% endblock %}
 

@@ -93,6 +93,7 @@ INSTALLED_APPS = [
     "files.apps.FilesConfig",
     "events.apps.EventsConfig",
     "partner_programs.apps.PartnerProgramsConfig",
+    "mailing.apps.MailingConfig",
     # Rest framework
     "rest_framework",
     "rest_framework_simplejwt",
