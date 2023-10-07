@@ -70,7 +70,7 @@ def migration(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("files", "0005_alter_userfile_options"),
+        ("files", "0006_alter_userfile_options"),
     ]
 
     operations = [
