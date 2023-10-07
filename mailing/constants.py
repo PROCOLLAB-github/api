@@ -1,7 +1,8 @@
 default_mailing_schema = {
-    "key_with_default_value": {
-        "title": "Ключ с стандартным значением.",
-        "default": "Значение",
+    "title": {
+        "title": "Заголовок письма",
+        "default": "Рассылка | Procollab",
     },
-    "default_key": {"title": "Просто ключ."},
+    "text": {"title": "Основной текст письма"},
+    "button_text": {"title": "Текст кнопки", "default": "Кнопка"},
 }

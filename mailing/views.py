@@ -20,7 +20,7 @@ class SendMailView(APIView):
             if key_in_post in request.POST:
                 context[variable_name] = request.POST[key_in_post]
         users_to_send = CustomUser.objects.filter(pk__in=users)
-        send_mass_mail(users_to_send, subject, mail_schema.template.path)
+        send_mass_mail(users_to_send, subject, mail_schema.template, context)
         return JsonResponse({"detail": "ok"})
 
 

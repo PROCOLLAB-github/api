@@ -8,3 +8,11 @@ class MailingSchemaAdmin(admin.ModelAdmin):
         "id",
         "name",
     )
+    list_display_links = (
+        "id",
+        "name",
+    )
+    search_fields = (
+        "id",
+        "name",
+    )

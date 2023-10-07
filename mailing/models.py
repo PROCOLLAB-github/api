@@ -1,7 +1,6 @@
 import os
 import uuid
 
-from django.core.validators import FileExtensionValidator
 from django.db import models
 from .constants import default_mailing_schema
 
@@ -15,10 +14,11 @@ def get_template_path(instance, filename):
 class MailingSchema(models.Model):
     name = models.CharField(max_length=100, unique=True)
     schema = models.JSONField(default=default_mailing_schema, null=True, blank=True)
-    template = models.FileField(
-        upload_to=get_template_path,
-        validators=[FileExtensionValidator(allowed_extensions=["html"])],
-    )
+    template = models.TextField()
+
+    class Meta:
+        verbose_name = "Схема шаблона письма"
+        verbose_name_plural = "Схемы шаблонов писем"
 
     def __str__(self):
-        return self.name
+        return f"MailingSchema<{self.name}>"

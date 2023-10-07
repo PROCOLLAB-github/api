@@ -1,11 +1,10 @@
-import pathlib
-from typing import Union, List, Dict
+from typing import Dict, List, Union
 
 import django.db.models
 from django.contrib.auth import get_user_model
 from django.core import mail
 from django.core.mail import EmailMultiAlternatives
-from django.template.loader import render_to_string
+from django.template import Context, Template
 
 User = get_user_model()
 
@@ -13,20 +12,20 @@ User = get_user_model()
 def send_mail(
     user: User,
     subject: str,
-    template_path: str,
+    template_string: str,
     template_context: Union[
         Dict,
         List,
     ] = None,
     connection=None,
 ):
-    return send_mass_mail([user], subject, template_path, template_context, connection)
+    return send_mass_mail([user], subject, template_string, template_context, connection)
 
 
 def send_mass_mail(
     users: django.db.models.QuerySet | List[User],
     subject: str,
-    template_path: str,
+    template_string: str,
     template_context: Union[
         Dict,
         List,
@@ -38,20 +37,21 @@ def send_mass_mail(
     Throws an error if template render is unsuccessful.
     Args:
         users: - The list of users who should receive the email.
-        template_path: str of template_path
+        template_string: str of template_path
         subject: Subject of mail.
         template_context: Context for template render.
         connection: Connection to mail backend
     """
     if template_context is None:
         template_context = {}
-    template_path = pathlib.Path(template_path).absolute()
+
     connection = connection or mail.get_connection()
+    template = Template(template_string)
     messages = []
     for user in users:
         template_context["user"] = user
-        html_msg = render_to_string(template_path, template_context)
-        plain_msg = render_to_string(template_path, template_context)
+        html_msg = template.render(Context(template_context))
+        plain_msg = template.render(Context(template_context))
         msg = EmailMultiAlternatives(
             subject, plain_msg, None, [user.email], connection=connection
         )
