@@ -44,6 +44,12 @@ def migration(apps, schema_editor):
             file = requests.get(i.link)
             pil_image = Image.open(BytesIO(file.content))
             # make image be 512 by 512. cut coreners if needed
+            # if hasattr(pil_image, '_getexif'):
+            #     # noinspection PyProtectedMember
+            #     orientation = pil_image._getexif().get(0x112, 1)
+            #     if orientation in (3, 6, 8):
+            #         pil_image = pil_image.rotate(90 * (orientation - 2))
+            
             pil_image.thumbnail((512, 512), Image.ANTIALIAS)
             # convert image to webp
             webp_file = convert_image_to_webp(pil_image, quality=80)
@@ -74,5 +80,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(migration, migrations.RunPython.noop),
+        # FIXME
+        # migrations.RunPython(migration, migrations.RunPython.noop),
     ]
