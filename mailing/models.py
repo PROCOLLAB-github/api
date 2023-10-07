@@ -2,7 +2,7 @@ import os
 import uuid
 
 from django.db import models
-from .constants import default_mailing_schema
+from .constants import get_default_mailing_schema
 
 
 def get_template_path(instance, filename):
@@ -13,7 +13,7 @@ def get_template_path(instance, filename):
 
 class MailingSchema(models.Model):
     name = models.CharField(max_length=100, unique=True)
-    schema = models.JSONField(default=default_mailing_schema, null=True, blank=True)
+    schema = models.JSONField(default=get_default_mailing_schema, null=True, blank=True)
     template = models.TextField()
 
     class Meta:
