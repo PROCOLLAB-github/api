@@ -6,19 +6,6 @@ import sentry_sdk
 from decouple import config
 from sentry_sdk.integrations.django import DjangoIntegration
 
-
-# Celery Configuration Options
-CELERY_TIMEZONE = "Europe/Moscow"
-CELERY_TASK_TRACK_STARTED = True
-CELERY_TASK_TIME_LIMIT = 30 * 60
-CELERY_BROKER_URL = config(
-    "CELERY_BROKER_URL", cast=str, default="redis://localhost:6379/0"
-)
-CELERY_RESULT_BACKEND = config("CELERY_RESULT_BACKEND", cast=str, default="redis")
-# CELERY_ACCEPT_CONTENT = ["application/json"]
-CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
-
-
 mimetypes.add_type("application/javascript", ".js", True)
 mimetypes.add_type("text/css", ".css", True)
 mimetypes.add_type("text/html", ".html", True)
@@ -138,7 +125,6 @@ MIDDLEWARE = [
     "core.log.middleware.CustomLoguruMiddleware",
 ]
 
-
 # CORS_ALLOWED_ORIGINS = [
 #     "http://localhost:4200",
 #     "http://127.0.0.1:4200",
@@ -191,23 +177,7 @@ REST_FRAMEWORK = {
 
 ASGI_APPLICATION = "procollab.asgi.application"
 
-
 REDIS_HOST = config("REDIS_HOST", cast=str, default="127.0.0.1")
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [(REDIS_HOST, 6379)],
-        },
-    },
-}
-
-CACHES = {
-    "default": {
-        "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": f"redis://{REDIS_HOST}:6379",
-    }
-}
 
 if DEBUG:
     DATABASES = {
@@ -217,11 +187,46 @@ if DEBUG:
         }
     }
 
+    CACHES = {
+        "default": {
+            "BACKEND": "django_prometheus.cache.backends.filebased.FileBasedCache",
+            "LOCATION": "/var/tmp/django_cache",
+        }
+    }
+
+    CHANNEL_LERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
 else:
+    # fixme
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        }
+    }
+
+    CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
+    # CHANNEL_LAYERS = {
+    #     "default": {
+    #         "BACKEND": "channels_redis.core.RedisChannelLayer",
+    #         "CONFIG": {
+    #             "hosts": [("127.0.0.1", 6379)],
+    #         },
+    #     },
+    # }
+    #
+    # REDIS_HOST = config("REDIS_HOST", cast=str, default="127.0.0.1")
+    # CACHES = {
+    #     "default": {
+    #         "BACKEND": "django.core.cache.backends.redis.RedisCache",
+    #         "LOCATION": f"redis://{REDIS_HOST}:6379",
+    #     }
+    # }
+
     REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"] = [
         "rest_framework.renderers.JSONRenderer",
     ]
+
     DB_SERVICE = config("DB_SERVICE", default="postgres", cast=str)
+
     DATABASES = {
         "default": {
             "ENGINE": "django_prometheus.db.backends.postgresql",
@@ -338,7 +343,6 @@ LOGURU_LOGGING = {
     "retention": "60 days",
     "enqueue": True,
 }
-
 
 if DEBUG:
     SELECTEL_SWIFT_URL += "debug/"

@@ -26,8 +26,6 @@
 ### Run project
 
 🚀 Run project via `python manage.py runserver`
-Run celery worker via `celery -A procollab worker -l INFO -P eventlet`
-Run celery scheduler via `celery -A procollab beat`
 ## For developers
 
 ### Install pre-commit hooks
