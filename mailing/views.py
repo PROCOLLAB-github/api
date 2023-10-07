@@ -4,7 +4,7 @@ from django.shortcuts import render
 from rest_framework.views import APIView
 
 from users.models import CustomUser
-from .utils import send_mails_mass
+from .utils import send_mass_mail
 from .models import MailingSchema
 
 
@@ -20,7 +20,7 @@ class SendMailView(APIView):
             if key_in_post in request.POST:
                 context[variable_name] = request.POST[key_in_post]
         users_to_send = CustomUser.objects.filter(pk__in=users)
-        send_mails_mass(users_to_send, subject, mail_schema.template.path)
+        send_mass_mail(users_to_send, subject, mail_schema.template.path)
         return JsonResponse({"detail": "ok"})
 
 

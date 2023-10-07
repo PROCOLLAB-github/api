@@ -2,15 +2,16 @@ import pathlib
 from typing import Union, List, Dict
 
 import django.db.models
+from django.contrib.auth import get_user_model
 from django.core import mail
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 
-from users.models import CustomUser
+User = get_user_model()
 
 
 def send_mail(
-    user: CustomUser,
+    user: User,
     subject: str,
     template_path: str,
     template_context: Union[
@@ -19,11 +20,11 @@ def send_mail(
     ] = None,
     connection=None,
 ):
-    return send_mails_mass([user], subject, template_path, template_context, connection)
+    return send_mass_mail([user], subject, template_path, template_context, connection)
 
 
-def send_mails_mass(
-    users: django.db.models.QuerySet,
+def send_mass_mail(
+    users: django.db.models.QuerySet | List[User],
     subject: str,
     template_path: str,
     template_context: Union[
