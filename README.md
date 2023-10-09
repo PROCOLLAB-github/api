@@ -26,7 +26,6 @@
 ### Run project
 
 🚀 Run project via `python manage.py runserver`
-
 ## For developers
 
 ### Install pre-commit hooks
