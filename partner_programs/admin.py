@@ -59,7 +59,11 @@ class PartnerProgramAdmin(admin.ModelAdmin):
         return MailingTemplateRender().render_template(request, None, users, None)
 
     def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
-        extra_context = {"object_id": int(object_id)}
+        if extra_context is None:
+            extra_context = {}
+        if object_id:
+            extra_context["object_id"] = int(object_id)
+
         res = super(PartnerProgramAdmin, self).changeform_view(
             request, object_id, extra_context=extra_context
         )
@@ -100,7 +104,9 @@ class PartnerProgramAdmin(admin.ModelAdmin):
 
             json_data = profile.partner_program_data
             for key in json_schema:
-                row.append(json_data.get(key, ""))
+                row.append(
+                    json_data.get(key.encode("ascii", errors="ignore").decode(), "")
+                )
             response_data.append(row)
 
         binary_data = response_data.export("xlsx")
@@ -117,7 +123,6 @@ class PartnerProgramAdmin(admin.ModelAdmin):
 
 @admin.register(PartnerProgramUserProfile)
 class PartnerProgramUserProfileAdmin(admin.ModelAdmin):
-
     list_display = (
         "id",
         "user",
@@ -135,5 +140,9 @@ class PartnerProgramUserProfileAdmin(admin.ModelAdmin):
         "user",
         "project",
         "partner_program",
+    )
+    search_fields = (
+        "user__first_name",
+        "user__last_name",
     )
     date_hierarchy = "datetime_created"

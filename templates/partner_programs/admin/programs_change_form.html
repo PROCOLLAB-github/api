@@ -15,11 +15,16 @@
     </div>
     <script>
         function export_profiles() {
-            window.open("{% url 'admin:export_profiles' object_id %}", '_blank').focus()
+
+            {% if object_id %}
+                window.open("{% url 'admin:export_profiles' object_id %}", '_blank').focus()
+            {% endif %}
         }
 
         function mailing() {
-            window.open("{% url 'admin:partner_programs_mailing' object_id %}", '_blank').focus()
+            {% if object_id %}
+                window.open("{% url 'admin:partner_programs_mailing' object_id %}", '_blank').focus()
+            {% endif %}
         }
     </script>
 
