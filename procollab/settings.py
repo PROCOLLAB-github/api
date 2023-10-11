@@ -6,7 +6,6 @@ import sentry_sdk
 from decouple import config
 from sentry_sdk.integrations.django import DjangoIntegration
 
-
 mimetypes.add_type("application/javascript", ".js", True)
 mimetypes.add_type("text/css", ".css", True)
 mimetypes.add_type("text/html", ".html", True)
@@ -125,7 +124,6 @@ MIDDLEWARE = [
     "django_prometheus.middleware.PrometheusAfterMiddleware",
     "core.log.middleware.CustomLoguruMiddleware",
 ]
-
 
 # CORS_ALLOWED_ORIGINS = [
 #     "http://localhost:4200",
@@ -340,7 +338,6 @@ LOGURU_LOGGING = {
     "enqueue": True,
 }
 
-
 if DEBUG:
     SELECTEL_SWIFT_URL += "debug/"
 
@@ -363,3 +360,5 @@ PROMETHEUS_LATENCY_BUCKETS = (
     75.0,
     float("inf"),
 )
+
+DATA_UPLOAD_MAX_NUMBER_FIELDS = None  # for mailing
