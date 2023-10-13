@@ -1,5 +1,6 @@
 import datetime
 import json
+from json import JSONDecodeError
 from typing import Optional
 
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
@@ -45,6 +46,12 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         cache.set(
             get_user_channel_cache_key(self.user), self.channel_name, ONE_WEEK_IN_SECONDS
         )
+        # set user online
+        cache.delete(get_user_online_cache_key(self.user))
+        online_users = cache.get(get_users_online_cache_key(), set())
+        online_users.add(self.user.id)
+        cache.set(get_users_online_cache_key(), online_users)
+
         # get all projects that user is a member of
         project_ids_list = Collaborator.objects.filter(user=self.user).values_list(
             "project", flat=True
@@ -66,7 +73,10 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
     async def disconnect(self, close_code):
         """User disconnected from websocket"""
-        pass
+        cache.delete(get_user_online_cache_key(self.user))
+        online_users = cache.get(get_users_online_cache_key(), set())
+        online_users.discard(self.user.id)
+        cache.set(get_users_online_cache_key(), online_users)
 
     async def receive_json(self, content, **kwargs):
         """Receive message from WebSocket in JSON format"""
@@ -212,3 +222,15 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             # await self.close(200)
         else:
             raise ValueError("Unknown event type")
+
+    async def decode_json(self, text_data) -> dict:
+        try:
+            return json.loads(text_data)
+        except JSONDecodeError as error:
+            await self.disconnect(400)
+            raise error
+
+
+"""
+
+"""
