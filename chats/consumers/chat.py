@@ -16,7 +16,7 @@ from chats.websockets_settings import (
     ChatType,
 )
 from core.constants import ONE_DAY_IN_SECONDS, ONE_WEEK_IN_SECONDS
-from core.utils import get_user_online_cache_key
+from core.utils import get_user_online_cache_key, get_users_online_cache_key
 from projects.models import Collaborator
 from users.models import CustomUser
 from chats.consumers.event_types import DirectEvent, ProjectEvent
@@ -186,8 +186,12 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
     async def __process_general_event(self, event: Event, room_name: str):
         cache_key = get_user_online_cache_key(self.user)
+        users_online_list_key = get_users_online_cache_key()
         if event.type == EventType.SET_ONLINE:
             cache.set(cache_key, True, ONE_DAY_IN_SECONDS)
+            users_online_list = cache.get_or_set(users_online_list_key, set())
+            users_online_list.add(self.user.pk)
+            cache.set(users_online_list_key, users_online_list, ONE_DAY_IN_SECONDS)
 
             # sent everyone online event that user X is online
             await self.channel_layer.group_send(
@@ -195,6 +199,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             )
         elif event.type == EventType.SET_OFFLINE:
             cache.delete(cache_key)
+            users_online_list = cache.get_or_set(users_online_list_key, set())
+            users_online_list.remove(self.user.pk)
+            cache.set(users_online_list_key, users_online_list, ONE_DAY_IN_SECONDS)
 
             # sent everyone online event that user X is offline
             await self.channel_layer.group_send(

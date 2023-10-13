@@ -20,3 +20,7 @@ class Email:
 
 def get_user_online_cache_key(user) -> str:
     return f"online_user_{user.pk}"
+
+
+def get_users_online_cache_key() -> str:
+    return "online_users"
