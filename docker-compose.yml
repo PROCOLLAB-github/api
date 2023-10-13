@@ -56,9 +56,17 @@ services:
       - web
     ports:
       - 8000:80
+  redis:
+    container_name: redis
+    image: redis:latest
+    expose:
+      - 6379
+    volumes:
+      - redis-data:/data
 volumes:
   grafana-data:
   grafana-configs:
   prom-data:
   prom-configs:
   log:
+  redis_data:
