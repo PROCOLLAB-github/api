@@ -197,27 +197,19 @@ else:
     # fixme
     CACHES = {
         "default": {
-            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": "redis://redis:6379",
         }
     }
 
-    CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
-    # CHANNEL_LAYERS = {
-    #     "default": {
-    #         "BACKEND": "channels_redis.core.RedisChannelLayer",
-    #         "CONFIG": {
-    #             "hosts": [("127.0.0.1", 6379)],
-    #         },
-    #     },
-    # }
-    #
-    # REDIS_HOST = config("REDIS_HOST", cast=str, default="127.0.0.1")
-    # CACHES = {
-    #     "default": {
-    #         "BACKEND": "django.core.cache.backends.redis.RedisCache",
-    #         "LOCATION": f"redis://{REDIS_HOST}:6379",
-    #     }
-    # }
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [("redis", 6379)],
+            },
+        },
+    }
 
     REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"] = [
         "rest_framework.renderers.JSONRenderer",
