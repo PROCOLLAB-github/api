@@ -13,6 +13,8 @@ class ProjectManager(Manager):
         return (
             self.get_queryset()
             .filter(draft=False)
+            .select_related("partner_program_profiles")
+            # to select foreign key of model partner_program_profiles, we need to use select_related
             .prefetch_related(
                 Prefetch(
                     "industry",
@@ -22,8 +24,8 @@ class ProjectManager(Manager):
                     "leader",
                     queryset=CustomUser.objects.only("id").all(),
                 ),
-                "partner_program_profiles",
-                "vacancy_set",
+                "vacancies",
+                "collaborator_set",
             )
         )
 
@@ -39,7 +41,7 @@ class ProjectManager(Manager):
                     "leader",
                     queryset=CustomUser.objects.only("id").all(),
                 ),
-                Prefetch("collaborator_set"),
+                "partner_program_profiles",
             )
             .distinct()
         )
