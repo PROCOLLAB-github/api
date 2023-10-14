@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.db.models import Q
 from django_filters import rest_framework as filters
 from rest_framework import generics, permissions, status
@@ -8,7 +9,13 @@ from rest_framework.views import APIView
 
 from core.permissions import IsStaffOrReadOnly
 from core.serializers import SetLikedSerializer
-from core.services import add_view, set_like
+from core.services import (
+    add_view,
+    set_like,
+    get_views_count,
+    get_views_count_cached,
+    cache_views_for_many_objects,
+)
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 from projects.filters import ProjectFilter
 from projects.constants import VERBOSE_STEPS
@@ -49,6 +56,35 @@ class ProjectList(generics.ListCreateAPIView):
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = ProjectFilter
 
+    def list(self, request, *args, **kwargs):
+        # check that we are not filtering
+        if not request.query_params:
+            cached_view = cache.get("project_list_view", None)
+            if cached_view is not None:
+                return Response(cached_view)
+
+        queryset = self.filter_queryset(self.get_queryset())
+        # order by view count. View Count is a cached value for each project
+
+        # check random project for whether it's views are in the cache
+        # if not, then cache all projects' views
+        if get_views_count_cached(queryset.first()) is None:
+            project_views = cache_views_for_many_objects(queryset)
+            project_views_dict = {
+                view.object_id: project_views[view.object_id] for view in queryset
+            }
+            views = {project.id: project_views_dict[project.id] for project in queryset}
+        else:
+            views = {project.id: get_views_count(project) for project in queryset}
+
+        # TODO: add paging ASAP
+        queryset = sorted(queryset, key=lambda project: views[project.id], reverse=True)
+        serializer = self.get_serializer(queryset, many=True)
+        if not request.query_params:
+            data = serializer.data
+            cache.set("project_list_view", data, 60 * 15)
+        return Response(serializer.data)
+
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -72,6 +108,7 @@ class ProjectList(generics.ListCreateAPIView):
             )
 
         headers = self.get_success_headers(serializer.data)
+        cache.delete("project_list_view")
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def post(self, request, *args, **kwargs):
@@ -136,6 +173,7 @@ class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         check_related_fields_update(request.data, pk)
+        cache.delete("project_list_view")
         return super(ProjectDetail, self).put(request, pk)
 
     def patch(self, request, pk, **kwargs):
@@ -154,6 +192,7 @@ class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         check_related_fields_update(request.data, pk)
+        cache.delete("project_list_view")
         return super(ProjectDetail, self).put(request, pk)
 
 

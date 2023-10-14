@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
+from django.db.models import Count
 
 from core.constants import VIEWS_CACHING_TIMEOUT
 from core.models import Like, View, Link
@@ -64,12 +65,23 @@ def add_view(obj, user):
     view, is_created = View.objects.get_or_create(
         content_type=obj_type, object_id=obj.id, user=user
     )
+    views_count = cache.get(f"views_count_{obj_type}_{obj.id}", None)
+    if views_count is not None:
+        cache.set(
+            f"views_count_{obj_type}_{obj.id}", views_count + 1, VIEWS_CACHING_TIMEOUT
+        )
+
     return view
 
 
 def remove_view(obj, user):
     obj_type = ContentType.objects.get_for_model(obj)
     View.objects.filter(content_type=obj_type, object_id=obj.id, user=user).delete()
+    views_count = cache.get(f"views_count_{obj_type}_{obj.id}", None)
+    if views_count is not None:
+        cache.set(
+            f"views_count_{obj_type}_{obj.id}", views_count - 1, VIEWS_CACHING_TIMEOUT
+        )
 
 
 def is_viewer(obj, user) -> bool:
@@ -83,6 +95,33 @@ def is_viewer(obj, user) -> bool:
 def get_viewers(obj):
     obj_type = ContentType.objects.get_for_model(obj)
     return User.objects.filter(views__content_type=obj_type, views__object_id=obj.id)
+
+
+def cache_views_for_many_objects(objs):
+    """
+    Set cached views count for many objects in 1 SQL query
+
+    Args:
+        objs:
+            List of objects that need their views retrieved
+
+    Returns: QuerySet[dict[object_id, count]]
+    """
+    obj_type = ContentType.objects.get_for_model(objs[0])
+    ids = [obj.id for obj in objs]
+    data = (
+        View.objects.filter(content_type=obj_type, object_id__in=ids)
+        .values("object_id")
+        .annotate(count=Count("object_id"))
+    )
+    for i in data:
+        cache.set(f"views_count_{obj_type}_{i.object_id}", i.count, VIEWS_CACHING_TIMEOUT)
+    return data
+
+
+def get_views_count_cached(obj):
+    obj_type = ContentType.objects.get_for_model(obj)
+    return cache.get(f"views_count_{obj_type}_{obj.id}", None)
 
 
 def get_views_count(obj):
