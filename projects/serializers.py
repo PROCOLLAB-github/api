@@ -71,7 +71,6 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     vacancies = ProjectVacancyListSerializer(many=True, read_only=True)
     short_description = serializers.SerializerMethodField()
     industry_id = serializers.IntegerField(required=False)
-    likes_count = serializers.SerializerMethodField(method_name="count_likes")
     views_count = serializers.SerializerMethodField(method_name="count_views")
     links = serializers.SerializerMethodField()
     partner_programs_tags = serializers.SerializerMethodField()
@@ -94,9 +93,6 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     @classmethod
     def get_short_description(cls, project):
         return project.get_short_description()
-
-    def count_likes(self, project):
-        return get_likes_count(project)
 
     def count_views(self, project):
         return get_views_count(project)
@@ -128,7 +124,6 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "datetime_created",
             "datetime_updated",
             "views_count",
-            "likes_count",
             "cover",
             "partner_programs_tags",
         ]
@@ -141,7 +136,6 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
 
 
 class ProjectListSerializer(serializers.ModelSerializer):
-    likes_count = serializers.SerializerMethodField(method_name="count_likes")
     views_count = serializers.SerializerMethodField(method_name="count_views")
     collaborator_count = serializers.SerializerMethodField(
         method_name="get_collaborator_count"
@@ -168,9 +162,6 @@ class ProjectListSerializer(serializers.ModelSerializer):
     def get_collaborator_count(cls, obj):
         return len(obj.collaborator_set.all())
 
-    def count_likes(self, obj):
-        return get_likes_count(obj)
-
     class Meta:
         model = Project
         fields = [
@@ -186,12 +177,11 @@ class ProjectListSerializer(serializers.ModelSerializer):
             "collaborator_count",
             "vacancies",
             "datetime_created",
-            "likes_count",
             "views_count",
             "partner_programs_tags",
         ]
 
-        read_only_fields = ["leader", "views_count", "likes_count"]
+        read_only_fields = ["leader", "views_count"]
 
     def is_valid(self, *, raise_exception=False):
         return super().is_valid(raise_exception=raise_exception)

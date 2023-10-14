@@ -23,6 +23,7 @@ class ProjectManager(Manager):
                     queryset=CustomUser.objects.only("id").all(),
                 ),
                 "partner_program_profiles",
+                "vacancy_set",
             )
         )
 
