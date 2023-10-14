@@ -141,7 +141,6 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
 
 
 class ProjectListSerializer(serializers.ModelSerializer):
-    likes_count = serializers.SerializerMethodField(method_name="count_likes")
     views_count = serializers.SerializerMethodField(method_name="count_views")
     collaborator_count = serializers.SerializerMethodField(
         method_name="get_collaborator_count"
@@ -167,9 +166,6 @@ class ProjectListSerializer(serializers.ModelSerializer):
     @classmethod
     def get_collaborator_count(cls, obj):
         return len(obj.collaborator_set.all())
-
-    def count_likes(self, obj):
-        return get_likes_count(obj)
 
     class Meta:
         model = Project
