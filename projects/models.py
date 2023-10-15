@@ -117,7 +117,11 @@ class Project(models.Model):
     objects = ProjectManager()
 
     def get_short_description(self) -> Optional[str]:
-        return self.description[:90] if self.description else None
+        return (
+            self.description[:90] + ("..." if len(self.description) > 90 else "")
+            if self.description
+            else None
+        )
 
     def get_collaborators_user_list(self) -> list[User]:
         return [collaborator.user for collaborator in self.collaborator_set.all()]
