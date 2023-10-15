@@ -302,7 +302,7 @@ class SetUserOnboardingStage(APIView):
 
             new_stage = request.data["onboarding_stage"]
 
-            if new_stage not in [None, *range(1, 4)]:
+            if new_stage not in [None, *range(3)]:
                 return Response(
                     status=status.HTTP_400_BAD_REQUEST,
                     data={"error": "Wrong onboarding stage number!"},
