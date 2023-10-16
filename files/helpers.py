@@ -12,26 +12,23 @@ def convert_image_to_webp(image, quality: int = 70):
 def resize_image(image, size=(512, 512)):
     pil_image = Image.open(image.file)
 
-    if (
-        pil_image.height < pil_image.width
-    ):  # Подгонка параметров для горизонтальных изображений
+    # Подгонка параметров для горизонтальных изображений
+    if pil_image.height < pil_image.width:
         width, height = pil_image.width, pil_image.width
         x, y = 0, int((pil_image.height - height) // 2)
 
-    elif (
-        pil_image.height > pil_image.width
-    ):  # Подгонка параметров для вертикальных изображений
+    # Подгонка параметров для вертикальных изображений
+    elif pil_image.height > pil_image.width:
         width, height = pil_image.height, pil_image.height
         x, y = int((pil_image.width - width) // 2), 0
 
+    # Подгонка параметров для квадратных изображений
     else:
-        width, height = (
-            pil_image.width,
-            pil_image.height,
-        )  # Подгонка параметров для квадратных изображений
+        width, height = pil_image.width, pil_image.height
         x, y = 0, 0
 
-    area = (x, y, x + width, y + height)  # Итоговые размеры до ресайза
+    # Итоговые размеры до ресайза
+    area = (x, y, x + width, y + height)
 
     pil_image = pil_image.crop(area)
     pil_image = pil_image.resize(size)
