@@ -143,6 +143,11 @@ class PartnerProgramRegister(generics.GenericAPIView):
     def post(self, request, *args, **kwargs):
         try:
             program = PartnerProgram.objects.get(pk=kwargs["pk"])
+            if program.datetime_registration_ends < timezone.now():
+                return Response(
+                    data={"detail": "Registration period has ended."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             user_to_add = request.user
             user_profile_program_data = request.data
 
