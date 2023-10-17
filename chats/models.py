@@ -6,7 +6,6 @@ from django.core.exceptions import ValidationError
 from django.db import models
 
 from files.models import UserFile
-from projects.models import Project
 
 User = get_user_model()
 
@@ -87,7 +86,7 @@ class ProjectChat(BaseChat):
 
     id = models.PositiveIntegerField(primary_key=True, unique=True)
     project = models.ForeignKey(
-        Project, on_delete=models.CASCADE, related_name="project_chats"
+        "projects.Project", on_delete=models.CASCADE, related_name="project_chats"
     )
 
     def get_users(self):

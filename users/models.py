@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from chats.models import ProjectChat
 
 from users.constants import (
     ADMIN,
@@ -133,14 +134,19 @@ class CustomUser(AbstractUser):
             score += 7
         return score
 
-    def get_project_chats(self) -> list:
-        collaborations = self.collaborations.prefetch_related(
-            "project__project_chats"
-        ).all()
-        projects = []
-        for collaboration in collaborations:
-            projects.extend(list(collaboration.project.project_chats.all()))
-        return projects
+    def get_project_chats(self):
+        # collaborations = self.collaborations.prefetch_related(
+        #     "project__project_chats"
+        # ).all()
+
+        # return queryset of project chats
+        return ProjectChat.objects.filter(
+            project__collaborations__user_id=self.id
+        ).distinct()
+        # projects = []
+        # for collaboration in collaborations:
+        #     projects.extend(list(collaboration.project.project_chats.all()))
+        # return projects
 
     def get_key_skills(self) -> list[str]:
         return [skill.strip() for skill in self.key_skills.split(",") if skill.strip()]
