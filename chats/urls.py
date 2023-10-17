@@ -3,6 +3,7 @@ from django.urls import path
 from chats.views import (
     DirectChatList,
     DirectChatMessageList,
+    HasChatUnreadsView,
     ProjectChatList,
     ProjectChatMessageList,
     ProjectChatDetail,
@@ -37,5 +38,10 @@ urlpatterns = [
         "projects/<int:pk>/files/",
         ProjectChatFileList.as_view(),
         name="project-chat-files",
+    ),
+    path(
+        "has-unreads/",
+        HasChatUnreadsView.as_view(),
+        name="has-chat-unreads",
     ),
 ]
