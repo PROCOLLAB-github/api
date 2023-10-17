@@ -134,7 +134,9 @@ class CustomUser(AbstractUser):
         return score
 
     def get_project_chats(self) -> list:
-        collaborations = self.collaborations.all()
+        collaborations = self.collaborations.prefetch_related(
+            "project__project_chats"
+        ).all()
         projects = []
         for collaboration in collaborations:
             projects.extend(list(collaboration.project.project_chats.all()))
