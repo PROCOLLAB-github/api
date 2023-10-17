@@ -197,6 +197,7 @@ class ProjectChatFileList(ListCreateAPIView):
 
 class HasChatUnreadsView(GenericAPIView):
     """Returns True if user has unread messages"""
+
     permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
