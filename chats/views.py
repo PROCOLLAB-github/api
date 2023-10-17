@@ -7,9 +7,11 @@ from rest_framework.generics import (
     ListCreateAPIView,
     RetrieveAPIView,
 )
-
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.serializers import Serializer
 
 from chats.models import ProjectChat, DirectChat
 from chats.pagination import MessageListPagination
@@ -194,8 +196,25 @@ class ProjectChatFileList(ListCreateAPIView):
 
 
 class HasChatUnreadsView(GenericAPIView):
+    """Returns True if user has unread messages"""
     permission_classes = [IsAuthenticated]
 
+    @swagger_auto_schema(
+        responses={
+            200: openapi.Response(
+                description="Gives you True or False whether user has unread messages or not",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "has_unreads": openapi.Schema(
+                            type=openapi.TYPE_BOOLEAN,
+                            description="True if user has unread messages",
+                        )
+                    },
+                ),
+            )
+        }
+    )
     def get(self, request, *args, **kwargs):
         user = request.user
         # get all user chats
@@ -204,4 +223,6 @@ class HasChatUnreadsView(GenericAPIView):
 
         has_direct_messages_unread = direct_messages.filter(is_read=False).exists()
         has_project_messages_unread = project_messages.filter(is_read=False).exists()
-        return Response({"has_unreads": has_direct_messages_unread or has_project_messages_unread})
+        return Response(
+            {"has_unreads": has_direct_messages_unread or has_project_messages_unread}
+        )
