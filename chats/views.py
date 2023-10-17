@@ -11,7 +11,6 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.serializers import Serializer
 
 from chats.models import ProjectChat, DirectChat
 from chats.pagination import MessageListPagination
