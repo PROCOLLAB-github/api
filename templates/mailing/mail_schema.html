@@ -1,5 +1,5 @@
 {% extends "admin/base.html" %}
-{%  load i18n %}
+{% load i18n %}
 {% block content %}
     <form action="{% url 'mailing:send_mail' %}" method="post">{% csrf_token %}
     <label for="schema-select">Выберите схему для отправки: </label>
@@ -184,8 +184,8 @@ $('#schema-select').on('change', '', function (e){
         $.each(data, function(key, val){
             val.forEach((element) => {
                 html_data += '<br>' +
-                '<label>' + element['title']+': </label><br>'+
-                `<input type="text" id="field-${element['key']}" name ="field-${element['key']}" value="${element['default']}"><br>`
+                '<label for >' + element['title']+': </label><br>'+
+                `<textarea id="field-${element['key']}" name ="field-${element['key']}" value="${element['default']}"></textarea><br>`
                 }
             )
         });
