@@ -32,9 +32,9 @@
         Поля шаблона:
         {%  for filed in template_fields %}
         <br>
-            <label>{{ filed.title }}:</label>
+            <label for="field-{{ filed.key }}">{{ filed.title }}: </label>
             <br>
-            <textarea id="field-{{ filed.key }}" name ="field-{{ filed.key }}" value="{{ filed.default }}"> </textarea> 
+            <textarea id="field-{{ filed.key }}" name ="field-{{ filed.key }}" value="{{ filed.default }}"> </textarea>
         <br>
         {% endfor %}
     </div>
