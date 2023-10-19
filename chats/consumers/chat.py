@@ -79,7 +79,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         online_users = cache.get(get_users_online_cache_key(), set())
         online_users.discard(self.user.id)
         cache.set(get_users_online_cache_key(), online_users)
-        
+
         user_cache_key = get_user_online_cache_key(self.user)
         cache.set(user_cache_key, False, ONE_DAY_IN_SECONDS)
 
@@ -234,5 +234,3 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         except JSONDecodeError as error:
             await self.disconnect(400)
             raise error
-
-
