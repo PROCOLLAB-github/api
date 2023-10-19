@@ -83,7 +83,7 @@ class PartnerProgramForMemberSerializer(serializers.ModelSerializer):
             "cover_image_address",
             "presentation_address",
             "views_count",
-            "datetime_registration_ends"
+            "datetime_registration_ends",
         )
 
 
@@ -101,7 +101,7 @@ class PartnerProgramForUnregisteredUserSerializer(serializers.ModelSerializer):
             "cover_image_address",
             "advertisement_image_address",
             "presentation_address",
-            "datetime_registration_ends"
+            "datetime_registration_ends",
         )
 
 

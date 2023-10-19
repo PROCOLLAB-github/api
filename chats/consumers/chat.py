@@ -47,7 +47,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             get_user_channel_cache_key(self.user), self.channel_name, ONE_WEEK_IN_SECONDS
         )
         # set user online
-        cache.delete(get_user_online_cache_key(self.user))
+        user_cache_key = get_user_online_cache_key(self.user)
+        cache.set(user_cache_key, True, ONE_DAY_IN_SECONDS)
+
         online_users = cache.get(get_users_online_cache_key(), set())
         online_users.add(self.user.id)
         cache.set(get_users_online_cache_key(), online_users)
@@ -77,6 +79,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         online_users = cache.get(get_users_online_cache_key(), set())
         online_users.discard(self.user.id)
         cache.set(get_users_online_cache_key(), online_users)
+
+        user_cache_key = get_user_online_cache_key(self.user)
+        cache.set(user_cache_key, False, ONE_DAY_IN_SECONDS)
 
     async def receive_json(self, content, **kwargs):
         """Receive message from WebSocket in JSON format"""
@@ -229,8 +234,3 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         except JSONDecodeError as error:
             await self.disconnect(400)
             raise error
-
-
-"""
-
-"""
