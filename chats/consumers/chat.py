@@ -75,13 +75,15 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
     async def disconnect(self, close_code):
         """User disconnected from websocket"""
-        cache.delete(get_user_online_cache_key(self.user))
         online_users = cache.get(get_users_online_cache_key(), set())
         online_users.discard(self.user.id)
         cache.set(get_users_online_cache_key(), online_users)
+        cache.delete(get_user_online_cache_key(self.user))
+        room_name = EventGroupType.GENERAL_EVENTS
 
-        user_cache_key = get_user_online_cache_key(self.user)
-        cache.set(user_cache_key, False, ONE_DAY_IN_SECONDS)
+        await self.channel_layer.group_send(
+            room_name, {"type": EventType.SET_OFFLINE, "user_id": self.user.pk}
+        )
 
     async def receive_json(self, content, **kwargs):
         """Receive message from WebSocket in JSON format"""

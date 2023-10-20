@@ -107,8 +107,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
     @classmethod
     def get_is_online(cls, user: CustomUser):
         cache_key = get_user_online_cache_key(user)
-        is_online = cache.get(cache_key, False)
-        return is_online
+        return cache.get(cache_key, False)
 
     class Meta:
         model = CustomUser
