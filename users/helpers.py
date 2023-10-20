@@ -1,9 +1,10 @@
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.sites.shortcuts import get_current_site
 from django.urls import reverse
 
-from core.utils import Email
+from mailing.utils import send_mail
 from users.constants import PROTOCOL
 from users.models import UserAchievement, UserLink
 
@@ -12,65 +13,29 @@ User = get_user_model()
 
 def verify_email(user, request):
     token = RefreshToken.for_user(user).access_token
-
     relative_link = reverse("users:account_email_verification_sent")
     current_site = get_current_site(request).domain
-
     absolute_url = f"{PROTOCOL}://{current_site}{relative_link}?token={token}"
-
-    email_body = (
-        f"Подтверждение адреса электронной почты"
-        f"\n\n"
-        f"Здравствйте, {user.first_name} {user.last_name}!"
-        f"\n"
-        f"Ваш адрес электронной почты был "
-        f"связан с созданием Procollab аккаунта. "
-        f"Для подтверждения адреса перейдите по ссылке:\n{absolute_url}"
-        f"\n\n"
-        f"Если данное сообщение пришло вам по ошибке, проигнорируйте его."
-        f"\n"
-        f"С уважением, команда Procollab!"
+    template_content = open(
+        settings.BASE_DIR / "templates/email/confirm-email.html", encoding="utf-8"
+    ).read()
+    send_mail(
+        user=user,
+        subject="Procollab | Подтверждение почты",
+        template_string=template_content,
+        template_context={"absolute_url": absolute_url},
     )
-
-    data = {
-        "email_body": email_body,
-        "email_subject": "Procollab | Подтверждение почты",
-        "to_email": user.email,
-    }
-
-    Email.send_email(data)
 
 
 def send_verification_completed_email(user: User):
-    email_body = f"""Поздравляем тебя, {user.first_name} {user.last_name}!
-
-Ты прошел верификацию и стал частью сообщества PROCOLLAB!
-
-Теперь ты сможешь пользоваться всем функционалом платформы:
-создавать проекты
-искать команду
-находить нужные мероприятия
-искать менторскую поддержку
-и многое другое…
-
-Следи за анонсами обновлений в нашей группе в ВК — https://vk.com/PROCOLLAB
-
-И скорее переходи на саму платформу, чтобы уже сегодня начать создавать свой проект — https://procollab.ru
-
-
-
-С уважением,
-PROCOLLAB
-"""
-
-    data = {
-        "email_body": email_body,
-        "email_subject": "Procollab | Верификация",
-        "to_email": user.email,
-        # "html_content": html_content,
-    }
-
-    Email.send_email(data)
+    template_content = open(
+        settings.BASE_DIR / "templates/email/verification-succeed.html", encoding="utf-8"
+    ).read()
+    send_mail(
+        user=user,
+        subject="Procollab | Верификация",
+        template_string=template_content,
+    )
 
 
 def check_related_fields_update(data, pk):

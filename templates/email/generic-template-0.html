@@ -58,7 +58,7 @@
   </head>
   <body style="word-spacing:normal;">
     
-    <div style="display:none;font-size:1px;color:#ffffff;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">Привет! 👋</div>
+    <div style="display:none;font-size:1px;color:#ffffff;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">{{ preview_text }}</div>
   
     
       <div
@@ -199,7 +199,7 @@
                   
       <div
          style="font-family:sans-serif;font-size:30px;font-weight:700;line-height:150%;text-align:left;color:#332e2d;"
-      >Привет! 👋</div>
+      >{{ title }}</div>
     
                 </td>
               </tr>
@@ -261,8 +261,7 @@
                   
       <div
          style="font-family:sans-serif;font-size:20px;font-weight:400;line-height:150%;text-align:left;color:#8c888a;"
-      >Чтобы продолжить регистрацию и подтвердить почту, нажмите кнопку ниже. Если Вы не
-                            регистрировались, проигнорируйте это письмо.</div>
+      >{{ text }}</div>
     
                 </td>
               </tr>
@@ -331,9 +330,9 @@
                align="center" bgcolor="#6c27ff" role="presentation" style="border:none;border-radius:15px;cursor:auto;mso-padding-alt:17px 0px;background:#6c27ff;" valign="middle"
             >
               <a
-                 href="{{ absolute_url }}" style="display:inline-block;width:420px;background:#6c27ff;color:#ffffff;font-family:sans-serif;font-size:20px;font-weight:700;line-height:120%;margin:0;text-decoration:none;text-transform:none;padding:17px 0px;mso-padding-alt:0px;border-radius:15px;" target="_blank"
+                 href="{{ button_link }}" style="display:inline-block;width:420px;background:#6c27ff;color:#ffffff;font-family:sans-serif;font-size:20px;font-weight:700;line-height:120%;margin:0;text-decoration:none;text-transform:none;padding:17px 0px;mso-padding-alt:0px;border-radius:15px;" target="_blank"
               >
-                Подтвердить
+                {{ button_text }}
               </a>
             </td>
           </tr>
@@ -400,10 +399,7 @@
                   
       <div
          style="font-family:sans-serif;font-size:20px;font-weight:400;line-height:150%;text-align:center;color:#8c888a;"
-      >Нужна помощь?
-                            <a href="https://t.me/Petr_Ptushkin" target="_blank"
-                               style="display: block; color: #6C27FF;text-decoration: underline">Напишите нам
-                            </a></div>
+      >{{ footer_text }}</div>
     
                 </td>
               </tr>
