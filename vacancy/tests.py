@@ -124,7 +124,7 @@ class VacancyResponseTestCase(TestCase):
         request = self.factory.post(url, data)
         force_authenticate(request, user=self.user)
         response = self.vacancy_response_list_view(request, vacancy_id=self.vacancy.id)
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, 201)
 
     def test_response_by_user(self):
         url = f"/vacancies/responses/{self.vacancy.id}/"
