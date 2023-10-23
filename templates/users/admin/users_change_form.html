@@ -1,0 +1,20 @@
+{% extends "admin/change_form.html" %}
+{% load i18n %}
+
+{% block submit_buttons_bottom %}
+
+
+    {{ block.super }}
+    <div class="submit-row">
+        <input type="button" class="export-btn" value="Рассылка" onclick="mailing()"/>
+    </div>
+    <script>
+        function mailing() {
+            {% if object_id %}
+                window.open("{% url 'admin:user_mailing' object_id %}", '_blank').focus()
+            {% endif %}
+        }
+    </script>
+
+{% endblock %}
+
