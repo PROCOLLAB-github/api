@@ -81,7 +81,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
     async def disconnect(self, close_code):
         """User disconnected from websocket"""
-        if not self.user:
+        if not self.user or self.user.is_anonymous:
             # don't need to proccess logic for disconnect
             #  if we are not logged in!
             return
