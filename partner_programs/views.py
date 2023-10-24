@@ -71,12 +71,11 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
         # tilda cringe
         if data.get("test") == "test":
             return Response(status=status.HTTP_200_OK)
-        
+
         try:
             program = PartnerProgram.objects.get(pk=kwargs["pk"])
         except PartnerProgram.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
-
 
         # tilda cringe
         email = data.get("email") if data.get("email") else data.get("email_")
@@ -85,13 +84,13 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
                 data={"detail": "You need to pass an email address."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        
+
         user_fields = (
             "first_name",
             "last_name",
             "patronymic",
             "city",
-        )     
+        )
         try:
             user = User.objects.create(
                 **{field_name: data.get(field_name, "") for field_name in user_fields},
@@ -106,7 +105,7 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
                 data={"detail": "User with this email already exists."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-       
+
         password = data.get("password")
         del data["password"]
         if not password:
@@ -118,9 +117,7 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
         user.save()
 
         user_profile_program_data = {
-            k: v
-            for k, v in data.items()
-            if k not in user_fields
+            k: v for k, v in data.items() if k not in user_fields
         }
         PartnerProgramUserProfile.objects.create(
             partner_program_data=user_profile_program_data,
@@ -128,8 +125,6 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
             partner_program=program,
         )
         return Response(status=status.HTTP_201_CREATED)
-
-
 
     def get(self, request, *args, **kwargs):
         return Response(status=status.HTTP_200_OK)
