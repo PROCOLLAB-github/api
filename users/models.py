@@ -156,7 +156,7 @@ class CustomUser(AbstractUser):
         verbose_name_plural = "Пользователи"
         # order by count of fields inputted, like avatar, key_skills, about_me, etc.
         # first show users with all fields inputted, then with 1 field inputted, etc.
-        ordering = ["-ordering_score"]
+        ordering = ["-ordering_score", "id"]
 
 
 class UserAchievement(models.Model):
