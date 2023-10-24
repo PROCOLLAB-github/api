@@ -70,9 +70,10 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         # notify everyone that this user is online
         await self.channel_layer.group_send(
             EventGroupType.GENERAL_EVENTS,
-            {"type": EventType.SET_OFFLINE, "user": {"id": self.user.id}},
+            {"type": EventType.SET_ONLINE, "content": {"user_id": self.user.id}},
         )
 
+        # add to group to listen for general events, like online/offline
         await self.channel_layer.group_add(
             EventGroupType.GENERAL_EVENTS, self.channel_name
         )
@@ -80,6 +81,10 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
     async def disconnect(self, close_code):
         """User disconnected from websocket"""
+        if not self.user or self.user.is_anonymous:
+            # don't need to proccess logic for disconnect
+            #  if we are not logged in!
+            return
         online_users = cache.get(get_users_online_cache_key(), set())
         online_users.discard(self.user.id)
         cache.set(get_users_online_cache_key(), online_users)
@@ -88,7 +93,8 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
         # TODO: add a User extra-small serializer for this?
         await self.channel_layer.group_send(
-            room_name, {"type": EventType.SET_OFFLINE, "user": {"id": self.user.id}}
+            room_name,
+            {"type": EventType.SET_OFFLINE, "content": {"user_id": self.user.id}},
         )
 
     async def receive_json(self, content, **kwargs):
