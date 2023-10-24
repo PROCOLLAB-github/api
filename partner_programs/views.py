@@ -67,30 +67,31 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
     serializer_class = PartnerProgramNewUserSerializer
 
     def post(self, request, *args, **kwargs):
+        data = request.data
+        # tilda cringe
+        if data.get("test") == "test":
+            return Response(status=status.HTTP_200_OK)
+
         try:
             program = PartnerProgram.objects.get(pk=kwargs["pk"])
-            data = request.data
-            # tilda cringe
-            if data.get("test") == "test":
-                return Response(status=status.HTTP_200_OK)
-            user_fields = (
-                # "email",
-                # "password",
-                "first_name",
-                "last_name",
-                "patronymic",
-                "city",
-            )
-            # cringe tilda
-            email = data.get("email")
-            if not email:
-                email = data.get("email_")
-            if not email:
-                return Response(
-                    data={"detail": "You need to pass an email address."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+        except PartnerProgram.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
 
+        # tilda cringe
+        email = data.get("email") if data.get("email") else data.get("email_")
+        if not email:
+            return Response(
+                data={"detail": "You need to pass an email address."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user_fields = (
+            "first_name",
+            "last_name",
+            "patronymic",
+            "city",
+        )
+        try:
             user = User.objects.create(
                 **{field_name: data.get(field_name, "") for field_name in user_fields},
                 birthday=date_to_iso(data.get("birthday", "01-01-1900")),
@@ -99,34 +100,31 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
                 verification_date=timezone.now(),  # bypass ClickUp verification
                 email=email,
             )
-            # fixme: какое же дерьмо в этой вьюшке творится, извините я поправлю после дедлайна
-            password = data.get("password")
-            if not password:
-                return Response(
-                    data={"detail": "You need to pass a password."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            user.set_password(password)
-            user.save()
-
-            user_profile_program_data = {
-                field_name: data.get(field_name)
-                for field_name in data
-                if field_name not in user_fields
-            }
-            PartnerProgramUserProfile.objects.create(
-                partner_program_data=user_profile_program_data,
-                user=user,
-                partner_program=program,
-            )
-            return Response(status=status.HTTP_201_CREATED)
-        except PartnerProgram.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND)
         except IntegrityError:
             return Response(
                 data={"detail": "User with this email already exists."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        password = data.get("password")
+        del data["password"]
+        if not password:
+            return Response(
+                data={"detail": "You need to pass a password."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        user.set_password(password)
+        user.save()
+
+        user_profile_program_data = {
+            k: v for k, v in data.items() if k not in user_fields
+        }
+        PartnerProgramUserProfile.objects.create(
+            partner_program_data=user_profile_program_data,
+            user=user,
+            partner_program=program,
+        )
+        return Response(status=status.HTTP_201_CREATED)
 
     def get(self, request, *args, **kwargs):
         return Response(status=status.HTTP_200_OK)
