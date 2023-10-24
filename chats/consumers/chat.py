@@ -70,9 +70,10 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         # notify everyone that this user is online
         await self.channel_layer.group_send(
             EventGroupType.GENERAL_EVENTS,
-            {"type": EventType.SET_OFFLINE, "user": {"id": self.user.id}},
+            {"type": EventType.SET_ONLINE, "user": {"id": self.user.id}},
         )
 
+        # add to group to listen for general events, like online/offline
         await self.channel_layer.group_add(
             EventGroupType.GENERAL_EVENTS, self.channel_name
         )
