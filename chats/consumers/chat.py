@@ -70,7 +70,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         # notify everyone that this user is online
         await self.channel_layer.group_send(
             EventGroupType.GENERAL_EVENTS,
-            {"type": EventType.SET_ONLINE, "user": {"id": self.user.id}},
+            {"type": EventType.SET_ONLINE, "content": {"user_id": self.user.id}},
         )
 
         # add to group to listen for general events, like online/offline
@@ -93,7 +93,8 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
         # TODO: add a User extra-small serializer for this?
         await self.channel_layer.group_send(
-            room_name, {"type": EventType.SET_OFFLINE, "user": {"id": self.user.id}}
+            room_name,
+            {"type": EventType.SET_OFFLINE, "content": {"user_id": self.user.id}},
         )
 
     async def receive_json(self, content, **kwargs):
