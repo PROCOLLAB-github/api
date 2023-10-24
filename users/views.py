@@ -317,7 +317,9 @@ class SetUserOnboardingStage(APIView):
             request.user.onboarding_stage = new_stage
             request.user.save()
 
-            serialized_user = UserListSerializer(request.user)
+            serialized_user = UserListSerializer(
+                request.user, context={"request": request}
+            )
             data = serialized_user.data
             return Response(status=status.HTTP_200_OK, data=data)
         except Exception:

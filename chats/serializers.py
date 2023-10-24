@@ -18,7 +18,9 @@ class DirectChatListSerializer(serializers.ModelSerializer):
 
     def get_opponent(self, chat: DirectChat):
         user = self.context.get("opponent")
-        return UserDetailSerializer(user).data
+        return UserDetailSerializer(
+            user, context={"request": self.context.get("request")}
+        ).data
 
     def get_name(self, chat: DirectChat):
         user = self.context.get("opponent")
@@ -42,7 +44,9 @@ class DirectChatDetailSerializer(serializers.ModelSerializer):
 
     def get_opponent(self, chat: DirectChat):
         user = self.context.get("opponent")
-        return UserDetailSerializer(user).data
+        return UserDetailSerializer(
+            user, context={"request": self.context.get("request")}
+        ).data
 
     class Meta:
         model = DirectChat
@@ -87,9 +91,10 @@ class ProjectChatDetailSerializer(serializers.ModelSerializer):
     def get_name(cls, chat: ProjectChat):
         return chat.project.name
 
-    @classmethod
-    def get_users(cls, chat: ProjectChat):
-        return UserListSerializer(chat.get_users(), many=True).data
+    def get_users(self, chat: ProjectChat):
+        return UserListSerializer(
+            chat.get_users(), context={"request": self.context.get("request")}, many=True
+        ).data
 
     class Meta:
         model = ProjectChat

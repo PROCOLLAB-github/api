@@ -104,8 +104,10 @@ class UserDetailSerializer(serializers.ModelSerializer):
     def get_links(cls, user: CustomUser):
         return [user_link.link for user_link in user.links.all()]
 
-    @classmethod
-    def get_is_online(cls, user: CustomUser):
+    def get_is_online(self, user: CustomUser):
+        request = self.context.get("request")
+        if request and request.user.is_authenticated and request.user.id == user.id:
+            return True
         cache_key = get_user_online_cache_key(user)
         return cache.get(cache_key, False)
 
@@ -240,8 +242,11 @@ class UserListSerializer(serializers.ModelSerializer):
     key_skills = KeySkillsField(required=False)
     is_online = serializers.SerializerMethodField()
 
-    @classmethod
-    def get_is_online(cls, user: CustomUser) -> bool:
+    def get_is_online(self, user: CustomUser) -> bool:
+        request = self.context.get("request")
+        if request and request.user.is_authenticated and request.user.id == user.id:
+            return True
+
         cache_key = get_user_online_cache_key(user)
         is_online = cache.get(cache_key, False)
         return is_online
