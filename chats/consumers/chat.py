@@ -61,11 +61,6 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 f"{EventGroupType.CHATS_RELATED}_{project_id}", self.channel_name
             )
 
-        await self.channel_layer.group_add(
-            EventGroupType.GENERAL_EVENTS, self.channel_name
-        )
-        await self.accept()
-
         # set user online
         user_cache_key = get_user_online_cache_key(self.user)
         cache.set(user_cache_key, True, ONE_DAY_IN_SECONDS)
@@ -77,6 +72,11 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             EventGroupType.GENERAL_EVENTS,
             {"type": EventType.SET_OFFLINE, "user": {"id": self.user.id}},
         )
+
+        await self.channel_layer.group_add(
+            EventGroupType.GENERAL_EVENTS, self.channel_name
+        )
+        await self.accept()
 
     async def disconnect(self, close_code):
         """User disconnected from websocket"""
