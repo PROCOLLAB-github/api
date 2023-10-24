@@ -66,4 +66,4 @@ volumes:
   prom-data:
   prom-configs:
   log:
-  redis_data:
+  redis-data:

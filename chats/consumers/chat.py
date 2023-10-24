@@ -46,13 +46,6 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         cache.set(
             get_user_channel_cache_key(self.user), self.channel_name, ONE_WEEK_IN_SECONDS
         )
-        # set user online
-        user_cache_key = get_user_online_cache_key(self.user)
-        cache.set(user_cache_key, True, ONE_DAY_IN_SECONDS)
-
-        online_users = cache.get(get_users_online_cache_key(), set())
-        online_users.add(self.user.id)
-        cache.set(get_users_online_cache_key(), online_users)
 
         # get all projects that user is a member of
         project_ids_list = Collaborator.objects.filter(user=self.user).values_list(
@@ -68,6 +61,18 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 f"{EventGroupType.CHATS_RELATED}_{project_id}", self.channel_name
             )
 
+        # set user online
+        user_cache_key = get_user_online_cache_key(self.user)
+        cache.set(user_cache_key, True, ONE_DAY_IN_SECONDS)
+        online_users = cache.get(get_users_online_cache_key(), set())
+        online_users.add(self.user.id)
+        cache.set(get_users_online_cache_key(), online_users)
+        # notify everyone that this user is online
+        await self.channel_layer.group_send(
+            EventGroupType.GENERAL_EVENTS,
+            {"type": EventType.SET_OFFLINE, "user": {"id": self.user.id}},
+        )
+
         await self.channel_layer.group_add(
             EventGroupType.GENERAL_EVENTS, self.channel_name
         )
@@ -81,8 +86,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         cache.delete(get_user_online_cache_key(self.user))
         room_name = EventGroupType.GENERAL_EVENTS
 
+        # TODO: add a User extra-small serializer for this?
         await self.channel_layer.group_send(
-            room_name, {"type": EventType.SET_OFFLINE, "user_id": self.user.pk}
+            room_name, {"type": EventType.SET_OFFLINE, "user": {"id": self.user.id}}
         )
 
     async def receive_json(self, content, **kwargs):
@@ -99,7 +105,6 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             EventType.DELETE_MESSAGE,
             EventType.EDIT_MESSAGE,
         ]:
-
             if event.content["chat_type"] == ChatType.DIRECT:
                 self.event = DirectEvent(self.user, self.channel_layer, self.channel_name)
             elif event.content["chat_type"] == ChatType.PROJECT:
