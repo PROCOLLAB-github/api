@@ -18,6 +18,7 @@ from users.views import (
     ResendVerifyEmail,
     CurrentUserPrograms,
     CurrentUserProgramsTags,
+    ForceVerifyView,
 )
 
 app_name = "users"
@@ -33,6 +34,7 @@ urlpatterns = [
     path("users/types/", UserTypesView.as_view()),
     path("users/<int:pk>/", UserDetail.as_view()),
     path("users/<int:pk>/set_onboarding_stage/", SetUserOnboardingStage.as_view()),
+    path("users/<int:pk>/force_verify/", ForceVerifyView.as_view()),
     path("users/current/", CurrentUser.as_view()),
     # todo: change password view
     path("users/current/programs/", CurrentUserPrograms.as_view()),

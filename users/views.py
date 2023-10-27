@@ -6,7 +6,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import redirect
 from django_filters import rest_framework as filters
-from rest_framework import status
+from rest_framework import status, permissions
 from rest_framework.generics import (
     GenericAPIView,
     ListAPIView,
@@ -32,6 +32,7 @@ from projects.serializers import ProjectListSerializer
 from users.helpers import (
     verify_email,
     check_related_fields_update,
+    force_verify_user,
 )
 from users.constants import (
     VERBOSE_ROLE_TYPES,
@@ -348,3 +349,16 @@ class ResendVerifyEmail(GenericAPIView):
             )
         except Exception:
             return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+class ForceVerifyView(APIView):
+    queryset = User.objects.get_users_for_detail_view()
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request, *args, **kwargs):
+        try:
+            user = User.objects.get(pk=kwargs["pk"])
+            force_verify_user(user)
+            return Response(status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
