@@ -84,6 +84,12 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
                 data={"detail": "You need to pass an email address."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        password = data.get("password")
+        if not password:
+            return Response(
+                data={"detail": "You need to pass a password."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         user_fields = (
             "first_name",
@@ -106,18 +112,11 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        password = data.get("password")
-        del data["password"]
-        if not password:
-            return Response(
-                data={"detail": "You need to pass a password."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
         user.set_password(password)
         user.save()
 
         user_profile_program_data = {
-            k: v for k, v in data.items() if k not in user_fields
+            k: v for k, v in data.items() if k not in user_fields and k != "password"
         }
         PartnerProgramUserProfile.objects.create(
             partner_program_data=user_profile_program_data,
