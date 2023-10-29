@@ -14,10 +14,10 @@ scrape_configs:
   - targets:
       - localhost
     labels:
-      job: varlogs
+      job: varlog
       __path__: /var/log/*log
   - targets:
       - localhost
     labels:
       job: django
-      __path__: /home/afarut/default/api/log/*log
+      __path__: /procollab/log/*log
