@@ -1,6 +1,8 @@
 from django.conf import settings
 from django.contrib import admin
+from django.urls import path
 
+from mailing.views import MailingTemplateRender
 from .helpers import send_verification_completed_email
 from .models import (
     CustomUser,
@@ -106,6 +108,7 @@ class CustomUserAdmin(admin.ModelAdmin):
     )
 
     readonly_fields = ("ordering_score",)
+    change_form_template = "users/admin/users_change_form.html"
 
     def save_model(self, request, obj, form, change):
         # if user_type changed, then delete all related fields
@@ -145,6 +148,22 @@ class CustomUserAdmin(admin.ModelAdmin):
                 send_verification_completed_email(obj)
 
         super().save_model(request, obj, form, change)
+
+    def get_urls(self):
+        default_urls = super(CustomUserAdmin, self).get_urls()
+        custom_urls = [
+            path(
+                "mailing/<int:user_object>/",
+                self.admin_site.admin_view(self.mailing),
+                name="user_mailing",
+            ),
+        ]
+        return custom_urls + default_urls
+
+    def mailing(self, request, user_object):
+        user = CustomUser.objects.get(pk=user_object)
+        users = [user]
+        return MailingTemplateRender().render_template(request, None, users, None)
 
 
 @admin.register(UserAchievement)
