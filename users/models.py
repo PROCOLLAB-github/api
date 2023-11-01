@@ -1,6 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-from chats.models import ProjectChat
+from django.db.models import QuerySet
 
 from users.constants import (
     ADMIN,
@@ -134,7 +134,9 @@ class CustomUser(AbstractUser):
             score += 7
         return score
 
-    def get_project_chats(self) -> list:
+    def get_project_chats(self) -> QuerySet:
+        from chats.models import ProjectChat
+
         user_project_ids = self.collaborations.all().values_list("project_id", flat=True)
         return ProjectChat.objects.filter(project__in=user_project_ids)
 
