@@ -219,14 +219,14 @@ class HasChatUnreadsView(GenericAPIView):
         user = request.user
         # get all user chats
         direct_messages = user.direct_chats.all().prefetch_related("messages")
-        project_messages = user.get_project_chats().prefetch_related("messages")
+        project_chats = user.get_project_chats().prefetch_related("messages")
 
-        has_direct_messages_unread = direct_messages.filter(
-            messages__is_read=False
-        ).exists()
-        has_project_messages_unread = project_messages.filter(
-            messages__is_read=False
-        ).exists()
+        has_direct_messages_unread = (
+            direct_messages.filter(messages__is_read=False).distinct().exists()
+        )
+        has_project_messages_unread = (
+            project_chats.filter(messages__is_read=False).distinct().exists()
+        )
         return Response(
             {"has_unreads": has_direct_messages_unread or has_project_messages_unread}
         )
