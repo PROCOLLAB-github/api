@@ -259,7 +259,7 @@ class UserProjectsList(GenericAPIView):
         queryset = Project.objects.get_user_projects_for_list_view().filter(
             Q(leader_id=self.request.user.id) | Q(collaborator__user=self.request.user)
         )
-        
+
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
