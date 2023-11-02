@@ -18,7 +18,7 @@ from projects.helpers import (
     update_partner_program,
 )
 from projects.models import Project, Achievement, ProjectNews
-from projects.pagination import ProjectNewsPagination
+from projects.pagination import ProjectNewsPagination, ProjectsPagination
 from projects.permissions import (
     IsProjectLeaderOrReadOnlyForNonDrafts,
     HasInvolvementInProjectOrReadOnly,
@@ -48,6 +48,7 @@ class ProjectList(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated, permissions.IsAuthenticatedOrReadOnly]
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = ProjectFilter
+    pagination_class = ProjectsPagination
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
