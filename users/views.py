@@ -28,6 +28,7 @@ from partner_programs.serializers import (
     UserProgramsSerializer,
     PartnerProgramListSerializer,
 )
+from projects.pagination import ProjectsPagination
 from projects.serializers import ProjectListSerializer
 from users.helpers import (
     verify_email,
@@ -249,17 +250,20 @@ class AchievementDetail(RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAchievementOwnerOrReadOnly]
 
 
-class UserProjectsList(APIView):
+class UserProjectsList(GenericAPIView):
     permission_classes = [IsAuthenticated]
+    pagination_class = ProjectsPagination
+    serializer_class = ProjectListSerializer
 
     def get(self, request):
-        serializer = ProjectListSerializer(
-            Project.objects.get_user_projects_for_list_view().filter(
-                Q(leader_id=self.request.user.id)
-                | Q(collaborator__user=self.request.user)
-            ),
-            many=True,
+        queryset = Project.objects.get_user_projects_for_list_view().filter(
+            Q(leader_id=self.request.user.id) | Q(collaborator__user=self.request.user)
         )
+        
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
