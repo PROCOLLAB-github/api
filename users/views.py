@@ -6,7 +6,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import redirect
 from django_filters import rest_framework as filters
-from rest_framework import status
+from rest_framework import status, permissions
 from rest_framework.generics import (
     GenericAPIView,
     ListAPIView,
@@ -28,10 +28,12 @@ from partner_programs.serializers import (
     UserProgramsSerializer,
     PartnerProgramListSerializer,
 )
+from projects.pagination import ProjectsPagination
 from projects.serializers import ProjectListSerializer
 from users.helpers import (
     verify_email,
     check_related_fields_update,
+    force_verify_user,
 )
 from users.constants import (
     VERBOSE_ROLE_TYPES,
@@ -248,17 +250,20 @@ class AchievementDetail(RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAchievementOwnerOrReadOnly]
 
 
-class UserProjectsList(APIView):
+class UserProjectsList(GenericAPIView):
     permission_classes = [IsAuthenticated]
+    pagination_class = ProjectsPagination
+    serializer_class = ProjectListSerializer
 
     def get(self, request):
-        serializer = ProjectListSerializer(
-            Project.objects.get_user_projects_for_list_view().filter(
-                Q(leader_id=self.request.user.id)
-                | Q(collaborator__user=self.request.user)
-            ),
-            many=True,
+        queryset = Project.objects.get_user_projects_for_list_view().filter(
+            Q(leader_id=self.request.user.id) | Q(collaborator__user=self.request.user)
         )
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -348,3 +353,16 @@ class ResendVerifyEmail(GenericAPIView):
             )
         except Exception:
             return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+class ForceVerifyView(APIView):
+    queryset = User.objects.get_users_for_detail_view()
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request, *args, **kwargs):
+        try:
+            user = User.objects.get(pk=kwargs["pk"])
+            force_verify_user(user)
+            return Response(status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)

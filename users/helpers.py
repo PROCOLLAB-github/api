@@ -87,3 +87,12 @@ def update_links(links, pk):
             for link in links
         ]
     )
+
+
+def force_verify_user(user: User) -> None:
+    if user.is_active:
+        return
+
+    # todo: send email
+    user.is_active = True
+    user.save()
