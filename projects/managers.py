@@ -4,6 +4,16 @@ from django.db.models import Manager
 User = get_user_model()
 
 
+class CollaboratorManager(Manager):
+    def get_draft_projects_for_user(self):
+        return (
+            super()
+            .get_queryset()
+            .select_related("project")
+            .filter(project__is_draft=True)
+        )
+
+
 class ProjectManager(Manager):
     def get_projects_for_list_view(self):
         return self.get_queryset().filter(draft=False)

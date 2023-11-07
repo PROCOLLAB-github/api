@@ -5,7 +5,6 @@ from django.core.cache import cache
 from core.services import get_views_count
 from core.utils import get_user_online_cache_key
 from projects.models import Project
-from projects.serializers import CollaboratorSerializer
 from .models import CustomUser, Expert, Investor, Member, Mentor, UserAchievement
 
 
@@ -90,17 +89,13 @@ class UserDetailSerializer(serializers.ModelSerializer):
     is_online = serializers.SerializerMethodField()
     projects = serializers.SerializerMethodField()
 
-    @classmethod
-    def get_projects(cls, user: CustomUser):
+    def get_projects(self, user: CustomUser):
         return UserProjectsSerializer(
             [
                 collab.project
-                for collab in user.collaborations.select_related("project").filter(
-                    project__is_draft=False
-                )
-                # TODO: put this in user collaborations manager or something
+                for collab in user.collaborations.filter(project__draft=False)
             ],
-            context={"request": cls.context.get("request")},
+            context={"request": self.context.get("request")},
             many=True,
         ).data
 
@@ -222,6 +217,9 @@ class UserProjectsSerializer(serializers.ModelSerializer):
 
     @classmethod
     def get_collaborator(cls, project):
+        # TODO: fix me, import in a functon
+        from projects.serializers import CollaboratorSerializer
+
         user = cls.context.get("request").user
 
         return CollaboratorSerializer(
