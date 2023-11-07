@@ -89,14 +89,13 @@ class UserDetailSerializer(serializers.ModelSerializer):
     is_online = serializers.SerializerMethodField()
     projects = serializers.SerializerMethodField()
 
-    @classmethod
-    def get_projects(cls, user: CustomUser):
+    def get_projects(self, user: CustomUser):
         return UserProjectsSerializer(
             [
                 collab.project
-                for collab in user.collaborations.select_related("project").all()
-                if not collab.project.draft
+                for collab in user.collaborations.filter(project__draft=False)
             ],
+            context={"request": self.context.get("request")},
             many=True,
         ).data
 
@@ -213,7 +212,18 @@ class UserDetailSerializer(serializers.ModelSerializer):
 
 class UserProjectsSerializer(serializers.ModelSerializer):
     short_description = serializers.SerializerMethodField()
-    views_count = serializers.SerializerMethodField(method_name="get_views_count")
+    views_count = serializers.SerializerMethodField()
+    collaborator = serializers.SerializerMethodField(method_name="get_collaborator")
+
+    def get_collaborator(self, project: Project):
+        # TODO: fix me, import in a functon
+        from projects.serializers import CollaboratorSerializer
+
+        user = self.context.get("request").user
+
+        return CollaboratorSerializer(
+            project.collaborator_set.get(user=user), many=False
+        ).data
 
     @classmethod
     def get_views_count(cls, project):
@@ -233,8 +243,9 @@ class UserProjectsSerializer(serializers.ModelSerializer):
             "image_address",
             "industry",
             "views_count",
+            "collaborator",
         ]
-        read_only_fields = ["leader"]
+        read_only_fields = ["leader", "collaborator"]
 
 
 class UserListSerializer(serializers.ModelSerializer):

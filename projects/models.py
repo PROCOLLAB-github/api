@@ -9,7 +9,7 @@ from core.models import Like, View
 from files.models import UserFile
 from industries.models import Industry
 from projects.constants import VERBOSE_STEPS
-from projects.managers import AchievementManager, ProjectManager
+from projects.managers import AchievementManager, CollaboratorManager, ProjectManager
 from users.models import CustomUser
 
 User = get_user_model()
@@ -214,6 +214,8 @@ class Collaborator(models.Model):
     datetime_updated = models.DateTimeField(
         verbose_name="Дата изменения", null=False, auto_now=True
     )
+
+    objects = CollaboratorManager()
 
     class Meta:
         verbose_name = "Коллаборатор"
