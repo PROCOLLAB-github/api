@@ -213,9 +213,9 @@ class UserDetailSerializer(serializers.ModelSerializer):
 class UserProjectsSerializer(serializers.ModelSerializer):
     short_description = serializers.SerializerMethodField()
     views_count = serializers.SerializerMethodField()
-    collaborator = serializers.SerializerMethodField()
+    collaborator = serializers.SerializerMethodField(method_name="get_collaborator")
 
-    def get_collaborator(self, project):
+    def get_collaborator(self, project: Project):
         # TODO: fix me, import in a functon
         from projects.serializers import CollaboratorSerializer
 
