@@ -95,7 +95,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
                 collab.project
                 for collab in user.collaborations.filter(project__draft=False)
             ],
-            context={"request": self.context.get("request")},
+            context={"request": self.context.get("request"), "user": user},
             many=True,
         ).data
 
@@ -219,7 +219,7 @@ class UserProjectsSerializer(serializers.ModelSerializer):
         # TODO: fix me, import in a functon
         from projects.serializers import CollaboratorSerializer
 
-        user = self.context.get("request").user
+        user = self.context.get("request").user if self.context.get("user") is None else self.context.get("user")
 
         return CollaboratorSerializer(
             project.collaborator_set.get(user=user), many=False
