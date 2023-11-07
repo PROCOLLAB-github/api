@@ -5,6 +5,7 @@ from django.core.cache import cache
 from core.services import get_views_count
 from core.utils import get_user_online_cache_key
 from projects.models import Project
+from projects.serializers import CollaboratorSerializer
 from .models import CustomUser, Expert, Investor, Member, Mentor, UserAchievement
 
 
@@ -94,9 +95,12 @@ class UserDetailSerializer(serializers.ModelSerializer):
         return UserProjectsSerializer(
             [
                 collab.project
-                for collab in user.collaborations.select_related("project").all()
-                if not collab.project.draft
+                for collab in user.collaborations.select_related("project").filter(
+                    project__is_draft=False
+                )
+                # TODO: put this in user collaborations manager or something
             ],
+            context={"request": cls.context.get("request")},
             many=True,
         ).data
 
@@ -213,7 +217,16 @@ class UserDetailSerializer(serializers.ModelSerializer):
 
 class UserProjectsSerializer(serializers.ModelSerializer):
     short_description = serializers.SerializerMethodField()
-    views_count = serializers.SerializerMethodField(method_name="get_views_count")
+    views_count = serializers.SerializerMethodField()
+    collaborator = serializers.SerializerMethodField()
+
+    @classmethod
+    def get_collaborator(cls, project):
+        user = cls.context.get("request").user
+
+        return CollaboratorSerializer(
+            project.collaborator_set.filter(user=user), many=False
+        ).data
 
     @classmethod
     def get_views_count(cls, project):
@@ -233,8 +246,9 @@ class UserProjectsSerializer(serializers.ModelSerializer):
             "image_address",
             "industry",
             "views_count",
+            "collaborator",
         ]
-        read_only_fields = ["leader"]
+        read_only_fields = ["leader", "collaborator"]
 
 
 class UserListSerializer(serializers.ModelSerializer):
