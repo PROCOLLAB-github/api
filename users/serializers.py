@@ -91,10 +91,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
 
     def get_projects(self, user: CustomUser):
         return UserProjectsSerializer(
-            [
-                collab.project
-                for collab in user.collaborations.filter(project__draft=False)
-            ],
+            [collab.project for collab in user.collaborations.get(project__draft=False)],
             context={"request": self.context.get("request")},
             many=True,
         ).data
