@@ -215,12 +215,11 @@ class UserProjectsSerializer(serializers.ModelSerializer):
     views_count = serializers.SerializerMethodField()
     collaborator = serializers.SerializerMethodField()
 
-    @classmethod
-    def get_collaborator(cls, project):
+    def get_collaborator(self, project):
         # TODO: fix me, import in a functon
         from projects.serializers import CollaboratorSerializer
 
-        user = cls.context.get("request").user
+        user = self.context.get("request").user
 
         return CollaboratorSerializer(
             project.collaborator_set.filter(user=user), many=False
