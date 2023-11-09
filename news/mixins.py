@@ -13,27 +13,27 @@ class NewsQuerysetMixin:
     """
 
     def get_queryset_for_project(self):
-        project_id = self.kwargs.get("project_pk")
+        project_pk = self.kwargs.get("project_pk")
         try:
-            project = Project.objects.get(pk=project_id)
+            project = Project.objects.get(pk=project_pk)
         except Project.DoesNotExist:
             # TODO: raise http 404 here
             return News.objects.none()
         return News.objects.get_news(obj=project)
 
     def get_queryset_for_program(self):
-        partner_program_id = self.kwargs.get("partnerprogram_pk")
+        partnerprogram_pk = self.kwargs.get("partnerprogram_pk")
         try:
-            program = PartnerProgram.objects.get(pk=partner_program_id)
+            program = PartnerProgram.objects.get(pk=partnerprogram_pk)
         except PartnerProgram.DoesNotExist:
             # TODO: raise http 404 here
             return News.objects.none()
         return News.objects.get_news(obj=program)
 
     def get_queryset_for_user(self):
-        user_id = self.kwargs.get("user_pk")
+        user_pk = self.kwargs.get("user_pk")
         try:
-            user = User.objects.get(pk=user_id)
+            user = User.objects.get(pk=user_pk)
         except User.DoesNotExist:
             # TODO: raise http 404 here
             return News.objects.none()
