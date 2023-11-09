@@ -5,6 +5,7 @@ from django.core.cache import cache
 from core.services import get_views_count
 from core.utils import get_user_online_cache_key
 from projects.models import Project
+from projects.validators import validate_project
 from .models import CustomUser, Expert, Investor, Member, Mentor, UserAchievement
 
 
@@ -322,3 +323,38 @@ class PasswordSerializer(serializers.Serializer):
 
 class ResendVerifyEmailSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
+
+
+class UserProjectListSerializer(serializers.ModelSerializer):
+    views_count = serializers.SerializerMethodField(method_name="count_views")
+    short_description = serializers.SerializerMethodField()
+
+    @classmethod
+    def count_views(cls, project):
+        return get_views_count(project)
+
+    @classmethod
+    def get_short_description(cls, project):
+        return project.get_short_description()
+
+    class Meta:
+        model = Project
+        fields = [
+            "id",
+            "name",
+            "leader",
+            "short_description",
+            "image_address",
+            "industry",
+            "views_count",
+            "draft",
+        ]
+
+        read_only_fields = ["leader", "views_count"]
+
+    def is_valid(self, *, raise_exception=False):
+        return super().is_valid(raise_exception=raise_exception)
+
+    def validate(self, data):
+        super().validate(data)
+        return validate_project(data)

@@ -50,6 +50,7 @@ from users.serializers import (
     UserListSerializer,
     VerifyEmailSerializer,
     ResendVerifyEmailSerializer,
+    UserProjectListSerializer,
 )
 from .filters import UserFilter
 from .pagination import UsersPagination
@@ -253,18 +254,21 @@ class AchievementDetail(RetrieveUpdateDestroyAPIView):
 class UserProjectsList(GenericAPIView):
     permission_classes = [IsAuthenticated]
     pagination_class = ProjectsPagination
-    serializer_class = ProjectListSerializer
+    serializer_class = UserProjectListSerializer
 
     def get(self, request):
-        queryset = Project.objects.get_user_projects_for_list_view().filter(
+        self.queryset = Project.objects.get_user_projects_for_list_view().filter(
             Q(leader_id=self.request.user.id) | Q(collaborator__user=self.request.user)
         )
 
-        page = self.paginate_queryset(queryset)
+        page = self.paginate_queryset(self.queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(
+            {"detail": "Unable to return paginated list"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
 
 class LogoutView(APIView):
