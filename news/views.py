@@ -29,7 +29,6 @@ class NewsList(NewsQuerysetMixin, generics.ListCreateAPIView):
                 NewsDetailSerializer(news).data, status=status.HTTP_201_CREATED
             )
         elif kwargs.get("user_pk"):
-            # creating user news
             user = get_object_or_404(User, pk=kwargs["user_pk"])
             news = News.objects.add_news(user, **request.data)
             return Response(
