@@ -4,7 +4,7 @@ from django.core.cache import cache
 
 from core.services import get_views_count
 from core.utils import get_user_online_cache_key
-from projects.models import Project
+from projects.models import Project, Collaborator
 from projects.validators import validate_project
 from .models import CustomUser, Expert, Investor, Member, Mentor, UserAchievement
 
@@ -221,10 +221,12 @@ class UserProjectsSerializer(serializers.ModelSerializer):
         from projects.serializers import CollaboratorSerializer
 
         user = self.context.get("request").user
+        try:
+            collaborator = project.collaborator_set.get(user=user)
+        except Collaborator.DoesNotExist:
+            return {}
 
-        return CollaboratorSerializer(
-            project.collaborator_set.get(user=user), many=False
-        ).data
+        return CollaboratorSerializer(collaborator).data
 
     @classmethod
     def get_views_count(cls, project):
