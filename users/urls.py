@@ -1,5 +1,6 @@
 from django.urls import path, re_path, include
 
+from news.views import NewsList, NewsDetail, NewsDetailSetViewed, NewsDetailSetLiked
 from users.views import (
     AchievementDetail,
     AchievementList,
@@ -35,6 +36,10 @@ urlpatterns = [
     path("users/<int:pk>/", UserDetail.as_view()),
     path("users/<int:pk>/set_onboarding_stage/", SetUserOnboardingStage.as_view()),
     path("users/<int:pk>/force_verify/", ForceVerifyView.as_view()),
+    path("users/<int:user_pk>/news/", NewsList.as_view()),
+    path("users/<int:user_pk>/news/<int:pk>/", NewsDetail.as_view()),
+    path("users/<int:user_pk>/news/<int:pk>/set_viewed/", NewsDetailSetViewed.as_view()),
+    path("users/<int:user_pk>/news/<int:pk>/set_liked/", NewsDetailSetLiked.as_view()),
     path("users/current/", CurrentUser.as_view()),
     # todo: change password view
     path("users/current/programs/", CurrentUserPrograms.as_view()),
