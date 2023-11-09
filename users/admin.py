@@ -1,9 +1,10 @@
 from django.conf import settings
 from django.contrib import admin
+from django.shortcuts import redirect
 from django.urls import path
 
 from mailing.views import MailingTemplateRender
-from .helpers import send_verification_completed_email
+from .helpers import send_verification_completed_email, force_verify_user
 from .models import (
     CustomUser,
     UserAchievement,
@@ -157,6 +158,11 @@ class CustomUserAdmin(admin.ModelAdmin):
                 self.admin_site.admin_view(self.mailing),
                 name="user_mailing",
             ),
+            path(
+                "force_verify/<int:object_id>/",
+                self.admin_site.admin_view(self.force_verify),
+                name="force_verify",
+            ),
         ]
         return custom_urls + default_urls
 
@@ -164,6 +170,11 @@ class CustomUserAdmin(admin.ModelAdmin):
         user = CustomUser.objects.get(pk=user_object)
         users = [user]
         return MailingTemplateRender().render_template(request, None, users, None)
+
+    def force_verify(self, request, object_id):
+        user = CustomUser.objects.get(pk=object_id)
+        force_verify_user(user)
+        return redirect("admin:users_customuser_change", object_id)
 
 
 @admin.register(UserAchievement)
