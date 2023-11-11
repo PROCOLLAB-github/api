@@ -1,8 +1,12 @@
+from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from core.services import is_fan, get_likes_count, get_views_count
 from files.serializers import UserFileSerializer
+from news.mapping import NewsMapping
 from news.models import News
+
+User = get_user_model()
 
 
 class NewsListSerializer(serializers.ModelSerializer):
@@ -14,10 +18,10 @@ class NewsListSerializer(serializers.ModelSerializer):
     files = UserFileSerializer(many=True)
 
     def get_name(self, obj):
-        return obj.content_object.name
+        return NewsMapping.get_name(obj.content_object)
 
     def get_image_address(self, obj):
-        return obj.content_object.image_address
+        return NewsMapping.get_image_address(obj.content_object)
 
     def get_views_count(self, obj):
         return get_views_count(obj)
@@ -26,7 +30,6 @@ class NewsListSerializer(serializers.ModelSerializer):
         return get_likes_count(obj)
 
     def get_is_user_liked(self, obj):
-        # fixme: move this method to helpers somewhere
         user = self.context.get("user")
         if user:
             return is_fan(obj, user)
@@ -55,10 +58,10 @@ class NewsDetailSerializer(serializers.ModelSerializer):
     is_user_liked = serializers.SerializerMethodField()
 
     def get_name(self, obj):
-        return obj.content_object.name
+        return NewsMapping.get_name(obj.content_object)
 
     def get_image_address(self, obj):
-        return obj.content_object.image_address
+        return NewsMapping.get_image_address(obj.content_object)
 
     def get_views_count(self, obj):
         return get_views_count(obj)
