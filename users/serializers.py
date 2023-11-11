@@ -96,7 +96,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
                 collab.project
                 for collab in user.collaborations.filter(project__draft=False)
             ],
-            context={"request": self.context.get("request")},
+            context={"request": self.context.get("request"), "user": user},
             many=True,
         ).data
 
