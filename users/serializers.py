@@ -220,7 +220,11 @@ class UserProjectsSerializer(serializers.ModelSerializer):
         # TODO: fix me, import in a functon
         from projects.serializers import CollaboratorSerializer
 
-        user = self.context.get("request").user
+        user = (
+            self.context.get("request").user
+            if self.context.get("user") is None
+            else self.context.get("user")
+        )
         try:
             collaborator = project.collaborator_set.get(user=user)
         except Collaborator.DoesNotExist:
