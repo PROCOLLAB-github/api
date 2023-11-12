@@ -10,7 +10,11 @@ from news.mixins import NewsQuerysetMixin
 from news.models import News
 from news.pagination import NewsPagination
 from news.permissions import IsNewsCreatorOrReadOnly
-from news.serializers import NewsListSerializer, NewsDetailSerializer
+from news.serializers import (
+    NewsListSerializer,
+    NewsDetailSerializer,
+    NewsListCreateSerializer,
+)
 from projects.models import Project
 
 User = get_user_model()
@@ -22,21 +26,25 @@ class NewsList(NewsQuerysetMixin, generics.ListCreateAPIView):
     pagination_class = NewsPagination
 
     def post(self, request, *args, **kwargs):
+        serializer = NewsListCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
         if kwargs.get("project_pk"):
             project = get_object_or_404(Project, pk=kwargs["project_pk"])
-            news = News.objects.add_news(project, **request.data)
+            news = News.objects.add_news(project, **data)
             return Response(
                 NewsDetailSerializer(news).data, status=status.HTTP_201_CREATED
             )
-        elif kwargs.get("user_pk"):
+        if kwargs.get("user_pk"):
             user = get_object_or_404(User, pk=kwargs["user_pk"])
-            news = News.objects.add_news(user, **request.data)
+            news = News.objects.add_news(user, **data)
             return Response(
                 NewsDetailSerializer(news).data, status=status.HTTP_201_CREATED
             )
-        else:
-            # creating partner program news, not implemented yet, return 400
-            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+        # creating partner program news, not implemented yet, return 400
+        return Response(status=status.HTTP_400_BAD_REQUEST)
 
     def get(self, request, *args, **kwargs):
         news = self.paginate_queryset(self.get_queryset())
