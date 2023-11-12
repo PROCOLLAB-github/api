@@ -150,7 +150,6 @@ class PartnerProgramRegister(generics.GenericAPIView):
                 partner_program=program,
             )
             added_user_profile.save()
-
             return Response(status=status.HTTP_201_CREATED)
         except PartnerProgram.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
