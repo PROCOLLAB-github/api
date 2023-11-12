@@ -10,7 +10,11 @@ from news.mixins import NewsQuerysetMixin
 from news.models import News
 from news.pagination import NewsPagination
 from news.permissions import IsNewsCreatorOrReadOnly
-from news.serializers import NewsListSerializer, NewsDetailSerializer
+from news.serializers import (
+    NewsListSerializer,
+    NewsDetailSerializer,
+    NewsListCreateSerializer,
+)
 from projects.models import Project
 
 User = get_user_model()
@@ -22,7 +26,7 @@ class NewsList(NewsQuerysetMixin, generics.ListCreateAPIView):
     pagination_class = NewsPagination
 
     def post(self, request, *args, **kwargs):
-        serializer = NewsListSerializer(data=request.data)
+        serializer = NewsListCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
