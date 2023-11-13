@@ -1,4 +1,5 @@
 from typing import Dict, List, Union
+from .constants import QUANTITY_MAILING_USERS_IN_GROUP
 
 import django.db.models
 from django.contrib.auth import get_user_model
@@ -9,28 +10,40 @@ from django.template import Context, Template
 User = get_user_model()
 
 
+def new_connection(old_connection):
+    old_connection.close()
+    connection = mail.get_connection()
+    return connection
+
+
+def get_users_groups(users_list):
+    users_groups_list = [users_list[user:user + QUANTITY_MAILING_USERS_IN_GROUP] for user in
+                         range(0, len(users_list), QUANTITY_MAILING_USERS_IN_GROUP)]
+    return users_groups_list
+
+
 def send_mail(
-    user: User,
-    subject: str,
-    template_string: str,
-    template_context: Union[
-        Dict,
-        List,
-    ] = None,
-    connection=None,
+        user: User,
+        subject: str,
+        template_string: str,
+        template_context: Union[
+            Dict,
+            List,
+        ] = None,
+        connection=None,
 ):
     return send_mass_mail([user], subject, template_string, template_context, connection)
 
 
 def send_mass_mail(
-    users: django.db.models.QuerySet | List[User],
-    subject: str,
-    template_string: str,
-    template_context: Union[
-        Dict,
-        List,
-    ] = None,
-    connection=None,
+        users: django.db.models.QuerySet | List[User],
+        subject: str,
+        template_string: str,
+        template_context: Union[
+            Dict,
+            List,
+        ] = None,
+        connection=None,
 ) -> None:
     """
     Begin mailing to specified users, sending rendered template with template_text arg.
