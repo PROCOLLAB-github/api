@@ -1,8 +1,9 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
-
+from django.core.cache import cache
 from core.fields import CustomListField
 from core.services import get_views_count, get_likes_count, is_fan
+from core.utils import get_user_online_cache_key
 from files.serializers import UserFileSerializer
 from industries.models import Industry
 from projects.models import Project, Achievement, Collaborator, ProjectNews
@@ -274,4 +275,27 @@ class ProjectNewsDetailSerializer(serializers.ModelSerializer):
             "likes_count",
             "is_user_liked",
             "files",
+        ]
+
+
+class ProjectSubscribersListSerializer(serializers.ModelSerializer):
+    is_online = serializers.SerializerMethodField()
+
+    def get_is_online(self, user: User) -> bool:
+        request = self.context.get("request")
+        if request and request.user.is_authenticated and request.user.id == user.id:
+            return True
+
+        cache_key = get_user_online_cache_key(user)
+        is_online = cache.get(cache_key, False)
+        return is_online
+
+    class Meta:
+        model = User
+        fields = [
+            "id",
+            "first_name",
+            "last_name",
+            "avatar",
+            "is_online",
         ]
