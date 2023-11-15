@@ -2,31 +2,22 @@ import django.db.models
 from django.http import JsonResponse
 from django.shortcuts import render
 from rest_framework.views import APIView
-from django.core import mail
 
 from users.models import CustomUser
 from .utils import send_mass_mail
 from .models import MailingSchema
-from .utils import get_users_groups, new_connection
+from .utils import prepare_mail_data
 
 
 class SendMailView(APIView):
     def post(self, request):
-        users = request.POST.getlist("users[]")
-        schema_id = request.POST["schemas"]
-        subject = request.POST["subject"]
-        mail_schema = MailingSchema.objects.get(pk=schema_id)
-        context = {}
-        for variable_name in mail_schema.schema:
-            key_in_post = "field-" + variable_name
-            if key_in_post in request.POST:
-                context[variable_name] = request.POST[key_in_post]
-        users_to_send = CustomUser.objects.filter(pk__in=users)
-        users_groups = get_users_groups(users_to_send)
-        connection = mail.get_connection()
-        for group in users_groups:
-            send_mass_mail(users_to_send, subject, mail_schema.template, context, connection)
-            connection = new_connection(connection)
+        mail_data_dict = prepare_mail_data(request.POST)
+        send_mass_mail(
+            mail_data_dict["users_to_send"],
+            mail_data_dict["subject"],
+            mail_data_dict["mail_schema_template"],
+            mail_data_dict["context"],
+        )
         return JsonResponse({"detail": "ok"})
 
 
@@ -47,11 +38,11 @@ class MailingTemplateRender:
 
     @classmethod
     def render_template(
-            cls,
-            request,
-            schema_id: int | None = None,
-            picked_users: list[CustomUser] | django.db.models.QuerySet = None,
-            unpicked_users: list[CustomUser] | django.db.models.QuerySet = None,
+        cls,
+        request,
+        schema_id: int | None = None,
+        picked_users: list[CustomUser] | django.db.models.QuerySet = None,
+        unpicked_users: list[CustomUser] | django.db.models.QuerySet = None,
     ):
         return render(
             request,
@@ -65,10 +56,10 @@ class MailingTemplateRender:
 
     @classmethod
     def _get_context(
-            cls,
-            schema_id: int | None = None,
-            picked_users: list[CustomUser] | django.db.models.QuerySet = None,
-            unpicked_users: list[CustomUser] | django.db.models.QuerySet = None,
+        cls,
+        schema_id: int | None = None,
+        picked_users: list[CustomUser] | django.db.models.QuerySet = None,
+        unpicked_users: list[CustomUser] | django.db.models.QuerySet = None,
     ):
         context = cls._get_schema_context(schema_id)
         context += cls._get_users_context(picked_users, unpicked_users)
@@ -89,9 +80,9 @@ class MailingTemplateRender:
 
     @classmethod
     def _get_users_context(
-            cls,
-            picked_users: list[CustomUser] | django.db.models.QuerySet = None,
-            unpicked_users: list[CustomUser] | django.db.models.QuerySet = None,
+        cls,
+        picked_users: list[CustomUser] | django.db.models.QuerySet = None,
+        unpicked_users: list[CustomUser] | django.db.models.QuerySet = None,
     ):
         if picked_users is None:
             picked_users = []

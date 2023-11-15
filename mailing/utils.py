@@ -1,5 +1,7 @@
 from typing import Dict, List, Union
 from .constants import QUANTITY_MAILING_USERS_IN_GROUP
+from .models import MailingSchema
+from users.models import CustomUser
 
 import django.db.models
 from django.contrib.auth import get_user_model
@@ -8,6 +10,26 @@ from django.core.mail import EmailMultiAlternatives
 from django.template import Context, Template
 
 User = get_user_model()
+
+
+def prepare_mail_data(post_data):
+    users = post_data.getlist("users[]")
+    schema_id = post_data["schemas"]
+    subject = post_data["subject"]
+    mail_schema = MailingSchema.objects.get(pk=schema_id)
+    context = {}
+    for variable_name in mail_schema.schema:
+        key_in_post = "field-" + variable_name
+        if key_in_post in post_data:
+            context[variable_name] = post_data[key_in_post]
+    users_to_send = CustomUser.objects.filter(pk__in=users)
+    data_dict = {
+        "users_to_send": users_to_send,
+        "subject": subject,
+        "mail_schema_template": mail_schema.template,
+        "context": context,
+    }
+    return data_dict
 
 
 def new_connection(old_connection):
