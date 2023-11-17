@@ -13,6 +13,7 @@ from projects.views import (
     ProjectRecommendedUsers,
     SetLikeOnProject,
     ProjectSubscribe,
+    ProjectUnsubscribe,
     ProjectSubscribers,
 )
 
@@ -23,6 +24,7 @@ urlpatterns = [
     path("<int:pk>/like/", SetLikeOnProject.as_view()),
     path("<int:project_pk>/news/", NewsList.as_view()),
     path("<int:project_pk>/subscribe/", ProjectSubscribe.as_view()),
+    path("<int:project_pk>/unsubscribe/", ProjectUnsubscribe.as_view()),
     path("<int:project_pk>/subscribers/", ProjectSubscribers.as_view()),
     path("<int:project_pk>/news/<int:pk>/", NewsDetail.as_view()),
     path("<int:project_pk>/news/<int:pk>/set_viewed/", NewsDetailSetViewed.as_view()),

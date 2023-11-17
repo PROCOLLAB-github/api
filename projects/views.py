@@ -420,11 +420,44 @@ class ProjectSubscribe(APIView):
             project = Project.objects.get(pk=project_pk)
         except Project.DoesNotExist:
             raise NotFound
-
-        project.subscribers.add(request.user)
+        try:
+            project.subscribers.add(request.user)
+        except Exception:
+            return Response(
+                {
+                    "detail": f"User {request.user.id} is not part of project {project.pk}."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         logger.info(f"User {request.user.id} subscribed to project {project_pk}")
 
         return Response(
             {"detail": "Subscriber was successfully added"}, status=status.HTTP_200_OK
+        )
+
+
+class ProjectUnsubscribe(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, project_pk):
+        try:
+            project = Project.objects.get(pk=project_pk)
+        except Project.DoesNotExist:
+            raise NotFound
+        try:
+            project.subscribers.remove(request.user)
+            # todo: add more specific error here
+        except Exception:
+            return Response(
+                {
+                    "detail": f"User {request.user.id} is not part of project {project.pk}."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        logger.info(f"User {request.user.id} unsubscribed to project {project_pk}")
+
+        return Response(
+            {"detail": "Subscriber was successfully removed"}, status=status.HTTP_200_OK
         )
