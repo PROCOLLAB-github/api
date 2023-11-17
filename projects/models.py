@@ -107,6 +107,10 @@ class Project(models.Model):
         blank=True,
     )
 
+    subscribers = models.ManyToManyField(
+        User, verbose_name="Подписчики", related_name="subscribed_projects"
+    )
+
     datetime_created = models.DateTimeField(
         verbose_name="Дата создания", null=False, auto_now_add=True
     )
