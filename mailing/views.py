@@ -10,13 +10,13 @@ from .utils import prepare_mail_data
 
 
 class SendMailView(APIView):
-    def post(self, request):
-        mail_data_dict = prepare_mail_data(request.POST)
+    def post(self, request) -> JsonResponse:
+        mail_data: dict = prepare_mail_data(request.POST)
         send_mass_mail(
-            mail_data_dict["users_to_send"],
-            mail_data_dict["subject"],
-            mail_data_dict["mail_schema_template"],
-            mail_data_dict["context"],
+            mail_data["users_to_send"],
+            mail_data["subject"],
+            mail_data["mail_schema_template"],
+            mail_data["context"],
         )
         return JsonResponse({"detail": "ok"})
 

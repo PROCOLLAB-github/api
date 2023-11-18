@@ -1,5 +1,5 @@
 from typing import Dict, List, Union
-from .constants import QUANTITY_MAILING_USERS_IN_GROUP
+from .constants import MAILING_USERS_BATCH_SIZE
 from .models import MailingSchema
 from users.models import CustomUser
 
@@ -12,7 +12,7 @@ from django.template import Context, Template
 User = get_user_model()
 
 
-def prepare_mail_data(post_data):
+def prepare_mail_data(post_data) -> dict:
     users = post_data.getlist("users[]")
     schema_id = post_data["schemas"]
     subject = post_data["subject"]
@@ -32,16 +32,12 @@ def prepare_mail_data(post_data):
     return data_dict
 
 
-def new_connection(old_connection):
-    old_connection.close()
-    connection = mail.get_connection()
-    return connection
-
-
-def get_users_groups(users_list):
-    users_groups_list = [users_list[user:user + QUANTITY_MAILING_USERS_IN_GROUP] for user in
-                         range(0, len(users_list), QUANTITY_MAILING_USERS_IN_GROUP)]
-    return users_groups_list
+def create_message_groups(messages: list) -> list[list]:
+    grouped_messages: list[list] = [
+        messages[message: message + MAILING_USERS_BATCH_SIZE]
+        for message in range(0, len(messages), MAILING_USERS_BATCH_SIZE)
+    ]
+    return grouped_messages
 
 
 def send_mail(
@@ -57,6 +53,13 @@ def send_mail(
     return send_mass_mail([user], subject, template_string, template_context, connection)
 
 
+def send_group_messages(messages: list) -> int:
+    connection = mail.get_connection()
+    num_sent = connection.send_messages(messages)
+    connection.close()
+    return num_sent
+
+
 def send_mass_mail(
         users: django.db.models.QuerySet | List[User],
         subject: str,
@@ -66,7 +69,7 @@ def send_mass_mail(
             List,
         ] = None,
         connection=None,
-) -> None:
+) -> int:
     """
     Begin mailing to specified users, sending rendered template with template_text arg.
     Throws an error if template render is unsuccessful.
@@ -80,16 +83,18 @@ def send_mass_mail(
     if template_context is None:
         template_context = {}
 
-    connection = connection or mail.get_connection()
     template = Template(template_string)
     messages = []
     for user in users:
         template_context["user"] = user
         html_msg = template.render(Context(template_context))
         plain_msg = template.render(Context(template_context))
-        msg = EmailMultiAlternatives(
-            subject, plain_msg, None, [user.email], connection=connection
-        )
+        msg = EmailMultiAlternatives(subject, plain_msg, None, [user.email])
         msg.attach_alternative(html_msg, "text/html")
         messages.append(msg)
-    return connection.send_messages(messages)
+
+    grouped_messages = create_message_groups(messages)
+    num_sent: int = 0
+    for group in grouped_messages:
+        num_sent += send_group_messages(group)
+    return num_sent

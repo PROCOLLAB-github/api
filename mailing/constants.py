@@ -9,4 +9,4 @@ def get_default_mailing_schema() -> dict[str, dict[str, str]]:
     }
 
 
-QUANTITY_MAILING_USERS_IN_GROUP = 100
+MAILING_USERS_BATCH_SIZE = 100
