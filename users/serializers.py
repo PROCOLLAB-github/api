@@ -123,9 +123,13 @@ class UserProjectsSerializer(serializers.ModelSerializer):
         read_only_fields = ["leader", "collaborator"]
 
 
-class UserSubscriptionSerializer(serializers.ModelSerializer):
+class UserSubscribedProjectsSerializer(serializers.ModelSerializer):
     short_description = serializers.SerializerMethodField()
     views_count = serializers.SerializerMethodField()
+
+    @classmethod
+    def get_views_count(cls, project):
+        return get_views_count(project)
 
     @classmethod
     def get_short_description(cls, project):
@@ -142,6 +146,7 @@ class UserSubscriptionSerializer(serializers.ModelSerializer):
             "industry",
             "views_count",
         ]
+        read_only_fields = ["leader", "collaborator"]
 
 
 class UserDetailSerializer(serializers.ModelSerializer):
@@ -155,7 +160,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
     is_online = serializers.SerializerMethodField()
     projects = serializers.SerializerMethodField()
     # inline serializer with fields name, id, image_address, source is self.subscribed_projects
-    subscribed_projects = UserSubscriptionSerializer(many=True, read_only=True)
+    subscribed_projects = UserSubscribedProjectsSerializer(many=True, read_only=True)
 
     def get_projects(self, user: CustomUser):
         return UserProjectsSerializer(
