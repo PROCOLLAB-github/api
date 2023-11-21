@@ -138,6 +138,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
             "verification_date",
             "onboarding_stage",
             "projects",
+            "subscribed_projects",
         ]
 
     def update(self, instance, validated_data):
