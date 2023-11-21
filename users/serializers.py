@@ -79,6 +79,50 @@ class InvestorSerializer(serializers.ModelSerializer):
         ]
 
 
+class UserProjectsSerializer(serializers.ModelSerializer):
+    short_description = serializers.SerializerMethodField()
+    views_count = serializers.SerializerMethodField()
+    collaborator = serializers.SerializerMethodField(method_name="get_collaborator")
+
+    def get_collaborator(self, project: Project):
+        # TODO: fix me, import in a functon
+        from projects.serializers import CollaboratorSerializer
+
+        user = (
+            self.context.get("request").user
+            if self.context.get("user") is None
+            else self.context.get("user")
+        )
+        try:
+            collaborator = project.collaborator_set.get(user=user)
+        except Collaborator.DoesNotExist:
+            return {}
+
+        return CollaboratorSerializer(collaborator).data
+
+    @classmethod
+    def get_views_count(cls, project):
+        return get_views_count(project)
+
+    @classmethod
+    def get_short_description(cls, project):
+        return project.get_short_description()
+
+    class Meta:
+        model = Project
+        fields = [
+            "id",
+            "name",
+            "leader",
+            "short_description",
+            "image_address",
+            "industry",
+            "views_count",
+            "collaborator",
+        ]
+        read_only_fields = ["leader", "collaborator"]
+
+
 class UserDetailSerializer(serializers.ModelSerializer):
     member = MemberSerializer(required=False)
     investor = InvestorSerializer(required=False)
@@ -89,6 +133,10 @@ class UserDetailSerializer(serializers.ModelSerializer):
     links = serializers.SerializerMethodField()
     is_online = serializers.SerializerMethodField()
     projects = serializers.SerializerMethodField()
+    # inline serializer with fields name, id, image_address, source is self.subscribed_projects
+    subscribed_projects = UserProjectsSerializer(
+        source="subscribed_projects", many=True, read_only=True
+    )
 
     def get_projects(self, user: CustomUser):
         return UserProjectsSerializer(
@@ -210,50 +258,6 @@ class UserDetailSerializer(serializers.ModelSerializer):
 
         instance.save()
         return instance
-
-
-class UserProjectsSerializer(serializers.ModelSerializer):
-    short_description = serializers.SerializerMethodField()
-    views_count = serializers.SerializerMethodField()
-    collaborator = serializers.SerializerMethodField(method_name="get_collaborator")
-
-    def get_collaborator(self, project: Project):
-        # TODO: fix me, import in a functon
-        from projects.serializers import CollaboratorSerializer
-
-        user = (
-            self.context.get("request").user
-            if self.context.get("user") is None
-            else self.context.get("user")
-        )
-        try:
-            collaborator = project.collaborator_set.get(user=user)
-        except Collaborator.DoesNotExist:
-            return {}
-
-        return CollaboratorSerializer(collaborator).data
-
-    @classmethod
-    def get_views_count(cls, project):
-        return get_views_count(project)
-
-    @classmethod
-    def get_short_description(cls, project):
-        return project.get_short_description()
-
-    class Meta:
-        model = Project
-        fields = [
-            "id",
-            "name",
-            "leader",
-            "short_description",
-            "image_address",
-            "industry",
-            "views_count",
-            "collaborator",
-        ]
-        read_only_fields = ["leader", "collaborator"]
 
 
 class UserListSerializer(serializers.ModelSerializer):
