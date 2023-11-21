@@ -134,9 +134,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
     is_online = serializers.SerializerMethodField()
     projects = serializers.SerializerMethodField()
     # inline serializer with fields name, id, image_address, source is self.subscribed_projects
-    subscribed_projects = UserProjectsSerializer(
-        source="subscribed_projects", many=True, read_only=True
-    )
+    subscribed_projects = UserProjectsSerializer(many=True, read_only=True)
 
     def get_projects(self, user: CustomUser):
         return UserProjectsSerializer(
