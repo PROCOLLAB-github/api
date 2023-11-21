@@ -96,12 +96,12 @@ class CustomUser(AbstractUser):
         verbose_name="Стадия онбординга",
         help_text="0, 1, 2 - номера стадий онбординга, null(пустое) - онбординг пройден",
     )
+
     verification_date = models.DateField(
         null=True,
         blank=True,
         verbose_name="Дата верификации",
     )
-
     datetime_updated = models.DateTimeField(auto_now=True)
     datetime_created = models.DateTimeField(auto_now_add=True)
 
