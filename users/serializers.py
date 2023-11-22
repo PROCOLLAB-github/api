@@ -159,8 +159,6 @@ class UserDetailSerializer(serializers.ModelSerializer):
     links = serializers.SerializerMethodField()
     is_online = serializers.SerializerMethodField()
     projects = serializers.SerializerMethodField()
-    # inline serializer with fields name, id, image_address, source is self.subscribed_projects
-    subscribed_projects = UserSubscribedProjectsSerializer(many=True, read_only=True)
 
     def get_projects(self, user: CustomUser):
         return UserProjectsSerializer(
@@ -210,7 +208,6 @@ class UserDetailSerializer(serializers.ModelSerializer):
             "verification_date",
             "onboarding_stage",
             "projects",
-            "subscribed_projects",
         ]
 
     def update(self, instance, validated_data):
