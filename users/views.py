@@ -375,19 +375,14 @@ class ForceVerifyView(APIView):
             return Response(status=status.HTTP_404_NOT_FOUND)
 
 
-class UserSubscribedProjectsList(GenericAPIView):
+class UserSubscribedProjectsList(ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = UserSubscribedProjectsSerializer
-    queryset = Project.objects.all()
     pagination_class = Pagination
 
-    def get(self, request, *args, **kwargs):
+    def get_queryset(self):
         try:
             user = User.objects.get(pk=self.kwargs["pk"])
-            page = self.paginate_queryset(user.subscribed_projects.all())
-            if page is not None:
-                serializer = self.get_serializer(page, many=True)
-                return self.get_paginated_response(serializer.data)
-            raise exceptions.ValidationError("Unable to return paginated list")
+            return user.subscribed_projects.all()
         except User.DoesNotExist:
             raise exceptions.NotFound
