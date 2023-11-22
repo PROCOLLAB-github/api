@@ -7,7 +7,7 @@ from django.db.models import Q
 from django.shortcuts import redirect
 from django_filters import rest_framework as filters
 from rest_framework import status, permissions
-from rest_framework.exceptions import NotFound
+from rest_framework import exceptions
 from rest_framework.generics import (
     GenericAPIView,
     ListAPIView,
@@ -21,6 +21,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
+from core.pagination import Pagination
 from core.permissions import IsOwnerOrReadOnly
 from events.models import Event
 from events.serializers import EventsListSerializer
@@ -378,11 +379,15 @@ class UserSubscribedProjectsList(GenericAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = UserSubscribedProjectsSerializer
     queryset = Project.objects.all()
+    pagination_class = Pagination
 
     def get(self, request, *args, **kwargs):
         try:
             user = User.objects.get(pk=self.kwargs["pk"])
-            data = self.get_serializer(user.subscribed_projects.all(), many=True).data
-            return Response(status=status.HTTP_200_OK, data=data)
+            page = self.paginate_queryset(user.subscribed_projects.all())
+            if page is not None:
+                serializer = self.get_serializer(page, many=True)
+                return self.get_paginated_response(serializer.data)
+            raise exceptions.ValidationError("Unable to return paginated list")
         except User.DoesNotExist:
-            raise NotFound
+            raise exceptions.NotFound
