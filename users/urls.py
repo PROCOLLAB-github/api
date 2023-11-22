@@ -20,6 +20,7 @@ from users.views import (
     CurrentUserPrograms,
     CurrentUserProgramsTags,
     ForceVerifyView,
+    UserSubscribedProjectsList,
 )
 
 app_name = "users"
@@ -34,6 +35,7 @@ urlpatterns = [
     path("users/roles/", UserAdditionalRolesView.as_view()),
     path("users/types/", UserTypesView.as_view()),
     path("users/<int:pk>/", UserDetail.as_view()),
+    path("users/<int:pk>/subscribed_projects/", UserSubscribedProjectsList.as_view()),
     path("users/<int:pk>/set_onboarding_stage/", SetUserOnboardingStage.as_view()),
     path("users/<int:pk>/force_verify/", ForceVerifyView.as_view()),
     path("users/<int:user_pk>/news/", NewsList.as_view()),
