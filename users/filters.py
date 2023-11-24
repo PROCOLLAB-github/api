@@ -72,6 +72,9 @@ class UserFilter(filters.FilterSet):
     )
     fullname = filters.CharFilter(method="filter_by_fullname")
 
+    age__gte = filters.NumberFilter(field_name="age", lookup_expr="gte")
+    age__lte = filters.NumberFilter(field_name="age", lookup_expr="lte")
+
     class Meta:
         model = User
         fields = (
