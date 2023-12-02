@@ -65,6 +65,9 @@ class UserFilter(filters.FilterSet):
     key_skills__icontains = filters.Filter(
         field_name="key_skills", lookup_expr="icontains"
     )
+    speciality__icontains = filters.Filter(
+        field_name="speciality", lookup_expr="icontains"
+    )
     useful_to_project__contains = filters.Filter(
         field_name="useful_to_project", lookup_expr="contains"
     )
@@ -87,4 +90,5 @@ class UserFilter(filters.FilterSet):
             "region",
             "organization",
             "user_type",
+            "speciality",
         )
