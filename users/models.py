@@ -1,7 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.db.models import QuerySet
-
+from django_stubs_ext.db.models import TypedModelMeta
 from users.constants import (
     ADMIN,
     EXPERT,
@@ -149,7 +149,7 @@ class CustomUser(AbstractUser):
     def __str__(self) -> str:
         return f"User<{self.id}> - {self.first_name} {self.last_name}"
 
-    class Meta:
+    class Meta(TypedModelMeta):
         verbose_name = "Пользователь"
         verbose_name_plural = "Пользователи"
         # order by count of fields inputted, like avatar, key_skills, about_me, etc.

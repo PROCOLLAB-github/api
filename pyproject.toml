@@ -61,6 +61,8 @@ django-prometheus = "^2.3.1"
 loguru = "^0.7.1"
 tablib = {extras = ["xlsx"], version = "^3.5.0"}
 django-redis = "^5.3.0"
+django-stubs = {extras = ["compatible-mypy"], version = "^4.2.6"}
+djangorestframework-stubs = {extras = ["compatible-mypy"], version = "^3.14.4"}
 
 
 [build-system]
