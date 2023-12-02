@@ -62,7 +62,9 @@ class UserFilter(filters.FilterSet):
         )
 
     about_me__contains = filters.Filter(field_name="about_me", lookup_expr="contains")
-    key_skills__contains = filters.Filter(field_name="key_skills", lookup_expr="contains")
+    key_skills__icontains = filters.Filter(
+        field_name="key_skills", lookup_expr="icontains"
+    )
     useful_to_project__contains = filters.Filter(
         field_name="useful_to_project", lookup_expr="contains"
     )
