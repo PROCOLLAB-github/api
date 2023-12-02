@@ -181,7 +181,7 @@ class UserAchievement(models.Model):
     def __str__(self):
         return f"UserAchievement<{self.id}>"
 
-    class Meta:
+    class Meta(TypedModelMeta):
         verbose_name = "Достижение"
         verbose_name_plural = "Достижения"
 
@@ -207,7 +207,7 @@ class AbstractUserWithRole(models.Model):
         null=True,
     )
 
-    class Meta:
+    class Meta(TypedModelMeta):
         abstract = True
 
 
@@ -244,7 +244,7 @@ class LikesOnProject(models.Model):
     def __str__(self):
         return f"LikesOnProject<{self.id}>"
 
-    class Meta:
+    class Meta(TypedModelMeta):
         verbose_name = "Лайк на проект"
         verbose_name_plural = "Лайки на проекты"
         unique_together = ("user", "project")
@@ -267,6 +267,10 @@ class Member(models.Model):
     )
 
     useful_to_project = models.TextField(blank=True)
+
+    class Meta(TypedModelMeta):
+        verbose_name = "Участник"
+        verbose_name_plural = "Участники"
 
     def __str__(self):
         return f"Member<{self.id}> - {self.user.first_name} {self.user.last_name}"
@@ -291,6 +295,10 @@ class Mentor(AbstractUserWithRole):
     preferred_industries = models.CharField(max_length=4096, null=True, blank=True)
     useful_to_project = models.TextField(blank=True)
 
+    class Meta(TypedModelMeta):
+        verbose_name = "Ментор"
+        verbose_name_plural = "Менторы"
+
     def __str__(self):
         return f"Mentor<{self.id}> - {self.user.first_name} {self.user.last_name}"
 
@@ -314,7 +322,9 @@ class Expert(AbstractUserWithRole):
     preferred_industries = models.CharField(max_length=4096, null=True, blank=True)
     useful_to_project = models.TextField(blank=True)
 
-    # TODO reviews
+    class Meta(TypedModelMeta):
+        verbose_name = "Эксперт"
+        verbose_name_plural = "Эксперты"
 
     def __str__(self):
         return f"Expert<{self.id}> - {self.user.first_name} {self.user.last_name}"
@@ -337,6 +347,10 @@ class Investor(AbstractUserWithRole):
     )
     preferred_industries = models.CharField(max_length=4096, null=True, blank=True)
     interaction_process_description = models.TextField(blank=True)
+
+    class Meta(TypedModelMeta):
+        verbose_name = "Инвестор"
+        verbose_name_plural = "Инвесторы"
 
     def __str__(self):
         return f"Investor<{self.id}> - {self.user.first_name} {self.user.last_name}"
@@ -363,7 +377,7 @@ class UserLink(models.Model):
     def __str__(self):
         return f"UserLink<{self.id}> - {self.user.first_name} {self.user.last_name}"
 
-    class Meta:
+    class Meta(TypedModelMeta):
         verbose_name = "Ссылка пользователя"
         verbose_name_plural = "Ссылки пользователей"
         unique_together = ("user", "link")
