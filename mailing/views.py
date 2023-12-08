@@ -6,21 +6,18 @@ from rest_framework.views import APIView
 from users.models import CustomUser
 from .utils import send_mass_mail
 from .models import MailingSchema
+from .utils import prepare_mail_data
 
 
 class SendMailView(APIView):
-    def post(self, request):
-        users = request.POST.getlist("users[]")
-        schema_id = request.POST["schemas"]
-        subject = request.POST["subject"]
-        mail_schema = MailingSchema.objects.get(pk=schema_id)
-        context = {}
-        for variable_name in mail_schema.schema:
-            key_in_post = "field-" + variable_name
-            if key_in_post in request.POST:
-                context[variable_name] = request.POST[key_in_post]
-        users_to_send = CustomUser.objects.filter(pk__in=users)
-        send_mass_mail(users_to_send, subject, mail_schema.template, context)
+    def post(self, request) -> JsonResponse:
+        mail_data: dict = prepare_mail_data(request.POST)
+        send_mass_mail(
+            mail_data["users_to_send"],
+            mail_data["subject"],
+            mail_data["mail_schema_template"],
+            mail_data["context"],
+        )
         return JsonResponse({"detail": "ok"})
 
 

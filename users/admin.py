@@ -163,8 +163,17 @@ class CustomUserAdmin(admin.ModelAdmin):
                 self.admin_site.admin_view(self.force_verify),
                 name="force_verify",
             ),
+            path(
+                "mailing/",
+                self.admin_site.admin_view(self.mass_mail),
+                name="user_mass_mail",
+            ),
         ]
         return custom_urls + default_urls
+
+    def mass_mail(self, request):
+        users = CustomUser.objects.all()
+        return MailingTemplateRender().render_template(request, None, users, None)
 
     def mailing(self, request, user_object):
         user = CustomUser.objects.get(pk=user_object)
