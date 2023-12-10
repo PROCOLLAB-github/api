@@ -38,7 +38,7 @@ class UserFilter(filters.FilterSet):
                 .only("user")
             )
 
-            return queryset.filter(Q(birthday) )
+            return queryset.filter(pk__in=[profile.user.pk for profile in profiles_qs])
 
         except PartnerProgram.DoesNotExist:
             return User.objects.none()
