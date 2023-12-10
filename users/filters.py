@@ -1,6 +1,8 @@
+import datetime
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django_filters import rest_framework as filters
+from dateutil.relativedelta import relativedelta
 
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 
@@ -44,9 +46,12 @@ class UserFilter(filters.FilterSet):
             return User.objects.none()
 
     @classmethod
-    def filter_by_age(cls, queryset, name, value):
-        start, stop = value
-        return queryset.filter(Q(birthday__lte=stop) & Q(birthday__gte=start))
+    def filter_age__gte(cls, queryset, name, value):
+        return queryset.filter(birthday__gte=datetime.datetime.now() - relativedelta(years=int(value)))
+
+    @classmethod
+    def filter_age__lte(cls, queryset, name, value):
+        return queryset.filter(birthday__lte=datetime.datetime.now() - relativedelta(years=int(value)))
 
     @classmethod
     def filter_by_fullname(cls, queryset, name, value):
