@@ -44,7 +44,7 @@ class UserFilter(filters.FilterSet):
             return User.objects.none()
 
     @classmethod
-    def filter_by_partner_program(cls, queryset, name, value):
+    def filter_by_age(cls, queryset, name, value):
         start, stop = value
         return queryset.filter(Q(birthday__lte=stop) & Q(birthday__gte=start))
 
