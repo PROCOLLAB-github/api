@@ -189,8 +189,6 @@ class ProjectChatFileList(ListCreateAPIView):
 
     def get_queryset(self):
         try:
-            print("PK received:", self.kwargs)
-            print("PK RECEIVED", self.args)
             messages = ProjectChat.objects.get(id=self.kwargs["id"]).messages.all()
             return get_all_files(messages)
         except ProjectChat.DoesNotExist:
