@@ -277,7 +277,7 @@ class ProjectVacancyResponses(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return VacancyResponse.objects.filter(vacancy__project_id=self.kwargs["pk"])
+        return VacancyResponse.objects.filter(vacancy__project_id=self.kwargs["id"])
 
     def get(self, request, pk):
         queryset = self.get_queryset()

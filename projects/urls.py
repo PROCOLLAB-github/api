@@ -30,5 +30,5 @@ urlpatterns = [
     path("steps/", ProjectSteps.as_view()),
     path("achievements/", AchievementList.as_view()),
     path("achievements/<int:pk>/", AchievementDetail.as_view()),
-    path("<int:pk>/responses/", ProjectVacancyResponses.as_view()),
+    path("<int:id>/responses/", ProjectVacancyResponses.as_view()),
 ]
