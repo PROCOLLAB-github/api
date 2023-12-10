@@ -38,10 +38,15 @@ class UserFilter(filters.FilterSet):
                 .only("user")
             )
 
-            return queryset.filter(pk__in=[profile.user.pk for profile in profiles_qs])
+            return queryset.filter(Q(birthday) )
 
         except PartnerProgram.DoesNotExist:
             return User.objects.none()
+
+    @classmethod
+    def filter_by_partner_program(cls, queryset, name, value):
+        start, stop = value
+        return queryset.filter(Q(birthday__lte=stop) & Q(birthday__gte=start))
 
     @classmethod
     def filter_by_fullname(cls, queryset, name, value):
