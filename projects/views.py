@@ -1,7 +1,12 @@
+import logging
+
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django_filters import rest_framework as filters
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
 from rest_framework import generics, permissions, status
+from rest_framework.exceptions import NotFound
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -33,11 +38,14 @@ from projects.serializers import (
     ProjectCollaboratorSerializer,
     ProjectNewsListSerializer,
     ProjectNewsDetailSerializer,
+    ProjectSubscribersListSerializer,
 )
 from users.models import LikesOnProject
 from users.serializers import UserListSerializer
 from vacancy.models import VacancyResponse
 from vacancy.serializers import VacancyResponseListSerializer
+
+logger = logging.getLogger()
 
 User = get_user_model()
 
@@ -381,3 +389,75 @@ class ProjectNewsDetailSetLiked(generics.CreateAPIView):
             return Response(status=status.HTTP_200_OK)
         except ProjectNews.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
+
+
+class ProjectSubscribers(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        responses={
+            200: openapi.Response(
+                "List of project subscribers", ProjectSubscribersListSerializer(many=True)
+            )
+        }
+    )
+    def get(self, request, *args, **kwargs):
+        try:
+            project = Project.objects.get(pk=self.kwargs["project_pk"])
+        except Project.DoesNotExist:
+            raise NotFound
+        subscribers = ProjectSubscribersListSerializer(
+            project.subscribers.all(), many=True
+        ).data
+        return Response(subscribers, status=status.HTTP_200_OK)
+
+
+class ProjectSubscribe(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, project_pk):
+        try:
+            project = Project.objects.get(pk=project_pk)
+        except Project.DoesNotExist:
+            raise NotFound
+        try:
+            project.subscribers.add(request.user)
+        except Exception:
+            return Response(
+                {
+                    "detail": f"User {request.user.id} is not part of project {project.pk}."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        logger.info(f"User {request.user.id} subscribed to project {project_pk}")
+
+        return Response(
+            {"detail": "Subscriber was successfully added"}, status=status.HTTP_200_OK
+        )
+
+
+class ProjectUnsubscribe(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, project_pk):
+        try:
+            project = Project.objects.get(pk=project_pk)
+        except Project.DoesNotExist:
+            raise NotFound
+        try:
+            project.subscribers.remove(request.user)
+            # todo: add more specific error here
+        except Exception:
+            return Response(
+                {
+                    "detail": f"User {request.user.id} is not part of project {project.pk}."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        logger.info(f"User {request.user.id} unsubscribed to project {project_pk}")
+
+        return Response(
+            {"detail": "Subscriber was successfully removed"}, status=status.HTTP_200_OK
+        )

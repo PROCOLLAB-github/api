@@ -9,6 +9,15 @@ from news.models import News
 User = get_user_model()
 
 
+class NewsListCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = News
+        fields = [
+            "text",
+            "files",
+        ]
+
+
 class NewsListSerializer(serializers.ModelSerializer):
     views_count = serializers.SerializerMethodField()
     likes_count = serializers.SerializerMethodField()

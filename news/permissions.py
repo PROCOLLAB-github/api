@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from rest_framework import permissions
+from rest_framework.exceptions import NotFound
 from rest_framework.permissions import SAFE_METHODS
 
 from partner_programs.models import PartnerProgram
@@ -42,7 +43,7 @@ class IsNewsCreatorOrReadOnly(permissions.BasePermission):
                 if request.method in SAFE_METHODS or (request.user == project.leader):
                     return True
             except Project.DoesNotExist:
-                return False
+                raise NotFound
 
         if view.kwargs.get("user_pk"):
             try:
@@ -50,6 +51,6 @@ class IsNewsCreatorOrReadOnly(permissions.BasePermission):
                 if request.method in SAFE_METHODS or (request.user == user):
                     return True
             except User.DoesNotExist:
-                return False
+                raise NotFound
 
         return False

@@ -7,6 +7,7 @@ from django.db.models import Q
 from django.shortcuts import redirect
 from django_filters import rest_framework as filters
 from rest_framework import status, permissions
+from rest_framework import exceptions
 from rest_framework.generics import (
     GenericAPIView,
     ListAPIView,
@@ -20,6 +21,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
+from core.pagination import Pagination
 from core.permissions import IsOwnerOrReadOnly
 from events.models import Event
 from events.serializers import EventsListSerializer
@@ -51,6 +53,7 @@ from users.serializers import (
     VerifyEmailSerializer,
     ResendVerifyEmailSerializer,
     UserProjectListSerializer,
+    UserSubscribedProjectsSerializer,
 )
 from .filters import UserFilter
 from .pagination import UsersPagination
@@ -370,3 +373,16 @@ class ForceVerifyView(APIView):
             return Response(status=status.HTTP_200_OK)
         except User.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
+
+
+class UserSubscribedProjectsList(ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserSubscribedProjectsSerializer
+    pagination_class = Pagination
+
+    def get_queryset(self):
+        try:
+            user = User.objects.get(pk=self.kwargs["pk"])
+            return user.subscribed_projects.all()
+        except User.DoesNotExist:
+            raise exceptions.NotFound
