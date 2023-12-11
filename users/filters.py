@@ -46,12 +46,13 @@ class UserFilter(filters.FilterSet):
             return User.objects.none()
 
     @classmethod
-    def filter_age__gte(cls, queryset, name, value):
-        return queryset.filter(birthday__gte=datetime.datetime.now() - relativedelta(years=int(value)))
-
-    @classmethod
-    def filter_age__lte(cls, queryset, name, value):
-        return queryset.filter(birthday__lte=datetime.datetime.now() - relativedelta(years=int(value)))
+    def filter_age(cls, queryset, name, value):
+        start, stop = map(int, value.split(","))
+        start, stop = min(start, stop), max(start, stop)
+        return queryset.filter(
+            Q(birthday__gte=datetime.datetime.now() - relativedelta(years=int(stop)))
+            & Q(birthday__lte=datetime.datetime.now() - relativedelta(years=int(start)))
+        )
 
     @classmethod
     def filter_by_fullname(cls, queryset, name, value):
@@ -87,8 +88,7 @@ class UserFilter(filters.FilterSet):
     )
     fullname = filters.CharFilter(method="filter_by_fullname")
 
-    age__gte = filters.NumberFilter(field_name="age", lookup_expr="gte")
-    age__lte = filters.NumberFilter(field_name="age", lookup_expr="lte")
+    age = filters.Filter(field_name="age", method="filter_age")
 
     class Meta:
         model = User
