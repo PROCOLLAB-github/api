@@ -9,7 +9,7 @@ from projects.validators import validate_project
 from .models import CustomUser, Expert, Investor, Member, Mentor, UserAchievement
 
 
-class AchievementListSerializer(serializers.ModelSerializer):
+class AchievementListSerializer(serializers.ModelSerializer[UserAchievement]):
     class Meta:
         model = UserAchievement
         fields = ["id", "title", "status"]
@@ -34,7 +34,7 @@ class CustomListField(serializers.ListField):
         ]
 
 
-class MemberSerializer(serializers.ModelSerializer):
+class MemberSerializer(serializers.ModelSerializer[Member]):
     class Meta:
         model = Member
         fields = [
@@ -42,7 +42,7 @@ class MemberSerializer(serializers.ModelSerializer):
         ]
 
 
-class MentorSerializer(serializers.ModelSerializer):
+class MentorSerializer(serializers.ModelSerializer[Mentor]):
     preferred_industries = CustomListField(
         child=serializers.CharField(max_length=255),
     )
@@ -55,7 +55,7 @@ class MentorSerializer(serializers.ModelSerializer):
         ]
 
 
-class ExpertSerializer(serializers.ModelSerializer):
+class ExpertSerializer(serializers.ModelSerializer[Expert]):
     preferred_industries = CustomListField(
         child=serializers.CharField(max_length=255),
     )
@@ -68,7 +68,7 @@ class ExpertSerializer(serializers.ModelSerializer):
         ]
 
 
-class InvestorSerializer(serializers.ModelSerializer):
+class InvestorSerializer(serializers.ModelSerializer[Investor]):
     preferred_industries = CustomListField(child=serializers.CharField(max_length=255))
 
     class Meta:
@@ -79,7 +79,7 @@ class InvestorSerializer(serializers.ModelSerializer):
         ]
 
 
-class UserProjectsSerializer(serializers.ModelSerializer):
+class UserProjectsSerializer(serializers.ModelSerializer[Project]):
     short_description = serializers.SerializerMethodField()
     views_count = serializers.SerializerMethodField()
     collaborator = serializers.SerializerMethodField(method_name="get_collaborator")
@@ -123,7 +123,7 @@ class UserProjectsSerializer(serializers.ModelSerializer):
         read_only_fields = ["leader", "collaborator"]
 
 
-class UserSubscribedProjectsSerializer(serializers.ModelSerializer):
+class UserSubscribedProjectsSerializer(serializers.ModelSerializer[Project]):
     short_description = serializers.SerializerMethodField()
     views_count = serializers.SerializerMethodField()
 
@@ -149,7 +149,7 @@ class UserSubscribedProjectsSerializer(serializers.ModelSerializer):
         read_only_fields = ["leader", "collaborator"]
 
 
-class UserDetailSerializer(serializers.ModelSerializer):
+class UserDetailSerializer(serializers.ModelSerializer[CustomUser]):
     member = MemberSerializer(required=False)
     investor = InvestorSerializer(required=False)
     expert = ExpertSerializer(required=False)
@@ -159,8 +159,6 @@ class UserDetailSerializer(serializers.ModelSerializer):
     links = serializers.SerializerMethodField()
     is_online = serializers.SerializerMethodField()
     projects = serializers.SerializerMethodField()
-    # inline serializer with fields name, id, image_address, source is self.subscribed_projects
-    subscribed_projects = UserSubscribedProjectsSerializer(many=True, read_only=True)
 
     def get_projects(self, user: CustomUser):
         return UserProjectsSerializer(
@@ -210,7 +208,6 @@ class UserDetailSerializer(serializers.ModelSerializer):
             "verification_date",
             "onboarding_stage",
             "projects",
-            "subscribed_projects",
         ]
 
     def update(self, instance, validated_data):
@@ -284,7 +281,7 @@ class UserDetailSerializer(serializers.ModelSerializer):
         return instance
 
 
-class UserListSerializer(serializers.ModelSerializer):
+class UserListSerializer(serializers.ModelSerializer[CustomUser]):
     member = MemberSerializer(required=False)
     key_skills = KeySkillsField(required=False)
     is_online = serializers.SerializerMethodField()
@@ -332,7 +329,7 @@ class UserListSerializer(serializers.ModelSerializer):
         }
 
 
-class AchievementDetailSerializer(serializers.ModelSerializer):
+class AchievementDetailSerializer(serializers.ModelSerializer[UserAchievement]):
     class Meta:
         model = UserAchievement
         fields = [
@@ -360,7 +357,7 @@ class ResendVerifyEmailSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
 
 
-class UserProjectListSerializer(serializers.ModelSerializer):
+class UserProjectListSerializer(serializers.ModelSerializer[Project]):
     views_count = serializers.SerializerMethodField(method_name="count_views")
     short_description = serializers.SerializerMethodField()
 

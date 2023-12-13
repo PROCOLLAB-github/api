@@ -1,3 +1,4 @@
+import datetime
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django_filters import rest_framework as filters
@@ -44,6 +45,21 @@ class UserFilter(filters.FilterSet):
             return User.objects.none()
 
     @classmethod
+    def filter_age(cls, queryset, name, value):
+        start, stop = map(int, value.split(","))
+        start, stop = min(start, stop), max(start, stop)
+        return queryset.filter(
+            Q(
+                birthday__gte=datetime.datetime.now()
+                - datetime.timedelta(days=365.24 * int(stop))
+            )
+            & Q(
+                birthday__lte=datetime.datetime.now()
+                - datetime.timedelta(days=365.24 * int(start))
+            )
+        )
+
+    @classmethod
     def filter_by_fullname(cls, queryset, name, value):
         words = value.split()
         first_word = words[0]
@@ -62,7 +78,12 @@ class UserFilter(filters.FilterSet):
         )
 
     about_me__contains = filters.Filter(field_name="about_me", lookup_expr="contains")
-    key_skills__contains = filters.Filter(field_name="key_skills", lookup_expr="contains")
+    key_skills__icontains = filters.Filter(
+        field_name="key_skills", lookup_expr="icontains"
+    )
+    speciality__icontains = filters.Filter(
+        field_name="speciality", lookup_expr="icontains"
+    )
     useful_to_project__contains = filters.Filter(
         field_name="useful_to_project", lookup_expr="contains"
     )
@@ -71,6 +92,8 @@ class UserFilter(filters.FilterSet):
         field_name="partner_program", method="filter_by_partner_program"
     )
     fullname = filters.CharFilter(method="filter_by_fullname")
+
+    age = filters.Filter(field_name="age", method="filter_age")
 
     class Meta:
         model = User
@@ -82,4 +105,5 @@ class UserFilter(filters.FilterSet):
             "region",
             "organization",
             "user_type",
+            "speciality",
         )
