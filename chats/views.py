@@ -86,13 +86,13 @@ class DirectChatDetail(RetrieveAPIView):
 
     def get(self, request, *args, **kwargs) -> Response:
         try:
-            assert "_" in self.kwargs["id"], "pk must contain underscore"
+            assert "_" in self.kwargs["id"], "processed id must contain underscore"
 
             user1_id, user2_id = map(int, self.kwargs["id"].split("_"))
 
             assert (
                 request.user.id == user1_id or request.user.id == user2_id
-            ), "current user id is not present in pk"
+            ), "current user id is not present in raw id"
 
             user1 = User.objects.get(pk=user1_id)
             user2 = User.objects.get(pk=user2_id)
@@ -117,7 +117,7 @@ class DirectChatDetail(RetrieveAPIView):
         except ValueError:
             return Response(
                 status=status.HTTP_400_BAD_REQUEST,
-                data={"detail": "pk must contain two integers separated by underscore"},
+                data={"detail": "processed id must contain two integers separated by underscore"},
             )
         except AssertionError as e:
             return Response(status=status.HTTP_400_BAD_REQUEST, data={"detail": str(e)})
