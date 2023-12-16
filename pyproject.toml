@@ -31,8 +31,6 @@ packages = []
 python = "^3.11"
 djangorestframework = "^3.14.0"
 flake8 = "^5.0.4"
-flake8-print = "^5.0.0"
-flake8-variables-names = "^0.0.6"
 python-decouple = "^3.6"
 psycopg2-binary = "^2.9.4"
 django-cleanup = "^6.0.0"
@@ -65,6 +63,9 @@ tablib = {extras = ["xlsx"], version = "^3.5.0"}
 django-redis = "^5.3.0"
 django-stubs = {extras = ["compatible-mypy"], version = "^4.2.6"}
 djangorestframework-stubs = {extras = ["compatible-mypy"], version = "^3.14.4"}
+flake8-print = "^5.0.0"
+flake8-variables-names = "^0.0.6"
+
 
 
 [build-system]
