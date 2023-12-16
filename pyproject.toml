@@ -63,6 +63,8 @@ tablib = {extras = ["xlsx"], version = "^3.5.0"}
 django-redis = "^5.3.0"
 django-stubs = {extras = ["compatible-mypy"], version = "^4.2.6"}
 djangorestframework-stubs = {extras = ["compatible-mypy"], version = "^3.14.4"}
+flake8-print = "^5.0.0"
+flake8-variables-names = "^0.0.6"
 
 
 [build-system]
