@@ -280,13 +280,13 @@ class ProjectNews(models.Model):
 
 class UserSkill(models.Model):
     """
-    User achievement model
+    User skill model
     """
 
     skill = models.CharField(max_length=256, null=False)
     users = models.ManyToManyField(
         User,
-        related_name="achievements",
+        related_name="skills",
     )
 
     class Meta:
