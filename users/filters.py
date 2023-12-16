@@ -46,18 +46,24 @@ class UserFilter(filters.FilterSet):
 
     @classmethod
     def filter_age(cls, queryset, name, value):
-        start, stop = map(int, value.split(","))
-        start, stop = min(start, stop), max(start, stop)
-        return queryset.filter(
-            Q(
-                birthday__gte=datetime.datetime.now()
-                - datetime.timedelta(days=365.24 * int(stop))
+        if "," in value:
+            start, stop = map(int, value.split(","))
+            start, stop = min(start, stop), max(start, stop)
+            return queryset.filter(
+                Q(
+                    birthday__gte=datetime.datetime.now()
+                    - datetime.timedelta(days=365.24 * int(stop))
+                )
+                & Q(
+                    birthday__lte=datetime.datetime.now()
+                    - datetime.timedelta(days=365.24 * int(start))
+                )
             )
-            & Q(
+        else:
+            return queryset.filter(
                 birthday__lte=datetime.datetime.now()
-                - datetime.timedelta(days=365.24 * int(start))
+                - datetime.timedelta(days=365.24 * int(value))
             )
-        )
 
     @classmethod
     def filter_by_fullname(cls, queryset, name, value):
