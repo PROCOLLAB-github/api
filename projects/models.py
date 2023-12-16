@@ -276,38 +276,3 @@ class ProjectNews(models.Model):
         verbose_name = "Новость проекта"
         verbose_name_plural = "Новости проекта"
         ordering = ["-datetime_created"]
-
-
-class UserSkill(models.Model):
-    """
-    User skill model
-    """
-
-    skill = models.CharField(max_length=256, null=False)
-    users = models.ManyToManyField(
-        User,
-        related_name="skills",
-    )
-
-    class Meta:
-        verbose_name = "Навык пользователя"
-        verbose_name_plural = "Навыки пользователя"
-        ordering = ["skill"]
-
-
-class UserSkillTag(models.Model):
-    """
-    User skill tag model
-    """
-
-    skill_tag = models.CharField(max_length=256, null=False)
-    skill = models.ForeignKey(
-        "UserSkill",
-        on_delete=models.CASCADE,
-        related_name="tags",
-    )
-
-    class Meta:
-        verbose_name = "Тег навыка пользователя"
-        verbose_name_plural = "Теги навыков пользователя"
-        ordering = ["skill_tag"]
