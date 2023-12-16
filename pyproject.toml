@@ -67,7 +67,6 @@ flake8-print = "^5.0.0"
 flake8-variables-names = "^0.0.6"
 
 
-
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
