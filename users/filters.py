@@ -45,8 +45,8 @@ class UserFilter(filters.FilterSet):
             return User.objects.none()
 
     @classmethod
-    def filter_age(cls, queryset, name, value):
-        start, stop = map(int, value.split(","))
+    def filter_age(cls, queryset, start, stop):
+        # start, stop = map(int, value.split(","))
         start, stop = min(start, stop), max(start, stop)
         return queryset.filter(
             Q(
@@ -58,6 +58,14 @@ class UserFilter(filters.FilterSet):
                 - datetime.timedelta(days=365.24 * int(start))
             )
         )
+
+    @classmethod
+    def filter_age__gte(cls, queryset, name, value):
+        return cls.filter_age(queryset, value, 1000)
+
+    @classmethod
+    def filter_age__lte(cls, queryset, name, value):
+        return cls.filter_age(queryset, 0, value)
 
     @classmethod
     def filter_by_fullname(cls, queryset, name, value):
@@ -93,7 +101,8 @@ class UserFilter(filters.FilterSet):
     )
     fullname = filters.CharFilter(method="filter_by_fullname")
 
-    age = filters.Filter(field_name="age", method="filter_age")
+    age__gte = filters.Filter(method="filter_age__gte")
+    age__lte = filters.Filter(method="filter_age__lte")
 
     class Meta:
         model = User
