@@ -1,11 +1,13 @@
-import datetime
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django_filters import rest_framework as filters
 
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
+from users.utils import filter_age
 
 User = get_user_model()
+MIN_AGE_VALUE = 0
+MAX_AGE_VALUE = 1000
 
 
 class UserFilter(filters.FilterSet):
@@ -45,27 +47,12 @@ class UserFilter(filters.FilterSet):
             return User.objects.none()
 
     @classmethod
-    def filter_age(cls, queryset, start, stop):
-        # start, stop = map(int, value.split(","))
-        start, stop = min(start, stop), max(start, stop)
-        return queryset.filter(
-            Q(
-                birthday__gte=datetime.datetime.now()
-                - datetime.timedelta(days=365.24 * int(stop))
-            )
-            & Q(
-                birthday__lte=datetime.datetime.now()
-                - datetime.timedelta(days=365.24 * int(start))
-            )
-        )
-
-    @classmethod
     def filter_age__gte(cls, queryset, name, value):
-        return cls.filter_age(queryset, value, 1000)
+        return filter_age(queryset, value, MAX_AGE_VALUE)
 
     @classmethod
     def filter_age__lte(cls, queryset, name, value):
-        return cls.filter_age(queryset, 0, value)
+        return filter_age(queryset, MIN_AGE_VALUE, value)
 
     @classmethod
     def filter_by_fullname(cls, queryset, name, value):
