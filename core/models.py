@@ -150,3 +150,14 @@ class SkillToObject(models.Model):
     )
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey("content_type", "object_id")
+
+
+class SpecializationCategory(models.Model):
+    name = models.TextField()
+
+
+class Specialization(models.Model):
+    name = models.TextField()
+    category = models.ForeignKey(
+        SpecializationCategory, related_name="specializations", on_delete=models.CASCADE
+    )
