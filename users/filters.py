@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django_filters import rest_framework as filters
 
+from core.models import Specialization
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 
 User = get_user_model()
@@ -107,3 +108,11 @@ class UserFilter(filters.FilterSet):
             "user_type",
             "speciality",
         )
+
+
+class SpecializationFilter(filters.FilterSet):
+    name__icontains = filters.Filter(field_name="name", lookup_expr="icontains")
+
+    class Meta:
+        model = Specialization
+        fields = ("name",)
