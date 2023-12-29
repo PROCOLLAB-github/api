@@ -2,7 +2,6 @@
 
 from django.db import migrations
 
-from partner_programs.models import PartnerProgramUserProfile
 
 FIELDS_TO_DELETE = [
     'password',
@@ -18,6 +17,7 @@ FIELDS_TO_DELETE = [
 
 
 def normalize_profiles_data(apps, schema_editor):
+    PartnerProgramUserProfile = apps.get_model("partner_programs", "PartnerProgramUserProfile")
     for profile in PartnerProgramUserProfile.objects.all():
         program_data = profile.partner_program_data
         if any(field in program_data for field in FIELDS_TO_DELETE):
