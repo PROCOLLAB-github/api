@@ -2,6 +2,7 @@ from django.forms.models import model_to_dict
 from rest_framework import serializers
 from django.core.cache import cache
 
+from core.models import SpecializationCategory, Specialization
 from core.services import get_views_count
 from core.utils import get_user_online_cache_key
 from projects.models import Project, Collaborator
@@ -390,3 +391,20 @@ class UserProjectListSerializer(serializers.ModelSerializer[Project]):
     def validate(self, data):
         super().validate(data)
         return validate_project(data)
+
+
+class SpecializationSerializer(serializers.ModelSerializer[Specialization]):
+    class Meta:
+        model = SpecializationCategory
+        fields = [
+            "id",
+            "name",
+        ]
+
+
+class SpecializationsSerializer(serializers.ModelSerializer[SpecializationCategory]):
+    specializations = SpecializationSerializer(many=True)
+
+    class Meta:
+        model = SpecializationCategory
+        fields = ["id", "name", "specializations"]
