@@ -21,6 +21,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
+from core.models import SpecializationCategory, Specialization
 from core.pagination import Pagination
 from core.permissions import IsOwnerOrReadOnly
 from events.models import Event
@@ -54,8 +55,10 @@ from users.serializers import (
     ResendVerifyEmailSerializer,
     UserProjectListSerializer,
     UserSubscribedProjectsSerializer,
+    SpecializationsSerializer,
+    SpecializationSerializer,
 )
-from .filters import UserFilter
+from .filters import UserFilter, SpecializationFilter
 from .pagination import UsersPagination
 from .services.verification import VerificationTasks
 
@@ -386,3 +389,22 @@ class UserSubscribedProjectsList(ListAPIView):
             return user.subscribed_projects.all()
         except User.DoesNotExist:
             raise exceptions.NotFound
+
+
+class UserSpecializationsNestedView(GenericAPIView):
+    serializer_class = SpecializationsSerializer
+    queryset = SpecializationCategory.objects.all()
+
+    def get(self, request):
+        data = self.serializer_class(self.get_queryset(), many=True).data
+        return Response(status=status.HTTP_200_OK, data=data)
+
+
+class UserSpecializationsInlineView(ListAPIView):
+    serializer_class = SpecializationSerializer
+    pagination_class = Pagination
+    filter_backends = (filters.DjangoFilterBackend,)
+    filterset_class = SpecializationFilter
+
+    def get_queryset(self):
+        return Specialization.objects.all()

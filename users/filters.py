@@ -1,11 +1,14 @@
-import datetime
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django_filters import rest_framework as filters
 
+from core.models import Specialization
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
+from users.utils import filter_age
 
 User = get_user_model()
+MIN_AGE_VALUE = 0
+MAX_AGE_VALUE = 1000
 
 
 class UserFilter(filters.FilterSet):
@@ -45,19 +48,12 @@ class UserFilter(filters.FilterSet):
             return User.objects.none()
 
     @classmethod
-    def filter_age(cls, queryset, name, value):
-        start, stop = map(int, value.split(","))
-        start, stop = min(start, stop), max(start, stop)
-        return queryset.filter(
-            Q(
-                birthday__gte=datetime.datetime.now()
-                - datetime.timedelta(days=365.24 * int(stop))
-            )
-            & Q(
-                birthday__lte=datetime.datetime.now()
-                - datetime.timedelta(days=365.24 * int(start))
-            )
-        )
+    def filter_age__gte(cls, queryset, name, value):
+        return filter_age(queryset, value, MAX_AGE_VALUE)
+
+    @classmethod
+    def filter_age__lte(cls, queryset, name, value):
+        return filter_age(queryset, MIN_AGE_VALUE, value)
 
     @classmethod
     def filter_by_fullname(cls, queryset, name, value):
@@ -93,7 +89,8 @@ class UserFilter(filters.FilterSet):
     )
     fullname = filters.CharFilter(method="filter_by_fullname")
 
-    age = filters.Filter(field_name="age", method="filter_age")
+    age__gte = filters.Filter(method="filter_age__gte")
+    age__lte = filters.Filter(method="filter_age__lte")
 
     class Meta:
         model = User
@@ -107,3 +104,11 @@ class UserFilter(filters.FilterSet):
             "user_type",
             "speciality",
         )
+
+
+class SpecializationFilter(filters.FilterSet):
+    name__icontains = filters.Filter(field_name="name", lookup_expr="icontains")
+
+    class Meta:
+        model = Specialization
+        fields = ("name",)
