@@ -101,35 +101,35 @@ class View(Model):
         return f"View<{self.user} - {self.content_object}>"
 
 
+class SkillCategory(models.Model):
+    """
+    Skill category model
+    """
+
+    category = models.CharField(max_length=256, null=False)
+
+    class Meta:
+        verbose_name = "Категория навыка"
+        verbose_name_plural = "Категории навыков"
+        ordering = ["category"]
+
+
 class Skill(models.Model):
     """
     Skill model
     """
 
     skill = models.CharField(max_length=256, null=False)
+    category = models.ForeignKey(
+        SkillCategory,
+        on_delete=models.CASCADE,
+        related_name="skills",
+    )
 
     class Meta:
         verbose_name = "Навык"
         verbose_name_plural = "Навыки"
-        ordering = ["skill"]
-
-
-class UserSkillTag(models.Model):
-    """
-    User skill tag model
-    """
-
-    skill_tag = models.CharField(max_length=256, null=False)
-    skill = models.ForeignKey(
-        Skill,
-        on_delete=models.CASCADE,
-        related_name="tags",
-    )
-
-    class Meta:
-        verbose_name = "Тег навыка"
-        verbose_name_plural = "Теги навыков"
-        ordering = ["skill_tag"]
+        ordering = ["category", "skill"]
 
 
 class SkillToObject(models.Model):
@@ -161,3 +161,17 @@ class Specialization(models.Model):
     category = models.ForeignKey(
         SpecializationCategory, related_name="specializations", on_delete=models.CASCADE
     )
+
+
+class SpecializationToObject(models.Model):
+    specialization = models.ForeignKey(
+        Specialization, related_name="specializations", on_delete=models.CASCADE
+    )
+
+    content_type = models.ForeignKey(
+        ContentType,
+        on_delete=models.CASCADE,
+        related_name="specializations",
+    )
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey("content_type", "object_id")
