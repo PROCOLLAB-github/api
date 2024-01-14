@@ -106,12 +106,12 @@ class SkillCategory(models.Model):
     Skill category model
     """
 
-    category = models.CharField(max_length=256, null=False)
+    name = models.CharField(max_length=256, null=False)
 
     class Meta:
         verbose_name = "Категория навыка"
         verbose_name_plural = "Категории навыков"
-        ordering = ["category"]
+        ordering = ["name"]
 
 
 class Skill(models.Model):
@@ -119,7 +119,7 @@ class Skill(models.Model):
     Skill model
     """
 
-    skill = models.CharField(max_length=256, null=False)
+    name = models.CharField(max_length=256, null=False)
     category = models.ForeignKey(
         SkillCategory,
         on_delete=models.CASCADE,
@@ -129,7 +129,7 @@ class Skill(models.Model):
     class Meta:
         verbose_name = "Навык"
         verbose_name_plural = "Навыки"
-        ordering = ["category", "skill"]
+        ordering = ["category", "name"]
 
 
 class SkillToObject(models.Model):
