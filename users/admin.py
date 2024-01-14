@@ -60,6 +60,7 @@ class CustomUserAdmin(admin.ModelAdmin):
                     "region",
                     "organization",
                     "speciality",
+                    "v2_speciality",
                     "key_skills",
                 )
             },
@@ -107,6 +108,8 @@ class CustomUserAdmin(admin.ModelAdmin):
         "is_superuser",
         "city",
     )
+
+    raw_id_fields = ("v2_speciality",)
 
     readonly_fields = ("ordering_score",)
     change_form_template = "users/admin/users_change_form.html"

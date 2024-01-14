@@ -8,6 +8,7 @@ from core.utils import get_user_online_cache_key
 from projects.models import Project, Collaborator
 from projects.validators import validate_project
 from .models import CustomUser, Expert, Investor, Member, Mentor, UserAchievement
+from .validators import specialization_exists_validator
 
 
 class AchievementListSerializer(serializers.ModelSerializer[UserAchievement]):
@@ -78,6 +79,23 @@ class InvestorSerializer(serializers.ModelSerializer[Investor]):
             "interaction_process_description",
             "preferred_industries",
         ]
+
+
+class SpecializationSerializer(serializers.ModelSerializer[Specialization]):
+    class Meta:
+        model = SpecializationCategory
+        fields = [
+            "id",
+            "name",
+        ]
+
+
+class SpecializationsSerializer(serializers.ModelSerializer[SpecializationCategory]):
+    specializations = SpecializationSerializer(many=True)
+
+    class Meta:
+        model = SpecializationCategory
+        fields = ["id", "name", "specializations"]
 
 
 class UserProjectsSerializer(serializers.ModelSerializer[Project]):
@@ -160,6 +178,10 @@ class UserDetailSerializer(serializers.ModelSerializer[CustomUser]):
     links = serializers.SerializerMethodField()
     is_online = serializers.SerializerMethodField()
     projects = serializers.SerializerMethodField()
+    v2_speciality = SpecializationSerializer(read_only=True)
+    v2_speciality_id = serializers.IntegerField(
+        write_only=True, validators=[specialization_exists_validator]
+    )
 
     def get_projects(self, user: CustomUser):
         return UserProjectsSerializer(
@@ -194,6 +216,8 @@ class UserDetailSerializer(serializers.ModelSerializer[CustomUser]):
             "key_skills",
             "birthday",
             "speciality",
+            "v2_speciality",
+            "v2_speciality_id",
             "organization",
             "about_me",
             "avatar",
@@ -391,20 +415,3 @@ class UserProjectListSerializer(serializers.ModelSerializer[Project]):
     def validate(self, data):
         super().validate(data)
         return validate_project(data)
-
-
-class SpecializationSerializer(serializers.ModelSerializer[Specialization]):
-    class Meta:
-        model = SpecializationCategory
-        fields = [
-            "id",
-            "name",
-        ]
-
-
-class SpecializationsSerializer(serializers.ModelSerializer[SpecializationCategory]):
-    specializations = SpecializationSerializer(many=True)
-
-    class Meta:
-        model = SpecializationCategory
-        fields = ["id", "name", "specializations"]
