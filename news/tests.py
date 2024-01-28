@@ -24,21 +24,17 @@ class NewsTestCase(TestCase):
             "industry": Industry.objects.create(name="Test Industry").id,
             "step": 1,
         }
-        self.user = self.user_create()
-        self.project = self.create_project(self.user, self.project_create_data)
-        self.news = self.create_news(
-            self.user, self.project, {"title": "Test News", "content": "Test Content"}
-        )
-
-    def test_news_creation(self):
-        news_data = {
+        self.project = self.project_create(self.project_create_data)
+        self.news_create_data = {
             "title": "Test News",
             "content": "Test Content",
             "project": self.project.pk,
         }
 
-        request = self.factory.post("news/", news_data)
-        force_authenticate(request, user=self.user)
+    def test_news_creation(self):
+        user = self.user_create()
+        request = self.factory.post("news/", self.news_create_data)
+        force_authenticate(request, user=user)
 
         response = self.news_list_view(request)
         self.assertEqual(response.status_code, 201)
@@ -47,44 +43,47 @@ class NewsTestCase(TestCase):
         self.assertEqual(response.data["project"], self.project.pk)
 
     def test_news_creation_with_wrong_data(self):
-        news_data = {
-            "title": "T" * 257,
-            "content": "Test Content",
-            "project": self.project.pk,
-        }
-
-        request = self.factory.post("news/", news_data)
-        force_authenticate(request, user=self.user)
-
+        user = self.user_create()
+        request = self.factory.post(
+            "news/",
+            {
+                "title": "T" * 257,
+                "content": "Test Content",
+                "project": self.project.pk,
+            },
+        )
+        force_authenticate(request, user=user)
         response = self.news_list_view(request)
         self.assertEqual(response.status_code, 400)
 
     def test_news_deletion(self):
-        request = self.factory.delete(f"news/{self.news.pk}/")
-        force_authenticate(request, user=self.user)
-
-        response = self.news_list_view(request)
-        self.assertEqual(response.status_code, 204)
-
-    def create_project(self, user, project_data):
-        request = self.factory.post("projects/", project_data)
-        force_authenticate(request, user=user)
-
-        response = self.project_list_view(request)
-        project_id = response.data["id"]
-        return Project.objects.get(id=project_id)
-
-    def create_news(self, user, project, news_data):
-        request = self.factory.post("news/", news_data)
+        user = self.user_create()
+        request = self.factory.post("news/", self.news_create_data)
         force_authenticate(request, user=user)
 
         response = self.news_list_view(request)
         news_id = response.data["id"]
-        return News.objects.get(id=news_id)
+        news = News.objects.get(id=news_id)
+
+        request = self.factory.delete(f"news/{news.pk}/")
+        self.assertEqual(response.status_code, 204)
+
+    def project_create(self, project_data):
+        user = self.user_create()
+        request = self.factory.post("projects/", project_data)
+        force_authenticate(request, user=user)
+
+        response = self.project_list_view(request)
+        print(response.status_code)
+        print(response.data)
+        project_id = response.data["id"]
+        return Project.objects.get(id=project_id)
 
     def user_create(self):
         request = self.factory.post("auth/users/", USER_CREATE_DATA)
         response = self.user_list_view(request)
+        print(response.status_code)
+        print(response.data)
         user_id = response.data["id"]
         user = CustomUser.objects.get(id=user_id)
         user.is_active = True

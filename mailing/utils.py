@@ -41,14 +41,14 @@ def create_message_groups(messages: list) -> list[list]:
 
 
 def send_mail(
-        user: User,
-        subject: str,
-        template_string: str,
-        template_context: Union[
-            Dict,
-            List,
-        ] = None,
-        connection=None,
+    user: User,
+    subject: str,
+    template_string: str,
+    template_context: Union[
+        Dict,
+        List,
+    ] = None,
+    connection=None,
 ):
     return send_mass_mail([user], subject, template_string, template_context, connection)
 
@@ -61,14 +61,14 @@ def send_group_messages(messages: list) -> int:
 
 
 def send_mass_mail(
-        users: django.db.models.QuerySet | List[User],
-        subject: str,
-        template_string: str,
-        template_context: Union[
-            Dict,
-            List,
-        ] = None,
-        connection=None,
+    users: django.db.models.QuerySet | List[User],
+    subject: str,
+    template_string: str,
+    template_context: Union[
+        Dict,
+        List,
+    ] = None,
+    connection=None,
 ) -> int:
     """
     Begin mailing to specified users, sending rendered template with template_text arg.
