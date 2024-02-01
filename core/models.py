@@ -108,6 +108,9 @@ class SkillCategory(models.Model):
 
     name = models.CharField(max_length=256, null=False)
 
+    def __str__(self):
+        return self.name
+
     class Meta:
         verbose_name = "Категория навыка"
         verbose_name_plural = "Категории навыков"
