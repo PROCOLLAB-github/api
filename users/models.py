@@ -2,6 +2,7 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.db.models import QuerySet
 from django_stubs_ext.db.models import TypedModelMeta
+from django.contrib.contenttypes.fields import GenericRelation
 
 from users.constants import (
     ADMIN,
@@ -76,7 +77,14 @@ class CustomUser(AbstractUser):
     patronymic = models.CharField(
         max_length=255, validators=[user_name_validator], null=True, blank=True
     )
-    key_skills = models.CharField(max_length=512, null=True, blank=True)
+    key_skills = models.CharField(
+        max_length=512, null=True, blank=True
+    )  # to be deprecated in future
+    skills = GenericRelation(
+        "core.SkillToObject",
+        related_query_name="users",
+    )
+
     avatar = models.URLField(null=True, blank=True)
     birthday = models.DateField(
         validators=[user_birthday_validator],
@@ -125,7 +133,7 @@ class CustomUser(AbstractUser):
         score = 0
         if self.avatar:
             score += 10
-        if self.key_skills:
+        if self.skills_count > 0:
             score += 7
         if self.about_me:
             score += 6
@@ -145,9 +153,6 @@ class CustomUser(AbstractUser):
         user_project_ids = self.collaborations.all().values_list("project_id", flat=True)
         return ProjectChat.objects.filter(project__in=user_project_ids)
 
-    def get_key_skills(self) -> list[str]:
-        return [skill.strip() for skill in self.key_skills.split(",") if skill.strip()]
-
     def get_full_name(self) -> str:
         return f"{self.first_name} {self.last_name}"
 
@@ -157,7 +162,7 @@ class CustomUser(AbstractUser):
     class Meta(TypedModelMeta):
         verbose_name = "Пользователь"
         verbose_name_plural = "Пользователи"
-        # order by count of fields inputted, like avatar, key_skills, about_me, etc.
+        # order by count of fields inputted, like avatar, skills, about_me, etc.
         # first show users with all fields inputted, then with 1 field inputted, etc.
         ordering = ["-ordering_score", "id"]
 
