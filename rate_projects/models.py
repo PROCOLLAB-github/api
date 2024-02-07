@@ -4,6 +4,7 @@ from django.db import models
 from partner_programs.models import PartnerProgram
 from projects.models import Project
 from .constants import TYPES, get_type
+from .validators import ProjectScoreValidate
 
 User = get_user_model()
 
@@ -118,6 +119,18 @@ class ProjectScore(models.Model):
 
     def __str__(self):
         return f"ProjectScore<{self.id}> - {self.criteria.name}"
+
+    def save(self, *args, **kwargs):
+        ProjectScoreValidate(
+            criteria_type=self.criteria.type,
+            value_int=self.value_int,
+            value_str=self.value_str,
+            value_bool=self.value_bool,
+            value_float=self.value_float,
+            criteria_min_value=self.criteria.min_value,
+            criteria_max_value=self.criteria.max_value
+        )
+        super().save(*args, **kwargs)
 
 
     class Meta:
