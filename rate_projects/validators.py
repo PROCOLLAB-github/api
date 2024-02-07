@@ -1,6 +1,16 @@
 from rate_projects.constants import get_type
 
 
+
+def find_filled_field(data):
+    filled_fields = []
+    for field in ['value_int', 'value_bool', 'value_str', 'value_float']:
+        if data[field] is not None:
+            filled_fields.append(data[field])
+    return filled_fields
+
+
+
 class ProjectScoreValidate:
     def __init__(self, **kwargs):
         self.criteria_type = kwargs.get('criteria_type')
