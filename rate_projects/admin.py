@@ -23,7 +23,4 @@ class ProjectScoreAdmin(admin.ModelAdmin):
         "id",
         # добавить проект / программу
     )
-    list_display_links = (
-        "id",
-    )
-
+    list_display_links = ("id",)

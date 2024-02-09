@@ -3,10 +3,11 @@ from django.db import models
 
 from partner_programs.models import PartnerProgram
 from projects.models import Project
-from .constants import TYPES, get_type
+from .constants import VERBOSE_NAME_TYPES
 from .validators import ProjectScoreValidate
 
 User = get_user_model()
+
 
 class Criteria(models.Model):
     """
@@ -21,32 +22,22 @@ class Criteria(models.Model):
         partner_program: A ForeignKey connection to PartnerProgram model
 
     """
-    name = models.CharField(
-        verbose_name="Название",
-        max_length=50
-    )
-    description = models.TextField(
-        verbose_name="Описание",
-        null=True,
-        blank=True
-    )
-    type = models.CharField(
-        verbose_name="Тип",
-        max_length=8,
-        choices=TYPES
-    )
+
+    name = models.CharField(verbose_name="Название", max_length=50)
+    description = models.TextField(verbose_name="Описание", null=True, blank=True)
+    type = models.CharField(verbose_name="Тип", max_length=8, choices=VERBOSE_NAME_TYPES)
 
     min_value = models.FloatField(
         verbose_name="Минимально допустимое числовое значение",
         help_text="(если есть)",
         null=True,
-        blank=True
+        blank=True,
     )
     max_value = models.FloatField(
         verbose_name="Максимально допустимое числовое значение",
         help_text="(если есть)",
         null=True,
-        blank=True
+        blank=True,
     )
     partner_program = models.ForeignKey(
         PartnerProgram,
@@ -60,7 +51,6 @@ class Criteria(models.Model):
     class Meta:
         verbose_name = "Критерий оценки проекта"
         verbose_name_plural = "Критерии оценки проектов"
-
 
 
 class ProjectScore(models.Model):
@@ -77,45 +67,25 @@ class ProjectScore(models.Model):
         value_str: IntegerField for value
 
     """
+
     criteria = models.ForeignKey(
-        Criteria,
-        on_delete=models.CASCADE,
-        related_name="scores"
+        Criteria, on_delete=models.CASCADE, related_name="scores"
     )
-    user = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name="scores"
-    )
-    project = models.ForeignKey(
-        Project,
-        on_delete=models.CASCADE,
-        related_name="scores"
-    )
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="scores")
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="scores")
 
     value_int = models.IntegerField(
-        verbose_name="Целочисленное значение",
-        null=True,
-        blank=True
+        verbose_name="Целочисленное значение", null=True, blank=True
     )
     value_float = models.FloatField(
-        verbose_name="Значение с плавающей запятой",
-        max_length=50,
-        null=True,
-        blank=True
+        verbose_name="Значение с плавающей запятой", max_length=50, null=True, blank=True
     )
     value_bool = models.BooleanField(
-        verbose_name="'Да или нет' значение",
-        null=True,
-        blank=True
+        verbose_name="'Да или нет' значение", null=True, blank=True
     )
     value_str = models.FloatField(
-        verbose_name="Текстовое значение",
-        max_length=50,
-        null=True,
-        blank=True
+        verbose_name="Текстовое значение", max_length=50, null=True, blank=True
     )
-
 
     def __str__(self):
         return f"ProjectScore<{self.id}> - {self.criteria.name}"
@@ -128,13 +98,11 @@ class ProjectScore(models.Model):
             value_bool=self.value_bool,
             value_float=self.value_float,
             criteria_min_value=self.criteria.min_value,
-            criteria_max_value=self.criteria.max_value
+            criteria_max_value=self.criteria.max_value,
         )
         super().save(*args, **kwargs)
-
 
     class Meta:
         verbose_name = "Оценка проекта"
         verbose_name_plural = "Оценки проектов"
-        unique_together = ('criteria', 'user', 'project')
-
+        unique_together = ("criteria", "user", "project")
