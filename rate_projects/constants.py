@@ -1,13 +1,8 @@
-TYPES = (
+VERBOSE_NAME_TYPES = (
     ("str", "Текст"),
     ("int", "Целочисленное число"),
     ("float", "Число с плавающей точкой"),
-    ("bool", "Да или нет")
+    ("bool", "Да или нет"),
 )
 
-get_type = {
-    "str": str,
-    "int": int,
-    "float": float,
-    "bool": bool
-}
+GET_TYPE_FROM_STRING = {"str": str, "int": int, "float": float, "bool": bool}
