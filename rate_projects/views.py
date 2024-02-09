@@ -9,7 +9,7 @@ from rate_projects.serializers import (
     ProjectScoreCreateSerializer,
     CriteriaSerializer,
     ProjectScoreSerializer,
-    ProjectSerializer,
+    ProjectScoreGetSerializer,
 )
 from users.permissions import IsExpert
 
@@ -37,7 +37,7 @@ class RateProject(generics.CreateAPIView):
 
 
 class RateProjects(generics.ListAPIView):
-    serializer_class = ProjectSerializer
+    serializer_class = ProjectScoreGetSerializer
     permission_classes = [IsExpert]
 
     def get(self, request, *args, **kwargs):

@@ -45,7 +45,7 @@ class ProjectScoreSerializer(serializers.ModelSerializer):
         return filled_values
 
 
-class ProjectSerializer(serializers.ModelSerializer):
+class ProjectScoreGetSerializer(serializers.ModelSerializer):
     criterias = serializers.SerializerMethodField()
 
     class Meta:
