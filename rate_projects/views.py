@@ -37,6 +37,7 @@ class RateProject(generics.CreateAPIView):
 
 
 class RateProjects(generics.ListAPIView):
+    serializer_class = ProjectSerializer
     permission_classes = [IsExpert]
 
     def get(self, request, *args, **kwargs):
@@ -60,7 +61,7 @@ class RateProjects(generics.ListAPIView):
         criteria_serializer.is_valid()
         scores_serializer.is_valid()
 
-        projects_serializer = ProjectSerializer(
+        projects_serializer = self.get_serializer(
             data=projects,
             context={
                 "data_criterias": criteria_serializer.data,
