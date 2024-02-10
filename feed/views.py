@@ -5,8 +5,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from feed.helpers import get_n_random_projects, get_n_latest_created_projects
-from projects.serializers import ProjectListSerializer
+from feed.helpers import collect_feed
 
 
 class FeedList(APIView):
@@ -19,6 +18,10 @@ class FeedList(APIView):
                     items=openapi.Schema(
                         type=openapi.TYPE_OBJECT,
                         description="Feed item",
+                        properties={
+                            "type": openapi.TYPE_STRING,
+                            "content": openapi.TYPE_OBJECT,
+                        },
                     ),
                 ),
             )
@@ -26,14 +29,3 @@ class FeedList(APIView):
     )
     def get(self, request: Request, *args, **kwargs) -> Response:
         return Response(status=status.HTTP_200_OK, data=collect_feed())
-
-
-def collect_feed() -> list:
-    n_random_projects = get_n_random_projects(3)
-    n_latest_created_projects = get_n_latest_created_projects(3)
-    serializer = ProjectListSerializer(
-        data=set(n_random_projects + n_latest_created_projects), many=True
-    )
-
-    serializer.is_valid()
-    return serializer.data
