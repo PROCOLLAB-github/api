@@ -11,9 +11,6 @@ class ProjectScoreCreateSerializer(serializers.ModelSerializer):
             "criteria",
             "user",
             "project",
-            "value_int",
-            "value_float",
-            "value_bool",
-            "value_str",
+            "value",
             "comment",
         ]
