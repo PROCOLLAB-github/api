@@ -61,10 +61,11 @@ class ProjectScore(models.Model):
         criteria:  A ForeignKey connection to Criteria model
         user:  A ForeignKey connection to User model
 
-        value_int: IntegerField for value
-        value_float: IntegerField for value
-        value_bool: IntegerField for value
-        value_str: IntegerField for value
+        value_float: FloatField for value
+        value_bool: BooleanField for value
+        value_str: CharField for value
+
+        commentary: CharField for optional commentary
 
     """
 
@@ -78,13 +79,17 @@ class ProjectScore(models.Model):
         verbose_name="Целочисленное значение", null=True, blank=True
     )
     value_float = models.FloatField(
-        verbose_name="Значение с плавающей запятой", max_length=50, null=True, blank=True
+        verbose_name="Значение с плавающей запятой", null=True, blank=True
     )
     value_bool = models.BooleanField(
         verbose_name="'Да или нет' значение", null=True, blank=True
     )
-    value_str = models.FloatField(
+    value_str = models.CharField(
         verbose_name="Текстовое значение", max_length=50, null=True, blank=True
+    )
+
+    comment = models.CharField(
+        verbose_name="Комментарий", null=True, blank=True, max_length=100
     )
 
     def __str__(self):

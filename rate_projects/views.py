@@ -53,10 +53,9 @@ class RateProjects(generics.ListAPIView):
         projects = Project.objects.filter(
             partner_program_profiles__partner_program_id=program_id
         ).distinct()
+
         criteria_serializer = CriteriaSerializer(data=criterias, many=True)
-        scores_serializer = ProjectScoreSerializer(
-            data=[scores], many=True
-        )  # idk why it needs [], but don't fix what ain't broken
+        scores_serializer = ProjectScoreSerializer(data=scores, many=True)
 
         criteria_serializer.is_valid()
         scores_serializer.is_valid()

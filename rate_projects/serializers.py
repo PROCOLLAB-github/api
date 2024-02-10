@@ -17,6 +17,7 @@ class ProjectScoreCreateSerializer(serializers.ModelSerializer):
             "value_float",
             "value_bool",
             "value_str",
+            "comment",
         ]
 
 
@@ -31,18 +32,10 @@ class ProjectScoreSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ProjectScore
-        fields = ["criteria_id", "project_id", "filled_value"]
+        fields = ["criteria_id", "project_id", "filled_value", "comment"]
 
     def get_filled_value(self, obj):
-        filled_values = [
-            {
-                "project_id": score.project_id,
-                "criteria_id": score.criteria_id,
-                "filled_value": find_filled_field(model_to_dict(score))[0],
-            }
-            for score in obj
-        ]
-        return filled_values
+        return find_filled_field(model_to_dict(obj))[0]
 
 
 class ProjectScoreGetSerializer(serializers.ModelSerializer):
@@ -63,12 +56,14 @@ class ProjectScoreGetSerializer(serializers.ModelSerializer):
     def get_criterias(self, obj):
         criterias = []
         for criteria in self.context["data_criterias"]:
-            copied_criteria = criteria.copy()  # Создать полную копию критерия
-            for score in self.context["data_scores"][0]["filled_value"]:
+            copied_criteria = criteria.copy()
+            for score in self.context["data_scores"]:
                 if (
                     criteria["id"] == score["criteria_id"]
                     and obj.id == score["project_id"]
                 ):
                     copied_criteria["filled_value"] = score["filled_value"]
+                    copied_criteria["comment"] = score["comment"]
+
             criterias.append(copied_criteria)
         return criterias
