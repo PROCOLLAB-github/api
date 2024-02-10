@@ -3,7 +3,7 @@ from django.db import models
 
 from partner_programs.models import PartnerProgram
 from projects.models import Project
-from .constants import VERBOSE_TYPES
+from rate_projects.constants import VERBOSE_NAME_TYPES
 
 User = get_user_model()
 
@@ -24,7 +24,7 @@ class Criteria(models.Model):
 
     name = models.CharField(verbose_name="Название", max_length=50)
     description = models.TextField(verbose_name="Описание", null=True, blank=True)
-    type = models.CharField(verbose_name="Тип", max_length=8, choices=VERBOSE_TYPES)
+    type = models.CharField(verbose_name="Тип", max_length=8, choices=VERBOSE_NAME_TYPES)
 
     min_value = models.FloatField(
         verbose_name="Минимально допустимое числовое значение",
@@ -60,10 +60,7 @@ class ProjectScore(models.Model):
         criteria:  A ForeignKey connection to Criteria model
         user:  A ForeignKey connection to User model
 
-        value_int: IntegerField for value
-        value_float: FloatField for value
-        value_bool: BooleanField for value
-        value_str: CharField for value
+        value: CharField for value
 
         commentary: CharField for optional commentary
 
@@ -75,17 +72,8 @@ class ProjectScore(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="scores")
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="scores")
 
-    value_int = models.IntegerField(
-        verbose_name="Целочисленное значение", null=True, blank=True
-    )
-    value_float = models.FloatField(
-        verbose_name="Значение с плавающей запятой", null=True, blank=True
-    )
-    value_bool = models.BooleanField(
-        verbose_name="'Да или нет' значение", null=True, blank=True
-    )
-    value_str = models.CharField(
-        verbose_name="Текстовое значение", max_length=50, null=True, blank=True
+    value = models.CharField(
+        verbose_name="Значение", max_length=50, null=True, blank=True
     )
 
     comment = models.CharField(
