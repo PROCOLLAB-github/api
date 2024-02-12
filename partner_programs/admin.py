@@ -75,8 +75,16 @@ class PartnerProgramAdmin(admin.ModelAdmin):
 
     def get_export_file(self, partner_program: PartnerProgram):
         json_schema = partner_program.data_schema
+        from datetime import datetime
+
+        # Определим даты 1 ноября и 12 февраля
+        start_date = datetime(2023, 11, 1)
+        end_date = datetime(2024, 2, 12)
+
+        # Произведем фильтрацию
         profiles = PartnerProgramUserProfile.objects.filter(
-            partner_program=partner_program
+            partner_program=partner_program,
+            datetime_created__range=(start_date, end_date)
         )
         to_delete_from_json_scheme = []
         column_names = ["Имя", "Фамилия", "Отчество", "Почта", "Дата рождения"]
