@@ -1,9 +1,5 @@
 # Procollab backend service
 
-## Документация
-
-[Здесь](/docs/readme.md)
-
 ## Usage
 
 ### Clone project
@@ -41,3 +37,5 @@ To run it on all of your files, do
 ```bash
 pre-commit run --all-files
 ```
+
+## [Docs](/docs/readme.md)
