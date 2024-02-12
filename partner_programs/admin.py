@@ -105,7 +105,9 @@ class PartnerProgramAdmin(admin.ModelAdmin):
             json_data = profile.partner_program_data
             for key in json_schema:
                 row.append(
-                    json_data.get(key.encode("ascii", errors="ignore").decode(), "")
+                    json_data.get(
+                        key, ""
+                    )  # .encode("ascii", errors="ignore").decode(), "")
                 )
             response_data.append(row)
 
