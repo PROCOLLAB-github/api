@@ -198,3 +198,8 @@ class UserAchievementAdmin(admin.ModelAdmin):
 class UserLinkAdmin(admin.ModelAdmin):
     list_display = ("id", "user", "link")
     list_display_links = ("id", "user", "link")
+
+
+@admin.register(Expert)
+class ExpertAdmin(admin.ModelAdmin):
+    list_display = ("id", "user")
