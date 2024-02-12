@@ -1,4 +1,4 @@
-VERBOSE_NAME_TYPES = (
+VERBOSE_TYPES = (
     ("str", "Текст"),
     ("int", "Целочисленное число"),
     ("float", "Число с плавающей точкой"),
