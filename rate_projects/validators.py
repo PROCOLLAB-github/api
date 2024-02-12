@@ -14,6 +14,8 @@ class ProjectScoreValidate:
                 float(self.value)
             except ValueError:
                 raise ValueError("Введённое значение не соответствует формату!")
+            except TypeError:
+                raise TypeError("Вы не ввели никакие данные!")
 
         elif (self.criteria_type == "bool") and (self.value not in ["True", "False"]):
             raise TypeError("Введённое значение не соответствует формату!")
