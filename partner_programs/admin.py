@@ -1,5 +1,5 @@
 import tablib
-
+import re
 from django.contrib import admin
 from django.http import HttpResponse
 from django.urls import path
@@ -103,12 +103,15 @@ class PartnerProgramAdmin(admin.ModelAdmin):
                 ]
 
             json_data = profile.partner_program_data
+            ILLEGAL_CHARACTERS_RE = re.compile(r"[\000-\010]|[\013-\014]|[\016-\037]")
+
             for key in json_schema:
-                row.append(
-                    json_data.get(
-                        key, ""
-                    )  # .encode("ascii", errors="ignore").decode(), "")
-                )
+                value = json_data.get(key, "")  # Получаем значение из json_data
+                cleaned_value = ILLEGAL_CHARACTERS_RE.sub(
+                    "", value
+                )  # Удаляем недопустимые символы из значения
+                row.append(cleaned_value)  # Добавляем очищенное значение в row
+
             response_data.append(row)
 
         binary_data = response_data.export("xlsx")
