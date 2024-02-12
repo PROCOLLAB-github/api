@@ -145,3 +145,4 @@ class PartnerProgramUserProfileAdmin(admin.ModelAdmin):
     )
     search_fields = ("user__first_name", "user__last_name", "partner_program_data")
     date_hierarchy = "datetime_created"
+    
