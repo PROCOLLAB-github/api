@@ -94,6 +94,7 @@ INSTALLED_APPS = [
     "partner_programs.apps.PartnerProgramsConfig",
     "mailing.apps.MailingConfig",
     "feed.apps.FeedConfig",
+    "project_rates.apps.ProjectRatesConfig",
     # Rest framework
     "rest_framework",
     "rest_framework_simplejwt",
