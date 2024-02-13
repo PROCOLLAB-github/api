@@ -3,7 +3,7 @@ from django.db import models
 
 from partner_programs.models import PartnerProgram
 from projects.models import Project
-from rate_projects.constants import VERBOSE_TYPES
+from project_rates.constants import VERBOSE_TYPES
 
 User = get_user_model()
 

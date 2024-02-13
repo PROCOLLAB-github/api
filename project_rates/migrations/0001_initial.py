@@ -107,7 +107,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="scores",
-                        to="rate_projects.criteria",
+                        to="project_rates.criteria",
                     ),
                 ),
                 (

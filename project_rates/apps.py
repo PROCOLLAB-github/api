@@ -1,7 +1,7 @@
 from django.apps import AppConfig
 
 
-class RateProjectsConfig(AppConfig):
+class ProjectRatesConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
-    name = "rate_projects"
+    name = "project_rates"
     verbose_name = "Оценка проектов"
