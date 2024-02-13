@@ -15,14 +15,14 @@ def collect_feed() -> list:
     n_latest_created_news = get_n_latest_created_news(3)
     n_latest_created_vacancies = get_n_latest_created_vacancies(3)
 
-    feed = [
+    feed = (
         to_feed_items(
             constants.FeedItemType.PROJECT.value,
             set(n_random_projects + n_latest_created_projects),
-        ),
-        to_feed_items(constants.FeedItemType.NEWS.value, n_latest_created_news),
-        to_feed_items(constants.FeedItemType.VACANCY.value, n_latest_created_vacancies),
-    ]
+        )
+        + to_feed_items(constants.FeedItemType.NEWS.value, n_latest_created_news)
+        + to_feed_items(constants.FeedItemType.VACANCY.value, n_latest_created_vacancies)
+    )
 
     random.shuffle(feed)
     return feed
