@@ -9,6 +9,10 @@ from vacancy.models import Vacancy, VacancyResponse
 User = get_user_model()
 
 
+class RequiredSkillsSerializerMixin(serializers.Serializer):
+    required_skills = CustomListField(child=serializers.CharField())
+
+
 class ProjectForVacancySerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
@@ -20,9 +24,8 @@ class ProjectForVacancySerializer(serializers.ModelSerializer):
         ]
 
 
-class VacancyDetailSerializer(serializers.ModelSerializer):
+class VacancyDetailSerializer(serializers.ModelSerializer, RequiredSkillsSerializerMixin):
     project = ProjectForVacancySerializer(many=False, read_only=True)
-    required_skills = CustomListField(child=serializers.CharField())
 
     class Meta:
         model = Vacancy
@@ -36,14 +39,10 @@ class VacancyDetailSerializer(serializers.ModelSerializer):
             "datetime_created",
             "datetime_updated",
         ]
-        read_only_fields = [
-            "project",
-        ]
+        read_only_fields = ["project"]
 
 
-class VacancyListSerializer(serializers.ModelSerializer):
-    required_skills = CustomListField(child=serializers.CharField())
-
+class VacancyListSerializer(serializers.ModelSerializer, RequiredSkillsSerializerMixin):
     class Meta:
         model = Vacancy
         fields = [
@@ -58,9 +57,9 @@ class VacancyListSerializer(serializers.ModelSerializer):
         ]
 
 
-class ProjectVacancyListSerializer(serializers.ModelSerializer):
-    required_skills = CustomListField(child=serializers.CharField())
-
+class ProjectVacancyListSerializer(
+    serializers.ModelSerializer, RequiredSkillsSerializerMixin
+):
     class Meta:
         model = Vacancy
         fields = [
