@@ -2,6 +2,7 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.db.models import QuerySet
 from django_stubs_ext.db.models import TypedModelMeta
+
 from users.constants import (
     ADMIN,
     EXPERT,
@@ -86,8 +87,12 @@ class CustomUser(AbstractUser):
     city = models.CharField(max_length=255, null=True, blank=True)
     organization = models.CharField(max_length=255, null=True, blank=True)
     speciality = models.CharField(max_length=255, null=True, blank=True)
-    # contacts = models.JSONField(null=True, blank=True)
-    # fixme: mb replace to ChoiceField or FSMField(Finite State Machine)
+    v2_speciality = models.OneToOneField(
+        "core.Specialization",  # avoid circular imports
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="users",
+    )
     onboarding_stage = models.PositiveSmallIntegerField(
         null=True,
         blank=True,

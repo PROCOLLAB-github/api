@@ -80,6 +80,9 @@ class UserFilter(filters.FilterSet):
     speciality__icontains = filters.Filter(
         field_name="speciality", lookup_expr="icontains"
     )
+    v2_speciality = filters.NumberFilter(
+        field_name="v2_speciality",
+    )
     useful_to_project__contains = filters.Filter(
         field_name="useful_to_project", lookup_expr="contains"
     )
