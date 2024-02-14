@@ -22,7 +22,7 @@ class ProjectForVacancySerializer(serializers.ModelSerializer):
 
 class VacancyDetailSerializer(serializers.ModelSerializer):
     project = ProjectForVacancySerializer(many=False, read_only=True)
-    required_skills = serializers.ListSerializer(child=serializers.CharField())
+    required_skills = CustomListField(child=serializers.CharField())
 
     class Meta:
         model = Vacancy
