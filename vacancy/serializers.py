@@ -1,12 +1,21 @@
+
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from core.fields import CustomListField
 from projects.models import Project
 from users.serializers import UserDetailSerializer
 from vacancy.models import Vacancy, VacancyResponse
 
 User = get_user_model()
+
+
+class RequiredSkillsSerializerMixin(serializers.Serializer):
+    required_skills = serializers.SerializerMethodField()
+
+    def get_required_skills(self, obj):
+        skills_string = obj.required_skills
+        skills = [skill.strip() for skill in skills_string.split(",") if skill.strip()]
+        return skills
 
 
 class ProjectForVacancySerializer(serializers.ModelSerializer):
@@ -20,9 +29,8 @@ class ProjectForVacancySerializer(serializers.ModelSerializer):
         ]
 
 
-class VacancyDetailSerializer(serializers.ModelSerializer):
+class VacancyDetailSerializer(serializers.ModelSerializer, RequiredSkillsSerializerMixin):
     project = ProjectForVacancySerializer(many=False, read_only=True)
-    required_skills = serializers.ListSerializer(child=serializers.CharField())
 
     class Meta:
         model = Vacancy
@@ -36,14 +44,10 @@ class VacancyDetailSerializer(serializers.ModelSerializer):
             "datetime_created",
             "datetime_updated",
         ]
-        read_only_fields = [
-            "project",
-        ]
+        read_only_fields = ["project"]
 
 
-class VacancyListSerializer(serializers.ModelSerializer):
-    required_skills = CustomListField(child=serializers.CharField())
-
+class VacancyListSerializer(serializers.ModelSerializer, RequiredSkillsSerializerMixin):
     class Meta:
         model = Vacancy
         fields = [
@@ -58,9 +62,9 @@ class VacancyListSerializer(serializers.ModelSerializer):
         ]
 
 
-class ProjectVacancyListSerializer(serializers.ModelSerializer):
-    required_skills = CustomListField(child=serializers.CharField())
-
+class ProjectVacancyListSerializer(
+    serializers.ModelSerializer, RequiredSkillsSerializerMixin
+):
     class Meta:
         model = Vacancy
         fields = [
