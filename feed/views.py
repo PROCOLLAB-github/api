@@ -6,6 +6,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from feed.helpers import collect_feed
+from news.models import News
+from projects.models import Project
+from vacancy.models import Vacancy
 
 
 class FeedList(APIView):
@@ -28,4 +31,12 @@ class FeedList(APIView):
         }
     )
     def get(self, request: Request, *args, **kwargs) -> Response:
-        return Response(status=status.HTTP_200_OK, data=collect_feed())
+        models = []
+        if request.query_params.get("news") != "false":
+            models.append(News)
+        if request.query_params.get("vacancies") != "false":
+            models.append(Vacancy)
+        if request.query_params.get("projects") != "false":
+            models.append(Project)
+
+        return Response(status=status.HTTP_200_OK, data=collect_feed(models, 3))

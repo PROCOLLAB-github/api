@@ -8,24 +8,22 @@ from projects.models import Project
 from vacancy.models import Vacancy
 
 
-def collect_feed() -> list:
-    # да, это ужасно
-    n_random_projects = get_n_random_projects(3)
-    n_latest_created_projects = get_n_latest_created_projects(3)
-    n_latest_created_news = get_n_latest_created_news(3)
-    n_latest_created_vacancies = get_n_latest_created_vacancies(3)
+def collect_feed(models_list: typing.List, num) -> list[dict]:
+    get_model_data = {
+        model.__name__: collect_querysets(model, num) for model in models_list
+    }
+    result = []
+    for model in get_model_data:
+        result.extend(to_feed_items(model, get_model_data[model]))
+    random.shuffle(result)
+    return result
 
-    feed = (
-        to_feed_items(
-            constants.FeedItemType.PROJECT.value,
-            set(n_random_projects + n_latest_created_projects),
-        )
-        + to_feed_items(constants.FeedItemType.NEWS.value, n_latest_created_news)
-        + to_feed_items(constants.FeedItemType.VACANCY.value, n_latest_created_vacancies)
-    )
 
-    random.shuffle(feed)
-    return feed
+def collect_querysets(model, num):
+    if model.__name__ == Project.__class__.__name__:
+        return set(get_n_random_projects(num) + get_n_latest_created_projects(num))
+    else:
+        return list(model.objects.order_by("-datetime_created")[:num])
 
 
 def to_feed_items(type_: constants.FeedItemType, items: typing.Iterable) -> list[dict]:
@@ -38,32 +36,13 @@ def to_feed_items(type_: constants.FeedItemType, items: typing.Iterable) -> list
 
 
 def get_n_random_projects(num: int) -> list[Project]:
-    tries = 3
-    projects = set()
-
-    while len(projects) < num and tries > 0:
-        project = Project.objects.filter(draft=False).order_by("?").first()
-
-        if project not in projects:
-            projects.add(project)
-        else:
-            tries -= 1
-    return list(projects)
+    return list(Project.objects.filter(draft=False).order_by("?").distinct()[:num])
 
 
 def get_n_latest_created_projects(num: int) -> list[Project]:
     return list(Project.objects.filter(draft=False).order_by("-datetime_created")[:num])
 
 
-def get_n_latest_created_news(num: int) -> list[Project]:
-    return list(News.objects.order_by("-datetime_created")[:num])
-
-
-def get_n_latest_created_vacancies(num: int) -> list[Project]:
-    return list(Vacancy.objects.order_by("-datetime_created")[:num])
-
-
 def to_feed_item(type_: constants.FeedItemType, data):
     serializer = constants.FEED_SERIALIZER_MAPPING[type_](data)
-
     return FeedItemSerializer(data={"type": type_, "content": serializer.data})

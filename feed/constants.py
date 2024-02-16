@@ -8,9 +8,9 @@ from vacancy.serializers import VacancyDetailSerializer
 
 
 class FeedItemType(enum.Enum):
-    PROJECT = "project"
-    NEWS = "news"
-    VACANCY = "vacancy"
+    PROJECT = "Project"
+    NEWS = "News"
+    VACANCY = "Vacancy"
 
 
 FEED_SERIALIZER_MAPPING: dict[FeedItemType, serializers.Serializer] = {
