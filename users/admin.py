@@ -108,6 +108,7 @@ class CustomUserAdmin(admin.ModelAdmin):
         "is_staff",
         "is_superuser",
         "city",
+        "v2_speciality__name",
     )
 
     readonly_fields = ("ordering_score",)
