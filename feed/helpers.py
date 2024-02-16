@@ -3,9 +3,7 @@ import typing
 
 from feed import constants
 from feed.serializers import FeedItemSerializer
-from news.models import News
 from projects.models import Project
-from vacancy.models import Vacancy
 
 
 def collect_feed(models_list: typing.List, num) -> list[dict]:
