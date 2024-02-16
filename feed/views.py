@@ -40,6 +40,4 @@ class FeedList(APIView):
         if "vacancy" in filter:
             models.append(Vacancy)
 
-
-
         return Response(status=status.HTTP_200_OK, data=collect_feed(models, 3))
