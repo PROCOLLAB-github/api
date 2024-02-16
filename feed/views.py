@@ -31,11 +31,15 @@ class FeedList(APIView):
         }
     )
     def get(self, request: Request, *args, **kwargs) -> Response:
-        models = [News, Vacancy, Project]
-        if not request.query_params.get("news"):
-            models.remove(News)
-        if not request.query_params.get("vacancy"):
-            models.remove(Vacancy)
-        if not request.query_params.get("project"):
-            models.remove(Project)
+        models = []
+        filter = request.query_params.get("type")
+        if "news" in filter:
+            models.append(News)
+        if "project" in filter:
+            models.append(Project)
+        if "vacancy" in filter:
+            models.append(Vacancy)
+
+
+
         return Response(status=status.HTTP_200_OK, data=collect_feed(models, 3))
