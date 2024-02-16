@@ -86,13 +86,13 @@ class CustomUser(AbstractUser):
     region = models.CharField(max_length=255, null=True, blank=True)
     city = models.CharField(max_length=255, null=True, blank=True)
     organization = models.CharField(max_length=255, null=True, blank=True)
-    speciality = models.CharField(max_length=255, null=True, blank=True)
-    v2_speciality = models.OneToOneField(
-        "core.Specialization",  # avoid circular imports
+    v2_speciality = models.ForeignKey(
         on_delete=models.SET_NULL,
         null=True,
         related_name="users",
+        to="core.Specialization",
     )
+    speciality = models.CharField(max_length=255, null=True, blank=True)
     onboarding_stage = models.PositiveSmallIntegerField(
         null=True,
         blank=True,
