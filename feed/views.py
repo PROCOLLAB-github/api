@@ -1,5 +1,3 @@
-from typing import List, Tuple, Dict
-
 import random
 
 from drf_yasg import openapi
@@ -47,7 +45,7 @@ class FeedList(APIView):
             status=status.HTTP_200_OK, data=add_pagination(queryset_ready, total_pages)
         )
 
-    def get_request_data(self) -> Tuple[List[SupportedModel], int]:
+    def get_request_data(self) -> tuple[list[SupportedModel], int]:
         models = []
         page_number = int(self.request.query_params.get("page_number"))
 
@@ -63,8 +61,8 @@ class FeedList(APIView):
         return models, page_number
 
     def get_queryset(
-        self, models: List[SupportedModel], page_number: int
-    ) -> Tuple[List[Dict], int]:
+        self, models: list[SupportedModel], page_number: int
+    ) -> tuple[list[dict], int]:
         get_model_data = {model.__name__: collect_querysets(model) for model in models}
         result = []
         sum_num_pages = 0

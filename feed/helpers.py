@@ -1,4 +1,4 @@
-from typing import List, Iterable, Tuple, Dict
+from typing import Iterable
 
 from feed import constants
 from feed.constants import SupportedModel, SupportedQuerySet
@@ -12,13 +12,13 @@ from django.db.models import Count
 from vacancy.models import Vacancy
 
 
-def add_pagination(queryset: List[Dict], count: int) -> Dict:
+def add_pagination(queryset: list[dict], count: int) -> dict:
     return {"count": count, "results": queryset, "next": "0", "previous": "0"}
 
 
 def paginate_model_items(
     queryset: SupportedQuerySet, page_num: int
-) -> Tuple[List[SupportedQuerySet], int]:
+) -> tuple[list[SupportedQuerySet], int]:
     paginator = Paginator(queryset, 3)
     page_obj = paginator.get_page(page_num)
     total_pages = paginator.num_pages
@@ -40,7 +40,7 @@ def collect_querysets(model: SupportedModel) -> SupportedQuerySet:
     return queryset.order_by("-datetime_created")
 
 
-def to_feed_items(type_: constants.FeedItemType, items: Iterable) -> List[Dict]:
+def to_feed_items(type_: constants.FeedItemType, items: Iterable) -> list[dict]:
     feed_items = []
     for item in items:
         serializer = to_feed_item(type_, item)

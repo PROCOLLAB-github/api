@@ -1,5 +1,4 @@
 import enum
-from typing import Union, Dict
 
 from django.db.models import QuerySet
 from rest_framework import serializers
@@ -18,11 +17,11 @@ class FeedItemType(enum.Enum):
     VACANCY = "Vacancy"
 
 
-FEED_SERIALIZER_MAPPING: Dict[FeedItemType, serializers.Serializer] = {
+FEED_SERIALIZER_MAPPING: dict[FeedItemType, serializers.Serializer] = {
     FeedItemType.PROJECT.value: ProjectListSerializer,
     FeedItemType.NEWS.value: NewsFeedListSerializer,
     FeedItemType.VACANCY.value: VacancyDetailSerializer,
 }
 
-SupportedModel = Union[News | Project | Vacancy]
+SupportedModel = News | Project | Vacancy
 SupportedQuerySet = QuerySet[News | Project | Vacancy]
