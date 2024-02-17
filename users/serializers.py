@@ -354,6 +354,21 @@ class UserListSerializer(serializers.ModelSerializer[CustomUser]):
         }
 
 
+class UserFeedSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = [
+            "id",
+            "email",
+            "user_type",
+            "first_name",
+            "last_name",
+            "patronymic",
+            "key_skills",
+            "speciality"
+        ]
+
+
 class AchievementDetailSerializer(serializers.ModelSerializer[UserAchievement]):
     class Meta:
         model = UserAchievement
