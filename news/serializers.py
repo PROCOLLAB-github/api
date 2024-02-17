@@ -76,11 +76,13 @@ class NewsFeedListSerializer(serializers.ModelSerializer):
     def get_content_object(self, obj):
         if obj.content_type.model == Project.__name__.lower():
             serialized_obj = ProjectListSerializer(instance=obj.content_object, data={})
+            serialized_obj.is_valid()
+            return serialized_obj.data
         elif obj.content_type.model == CustomUser.__name__.lower():
             serialized_obj = UserFeedSerializer(instance=obj.content_object, data=model_to_dict(obj.content_object))
+            serialized_obj.is_valid()
+            return serialized_obj.data
 
-        serialized_obj.is_valid()
-        return serialized_obj.data
 
     def get_name(self, obj):
         return NewsMapping.get_name(obj.content_object)
