@@ -1,30 +1,46 @@
-import random
-import typing
+from typing import List, Iterable, Tuple, Dict
 
 from feed import constants
+from feed.constants import SupportedModel, SupportedQuerySet
 from feed.serializers import FeedItemSerializer
+from news.models import News
 from projects.models import Project
 
+from django.core.paginator import Paginator
+from django.db.models import Count
 
-def collect_feed(models_list: typing.List, num) -> list[dict]:
-    get_model_data = {
-        model.__name__: collect_querysets(model, num) for model in models_list
-    }
-    result = []
-    for model in get_model_data:
-        result.extend(to_feed_items(model, get_model_data[model]))
-    random.shuffle(result)
-    return result
+from vacancy.models import Vacancy
 
 
-def collect_querysets(model, num):
-    if model.__name__ == Project.__class__.__name__:
-        return set(get_n_random_projects(num) + get_n_latest_created_projects(num))
-    else:
-        return list(model.objects.order_by("-datetime_created")[:num])
+def add_pagination(queryset: List[Dict], count: int) -> Dict:
+    return {"count": count, "results": queryset, "next": "0", "previous": "0"}
 
 
-def to_feed_items(type_: constants.FeedItemType, items: typing.Iterable) -> list[dict]:
+def paginate_model_items(
+    queryset: SupportedQuerySet, page_num: int
+) -> Tuple[List[SupportedQuerySet], int]:
+    paginator = Paginator(queryset, 3)
+    page_obj = paginator.get_page(page_num)
+    total_pages = paginator.num_pages
+    return page_obj.object_list, total_pages
+
+
+def collect_querysets(model: SupportedModel) -> SupportedQuerySet:
+    if model == Project:
+        queryset = model.objects.select_related("leader", "industry").filter(draft=False)
+    elif model == Vacancy:
+        queryset = model.objects.select_related("project")
+    elif model == News:
+        queryset = (
+            model.objects.select_related("content_type")
+            .prefetch_related("content_object", "files")
+            .annotate(likes_count=Count("likes"), views_count=Count("views"))
+        )
+
+    return queryset.order_by("-datetime_created")
+
+
+def to_feed_items(type_: constants.FeedItemType, items: Iterable) -> List[Dict]:
     feed_items = []
     for item in items:
         serializer = to_feed_item(type_, item)
@@ -33,14 +49,6 @@ def to_feed_items(type_: constants.FeedItemType, items: typing.Iterable) -> list
     return feed_items
 
 
-def get_n_random_projects(num: int) -> list[Project]:
-    return list(Project.objects.filter(draft=False).order_by("?").distinct()[:num])
-
-
-def get_n_latest_created_projects(num: int) -> list[Project]:
-    return list(Project.objects.filter(draft=False).order_by("-datetime_created")[:num])
-
-
 def to_feed_item(type_: constants.FeedItemType, data):
     serializer = constants.FEED_SERIALIZER_MAPPING[type_](data)
-    return FeedItemSerializer(data={"type": type_, "content": serializer.data})
+    return FeedItemSerializer(data={"type_model": type_, "content": serializer.data})
