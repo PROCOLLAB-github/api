@@ -1,34 +1,80 @@
 import random
-import typing
+from typing import Iterable
+
+from rest_framework.pagination import LimitOffsetPagination
+from rest_framework.request import Request
+from rest_framework.views import APIView
 
 from feed import constants
+from feed.constants import SupportedModel, SupportedQuerySet, PAGINATION_CONSTANT
 from feed.serializers import FeedItemSerializer
 from news.models import News
 from projects.models import Project
+
+from django.db.models import Count
+
 from vacancy.models import Vacancy
 
 
-def collect_feed() -> list:
-    # да, это ужасно
-    n_random_projects = get_n_random_projects(3)
-    n_latest_created_projects = get_n_latest_created_projects(3)
-    n_latest_created_news = get_n_latest_created_news(3)
-    n_latest_created_vacancies = get_n_latest_created_vacancies(3)
+def add_pagination(results: list[SupportedQuerySet], count: int) -> dict:
+    return {"count": count, "previous": None, "next": None, "results": results}
 
-    feed = (
-        to_feed_items(
-            constants.FeedItemType.PROJECT.value,
-            set(n_random_projects + n_latest_created_projects),
+
+def paginate_serialize_feed(
+    model_data: dict[SupportedQuerySet],
+    paginator: LimitOffsetPagination,
+    request: Request,
+    view: APIView,
+) -> tuple[list[SupportedQuerySet], int]:
+    result = []
+    pages_count = 0
+    for model in model_data:
+        paginated_part: dict = paginate_serialize_feed_queryset(
+            model_data, paginator, request, model, view
         )
-        + to_feed_items(constants.FeedItemType.NEWS.value, n_latest_created_news)
-        + to_feed_items(constants.FeedItemType.VACANCY.value, n_latest_created_vacancies)
+        result += paginated_part["paginated_data"]
+        pages_count += paginated_part["page_count"]
+
+    random.shuffle(result)
+    limit = (
+        int(request.query_params.get("limit"))
+        if request.query_params.get("limit")
+        else PAGINATION_CONSTANT
     )
-
-    random.shuffle(feed)
-    return feed
+    return result[:limit], pages_count
 
 
-def to_feed_items(type_: constants.FeedItemType, items: typing.Iterable) -> list[dict]:
+def paginate_serialize_feed_queryset(
+    model_data: dict[SupportedQuerySet],
+    paginator: LimitOffsetPagination,
+    request: Request,
+    model: SupportedModel,
+    view: APIView,
+) -> dict:
+    num_pages = paginator.get_count(model_data[model])
+    paginated_data = paginator.paginate_queryset(model_data[model], request, view=view)
+    return {
+        "paginated_data": to_feed_items(model, paginated_data),
+        "page_count": num_pages,
+    }
+
+
+def collect_querysets(model: SupportedModel) -> SupportedQuerySet:
+    if model == Project:
+        queryset = model.objects.select_related("leader", "industry").filter(draft=False)
+    elif model == Vacancy:
+        queryset = model.objects.select_related("project")
+    elif model == News:
+        queryset = (
+            model.objects.select_related("content_type")
+            .prefetch_related("content_object", "files")
+            .annotate(likes_count=Count("likes"), views_count=Count("views"))
+        )
+
+    return queryset.order_by("-datetime_created")
+
+
+def to_feed_items(type_: constants.FeedItemType, items: Iterable) -> list[dict]:
     feed_items = []
     for item in items:
         serializer = to_feed_item(type_, item)
@@ -37,33 +83,6 @@ def to_feed_items(type_: constants.FeedItemType, items: typing.Iterable) -> list
     return feed_items
 
 
-def get_n_random_projects(num: int) -> list[Project]:
-    tries = 3
-    projects = set()
-
-    while len(projects) < num and tries > 0:
-        project = Project.objects.filter(draft=False).order_by("?").first()
-
-        if project not in projects:
-            projects.add(project)
-        else:
-            tries -= 1
-    return list(projects)
-
-
-def get_n_latest_created_projects(num: int) -> list[Project]:
-    return list(Project.objects.filter(draft=False).order_by("-datetime_created")[:num])
-
-
-def get_n_latest_created_news(num: int) -> list[Project]:
-    return list(News.objects.order_by("-datetime_created")[:num])
-
-
-def get_n_latest_created_vacancies(num: int) -> list[Project]:
-    return list(Vacancy.objects.order_by("-datetime_created")[:num])
-
-
 def to_feed_item(type_: constants.FeedItemType, data):
     serializer = constants.FEED_SERIALIZER_MAPPING[type_](data)
-
-    return FeedItemSerializer(data={"type": type_, "content": serializer.data})
+    return FeedItemSerializer(data={"type_model": type_, "content": serializer.data})
