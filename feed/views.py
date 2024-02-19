@@ -1,5 +1,6 @@
 import random
 
+from django.db.models import QuerySet
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
@@ -7,19 +8,18 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from feed.constants import SupportedModel
+from feed.constants import SupportedModel, model_mapping, SupportedQuerySet, FeedItemType
 from feed.helpers import (
-    add_pagination,
     collect_querysets,
-    paginate_model_items,
-    to_feed_items,
+    paginate_feed,
+    add_pagination
 )
-from news.models import News
-from projects.models import Project
-from vacancy.models import Vacancy
+from feed.pagination import FeedPagination
 
 
 class FeedList(APIView):
+    pagination_class = FeedPagination
+
     @swagger_auto_schema(
         responses={
             200: openapi.Response(
@@ -39,38 +39,26 @@ class FeedList(APIView):
         }
     )
     def get(self, request: Request, *args, **kwargs) -> Response:
-        models_to_get, page_number = self.get_request_data()
-        queryset_ready, total_pages = self.get_queryset(models_to_get, page_number)
+        models_to_get: list[SupportedModel] = self.get_request_data()
+        full_queryset_data: dict[FeedItemType, SupportedQuerySet] = self.get_response_data(models_to_get)
+        paginated_data, sum_pages = self.paginate_data(full_queryset_data)
+
         return Response(
-            status=status.HTTP_200_OK, data=add_pagination(queryset_ready, total_pages)
+            status=status.HTTP_200_OK, data=add_pagination(paginated_data, sum_pages)
         )
 
-    def get_request_data(self) -> tuple[list[SupportedModel], int]:
-        models = []
-        page_number = int(self.request.query_params.get("page_number"))
+    def get_request_data(self) -> list[SupportedModel]:
+        filter_queries = self.request.query_params.get("type")
+        filter_queries = filter_queries if filter_queries else ''  # existence check
 
-        if not (filter_queries := self.request.query_params.get("type")):
-            return [], 0
-        if "news" in filter_queries:
-            models.append(News)
-        if "project" in filter_queries:
-            models.append(Project)
-        if "vacancy" in filter_queries:
-            models.append(Vacancy)
+        models = [model_mapping[model_name] for model_name in model_mapping.keys() if model_name in filter_queries]
+        return models
 
-        return models, page_number
+    def get_response_data(
+            self, models: list[SupportedModel]
+    ) -> dict[FeedItemType, SupportedQuerySet]:
+        return {model.__name__: collect_querysets(model) for model in models}
 
-    def get_queryset(
-        self, models: list[SupportedModel], page_number: int
-    ) -> tuple[list[dict], int]:
-        get_model_data = {model.__name__: collect_querysets(model) for model in models}
-        result = []
-        sum_num_pages = 0
-        for model in get_model_data:
-            get_model_data[model], num_pages = paginate_model_items(
-                get_model_data[model], page_number
-            )
-            sum_num_pages += num_pages
-            result.extend(to_feed_items(model, get_model_data[model]))
-        random.shuffle(result)
-        return result, sum_num_pages
+    def paginate_data(self, get_model_data: dict[FeedItemType, SupportedQuerySet]) -> tuple[list[dict], int]:
+        paginator = self.pagination_class()
+        return paginate_feed(get_model_data, paginator, self.request, self)
