@@ -9,33 +9,28 @@ from feed.serializers import FeedItemSerializer
 from news.models import News
 from projects.models import Project
 
-from django.core.paginator import Paginator
 from django.db.models import Count
 
 from vacancy.models import Vacancy
 
 
 def add_pagination(results: list[SupportedQuerySet], count: int) -> dict:
-    return  {
-        "count": count,
-        "previous": None,
-        "next": None,
-        "results": results
-    }
+    return {"count": count, "previous": None, "next": None, "results": results}
+
 
 def paginate_feed(
-    model_data: dict[SupportedQuerySet],
-    paginator: LimitOffsetPagination,
-    request,
-    view
+    model_data: dict[SupportedQuerySet], paginator: LimitOffsetPagination, request, view
 ) -> tuple[list[SupportedQuerySet], int]:
     result = []
     sum_num_pages = 0
     for model in model_data:
-        sum_num_pages += paginate_feed_queryset(model_data, paginator, request, model, view, sum_num_pages, result)
+        sum_num_pages += paginate_feed_queryset(
+            model_data, paginator, request, model, view, sum_num_pages, result
+        )
     random.shuffle(result)
-    limit = request.query_params.get('limit')
-    return result[:int(limit)], sum_num_pages
+    limit = request.query_params.get("limit")
+    return result[: int(limit)], sum_num_pages
+
 
 def paginate_feed_queryset(
     model_data: dict[SupportedQuerySet],
@@ -44,12 +39,13 @@ def paginate_feed_queryset(
     model,
     view,
     sum_num_pages: int,
-    result: list[SupportedQuerySet]
+    result: list[SupportedQuerySet],
 ) -> int:
     num_pages = paginator.get_count(model_data[model])
     paginated_data = paginator.paginate_queryset(model_data[model], request, view=view)
     result.extend(to_feed_items(model, paginated_data))
     return num_pages
+
 
 # def paginate_model_items(
 #     queryset: SupportedQuerySet, page_number: int

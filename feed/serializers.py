@@ -9,5 +9,6 @@ class FeedItemSerializer(serializers.Serializer):
 
 class PagTestSerializer(serializers.Serializer):
     def to_representation(self, instance):
-        return  constants.FEED_SERIALIZER_MAPPING[instance.__class__.__name__](instance=instance)
-
+        return constants.FEED_SERIALIZER_MAPPING[instance.__class__.__name__](
+            instance=instance
+        )
