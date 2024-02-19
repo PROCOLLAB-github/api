@@ -47,17 +47,6 @@ def paginate_feed_queryset(
     return num_pages
 
 
-# def paginate_model_items(
-#     queryset: SupportedQuerySet, page_number: int
-# ) -> tuple[list[SupportedQuerySet], int]:
-#     paginator = Paginator(queryset, 3)
-#
-#
-#     page_obj = paginator.get_page(page_number)
-#     total_pages = paginator.num_pages
-#     return page_obj.object_list, total_pages
-
-
 def collect_querysets(model: SupportedModel) -> SupportedQuerySet:
     if model == Project:
         queryset = model.objects.select_related("leader", "industry").filter(draft=False)
