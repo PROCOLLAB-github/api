@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from feed.constants import SupportedModel, model_mapping, SupportedQuerySet, FeedItemType
-from feed.helpers import collect_querysets, paginate_feed, add_pagination
+from feed.helpers import collect_querysets, paginate_serialize_feed, add_pagination
 from feed.pagination import FeedPagination
 
 
@@ -32,14 +32,12 @@ class FeedList(APIView):
         }
     )
     def get(self, request: Request, *args, **kwargs) -> Response:
-        models_to_get: list[SupportedModel] = self.get_request_data()
-        full_queryset_data: dict[
-            FeedItemType, SupportedQuerySet
-        ] = self.get_response_data(models_to_get)
-        paginated_data, sum_pages = self.paginate_data(full_queryset_data)
-
+        serialized_paginated_data, sum_pages = self.paginate_serialize_data(
+            self.get_response_data(self.get_request_data())
+        )
         return Response(
-            status=status.HTTP_200_OK, data=add_pagination(paginated_data, sum_pages)
+            status=status.HTTP_200_OK,
+            data=add_pagination(serialized_paginated_data, sum_pages),
         )
 
     def get_request_data(self) -> list[SupportedModel]:
@@ -58,8 +56,8 @@ class FeedList(APIView):
     ) -> dict[FeedItemType, SupportedQuerySet]:
         return {model.__name__: collect_querysets(model) for model in models}
 
-    def paginate_data(
+    def paginate_serialize_data(
         self, get_model_data: dict[FeedItemType, SupportedQuerySet]
     ) -> tuple[list[dict], int]:
         paginator = self.pagination_class()
-        return paginate_feed(get_model_data, paginator, self.request, self)
+        return paginate_serialize_feed(get_model_data, paginator, self.request, self)
