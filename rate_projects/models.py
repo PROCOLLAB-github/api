@@ -60,10 +60,7 @@ class ProjectScore(models.Model):
     Attributes:
         criteria:  A ForeignKey connection to Criteria model
         user:  A ForeignKey connection to User model
-
         value: CharField for value
-
-        commentary: CharField for optional commentary
 
     """
 
