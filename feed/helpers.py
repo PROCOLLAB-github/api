@@ -2,9 +2,11 @@ import random
 from typing import Iterable
 
 from rest_framework.pagination import LimitOffsetPagination
+from rest_framework.request import Request
+from rest_framework.views import APIView
 
 from feed import constants
-from feed.constants import SupportedModel, SupportedQuerySet
+from feed.constants import SupportedModel, SupportedQuerySet, PAGINATION_CONSTANT
 from feed.serializers import FeedItemSerializer
 from news.models import News
 from projects.models import Project
@@ -19,7 +21,10 @@ def add_pagination(results: list[SupportedQuerySet], count: int) -> dict:
 
 
 def paginate_serialize_feed(
-    model_data: dict[SupportedQuerySet], paginator: LimitOffsetPagination, request, view
+    model_data: dict[SupportedQuerySet],
+    paginator: LimitOffsetPagination,
+    request: Request,
+    view: APIView,
 ) -> tuple[list[SupportedQuerySet], int]:
     result = []
     pages_count = 0
@@ -34,7 +39,7 @@ def paginate_serialize_feed(
     limit = (
         int(request.query_params.get("limit"))
         if request.query_params.get("limit")
-        else 10
+        else PAGINATION_CONSTANT
     )
     return result[:limit], pages_count
 
@@ -42,9 +47,9 @@ def paginate_serialize_feed(
 def paginate_serialize_feed_queryset(
     model_data: dict[SupportedQuerySet],
     paginator: LimitOffsetPagination,
-    request,
-    model,
-    view,
+    request: Request,
+    model: SupportedModel,
+    view: APIView,
 ) -> dict:
     num_pages = paginator.get_count(model_data[model])
     paginated_data = paginator.paginate_queryset(model_data[model], request, view=view)

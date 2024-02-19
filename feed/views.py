@@ -32,12 +32,12 @@ class FeedList(APIView):
         }
     )
     def get(self, request: Request, *args, **kwargs) -> Response:
-        serialized_paginated_data, sum_pages = self.paginate_serialize_data(
+        prepared_data, sum_pages = self.paginate_serialize_data(
             self.get_response_data(self.get_request_data())
         )
         return Response(
             status=status.HTTP_200_OK,
-            data=add_pagination(serialized_paginated_data, sum_pages),
+            data=add_pagination(prepared_data, sum_pages),
         )
 
     def get_request_data(self) -> list[SupportedModel]:

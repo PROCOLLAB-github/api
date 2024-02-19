@@ -31,3 +31,5 @@ model_mapping = {
     FeedItemType.PROJECT.value: Project,
     FeedItemType.VACANCY.value: Vacancy,
 }
+
+PAGINATION_CONSTANT = 10
