@@ -24,9 +24,12 @@ def paginate_serialize_feed(
     result = []
     sum_num_pages = 0
     for model in model_data:
-        sum_num_pages += paginate_serialize_feed_queryset(
-            model_data, paginator, request, model, view, result
+        paginated_part: tuple[list[dict], int] = paginate_serialize_feed_queryset(
+            model_data, paginator, request, model, view
         )
+        result += paginated_part[0]
+        sum_num_pages += paginated_part[1]
+
     random.shuffle(result)
     limit = (
         int(request.query_params.get("limit"))
@@ -42,12 +45,10 @@ def paginate_serialize_feed_queryset(
     request,
     model,
     view,
-    result: list[SupportedQuerySet],
-) -> int:
+) -> tuple[list[dict], int]:
     num_pages = paginator.get_count(model_data[model])
     paginated_data = paginator.paginate_queryset(model_data[model], request, view=view)
-    result.extend(to_feed_items(model, paginated_data))
-    return num_pages
+    return to_feed_items(model, paginated_data), num_pages
 
 
 def collect_querysets(model: SupportedModel) -> SupportedQuerySet:
