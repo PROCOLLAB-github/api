@@ -77,10 +77,6 @@ class ProjectScore(models.Model):
         verbose_name="Значение", max_length=50, null=True, blank=True
     )
 
-    comment = models.CharField(
-        verbose_name="Комментарий", null=True, blank=True, max_length=100
-    )
-
     def __str__(self):
         return f"ProjectScore<{self.id}> - {self.criteria.name}"
 
