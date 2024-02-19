@@ -79,10 +79,11 @@ class NewsFeedListSerializer(serializers.ModelSerializer):
             serialized_obj.is_valid()
             return serialized_obj.data
         elif obj.content_type.model == CustomUser.__name__.lower():
-            serialized_obj = UserFeedSerializer(instance=obj.content_object, data=model_to_dict(obj.content_object))
+            serialized_obj = UserFeedSerializer(
+                instance=obj.content_object, data=model_to_dict(obj.content_object)
+            )
             serialized_obj.is_valid()
             return serialized_obj.data
-
 
     def get_name(self, obj):
         return NewsMapping.get_name(obj.content_object)
@@ -108,7 +109,7 @@ class NewsFeedListSerializer(serializers.ModelSerializer):
             "likes_count",
             "files",
             "is_user_liked",
-            "content_object"
+            "content_object",
         ]
         read_only_fields = ["views_count", "likes_count"]
 

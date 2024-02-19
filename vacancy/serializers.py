@@ -1,21 +1,15 @@
-
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from projects.models import Project
-from users.serializers import UserDetailSerializer
+from users.serializers import UserDetailSerializer, CustomListField
 from vacancy.models import Vacancy, VacancyResponse
 
 User = get_user_model()
 
 
 class RequiredSkillsSerializerMixin(serializers.Serializer):
-    required_skills = serializers.SerializerMethodField()
-
-    def get_required_skills(self, obj):
-        skills_string = obj.required_skills
-        skills = [skill.strip() for skill in skills_string.split(",") if skill.strip()]
-        return skills
+    required_skills = CustomListField(child=serializers.CharField())
 
 
 class ProjectForVacancySerializer(serializers.ModelSerializer):
