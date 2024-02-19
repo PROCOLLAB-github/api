@@ -25,11 +25,15 @@ def paginate_serialize_feed(
     sum_num_pages = 0
     for model in model_data:
         sum_num_pages += paginate_serialize_feed_queryset(
-            model_data, paginator, request, model, view, sum_num_pages, result
+            model_data, paginator, request, model, view, result
         )
     random.shuffle(result)
-    limit = request.query_params.get("limit")
-    return result[: int(limit)], sum_num_pages
+    limit = (
+        int(request.query_params.get("limit"))
+        if request.query_params.get("limit")
+        else 10
+    )
+    return result[:limit], sum_num_pages
 
 
 def paginate_serialize_feed_queryset(

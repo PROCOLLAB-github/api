@@ -26,4 +26,8 @@ FEED_SERIALIZER_MAPPING: dict[FeedItemType, serializers.Serializer] = {
 SupportedModel = News | Project | Vacancy
 SupportedQuerySet = QuerySet[News | Project | Vacancy]
 
-model_mapping = {"news": News, "project": Project, "vacancy": Vacancy}
+model_mapping = {
+    FeedItemType.NEWS.value: News,
+    FeedItemType.PROJECT.value: Project,
+    FeedItemType.VACANCY.value: Vacancy,
+}

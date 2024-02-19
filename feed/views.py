@@ -5,7 +5,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from feed.constants import SupportedModel, model_mapping, SupportedQuerySet, FeedItemType
+from feed.constants import SupportedModel, SupportedQuerySet, FeedItemType, model_mapping
 from feed.helpers import collect_querysets, paginate_serialize_feed, add_pagination
 from feed.pagination import FeedPagination
 
@@ -47,7 +47,7 @@ class FeedList(APIView):
         models = [
             model_mapping[model_name]
             for model_name in model_mapping.keys()
-            if model_name in filter_queries
+            if model_name.lower() in filter_queries
         ]
         return models
 
