@@ -6,7 +6,7 @@ from projects.models import Project
 class ProjectScoreCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProjectScore
-        fields = ["criteria", "user", "project", "value", "comment"]
+        fields = ["criteria", "user", "project", "value"]
 
 
 class CriteriaSerializer(serializers.ModelSerializer):
@@ -18,7 +18,7 @@ class CriteriaSerializer(serializers.ModelSerializer):
 class ProjectScoreSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProjectScore
-        fields = ["criteria_id", "project_id", "value", "comment"]
+        fields = ["criteria_id", "project_id", "value"]
 
 
 class ProjectScoreGetSerializer(serializers.ModelSerializer):
@@ -40,14 +40,12 @@ class ProjectScoreGetSerializer(serializers.ModelSerializer):
         criterias = []
         for criteria in self.context["data_criterias"]:
             copied_criteria = criteria.copy()
-            copied_criteria["comment"] = None
             for score in self.context["data_scores"]:
                 if (
                     criteria["id"] == score["criteria_id"]
                     and obj.id == score["project_id"]
                 ):
-                    copied_criteria["filled_value"] = score["value"]
-                    copied_criteria["comment"] = score["comment"]
+                    copied_criteria["value"] = score["value"]
 
             criterias.append(copied_criteria)
         return criterias
