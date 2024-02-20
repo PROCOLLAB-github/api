@@ -1,12 +1,12 @@
-import random
+from random import shuffle
 from typing import Iterable
 
-from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.request import Request
 from rest_framework.views import APIView
 
 from feed import constants
-from feed.constants import SupportedModel, SupportedQuerySet, PAGINATION_CONSTANT
+from feed.constants import SupportedModel, SupportedQuerySet, LIMIT_PAGINATION_CONSTANT
+from feed.pagination import FeedPagination
 from feed.serializers import FeedItemSerializer
 from news.models import News
 from projects.models import Project
@@ -22,37 +22,54 @@ def add_pagination(results: list[SupportedQuerySet], count: int) -> dict:
 
 def paginate_serialize_feed(
     model_data: dict[SupportedQuerySet],
-    paginator: LimitOffsetPagination,
+    paginator: FeedPagination,
     request: Request,
     view: APIView,
 ) -> tuple[list[SupportedQuerySet], int]:
     result = []
     pages_count = 0
-    for model in model_data:
+
+    offset = int(request.query_params.get("offset", 0))
+    request.query_params._mutable = True
+    request.query_params["offset"] = int(request.query_params["offset"])
+    offset_numbers = randomize_offset(offset, len(model_data.keys()))
+
+    for i in range(len(model_data.keys())):
+        request.query_params["offset"] = offset_numbers[i]
         paginated_part: dict = paginate_serialize_feed_queryset(
-            model_data, paginator, request, model, view
+            model_data, paginator, request, list(model_data.keys())[i], view
         )
         result += paginated_part["paginated_data"]
         pages_count += paginated_part["page_count"]
 
-    random.shuffle(result)
-    limit = (
-        int(request.query_params.get("limit"))
-        if request.query_params.get("limit")
-        else PAGINATION_CONSTANT
-    )
+    shuffle(result)
+
+    limit = int(request.query_params.get("limit", LIMIT_PAGINATION_CONSTANT))
     return result[:limit], pages_count
+
+
+def randomize_offset(offset: int, quantity_models: int) -> list[int]:
+    full_division = offset // quantity_models
+    extra_items = offset % quantity_models
+
+    pagination_numbers = [full_division] * quantity_models
+    pagination_numbers[-1] += extra_items
+
+    return pagination_numbers
 
 
 def paginate_serialize_feed_queryset(
     model_data: dict[SupportedQuerySet],
-    paginator: LimitOffsetPagination,
+    paginator: FeedPagination,
     request: Request,
     model: SupportedModel,
     view: APIView,
 ) -> dict:
-    num_pages = paginator.get_count(model_data[model])
-    paginated_data = paginator.paginate_queryset(model_data[model], request, view=view)
+    paginated_info = paginator.custom_paginate_queryset(
+        model_data[model], request, view=view
+    )
+    paginated_data = paginated_info["queryset_ready"]
+    num_pages = paginated_info["count"]
     return {
         "paginated_data": to_feed_items(model, paginated_data),
         "page_count": num_pages,
