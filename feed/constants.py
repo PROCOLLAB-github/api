@@ -32,4 +32,4 @@ model_mapping = {
     FeedItemType.VACANCY.value: Vacancy,
 }
 
-PAGINATION_CONSTANT = 10
+LIMIT_PAGINATION_CONSTANT = 10
