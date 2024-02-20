@@ -10,13 +10,13 @@ class FeedPagination(pagination.LimitOffsetPagination):
     offset_query_param = "offset"
 
     def custom_paginate_queryset(
-        self, queryset: SupportedQuerySet, request: Request, view=None
+        self, queryset: SupportedQuerySet, request: Request, count: int, view=None
     ) -> dict:
         self.limit = self.get_limit(request)
         if self.limit is None:
             return None
 
-        self.count = self.get_count(queryset)
+        self.count = count
         self.offset = self.get_offset(request)
         self.request = request
         if self.count > self.limit and self.template is not None:
