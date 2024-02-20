@@ -35,6 +35,8 @@ class FeedList(APIView):
         prepared_data, sum_pages = self.paginate_serialize_data(
             self.get_response_data(self.get_request_data())
         )
+        for obj in prepared_data:
+            obj["type_model"] = obj["type_model"].lower()
         return Response(
             status=status.HTTP_200_OK,
             data=add_pagination(prepared_data, sum_pages),
