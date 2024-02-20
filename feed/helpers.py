@@ -29,9 +29,16 @@ def paginate_serialize_feed(
     result = []
     pages_count = 0
 
-    offset = int(request.query_params.get("offset", 0))
+    offset = request.query_params.get("offset", None)
     request.query_params._mutable = True
-    request.query_params["offset"] = int(request.query_params["offset"])
+
+    if offset == "" or offset is None:
+        offset = 0
+    elif offset is not None:
+        offset = int(offset)
+        request.query_params["offset"] = offset
+
+
     offset_numbers = randomize_offset(offset, len(model_data.keys()))
 
     for i in range(len(model_data.keys())):
@@ -45,6 +52,8 @@ def paginate_serialize_feed(
     shuffle(result)
 
     limit = int(request.query_params.get("limit", LIMIT_PAGINATION_CONSTANT))
+    if limit == "":
+        limit = LIMIT_PAGINATION_CONSTANT
     return result[:limit], pages_count
 
 
