@@ -32,7 +32,7 @@ class CustomListField(serializers.ListField):
         if isinstance(data, list):
             return data
         return [
-            i.replace("'", "") for i in data.strip("][").split(", ") if i.replace("'", "")
+            i.replace("'", "") for i in data.strip("][").split(",") if i.replace("'", "")
         ]
 
 
@@ -365,7 +365,7 @@ class UserFeedSerializer(serializers.ModelSerializer):
             "last_name",
             "patronymic",
             "key_skills",
-            "speciality"
+            "speciality",
         ]
 
 
