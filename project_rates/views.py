@@ -5,7 +5,7 @@ from rest_framework.response import Response
 
 from projects.models import Project
 from project_rates.models import Criteria, ProjectScore
-from rate_projects.pagination import RateProjectsPagination
+from project_rates.pagination import RateProjectsPagination
 from project_rates.serializers import (
     ProjectScoreCreateSerializer,
     CriteriaSerializer,

@@ -3,7 +3,7 @@ from django.db import models
 
 from partner_programs.models import PartnerProgram
 from projects.models import Project
-from .constants import VERBOSE_NAME_TYPES
+from .constants import VERBOSE_TYPES
 from .validators import ProjectScoreValidate
 
 User = get_user_model()
@@ -25,7 +25,7 @@ class Criteria(models.Model):
 
     name = models.CharField(verbose_name="Название", max_length=50)
     description = models.TextField(verbose_name="Описание", null=True, blank=True)
-    type = models.CharField(verbose_name="Тип", max_length=8, choices=VERBOSE_NAME_TYPES)
+    type = models.CharField(verbose_name="Тип", max_length=8, choices=VERBOSE_TYPES)
 
     min_value = models.FloatField(
         verbose_name="Минимально допустимое числовое значение",
