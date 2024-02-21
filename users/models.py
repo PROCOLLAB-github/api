@@ -327,10 +327,6 @@ class Expert(AbstractUserWithRole):
     preferred_industries = models.CharField(max_length=4096, null=True, blank=True)
     useful_to_project = models.TextField(blank=True)
 
-    programs = models.ManyToManyField(
-        "partner_programs.PartnerProgram", related_name="experts", blank=True
-    )
-
     class Meta(TypedModelMeta):
         verbose_name = "Эксперт"
         verbose_name_plural = "Эксперты"
