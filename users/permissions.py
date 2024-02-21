@@ -10,3 +10,12 @@ class IsAchievementOwnerOrReadOnly(BasePermission):
         if request.method in SAFE_METHODS or (obj.user == request.user):
             return True
         return False
+
+
+class IsExpert(BasePermission):
+    """
+    Allows access if user is EXPERT
+    """
+
+    def has_permission(self, request, view):
+        return request.user.user_type == 3

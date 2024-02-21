@@ -47,6 +47,7 @@ urlpatterns = [
     path("chats/", include("chats.urls", namespace="chats")),
     path("events/", include("events.urls", namespace="events")),
     path("programs/", include("partner_programs.urls", namespace="partner_programs")),
+    path("rate-project/", include(("rate_projects.urls", "rate_projects"))),
     path("feed/", include("feed.urls", namespace="feed")),
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
