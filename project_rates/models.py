@@ -3,9 +3,8 @@ from django.db import models
 
 from partner_programs.models import PartnerProgram
 from projects.models import Project
-
 from .constants import VERBOSE_TYPES
-
+from .validators import ProjectScoreValidate
 
 User = get_user_model()
 
@@ -61,14 +60,15 @@ class ProjectScore(models.Model):
     Attributes:
         criteria:  A ForeignKey connection to Criteria model
         user:  A ForeignKey connection to User model
+
         value: CharField for value
+
 
     """
 
     criteria = models.ForeignKey(
         Criteria, on_delete=models.CASCADE, related_name="scores"
     )
-
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="scores")
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="scores")
 
@@ -78,6 +78,15 @@ class ProjectScore(models.Model):
 
     def __str__(self):
         return f"ProjectScore<{self.id}> - {self.criteria.name}"
+
+    def save(self, *args, **kwargs):
+        ProjectScoreValidate(
+            criteria_type=self.criteria.type,
+            value=self.value,
+            criteria_min_value=self.criteria.min_value,
+            criteria_max_value=self.criteria.max_value,
+        )
+        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = "Оценка проекта"
