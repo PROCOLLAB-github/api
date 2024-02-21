@@ -130,4 +130,5 @@ class RateProjectsDetails(generics.ListAPIView):
             "industry": project.industry.id,
             "criterias": criterias_data,
         }
+
         return Response(response, status=200)
