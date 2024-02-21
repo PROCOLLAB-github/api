@@ -3,8 +3,8 @@ from django.contrib.auth import get_user_model
 from rest_framework import generics, status
 from rest_framework.response import Response
 
-from rate_projects.models import ProjectScore
-from rate_projects.serializers import ProjectScoreCreateSerializer, serialize_data_func
+from project_rates.models import ProjectScore
+from project_rates.serializers import ProjectScoreCreateSerializer, serialize_data_func
 from users.permissions import IsExpert
 
 User = get_user_model()
