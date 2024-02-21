@@ -76,3 +76,59 @@ class RateProjects(generics.ListAPIView):
         projects_serializer.is_valid()
 
         return self.get_paginated_response(projects_serializer.data)
+
+
+class RateProjectsDetails(generics.ListAPIView):
+    serializer_class = ProjectScoreGetSerializer
+    permission_classes = [IsExpert]
+
+    def get(self, request, *args, **kwargs):
+        user = self.request.user
+        project_id = self.kwargs.get("project_id")
+
+        criterias = Criteria.objects.prefetch_related("partner_program").filter(
+            partner_program_id=int(self.request.data.get("program_id"))
+        )
+        project = Project.objects.filter(id=int(project_id)).first()
+        scores = ProjectScore.objects.prefetch_related("criteria").filter(
+            criteria__in=criterias.values_list("id", flat=True),
+            user=user,
+            project=project,
+        )
+
+        criterias_data = []
+        for criteria in criterias:
+            criteria_data = {
+                "id": criteria.id,
+                "name": criteria.name,
+                "description": criteria.description,
+                "type": criteria.type,
+                "min_value": criteria.min_value,
+                "max_value": criteria.max_value,
+            }
+            criterias_data.append(criteria_data)
+
+        project_scores_data = []
+        for project_score in scores:
+            project_score_data = {
+                "criteria_id": project_score.criteria.id,
+                "value": project_score.value,
+            }
+            project_scores_data.append(project_score_data)
+
+        for score in project_scores_data:
+            for criteria in criterias_data:
+                if criteria["id"] == score["criteria_id"]:
+                    criteria["value"] = score["value"]
+
+        response = {
+            "id": project.id,
+            "name": project.name,
+            "leader": project.leader.id,
+            "description": project.description,
+            "image_address": project.image_address,
+            "industry": project.industry.id,
+            "criterias": criterias_data,
+        }
+
+        return Response(response, status=200)
