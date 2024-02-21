@@ -25,7 +25,7 @@ class FeedPagination(pagination.LimitOffsetPagination):
         if self.count == 0 or self.offset > self.count:
             return {"queryset_ready": [], "count": self.count}
 
-        queryset_ready = queryset[self.offset : self.offset + self.limit]
+        queryset_ready = queryset[self.offset : self.offset + self.limit]  # noqa: E203
         return {
             "queryset_ready": queryset_ready,
             "count": self.count,
