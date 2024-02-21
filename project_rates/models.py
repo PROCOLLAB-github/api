@@ -3,9 +3,8 @@ from django.db import models
 
 from partner_programs.models import PartnerProgram
 from projects.models import Project
-
-from .constants import VERBOSE_TYPES
-
+from .constants import VERBOSE_NAME_TYPES
+from .validators import ProjectScoreValidate
 
 User = get_user_model()
 
@@ -26,7 +25,7 @@ class Criteria(models.Model):
 
     name = models.CharField(verbose_name="Название", max_length=50)
     description = models.TextField(verbose_name="Описание", null=True, blank=True)
-    type = models.CharField(verbose_name="Тип", max_length=8, choices=VERBOSE_TYPES)
+    type = models.CharField(verbose_name="Тип", max_length=8, choices=VERBOSE_NAME_TYPES)
 
     min_value = models.FloatField(
         verbose_name="Минимально допустимое числовое значение",
@@ -61,14 +60,15 @@ class ProjectScore(models.Model):
     Attributes:
         criteria:  A ForeignKey connection to Criteria model
         user:  A ForeignKey connection to User model
+
         value: CharField for value
+
 
     """
 
     criteria = models.ForeignKey(
         Criteria, on_delete=models.CASCADE, related_name="scores"
     )
-
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="scores")
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="scores")
 
@@ -78,6 +78,15 @@ class ProjectScore(models.Model):
 
     def __str__(self):
         return f"ProjectScore<{self.id}> - {self.criteria.name}"
+
+    def save(self, *args, **kwargs):
+        ProjectScoreValidate(
+            criteria_type=self.criteria.type,
+            value=self.value,
+            criteria_min_value=self.criteria.min_value,
+            criteria_max_value=self.criteria.max_value,
+        )
+        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = "Оценка проекта"
