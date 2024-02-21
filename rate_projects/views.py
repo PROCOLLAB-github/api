@@ -5,6 +5,7 @@ from rest_framework.response import Response
 
 from projects.models import Project
 from rate_projects.models import Criteria, ProjectScore
+from rate_projects.pagination import RateProjectsPagination
 from rate_projects.serializers import (
     ProjectScoreCreateSerializer,
     CriteriaSerializer,
@@ -39,6 +40,7 @@ class RateProject(generics.CreateAPIView):
 class RateProjects(generics.ListAPIView):
     serializer_class = ProjectScoreGetSerializer
     permission_classes = [IsExpert]
+    pagination_class = RateProjectsPagination
 
     def get(self, request, *args, **kwargs):
         user = self.request.user
@@ -50,9 +52,11 @@ class RateProjects(generics.ListAPIView):
         scores = ProjectScore.objects.prefetch_related("criteria").filter(
             criteria__in=criterias.values_list("id", flat=True), user=user
         )
-        projects = Project.objects.filter(
+        unpaginated_projects = Project.objects.filter(
             partner_program_profiles__partner_program_id=program_id
         ).distinct()
+
+        projects = self.paginate_queryset(unpaginated_projects)
 
         criteria_serializer = CriteriaSerializer(data=criterias, many=True)
         scores_serializer = ProjectScoreSerializer(data=scores, many=True)
@@ -71,4 +75,4 @@ class RateProjects(generics.ListAPIView):
 
         projects_serializer.is_valid()
 
-        return Response(projects_serializer.data, status=200)
+        return self.get_paginated_response(projects_serializer.data)
