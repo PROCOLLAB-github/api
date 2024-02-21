@@ -3,7 +3,9 @@ from django.db import models
 
 from partner_programs.models import PartnerProgram
 from projects.models import Project
-from project_rates.constants import VERBOSE_TYPES
+
+from .constants import VERBOSE_TYPES
+
 
 User = get_user_model()
 
@@ -59,25 +61,19 @@ class ProjectScore(models.Model):
     Attributes:
         criteria:  A ForeignKey connection to Criteria model
         user:  A ForeignKey connection to User model
-
         value: CharField for value
-
-        commentary: CharField for optional commentary
 
     """
 
     criteria = models.ForeignKey(
         Criteria, on_delete=models.CASCADE, related_name="scores"
     )
+
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="scores")
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="scores")
 
     value = models.CharField(
         verbose_name="Значение", max_length=50, null=True, blank=True
-    )
-
-    comment = models.CharField(
-        verbose_name="Комментарий", null=True, blank=True, max_length=100
     )
 
     def __str__(self):
