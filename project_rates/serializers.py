@@ -1,8 +1,8 @@
 from rest_framework import serializers
 
 
-from rate_projects.models import ProjectScore, Criteria
-from rate_projects.validators import ProjectScoreValidate
+from project_rates.models import ProjectScore, Criteria
+from project_rates.validators import ProjectScoreValidate
 
 
 class ProjectScoreCreateSerializer(serializers.ModelSerializer):
