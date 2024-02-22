@@ -21,7 +21,7 @@ class NewsQuerysetMixin:
             # TODO: raise http 404 here
             return News.objects.none()
         return News.objects.get_news(obj=project).exclude(
-            content_type__model="project", text__is=None
+            text="", content_type__model="project"
         )
 
     def get_queryset_for_program(self):
