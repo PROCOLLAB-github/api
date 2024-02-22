@@ -6,10 +6,14 @@ from core.services import is_fan, get_likes_count, get_views_count
 from files.serializers import UserFileSerializer
 from news.mapping import NewsMapping
 from news.models import News
+
+from partner_programs.serializers import PartnerProgramListSerializer
 from projects.models import Project
 from projects.serializers import ProjectListSerializer
 from users.models import CustomUser
 from users.serializers import UserFeedSerializer
+from vacancy.models import Vacancy
+from vacancy.serializers import VacancyDetailSerializer
 
 User = get_user_model()
 
@@ -72,6 +76,17 @@ class NewsFeedListSerializer(serializers.ModelSerializer):
     views_count = serializers.IntegerField(default=0)
     likes_count = serializers.IntegerField(default=0)
     content_object = serializers.SerializerMethodField()
+    type_model = serializers.SerializerMethodField()
+
+    def get_type_model(self, obj):
+        if obj.content_type.model == Project.__name__.lower():
+            return "project"
+        elif obj.content_type.model == CustomUser.__name__.lower():
+            return "news"
+        elif obj.content_type.model == "partnerprogram":
+            return None
+        elif obj.content_type.model == Vacancy.__name__.lower():
+            return "vacancy"
 
     def get_content_object(self, obj):
         if obj.content_type.model == Project.__name__.lower():
@@ -83,6 +98,12 @@ class NewsFeedListSerializer(serializers.ModelSerializer):
                 instance=obj.content_object, data=model_to_dict(obj.content_object)
             )
             serialized_obj.is_valid()
+            return serialized_obj.data
+        elif obj.content_type.model == "partnerprogram":
+            serialized_obj = PartnerProgramListSerializer(obj.content_object)
+            return serialized_obj.data
+        elif obj.content_type.model == Vacancy.__name__.lower():
+            serialized_obj = VacancyDetailSerializer(obj.content_object)
             return serialized_obj.data
 
     def get_name(self, obj):
@@ -110,8 +131,9 @@ class NewsFeedListSerializer(serializers.ModelSerializer):
             "files",
             "is_user_liked",
             "content_object",
+            "type_model",
         ]
-        read_only_fields = ["views_count", "likes_count"]
+        read_only_fields = ["views_count", "likes_count", "type_model"]
 
 
 class NewsDetailSerializer(serializers.ModelSerializer):

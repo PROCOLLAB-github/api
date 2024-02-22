@@ -71,6 +71,19 @@ class ProjectVacancyListSerializer(
         ]
 
 
+class ProjectVacancyCreateListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Vacancy
+        fields = [
+            "id",
+            "role",
+            "required_skills",
+            "description",
+            "project",
+            "is_active",
+        ]
+
+
 class VacancyResponseListSerializer(serializers.ModelSerializer):
     is_approved = serializers.BooleanField(read_only=True)
     user = UserDetailSerializer(read_only=True)
