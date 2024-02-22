@@ -11,6 +11,7 @@ from project_rates.serializers import (
     CriteriaSerializer,
     ProjectScoreSerializer,
     ProjectScoreGetSerializer,
+    serialize_data_func,
 )
 from users.permissions import IsExpert
 
@@ -22,19 +23,22 @@ class RateProject(generics.CreateAPIView):
     permission_classes = [IsExpert]
 
     def create(self, request, *args, **kwargs):
-        try:
-            data = self.request.data
-            data["user"] = self.request.user.id
+        # try:
+        data = self.request.data
 
-            serializer = self.get_serializer(data=data)
-            if serializer.is_valid():
-                serializer.save()
-                self.perform_create(serializer)
-                return Response({"success": True}, status=status.HTTP_201_CREATED)
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        user = self.request.user.id
+        project_id = self.kwargs.get("project_id")
+
+        criteria_to_get = []
+        for criterion in data:
+            criterion["user_id"] = user
+            criterion["project_id"] = project_id
+            criteria_to_get.append(criterion["criterion_id"])
+
+        serialize_data_func(criteria_to_get, data)
+        ProjectScore.objects.bulk_create([ProjectScore(**score) for score in data])
+
+        return Response({"success": True}, status=status.HTTP_201_CREATED)
 
 
 class RateProjects(generics.ListAPIView):
