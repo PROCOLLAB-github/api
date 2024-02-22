@@ -71,7 +71,9 @@ class ProjectVacancyListSerializer(
         ]
 
 
-class ProjectVacancyCreateListSerializer(serializers.ModelSerializer):
+class ProjectVacancyCreateListSerializer(
+    serializers.ModelSerializer, RequiredSkillsSerializerMixin
+):
     class Meta:
         model = Vacancy
         fields = [
