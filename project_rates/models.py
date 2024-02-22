@@ -3,7 +3,8 @@ from django.db import models
 
 from partner_programs.models import PartnerProgram
 from projects.models import Project
-from project_rates.constants import VERBOSE_TYPES
+from .constants import VERBOSE_TYPES
+from .validators import ProjectScoreValidate
 
 User = get_user_model()
 
@@ -62,7 +63,6 @@ class ProjectScore(models.Model):
 
         value: CharField for value
 
-        commentary: CharField for optional commentary
 
     """
 
@@ -76,12 +76,17 @@ class ProjectScore(models.Model):
         verbose_name="Значение", max_length=50, null=True, blank=True
     )
 
-    comment = models.CharField(
-        verbose_name="Комментарий", null=True, blank=True, max_length=100
-    )
-
     def __str__(self):
         return f"ProjectScore<{self.id}> - {self.criteria.name}"
+
+    def save(self, *args, **kwargs):
+        ProjectScoreValidate(
+            criteria_type=self.criteria.type,
+            value=self.value,
+            criteria_min_value=self.criteria.min_value,
+            criteria_max_value=self.criteria.max_value,
+        )
+        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = "Оценка проекта"

@@ -1,9 +1,13 @@
 import enum
 
+from django.db.models import QuerySet
 from rest_framework import serializers
 
-from news.serializers import NewsListSerializer
+from news.models import News
+from news.serializers import NewsFeedListSerializer
+from projects.models import Project
 from projects.serializers import ProjectListSerializer
+from vacancy.models import Vacancy
 from vacancy.serializers import VacancyDetailSerializer
 
 
@@ -15,6 +19,17 @@ class FeedItemType(enum.Enum):
 
 FEED_SERIALIZER_MAPPING: dict[FeedItemType, serializers.Serializer] = {
     FeedItemType.PROJECT.value: ProjectListSerializer,
-    FeedItemType.NEWS.value: NewsListSerializer,
+    FeedItemType.NEWS.value: NewsFeedListSerializer,
     FeedItemType.VACANCY.value: VacancyDetailSerializer,
 }
+
+SupportedModel = News | Project | Vacancy
+SupportedQuerySet = QuerySet[News | Project | Vacancy]
+
+model_mapping = {
+    FeedItemType.NEWS.value: News,
+    FeedItemType.PROJECT.value: Project,
+    FeedItemType.VACANCY.value: Vacancy,
+}
+
+LIMIT_PAGINATION_CONSTANT = 10

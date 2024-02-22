@@ -5,13 +5,14 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from feed.helpers import collect_feed
-from news.models import News
-from projects.models import Project
-from vacancy.models import Vacancy
+from feed.constants import SupportedModel, SupportedQuerySet, FeedItemType, model_mapping
+from feed.helpers import collect_querysets, paginate_serialize_feed, add_pagination
+from feed.pagination import FeedPagination
 
 
 class FeedList(APIView):
+    pagination_class = FeedPagination
+
     @swagger_auto_schema(
         responses={
             200: openapi.Response(
@@ -31,13 +32,34 @@ class FeedList(APIView):
         }
     )
     def get(self, request: Request, *args, **kwargs) -> Response:
-        models = []
-        filter = request.query_params.get("type")
-        if "news" in filter:
-            models.append(News)
-        if "project" in filter:
-            models.append(Project)
-        if "vacancy" in filter:
-            models.append(Vacancy)
+        prepared_data, sum_pages = self.paginate_serialize_data(
+            self.get_response_data(self.get_request_data())
+        )
+        for obj in prepared_data:
+            obj["type_model"] = obj["type_model"].lower()
+        return Response(
+            status=status.HTTP_200_OK,
+            data=add_pagination(prepared_data, sum_pages),
+        )
 
-        return Response(status=status.HTTP_200_OK, data=collect_feed(models, 3))
+    def get_request_data(self) -> list[SupportedModel]:
+        filter_queries = self.request.query_params.get("type")
+        filter_queries = filter_queries if filter_queries else ""  # existence check
+
+        models = [
+            model_mapping[model_name]
+            for model_name in model_mapping.keys()
+            if model_name.lower() in filter_queries
+        ]
+        return models
+
+    def get_response_data(
+        self, models: list[SupportedModel]
+    ) -> dict[FeedItemType, SupportedQuerySet]:
+        return {model.__name__: collect_querysets(model) for model in models}
+
+    def paginate_serialize_data(
+        self, get_model_data: dict[FeedItemType, SupportedQuerySet]
+    ) -> tuple[list[dict], int]:
+        paginator = self.pagination_class()
+        return paginate_serialize_feed(get_model_data, paginator, self.request, self)
