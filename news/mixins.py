@@ -20,6 +20,7 @@ class NewsQuerysetMixin:
         except Project.DoesNotExist:
             # TODO: raise http 404 here
             return News.objects.none()
+        # временное удаление постов для проектов с текстом
         return News.objects.get_news(obj=project).exclude(
             text="", content_type__model="project"
         )
