@@ -1,4 +1,5 @@
 from django.contrib.contenttypes.models import ContentType
+from django.db.models import Q
 from rest_framework.generics import CreateAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -32,7 +33,8 @@ class NewSimpleFeed(APIView):
             .filter(content_type__model__in=filters)
             .order_by("-datetime_created")
         )
-        return queryset
+        # временное удаление постов для проектов с текстом
+        return queryset.exclude(~Q(text=""), content_type__model="project")
 
     def get(self, *args, **kwargs):
         paginator = self.pagination_class()
