@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import Criteria, ProjectScore
 from projects.models import Project
+from .validators import ProjectScoreValidate
 
 
 class ProjectScoreCreateSerializer(serializers.ModelSerializer):
@@ -49,3 +50,18 @@ class ProjectScoreGetSerializer(serializers.ModelSerializer):
 
             criterias.append(copied_criteria)
         return criterias
+
+
+def serialize_data_func(criteria_to_get: list, data: dict):
+    criteria = Criteria.objects.in_bulk(criteria_to_get)
+
+    for criterion in data:
+        needed_criteria = criteria.get(int(criterion["criterion_id"]))
+
+        ProjectScoreValidate(
+            criteria_type=needed_criteria.type,
+            value=criterion["value"],
+            criteria_min_value=needed_criteria.min_value,
+            criteria_max_value=needed_criteria.max_value,
+        )
+        criterion["criteria_id"] = criterion.pop("criterion_id")
