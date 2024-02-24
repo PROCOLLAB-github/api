@@ -1,4 +1,6 @@
 from rest_framework import serializers
+
+from core.services import get_views_count
 from .models import Criteria, ProjectScore
 from projects.models import Project
 from .validators import ProjectScoreValidate
@@ -23,6 +25,7 @@ class ProjectScoreSerializer(serializers.ModelSerializer):
 
 
 class ProjectScoreGetSerializer(serializers.ModelSerializer):
+    views_count = serializers.SerializerMethodField(method_name="count_views")
     criterias = serializers.SerializerMethodField()
 
     class Meta:
@@ -33,7 +36,10 @@ class ProjectScoreGetSerializer(serializers.ModelSerializer):
             "leader",
             "description",
             "image_address",
+            "presentation_address",
             "industry",
+            "region",
+            "views_count",
             "criterias",
         ]
 
@@ -50,6 +56,10 @@ class ProjectScoreGetSerializer(serializers.ModelSerializer):
 
             criterias.append(copied_criteria)
         return criterias
+
+    @classmethod
+    def count_views(cls, project):
+        return get_views_count(project)
 
 
 def serialize_data_func(criteria_to_get: list, data: dict):
