@@ -1,6 +1,7 @@
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
+from django.utils import timezone
 
 from core.models import Like, View
 from files.models import UserFile
@@ -32,9 +33,7 @@ class News(models.Model):
     )
 
     datetime_created = models.DateTimeField(
-        verbose_name="Дата создания",
-        null=False,
-        auto_now_add=True,
+        verbose_name="Дата создания", null=False, default=timezone.now
     )
     datetime_updated = models.DateTimeField(
         verbose_name="Дата изменения",
