@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import generics, status
 from rest_framework.response import Response
 
+from core.services import get_views_count
 from projects.models import Project
 from project_rates.models import Criteria, ProjectScore
 from project_rates.pagination import RateProjectsPagination
@@ -79,6 +80,15 @@ class RateProjects(generics.ListAPIView):
 
         projects_serializer.is_valid()
 
+        for project in projects_serializer.data:
+            filled_values = 0
+            for criteria in project["criterias"]:
+                if criteria.get("value", None):
+                    filled_values += 1
+
+            if filled_values == len(project["criterias"]):
+                project["is_scored"] = True
+
         return self.get_paginated_response(projects_serializer.data)
 
 
@@ -88,10 +98,10 @@ class RateProjectsDetails(generics.ListAPIView):
 
     def get(self, request, *args, **kwargs):
         user = self.request.user
-        project_id = self.kwargs.get("project_id")
+        project_id = self.request.query_params.get("project_id")
 
         criterias = Criteria.objects.prefetch_related("partner_program").filter(
-            partner_program_id=int(self.request.data.get("program_id"))
+            partner_program_id=int(self.request.query_params.get("program_id"))
         )
         project = Project.objects.filter(id=int(project_id)).first()
         scores = ProjectScore.objects.prefetch_related("criteria").filter(
@@ -131,8 +141,19 @@ class RateProjectsDetails(generics.ListAPIView):
             "leader": project.leader.id,
             "description": project.description,
             "image_address": project.image_address,
+            "presentation_address": project.presentation_address,
             "industry": project.industry.id,
+            "region": project.region,
             "criterias": criterias_data,
+            "views_count": get_views_count(project),
         }
+
+        filled_values = 0
+        for criteria in response["criterias"]:
+            if criteria.get("value", None):
+                filled_values += 1
+
+        if filled_values == len(response["criterias"]):
+            response["is_scored"] = True
 
         return Response(response, status=200)
