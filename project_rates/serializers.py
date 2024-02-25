@@ -62,6 +62,13 @@ class ProjectScoreGetSerializer(serializers.ModelSerializer):
         return get_views_count(project)
 
 
+class ScoredProjectsSerializer(ProjectScoreGetSerializer):
+    scores_count = serializers.IntegerField()
+
+    class Meta(ProjectScoreGetSerializer.Meta):
+        fields = ProjectScoreGetSerializer.Meta.fields + ["scores_count"]
+
+
 def serialize_data_func(criteria_to_get: list, data: dict):
     criteria = Criteria.objects.in_bulk(criteria_to_get)
 

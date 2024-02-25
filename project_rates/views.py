@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.db.models import Count
 
 from rest_framework import generics, status
 from rest_framework.response import Response
@@ -93,6 +94,60 @@ class RateProjects(generics.ListAPIView):
 
             if filled_values == len(project["criterias"]):
                 project["is_scored"] = True
+
+        return self.get_paginated_response(projects_serializer.data)
+
+
+class ScoredProjects(generics.ListAPIView):
+    serializer_class = ProjectScoreGetSerializer
+    permission_classes = [IsExpert]
+    pagination_class = RateProjectsPagination
+
+    def get(self, request, *args, **kwargs):
+        user = self.request.user
+        program_id = self.kwargs.get("program_id")
+
+        criterias = Criteria.objects.prefetch_related("partner_program").filter(
+            partner_program_id=program_id
+        )
+        quantity_criterias = criterias.count()
+
+        scores = ProjectScore.objects.prefetch_related("criteria").filter(
+            criteria__in=criterias.values_list("id", flat=True), user=user
+        )
+        unpaginated_projects = (
+            Project.objects.filter(
+                partner_program_profiles__partner_program_id=program_id
+            )
+            .annotate(scores_count=Count("scores"))
+            .distinct()
+        )
+
+        unpaginated_projects = unpaginated_projects.exclude(
+            scores_count__lt=quantity_criterias
+        )
+
+        projects = self.paginate_queryset(unpaginated_projects)
+
+        criteria_serializer = CriteriaSerializer(data=criterias, many=True)
+        scores_serializer = ProjectScoreSerializer(data=scores, many=True)
+
+        criteria_serializer.is_valid()
+        scores_serializer.is_valid()
+
+        projects_serializer = self.get_serializer(
+            data=projects,
+            context={
+                "data_criterias": criteria_serializer.data,
+                "data_scores": scores_serializer.data,
+            },
+            many=True,
+        )
+
+        projects_serializer.is_valid()
+
+        for project in projects_serializer.data:
+            project["is_scored"] = True
 
         return self.get_paginated_response(projects_serializer.data)
 
