@@ -2,11 +2,13 @@ from django.contrib.auth import get_user_model
 
 from rest_framework import status
 from rest_framework.generics import (
+    GenericAPIView,
     ListAPIView,
     ListCreateAPIView,
     RetrieveAPIView,
 )
-
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -190,3 +192,41 @@ class ProjectChatFileList(ListCreateAPIView):
             return get_all_files(messages)
         except ProjectChat.DoesNotExist:
             return UserFile.objects.none()
+
+
+class HasChatUnreadsView(GenericAPIView):
+    """Returns True if user has unread messages"""
+
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        responses={
+            200: openapi.Response(
+                description="Gives you True or False whether user has unread messages or not",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "has_unreads": openapi.Schema(
+                            type=openapi.TYPE_BOOLEAN,
+                            description="True if user has unread messages",
+                        )
+                    },
+                ),
+            )
+        }
+    )
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        # get all user chats
+        direct_messages = user.direct_chats.all().prefetch_related("messages")
+        project_chats = user.get_project_chats().prefetch_related("messages")
+
+        has_direct_messages_unread = (
+            direct_messages.filter(messages__is_read=False).distinct().exists()
+        )
+        has_project_messages_unread = (
+            project_chats.filter(messages__is_read=False).distinct().exists()
+        )
+        return Response(
+            {"has_unreads": has_direct_messages_unread or has_project_messages_unread}
+        )

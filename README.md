@@ -1,9 +1,5 @@
 # Procollab backend service
 
-## Документация
-
-[Здесь](/docs/readme.md)
-
 ## Usage
 
 ### Clone project
@@ -26,7 +22,6 @@
 ### Run project
 
 🚀 Run project via `python manage.py runserver`
-
 ## For developers
 
 ### Install pre-commit hooks
@@ -42,3 +37,5 @@ To run it on all of your files, do
 ```bash
 pre-commit run --all-files
 ```
+
+## [Docs](/docs/readme.md)

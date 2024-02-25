@@ -1,5 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.db.models import QuerySet
+from django_stubs_ext.db.models import TypedModelMeta
 
 from users.constants import (
     ADMIN,
@@ -84,9 +86,13 @@ class CustomUser(AbstractUser):
     region = models.CharField(max_length=255, null=True, blank=True)
     city = models.CharField(max_length=255, null=True, blank=True)
     organization = models.CharField(max_length=255, null=True, blank=True)
+    v2_speciality = models.ForeignKey(
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="users",
+        to="core.Specialization",
+    )
     speciality = models.CharField(max_length=255, null=True, blank=True)
-    # contacts = models.JSONField(null=True, blank=True)
-    # fixme: mb replace to ChoiceField or FSMField(Finite State Machine)
     onboarding_stage = models.PositiveSmallIntegerField(
         null=True,
         blank=True,
@@ -95,12 +101,12 @@ class CustomUser(AbstractUser):
         verbose_name="Стадия онбординга",
         help_text="0, 1, 2 - номера стадий онбординга, null(пустое) - онбординг пройден",
     )
+
     verification_date = models.DateField(
         null=True,
         blank=True,
         verbose_name="Дата верификации",
     )
-
     datetime_updated = models.DateTimeField(auto_now=True)
     datetime_created = models.DateTimeField(auto_now_add=True)
 
@@ -133,12 +139,11 @@ class CustomUser(AbstractUser):
             score += 7
         return score
 
-    def get_project_chats(self) -> list:
-        collaborations = self.collaborations.all()
-        projects = []
-        for collaboration in collaborations:
-            projects.extend(list(collaboration.project.project_chats.all()))
-        return projects
+    def get_project_chats(self) -> QuerySet:
+        from chats.models import ProjectChat
+
+        user_project_ids = self.collaborations.all().values_list("project_id", flat=True)
+        return ProjectChat.objects.filter(project__in=user_project_ids)
 
     def get_key_skills(self) -> list[str]:
         return [skill.strip() for skill in self.key_skills.split(",") if skill.strip()]
@@ -149,12 +154,12 @@ class CustomUser(AbstractUser):
     def __str__(self) -> str:
         return f"User<{self.id}> - {self.first_name} {self.last_name}"
 
-    class Meta:
+    class Meta(TypedModelMeta):
         verbose_name = "Пользователь"
         verbose_name_plural = "Пользователи"
         # order by count of fields inputted, like avatar, key_skills, about_me, etc.
         # first show users with all fields inputted, then with 1 field inputted, etc.
-        ordering = ["-ordering_score"]
+        ordering = ["-ordering_score", "id"]
 
 
 class UserAchievement(models.Model):
@@ -181,7 +186,7 @@ class UserAchievement(models.Model):
     def __str__(self):
         return f"UserAchievement<{self.id}>"
 
-    class Meta:
+    class Meta(TypedModelMeta):
         verbose_name = "Достижение"
         verbose_name_plural = "Достижения"
 
@@ -207,7 +212,7 @@ class AbstractUserWithRole(models.Model):
         null=True,
     )
 
-    class Meta:
+    class Meta(TypedModelMeta):
         abstract = True
 
 
@@ -244,7 +249,7 @@ class LikesOnProject(models.Model):
     def __str__(self):
         return f"LikesOnProject<{self.id}>"
 
-    class Meta:
+    class Meta(TypedModelMeta):
         verbose_name = "Лайк на проект"
         verbose_name_plural = "Лайки на проекты"
         unique_together = ("user", "project")
@@ -267,6 +272,10 @@ class Member(models.Model):
     )
 
     useful_to_project = models.TextField(blank=True)
+
+    class Meta(TypedModelMeta):
+        verbose_name = "Участник"
+        verbose_name_plural = "Участники"
 
     def __str__(self):
         return f"Member<{self.id}> - {self.user.first_name} {self.user.last_name}"
@@ -291,6 +300,10 @@ class Mentor(AbstractUserWithRole):
     preferred_industries = models.CharField(max_length=4096, null=True, blank=True)
     useful_to_project = models.TextField(blank=True)
 
+    class Meta(TypedModelMeta):
+        verbose_name = "Ментор"
+        verbose_name_plural = "Менторы"
+
     def __str__(self):
         return f"Mentor<{self.id}> - {self.user.first_name} {self.user.last_name}"
 
@@ -314,7 +327,9 @@ class Expert(AbstractUserWithRole):
     preferred_industries = models.CharField(max_length=4096, null=True, blank=True)
     useful_to_project = models.TextField(blank=True)
 
-    # TODO reviews
+    class Meta(TypedModelMeta):
+        verbose_name = "Эксперт"
+        verbose_name_plural = "Эксперты"
 
     def __str__(self):
         return f"Expert<{self.id}> - {self.user.first_name} {self.user.last_name}"
@@ -337,6 +352,10 @@ class Investor(AbstractUserWithRole):
     )
     preferred_industries = models.CharField(max_length=4096, null=True, blank=True)
     interaction_process_description = models.TextField(blank=True)
+
+    class Meta(TypedModelMeta):
+        verbose_name = "Инвестор"
+        verbose_name_plural = "Инвесторы"
 
     def __str__(self):
         return f"Investor<{self.id}> - {self.user.first_name} {self.user.last_name}"
@@ -363,7 +382,7 @@ class UserLink(models.Model):
     def __str__(self):
         return f"UserLink<{self.id}> - {self.user.first_name} {self.user.last_name}"
 
-    class Meta:
+    class Meta(TypedModelMeta):
         verbose_name = "Ссылка пользователя"
         verbose_name_plural = "Ссылки пользователей"
         unique_together = ("user", "link")

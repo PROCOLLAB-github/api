@@ -1,10 +1,10 @@
 import tablib
-
+import re
 from django.contrib import admin
 from django.http import HttpResponse
 from django.urls import path
 from django.utils import timezone
-
+from mailing.views import MailingTemplateRender
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 
 
@@ -42,12 +42,28 @@ class PartnerProgramAdmin(admin.ModelAdmin):
                 "export/<int:object_id>/",
                 self.admin_site.admin_view(self.get_export_file_view),
                 name="export_profiles",
-            )
+            ),
+            path(
+                "mailing/<int:partner_program>/",
+                self.admin_site.admin_view(self.mailing),
+                name="partner_programs_mailing",
+            ),
         ]
         return custom_urls + default_urls
 
+    def mailing(self, request, partner_program):
+        profiles = PartnerProgramUserProfile.objects.filter(
+            partner_program=partner_program
+        )
+        users = [profile.user for profile in profiles if profile.user is not None]
+        return MailingTemplateRender().render_template(request, None, users, None)
+
     def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
-        extra_context = {"object_id": int(object_id)}
+        if extra_context is None:
+            extra_context = {}
+        if object_id:
+            extra_context["object_id"] = int(object_id)
+
         res = super(PartnerProgramAdmin, self).changeform_view(
             request, object_id, extra_context=extra_context
         )
@@ -59,6 +75,7 @@ class PartnerProgramAdmin(admin.ModelAdmin):
 
     def get_export_file(self, partner_program: PartnerProgram):
         json_schema = partner_program.data_schema
+
         profiles = PartnerProgramUserProfile.objects.filter(
             partner_program=partner_program
         )
@@ -75,17 +92,27 @@ class PartnerProgramAdmin(admin.ModelAdmin):
 
         response_data = tablib.Dataset(headers=column_names)
         for profile in profiles:
-            row = [
-                profile.user.first_name,
-                profile.user.last_name,
-                profile.user.patronymic,
-                profile.user.email,
-                str(profile.user.birthday),
-            ]
+            if profile.user is None:
+                row = [""] * 5
+            else:
+                row = [
+                    profile.user.first_name,
+                    profile.user.last_name,
+                    profile.user.patronymic,
+                    profile.user.email,
+                    str(profile.user.birthday),
+                ]
 
             json_data = profile.partner_program_data
+            ILLEGAL_CHARACTERS_RE = re.compile(r"[\000-\010]|[\013-\014]|[\016-\037]")
+
             for key in json_schema:
-                row.append(json_data.get(key, ""))
+                value = json_data.get(key, "")  # Получаем значение из json_data
+                cleaned_value = ILLEGAL_CHARACTERS_RE.sub(
+                    "", value
+                )  # Удаляем недопустимые символы из значения
+                row.append(cleaned_value)  # Добавляем очищенное значение в row
+
             response_data.append(row)
 
         binary_data = response_data.export("xlsx")
@@ -102,7 +129,6 @@ class PartnerProgramAdmin(admin.ModelAdmin):
 
 @admin.register(PartnerProgramUserProfile)
 class PartnerProgramUserProfileAdmin(admin.ModelAdmin):
-
     list_display = (
         "id",
         "user",
@@ -121,4 +147,5 @@ class PartnerProgramUserProfileAdmin(admin.ModelAdmin):
         "project",
         "partner_program",
     )
+    search_fields = ("user__first_name", "user__last_name", "partner_program_data")
     date_hierarchy = "datetime_created"

@@ -2,9 +2,13 @@ from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django_filters import rest_framework as filters
 
+from core.models import Specialization
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
+from users.utils import filter_age
 
 User = get_user_model()
+MIN_AGE_VALUE = 0
+MAX_AGE_VALUE = 1000
 
 
 class UserFilter(filters.FilterSet):
@@ -44,6 +48,14 @@ class UserFilter(filters.FilterSet):
             return User.objects.none()
 
     @classmethod
+    def filter_age__gte(cls, queryset, name, value):
+        return filter_age(queryset, value, MAX_AGE_VALUE)
+
+    @classmethod
+    def filter_age__lte(cls, queryset, name, value):
+        return filter_age(queryset, MIN_AGE_VALUE, value)
+
+    @classmethod
     def filter_by_fullname(cls, queryset, name, value):
         words = value.split()
         first_word = words[0]
@@ -62,7 +74,15 @@ class UserFilter(filters.FilterSet):
         )
 
     about_me__contains = filters.Filter(field_name="about_me", lookup_expr="contains")
-    key_skills__contains = filters.Filter(field_name="key_skills", lookup_expr="contains")
+    key_skills__icontains = filters.Filter(
+        field_name="key_skills", lookup_expr="icontains"
+    )
+    speciality__icontains = filters.Filter(
+        field_name="speciality", lookup_expr="icontains"
+    )
+    v2_speciality = filters.NumberFilter(
+        field_name="v2_speciality",
+    )
     useful_to_project__contains = filters.Filter(
         field_name="useful_to_project", lookup_expr="contains"
     )
@@ -71,6 +91,9 @@ class UserFilter(filters.FilterSet):
         field_name="partner_program", method="filter_by_partner_program"
     )
     fullname = filters.CharFilter(method="filter_by_fullname")
+
+    age__gte = filters.Filter(method="filter_age__gte")
+    age__lte = filters.Filter(method="filter_age__lte")
 
     class Meta:
         model = User
@@ -82,4 +105,13 @@ class UserFilter(filters.FilterSet):
             "region",
             "organization",
             "user_type",
+            "speciality",
         )
+
+
+class SpecializationFilter(filters.FilterSet):
+    name__icontains = filters.Filter(field_name="name", lookup_expr="icontains")
+
+    class Meta:
+        model = Specialization
+        fields = ("name",)

@@ -6,7 +6,6 @@ import sentry_sdk
 from decouple import config
 from sentry_sdk.integrations.django import DjangoIntegration
 
-
 mimetypes.add_type("application/javascript", ".js", True)
 mimetypes.add_type("text/css", ".css", True)
 mimetypes.add_type("text/html", ".html", True)
@@ -93,13 +92,15 @@ INSTALLED_APPS = [
     "files.apps.FilesConfig",
     "events.apps.EventsConfig",
     "partner_programs.apps.PartnerProgramsConfig",
+    "mailing.apps.MailingConfig",
+    "feed.apps.FeedConfig",
+    "project_rates.apps.ProjectRatesConfig",
     # Rest framework
     "rest_framework",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
     "django_cleanup.apps.CleanupConfig",
     "django_rest_passwordreset",
-    # "rest_framework.authtoken",
     # Plugins
     "corsheaders",
     "django_filters",
@@ -124,7 +125,6 @@ MIDDLEWARE = [
     "django_prometheus.middleware.PrometheusAfterMiddleware",
     "core.log.middleware.CustomLoguruMiddleware",
 ]
-
 
 # CORS_ALLOWED_ORIGINS = [
 #     "http://localhost:4200",
@@ -198,27 +198,19 @@ else:
     # fixme
     CACHES = {
         "default": {
-            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": "redis://redis:6379",
         }
     }
 
-    CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
-    # CHANNEL_LAYERS = {
-    #     "default": {
-    #         "BACKEND": "channels_redis.core.RedisChannelLayer",
-    #         "CONFIG": {
-    #             "hosts": [("127.0.0.1", 6379)],
-    #         },
-    #     },
-    # }
-    #
-    # REDIS_HOST = config("REDIS_HOST", cast=str, default="127.0.0.1")
-    # CACHES = {
-    #     "default": {
-    #         "BACKEND": "django.core.cache.backends.redis.RedisCache",
-    #         "LOCATION": f"redis://{REDIS_HOST}:6379",
-    #     }
-    # }
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [("redis", 6379)],
+            },
+        },
+    }
 
     REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"] = [
         "rest_framework.renderers.JSONRenderer",
@@ -339,7 +331,6 @@ LOGURU_LOGGING = {
     "enqueue": True,
 }
 
-
 if DEBUG:
     SELECTEL_SWIFT_URL += "debug/"
 
@@ -362,3 +353,5 @@ PROMETHEUS_LATENCY_BUCKETS = (
     75.0,
     float("inf"),
 )
+
+DATA_UPLOAD_MAX_NUMBER_FIELDS = None  # for mailing

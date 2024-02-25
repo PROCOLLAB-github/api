@@ -1,0 +1,27 @@
+{% extends "admin/change_form.html" %}
+{% load i18n %}
+
+{% block submit_buttons_bottom %}
+
+
+    {{ block.super }}
+    <div class="submit-row">
+        <input type="button" class="mailing-btn" value="Рассылка" onclick="mailing()"/>
+        <input type="button" class="mailing-btn" value="Подтвердить пользователя" onclick="force_verify()"/>
+    </div>
+    <script>
+        function mailing() {
+            {% if object_id %}
+                window.open("{% url 'admin:user_mailing' object_id %}", '_blank').focus()
+            {% endif %}
+        }
+
+        function force_verify(){
+            {% if object_id %}
+                window.location.replace("{% url 'admin:force_verify' object_id %}", '_blank');
+            {% endif %}
+        }
+    </script>
+
+{% endblock %}
+

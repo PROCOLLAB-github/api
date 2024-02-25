@@ -57,6 +57,13 @@ services:
       - ./log:/procollab/log
     command: -config.file=/etc/promtail/config.yml
 
+  redis:
+    container_name: redis
+    image: redis:latest
+    expose:
+      - 6379
+    volumes:
+      - redis-data:/data
 volumes:
   grafana-data:
   grafana-configs:
@@ -64,3 +71,4 @@ volumes:
   prom-configs:
   log:
   promtail:
+  redis-data:

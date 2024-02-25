@@ -1,5 +1,6 @@
 import datetime
 import json
+from json import JSONDecodeError
 from typing import Optional
 
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
@@ -16,7 +17,7 @@ from chats.websockets_settings import (
     ChatType,
 )
 from core.constants import ONE_DAY_IN_SECONDS, ONE_WEEK_IN_SECONDS
-from core.utils import get_user_online_cache_key
+from core.utils import get_user_online_cache_key, get_users_online_cache_key
 from projects.models import Collaborator
 from users.models import CustomUser
 from chats.consumers.event_types import DirectEvent, ProjectEvent
@@ -45,6 +46,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         cache.set(
             get_user_channel_cache_key(self.user), self.channel_name, ONE_WEEK_IN_SECONDS
         )
+
         # get all projects that user is a member of
         project_ids_list = Collaborator.objects.filter(user=self.user).values_list(
             "project", flat=True
@@ -59,6 +61,19 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 f"{EventGroupType.CHATS_RELATED}_{project_id}", self.channel_name
             )
 
+        # set user online
+        user_cache_key = get_user_online_cache_key(self.user)
+        cache.set(user_cache_key, True, ONE_DAY_IN_SECONDS)
+        online_users = cache.get(get_users_online_cache_key(), set())
+        online_users.add(self.user.id)
+        cache.set(get_users_online_cache_key(), online_users)
+        # notify everyone that this user is online
+        await self.channel_layer.group_send(
+            EventGroupType.GENERAL_EVENTS,
+            {"type": EventType.SET_ONLINE, "content": {"user_id": self.user.id}},
+        )
+
+        # add to group to listen for general events, like online/offline
         await self.channel_layer.group_add(
             EventGroupType.GENERAL_EVENTS, self.channel_name
         )
@@ -66,7 +81,21 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
     async def disconnect(self, close_code):
         """User disconnected from websocket"""
-        pass
+        if not self.user or self.user.is_anonymous:
+            # don't need to proccess logic for disconnect
+            #  if we are not logged in!
+            return
+        online_users = cache.get(get_users_online_cache_key(), set())
+        online_users.discard(self.user.id)
+        cache.set(get_users_online_cache_key(), online_users)
+        cache.delete(get_user_online_cache_key(self.user))
+        room_name = EventGroupType.GENERAL_EVENTS
+
+        # TODO: add a User extra-small serializer for this?
+        await self.channel_layer.group_send(
+            room_name,
+            {"type": EventType.SET_OFFLINE, "content": {"user_id": self.user.id}},
+        )
 
     async def receive_json(self, content, **kwargs):
         """Receive message from WebSocket in JSON format"""
@@ -82,7 +111,6 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             EventType.DELETE_MESSAGE,
             EventType.EDIT_MESSAGE,
         ]:
-
             if event.content["chat_type"] == ChatType.DIRECT:
                 self.event = DirectEvent(self.user, self.channel_layer, self.channel_name)
             elif event.content["chat_type"] == ChatType.PROJECT:
@@ -186,8 +214,12 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
     async def __process_general_event(self, event: Event, room_name: str):
         cache_key = get_user_online_cache_key(self.user)
+        users_online_list_key = get_users_online_cache_key()
         if event.type == EventType.SET_ONLINE:
             cache.set(cache_key, True, ONE_DAY_IN_SECONDS)
+            users_online_list = cache.get_or_set(users_online_list_key, set())
+            users_online_list.add(self.user.pk)
+            cache.set(users_online_list_key, users_online_list, ONE_DAY_IN_SECONDS)
 
             # sent everyone online event that user X is online
             await self.channel_layer.group_send(
@@ -195,6 +227,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             )
         elif event.type == EventType.SET_OFFLINE:
             cache.delete(cache_key)
+            users_online_list = cache.get_or_set(users_online_list_key, set())
+            users_online_list.remove(self.user.pk)
+            cache.set(users_online_list_key, users_online_list, ONE_DAY_IN_SECONDS)
 
             # sent everyone online event that user X is offline
             await self.channel_layer.group_send(
@@ -205,3 +240,10 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             # await self.close(200)
         else:
             raise ValueError("Unknown event type")
+
+    async def decode_json(self, text_data) -> dict:
+        try:
+            return json.loads(text_data)
+        except JSONDecodeError as error:
+            await self.disconnect(400)
+            raise error

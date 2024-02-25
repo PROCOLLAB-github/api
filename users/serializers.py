@@ -2,13 +2,16 @@ from django.forms.models import model_to_dict
 from rest_framework import serializers
 from django.core.cache import cache
 
+from core.models import SpecializationCategory, Specialization
 from core.services import get_views_count
 from core.utils import get_user_online_cache_key
-from projects.models import Project
+from projects.models import Project, Collaborator
+from projects.validators import validate_project
 from .models import CustomUser, Expert, Investor, Member, Mentor, UserAchievement
+from .validators import specialization_exists_validator
 
 
-class AchievementListSerializer(serializers.ModelSerializer):
+class AchievementListSerializer(serializers.ModelSerializer[UserAchievement]):
     class Meta:
         model = UserAchievement
         fields = ["id", "title", "status"]
@@ -29,11 +32,11 @@ class CustomListField(serializers.ListField):
         if isinstance(data, list):
             return data
         return [
-            i.replace("'", "") for i in data.strip("][").split(", ") if i.replace("'", "")
+            i.replace("'", "") for i in data.strip("][").split(",") if i.replace("'", "")
         ]
 
 
-class MemberSerializer(serializers.ModelSerializer):
+class MemberSerializer(serializers.ModelSerializer[Member]):
     class Meta:
         model = Member
         fields = [
@@ -41,7 +44,7 @@ class MemberSerializer(serializers.ModelSerializer):
         ]
 
 
-class MentorSerializer(serializers.ModelSerializer):
+class MentorSerializer(serializers.ModelSerializer[Mentor]):
     preferred_industries = CustomListField(
         child=serializers.CharField(max_length=255),
     )
@@ -54,7 +57,7 @@ class MentorSerializer(serializers.ModelSerializer):
         ]
 
 
-class ExpertSerializer(serializers.ModelSerializer):
+class ExpertSerializer(serializers.ModelSerializer[Expert]):
     preferred_industries = CustomListField(
         child=serializers.CharField(max_length=255),
     )
@@ -67,7 +70,7 @@ class ExpertSerializer(serializers.ModelSerializer):
         ]
 
 
-class InvestorSerializer(serializers.ModelSerializer):
+class InvestorSerializer(serializers.ModelSerializer[Investor]):
     preferred_industries = CustomListField(child=serializers.CharField(max_length=255))
 
     class Meta:
@@ -78,7 +81,94 @@ class InvestorSerializer(serializers.ModelSerializer):
         ]
 
 
-class UserDetailSerializer(serializers.ModelSerializer):
+class SpecializationSerializer(serializers.ModelSerializer[Specialization]):
+    class Meta:
+        model = SpecializationCategory
+        fields = [
+            "id",
+            "name",
+        ]
+
+
+class SpecializationsSerializer(serializers.ModelSerializer[SpecializationCategory]):
+    specializations = SpecializationSerializer(many=True)
+
+    class Meta:
+        model = SpecializationCategory
+        fields = ["id", "name", "specializations"]
+
+
+class UserProjectsSerializer(serializers.ModelSerializer[Project]):
+    short_description = serializers.SerializerMethodField()
+    views_count = serializers.SerializerMethodField()
+    collaborator = serializers.SerializerMethodField(method_name="get_collaborator")
+
+    def get_collaborator(self, project: Project):
+        # TODO: fix me, import in a functon
+        from projects.serializers import CollaboratorSerializer
+
+        user = (
+            self.context.get("request").user
+            if self.context.get("user") is None
+            else self.context.get("user")
+        )
+        try:
+            collaborator = project.collaborator_set.get(user=user)
+        except Collaborator.DoesNotExist:
+            return {}
+
+        return CollaboratorSerializer(collaborator).data
+
+    @classmethod
+    def get_views_count(cls, project):
+        return get_views_count(project)
+
+    @classmethod
+    def get_short_description(cls, project):
+        return project.get_short_description()
+
+    class Meta:
+        model = Project
+        fields = [
+            "id",
+            "name",
+            "leader",
+            "short_description",
+            "image_address",
+            "industry",
+            "views_count",
+            "collaborator",
+        ]
+        read_only_fields = ["leader", "collaborator"]
+
+
+class UserSubscribedProjectsSerializer(serializers.ModelSerializer[Project]):
+    short_description = serializers.SerializerMethodField()
+    views_count = serializers.SerializerMethodField()
+
+    @classmethod
+    def get_views_count(cls, project):
+        return get_views_count(project)
+
+    @classmethod
+    def get_short_description(cls, project):
+        return project.get_short_description()
+
+    class Meta:
+        model = Project
+        fields = [
+            "id",
+            "name",
+            "leader",
+            "short_description",
+            "image_address",
+            "industry",
+            "views_count",
+        ]
+        read_only_fields = ["leader", "collaborator"]
+
+
+class UserDetailSerializer(serializers.ModelSerializer[CustomUser]):
     member = MemberSerializer(required=False)
     investor = InvestorSerializer(required=False)
     expert = ExpertSerializer(required=False)
@@ -88,15 +178,18 @@ class UserDetailSerializer(serializers.ModelSerializer):
     links = serializers.SerializerMethodField()
     is_online = serializers.SerializerMethodField()
     projects = serializers.SerializerMethodField()
+    v2_speciality = SpecializationSerializer(read_only=True)
+    v2_speciality_id = serializers.IntegerField(
+        write_only=True, validators=[specialization_exists_validator]
+    )
 
-    @classmethod
-    def get_projects(cls, user: CustomUser):
+    def get_projects(self, user: CustomUser):
         return UserProjectsSerializer(
             [
                 collab.project
-                for collab in user.collaborations.select_related("project").all()
-                if not collab.project.draft
+                for collab in user.collaborations.filter(project__draft=False)
             ],
+            context={"request": self.context.get("request"), "user": user},
             many=True,
         ).data
 
@@ -104,11 +197,12 @@ class UserDetailSerializer(serializers.ModelSerializer):
     def get_links(cls, user: CustomUser):
         return [user_link.link for user_link in user.links.all()]
 
-    @classmethod
-    def get_is_online(cls, user: CustomUser):
+    def get_is_online(self, user: CustomUser):
+        request = self.context.get("request")
+        if request and request.user.is_authenticated and request.user.id == user.id:
+            return True
         cache_key = get_user_online_cache_key(user)
-        is_online = cache.get(cache_key, False)
-        return is_online
+        return cache.get(cache_key, False)
 
     class Meta:
         model = CustomUser
@@ -122,6 +216,8 @@ class UserDetailSerializer(serializers.ModelSerializer):
             "key_skills",
             "birthday",
             "speciality",
+            "v2_speciality",
+            "v2_speciality_id",
             "organization",
             "about_me",
             "avatar",
@@ -210,39 +306,16 @@ class UserDetailSerializer(serializers.ModelSerializer):
         return instance
 
 
-class UserProjectsSerializer(serializers.ModelSerializer):
-    short_description = serializers.SerializerMethodField()
-    views_count = serializers.SerializerMethodField(method_name="get_views_count")
-
-    @classmethod
-    def get_views_count(cls, project):
-        return get_views_count(project)
-
-    @classmethod
-    def get_short_description(cls, project):
-        return project.get_short_description()
-
-    class Meta:
-        model = Project
-        fields = [
-            "id",
-            "name",
-            "leader",
-            "short_description",
-            "image_address",
-            "industry",
-            "views_count",
-        ]
-        read_only_fields = ["leader"]
-
-
-class UserListSerializer(serializers.ModelSerializer):
+class UserListSerializer(serializers.ModelSerializer[CustomUser]):
     member = MemberSerializer(required=False)
     key_skills = KeySkillsField(required=False)
     is_online = serializers.SerializerMethodField()
 
-    @classmethod
-    def get_is_online(cls, user: CustomUser) -> bool:
+    def get_is_online(self, user: CustomUser) -> bool:
+        request = self.context.get("request")
+        if request and request.user.is_authenticated and request.user.id == user.id:
+            return True
+
         cache_key = get_user_online_cache_key(user)
         is_online = cache.get(cache_key, False)
         return is_online
@@ -281,7 +354,22 @@ class UserListSerializer(serializers.ModelSerializer):
         }
 
 
-class AchievementDetailSerializer(serializers.ModelSerializer):
+class UserFeedSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = [
+            "id",
+            "email",
+            "user_type",
+            "first_name",
+            "last_name",
+            "patronymic",
+            "key_skills",
+            "speciality",
+        ]
+
+
+class AchievementDetailSerializer(serializers.ModelSerializer[UserAchievement]):
     class Meta:
         model = UserAchievement
         fields = [
@@ -307,3 +395,38 @@ class PasswordSerializer(serializers.Serializer):
 
 class ResendVerifyEmailSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
+
+
+class UserProjectListSerializer(serializers.ModelSerializer[Project]):
+    views_count = serializers.SerializerMethodField(method_name="count_views")
+    short_description = serializers.SerializerMethodField()
+
+    @classmethod
+    def count_views(cls, project):
+        return get_views_count(project)
+
+    @classmethod
+    def get_short_description(cls, project):
+        return project.get_short_description()
+
+    class Meta:
+        model = Project
+        fields = [
+            "id",
+            "name",
+            "leader",
+            "short_description",
+            "image_address",
+            "industry",
+            "views_count",
+            "draft",
+        ]
+
+        read_only_fields = ["leader", "views_count"]
+
+    def is_valid(self, *, raise_exception=False):
+        return super().is_valid(raise_exception=raise_exception)
+
+    def validate(self, data):
+        super().validate(data)
+        return validate_project(data)

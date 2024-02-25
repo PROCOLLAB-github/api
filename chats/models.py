@@ -149,7 +149,7 @@ class DirectChat(BaseChat):
             DirectChat: chat between two users
         """
 
-        pk = "_".join(sorted([str(user1.pk), str(user2.pk)]))
+        pk = cls.get_chat_id_from_users(user1, user2)
         try:
             return cls.objects.get(pk=pk)
         except cls.DoesNotExist:

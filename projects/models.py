@@ -2,14 +2,16 @@ from typing import Optional
 
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericRelation
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models import UniqueConstraint
 
 from core.models import Like, View
 from files.models import UserFile
 from industries.models import Industry
+from news.models import News
 from projects.constants import VERBOSE_STEPS
-from projects.managers import AchievementManager, ProjectManager
+from projects.managers import AchievementManager, CollaboratorManager, ProjectManager
 from users.models import CustomUser
 
 User = get_user_model()
@@ -107,6 +109,10 @@ class Project(models.Model):
         blank=True,
     )
 
+    subscribers = models.ManyToManyField(
+        User, verbose_name="Подписчики", related_name="subscribed_projects"
+    )
+
     datetime_created = models.DateTimeField(
         verbose_name="Дата создания", null=False, auto_now_add=True
     )
@@ -117,13 +123,27 @@ class Project(models.Model):
     objects = ProjectManager()
 
     def get_short_description(self) -> Optional[str]:
-        return self.description[:90] if self.description else None
+        return (
+            self.description[:90] + ("..." if len(self.description) > 90 else "")
+            if self.description
+            else None
+        )
 
     def get_collaborators_user_list(self) -> list[User]:
         return [collaborator.user for collaborator in self.collaborator_set.all()]
 
     def __str__(self):
         return f"Project<{self.id}> - {self.name}"
+
+    def save(
+        self, force_insert=False, force_update=False, using=None, update_fields=None
+    ):
+        if not self.draft:
+            content_type = ContentType.objects.filter(model="project").first()
+            news_instance, created = News.objects.get_or_create(
+                content_type=content_type, object_id=self.id
+            )
+        super().save(force_insert, force_update, using, update_fields)
 
     class Meta:
         ordering = ["-hidden_score", "-datetime_created"]
@@ -210,6 +230,8 @@ class Collaborator(models.Model):
     datetime_updated = models.DateTimeField(
         verbose_name="Дата изменения", null=False, auto_now=True
     )
+
+    objects = CollaboratorManager()
 
     class Meta:
         verbose_name = "Коллаборатор"

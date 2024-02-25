@@ -1,7 +1,10 @@
 from django.conf import settings
 from django.contrib import admin
+from django.shortcuts import redirect
+from django.urls import path
 
-from .helpers import send_verification_completed_email
+from mailing.views import MailingTemplateRender
+from .helpers import send_verification_completed_email, force_verify_user
 from .models import (
     CustomUser,
     UserAchievement,
@@ -57,6 +60,7 @@ class CustomUserAdmin(admin.ModelAdmin):
                     "region",
                     "organization",
                     "speciality",
+                    "v2_speciality",
                     "key_skills",
                 )
             },
@@ -85,6 +89,7 @@ class CustomUserAdmin(admin.ModelAdmin):
         "first_name",
         "ordering_score",
         "is_active",
+        "v2_speciality",
     )
     list_display_links = (
         "id",
@@ -103,9 +108,11 @@ class CustomUserAdmin(admin.ModelAdmin):
         "is_staff",
         "is_superuser",
         "city",
+        "v2_speciality__name",
     )
 
     readonly_fields = ("ordering_score",)
+    change_form_template = "users/admin/users_change_form.html"
 
     def save_model(self, request, obj, form, change):
         # if user_type changed, then delete all related fields
@@ -145,6 +152,41 @@ class CustomUserAdmin(admin.ModelAdmin):
                 send_verification_completed_email(obj)
 
         super().save_model(request, obj, form, change)
+
+    def get_urls(self):
+        default_urls = super(CustomUserAdmin, self).get_urls()
+        custom_urls = [
+            path(
+                "mailing/<int:user_object>/",
+                self.admin_site.admin_view(self.mailing),
+                name="user_mailing",
+            ),
+            path(
+                "force_verify/<int:object_id>/",
+                self.admin_site.admin_view(self.force_verify),
+                name="force_verify",
+            ),
+            path(
+                "mailing/",
+                self.admin_site.admin_view(self.mass_mail),
+                name="user_mass_mail",
+            ),
+        ]
+        return custom_urls + default_urls
+
+    def mass_mail(self, request):
+        users = CustomUser.objects.all()
+        return MailingTemplateRender().render_template(request, None, users, None)
+
+    def mailing(self, request, user_object):
+        user = CustomUser.objects.get(pk=user_object)
+        users = [user]
+        return MailingTemplateRender().render_template(request, None, users, None)
+
+    def force_verify(self, request, object_id):
+        user = CustomUser.objects.get(pk=object_id)
+        force_verify_user(user)
+        return redirect("admin:users_customuser_change", object_id)
 
 
 @admin.register(UserAchievement)

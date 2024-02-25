@@ -6,7 +6,8 @@ from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import redirect
 from django_filters import rest_framework as filters
-from rest_framework import status
+from rest_framework import status, permissions
+from rest_framework import exceptions
 from rest_framework.generics import (
     GenericAPIView,
     ListAPIView,
@@ -20,6 +21,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
+from core.models import SpecializationCategory, Specialization
+from core.pagination import Pagination
 from core.permissions import IsOwnerOrReadOnly
 from events.models import Event
 from events.serializers import EventsListSerializer
@@ -28,10 +31,12 @@ from partner_programs.serializers import (
     UserProgramsSerializer,
     PartnerProgramListSerializer,
 )
+from projects.pagination import ProjectsPagination
 from projects.serializers import ProjectListSerializer
 from users.helpers import (
     verify_email,
     check_related_fields_update,
+    force_verify_user,
 )
 from users.constants import (
     VERBOSE_ROLE_TYPES,
@@ -48,8 +53,12 @@ from users.serializers import (
     UserListSerializer,
     VerifyEmailSerializer,
     ResendVerifyEmailSerializer,
+    UserProjectListSerializer,
+    UserSubscribedProjectsSerializer,
+    SpecializationsSerializer,
+    SpecializationSerializer,
 )
-from .filters import UserFilter
+from .filters import UserFilter, SpecializationFilter
 from .pagination import UsersPagination
 from .services.verification import VerificationTasks
 
@@ -248,18 +257,24 @@ class AchievementDetail(RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAchievementOwnerOrReadOnly]
 
 
-class UserProjectsList(APIView):
+class UserProjectsList(GenericAPIView):
     permission_classes = [IsAuthenticated]
+    pagination_class = ProjectsPagination
+    serializer_class = UserProjectListSerializer
 
     def get(self, request):
-        serializer = ProjectListSerializer(
-            Project.objects.get_user_projects_for_list_view().filter(
-                Q(leader_id=self.request.user.id)
-                | Q(collaborator__user=self.request.user)
-            ),
-            many=True,
+        self.queryset = Project.objects.get_user_projects_for_list_view().filter(
+            Q(leader_id=self.request.user.id) | Q(collaborator__user=self.request.user)
         )
-        return Response(serializer.data, status=status.HTTP_200_OK)
+
+        page = self.paginate_queryset(self.queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        return Response(
+            {"detail": "Unable to return paginated list"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
 
 class LogoutView(APIView):
@@ -302,7 +317,7 @@ class SetUserOnboardingStage(APIView):
 
             new_stage = request.data["onboarding_stage"]
 
-            if new_stage not in [None, *range(1, 4)]:
+            if new_stage not in [None, *range(3)]:
                 return Response(
                     status=status.HTTP_400_BAD_REQUEST,
                     data={"error": "Wrong onboarding stage number!"},
@@ -317,7 +332,9 @@ class SetUserOnboardingStage(APIView):
             request.user.onboarding_stage = new_stage
             request.user.save()
 
-            serialized_user = UserListSerializer(request.user)
+            serialized_user = UserListSerializer(
+                request.user, context={"request": request}
+            )
             data = serialized_user.data
             return Response(status=status.HTTP_200_OK, data=data)
         except Exception:
@@ -346,3 +363,48 @@ class ResendVerifyEmail(GenericAPIView):
             )
         except Exception:
             return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+class ForceVerifyView(APIView):
+    queryset = User.objects.get_users_for_detail_view()
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request, *args, **kwargs):
+        try:
+            user = User.objects.get(pk=kwargs["pk"])
+            force_verify_user(user)
+            return Response(status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+
+class UserSubscribedProjectsList(ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserSubscribedProjectsSerializer
+    pagination_class = Pagination
+
+    def get_queryset(self):
+        try:
+            user = User.objects.get(pk=self.kwargs["pk"])
+            return user.subscribed_projects.all()
+        except User.DoesNotExist:
+            raise exceptions.NotFound
+
+
+class UserSpecializationsNestedView(GenericAPIView):
+    serializer_class = SpecializationsSerializer
+    queryset = SpecializationCategory.objects.all()
+
+    def get(self, request):
+        data = self.serializer_class(self.get_queryset(), many=True).data
+        return Response(status=status.HTTP_200_OK, data=data)
+
+
+class UserSpecializationsInlineView(ListAPIView):
+    serializer_class = SpecializationSerializer
+    pagination_class = Pagination
+    filter_backends = (filters.DjangoFilterBackend,)
+    filterset_class = SpecializationFilter
+
+    def get_queryset(self):
+        return Specialization.objects.all()
