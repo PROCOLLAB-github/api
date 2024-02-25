@@ -34,7 +34,7 @@ class EventRegisteredUsersList(generics.ListAPIView):
     permission_classes = [IsStaffOrReadOnly]
 
     def get_queryset(self):
-        users = Event.objects.get(pk=self.kwargs["pk"]).registered_users.all()
+        users = Event.objects.get(pk=self.kwargs["id"]).registered_users.all()
         return users
 
 

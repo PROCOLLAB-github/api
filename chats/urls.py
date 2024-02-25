@@ -16,26 +16,26 @@ app_name = "chats"
 
 urlpatterns = [
     path("directs/", DirectChatList.as_view(), name="direct-chat-list"),
-    path("directs/<slug:pk>/", DirectChatDetail.as_view(), name="direct-chat-detail"),
+    path("directs/<slug:id>/", DirectChatDetail.as_view(), name="direct-chat-detail"),
     path(
-        "directs/<slug:pk>/messages/",
+        "directs/<slug:id>/messages/",
         DirectChatMessageList.as_view(),
         name="direct-chat-messages",
     ),
     path(
-        "directs/<slug:pk>/files/",
+        "directs/<slug:id>/files/",
         DirectChatFileList.as_view(),
         name="direct-chat-files",
     ),
     path("projects/", ProjectChatList.as_view(), name="project-chat-list"),
     path("projects/<int:pk>/", ProjectChatDetail.as_view(), name="project-chat-detail"),
     path(
-        "projects/<int:pk>/messages/",
+        "projects/<int:id>/messages/",
         ProjectChatMessageList.as_view(),
         name="project-chat-messages",
     ),
     path(
-        "projects/<int:pk>/files/",
+        "projects/<int:id>/files/",
         ProjectChatFileList.as_view(),
         name="project-chat-files",
     ),
