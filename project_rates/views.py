@@ -37,7 +37,12 @@ class RateProject(generics.CreateAPIView):
             criteria_to_get.append(criterion["criterion_id"])
 
         serialize_data_func(criteria_to_get, data)
-        ProjectScore.objects.bulk_create([ProjectScore(**score) for score in data])
+        ProjectScore.objects.bulk_create(
+            [ProjectScore(**score) for score in data],
+            update_conflicts=True,
+            update_fields=["value"],
+            unique_fields=["criteria", "user", "project"],
+        )
 
         return Response({"success": True}, status=status.HTTP_201_CREATED)
 
