@@ -60,6 +60,7 @@ class CustomUserAdmin(admin.ModelAdmin):
                     "region",
                     "organization",
                     "speciality",
+                    "v2_speciality",
                     "key_skills",
                 )
             },
@@ -88,6 +89,7 @@ class CustomUserAdmin(admin.ModelAdmin):
         "first_name",
         "ordering_score",
         "is_active",
+        "v2_speciality",
     )
     list_display_links = (
         "id",
@@ -106,6 +108,7 @@ class CustomUserAdmin(admin.ModelAdmin):
         "is_staff",
         "is_superuser",
         "city",
+        "v2_speciality__name",
     )
 
     readonly_fields = ("ordering_score",)
@@ -163,8 +166,17 @@ class CustomUserAdmin(admin.ModelAdmin):
                 self.admin_site.admin_view(self.force_verify),
                 name="force_verify",
             ),
+            path(
+                "mailing/",
+                self.admin_site.admin_view(self.mass_mail),
+                name="user_mass_mail",
+            ),
         ]
         return custom_urls + default_urls
+
+    def mass_mail(self, request):
+        users = CustomUser.objects.all()
+        return MailingTemplateRender().render_template(request, None, users, None)
 
     def mailing(self, request, user_object):
         user = CustomUser.objects.get(pk=user_object)

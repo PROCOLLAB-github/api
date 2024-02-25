@@ -1,8 +1,8 @@
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import Model
 from django.db import models
+from django.db.models import Model
 
 User = get_user_model()
 
@@ -99,3 +99,93 @@ class View(Model):
 
     def __str__(self):
         return f"View<{self.user} - {self.content_object}>"
+
+
+class SkillCategory(models.Model):
+    """
+    Skill category model
+    """
+
+    name = models.CharField(max_length=256, null=False)
+
+    class Meta:
+        verbose_name = "Категория навыка"
+        verbose_name_plural = "Категории навыков"
+        ordering = ["name"]
+
+
+class Skill(models.Model):
+    """
+    Skill model
+    """
+
+    name = models.CharField(max_length=256, null=False)
+    category = models.ForeignKey(
+        SkillCategory,
+        on_delete=models.CASCADE,
+        related_name="skills",
+    )
+
+    class Meta:
+        verbose_name = "Навык"
+        verbose_name_plural = "Навыки"
+        ordering = ["category", "name"]
+
+
+class SkillToObject(models.Model):
+    """
+    Skill model for skill_2_user/vacancy/project/etc relation
+    """
+
+    skill = models.ForeignKey(
+        Skill,
+        on_delete=models.CASCADE,
+        related_name="skills",
+    )
+
+    content_type = models.ForeignKey(
+        ContentType,
+        on_delete=models.CASCADE,
+        related_name="skills",
+    )
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey("content_type", "object_id")
+
+
+class SpecializationCategory(models.Model):
+    name = models.TextField()
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = "Категория специализации"
+        verbose_name_plural = "Категории специализаций"
+
+
+class Specialization(models.Model):
+    name = models.TextField()
+    category = models.ForeignKey(
+        SpecializationCategory, related_name="specializations", on_delete=models.CASCADE
+    )
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = "Специализация"
+        verbose_name_plural = "Специализации"
+
+
+class SpecializationToObject(models.Model):
+    specialization = models.ForeignKey(
+        Specialization, related_name="specializations", on_delete=models.CASCADE
+    )
+
+    content_type = models.ForeignKey(
+        ContentType,
+        on_delete=models.CASCADE,
+        related_name="specializations",
+    )
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey("content_type", "object_id")

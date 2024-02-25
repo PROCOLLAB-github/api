@@ -93,13 +93,14 @@ INSTALLED_APPS = [
     "events.apps.EventsConfig",
     "partner_programs.apps.PartnerProgramsConfig",
     "mailing.apps.MailingConfig",
+    "feed.apps.FeedConfig",
+    "project_rates.apps.ProjectRatesConfig",
     # Rest framework
     "rest_framework",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
     "django_cleanup.apps.CleanupConfig",
     "django_rest_passwordreset",
-    # "rest_framework.authtoken",
     # Plugins
     "corsheaders",
     "django_filters",

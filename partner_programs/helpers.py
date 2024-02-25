@@ -1,3 +1,3 @@
 def date_to_iso(date: str) -> str:
-    d, m, y = tuple(map(int, date.strip().split("-")))
-    return f"{y:04d}-{m:02d}-{d:02d}"
+    day, month, year = tuple(map(int, date.strip().split("-")))
+    return f"{year:04d}-{month:02d}-{day:02d}"

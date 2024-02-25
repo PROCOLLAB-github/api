@@ -1,5 +1,6 @@
 from django.utils import timezone
-from django.core.exceptions import ValidationError
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 
 def user_birthday_validator(birthday):
@@ -25,3 +26,13 @@ def user_name_validator(name):
     if len(name) < 2:
         raise ValidationError("Имя слишком короткое")
     return True
+
+
+def specialization_exists_validator(pk: int):
+    # avoid circular imports
+    from core.models import Specialization
+
+    if not Specialization.objects.filter(pk=pk).exists():
+        raise serializers.ValidationError(
+            {"v2_speciality_id": "Specialization with given id does not exist"}
+        )

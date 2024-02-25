@@ -12,17 +12,17 @@ from vacancy.permissions import (
     IsVacancyProjectLeader,
 )
 from vacancy.serializers import (
-    ProjectVacancyListSerializer,
     VacancyDetailSerializer,
     VacancyResponseAcceptSerializer,
     VacancyResponseDetailSerializer,
     VacancyResponseListSerializer,
+    ProjectVacancyCreateListSerializer,
 )
 
 
 class VacancyList(generics.ListCreateAPIView):
     queryset = Vacancy.objects.get_vacancy_for_list_view()
-    serializer_class = ProjectVacancyListSerializer
+    serializer_class = ProjectVacancyCreateListSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = VacancyFilter

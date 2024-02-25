@@ -6,7 +6,7 @@ from tests.constants import USER_CREATE_DATA
 
 from users.views import UserList
 from users.models import CustomUser
-from invites.views import InviteList, InviteDetail
+from invites.views import InviteList, InviteDetail, InviteAccept, InviteDecline
 from invites.models import Invite
 from industries.models import Industry
 from projects.views import ProjectList, ProjectDetail
@@ -114,6 +114,69 @@ class InvitesTestCase(TestCase):
 
         self.assertEqual(response.status_code, 400)
 
+    def test_accept_invite_by_intended_user(self):
+        sender = self._user_create("sender@example.com")
+        recipient = self._user_create("recipient@example.com")
+        project = self._project_create(sender)
+
+        invite = self._create_invite(sender, recipient, project)
+
+        request = self.factory.post(f"/invites/{invite.id}/accept/")
+        force_authenticate(request, user=recipient)
+        accept_response = InviteAccept.as_view()(request, pk=invite.id)
+
+        self.assertEqual(accept_response.status_code, 200)
+        invite.refresh_from_db()
+        self.assertTrue(invite.is_accepted)
+
+    def test_decline_invite_by_intended_user(self):
+        sender = self._user_create("sender@example.com")
+        recipient = self._user_create("recipient@example.com")
+        project = self._project_create(sender)
+
+        invite = self._create_invite(sender, recipient, project)
+
+        request = self.factory.post(f"/invites/{invite.id}/decline/")
+        force_authenticate(request, user=recipient)
+        decline_response = InviteDecline.as_view()(request, pk=invite.id)
+
+        self.assertEqual(decline_response.status_code, 200)
+        invite.refresh_from_db()
+        self.assertFalse(invite.is_accepted)
+
+    def test_accept_decline_invite_by_unintended_user(self):
+        sender = self._user_create("sender@example.com")
+        recipient = self._user_create("recipient@example.com")
+        unintended_user = self._user_create("unintended@example.com")
+        project = self._project_create(sender)
+
+        invite = self._create_invite(sender, recipient, project)
+
+        accept_request = self.factory.post(f"/invites/{invite.id}/accept/")
+        force_authenticate(accept_request, user=unintended_user)
+        accept_response = InviteAccept.as_view()(accept_request, pk=invite.id)
+
+        decline_request = self.factory.post(f"/invites/{invite.id}/decline/")
+        force_authenticate(decline_request, user=unintended_user)
+        decline_response = InviteDecline.as_view()(decline_request, pk=invite.id)
+
+        self.assertNotEqual(accept_response.status_code, 200)
+        self.assertNotEqual(decline_response.status_code, 200)
+
+    def test_delete_invite_by_sender(self):
+        sender = self._user_create("sender@example.com")
+        recipient = self._user_create("recipient@example.com")
+        project = self._project_create(sender)
+
+        invite = self._create_invite(sender, recipient, project)
+
+        request = self.factory.delete(f"/invites/{invite.id}/")
+        force_authenticate(request, user=sender)
+        delete_response = self.invite_detail_view(request, pk=invite.id)
+
+        self.assertEqual(delete_response.status_code, 204)
+        self.assertFalse(Invite.objects.filter(pk=invite.id).exists())
+
     def _project_create(self, user):
         request = self.factory.post("projects/", self.project_create_data)
         force_authenticate(request, user=user)
@@ -132,3 +195,13 @@ class InvitesTestCase(TestCase):
         user.is_active = True
         user.save()
         return user
+
+    def _create_invite(self, sender, recipient, project):
+        invite_data = self.invite_create_data.copy()
+        invite_data.update({"project": project.id, "user": recipient.id})
+
+        request = self.factory.post("/invites/", invite_data, format="json")
+        force_authenticate(request, user=sender)
+        response = self.invite_list_view(request)
+
+        return Invite.objects.get(pk=response.data["id"])
