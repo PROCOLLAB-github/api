@@ -86,13 +86,13 @@ class DirectChatDetail(RetrieveAPIView):
 
     def get(self, request, *args, **kwargs) -> Response:
         try:
-            assert "_" in self.kwargs["pk"], "pk must contain underscore"
+            assert "_" in self.kwargs["id"], "processed id must contain underscore"
 
-            user1_id, user2_id = map(int, self.kwargs["pk"].split("_"))
+            user1_id, user2_id = map(int, self.kwargs["id"].split("_"))
 
             assert (
                 request.user.id == user1_id or request.user.id == user2_id
-            ), "current user id is not present in pk"
+            ), "current user id is not present in raw id"
 
             user1 = User.objects.get(pk=user1_id)
             user2 = User.objects.get(pk=user2_id)
@@ -117,7 +117,7 @@ class DirectChatDetail(RetrieveAPIView):
         except ValueError:
             return Response(
                 status=status.HTTP_400_BAD_REQUEST,
-                data={"detail": "pk must contain two integers separated by underscore"},
+                data={"detail": "processed id must contain two integers separated by underscore"},
             )
         except AssertionError as e:
             return Response(status=status.HTTP_400_BAD_REQUEST, data={"detail": str(e)})
@@ -140,7 +140,7 @@ class DirectChatMessageList(ListCreateAPIView):
 
     def get_queryset(self):
         return (
-            self.request.user.direct_chats.get(id=self.kwargs["pk"])
+            self.request.user.direct_chats.get(id=self.kwargs["id"])
             .messages.filter(is_deleted=False)
             .order_by("-created_at")
             .all()
@@ -155,7 +155,7 @@ class ProjectChatMessageList(ListCreateAPIView):
     def get_queryset(self):
         try:
             return (
-                ProjectChat.objects.get(id=self.kwargs["pk"])
+                ProjectChat.objects.get(id=self.kwargs["id"])
                 .messages.filter(is_deleted=False)
                 .order_by("-created_at")
                 .all()
@@ -177,7 +177,8 @@ class DirectChatFileList(ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        messages = self.request.user.direct_chats.get(id=self.kwargs["pk"]).messages.all()
+
+        messages = self.request.user.direct_chats.get(id=self.kwargs["id"]).messages.all()
 
         return get_all_files(messages)
 
@@ -188,7 +189,7 @@ class ProjectChatFileList(ListCreateAPIView):
 
     def get_queryset(self):
         try:
-            messages = ProjectChat.objects.get(id=self.kwargs["pk"]).messages.all()
+            messages = ProjectChat.objects.get(id=self.kwargs["id"]).messages.all()
             return get_all_files(messages)
         except ProjectChat.DoesNotExist:
             return UserFile.objects.none()
