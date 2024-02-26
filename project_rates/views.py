@@ -89,7 +89,7 @@ class RateProjects(generics.ListAPIView):
         for project in projects_serializer.data:
             filled_values = 0
             for criteria in project["criterias"]:
-                if criteria.get("value", None):
+                if criteria["name"] == "Комментарий" or criteria.get("value", None):
                     filled_values += 1
 
             if filled_values == len(project["criterias"]):
