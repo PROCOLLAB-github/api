@@ -29,3 +29,12 @@ class IsExpert(BasePermission):
         if not Expert.objects.filter(programs__id=program_id, user=user).exists():
             raise PermissionDenied("You don't have permission to rate this program")
         return True
+
+
+class IsExpertPost(BasePermission):
+    """
+    Allows access if user is EXPERT
+    """
+
+    def has_permission(self, request, view):
+        return True if request.user.user_type == 3 else False
