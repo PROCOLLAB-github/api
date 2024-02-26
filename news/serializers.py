@@ -73,8 +73,8 @@ class NewsFeedListSerializer(serializers.ModelSerializer):
     image_address = serializers.SerializerMethodField()
     is_user_liked = serializers.SerializerMethodField()
     files = UserFileSerializer(many=True)
-    views_count = serializers.IntegerField(default=0)
-    likes_count = serializers.IntegerField(default=0)
+    views_count = serializers.SerializerMethodField()
+    likes_count = serializers.SerializerMethodField()
     content_object = serializers.SerializerMethodField()
     type_model = serializers.SerializerMethodField()
 
@@ -106,8 +106,15 @@ class NewsFeedListSerializer(serializers.ModelSerializer):
             serialized_obj = VacancyDetailSerializer(obj.content_object)
             return serialized_obj.data
 
+    def get_views_count(self, obj):
+        return get_views_count(obj)
+
+    def get_likes_count(self, obj):
+        return get_likes_count(obj)
+
     def get_name(self, obj):
-        return NewsMapping.get_name(obj.content_object)
+        if obj.content_type.model == CustomUser.__name__.lower():
+            return f"{obj.content_object.first_name} {obj.content_object.last_name}"
 
     def get_image_address(self, obj):
         return NewsMapping.get_image_address(obj.content_object)
