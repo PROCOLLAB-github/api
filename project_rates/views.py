@@ -15,14 +15,14 @@ from project_rates.serializers import (
     ProjectScoreGetSerializer,
     serialize_data_func,
 )
-from users.permissions import IsExpert
+from users.permissions import IsExpert, IsExpertPost
 
 User = get_user_model()
 
 
 class RateProject(generics.CreateAPIView):
     serializer_class = ProjectScoreCreateSerializer
-    permission_classes = [IsExpert]
+    permission_classes = [IsExpertPost]
 
     def create(self, request, *args, **kwargs):
         # try:
