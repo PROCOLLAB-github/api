@@ -1,5 +1,5 @@
 from django.contrib.auth import get_user_model
-from django.db.models import Count
+from django.db.models import Count, Q
 
 from rest_framework import generics, status
 from rest_framework.response import Response
@@ -119,12 +119,9 @@ class ScoredProjects(generics.ListAPIView):
             Project.objects.filter(
                 partner_program_profiles__partner_program_id=program_id
             )
-            .annotate(scores_count=Count("scores"))
+            .annotate(user_scores_count=Count("scores", filter=Q(scores__user=user)))
+            .filter(user_scores_count__lt=quantity_criterias)
             .distinct()
-        )
-
-        unpaginated_projects = unpaginated_projects.exclude(
-            scores_count__lt=quantity_criterias
         )
 
         projects = self.paginate_queryset(unpaginated_projects)
