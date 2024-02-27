@@ -120,7 +120,7 @@ class ScoredProjects(generics.ListAPIView):
                 partner_program_profiles__partner_program_id=program_id
             )
             .annotate(user_scores_count=Count("scores", filter=Q(scores__user=user)))
-            .filter(user_scores_count__lt=quantity_criterias)
+            .filter(user_scores_count=quantity_criterias)
             .distinct()
         )
 
