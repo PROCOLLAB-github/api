@@ -1,18 +1,15 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
+from core.fields import CustomListField
 from projects.models import Project
-from users.serializers import UserDetailSerializer, CustomListField
+from users.serializers import UserDetailSerializer
 from vacancy.models import Vacancy, VacancyResponse
 
 User = get_user_model()
 
 
-class RequiredSkillsSerializerMixin(serializers.Serializer):
-    required_skills = CustomListField(child=serializers.CharField())
-
-
-class ProjectForVacancySerializer(serializers.ModelSerializer):
+class ProjectForVacancySerializer(serializers.ModelSerializer[Project]):
     class Meta:
         model = Project
         fields = [
@@ -23,8 +20,9 @@ class ProjectForVacancySerializer(serializers.ModelSerializer):
         ]
 
 
-class VacancyDetailSerializer(serializers.ModelSerializer, RequiredSkillsSerializerMixin):
+class VacancyDetailSerializer(serializers.ModelSerializer[Vacancy]):
     project = ProjectForVacancySerializer(many=False, read_only=True)
+    required_skills = serializers.ListSerializer(child=serializers.CharField())
 
     class Meta:
         model = Vacancy
@@ -38,10 +36,14 @@ class VacancyDetailSerializer(serializers.ModelSerializer, RequiredSkillsSeriali
             "datetime_created",
             "datetime_updated",
         ]
-        read_only_fields = ["project"]
+        read_only_fields = [
+            "project",
+        ]
 
 
-class VacancyListSerializer(serializers.ModelSerializer, RequiredSkillsSerializerMixin):
+class VacancyListSerializer(serializers.ModelSerializer[Vacancy]):
+    required_skills = CustomListField(child=serializers.CharField())
+
     class Meta:
         model = Vacancy
         fields = [
@@ -56,9 +58,9 @@ class VacancyListSerializer(serializers.ModelSerializer, RequiredSkillsSerialize
         ]
 
 
-class ProjectVacancyListSerializer(
-    serializers.ModelSerializer, RequiredSkillsSerializerMixin
-):
+class ProjectVacancyListSerializer(serializers.ModelSerializer[Vacancy]):
+    required_skills = CustomListField(child=serializers.CharField())
+
     class Meta:
         model = Vacancy
         fields = [
@@ -71,22 +73,7 @@ class ProjectVacancyListSerializer(
         ]
 
 
-class ProjectVacancyCreateListSerializer(
-    serializers.ModelSerializer, RequiredSkillsSerializerMixin
-):
-    class Meta:
-        model = Vacancy
-        fields = [
-            "id",
-            "role",
-            "required_skills",
-            "description",
-            "project",
-            "is_active",
-        ]
-
-
-class VacancyResponseListSerializer(serializers.ModelSerializer):
+class VacancyResponseListSerializer(serializers.ModelSerializer[VacancyResponse]):
     is_approved = serializers.BooleanField(read_only=True)
     user = UserDetailSerializer(read_only=True)
     user_id = serializers.IntegerField(write_only=True)
@@ -127,7 +114,7 @@ class VacancyResponseListSerializer(serializers.ModelSerializer):
         return vacancy_response
 
 
-class VacancyResponseDetailSerializer(serializers.ModelSerializer):
+class VacancyResponseDetailSerializer(serializers.ModelSerializer[VacancyResponse]):
     user = UserDetailSerializer(many=False, read_only=True)
     vacancy = VacancyListSerializer(many=False, read_only=True)
     is_approved = serializers.BooleanField(read_only=True)
