@@ -13,7 +13,6 @@ from project_rates.serializers import (
     CriteriaSerializer,
     ProjectScoreSerializer,
     ProjectScoreGetSerializer,
-    serialize_data_func,
 )
 from users.permissions import IsExpert, IsExpertPost
 
@@ -24,28 +23,40 @@ class RateProject(generics.CreateAPIView):
     serializer_class = ProjectScoreCreateSerializer
     permission_classes = [IsExpertPost]
 
-    def create(self, request, *args, **kwargs):
-        # try:
+    def get_needed_data(self) -> tuple[dict, list[int]]:
         data = self.request.data
-
-        user = self.request.user.id
+        user_id = self.request.user.id
         project_id = self.kwargs.get("project_id")
 
-        criteria_to_get = []
+        criteria_to_get = [
+            criterion["criterion_id"] for criterion in data
+        ]  # needed for validation later
         for criterion in data:
-            criterion["user_id"] = user
-            criterion["project_id"] = project_id
-            criteria_to_get.append(criterion["criterion_id"])
+            criterion["user"] = user_id
+            criterion["project"] = project_id
+            criterion["criteria"] = criterion.pop("criterion_id")
 
-        serialize_data_func(criteria_to_get, data)
-        ProjectScore.objects.bulk_create(
-            [ProjectScore(**score) for score in data],
-            update_conflicts=True,
-            update_fields=["value"],
-            unique_fields=["criteria", "user", "project"],
-        )
+        return data, criteria_to_get
 
-        return Response({"success": True}, status=status.HTTP_201_CREATED)
+    def create(self, request, *args, **kwargs) -> Response:
+        try:
+            data, criteria_to_get = self.get_needed_data()
+
+            serializer = ProjectScoreCreateSerializer(
+                data=data, criteria_to_get=criteria_to_get, many=True
+            )
+            serializer.is_valid(raise_exception=True)
+
+            ProjectScore.objects.bulk_create(
+                [ProjectScore(**item) for item in serializer.validated_data],
+                update_conflicts=True,
+                update_fields=["value"],
+                unique_fields=["criteria", "user", "project"],
+            )
+
+            return Response({"success": True}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class RateProjects(generics.ListAPIView):

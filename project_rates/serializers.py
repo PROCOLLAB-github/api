@@ -7,9 +7,29 @@ from .validators import ProjectScoreValidate
 
 
 class ProjectScoreCreateSerializer(serializers.ModelSerializer):
+    def __init__(self, *args, **kwargs):
+        self.criteria_to_get = kwargs.pop("criteria_to_get", None)
+        super(ProjectScoreCreateSerializer, self).__init__(*args, **kwargs)
+
     class Meta:
         model = ProjectScore
-        fields = ["criteria", "user", "project", "value"]
+        fields = ("criteria", "user", "project", "value")
+        validators = []
+
+    def get_queryset(self):
+        return self.Meta.model.objects.filter(
+            criteria__id__in=self.criteria_to_get
+        ).select_related("criteria", "project", "user")
+
+    def validate(self, data):
+        criteria = data["criteria"]
+        ProjectScoreValidate(
+            criteria_type=criteria.type,
+            value=data.get("value"),
+            criteria_min_value=criteria.min_value,
+            criteria_max_value=criteria.max_value,
+        )
+        return data
 
 
 class CriteriaSerializer(serializers.ModelSerializer):
