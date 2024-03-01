@@ -1,5 +1,4 @@
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import Q
 from rest_framework.generics import CreateAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -33,13 +32,14 @@ class NewSimpleFeed(APIView):
             .filter(content_type__model__in=filters)
             .order_by("-datetime_created")
         )
-        # временное удаление постов для проектов с текстом
-        return queryset.exclude(~Q(text=""), content_type__model="project")
+        return queryset
 
     def get(self, *args, **kwargs):
         paginator = self.pagination_class()
         paginated_data = paginator.paginate_queryset(self.get_queryset(), self.request)
-        serializer = NewsFeedListSerializer(paginated_data, many=True)
+        serializer = NewsFeedListSerializer(
+            paginated_data, context={"user": self.request.user}, many=True
+        )
 
         new_data = []
         # временная подстройка данных под фронт
