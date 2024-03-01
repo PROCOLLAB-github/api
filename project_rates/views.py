@@ -1,17 +1,18 @@
 from django.contrib.auth import get_user_model
-from django.db.models import Count, Q
+from django.db.models import QuerySet
 
 from rest_framework import generics, status
 from rest_framework.response import Response
 
-from core.services import get_views_count
-from projects.models import Project
-from project_rates.models import Criteria, ProjectScore
+from project_rates.services import (
+    get_querysets,
+    serialize_project_criterias,
+    count_scored_criterias,
+)
+from project_rates.models import ProjectScore
 from project_rates.pagination import RateProjectsPagination
 from project_rates.serializers import (
     ProjectScoreCreateSerializer,
-    CriteriaSerializer,
-    ProjectScoreSerializer,
     ProjectScoreGetSerializer,
 )
 from users.permissions import IsExpert, IsExpertPost
@@ -30,7 +31,7 @@ class RateProject(generics.CreateAPIView):
 
         criteria_to_get = [
             criterion["criterion_id"] for criterion in data
-        ]  # needed for validation later
+        ]  # is needed for validation later
         for criterion in data:
             criterion["user"] = user_id
             criterion["project"] = project_id
@@ -39,24 +40,21 @@ class RateProject(generics.CreateAPIView):
         return data, criteria_to_get
 
     def create(self, request, *args, **kwargs) -> Response:
-        try:
-            data, criteria_to_get = self.get_needed_data()
+        data, criteria_to_get = self.get_needed_data()
 
-            serializer = ProjectScoreCreateSerializer(
-                data=data, criteria_to_get=criteria_to_get, many=True
-            )
-            serializer.is_valid(raise_exception=True)
+        serializer = ProjectScoreCreateSerializer(
+            data=data, criteria_to_get=criteria_to_get, many=True
+        )
+        serializer.is_valid(raise_exception=True)
 
-            ProjectScore.objects.bulk_create(
-                [ProjectScore(**item) for item in serializer.validated_data],
-                update_conflicts=True,
-                update_fields=["value"],
-                unique_fields=["criteria", "user", "project"],
-            )
+        ProjectScore.objects.bulk_create(
+            [ProjectScore(**item) for item in serializer.validated_data],
+            update_conflicts=True,
+            update_fields=["value"],
+            unique_fields=["criteria", "user", "project"],
+        )
 
-            return Response({"success": True}, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"success": True}, status=status.HTTP_201_CREATED)
 
 
 class RateProjects(generics.ListAPIView):
@@ -64,164 +62,52 @@ class RateProjects(generics.ListAPIView):
     permission_classes = [IsExpert]
     pagination_class = RateProjectsPagination
 
-    def get(self, request, *args, **kwargs):
+    def get_request_data(self) -> dict:
         user = self.request.user
         program_id = self.kwargs.get("program_id")
+        scored = True if self.request.query_params.get("scored") == "true" else False
 
-        criterias = Criteria.objects.prefetch_related("partner_program").filter(
-            partner_program_id=program_id
-        )
-        scores = ProjectScore.objects.prefetch_related("criteria").filter(
-            criteria__in=criterias.values_list("id", flat=True), user=user
-        )
-        unpaginated_projects = Project.objects.filter(
-            partner_program_profiles__partner_program_id=program_id
-        ).distinct()
+        return {"program_id": program_id, "user": user, "view": self, "scored": scored}
 
-        projects = self.paginate_queryset(unpaginated_projects)
+    def get_querysets_dict(self) -> dict[str, QuerySet]:
+        return get_querysets(**self.get_request_data())
 
-        criteria_serializer = CriteriaSerializer(data=criterias, many=True)
-        scores_serializer = ProjectScoreSerializer(data=scores, many=True)
-
-        criteria_serializer.is_valid()
-        scores_serializer.is_valid()
-
-        projects_serializer = self.get_serializer(
-            data=projects,
-            context={
-                "data_criterias": criteria_serializer.data,
-                "data_scores": scores_serializer.data,
-            },
-            many=True,
-        )
-
-        projects_serializer.is_valid()
-
-        for project in projects_serializer.data:
-            filled_values = 0
-            for criteria in project["criterias"]:
-                if criteria["name"] == "Комментарий" or criteria.get("value", None):
-                    filled_values += 1
-
-            if filled_values == len(project["criterias"]):
-                project["is_scored"] = True
-
-        return self.get_paginated_response(projects_serializer.data)
-
-
-class ScoredProjects(generics.ListAPIView):
-    serializer_class = ProjectScoreGetSerializer
-    permission_classes = [IsExpert]
-    pagination_class = RateProjectsPagination
+    def serialize_querysets(self) -> list[dict]:
+        return serialize_project_criterias(self.get_querysets_dict())
 
     def get(self, request, *args, **kwargs):
-        user = self.request.user
-        program_id = self.kwargs.get("program_id")
+        serialized_data = self.serialize_querysets()
 
-        criterias = Criteria.objects.prefetch_related("partner_program").filter(
-            partner_program_id=program_id
-        )
-        quantity_criterias = criterias.count()
+        if self.request.query_params.get("scored") == "true":
+            [project.update({"is_scored": True}) for project in serialized_data]
+        else:
+            [count_scored_criterias(project) for project in serialized_data]
 
-        scores = ProjectScore.objects.prefetch_related("criteria").filter(
-            criteria__in=criterias.values_list("id", flat=True), user=user
-        )
-        unpaginated_projects = (
-            Project.objects.filter(
-                partner_program_profiles__partner_program_id=program_id
-            )
-            .annotate(user_scores_count=Count("scores", filter=Q(scores__user=user)))
-            .filter(user_scores_count=quantity_criterias)
-            .distinct()
-        )
-
-        projects = self.paginate_queryset(unpaginated_projects)
-
-        criteria_serializer = CriteriaSerializer(data=criterias, many=True)
-        scores_serializer = ProjectScoreSerializer(data=scores, many=True)
-
-        criteria_serializer.is_valid()
-        scores_serializer.is_valid()
-
-        projects_serializer = self.get_serializer(
-            data=projects,
-            context={
-                "data_criterias": criteria_serializer.data,
-                "data_scores": scores_serializer.data,
-            },
-            many=True,
-        )
-
-        projects_serializer.is_valid()
-
-        for project in projects_serializer.data:
-            project["is_scored"] = True
-
-        return self.get_paginated_response(projects_serializer.data)
+        return self.get_paginated_response(serialized_data)
 
 
-class RateProjectsDetails(generics.ListAPIView):
-    serializer_class = ProjectScoreGetSerializer
-    permission_classes = [IsExpert]
+class RateProjectsDetails(RateProjects):
+    permission_classes = [IsExpertPost]  # потом решить проблему с этим
 
-    def get(self, request, *args, **kwargs):
-        user = self.request.user
+    def get_request_data(self) -> dict:
+        kwargs = super().get_request_data()
+
         project_id = self.request.query_params.get("project_id")
+        program_id = self.request.query_params.get("program_id")
 
-        criterias = Criteria.objects.prefetch_related("partner_program").filter(
-            partner_program_id=int(self.request.query_params.get("program_id"))
-        )
-        project = Project.objects.filter(id=int(project_id)).first()
-        scores = ProjectScore.objects.prefetch_related("criteria").filter(
-            criteria__in=criterias.values_list("id", flat=True),
-            user=user,
-            project=project,
-        )
+        kwargs["project_id"] = int(project_id) if project_id else None
+        kwargs["program_id"] = int(program_id) if program_id else None
+        return kwargs
 
-        criterias_data = []
-        for criteria in criterias:
-            criteria_data = {
-                "id": criteria.id,
-                "name": criteria.name,
-                "description": criteria.description,
-                "type": criteria.type,
-                "min_value": criteria.min_value,
-                "max_value": criteria.max_value,
-            }
-            criterias_data.append(criteria_data)
+    def get(self, request, *args, **kwargs):
+        try:
+            serialized_data = self.serialize_querysets()[0]
 
-        project_scores_data = []
-        for project_score in scores:
-            project_score_data = {
-                "criteria_id": project_score.criteria.id,
-                "value": project_score.value,
-            }
-            project_scores_data.append(project_score_data)
+            count_scored_criterias(serialized_data)
 
-        for score in project_scores_data:
-            for criteria in criterias_data:
-                if criteria["id"] == score["criteria_id"]:
-                    criteria["value"] = score["value"]
-
-        response = {
-            "id": project.id,
-            "name": project.name,
-            "leader": project.leader.id,
-            "description": project.description,
-            "image_address": project.image_address,
-            "presentation_address": project.presentation_address,
-            "industry": project.industry.id,
-            "region": project.region,
-            "criterias": criterias_data,
-            "views_count": get_views_count(project),
-        }
-
-        filled_values = 0
-        for criteria in response["criterias"]:
-            if criteria.get("value", None):
-                filled_values += 1
-
-        if filled_values == len(response["criterias"]):
-            response["is_scored"] = True
-
-        return Response(response, status=200)
+            return Response(serialized_data, status=status.HTTP_200_OK)
+        except IndexError:
+            return Response(
+                {"error": "Нужный проект или программа не найдены"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
