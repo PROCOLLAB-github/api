@@ -129,6 +129,9 @@ class Skill(models.Model):
         related_name="skills",
     )
 
+    def __str__(self):
+        return self.name
+
     class Meta:
         verbose_name = "Навык"
         verbose_name_plural = "Навыки"

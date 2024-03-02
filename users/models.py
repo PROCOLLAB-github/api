@@ -123,6 +123,10 @@ class CustomUser(AbstractUser):
 
     objects = CustomUserManager()
 
+    @property
+    def skills_count(self):
+        return self.skills.count()
+
     def calculate_ordering_score(self) -> int:
         """
         Calculate ordering score of the user, e.g. how full their profile is.

@@ -15,6 +15,14 @@ from .models import (
     UserLink,
 )
 
+from django.contrib.contenttypes.admin import GenericTabularInline
+from core.models import SkillToObject
+
+
+class SkillToObjectInline(GenericTabularInline):
+    model = SkillToObject
+    extra = 1
+
 
 @admin.register(CustomUser)
 class CustomUserAdmin(admin.ModelAdmin):
@@ -110,6 +118,10 @@ class CustomUserAdmin(admin.ModelAdmin):
         "city",
         "v2_speciality__name",
     )
+
+    inlines = [
+        SkillToObjectInline,
+    ]
 
     readonly_fields = ("ordering_score",)
     change_form_template = "users/admin/users_change_form.html"
