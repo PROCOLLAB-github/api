@@ -93,6 +93,16 @@ class SpecializationsSerializer(serializers.ModelSerializer[SpecializationCatego
         fields = ["id", "name", "specializations"]
 
 
+class SkillsSerializerMixin(serializers.Serializer):
+    skills = SkillSerializer(many=True, read_only=True)
+
+
+class SkillsWriteSerializerMixin(SkillsSerializerMixin):
+    skills_ids = serializers.ListField(
+        child=serializers.IntegerField(), write_only=True, required=False
+    )
+
+
 class UserProjectsSerializer(serializers.ModelSerializer[Project]):
     short_description = serializers.SerializerMethodField()
     views_count = serializers.SerializerMethodField()
@@ -163,7 +173,9 @@ class UserSubscribedProjectsSerializer(serializers.ModelSerializer[Project]):
         read_only_fields = ["leader", "collaborator"]
 
 
-class UserDetailSerializer(serializers.ModelSerializer[CustomUser]):
+class UserDetailSerializer(
+    serializers.ModelSerializer[CustomUser], SkillsWriteSerializerMixin
+):
     member = MemberSerializer(required=False)
     investor = InvestorSerializer(required=False)
     expert = ExpertSerializer(required=False)
@@ -175,10 +187,6 @@ class UserDetailSerializer(serializers.ModelSerializer[CustomUser]):
     v2_speciality = SpecializationSerializer(read_only=True)
     v2_speciality_id = serializers.IntegerField(
         write_only=True, validators=[specialization_exists_validator]
-    )
-    skills = SkillSerializer(many=True, read_only=True)
-    skills_ids = serializers.ListField(
-        child=serializers.IntegerField(), write_only=True, required=False
     )
 
     def get_projects(self, user: CustomUser):
@@ -320,12 +328,10 @@ class UserDetailSerializer(serializers.ModelSerializer[CustomUser]):
         return instance
 
 
-class UserListSerializer(serializers.ModelSerializer[CustomUser]):
+class UserListSerializer(
+    serializers.ModelSerializer[CustomUser], SkillsWriteSerializerMixin
+):
     member = MemberSerializer(required=False)
-    skills = SkillSerializer(many=True, read_only=True)
-    skills_ids = serializers.ListField(
-        child=serializers.IntegerField(), write_only=True, required=False
-    )
     is_online = serializers.SerializerMethodField()
 
     def get_is_online(self, user: CustomUser) -> bool:
@@ -386,9 +392,7 @@ class UserListSerializer(serializers.ModelSerializer[CustomUser]):
         }
 
 
-class UserFeedSerializer(serializers.ModelSerializer):
-    skills = SkillSerializer(many=True, read_only=True)
-
+class UserFeedSerializer(serializers.ModelSerializer, SkillsSerializerMixin):
     class Meta:
         model = CustomUser
         fields = [
