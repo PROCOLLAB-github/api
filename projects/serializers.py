@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from django.core.cache import cache
-from core.fields import CustomListField
+from core.serializers import SkillSerializer
 from core.services import get_views_count, get_likes_count, is_fan
 from core.utils import get_user_online_cache_key
 from files.serializers import UserFileSerializer
@@ -41,7 +41,7 @@ class CollaboratorSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(source="user.first_name")
     last_name = serializers.CharField(source="user.last_name")
     avatar = serializers.CharField(source="user.avatar")
-    key_skills = CustomListField(child=serializers.CharField(), source="user.key_skills")
+    skills = SkillSerializer(many=True, read_only=True, source="user.skills")
 
     class Meta:
         model = Collaborator
@@ -50,7 +50,7 @@ class CollaboratorSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "role",
-            "key_skills",
+            "skills",
             "avatar",
         ]
 

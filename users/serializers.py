@@ -1,8 +1,11 @@
+from django.contrib.contenttypes.models import ContentType
 from django.forms.models import model_to_dict
+from django.http import Http404
 from rest_framework import serializers
 from django.core.cache import cache
 
-from core.models import SpecializationCategory, Specialization
+from core.serializers import SkillSerializer
+from core.models import SpecializationCategory, Specialization, Skill, SkillToObject
 from core.services import get_views_count
 from core.utils import get_user_online_cache_key
 from projects.models import Project, Collaborator
@@ -16,14 +19,6 @@ class AchievementListSerializer(serializers.ModelSerializer[UserAchievement]):
         model = UserAchievement
         fields = ["id", "title", "status"]
         ref_name = "Users"
-
-
-class KeySkillsField(serializers.Field):
-    def to_representation(self, value):
-        return [skill.strip() for skill in value.split(",") if skill.strip()]
-
-    def to_internal_value(self, data):
-        return ",".join(data)
 
 
 class CustomListField(serializers.ListField):
@@ -174,13 +169,16 @@ class UserDetailSerializer(serializers.ModelSerializer[CustomUser]):
     expert = ExpertSerializer(required=False)
     mentor = MentorSerializer(required=False)
     achievements = AchievementListSerializer(required=False, many=True)
-    key_skills = KeySkillsField(required=False)
     links = serializers.SerializerMethodField()
     is_online = serializers.SerializerMethodField()
     projects = serializers.SerializerMethodField()
     v2_speciality = SpecializationSerializer(read_only=True)
     v2_speciality_id = serializers.IntegerField(
         write_only=True, validators=[specialization_exists_validator]
+    )
+    skills = SkillSerializer(many=True, read_only=True)
+    skills_ids = serializers.ListField(
+        child=serializers.IntegerField(), write_only=True, required=False
     )
 
     def get_projects(self, user: CustomUser):
@@ -213,7 +211,8 @@ class UserDetailSerializer(serializers.ModelSerializer[CustomUser]):
             "first_name",
             "last_name",
             "patronymic",
-            "key_skills",
+            "skills",
+            "skills_ids",
             "birthday",
             "speciality",
             "v2_speciality",
@@ -302,13 +301,31 @@ class UserDetailSerializer(serializers.ModelSerializer[CustomUser]):
                 new_user_type.save()
             setattr(instance, attr, value)
 
+            if attr == "skills_ids":
+                instance.skills.all().delete()
+
+                for skill_id in value:
+                    skill = Skill.objects.filter(id=skill_id).first()
+                    if not skill:
+                        raise Http404("Такого навыка не существует")
+
+                    SkillToObject.objects.create(
+                        skill=skill,
+                        content_type=ContentType.objects.get_for_model(CustomUser),
+                        object_id=instance.id,
+                    )
+
         instance.save()
+
         return instance
 
 
 class UserListSerializer(serializers.ModelSerializer[CustomUser]):
     member = MemberSerializer(required=False)
-    key_skills = KeySkillsField(required=False)
+    skills = SkillSerializer(many=True, read_only=True)
+    skills_ids = serializers.ListField(
+        child=serializers.IntegerField(), write_only=True, required=False
+    )
     is_online = serializers.SerializerMethodField()
 
     def get_is_online(self, user: CustomUser) -> bool:
@@ -325,6 +342,20 @@ class UserListSerializer(serializers.ModelSerializer[CustomUser]):
         user.set_password(validated_data["password"])
         user.save()
 
+        if "skills_ids" in validated_data:
+            for skill_id in validated_data["skills_ids"]:
+                skill = Skill.objects.filter(id=skill_id).first()
+                if not skill:
+                    raise Http404("Такого навыка не существует")
+
+                SkillToObject.objects.create(
+                    skill=skill,
+                    content_type=ContentType.objects.get_for_model(CustomUser),
+                    object_id=user.id,
+                )
+
+        user.save()
+
         return user
 
     class Meta:
@@ -336,7 +367,8 @@ class UserListSerializer(serializers.ModelSerializer[CustomUser]):
             "first_name",
             "last_name",
             "patronymic",
-            "key_skills",
+            "skills",
+            "skills_ids",
             "avatar",
             "speciality",
             "birthday",
@@ -355,6 +387,8 @@ class UserListSerializer(serializers.ModelSerializer[CustomUser]):
 
 
 class UserFeedSerializer(serializers.ModelSerializer):
+    skills = SkillSerializer(many=True, read_only=True)
+
     class Meta:
         model = CustomUser
         fields = [
@@ -364,7 +398,7 @@ class UserFeedSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "patronymic",
-            "key_skills",
+            "skills",
             "speciality",
         ]
 
