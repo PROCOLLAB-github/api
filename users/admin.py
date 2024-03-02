@@ -89,6 +89,7 @@ class CustomUserAdmin(admin.ModelAdmin):
         "first_name",
         "ordering_score",
         "is_active",
+        "v2_speciality",
     )
     list_display_links = (
         "id",
@@ -107,9 +108,8 @@ class CustomUserAdmin(admin.ModelAdmin):
         "is_staff",
         "is_superuser",
         "city",
+        "v2_speciality__name",
     )
-
-    raw_id_fields = ("v2_speciality",)
 
     readonly_fields = ("ordering_score",)
     change_form_template = "users/admin/users_change_form.html"
@@ -198,3 +198,8 @@ class UserAchievementAdmin(admin.ModelAdmin):
 class UserLinkAdmin(admin.ModelAdmin):
     list_display = ("id", "user", "link")
     list_display_links = ("id", "user", "link")
+
+
+@admin.register(Expert)
+class ExpertAdmin(admin.ModelAdmin):
+    list_display = ("id", "user")

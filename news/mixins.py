@@ -20,7 +20,10 @@ class NewsQuerysetMixin:
         except Project.DoesNotExist:
             # TODO: raise http 404 here
             return News.objects.none()
-        return News.objects.get_news(obj=project)
+        # временное удаление постов для проектов с текстом
+        return News.objects.get_news(obj=project).exclude(
+            text="", content_type__model="project"
+        )
 
     def get_queryset_for_program(self):
         """Returns queryset of news for partner program"""

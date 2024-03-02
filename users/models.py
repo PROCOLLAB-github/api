@@ -94,13 +94,13 @@ class CustomUser(AbstractUser):
     region = models.CharField(max_length=255, null=True, blank=True)
     city = models.CharField(max_length=255, null=True, blank=True)
     organization = models.CharField(max_length=255, null=True, blank=True)
-    speciality = models.CharField(max_length=255, null=True, blank=True)
-    v2_speciality = models.OneToOneField(
-        "core.Specialization",  # avoid circular imports
+    v2_speciality = models.ForeignKey(
         on_delete=models.SET_NULL,
         null=True,
         related_name="users",
+        to="core.Specialization",
     )
+    speciality = models.CharField(max_length=255, null=True, blank=True)
     onboarding_stage = models.PositiveSmallIntegerField(
         null=True,
         blank=True,
@@ -331,6 +331,10 @@ class Expert(AbstractUserWithRole):
 
     preferred_industries = models.CharField(max_length=4096, null=True, blank=True)
     useful_to_project = models.TextField(blank=True)
+
+    programs = models.ManyToManyField(
+        "partner_programs.PartnerProgram", related_name="experts", blank=True
+    )
 
     class Meta(TypedModelMeta):
         verbose_name = "Эксперт"

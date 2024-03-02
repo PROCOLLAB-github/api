@@ -5,7 +5,7 @@ from rest_framework import generics, permissions, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from core.serializers import SetLikedSerializer
+from core.serializers import SetLikedSerializer, SetViewedSerializer
 from core.services import add_view, set_like
 from partner_programs.helpers import date_to_iso
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
@@ -28,26 +28,21 @@ class PartnerProgramList(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     pagination_class = PartnerProgramPagination
 
-    def get(self, request, *args, **kwargs):
-        programs = self.paginate_queryset(self.get_queryset())
-        context = {"user": request.user}
-        serializer = PartnerProgramListSerializer(programs, context=context, many=True)
-        return self.get_paginated_response(serializer.data)
-
 
 class PartnerProgramDetail(generics.RetrieveAPIView):
     queryset = PartnerProgram.objects.all()
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    serializer_class = PartnerProgramForUnregisteredUserSerializer
 
     def get(self, request, *args, **kwargs):
         try:
-            program = PartnerProgram.objects.get(pk=kwargs["pk"])
-            # fixme
+            program = self.get_object()
             is_user_member = program.users.filter(pk=request.user.pk).exists()
-            if is_user_member:
-                serializer_class = PartnerProgramForMemberSerializer
-            else:
-                serializer_class = PartnerProgramForUnregisteredUserSerializer
+            serializer_class = (
+                PartnerProgramForMemberSerializer
+                if is_user_member
+                else PartnerProgramForUnregisteredUserSerializer
+            )
             data = serializer_class(program).data
             data["is_user_member"] = is_user_member
             if request.user.is_authenticated:
@@ -65,6 +60,7 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
 
     permission_classes = [AllowAny]
     serializer_class = PartnerProgramNewUserSerializer
+    queryset = PartnerProgram.objects.none()
 
     def post(self, request, *args, **kwargs):
         data = request.data
@@ -73,7 +69,7 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
             return Response(status=status.HTTP_200_OK)
 
         try:
-            program = PartnerProgram.objects.get(pk=kwargs["pk"])
+            program = self.get_object()
         except PartnerProgram.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
 
@@ -133,13 +129,13 @@ class PartnerProgramRegister(generics.GenericAPIView):
     """
     Register user to program and save additional program data
     """
-
+    queryset = PartnerProgram.objects.none()
     permission_classes = [IsAuthenticated]
     serializer_class = PartnerProgramUserSerializer
 
     def post(self, request, *args, **kwargs):
         try:
-            program = PartnerProgram.objects.get(pk=kwargs["pk"])
+            program = self.get_object()
             if program.datetime_registration_ends < timezone.now():
                 return Response(
                     data={"detail": "Registration period has ended."},
@@ -166,13 +162,13 @@ class PartnerProgramRegister(generics.GenericAPIView):
 
 
 class PartnerProgramSetViewed(generics.GenericAPIView):
-    # fixme
-    # serializer_class = SetViewedSerializer
+    queryset = PartnerProgram.objects.none()
+    serializer_class = SetViewedSerializer
     permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
         try:
-            program = PartnerProgram.objects.get(pk=self.kwargs["pk"])
+            program = self.get_object()
             add_view(program, request.user)
             return Response(status=status.HTTP_200_OK)
         except PartnerProgram.DoesNotExist:
@@ -180,12 +176,13 @@ class PartnerProgramSetViewed(generics.GenericAPIView):
 
 
 class PartnerProgramSetLiked(generics.CreateAPIView):
+    queryset = PartnerProgram.objects.none()
     serializer_class = SetLikedSerializer
     permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
         try:
-            program = PartnerProgram.objects.get(pk=self.kwargs["pk"])
+            program = self.get_object()
             set_like(program, request.user, request.data.get("is_liked"))
             return Response(status=status.HTTP_200_OK)
         except PartnerProgram.DoesNotExist:

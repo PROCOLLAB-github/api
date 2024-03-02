@@ -1,5 +1,5 @@
 import tablib
-
+import re
 from django.contrib import admin
 from django.http import HttpResponse
 from django.urls import path
@@ -75,6 +75,7 @@ class PartnerProgramAdmin(admin.ModelAdmin):
 
     def get_export_file(self, partner_program: PartnerProgram):
         json_schema = partner_program.data_schema
+
         profiles = PartnerProgramUserProfile.objects.filter(
             partner_program=partner_program
         )
@@ -103,10 +104,15 @@ class PartnerProgramAdmin(admin.ModelAdmin):
                 ]
 
             json_data = profile.partner_program_data
+            ILLEGAL_CHARACTERS_RE = re.compile(r"[\000-\010]|[\013-\014]|[\016-\037]")
+
             for key in json_schema:
-                row.append(
-                    json_data.get(key.encode("ascii", errors="ignore").decode(), "")
-                )
+                value = json_data.get(key, "")  # Получаем значение из json_data
+                cleaned_value = ILLEGAL_CHARACTERS_RE.sub(
+                    "", value
+                )  # Удаляем недопустимые символы из значения
+                row.append(cleaned_value)  # Добавляем очищенное значение в row
+
             response_data.append(row)
 
         binary_data = response_data.export("xlsx")
@@ -141,8 +147,5 @@ class PartnerProgramUserProfileAdmin(admin.ModelAdmin):
         "project",
         "partner_program",
     )
-    search_fields = (
-        "user__first_name",
-        "user__last_name",
-    )
+    search_fields = ("user__first_name", "user__last_name", "partner_program_data")
     date_hierarchy = "datetime_created"

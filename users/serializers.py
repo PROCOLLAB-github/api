@@ -32,7 +32,7 @@ class CustomListField(serializers.ListField):
         if isinstance(data, list):
             return data
         return [
-            i.replace("'", "") for i in data.strip("][").split(", ") if i.replace("'", "")
+            i.replace("'", "") for i in data.strip("][").split(",") if i.replace("'", "")
         ]
 
 
@@ -352,6 +352,21 @@ class UserListSerializer(serializers.ModelSerializer[CustomUser]):
             "onboarding_stage": {"read_only": True},
             "verification_date": {"read_only": True},
         }
+
+
+class UserFeedSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = [
+            "id",
+            "email",
+            "user_type",
+            "first_name",
+            "last_name",
+            "patronymic",
+            "key_skills",
+            "speciality",
+        ]
 
 
 class AchievementDetailSerializer(serializers.ModelSerializer[UserAchievement]):

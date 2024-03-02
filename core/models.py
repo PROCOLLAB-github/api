@@ -158,6 +158,9 @@ class SkillToObject(models.Model):
 class SpecializationCategory(models.Model):
     name = models.TextField()
 
+    def __str__(self):
+        return self.name
+
     class Meta:
         verbose_name = "Категория специализации"
         verbose_name_plural = "Категории специализаций"
@@ -168,6 +171,9 @@ class Specialization(models.Model):
     category = models.ForeignKey(
         SpecializationCategory, related_name="specializations", on_delete=models.CASCADE
     )
+
+    def __str__(self):
+        return self.name
 
     class Meta:
         verbose_name = "Специализация"
