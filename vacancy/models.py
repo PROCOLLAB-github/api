@@ -45,6 +45,12 @@ class Vacancy(models.Model):
 
     objects = VacancyManager()
 
+    def get_required_skills(self):
+        required_skills = []
+        for sto in self.required_skills.all():
+            required_skills.append(sto.skill)
+        return required_skills
+
     def __str__(self):
         return f"Vacancy<{self.id}> - {self.role}"
 

@@ -127,6 +127,12 @@ class CustomUser(AbstractUser):
     def skills_count(self):
         return self.skills.count()
 
+    def get_skills(self):
+        skills = []
+        for sto in self.skills.all():
+            skills.append(sto.skill)
+        return skills
+
     def calculate_ordering_score(self) -> int:
         """
         Calculate ordering score of the user, e.g. how full their profile is.
