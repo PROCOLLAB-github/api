@@ -1,6 +1,5 @@
 from django.contrib.contenttypes.models import ContentType
 from django.forms.models import model_to_dict
-from django.http import Http404
 from rest_framework import serializers
 from django.core.cache import cache
 
@@ -313,9 +312,10 @@ class UserDetailSerializer(
                 instance.skills.all().delete()
 
                 for skill_id in value:
-                    skill = Skill.objects.filter(id=skill_id).first()
-                    if not skill:
-                        raise Http404("Такого навыка не существует")
+                    try:
+                        skill = Skill.objects.get(id=skill_id)
+                    except Skill.DoesNotExist:
+                        raise serializers.ValidationError("Skill does not exist")
 
                     SkillToObject.objects.create(
                         skill=skill,
@@ -350,9 +350,10 @@ class UserListSerializer(
 
         if "skills_ids" in validated_data:
             for skill_id in validated_data["skills_ids"]:
-                skill = Skill.objects.filter(id=skill_id).first()
-                if not skill:
-                    raise Http404("Такого навыка не существует")
+                try:
+                    skill = Skill.objects.get(id=skill_id)
+                except Skill.DoesNotExist:
+                    raise serializers.ValidationError("Skill does not exist")
 
                 SkillToObject.objects.create(
                     skill=skill,
