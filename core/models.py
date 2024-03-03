@@ -157,6 +157,10 @@ class SkillToObject(models.Model):
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey("content_type", "object_id")
 
+    class Meta:
+        verbose_name = "Навык"
+        verbose_name_plural = "Навыки"
+
 
 class SpecializationCategory(models.Model):
     name = models.TextField()

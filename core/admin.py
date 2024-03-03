@@ -1,4 +1,6 @@
 from django.contrib import admin
+from django.contrib.contenttypes.admin import GenericStackedInline
+
 from core.models import (
     Like,
     View,
@@ -7,7 +9,15 @@ from core.models import (
     SpecializationCategory,
     Skill,
     SkillCategory,
+    SkillToObject,
 )
+
+
+class SkillToObjectInline(GenericStackedInline):
+    model = SkillToObject
+    extra = 1
+    verbose_name = "Навык"
+    verbose_name_plural = "Навыки"
 
 
 @admin.register(Like)

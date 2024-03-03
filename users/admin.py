@@ -15,13 +15,7 @@ from .models import (
     UserLink,
 )
 
-from django.contrib.contenttypes.admin import GenericTabularInline
-from core.models import SkillToObject
-
-
-class SkillToObjectInline(GenericTabularInline):
-    model = SkillToObject
-    extra = 1
+from core.admin import SkillToObjectInline
 
 
 @admin.register(CustomUser)
