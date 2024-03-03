@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import SkillToObject, SkillCategory
+
+from .models import SkillToObject, SkillCategory, Skill
 
 
 class SetLikedSerializer(serializers.Serializer):
@@ -20,6 +21,14 @@ class SkillCategorySerializer(serializers.ModelSerializer[SkillCategory]):
 
 
 class SkillSerializer(serializers.ModelSerializer):
+    category = SkillCategorySerializer()
+
+    class Meta:
+        model = Skill
+        fields = ["id", "name", "category"]
+
+
+class STOSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(source="skill.id")
     name = serializers.CharField(source="skill.name")
     category = SkillCategorySerializer(source="skill.category")
@@ -27,3 +36,11 @@ class SkillSerializer(serializers.ModelSerializer):
     class Meta:
         model = SkillToObject
         fields = ["id", "name", "category"]
+
+
+class SkillsSerializer(serializers.ModelSerializer[SkillCategory]):
+    skills = SkillSerializer(many=True)
+
+    class Meta:
+        model = SkillCategory
+        fields = ["id", "name", "skills"]

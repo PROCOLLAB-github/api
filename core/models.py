@@ -135,7 +135,7 @@ class Skill(models.Model):
     class Meta:
         verbose_name = "Навык"
         verbose_name_plural = "Навыки"
-        ordering = ["category", "name"]
+        ordering = ["id", "category", "name"]
 
 
 class SkillToObject(models.Model):

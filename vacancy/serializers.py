@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from core.serializers import SkillSerializer
+from core.serializers import STOSerializer
 from projects.models import Project
 from users.serializers import UserDetailSerializer
 from vacancy.models import Vacancy, VacancyResponse
@@ -10,7 +10,7 @@ User = get_user_model()
 
 
 class RequiredSkillsSerializerMixin(serializers.Serializer):
-    required_skills = SkillSerializer(many=True, read_only=True)
+    required_skills = STOSerializer(many=True, read_only=True)
 
 
 class RequiredSkillsWriteSerializerMixin(RequiredSkillsSerializerMixin):
