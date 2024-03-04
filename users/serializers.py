@@ -348,18 +348,17 @@ class UserListSerializer(
         user.set_password(validated_data["password"])
         user.save()
 
-        if "skills_ids" in validated_data:
-            for skill_id in validated_data["skills_ids"]:
-                try:
-                    skill = Skill.objects.get(id=skill_id)
-                except Skill.DoesNotExist:
-                    raise serializers.ValidationError("Skill does not exist")
+        for skill_id in validated_data.get("skills_ids", []):
+            try:
+                skill = Skill.objects.get(id=skill_id)
+            except Skill.DoesNotExist:
+                raise serializers.ValidationError("Skill does not exist")
 
-                SkillToObject.objects.create(
-                    skill=skill,
-                    content_type=ContentType.objects.get_for_model(CustomUser),
-                    object_id=user.id,
-                )
+            SkillToObject.objects.create(
+                skill=skill,
+                content_type=ContentType.objects.get_for_model(CustomUser),
+                object_id=user.id,
+            )
 
         return user
 
