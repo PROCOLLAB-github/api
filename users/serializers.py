@@ -361,8 +361,6 @@ class UserListSerializer(
                     object_id=user.id,
                 )
 
-        user.save()
-
         return user
 
     class Meta:
