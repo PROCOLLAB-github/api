@@ -3,7 +3,7 @@ from django.forms.models import model_to_dict
 from rest_framework import serializers
 from django.core.cache import cache
 
-from core.serializers import STOSerializer
+from core.serializers import SkillToObjectSerializer
 from core.models import SpecializationCategory, Specialization, Skill, SkillToObject
 from core.services import get_views_count
 from core.utils import get_user_online_cache_key
@@ -93,7 +93,7 @@ class SpecializationsSerializer(serializers.ModelSerializer[SpecializationCatego
 
 
 class SkillsSerializerMixin(serializers.Serializer):
-    skills = STOSerializer(many=True, read_only=True)
+    skills = SkillToObjectSerializer(many=True, read_only=True)
 
 
 class SkillsWriteSerializerMixin(SkillsSerializerMixin):

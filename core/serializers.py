@@ -28,7 +28,7 @@ class SkillSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "category"]
 
 
-class STOSerializer(serializers.ModelSerializer):
+class SkillToObjectSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(source="skill.id")
     name = serializers.CharField(source="skill.name")
     category = SkillCategorySerializer(source="skill.category")

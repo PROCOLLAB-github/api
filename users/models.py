@@ -128,10 +128,7 @@ class CustomUser(AbstractUser):
         return self.skills.count()
 
     def get_skills(self):
-        skills = []
-        for sto in self.skills.all():
-            skills.append(sto.skill)
-        return skills
+        return [sto.skill for sto in self.skills.all()]
 
     def calculate_ordering_score(self) -> int:
         """

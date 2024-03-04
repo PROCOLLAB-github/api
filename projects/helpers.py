@@ -25,7 +25,7 @@ def get_recommended_users(project: Project) -> list[User]:
 
         user_skills = set(user.get_skills())
 
-        if user_skills.intersection(all_needed_skills):
+        if all_needed_skills & user_skills:
             recommended_users.append(user)
 
     # get some random users

@@ -3,7 +3,7 @@ from django.contrib.contenttypes.models import ContentType
 from rest_framework import serializers
 
 from core.models import Skill, SkillToObject
-from core.serializers import STOSerializer
+from core.serializers import SkillToObjectSerializer
 from projects.models import Project
 from users.serializers import UserDetailSerializer
 from vacancy.models import Vacancy, VacancyResponse
@@ -12,7 +12,7 @@ User = get_user_model()
 
 
 class RequiredSkillsSerializerMixin(serializers.Serializer):
-    required_skills = STOSerializer(many=True, read_only=True)
+    required_skills = SkillToObjectSerializer(many=True, read_only=True)
 
 
 class RequiredSkillsWriteSerializerMixin(RequiredSkillsSerializerMixin):

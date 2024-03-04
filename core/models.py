@@ -132,6 +132,9 @@ class Skill(models.Model):
     def __str__(self):
         return self.name
 
+    def __repr__(self):
+        return f"Skill<name={self.name},id={self.id}>"
+
     class Meta:
         verbose_name = "Навык"
         verbose_name_plural = "Навыки"
@@ -158,8 +161,8 @@ class SkillToObject(models.Model):
     content_object = GenericForeignKey("content_type", "object_id")
 
     class Meta:
-        verbose_name = "Навык"
-        verbose_name_plural = "Навыки"
+        verbose_name = "Ссылка на навык"
+        verbose_name_plural = "Ссылки на навыки"
 
 
 class SpecializationCategory(models.Model):
