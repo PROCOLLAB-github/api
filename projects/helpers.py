@@ -24,7 +24,7 @@ def get_recommended_users(project: Project) -> list[User]:
             continue
 
         user_skills = set(user.get_skills())
-        print(user_skills, all_needed_skills)
+
         if user_skills.intersection(all_needed_skills):
             recommended_users.append(user)
 
