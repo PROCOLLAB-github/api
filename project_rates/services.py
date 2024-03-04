@@ -13,14 +13,16 @@ def get_querysets(**kwargs) -> dict[str, QuerySet]:
     """
     Kwargs arguments input:
 
-    program_id: int,
-    user: CustomUser,
-    view: ListAPIView,
-    scored: bool = False,
-    project_id: int | None = None,
+    Args:
+       program_id (int): The ID of the program.
+       user (CustomUser): An instance of the CustomUser class.
+       view (ListAPIView): An instance of the ListAPIView class.
+       scored (bool, optional): A boolean indicating if the item is scored. Defaults to False.
+       project_id (int | None, optional): The ID of the project, or None if not applicable. Defaults to None.
 
     """
     program_id = kwargs.get("program_id")
+    project_id = kwargs.get("project_id")
     user = kwargs.get("user")
 
     criterias = Criteria.objects.prefetch_related("partner_program").filter(
@@ -30,24 +32,26 @@ def get_querysets(**kwargs) -> dict[str, QuerySet]:
         criteria__in=criterias.values_list("id", flat=True), user=user
     )
 
-    unpaginated_projects = Project.objects.filter(
-        partner_program_profiles__partner_program_id=program_id
-    ).distinct()
+    if project_id:
+        projects = [Project.objects.get(id=kwargs.get("project_id"))]
+    else:
+        projects = Project.objects.filter(
+            partner_program_profiles__partner_program_id=program_id
+        ).distinct()
 
     if kwargs.get("scored"):
-        quantity_criterias = len(criterias)
-        unpaginated_projects = unpaginated_projects.annotate(
+        criterias_quantity = len(criterias)
+        projects = projects.annotate(
             user_scores_count=Count("scores", filter=Q(scores__user=user))
-        ).filter(user_scores_count=quantity_criterias)
-    elif kwargs.get("project_id"):
-        unpaginated_projects = unpaginated_projects.filter(id=kwargs.get("project_id"))
+        ).filter(user_scores_count=criterias_quantity)
 
-    paginated_projects = kwargs.get("view").paginate_queryset(unpaginated_projects)
+    if not project_id:
+        projects = kwargs.get("view").paginate_queryset(projects)
 
     return {
         "criterias_queryset": criterias,
         "scores_queryset": scores,
-        "paginated_projects_queryset": paginated_projects,
+        "projects_queryset": projects,
     }
 
 
@@ -56,7 +60,7 @@ def serialize_project_criterias(querysets: dict[str, QuerySet]) -> list[dict]:
     scores_serializer = ProjectScoreSerializer(querysets["scores_queryset"], many=True)
 
     projects_serializer = ProjectScoreGetSerializer(
-        querysets["paginated_projects_queryset"],
+        querysets["projects_queryset"],
         context={
             "data_criterias": criteria_serializer.data,
             "data_scores": scores_serializer.data,
@@ -66,7 +70,7 @@ def serialize_project_criterias(querysets: dict[str, QuerySet]) -> list[dict]:
     return projects_serializer.data
 
 
-def count_scored_criterias(project_data: dict) -> None:
+def count_scored_criterias(project_data: dict):
     filled_values = sum(
         1
         for criteria in project_data["criterias"]

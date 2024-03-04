@@ -40,21 +40,25 @@ class RateProject(generics.CreateAPIView):
         return data, criteria_to_get
 
     def create(self, request, *args, **kwargs) -> Response:
-        data, criteria_to_get = self.get_needed_data()
+        try:
+            data, criteria_to_get = self.get_needed_data()
 
-        serializer = ProjectScoreCreateSerializer(
-            data=data, criteria_to_get=criteria_to_get, many=True
-        )
-        serializer.is_valid(raise_exception=True)
+            serializer = ProjectScoreCreateSerializer(
+                data=data, criteria_to_get=criteria_to_get, many=True
+            )
+            serializer.is_valid(raise_exception=True)
 
-        ProjectScore.objects.bulk_create(
-            [ProjectScore(**item) for item in serializer.validated_data],
-            update_conflicts=True,
-            update_fields=["value"],
-            unique_fields=["criteria", "user", "project"],
-        )
+            ProjectScore.objects.bulk_create(
+                [ProjectScore(**item) for item in serializer.validated_data],
+                update_conflicts=True,
+                update_fields=["value"],
+                unique_fields=["criteria", "user", "project"],
+            )
 
-        return Response({"success": True}, status=status.HTTP_201_CREATED)
+            return Response({"success": True}, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class RateProjects(generics.ListAPIView):
@@ -100,14 +104,15 @@ class RateProjectsDetails(RateProjects):
         return kwargs
 
     def get(self, request, *args, **kwargs):
-        try:
-            serialized_data = self.serialize_querysets()[0]
+        # try:
+        serialized_data = self.serialize_querysets()[0]
 
-            count_scored_criterias(serialized_data)
+        count_scored_criterias(serialized_data)
 
-            return Response(serialized_data, status=status.HTTP_200_OK)
-        except IndexError:
-            return Response(
-                {"error": "Нужный проект или программа не найдены"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        return Response(serialized_data, status=status.HTTP_200_OK)
+
+    # except Exception as e:
+    #     return Response(
+    #         {"error": str(e)},
+    #         status=status.HTTP_404_NOT_FOUND,
+    #     )
