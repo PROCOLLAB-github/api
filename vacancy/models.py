@@ -11,8 +11,8 @@ class Vacancy(models.Model):
 
     Attributes:
         role: A CharField title of the vacancy.
-        required_skills_old: A CharField required skills for the vacancy.
-        required_skills: A GenericRelation ша required skills for the vacancy.
+        required_skills_old: A CharField required skills for the vacancy (to be deprecated).
+        required_skills: A GenericRelation of required skills for the vacancy.
         description: A TextField description of the vacancy.
         project: A ForeignKey referring to the Company model.
         is_active: A boolean indicating if Vacancy is active.
