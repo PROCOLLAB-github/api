@@ -5,9 +5,6 @@ from core.models import Skill, SkillToObject
 from users.models import CustomUser
 
 
-custom_user_content_type = ContentType.objects.get_for_model(CustomUser)
-
-
 def migrate_key_skills_to_skills(apps, schema_editor):
     for user in CustomUser.objects.all():
         if user.key_skills:
@@ -16,18 +13,19 @@ def migrate_key_skills_to_skills(apps, schema_editor):
                 skill = Skill.objects.filter(name__iexact=skill_name).first()
                 if skill:
                     SkillToObject.objects.get_or_create(
-                        skill=skill, content_type=custom_user_content_type, object_id=user.id
+                        skill=skill, content_type=ContentType.objects.get_for_model(CustomUser), object_id=user.id
                     )
 
 
 def reverse(apps, schema_editor):
-    SkillToObject.objects.filter(content_type=custom_user_content_type).delete()
+    SkillToObject.objects.filter(content_type=ContentType.objects.get_for_model(CustomUser)).delete()
 
 
 class Migration(migrations.Migration):
     dependencies = [
+        ('contenttypes', '0001_initial'),
         ("core", "0013_add_skills_from_dataset"),
-        ("users", "0044_auto_20240128_2236")
+        ("users", "0044_auto_20240128_2236"),
     ]
 
     operations = [

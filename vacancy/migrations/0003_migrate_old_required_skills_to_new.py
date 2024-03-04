@@ -4,8 +4,6 @@ from django.db import migrations
 from core.models import Skill, SkillToObject
 from vacancy.models import Vacancy
 
-vacancy_content_type = ContentType.objects.get_for_model(Vacancy)
-
 
 def migrate_required_skills(apps, schema_editor):
     for vacancy in Vacancy.objects.all():
@@ -15,16 +13,17 @@ def migrate_required_skills(apps, schema_editor):
                 skill = Skill.objects.filter(name__iexact=skill_name).first()
                 if skill:
                     SkillToObject.objects.get_or_create(
-                        skill=skill, content_type=vacancy_content_type, object_id=vacancy.id
+                        skill=skill, content_type=ContentType.objects.get_for_model(Vacancy), object_id=vacancy.id
                     )
 
 
 def reverse(apps, schema_editor):
-    SkillToObject.objects.filter(content_type=vacancy_content_type).delete()
+    SkillToObject.objects.filter(content_type=ContentType.objects.get_for_model(Vacancy)).delete()
 
 
 class Migration(migrations.Migration):
     dependencies = [
+        ('contenttypes', '0001_initial'),
         ("vacancy", "0002_rename_required_skills_vacancy_required_skills_old"),
         ("core", "0013_add_skills_from_dataset")
     ]
