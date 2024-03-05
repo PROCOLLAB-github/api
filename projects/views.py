@@ -287,7 +287,7 @@ class ProjectVacancyResponses(generics.GenericAPIView):
     def get_queryset(self):
         return VacancyResponse.objects.filter(vacancy__project_id=self.kwargs["id"])
 
-    def get(self, request, pk):
+    def get(self, *args, **kwargs):
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
