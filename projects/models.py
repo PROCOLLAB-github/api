@@ -2,14 +2,13 @@ from typing import Optional
 
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericRelation
-from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models import UniqueConstraint
 
 from core.models import Like, View
 from files.models import UserFile
 from industries.models import Industry
-from news.models import News
+
 from projects.constants import VERBOSE_STEPS
 from projects.managers import AchievementManager, CollaboratorManager, ProjectManager
 from users.models import CustomUser
@@ -134,16 +133,6 @@ class Project(models.Model):
 
     def __str__(self):
         return f"Project<{self.id}> - {self.name}"
-
-    def save(
-        self, force_insert=False, force_update=False, using=None, update_fields=None
-    ):
-        if not self.draft:
-            content_type = ContentType.objects.filter(model="project").first()
-            news_instance, created = News.objects.get_or_create(
-                content_type=content_type, object_id=self.id
-            )
-        super().save(force_insert, force_update, using, update_fields)
 
     class Meta:
         ordering = ["-hidden_score", "-datetime_created"]
