@@ -80,4 +80,5 @@ class DevScript(CreateAPIView):
                     object_id=vacancy.id,
                     datetime_created=vacancy.datetime_created,
                 )
+
         return Response({"status": "success"}, status=201)
