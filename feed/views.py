@@ -59,26 +59,36 @@ class NewSimpleFeed(APIView):
 
 class DevScript(CreateAPIView):
     def create(self, request):
-        content_type = ContentType.objects.filter(model="project").first()
+        content_type_project = ContentType.objects.filter(model="project").first()
         for project in Project.objects.filter(draft=False):
             if not News.objects.filter(
-                content_type=content_type, object_id=project.id
+                content_type=content_type_project, object_id=project.id
             ).exists():
                 News.objects.create(
-                    content_type=content_type,
+                    content_type=content_type_project,
                     object_id=project.id,
                     datetime_created=project.datetime_created,
                 )
 
-        content_type = ContentType.objects.filter(model="vacancy").first()
+        content_type_vacancy = ContentType.objects.filter(model="vacancy").first()
         for vacancy in Vacancy.objects.filter(is_active=True):
             if not News.objects.filter(
-                content_type=content_type, object_id=vacancy.id
+                content_type=content_type_vacancy, object_id=vacancy.id
             ).exists():
                 News.objects.create(
-                    content_type=content_type,
+                    content_type=content_type_vacancy,
                     object_id=vacancy.id,
                     datetime_created=vacancy.datetime_created,
                 )
+
+        news_to_delete = list(
+            News.objects.filter(
+                content_type__in=[content_type_vacancy, content_type_project]
+            )
+        )
+
+        for news in news_to_delete:
+            if not news.content_object:
+                news.delete()
 
         return Response({"status": "success"}, status=201)
