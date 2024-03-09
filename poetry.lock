@@ -665,6 +665,21 @@ argon2 = ["argon2-cffi (>=19.1.0)"]
 bcrypt = ["bcrypt"]
 
 [[package]]
+name = "django-cacheops"
+version = "7.0.2"
+description = "A slick ORM cache with automatic granular event-driven invalidation for Django."
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "django-cacheops-7.0.2.tar.gz", hash = "sha256:77a37c73d7facfc7299365ed66a12be7a487dd745dd86c1d33ca2ebfd3b32878"},
+]
+
+[package.dependencies]
+django = ">=3.2"
+funcy = ">=1.8,<3.0"
+redis = ">=3.0.0"
+
+[[package]]
 name = "django-cleanup"
 version = "6.0.0"
 description = "Deletes old files."
@@ -1039,6 +1054,17 @@ files = [
     {file = "frozenlist-1.4.0-cp39-cp39-win32.whl", hash = "sha256:19488c57c12d4e8095a922f328df3f179c820c212940a498623ed39160bc3c2f"},
     {file = "frozenlist-1.4.0-cp39-cp39-win_amd64.whl", hash = "sha256:6221d84d463fb110bdd7619b69cb43878a11d51cbb9394ae3105d082d5199167"},
     {file = "frozenlist-1.4.0.tar.gz", hash = "sha256:09163bdf0b2907454042edb19f887c6d33806adc71fbd54afc14908bfdc22251"},
+]
+
+[[package]]
+name = "funcy"
+version = "2.0"
+description = "A fancy and practical functional tools"
+optional = false
+python-versions = "*"
+files = [
+    {file = "funcy-2.0-py2.py3-none-any.whl", hash = "sha256:53df23c8bb1651b12f095df764bfb057935d49537a56de211b098f4c79614bb0"},
+    {file = "funcy-2.0.tar.gz", hash = "sha256:3963315d59d41c6f30c04bc910e10ab50a3ac4a225868bfa96feed133df075cb"},
 ]
 
 [[package]]
@@ -2440,4 +2466,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "5ac8a366a6339e2db2c0d3ebfc01298bfbd5d2f86ed9e5d91da8022f2b20a1f9"
+content-hash = "8ea0ee684a2f9c3e08991326a489598372c0328eb18a8795470400c3ef97750e"

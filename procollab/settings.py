@@ -108,6 +108,7 @@ INSTALLED_APPS = [
     "channels",
     "taggit",
     "django_prometheus",
+    "cacheops",
 ]
 
 MIDDLEWARE = [
@@ -186,20 +187,30 @@ if DEBUG:
         }
     }
 
+    REDIS_CONN_URL = "redis://127.0.0.1:6379"
+
     CACHES = {
         "default": {
-            "BACKEND": "django_prometheus.cache.backends.filebased.FileBasedCache",
-            "LOCATION": "/var/tmp/django_cache",
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": REDIS_CONN_URL,
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            },
         }
     }
 
     CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
 else:
+    REDIS_CONN_URL = "redis://redis:6379"
+
     # fixme
     CACHES = {
         "default": {
-            "BACKEND": "django.core.cache.backends.redis.RedisCache",
-            "LOCATION": "redis://redis:6379",
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": REDIS_CONN_URL,
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            },
         }
     }
 
@@ -355,3 +366,9 @@ PROMETHEUS_LATENCY_BUCKETS = (
 )
 
 DATA_UPLOAD_MAX_NUMBER_FIELDS = None  # for mailing
+
+CACHEOPS_REDIS = REDIS_CONN_URL
+
+CACHEOPS = {
+    "users.CustomUser": {"ops": "all", "timeout": 60 * 15},
+}
