@@ -12,7 +12,7 @@ def create_project(sender, instance, created, **kwargs):
     """
 
     if not instance.draft:
-        chat_instance, chat_created = ProjectChat.objects.get_or_create(project=instance)
+        ProjectChat.objects.get_or_create(project=instance)
 
     if created:
         Collaborator.objects.create(
