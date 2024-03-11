@@ -1,6 +1,5 @@
-from django.db.models import Count, Q
+from django.db.models import Count, Q, QuerySet
 
-from project_rates.constants import RatesQuerySets
 from project_rates.models import Criteria, ProjectScore
 from project_rates.serializers import (
     CriteriaSerializer,
@@ -10,7 +9,7 @@ from project_rates.serializers import (
 from projects.models import Project
 
 
-def get_querysets(RatesRequestData) -> RatesQuerySets:
+def get_querysets(RatesRequestData) -> dict[str, QuerySet]:
     program_id = RatesRequestData.program_id
     project_id = RatesRequestData.project_id
     user = RatesRequestData.user
@@ -38,17 +37,19 @@ def get_querysets(RatesRequestData) -> RatesQuerySets:
     if not project_id:
         projects = RatesRequestData.view.paginate_queryset(projects)
 
-    return RatesQuerySets(
-        criterias_queryset=criterias, scores_queryset=scores, projects_queryset=projects
-    )
+    return {
+        "criterias_queryset": criterias,
+        "scores_queryset": scores,
+        "projects_queryset": projects,
+    }
 
 
-def serialize_project_criterias(querysets: RatesQuerySets) -> list[dict]:
-    criteria_serializer = CriteriaSerializer(querysets.criterias_queryset, many=True)
-    scores_serializer = ProjectScoreSerializer(querysets.scores_queryset, many=True)
+def serialize_project_criterias(querysets: dict[str, QuerySet]) -> list[dict]:
+    criteria_serializer = CriteriaSerializer(querysets["criterias_queryset"], many=True)
+    scores_serializer = ProjectScoreSerializer(querysets["scores_queryset"], many=True)
 
     projects_serializer = ProjectScoreGetSerializer(
-        querysets.projects_queryset,
+        querysets["projects_queryset"],
         context={
             "data_criterias": criteria_serializer.data,
             "data_scores": scores_serializer.data,

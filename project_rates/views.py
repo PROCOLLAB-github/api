@@ -1,9 +1,10 @@
 from django.contrib.auth import get_user_model
+from django.db.models import QuerySet
 
 from rest_framework import generics, status
 from rest_framework.response import Response
 
-from project_rates.constants import RatesQuerySets, RatesRequestData
+from project_rates.constants import RatesRequestData
 from project_rates.services import (
     get_querysets,
     serialize_project_criterias,
@@ -76,7 +77,7 @@ class RateProjects(generics.ListAPIView):
             scored=scored,
         )
 
-    def get_querysets_dict(self) -> RatesQuerySets:
+    def get_querysets_dict(self) -> dict[str, QuerySet]:
         return get_querysets(self.get_request_data())
 
     def serialize_querysets(self) -> list[dict]:

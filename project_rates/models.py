@@ -1,9 +1,9 @@
 from django.contrib.auth import get_user_model
 from django.db import models
+from .constants import VERBOSE_TYPES
 
 from partner_programs.models import PartnerProgram
 from projects.models import Project
-from .constants import VERBOSE_TYPES
 from .validators import ProjectScoreValidator
 
 User = get_user_model()
