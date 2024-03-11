@@ -1,21 +1,23 @@
-from project_rates.constants import validatable_types_names, NUMERIC_TYPES
+from project_rates.constants import ValidatableTypesNames, NumericTypes
 
 
 class ProjectScoreValidator:
     @classmethod
     def validate(cls, **kwargs):
-        criteria_type: validatable_types_names = kwargs.get("criteria_type")
+        criteria_type: ValidatableTypesNames = kwargs.get("criteria_type")
         value: str = kwargs.get("value")
         criteria_min_value: float | None = kwargs.get("criteria_min_value")
         criteria_max_value: float | None = kwargs.get("criteria_max_value")
 
         cls._validate_data_type(criteria_type, value)
-        if criteria_type in NUMERIC_TYPES:
-            cls._validate_numeric_limits(criteria_min_value, criteria_max_value, value)
+        if criteria_type in NumericTypes:
+            cls._validate_numeric_limits(
+                criteria_min_value, criteria_max_value, float(value)
+            )
 
     @staticmethod
     def _validate_data_type(criteria_type: str, value: str):
-        if criteria_type in NUMERIC_TYPES:
+        if criteria_type in NumericTypes:
             try:
                 float(value)
             except ValueError:
@@ -28,9 +30,9 @@ class ProjectScoreValidator:
 
     @staticmethod
     def _validate_numeric_limits(
-        min_value: float | None, max_value: float | None, value: str
+        min_value: float | None, max_value: float | None, value: float
     ):
-        if min_value is not None and min_value > float(value):
-            raise ValueError("Оценка этого критерия принизила допустимые значения!")
-        elif max_value is not None and max_value < float(value):
-            raise ValueError("Оценка этого критерия превысила допустимые значения!")
+        if min_value is not None and min_value > value:
+            raise ValueError("Оценка этого критерия ниже допустимого значения!")
+        elif max_value is not None and max_value < value:
+            raise ValueError("Оценка этого критерия превысила допустимое значение!")
