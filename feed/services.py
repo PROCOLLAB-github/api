@@ -13,6 +13,4 @@ def delete_news_for_model(instance: SIGNALS_MODELS):
 
 def create_news_for_model(instance: SIGNALS_MODELS):
     content_type = ContentType.objects.get_for_model(instance)
-    news_instance, created = News.objects.get_or_create(
-        content_type=content_type, object_id=instance.id
-    )
+    News.objects.get_or_create(content_type=content_type, object_id=instance.id)
