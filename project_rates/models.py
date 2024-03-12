@@ -1,10 +1,10 @@
 from django.contrib.auth import get_user_model
 from django.db import models
+from .constants import VERBOSE_TYPES
 
 from partner_programs.models import PartnerProgram
 from projects.models import Project
-from .constants import VERBOSE_TYPES
-from .validators import ProjectScoreValidate
+from .validators import ProjectScoreValidator
 
 User = get_user_model()
 
@@ -80,12 +80,13 @@ class ProjectScore(models.Model):
         return f"ProjectScore<{self.id}> - {self.criteria.name}"
 
     def save(self, *args, **kwargs):
-        ProjectScoreValidate(
-            criteria_type=self.criteria.type,
-            value=self.value,
-            criteria_min_value=self.criteria.min_value,
-            criteria_max_value=self.criteria.max_value,
-        )
+        data_to_validate = {
+            "criteria_type": self.criteria.type,
+            "value": self.value,
+            "criteria_min_value": self.criteria.min_value,
+            "criteria_max_value": self.criteria.max_value,
+        }
+        ProjectScoreValidator.validate(**data_to_validate)
         super().save(*args, **kwargs)
 
     class Meta:

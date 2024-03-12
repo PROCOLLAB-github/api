@@ -3,13 +3,34 @@ from rest_framework import serializers
 from core.services import get_views_count
 from .models import Criteria, ProjectScore
 from projects.models import Project
-from .validators import ProjectScoreValidate
+from .validators import ProjectScoreValidator
 
 
 class ProjectScoreCreateSerializer(serializers.ModelSerializer):
+    def __init__(self, *args, **kwargs):
+        self.criteria_to_get = kwargs.pop("criteria_to_get", None)
+        super(ProjectScoreCreateSerializer, self).__init__(*args, **kwargs)
+
     class Meta:
         model = ProjectScore
         fields = ["criteria", "user", "project", "value"]
+        validators = []
+
+    def get_queryset(self):
+        return self.Meta.model.objects.filter(
+            criteria__id__in=self.criteria_to_get
+        ).select_related("criteria", "project", "user")
+
+    def validate(self, data):
+        criteria = data["criteria"]
+        data_to_validate = {
+            "criteria_type": criteria.type,
+            "value": data.get("value"),
+            "criteria_min_value": criteria.min_value,
+            "criteria_max_value": criteria.max_value,
+        }
+        ProjectScoreValidator.validate(**data_to_validate)
+        return data
 
 
 class CriteriaSerializer(serializers.ModelSerializer):
@@ -75,7 +96,7 @@ def serialize_data_func(criteria_to_get: list, data: dict):
     for criterion in data:
         needed_criteria = criteria.get(int(criterion["criterion_id"]))
 
-        ProjectScoreValidate(
+        ProjectScoreValidator(
             criteria_type=needed_criteria.type,
             value=criterion["value"],
             criteria_min_value=needed_criteria.min_value,
