@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
+from core.fields import CustomListField
 from projects.models import Project
 from users.serializers import UserDetailSerializer, CustomListField
 from vacancy.models import Vacancy, VacancyResponse

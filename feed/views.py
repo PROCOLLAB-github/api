@@ -32,13 +32,14 @@ class NewSimpleFeed(APIView):
             .filter(content_type__model__in=filters)
             .order_by("-datetime_created")
         )
-
         return queryset
 
     def get(self, *args, **kwargs):
         paginator = self.pagination_class()
         paginated_data = paginator.paginate_queryset(self.get_queryset(), self.request)
-        serializer = NewsFeedListSerializer(paginated_data, many=True)
+        serializer = NewsFeedListSerializer(
+            paginated_data, context={"user": self.request.user}, many=True
+        )
 
         new_data = []
         # временная подстройка данных под фронт
