@@ -1,7 +1,6 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from core.fields import CustomListField
 from projects.models import Project
 from users.serializers import UserDetailSerializer, CustomListField
 from vacancy.models import Vacancy, VacancyResponse
@@ -85,6 +84,16 @@ class ProjectVacancyCreateListSerializer(
             "project",
             "is_active",
         ]
+
+    def create(self, validated_data):
+        if validated_data["project"].draft:
+            validated_data["is_active"] = False
+        else:
+            validated_data["is_active"] = True
+
+        instance = super().create(validated_data)
+
+        return instance
 
 
 class VacancyResponseListSerializer(serializers.ModelSerializer):
