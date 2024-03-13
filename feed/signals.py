@@ -9,6 +9,7 @@ from vacancy.models import Vacancy
 
 @receiver(post_save, sender=Vacancy)
 def create_news_on_save(sender, instance, created, **kwargs):
+
     if instance.is_active:
         create_news_for_model(instance)
     else:

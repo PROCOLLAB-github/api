@@ -13,6 +13,7 @@ from projects.constants import VERBOSE_STEPS
 from projects.managers import AchievementManager, CollaboratorManager, ProjectManager
 from users.models import CustomUser
 
+
 User = get_user_model()
 
 

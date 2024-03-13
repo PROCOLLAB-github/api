@@ -85,6 +85,16 @@ class ProjectVacancyCreateListSerializer(
             "is_active",
         ]
 
+    def create(self, validated_data):
+        if validated_data["project"].draft:
+            validated_data["is_active"] = False
+        else:
+            validated_data["is_active"] = True
+
+        instance = super().create(validated_data)
+
+        return instance
+
 
 class VacancyResponseListSerializer(serializers.ModelSerializer):
     is_approved = serializers.BooleanField(read_only=True)
