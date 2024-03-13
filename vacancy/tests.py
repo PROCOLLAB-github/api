@@ -31,7 +31,7 @@ class VacancyTestCase(TestCase):
         )
         self.vacancy_create_data = {
             "role": "Test",
-            "required_skills_ids": [1, 15],
+            "required_skills": ["Test"],
             "description": "Test",
             "is_active": True,
             "project": self.created_project.id,
