@@ -31,6 +31,7 @@ VERBOSE_ROLE_TYPES = (
 
 VERIFY_EMAIL_REDIRECT_URL = "https://app.procollab.ru/auth/verification/"
 
+
 PROTOCOL = "https"
 if settings.DEBUG:
     PROTOCOL = "http"

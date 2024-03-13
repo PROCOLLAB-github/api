@@ -1,0 +1,15 @@
+{% extends "admin/change_list.html" %}
+{% load i18n %}
+
+{% block object-tools-items %}
+    {{ block.super }}
+    <a href="#" class="addlink" previewlistener="true" onclick="get_users()">
+      Выгрузка ФИО|Email всех пользователей
+    </a>
+
+    <script>
+        function get_users() {
+            window.open("{% url 'admin:users_email_excel' %}", '_blank').focus();
+        }
+    </script>
+{% endblock %}

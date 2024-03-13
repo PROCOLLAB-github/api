@@ -1,5 +1,7 @@
+import tablib
 from django.conf import settings
 from django.contrib import admin
+from django.http import HttpResponse
 from django.shortcuts import redirect
 from django.urls import path
 
@@ -113,6 +115,7 @@ class CustomUserAdmin(admin.ModelAdmin):
 
     readonly_fields = ("ordering_score",)
     change_form_template = "users/admin/users_change_form.html"
+    change_list_template = "users/admin/users_change_list.html"
 
     def save_model(self, request, obj, form, change):
         # if user_type changed, then delete all related fields
@@ -171,12 +174,21 @@ class CustomUserAdmin(admin.ModelAdmin):
                 self.admin_site.admin_view(self.mass_mail),
                 name="user_mass_mail",
             ),
+            path(
+                "all-users-email-excel/",
+                self.admin_site.admin_view(self.all_users_email_excel),
+                name="users_email_excel",
+            ),
         ]
         return custom_urls + default_urls
 
     def mass_mail(self, request):
         users = CustomUser.objects.all()
         return MailingTemplateRender().render_template(request, None, users, None)
+
+    def all_users_email_excel(self, request):
+        users = CustomUser.objects.only("first_name", "last_name", "email").iterator()
+        return self.get_export_users_emails(users)
 
     def mailing(self, request, user_object):
         user = CustomUser.objects.get(pk=user_object)
@@ -187,6 +199,21 @@ class CustomUserAdmin(admin.ModelAdmin):
         user = CustomUser.objects.get(pk=object_id)
         force_verify_user(user)
         return redirect("admin:users_customuser_change", object_id)
+
+    def get_export_users_emails(self, users):
+        response_data = tablib.Dataset(headers=["ФИО", "Email"])
+
+        for user in users:
+            response_data.append([user.first_name + " " + user.last_name, user.email])
+
+        binary_data = response_data.export("xlsx")
+        file_name = "all_users_names_emails"
+        response = HttpResponse(
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f'attachment; filename="{file_name}.xlsx"'},
+        )
+        response.write(binary_data)
+        return response
 
 
 @admin.register(UserAchievement)
