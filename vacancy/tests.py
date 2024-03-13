@@ -21,18 +21,20 @@ class VacancyTestCase(TestCase):
         self.vacancy_list_view = VacancyList.as_view()
         self.vacancy_detail_view = VacancyDetail.as_view()
         self.user_project_owner = self.user_create()
+
+        self.created_project = Project.objects.create(
+            name="Test",
+            description="Test",
+            industry=Industry.objects.create(name="Test"),
+            step=1,
+            leader=self.user_project_owner,
+        )
         self.vacancy_create_data = {
             "role": "Test",
             "required_skills": ["Test"],
             "description": "Test",
             "is_active": True,
-            "project": Project.objects.create(
-                name="Test",
-                description="Test",
-                industry=Industry.objects.create(name="Test"),
-                step=1,
-                leader=self.user_project_owner,
-            ).id,
+            "project": self.created_project.id,
         }
 
     def test_vacancy_creation(self):
@@ -44,7 +46,7 @@ class VacancyTestCase(TestCase):
         self.assertEqual(response.data["role"], "Test")
         self.assertEqual(response.data["required_skills"], ["Test"])
         self.assertEqual(response.data["description"], "Test")
-        self.assertEqual(response.data["is_active"], True)
+        self.assertEqual(response.data["is_active"], not self.created_project.draft)
         self.assertEqual(response.data["project"], self.vacancy_create_data["project"])
 
     def user_create(self):
