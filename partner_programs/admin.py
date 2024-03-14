@@ -1,22 +1,21 @@
+import pandas as pd
 import tablib
 import re
 from django.contrib import admin
 from django.http import HttpResponse
 from django.urls import path
 from django.utils import timezone
+
 from mailing.views import MailingTemplateRender
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
+from project_rates.models import Criteria, ProjectScore
+from projects.models import Project
+from users.models import Expert
 
 
 @admin.register(PartnerProgram)
 class PartnerProgramAdmin(admin.ModelAdmin):
-    list_display = (
-        "id",
-        "name",
-        "tag",
-        "city",
-        "datetime_created",
-    )
+    list_display = ("id", "name", "tag", "city", "datetime_created")
     list_display_links = (
         "id",
         "name",
@@ -47,6 +46,11 @@ class PartnerProgramAdmin(admin.ModelAdmin):
                 "mailing/<int:partner_program>/",
                 self.admin_site.admin_view(self.mailing),
                 name="partner_programs_mailing",
+            ),
+            path(
+                "export-rates/<int:object_id>/",
+                self.admin_site.admin_view(self.get_export_rates_view),
+                name="partner_programs_export_rates",
             ),
         ]
         return custom_urls + default_urls
@@ -124,6 +128,87 @@ class PartnerProgramAdmin(admin.ModelAdmin):
             headers={"Content-Disposition": f'attachment; filename="{file_name}.xlsx"'},
         )
         response.write(binary_data)
+        return response
+
+    def get_export_rates_view(self, request, object_id):
+        criterias = Criteria.objects.filter(partner_program__id=object_id).select_related(
+            "partner_program"
+        )
+        experts = Expert.objects.filter(programs=object_id).select_related("user")
+        scores = ProjectScore.objects.filter(criteria__in=criterias)
+        projects = Project.objects.filter(scores__in=scores)
+        return self.get_export_rates(criterias, experts, scores, projects)
+
+    def get_export_rates(self, criterias, experts, scores, projects):
+        col_names = list(
+            criterias.exclude(name="Комментарий").values_list("name", flat=True)
+        )
+
+        expert_names = [
+            expert.user.first_name + " " + expert.user.last_name for expert in experts
+        ]
+
+        all_projects_data = []
+        for project in projects:
+            project_data = [[project.name, *col_names, "Комментарий"]]
+
+            for expert, expert_name in zip(experts, expert_names):
+                single_rate_data = [expert_name]
+
+                scores_of_expert = []
+                criterias_to_check = criterias.exclude(name="Комментарий")
+                for criteria in criterias_to_check:
+                    checking_score = (
+                        scores.filter(
+                            criteria=criteria,
+                            user__first_name=expert.user.first_name,
+                            user__last_name=expert.user.last_name,
+                            project__name=project.name,
+                        )
+                        .exclude(criteria__name="Комментарий")
+                        .first()
+                    )
+                    if not checking_score:
+                        scores_of_expert.append("")
+                    else:
+                        scores_of_expert.append(checking_score.value)
+
+                commentary = scores.filter(
+                    user__first_name=expert.user.first_name,
+                    user__last_name=expert.user.last_name,
+                    criteria__name="Комментарий",
+                    project__name=project.name,
+                ).first()
+                commentary = [commentary.value] if commentary else [""]
+
+                scores_of_expert += commentary
+
+                single_rate_data += scores_of_expert
+
+                project_data.append(single_rate_data)
+            all_projects_data.append(project_data)
+
+        dataframed_projects_data = [
+            pd.DataFrame(project_data) for project_data in all_projects_data
+        ]
+        with pd.ExcelWriter("output.xlsx") as writer:
+            for df, pr_data in zip(dataframed_projects_data, all_projects_data):
+                df.to_excel(writer, sheet_name=pr_data[0][0], index=False)
+
+        with open("output.xlsx", "rb") as f:
+            binary_data = f.read()
+
+        # Формирование HTTP-ответа
+        file_name = (
+            f'{criterias.first().partner_program.name}_оценки {timezone.now().strftime("%d-%m-%Y %H:%M:%S")}'
+            f".xlsx"
+        )
+        response = HttpResponse(
+            binary_data,
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        response["Content-Disposition"] = f'attachment; filename="{file_name}"'
+
         return response
 
 

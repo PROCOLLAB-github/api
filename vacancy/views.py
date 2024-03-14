@@ -1,9 +1,11 @@
+from django.contrib.contenttypes.models import ContentType
 from django_filters import rest_framework as filters
 from rest_framework import generics, mixins, permissions, status
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
-from projects.models import Collaborator
 
+from core.models import Skill, SkillToObject
+from projects.models import Collaborator
 from vacancy.filters import VacancyFilter
 from vacancy.models import Vacancy, VacancyResponse
 from vacancy.permissions import (
@@ -27,33 +29,63 @@ class VacancyList(generics.ListCreateAPIView):
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = VacancyFilter
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        if serializer.validated_data["project"].leader != request.user:
-            # additional check that the user is the vacancy's project's leader
-            return Response(status=status.HTTP_403_FORBIDDEN)
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-
 
 class VacancyDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Vacancy.objects.get_vacancy_for_detail_view()
     serializer_class = VacancyDetailSerializer
     permission_classes = [IsVacancyProjectLeader]
 
+    def patch(self, request, *args, **kwargs):
+        vacancy = self.get_object()
+        if "required_skills_ids" in request.data:
+            vacancy.required_skills.all().delete()
+
+            for skill_id in request.data["required_skills_ids"]:
+                try:
+                    skill = Skill.objects.get(id=skill_id)
+                except Skill.DoesNotExist:
+                    return Response(
+                        f"Skill with id {skill_id} does not exist",
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                SkillToObject.objects.create(
+                    skill=skill,
+                    content_type=ContentType.objects.get_for_model(Vacancy),
+                    object_id=vacancy.id,
+                )
+
+        return self.partial_update(request, *args, **kwargs)
+
     def put(self, request, *args, **kwargs):
         """updating the vacancy"""
+        vacancy = self.get_object()
+
         if not request.data.get("is_active"):
             # automatically declining every vacancy response if the vacancy is not active
-            vacancy = self.get_object()
             vacancy_requests = VacancyResponse.objects.filter(
                 vacancy=vacancy, is_approved=None
             )
-            for vacancy_request in vacancy_requests:
-                vacancy_request.is_approved = False
-                vacancy_request.save()
+            vacancy_requests.update(is_approved=False)
+
+        if request.data.get("required_skills_ids"):
+            vacancy.required_skills.all().delete()
+
+        for skill_id in request.data["required_skills_ids"]:
+            try:
+                skill = Skill.objects.get(id=skill_id)
+            except Skill.DoesNotExist:
+                return Response(
+                    f"Skill with id {skill_id} does not exist",
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            SkillToObject.objects.get_or_create(
+                skill=skill,
+                content_type=ContentType.objects.get_for_model(Vacancy),
+                object_id=vacancy.id,
+            )
+
         return self.update(request, *args, **kwargs)
 
 

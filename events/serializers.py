@@ -3,9 +3,10 @@ from django.core.cache import cache
 from rest_framework import serializers
 from taggit.serializers import TaggitSerializer, TagListSerializerField
 
+from core.serializers import SkillToObjectSerializer
 from core.utils import get_user_online_cache_key
 from events.models import Event
-from users.serializers import MemberSerializer, KeySkillsField
+from users.serializers import MemberSerializer
 
 USER = get_user_model()
 
@@ -55,7 +56,7 @@ class EventsListSerializer(TaggitSerializer, serializers.ModelSerializer):
 
 class RegisteredUserListSerializer(serializers.ModelSerializer):
     member = MemberSerializer(required=False)
-    key_skills = KeySkillsField(required=False)
+    skills = SkillToObjectSerializer(many=True, read_only=True)
     is_online = serializers.SerializerMethodField()
 
     @classmethod
@@ -72,7 +73,7 @@ class RegisteredUserListSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "patronymic",
-            "key_skills",
+            "skills",
             "avatar",
             "speciality",
             "birthday",

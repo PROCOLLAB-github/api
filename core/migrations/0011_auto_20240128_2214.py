@@ -137,17 +137,15 @@ def fill_specializations(apps, schema_editor):
     for spec, category in SPECIALIZATIONS:
         spec = spec.strip()
         category = category.strip()
-        if category not in categories_set:
-            category_obj = SpecializationCategory.objects.create(name=category)
-            category_obj.save()
+        if (category not in categories_set) and not SpecializationCategory.objects.filter(name=category).exists():
+            SpecializationCategory.objects.create(name=category)
             categories_set.add(category)
 
         if spec not in specs_set:
             try:
                 category_obj = SpecializationCategory.objects.get(name=category)
                 specs_set.add(spec)
-                spec_obj = Specialization.objects.create(name=spec, category=category_obj)
-                spec_obj.save()
+                Specialization.objects.create(name=spec, category=category_obj)
             except Exception as error:
                 print('An error during migration:', error)
 
