@@ -48,12 +48,9 @@ class VacancyDetail(generics.RetrieveUpdateDestroyAPIView):
         if not request.data.get("is_active"):
             # automatically declining every vacancy response if the vacancy is not active
             vacancy = self.get_object()
-            vacancy_requests = VacancyResponse.objects.filter(
-                vacancy=vacancy, is_approved=None
+            VacancyResponse.objects.filter(vacancy=vacancy, is_approved=None).update(
+                is_approved=False
             )
-            for vacancy_request in vacancy_requests:
-                vacancy_request.is_approved = False
-                vacancy_request.save()
         return self.update(request, *args, **kwargs)
 
 
