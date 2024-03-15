@@ -94,8 +94,9 @@ class DirectChatDetail(RetrieveAPIView):
                 request.user.id == user1_id or request.user.id == user2_id
             ), "current user id is not present in raw id"
 
-            user1 = User.objects.get(pk=user1_id)
-            user2 = User.objects.get(pk=user2_id)
+            users = User.objects.filter(pk__in=[user1_id, user2_id])
+            user1 = users.get(pk=user1_id)
+            user2 = users.get(pk=user2_id)
 
             if user1 == request.user:
                 opponent = user2
@@ -117,7 +118,9 @@ class DirectChatDetail(RetrieveAPIView):
         except ValueError:
             return Response(
                 status=status.HTTP_400_BAD_REQUEST,
-                data={"detail": "processed id must contain two integers separated by underscore"},
+                data={
+                    "detail": "processed id must contain two integers separated by underscore"
+                },
             )
         except AssertionError as e:
             return Response(status=status.HTTP_400_BAD_REQUEST, data={"detail": str(e)})
