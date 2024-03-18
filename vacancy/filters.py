@@ -3,7 +3,7 @@ from django_filters import rest_framework as filters
 from vacancy.models import Vacancy
 
 
-def project_id_filter(queryset, name, value):
+def project_id_filter(queryset, name, value) -> queryset:
     return queryset.filter(
         **{
             "project_id": value[0],
@@ -25,9 +25,9 @@ class VacancyFilter(filters.FilterSet):
         ?is_active=false equals to .filter(is_active=False)
     """
 
-    def __init__(self, *args, **kwargs):
+    def init(self, *args, **kwargs):
         """if is_active filter is not passed, default to True"""
-        super().__init__(*args, **kwargs)
+        super().init(*args, **kwargs)
         if self.data.get("is_active") is None:
             self.data = dict(self.data)
             self.data["is_active"] = True

@@ -1,8 +1,8 @@
 from django.db import models
-from django_stubs_ext.db.models import TypedModelMeta
 
 from projects.models import Project
 from vacancy.managers import VacancyManager, VacancyResponseManager
+from django_stubs_ext.db.models import TypedModelMeta
 
 
 class Vacancy(models.Model):
@@ -16,7 +16,7 @@ class Vacancy(models.Model):
         project: A ForeignKey referring to the Company model.
         is_active: A boolean indicating if Vacancy is active.
         datetime_created: A DateTimeField indicating date of creation.
-        datetime_updated: A DateTimeField indicating date of update..
+        datetime_updated: A DateTimeField indicating date of update.
     """
 
     role = models.CharField(max_length=256, null=False)
@@ -40,7 +40,7 @@ class Vacancy(models.Model):
 
     objects = VacancyManager()
 
-    def __str__(self) -> str:
+    def str(self) -> str:
         return f"Vacancy<{self.id}> - {self.role}"
 
     class Meta(TypedModelMeta):
@@ -89,7 +89,7 @@ class VacancyResponse(models.Model):
 
     objects = VacancyResponseManager()
 
-    def __str__(self) -> str:
+    def str(self) -> str:
         return f"VacancyResponse<{self.id}> - {self.user} - {self.vacancy}"
 
     class Meta(TypedModelMeta):
