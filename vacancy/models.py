@@ -16,7 +16,7 @@ class Vacancy(models.Model):
         project: A ForeignKey referring to the Company model.
         is_active: A boolean indicating if Vacancy is active.
         datetime_created: A DateTimeField indicating date of creation.
-        datetime_updated: A DateTimeField indicating date of update.
+        datetime_updated: A DateTimeField indicating date of update..
     """
 
     role = models.CharField(max_length=256, null=False)
