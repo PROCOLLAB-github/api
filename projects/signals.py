@@ -12,9 +12,7 @@ def create_project(sender, instance, created, **kwargs):
     """
 
     if not instance.draft:
-        # if not a draft, check if project chat exists and if not create it
-        if not ProjectChat.objects.filter(project=instance).exists():
-            ProjectChat.objects.create(project=instance)
+        ProjectChat.objects.get_or_create(project=instance)
 
     if created:
         Collaborator.objects.create(

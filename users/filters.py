@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 from django_filters import rest_framework as filters
 
@@ -19,11 +20,10 @@ class UserFilter(filters.FilterSet):
     Parameters to filter by:
         first_name (str), last_name (str), patronymic (str),
         city (str), region (str), organization (str), about_me__contains (str),
-        key_skills__contains (str), useful_to_project__contains (str)
+        useful_to_project__contains (str)
 
     Examples:
         ?first_name=test equals to .filter(first_name='test')
-        ?key_skills__contains=yawning equals to .filter(key_skills__containing='yawning')
         ?user_type=1 equals to .filter(user_type=1)
             To check what user_types there are & what id they are, see CustomUser.VERBOSE_USER_TYPES
 
@@ -46,6 +46,25 @@ class UserFilter(filters.FilterSet):
 
         except PartnerProgram.DoesNotExist:
             return User.objects.none()
+
+    @classmethod
+    def filter_by_skills(cls, queryset, name, skills_string):
+        skill_names = [
+            skill.strip() for skill in skills_string.split(",") if skill.strip()
+        ]
+
+        user_content_type = ContentType.objects.get_for_model(queryset.model)
+
+        skills_filter = Q()
+        for skill_name in skill_names:
+            skills_filter |= Q(
+                skills__skill__name__icontains=skill_name,
+                skills__content_type=user_content_type,
+            )
+
+        filtered_queryset = queryset.filter(skills_filter).distinct()
+
+        return filtered_queryset
 
     @classmethod
     def filter_age__gte(cls, queryset, name, value):
@@ -74,9 +93,6 @@ class UserFilter(filters.FilterSet):
         )
 
     about_me__contains = filters.Filter(field_name="about_me", lookup_expr="contains")
-    key_skills__icontains = filters.Filter(
-        field_name="key_skills", lookup_expr="icontains"
-    )
     speciality__icontains = filters.Filter(
         field_name="speciality", lookup_expr="icontains"
     )
@@ -94,6 +110,8 @@ class UserFilter(filters.FilterSet):
 
     age__gte = filters.Filter(method="filter_age__gte")
     age__lte = filters.Filter(method="filter_age__lte")
+
+    skills__contains = filters.Filter(method="filter_by_skills")
 
     class Meta:
         model = User

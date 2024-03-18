@@ -108,6 +108,9 @@ class SkillCategory(models.Model):
 
     name = models.CharField(max_length=256, null=False)
 
+    def __str__(self):
+        return self.name
+
     class Meta:
         verbose_name = "Категория навыка"
         verbose_name_plural = "Категории навыков"
@@ -126,10 +129,16 @@ class Skill(models.Model):
         related_name="skills",
     )
 
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return f"Skill<name={self.name},id={self.id}>"
+
     class Meta:
         verbose_name = "Навык"
         verbose_name_plural = "Навыки"
-        ordering = ["category", "name"]
+        ordering = ["id", "category", "name"]
 
 
 class SkillToObject(models.Model):
@@ -150,6 +159,10 @@ class SkillToObject(models.Model):
     )
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey("content_type", "object_id")
+
+    class Meta:
+        verbose_name = "Ссылка на навык"
+        verbose_name_plural = "Ссылки на навыки"
 
 
 class SpecializationCategory(models.Model):

@@ -1,32 +1,38 @@
-class ProjectScoreValidate:
-    def __init__(self, **kwargs):
-        self.criteria_type = kwargs.get("criteria_type")
-        self.value = kwargs.get("value")
-        self.criteria_min_value = kwargs.get("criteria_min_value")
-        self.criteria_max_value = kwargs.get("criteria_max_value")
+from project_rates.constants import ValidatableTypesNames, NumericTypes
 
-        self._validate_data_type()
-        self._validate_numeric_limits()
 
-    def _validate_data_type(self):
-        if self.criteria_type in ["float", "int"]:
+class ProjectScoreValidator:
+    @classmethod
+    def validate(cls, **kwargs):
+        criteria_type: ValidatableTypesNames = kwargs.get("criteria_type")
+        value: str = kwargs.get("value")
+        criteria_min_value: float | None = kwargs.get("criteria_min_value")
+        criteria_max_value: float | None = kwargs.get("criteria_max_value")
+
+        cls._validate_data_type(criteria_type, value)
+        if criteria_type in NumericTypes:
+            cls._validate_numeric_limits(
+                criteria_min_value, criteria_max_value, float(value)
+            )
+
+    @staticmethod
+    def _validate_data_type(criteria_type: str, value: str):
+        if criteria_type in NumericTypes:
             try:
-                float(self.value)
+                float(value)
             except ValueError:
                 raise ValueError("Введённое значение не соответствует формату!")
             except TypeError:
                 raise TypeError("Вы не ввели никакие данные!")
 
-        elif (self.criteria_type == "bool") and (self.value not in ["True", "False"]):
+        elif (criteria_type == "bool") and (value not in ["True", "False"]):
             raise TypeError("Введённое значение не соответствует формату!")
 
-    def _validate_numeric_limits(self):
-        if self.criteria_type in ["int", "float"]:
-            if self.criteria_min_value is not None and self.criteria_min_value > float(
-                self.value
-            ):
-                raise ValueError("Оценка этого критерия принизила допустимые значения!")
-            elif self.criteria_max_value is not None and self.criteria_max_value < float(
-                self.value
-            ):
-                raise ValueError("Оценка этого критерия превысила допустимые значения!")
+    @staticmethod
+    def _validate_numeric_limits(
+        min_value: float | None, max_value: float | None, value: float
+    ):
+        if min_value is not None and min_value > value:
+            raise ValueError("Оценка этого критерия ниже допустимого значения!")
+        elif max_value is not None and max_value < value:
+            raise ValueError("Оценка этого критерия превысила допустимое значение!")
