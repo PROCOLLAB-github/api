@@ -105,7 +105,7 @@ class DirectChatDetail(RetrieveAPIView):
                 opponent = user1
             context = {"opponent": opponent}
             data = DirectChatDetailSerializer(
-                DirectChat.get_chat(user1, user2), context=context
+                DirectChat.objects.get(pk=f"{user1}_{user2}"), context=context
             ).data
 
             data["name"] = f"{opponent.first_name} {opponent.last_name}"
