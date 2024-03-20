@@ -16,6 +16,7 @@ from project_rates.serializers import (
     ProjectScoreCreateSerializer,
     ProjectScoreGetSerializer,
 )
+from users.models import Expert
 from users.permissions import IsExpert, IsExpertPost
 
 User = get_user_model()
@@ -33,6 +34,9 @@ class RateProject(generics.CreateAPIView):
         criteria_to_get = [
             criterion["criterion_id"] for criterion in data
         ]  # is needed for validation later
+
+        Expert.objects.get(user__id=user_id, programs__criterias__id=criteria_to_get[0])
+
         for criterion in data:
             criterion["user"] = user_id
             criterion["project"] = project_id
@@ -57,7 +61,11 @@ class RateProject(generics.CreateAPIView):
             )
 
             return Response({"success": True}, status=status.HTTP_201_CREATED)
-
+        except Expert.DoesNotExist:
+            return Response(
+                {"error": "you have no permission to rate this program"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
