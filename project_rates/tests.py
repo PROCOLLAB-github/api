@@ -4,7 +4,7 @@ from rest_framework.test import APIRequestFactory, force_authenticate
 
 from industries.models import Industry
 from partner_programs.models import PartnerProgram
-from project_rates.models import Criteria, ProjectScore, User
+from project_rates.models import Criteria
 from project_rates.views import RateProjects, RateProject, RateProjectsDetails
 from projects.models import Project
 from tests.constants import USER_CREATE_DATA
@@ -25,10 +25,7 @@ class ProjectRateTestCase(TestCase):
             tag="Тег программы",
             description="Описание программы",
             city="Город",
-            data_schema={
-                "field1": "type1",
-                "field2": "type2"
-            },
+            data_schema={"field1": "type1", "field2": "type2"},
             datetime_registration_ends=datetime.now(),
             datetime_started=datetime.now(),
             datetime_finished=datetime.now(),
@@ -41,37 +38,33 @@ class ProjectRateTestCase(TestCase):
             type="int",
             min_value=0,
             max_value=100,
-            partner_program=self.program
+            partner_program=self.program,
         )
 
         self.criteria_comment = Criteria.objects.create(
-            name="Комментарий",
-            type="str",
-            partner_program=self.program
+            name="Комментарий", type="str", partner_program=self.program
         )
 
         self.user = None
         self.project = None
 
         self.project_rate_create_data = [
-            {
-                "criterion_id": self.criteria_numeric.id,
-                "value": 1
-            },
-            {
-                "criterion_id": self.criteria_comment.id,
-                "value": "Тестовые слова"
-            },
+            {"criterion_id": self.criteria_numeric.id, "value": 1},
+            {"criterion_id": self.criteria_comment.id, "value": "Тестовые слова"},
         ]
 
     def test_successful_project_rates_creation(self):
         self.create_user_project()
-        request = self.factory.post(f"rate-project/rate/{self.project.id}", self.project_rate_create_data, format="json")
+        request = self.factory.post(
+            f"rate-project/rate/{self.project.id}",
+            self.project_rate_create_data,
+            format="json",
+        )
         force_authenticate(request, user=self.user)
 
         response = self.project_rate_create_view(request, project_id=self.project.id)
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.data['success'], True)
+        self.assertEqual(response.data["success"], True)
 
     # def test_successful_project_rates_list_should_succeed(self):
     #     self.create_user_project()
@@ -86,9 +79,8 @@ class ProjectRateTestCase(TestCase):
     #     raise ValueError(f"{response.data}, self.")
     #     self.assertEqual(response.status_code, 200)
 
-
     def user_create(self):
-        USER_CREATE_DATA['user_type'] = 3
+        USER_CREATE_DATA["user_type"] = 3
         request = self.factory.post("auth/users/", USER_CREATE_DATA)
         response = self.user_list_view(request)
         user_id = response.data["id"]
@@ -110,5 +102,5 @@ class ProjectRateTestCase(TestCase):
             description="Test desc",
             industry=Industry.objects.create(name="Test"),
             leader=self.user,
-            step=1
+            step=1,
         )
