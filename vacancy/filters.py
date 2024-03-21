@@ -25,7 +25,7 @@ class VacancyFilter(filters.FilterSet):
         ?is_active=false equals to .filter(is_active=False)
     """
 
-    def init(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         """if is_active filter is not passed, default to True"""
         super().init(*args, **kwargs)
         if self.data.get("is_active") is None:

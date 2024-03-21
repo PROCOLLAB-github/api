@@ -40,7 +40,7 @@ class Vacancy(models.Model):
 
     objects = VacancyManager()
 
-    def str(self) -> str:
+    def __str__(self) -> str:
         return f"Vacancy<{self.id}> - {self.role}"
 
     class Meta(TypedModelMeta):
@@ -89,7 +89,7 @@ class VacancyResponse(models.Model):
 
     objects = VacancyResponseManager()
 
-    def str(self) -> str:
+    def __str__(self) -> str:
         return f"VacancyResponse<{self.id}> - {self.user} - {self.vacancy}"
 
     class Meta(TypedModelMeta):
