@@ -1,3 +1,4 @@
+from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
 
 from projects.models import Project
@@ -10,7 +11,8 @@ class Vacancy(models.Model):
 
     Attributes:
         role: A CharField title of the vacancy.
-        required_skills: A CharField required skills for the vacancy.
+        required_skills_old: A CharField required skills for the vacancy (to be deprecated).
+        required_skills: A GenericRelation of required skills for the vacancy.
         description: A TextField description of the vacancy.
         project: A ForeignKey referring to the Company model.
         is_active: A boolean indicating if Vacancy is active.
@@ -19,7 +21,11 @@ class Vacancy(models.Model):
     """
 
     role = models.CharField(max_length=256, null=False)
-    required_skills = models.TextField(blank=True)
+    required_skills_old = models.TextField(blank=True)  # to be deprecated in future
+    required_skills = GenericRelation(
+        "core.SkillToObject",
+        related_query_name="vacancies",
+    )
     description = models.TextField(blank=True)
     project = models.ForeignKey(
         Project,
@@ -38,6 +44,12 @@ class Vacancy(models.Model):
     )
 
     objects = VacancyManager()
+
+    def get_required_skills(self):
+        required_skills = []
+        for sto in self.required_skills.all():
+            required_skills.append(sto.skill)
+        return required_skills
 
     def __str__(self):
         return f"Vacancy<{self.id}> - {self.role}"

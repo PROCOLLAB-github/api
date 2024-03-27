@@ -42,6 +42,7 @@ urlpatterns = [
     path("news/", include("news.urls", namespace="news")),
     path("projects/", include("projects.urls", namespace="projects")),
     path("vacancies/", include("vacancy.urls", namespace="vacancies")),
+    path("core/", include("core.urls", namespace="core")),
     path("invites/", include("invites.urls", namespace="invites")),
     path("auth/", include(("users.urls", "users"), namespace="users")),
     path("chats/", include("chats.urls", namespace="chats")),

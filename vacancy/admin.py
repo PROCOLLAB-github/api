@@ -3,7 +3,12 @@ from django.contrib import admin
 from django.http import HttpResponse
 from django.urls import path
 
+from core.admin import SkillToObjectInline
 from vacancy.models import Vacancy, VacancyResponse
+
+
+class VacancySkillToObjectInline(SkillToObjectInline):
+    verbose_name_plural = "Необходимые навыки"
 
 
 @admin.register(Vacancy)
@@ -15,6 +20,9 @@ class VacancyAdmin(admin.ModelAdmin):
         "is_active",
         "datetime_created",
         "datetime_updated",
+    ]
+    inlines = [
+        VacancySkillToObjectInline,
     ]
     list_display_links = ["role"]
 

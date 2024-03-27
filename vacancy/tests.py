@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 from django.test import TestCase
 from rest_framework.test import APIRequestFactory, force_authenticate
 
@@ -31,7 +33,7 @@ class VacancyTestCase(TestCase):
         )
         self.vacancy_create_data = {
             "role": "Test",
-            "required_skills": ["Test"],
+            "required_skills_ids": [1, 15],
             "description": "Test",
             "is_active": True,
             "project": self.created_project.id,
@@ -44,7 +46,25 @@ class VacancyTestCase(TestCase):
 
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data["role"], "Test")
-        self.assertEqual(response.data["required_skills"], ["Test"])
+        self.assertEqual(
+            response.data["required_skills"],
+            [
+                OrderedDict(
+                    [
+                        ("id", 1),
+                        ("name", "Ведение социальных сетей"),
+                        ("category", OrderedDict([("id", 1), ("name", "Маркетинг")])),
+                    ]
+                ),
+                OrderedDict(
+                    [
+                        ("id", 15),
+                        ("name", "MS Office"),
+                        ("category", OrderedDict([("id", 1), ("name", "Маркетинг")])),
+                    ]
+                ),
+            ],
+        )
         self.assertEqual(response.data["description"], "Test")
         self.assertEqual(response.data["is_active"], not self.created_project.draft)
         self.assertEqual(response.data["project"], self.vacancy_create_data["project"])
