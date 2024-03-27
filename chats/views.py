@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.db.models import Q
 
 from rest_framework import status
 from rest_framework.generics import (
@@ -12,7 +13,7 @@ from drf_yasg import openapi
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from chats.models import ProjectChat, DirectChat
+from chats.models import ProjectChat, DirectChat, DirectChatMessage, ProjectChatMessage
 from chats.pagination import MessageListPagination
 from chats.permissions import IsProjectChatMember
 from chats.serializers import (
@@ -41,14 +42,15 @@ class DirectChatList(ListAPIView):
     def get(self, request, *args, **kwargs):
         chats = self.get_queryset()
         serialized_chats = []
-        for chat in chats:
+        chats_users_ids = [[int(num) for num in chat.pk.split("_")] for chat in chats]
+        all_chats_users = User.objects.filter(pk__in=sum(chats_users_ids, []))
+        for user1_id, user2_id in chats_users_ids:
             # fixme: move to function like get_user() and get_opponent()
-            chat_id = chat.id
-            user1_id, user2_id = map(int, chat_id.split("_"))
+            chat = chats.get(id=f"{user1_id}_{user2_id}")
 
             try:
-                user1 = User.objects.get(pk=user1_id)
-                user2 = User.objects.get(pk=user2_id)
+                user1 = all_chats_users.get(pk=user1_id)
+                user2 = all_chats_users.get(pk=user2_id)
             except User.DoesNotExist:
                 # fixme: show deleted profile
                 continue
@@ -117,7 +119,9 @@ class DirectChatDetail(RetrieveAPIView):
         except ValueError:
             return Response(
                 status=status.HTTP_400_BAD_REQUEST,
-                data={"detail": "processed id must contain two integers separated by underscore"},
+                data={
+                    "detail": "processed id must contain two integers separated by underscore"
+                },
             )
         except AssertionError as e:
             return Response(status=status.HTTP_400_BAD_REQUEST, data={"detail": str(e)})
@@ -218,16 +222,18 @@ class HasChatUnreadsView(GenericAPIView):
     )
     def get(self, request, *args, **kwargs):
         user = request.user
-        # get all user chats
-        direct_messages = user.direct_chats.all().prefetch_related("messages")
-        project_chats = user.get_project_chats().prefetch_related("messages")
 
-        has_direct_messages_unread = (
-            direct_messages.filter(messages__is_read=False).distinct().exists()
+        unread_dir_messages = (
+            DirectChatMessage.objects.filter(chat__users=user, is_read=False)
+            .exclude(Q(author=user) | Q(is_deleted=True))
+            .distinct()
+            .exists()
         )
-        has_project_messages_unread = (
-            project_chats.filter(messages__is_read=False).distinct().exists()
+
+        unread_proj_messages = (
+            ProjectChatMessage.objects.filter(is_read=False)
+            .exclude(is_deleted=True)
+            .distinct()
+            .exists()
         )
-        return Response(
-            {"has_unreads": has_direct_messages_unread or has_project_messages_unread}
-        )
+        return Response({"has_unreads": unread_proj_messages or unread_dir_messages})
