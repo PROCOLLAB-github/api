@@ -10,6 +10,8 @@ from rest_framework.exceptions import NotFound
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.views.decorators.cache import cache_page
+from django.utils.decorators import method_decorator
 
 from core.permissions import IsStaffOrReadOnly
 from core.serializers import SetLikedSerializer
@@ -112,6 +114,10 @@ class ProjectList(generics.ListCreateAPIView):
         """
         # set leader to current user
         return self.create(request, *args, **kwargs)
+
+    @method_decorator(cache_page(60 * 30, cache="default", key_prefix="project_list"))
+    def get(self, *args, **kwargs):
+        return super(ProjectList, self).get(*args, **kwargs)
 
 
 class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
