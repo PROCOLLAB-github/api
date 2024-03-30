@@ -1,15 +1,24 @@
 from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.models import ContentType
 from rest_framework import serializers
 
+from core.models import Skill, SkillToObject
+from core.serializers import SkillToObjectSerializer
 from projects.models import Project
-from users.serializers import UserDetailSerializer, CustomListField
+from users.serializers import UserDetailSerializer
 from vacancy.models import Vacancy, VacancyResponse
 
 User = get_user_model()
 
 
 class RequiredSkillsSerializerMixin(serializers.Serializer):
-    required_skills = CustomListField(child=serializers.CharField())
+    required_skills = SkillToObjectSerializer(many=True, read_only=True)
+
+
+class RequiredSkillsWriteSerializerMixin(RequiredSkillsSerializerMixin):
+    required_skills_ids = serializers.ListField(
+        child=serializers.IntegerField(), write_only=True, required=False
+    )
 
 
 class ProjectForVacancySerializer(serializers.ModelSerializer[Project]):
@@ -23,7 +32,7 @@ class ProjectForVacancySerializer(serializers.ModelSerializer[Project]):
         ]
 
 
-class VacancyDetailSerializer(serializers.ModelSerializer, RequiredSkillsSerializerMixin[Vacancy]):
+class VacancyDetailSerializer(serializers.ModelSerializer, RequiredSkillsSerializerMixin):
     project = ProjectForVacancySerializer(many=False, read_only=True)
 
     class Meta:
@@ -32,6 +41,7 @@ class VacancyDetailSerializer(serializers.ModelSerializer, RequiredSkillsSeriali
             "id",
             "role",
             "required_skills",
+            "required_skills_ids",
             "description",
             "project",
             "is_active",
@@ -72,14 +82,40 @@ class ProjectVacancyListSerializer(
 
 
 class ProjectVacancyCreateListSerializer(
-    serializers.ModelSerializer, RequiredSkillsSerializerMixin[Project]
+    serializers.ModelSerializer, RequiredSkillsSerializerMixin
 ):
+    def create(self, validated_data):
+        project = validated_data["project"]
+        if project.leader != self.context["request"].user:
+            raise serializers.ValidationError("You are not the leader of the project")
+
+        required_skills_ids = validated_data.pop("required_skills_ids")
+
+        vacancy = Vacancy.objects.create(**validated_data)
+
+        for skill_id in required_skills_ids:
+            try:
+                skill = Skill.objects.get(id=skill_id)
+            except Skill.DoesNotExist:
+                raise serializers.ValidationError(
+                    f"Skill with id {skill_id} does not exist"
+                )
+
+            SkillToObject.objects.create(
+                skill=skill,
+                content_type=ContentType.objects.get_for_model(Vacancy),
+                object_id=vacancy.id,
+            )
+
+        return vacancy
+
     class Meta:
         model = Vacancy
         fields = [
             "id",
             "role",
             "required_skills",
+            "required_skills_ids",
             "description",
             "project",
             "is_active",
