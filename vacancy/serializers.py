@@ -21,7 +21,7 @@ class RequiredSkillsWriteSerializerMixin(RequiredSkillsSerializerMixin):
     )
 
 
-class ProjectForVacancySerializer(serializers.ModelSerializer[Project]):
+class ProjectForVacancySerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
         fields = [
@@ -32,7 +32,9 @@ class ProjectForVacancySerializer(serializers.ModelSerializer[Project]):
         ]
 
 
-class VacancyDetailSerializer(serializers.ModelSerializer, RequiredSkillsSerializerMixin):
+class VacancyDetailSerializer(
+    serializers.ModelSerializer, RequiredSkillsWriteSerializerMixin
+):
     project = ProjectForVacancySerializer(many=False, read_only=True)
 
     class Meta:
@@ -51,7 +53,7 @@ class VacancyDetailSerializer(serializers.ModelSerializer, RequiredSkillsSeriali
         read_only_fields = ["project"]
 
 
-class VacancyListSerializer(serializers.ModelSerializer, RequiredSkillsSerializerMixin[Vacancy]):
+class VacancyListSerializer(serializers.ModelSerializer, RequiredSkillsSerializerMixin):
     class Meta:
         model = Vacancy
         fields = [
@@ -67,7 +69,7 @@ class VacancyListSerializer(serializers.ModelSerializer, RequiredSkillsSerialize
 
 
 class ProjectVacancyListSerializer(
-    serializers.ModelSerializer, RequiredSkillsSerializerMixin[Project]
+    serializers.ModelSerializer, RequiredSkillsSerializerMixin
 ):
     class Meta:
         model = Vacancy
@@ -82,7 +84,7 @@ class ProjectVacancyListSerializer(
 
 
 class ProjectVacancyCreateListSerializer(
-    serializers.ModelSerializer, RequiredSkillsSerializerMixin
+    serializers.ModelSerializer, RequiredSkillsWriteSerializerMixin
 ):
     def create(self, validated_data):
         project = validated_data["project"]
@@ -121,18 +123,8 @@ class ProjectVacancyCreateListSerializer(
             "is_active",
         ]
 
-    def create(self, validated_data):
-        if validated_data["project"].draft:
-            validated_data["is_active"] = False
-        else:
-            validated_data["is_active"] = True
 
-        instance = super().create(validated_data)
-
-        return instance
-
-
-class VacancyResponseListSerializer(serializers.ModelSerializer[VacancyResponse]):
+class VacancyResponseListSerializer(serializers.ModelSerializer):
     is_approved = serializers.BooleanField(read_only=True)
     user = UserDetailSerializer(read_only=True)
     user_id = serializers.IntegerField(write_only=True)
@@ -173,7 +165,7 @@ class VacancyResponseListSerializer(serializers.ModelSerializer[VacancyResponse]
         return vacancy_response
 
 
-class VacancyResponseDetailSerializer(serializers.ModelSerializer[VacancyResponse]):
+class VacancyResponseDetailSerializer(serializers.ModelSerializer):
     user = UserDetailSerializer(many=False, read_only=True)
     vacancy = VacancyListSerializer(many=False, read_only=True)
     is_approved = serializers.BooleanField(read_only=True)

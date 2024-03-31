@@ -3,7 +3,6 @@ from django.db import models
 
 from projects.models import Project
 from vacancy.managers import VacancyManager, VacancyResponseManager
-from django_stubs_ext.db.models import TypedModelMeta
 
 
 class Vacancy(models.Model):
@@ -46,10 +45,16 @@ class Vacancy(models.Model):
 
     objects = VacancyManager()
 
+    def get_required_skills(self):
+        required_skills = []
+        for sto in self.required_skills.all():
+            required_skills.append(sto.skill)
+        return required_skills
+
     def __str__(self):
         return f"Vacancy<{self.id}> - {self.role}"
 
-    class Meta(TypedModelMeta):
+    class Meta:
         verbose_name = "Вакансия"
         verbose_name_plural = "Вакансии"
         ordering = ["-datetime_created"]
@@ -95,10 +100,10 @@ class VacancyResponse(models.Model):
 
     objects = VacancyResponseManager()
 
-    def __str__(self) -> str:
+    def __str__(self):
         return f"VacancyResponse<{self.id}> - {self.user} - {self.vacancy}"
 
-    class Meta(TypedModelMeta):
+    class Meta:
         verbose_name = "Отклик на вакансию"
         verbose_name_plural = "Отклик на вакансии"
         ordering = ["-datetime_created"]
