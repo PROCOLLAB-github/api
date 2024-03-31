@@ -15,13 +15,13 @@ class RequiredSkillsSerializerMixin(serializers.Serializer):
     required_skills = SkillToObjectSerializer(many=True, read_only=True)
 
 
-class RequiredSkillsWriteSerializerMixin(RequiredSkillsSerializerMixin):
+class RequiredSkillsWriteSerializerMixin(RequiredSkillsSerializerMixin[Project]):
     required_skills_ids = serializers.ListField(
         child=serializers.IntegerField(), write_only=True, required=False
     )
 
 
-class ProjectForVacancySerializer(serializers.ModelSerializer):
+class ProjectForVacancySerializer(serializers.ModelSerializer[Project]):
     class Meta:
         model = Project
         fields = [
@@ -33,7 +33,7 @@ class ProjectForVacancySerializer(serializers.ModelSerializer):
 
 
 class VacancyDetailSerializer(
-    serializers.ModelSerializer, RequiredSkillsWriteSerializerMixin
+    serializers.ModelSerializer, RequiredSkillsWriteSerializerMixin[Vacancy]
 ):
     project = ProjectForVacancySerializer(many=False, read_only=True)
 
@@ -53,7 +53,7 @@ class VacancyDetailSerializer(
         read_only_fields = ["project"]
 
 
-class VacancyListSerializer(serializers.ModelSerializer, RequiredSkillsSerializerMixin):
+class VacancyListSerializer(serializers.ModelSerializer, RequiredSkillsSerializerMixin[Vacancy]):
     class Meta:
         model = Vacancy
         fields = [
@@ -69,7 +69,7 @@ class VacancyListSerializer(serializers.ModelSerializer, RequiredSkillsSerialize
 
 
 class ProjectVacancyListSerializer(
-    serializers.ModelSerializer, RequiredSkillsSerializerMixin
+    serializers.ModelSerializer, RequiredSkillsSerializerMixin[Project]
 ):
     class Meta:
         model = Vacancy
@@ -84,7 +84,7 @@ class ProjectVacancyListSerializer(
 
 
 class ProjectVacancyCreateListSerializer(
-    serializers.ModelSerializer, RequiredSkillsWriteSerializerMixin
+    serializers.ModelSerializer, RequiredSkillsWriteSerializerMixin[Project]
 ):
     def create(self, validated_data):
         project = validated_data["project"]
@@ -124,7 +124,7 @@ class ProjectVacancyCreateListSerializer(
         ]
 
 
-class VacancyResponseListSerializer(serializers.ModelSerializer):
+class VacancyResponseListSerializer(serializers.ModelSerializer[VacancyResponse]):
     is_approved = serializers.BooleanField(read_only=True)
     user = UserDetailSerializer(read_only=True)
     user_id = serializers.IntegerField(write_only=True)
@@ -165,7 +165,7 @@ class VacancyResponseListSerializer(serializers.ModelSerializer):
         return vacancy_response
 
 
-class VacancyResponseDetailSerializer(serializers.ModelSerializer):
+class VacancyResponseDetailSerializer(serializers.ModelSerializer[VacancyResponse]):
     user = UserDetailSerializer(many=False, read_only=True)
     vacancy = VacancyListSerializer(many=False, read_only=True)
     is_approved = serializers.BooleanField(read_only=True)
@@ -183,5 +183,5 @@ class VacancyResponseDetailSerializer(serializers.ModelSerializer):
         ]
 
 
-class VacancyResponseAcceptSerializer(VacancyResponseDetailSerializer):
+class VacancyResponseAcceptSerializer(VacancyResponseDetailSerializer[VacancyResponse]):
     is_approved = serializers.BooleanField(required=True, read_only=False)
