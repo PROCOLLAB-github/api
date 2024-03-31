@@ -193,3 +193,4 @@ class VacancyResponseDetailSerializer(serializers.ModelSerializer[VacancyRespons
 
 class VacancyResponseAcceptSerializer(VacancyResponseDetailSerializer):
     is_approved = serializers.BooleanField(required=True, read_only=False)
+    
