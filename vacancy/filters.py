@@ -3,7 +3,7 @@ from django_filters import rest_framework as filters
 from vacancy.models import Vacancy
 
 
-def project_id_filter(queryset, name, value) -> queryset:
+def project_id_filter(queryset, name, value) -> QuerySet[Project]:
     return queryset.filter(
         **{
             "project_id": value[0],
