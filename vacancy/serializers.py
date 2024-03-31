@@ -176,4 +176,20 @@ class VacancyResponseListSerializer(serializers.ModelSerializer[VacancyResponse]
 class VacancyResponseDetailSerializer(serializers.ModelSerializer[VacancyResponse]):
     user = UserDetailSerializer(many=False, read_only=True)
     vacancy = VacancyListSerializer(many=False, read_only=True)
-    is_approve
+    is_approved = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = VacancyResponse
+        fields = [
+            "id",
+            "user",
+            "vacancy",
+            "why_me",
+            "is_approved",
+            "datetime_created",
+            "datetime_updated",
+        ]
+
+
+class VacancyResponseAcceptSerializer(VacancyResponseDetailSerializer):
+    is_approved = serializers.BooleanField(required=True, read_only=False)
