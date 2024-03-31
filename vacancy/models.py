@@ -102,4 +102,3 @@ class VacancyResponse(models.Model):
         verbose_name = "Отклик на вакансию"
         verbose_name_plural = "Отклик на вакансии"
         ordering = ["-datetime_created"]
-        

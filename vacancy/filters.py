@@ -4,7 +4,7 @@ from vacancy.models import Vacancy
 
 
 
-def project_id_filter(queryset, name, value) -> queryset[Project]:
+def project_id_filter(queryset, name, value):
     return queryset.filter(
         **{
             "project_id": value[0],
@@ -39,4 +39,3 @@ class VacancyFilter(filters.FilterSet):
     class Meta:
         model = Vacancy
         fields = ("project_id", "is_active")
-        
