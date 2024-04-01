@@ -100,7 +100,7 @@ jobs:
               cd /home/app/procollab-backend &&
               docker container prune -f &&
               docker image prune -a -f &&
-              docker-compose -f docker-compose.prod-ci.yml -p prod pull &&
+              docker compose -f docker-compose.prod-ci.yml -p prod pull &&
               
               rm -f .env &&
               touch .env &&
@@ -127,4 +127,4 @@ jobs:
               
               echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" >> .env &&
               
-              docker-compose -f docker-compose.prod-ci.yml -p prod up -d
+              docker compose -f docker-compose.prod-ci.yml -p prod up -d
