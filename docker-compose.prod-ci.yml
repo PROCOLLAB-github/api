@@ -4,7 +4,7 @@ services:
   web:
     container_name: web
     image: ghcr.io/procollab-github/api:latest
-    restart: always
+    restart: unless-stopped
     volumes:
       - log:/procollab/log
     env_file:
@@ -16,6 +16,7 @@ services:
   grafana:
     container_name: grafana
     image: grafana/grafana:latest
+    restart: unless-stopped
     expose:
       - 3000
     volumes:
@@ -27,14 +28,16 @@ services:
   prometheus:
     container_name: prometheus
     image: prom/prometheus:v2.36.0
+    restart: unless-stopped
     expose:
       - 9090
     volumes:
       - prom-data:/prometheus
-      - ./prometheus:/etc/prometheus
+      - prom-configs:/etc/prometheus
   node-exporter:
     container_name: node-exporter
     image: prom/node-exporter:v1.3.1
+    restart: unless-stopped
     expose:
       - 9100
     volumes:
@@ -49,6 +52,7 @@ services:
   nginx:
     container_name: nginx
     build: ./nginx
+    restart: unless-stopped
     depends_on:
       - web
     ports:
@@ -56,10 +60,12 @@ services:
   redis:
     container_name: redis
     image: redis:latest
+    restart: unless-stopped
     expose:
       - 6379
     volumes:
       - redis-data:/data
+
 volumes:
   grafana-data:
   grafana-configs:
