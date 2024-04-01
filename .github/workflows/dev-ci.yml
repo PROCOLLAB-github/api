@@ -45,4 +45,4 @@ jobs:
               
               echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" >> .env &&
               
-              docker-compose -f docker-compose.dev-ci.yml up -d --build --force-recreate
+              docker compose -f docker-compose.dev-ci.yml up -d --build --force-recreate
