@@ -2,7 +2,6 @@ version: '3.9'
 
 services:
   web:
-    container_name: web
     image: ghcr.io/procollab-github/api:latest
     restart: unless-stopped
     volumes:
@@ -14,7 +13,6 @@ services:
     expose:
       - 8000
   grafana:
-    container_name: grafana
     image: grafana/grafana:latest
     restart: unless-stopped
     expose:
@@ -26,7 +24,6 @@ services:
       - GF_SERVER_ROOT_URL=%(protocol)s://%(domain)s:%(http_port)s/grafana
       - GF_SERVER_SERVE_FROM_SUB_PATH=true
   prometheus:
-    container_name: prometheus
     image: prom/prometheus:v2.36.0
     restart: unless-stopped
     expose:
@@ -35,7 +32,6 @@ services:
       - prom-data:/prometheus
       - prom-configs:/etc/prometheus
   node-exporter:
-    container_name: node-exporter
     image: prom/node-exporter:v1.3.1
     restart: unless-stopped
     expose:
@@ -50,7 +46,6 @@ services:
       - '--collector.filesystem.mount-points-exclude'
       - '^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)'
   nginx:
-    container_name: nginx
     build: ./nginx
     restart: unless-stopped
     depends_on:
@@ -58,7 +53,6 @@ services:
     ports:
       - 8000:80
   redis:
-    container_name: redis
     image: redis:latest
     restart: unless-stopped
     expose:
