@@ -1,8 +1,10 @@
+from django.contrib.contenttypes.models import ContentType
 from django.forms.models import model_to_dict
 from rest_framework import serializers
 from django.core.cache import cache
 
-from core.models import SpecializationCategory, Specialization
+from core.serializers import SkillToObjectSerializer
+from core.models import SpecializationCategory, Specialization, Skill, SkillToObject
 from core.services import get_views_count
 from core.utils import get_user_online_cache_key
 from projects.models import Project, Collaborator
@@ -16,14 +18,6 @@ class AchievementListSerializer(serializers.ModelSerializer[UserAchievement]):
         model = UserAchievement
         fields = ["id", "title", "status"]
         ref_name = "Users"
-
-
-class KeySkillsField(serializers.Field):
-    def to_representation(self, value):
-        return [skill.strip() for skill in value.split(",") if skill.strip()]
-
-    def to_internal_value(self, data):
-        return ",".join(data)
 
 
 class CustomListField(serializers.ListField):
@@ -98,6 +92,16 @@ class SpecializationsSerializer(serializers.ModelSerializer[SpecializationCatego
         fields = ["id", "name", "specializations"]
 
 
+class SkillsSerializerMixin(serializers.Serializer):
+    skills = SkillToObjectSerializer(many=True, read_only=True)
+
+
+class SkillsWriteSerializerMixin(SkillsSerializerMixin):
+    skills_ids = serializers.ListField(
+        child=serializers.IntegerField(), write_only=True, required=False
+    )
+
+
 class UserProjectsSerializer(serializers.ModelSerializer[Project]):
     short_description = serializers.SerializerMethodField()
     views_count = serializers.SerializerMethodField()
@@ -168,13 +172,14 @@ class UserSubscribedProjectsSerializer(serializers.ModelSerializer[Project]):
         read_only_fields = ["leader", "collaborator"]
 
 
-class UserDetailSerializer(serializers.ModelSerializer[CustomUser]):
+class UserDetailSerializer(
+    serializers.ModelSerializer[CustomUser], SkillsWriteSerializerMixin
+):
     member = MemberSerializer(required=False)
     investor = InvestorSerializer(required=False)
     expert = ExpertSerializer(required=False)
     mentor = MentorSerializer(required=False)
     achievements = AchievementListSerializer(required=False, many=True)
-    key_skills = KeySkillsField(required=False)
     links = serializers.SerializerMethodField()
     is_online = serializers.SerializerMethodField()
     projects = serializers.SerializerMethodField()
@@ -213,7 +218,8 @@ class UserDetailSerializer(serializers.ModelSerializer[CustomUser]):
             "first_name",
             "last_name",
             "patronymic",
-            "key_skills",
+            "skills",
+            "skills_ids",
             "birthday",
             "speciality",
             "v2_speciality",
@@ -302,13 +308,30 @@ class UserDetailSerializer(serializers.ModelSerializer[CustomUser]):
                 new_user_type.save()
             setattr(instance, attr, value)
 
+            if attr == "skills_ids":
+                instance.skills.all().delete()
+
+                for skill_id in value:
+                    try:
+                        skill = Skill.objects.get(id=skill_id)
+                    except Skill.DoesNotExist:
+                        raise serializers.ValidationError("Skill does not exist")
+
+                    SkillToObject.objects.create(
+                        skill=skill,
+                        content_type=ContentType.objects.get_for_model(CustomUser),
+                        object_id=instance.id,
+                    )
+
         instance.save()
+
         return instance
 
 
-class UserListSerializer(serializers.ModelSerializer[CustomUser]):
+class UserListSerializer(
+    serializers.ModelSerializer[CustomUser], SkillsWriteSerializerMixin
+):
     member = MemberSerializer(required=False)
-    key_skills = KeySkillsField(required=False)
     is_online = serializers.SerializerMethodField()
 
     def get_is_online(self, user: CustomUser) -> bool:
@@ -325,6 +348,18 @@ class UserListSerializer(serializers.ModelSerializer[CustomUser]):
         user.set_password(validated_data["password"])
         user.save()
 
+        for skill_id in validated_data.get("skills_ids", []):
+            try:
+                skill = Skill.objects.get(id=skill_id)
+            except Skill.DoesNotExist:
+                raise serializers.ValidationError("Skill does not exist")
+
+            SkillToObject.objects.create(
+                skill=skill,
+                content_type=ContentType.objects.get_for_model(CustomUser),
+                object_id=user.id,
+            )
+
         return user
 
     class Meta:
@@ -336,7 +371,8 @@ class UserListSerializer(serializers.ModelSerializer[CustomUser]):
             "first_name",
             "last_name",
             "patronymic",
-            "key_skills",
+            "skills",
+            "skills_ids",
             "avatar",
             "speciality",
             "birthday",
@@ -354,7 +390,7 @@ class UserListSerializer(serializers.ModelSerializer[CustomUser]):
         }
 
 
-class UserFeedSerializer(serializers.ModelSerializer):
+class UserFeedSerializer(serializers.ModelSerializer, SkillsSerializerMixin):
     class Meta:
         model = CustomUser
         fields = [
@@ -364,7 +400,7 @@ class UserFeedSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "patronymic",
-            "key_skills",
+            "skills",
             "speciality",
         ]
 

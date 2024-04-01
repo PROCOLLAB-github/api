@@ -1,19 +1,14 @@
 from django.contrib.auth import get_user_model
-from django.forms import model_to_dict
 from rest_framework import serializers
 
 from core.services import is_fan, get_likes_count, get_views_count
+from feed.mapping import CONTENT_OBJECT_MAPPING, CONTENT_OBJECT_SERIALIZER_MAPPING
 from files.serializers import UserFileSerializer
 from news.mapping import NewsMapping
 from news.models import News
 
-from partner_programs.serializers import PartnerProgramListSerializer
 from projects.models import Project
-from projects.serializers import ProjectListSerializer
 from users.models import CustomUser
-from users.serializers import UserFeedSerializer
-from vacancy.models import Vacancy
-from vacancy.serializers import VacancyDetailSerializer
 
 User = get_user_model()
 
@@ -78,33 +73,18 @@ class NewsFeedListSerializer(serializers.ModelSerializer):
     content_object = serializers.SerializerMethodField()
     type_model = serializers.SerializerMethodField()
 
-    def get_type_model(self, obj):
-        if obj.content_type.model == Project.__name__.lower():
-            return "project"
-        elif obj.content_type.model == CustomUser.__name__.lower():
+    def get_type_model(self, obj) -> str:
+        model_type = CONTENT_OBJECT_MAPPING[obj.content_type.model]
+        if obj.text != "" and model_type == "project":
             return "news"
-        elif obj.content_type.model == "partnerprogram":
-            return None
-        elif obj.content_type.model == Vacancy.__name__.lower():
-            return "vacancy"
+        return model_type
 
-    def get_content_object(self, obj):
-        if obj.content_type.model == Project.__name__.lower():
-            serialized_obj = ProjectListSerializer(instance=obj.content_object, data={})
-            serialized_obj.is_valid()
-            return serialized_obj.data
-        elif obj.content_type.model == CustomUser.__name__.lower():
-            serialized_obj = UserFeedSerializer(
-                instance=obj.content_object, data=model_to_dict(obj.content_object)
-            )
-            serialized_obj.is_valid()
-            return serialized_obj.data
-        elif obj.content_type.model == "partnerprogram":
-            serialized_obj = PartnerProgramListSerializer(obj.content_object)
-            return serialized_obj.data
-        elif obj.content_type.model == Vacancy.__name__.lower():
-            serialized_obj = VacancyDetailSerializer(obj.content_object)
-            return serialized_obj.data
+    def get_content_object(self, obj) -> dict:
+        type_model = obj.content_type.model
+        if obj.text != "" and self.get_type_model(obj) == "project":
+            type_model = "news"
+        serializer = CONTENT_OBJECT_SERIALIZER_MAPPING[type_model](obj.content_object)
+        return serializer.data
 
     def get_views_count(self, obj):
         return get_views_count(obj)
@@ -115,6 +95,8 @@ class NewsFeedListSerializer(serializers.ModelSerializer):
     def get_name(self, obj):
         if obj.content_type.model == CustomUser.__name__.lower():
             return f"{obj.content_object.first_name} {obj.content_object.last_name}"
+        elif obj.text != "" and obj.content_type.model == Project.__name__.lower():
+            return f"{obj.content_object.name}"
 
     def get_image_address(self, obj):
         return NewsMapping.get_image_address(obj.content_object)
