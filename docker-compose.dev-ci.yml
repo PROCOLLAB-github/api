@@ -2,7 +2,6 @@ version: '3.9'
 
 services:
   web:
-    container_name: web
     build:
       context: .
       dockerfile: ./Dockerfile
@@ -18,7 +17,6 @@ services:
       - 8000
 
   grafana:
-    container_name: grafana
     image: grafana/grafana:latest
     restart: unless-stopped
     expose:
@@ -31,7 +29,6 @@ services:
       - GF_SERVER_SERVE_FROM_SUB_PATH=true
 
   prometheus:
-    container_name: prometheus
     image: prom/prometheus:v2.36.0
     restart: unless-stopped
     expose:
@@ -41,7 +38,6 @@ services:
       - ./prometheus:/etc/prometheus
 
   nginx:
-    container_name: nginx
     restart: unless-stopped
     build: ./nginx
     depends_on:
@@ -66,7 +62,6 @@ services:
     command: -config.file=/etc/promtail/config.yml
 
   redis:
-    container_name: redis
     image: redis:latest
     restart: unless-stopped
     expose:
