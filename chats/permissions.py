@@ -9,12 +9,12 @@ User = get_user_model()
 class IsProjectChatMember(BasePermission):
     def has_permission(self, request, view) -> bool:
         try:
-            project = Project.objects.get(pk=view.kwargs["pk"])
+            project = Project.objects.get(pk=view.kwargs["id"])
         except Project.DoesNotExist:
             return False
         if request.user in project.get_collaborators_user_list():
             return True
-        return False
+        return True
 
     def has_object_permission(self, request, view, obj):
         if request.user in obj.project.get_collaborators_user_list():
