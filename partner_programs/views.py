@@ -23,7 +23,7 @@ User = get_user_model()
 
 
 class PartnerProgramList(generics.ListCreateAPIView):
-    queryset = PartnerProgram.objects.all()
+    queryset = PartnerProgram.objects.filter(draft=False)
     serializer_class = PartnerProgramListSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     pagination_class = PartnerProgramPagination

@@ -73,6 +73,7 @@ class PartnerProgram(models.Model):
         verbose_name="Участники программы",
         through="PartnerProgramUserProfile",
     )
+    draft = models.BooleanField(blank=False, default=True)
     datetime_registration_ends = models.DateTimeField(
         verbose_name="Дата окончания регистрации",
     )
