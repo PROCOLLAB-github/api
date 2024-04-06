@@ -15,7 +15,7 @@ class RequiredSkillsSerializerMixin(serializers.Serializer):
     required_skills = SkillToObjectSerializer(many=True, read_only=True)
 
 
-class RequiredSkillsWriteSerializerMixin(RequiredSkillsSerializerMixin[Project]):
+class RequiredSkillsWriteSerializerMixin(RequiredSkillsSerializerMixin):
     required_skills_ids = serializers.ListField(
         child=serializers.IntegerField(), write_only=True, required=False
     )
@@ -69,7 +69,7 @@ class VacancyListSerializer(serializers.ModelSerializer, RequiredSkillsSerialize
 
 
 class ProjectVacancyListSerializer(
-    serializers.ModelSerializer, RequiredSkillsSerializerMixin[Project]
+    serializers.ModelSerializer, RequiredSkillsSerializerMixin[Vacancy]
 ):
     class Meta:
         model = Vacancy
@@ -84,7 +84,7 @@ class ProjectVacancyListSerializer(
 
 
 class ProjectVacancyCreateListSerializer(
-    serializers.ModelSerializer, RequiredSkillsWriteSerializerMixin[Project]
+    serializers.ModelSerializer, RequiredSkillsWriteSerializerMixin[Vacancy]
 ):
     def create(self, validated_data):
         project = validated_data["project"]
