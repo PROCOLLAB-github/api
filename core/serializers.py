@@ -20,7 +20,7 @@ class SkillCategorySerializer(serializers.ModelSerializer[SkillCategory]):
         ]
 
 
-class SkillSerializer(serializers.ModelSerializer):
+class SkillSerializer(serializers.ModelSerializer[Skill]):
     category = SkillCategorySerializer()
 
     class Meta:
@@ -28,7 +28,7 @@ class SkillSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "category"]
 
 
-class SkillToObjectSerializer(serializers.ModelSerializer):
+class SkillToObjectSerializer(serializers.ModelSerializer[SkillToObject]):
     id = serializers.IntegerField(source="skill.id")
     name = serializers.CharField(source="skill.name")
     category = SkillCategorySerializer(source="skill.category")
