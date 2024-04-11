@@ -7,7 +7,7 @@ class SetLikedSerializer(serializers.Serializer):
     is_liked = serializers.BooleanField()
 
 
-class SetViewedSerializer(serializers.Serializer):
+class SetViewedSerializer(serializers.Serializer[Skill]):
     is_viewed = serializers.BooleanField()
 
 
