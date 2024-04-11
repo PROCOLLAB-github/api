@@ -3,6 +3,7 @@ name: 'Build and Deploy server'
 on:
   release:
     types: [ published ]
+  workflow_dispatch:
 
 jobs:
   test:
