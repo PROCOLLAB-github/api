@@ -385,7 +385,7 @@ class UserSubscribedProjectsList(ListAPIView):
 
     def get_queryset(self):
         try:
-            user = User.objects.get(pk=self.kwargs["pk"])
+            user = User.objects.get(id=self.kwargs["id"])
             return user.subscribed_projects.all()
         except User.DoesNotExist:
             raise exceptions.NotFound

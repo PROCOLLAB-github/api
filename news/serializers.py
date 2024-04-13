@@ -164,3 +164,7 @@ class NewsDetailSerializer(serializers.ModelSerializer):
             "is_user_liked",
             "files",
         ]
+
+
+class DevScriptSerializer(serializers.Serializer):
+    status = serializers.CharField()
