@@ -92,7 +92,7 @@ class IndustryTestCase(TestCase):
 
         self.assertEqual(response.status_code, 400)
 
-    def _user_create(self):
+    def _user_create(self) -> CustomUser:
         request = self.factory.post("auth/users/", USER_CREATE_DATA)
         response = self.user_list_view(request)
         user_id = response.data["id"]
