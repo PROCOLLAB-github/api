@@ -117,7 +117,9 @@ class DirectChatDetail(RetrieveAPIView):
         except ValueError:
             return Response(
                 status=status.HTTP_400_BAD_REQUEST,
-                data={"detail": "processed id must contain two integers separated by underscore"},
+                data={
+                    "detail": "processed id must contain two integers separated by underscore"
+                },
             )
         except AssertionError as e:
             return Response(status=status.HTTP_400_BAD_REQUEST, data={"detail": str(e)})

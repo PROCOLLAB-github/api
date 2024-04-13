@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from feed.pagination import FeedPagination
 
 from news.models import News
-from news.serializers import NewsFeedListSerializer
+from news.serializers import NewsFeedListSerializer, DevScriptSerializer
 from projects.models import Project
 from vacancy.models import Vacancy
 
@@ -58,6 +58,8 @@ class NewSimpleFeed(APIView):
 
 
 class DevScript(CreateAPIView):
+    serializer_class = DevScriptSerializer
+
     def create(self, request):
         content_type_project = ContentType.objects.filter(model="project").first()
         for project in Project.objects.filter(draft=False):
