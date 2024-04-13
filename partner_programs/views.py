@@ -129,6 +129,7 @@ class PartnerProgramRegister(generics.GenericAPIView):
     """
     Register user to program and save additional program data
     """
+
     queryset = PartnerProgram.objects.none()
     permission_classes = [IsAuthenticated]
     serializer_class = PartnerProgramUserSerializer

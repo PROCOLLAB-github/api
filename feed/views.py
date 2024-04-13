@@ -59,6 +59,7 @@ class NewSimpleFeed(APIView):
 
 class DevScript(CreateAPIView):
     serializer_class = DevScriptSerializer
+
     def create(self, request):
         content_type_project = ContentType.objects.filter(model="project").first()
         for project in Project.objects.filter(draft=False):
