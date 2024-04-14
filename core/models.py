@@ -3,7 +3,6 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models import Model
-from django_stubs_ext.db.models import TypedModelMeta
 
 User = get_user_model()
 
@@ -24,7 +23,7 @@ class Link(Model):
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey("content_type", "object_id")
 
-    class Meta(TypedModelMeta):
+    class Meta:
         unique_together = (
             "link",
             "content_type",
@@ -33,7 +32,7 @@ class Link(Model):
         verbose_name = "Ссылка"
         verbose_name_plural = "Ссылки"
 
-    def __str__(self) -> str:
+    def __str__(self):
         return f"Link for {self.content_object} - {self.link}"
 
 
@@ -55,7 +54,7 @@ class Like(Model):
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey("content_type", "object_id")
 
-    class Meta(TypedModelMeta):
+    class Meta:
         unique_together = (
             "user",
             "content_type",
@@ -64,7 +63,7 @@ class Like(Model):
         verbose_name = "Лайк"
         verbose_name_plural = "Лайки"
 
-    def __str__(self) -> str:
+    def __str__(self):
         return f"Like<{self.user} - {self.content_object}>"
 
 
@@ -89,7 +88,7 @@ class View(Model):
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey("content_type", "object_id")
 
-    class Meta(TypedModelMeta):
+    class Meta:
         unique_together = (
             "user",
             "content_type",
@@ -98,7 +97,7 @@ class View(Model):
         verbose_name = "Просмотр"
         verbose_name_plural = "Просмотры"
 
-    def __str__(self) -> str:
+    def __str__(self):
         return f"View<{self.user} - {self.content_object}>"
 
 
@@ -109,10 +108,10 @@ class SkillCategory(models.Model):
 
     name = models.CharField(max_length=256, null=False)
 
-    def __str__(self) -> str:
+    def __str__(self):
         return self.name
 
-    class Meta(TypedModelMeta):
+    class Meta:
         verbose_name = "Категория навыка"
         verbose_name_plural = "Категории навыков"
         ordering = ["name"]
@@ -130,13 +129,13 @@ class Skill(models.Model):
         related_name="skills",
     )
 
-    def __str__(self) -> str:
+    def __str__(self):
         return self.name
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return f"Skill<name={self.name},id={self.id}>"
 
-    class Meta(TypedModelMeta):
+    class Meta:
         verbose_name = "Навык"
         verbose_name_plural = "Навыки"
         ordering = ["id", "category", "name"]
@@ -161,7 +160,7 @@ class SkillToObject(models.Model):
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey("content_type", "object_id")
 
-    class Meta(TypedModelMeta):
+    class Meta:
         verbose_name = "Ссылка на навык"
         verbose_name_plural = "Ссылки на навыки"
 
@@ -169,10 +168,10 @@ class SkillToObject(models.Model):
 class SpecializationCategory(models.Model):
     name = models.TextField()
 
-    def __str__(self) -> str:
+    def __str__(self):
         return self.name
 
-    class Meta(TypedModelMeta):
+    class Meta:
         verbose_name = "Категория специализации"
         verbose_name_plural = "Категории специализаций"
 
@@ -183,10 +182,10 @@ class Specialization(models.Model):
         SpecializationCategory, related_name="specializations", on_delete=models.CASCADE
     )
 
-    def __str__(self) -> str:
+    def __str__(self):
         return self.name
 
-    class Meta(TypedModelMeta):
+    class Meta:
         verbose_name = "Специализация"
         verbose_name_plural = "Специализации"
 
