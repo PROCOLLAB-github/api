@@ -42,7 +42,7 @@ jobs:
 
       # install setuptools
       - run: poetry run pip install setuptools
-
+      #some dump str
       - name: Run tests
         run: poetry run python manage.py test
         env:
