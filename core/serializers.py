@@ -44,3 +44,4 @@ class SkillsSerializer(serializers.ModelSerializer[SkillCategory]):
     class Meta:
         model = SkillCategory
         fields = ["id", "name", "skills"]
+    
