@@ -37,7 +37,8 @@ jobs:
           path: .venv
           key: pydeps-${{ hashFiles('**/poetry.lock') }}
 
-      - run: poetry install --no-interaction --no-root
+      - run: poetry install --no-root
+        if: steps.cache-deps.outputs.cache-hit != 'true'
 
       # install setuptools
       - run: poetry run pip install setuptools
