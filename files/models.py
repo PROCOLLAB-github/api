@@ -3,6 +3,8 @@ import reprlib
 from django.contrib.auth import get_user_model
 from django.db import models
 
+from django_stubs_ext.db.models import TypedModelMeta
+
 User = get_user_model()
 
 
@@ -31,7 +33,7 @@ class UserFile(models.Model):
         filename_with_extension = f"{self.name}.{self.extension}"
         return f"UserFile<{reprlib.repr(filename_with_extension)}>"
 
-    class Meta:
+    class Meta(TypedModelMeta):
         verbose_name = "Файл"
         verbose_name_plural = "Файлы"
         ordering = ["datetime_uploaded"]
