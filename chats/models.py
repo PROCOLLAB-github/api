@@ -1,3 +1,4 @@
+from __future__ import annotations
 from abc import abstractmethod
 from typing import List
 
@@ -7,6 +8,7 @@ from django.db import models
 
 from files.models import UserFile
 from projects.models import Project
+from users.models import CustomUser
 
 User = get_user_model()
 
@@ -21,10 +23,10 @@ class BaseChat(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
-    def get_last_message(self):
+    def get_last_message(self) -> BaseMessage:
         return self.messages.last()
 
-    def get_users_str(self):
+    def get_users_str(self) -> str:
         """Returns string of users separated by a comma, who are in chat
 
         Returns:
@@ -34,7 +36,7 @@ class BaseChat(models.Model):
         return ", ".join([user.get_full_name() for user in users])
 
     @abstractmethod
-    def get_users(self):
+    def get_users(self) -> List[CustomUser]:
         """
         Returns all collaborators and leader of the project.
 
@@ -44,7 +46,7 @@ class BaseChat(models.Model):
         pass
 
     @abstractmethod
-    def get_avatar(self, user):
+    def get_avatar(self, user: CustomUser) -> str:
         """
         Returns avatar of the chat for given user
 
@@ -57,7 +59,7 @@ class BaseChat(models.Model):
         pass
 
     @abstractmethod
-    def get_last_messages(self, message_count):
+    def get_last_messages(self, message_count: int) -> List[BaseMessage]:
         """
         Returns last messages of the chat
 
@@ -90,18 +92,18 @@ class ProjectChat(BaseChat):
         Project, on_delete=models.CASCADE, related_name="project_chats"
     )
 
-    def get_users(self):
+    def get_users(self) -> List[CustomUser]:
         collaborators = self.project.collaborator_set.all()
         users = [collaborator.user for collaborator in collaborators]
         return users + [self.project.leader]
 
-    def get_avatar(self, user):
+    def get_avatar(self, user: CustomUser) -> str:
         return self.project.image_address
 
-    def get_last_messages(self, message_count) -> List["BaseMessage"]:
+    def get_last_messages(self, message_count: int) -> List[BaseMessage]:
         return self.messages.order_by("-created_at")[:message_count]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"ProjectChat<{self.project.id}> - {self.project.name}"
 
     def save(
@@ -129,15 +131,15 @@ class DirectChat(BaseChat):
     id = models.CharField(primary_key=True, max_length=64)
     users = models.ManyToManyField(User, related_name="direct_chats")
 
-    def get_users(self):
+    def get_users(self) -> List[CustomUser]:
         return self.users.all()
 
-    def get_avatar(self, user):
+    def get_avatar(self, user) -> str:
         other_user = self.get_users().exclude(pk=user.pk).first()
         return other_user.avatar
 
     @classmethod
-    def get_chat(cls, user1, user2) -> "DirectChat":
+    def get_chat(cls, user1: CustomUser, user2: CustomUser) -> "DirectChat":
         """
         Returns chat between two users.
 
@@ -157,25 +159,25 @@ class DirectChat(BaseChat):
             chat.users.set([user1, user2])
             return chat
 
-    def get_last_messages(self, message_count):
+    def get_last_messages(self, message_count: int) -> BaseMessage:
         return self.messages.order_by("-created_at")[:message_count]
 
-    def get_other_user(self, user) -> User:
+    def get_other_user(self, user: CustomUser) -> User:
         return self.users.exclude(pk=user.pk).first()
 
     @classmethod
-    def create_from_two_users(cls, user1, user2):
+    def create_from_two_users(cls, user1: CustomUser, user2: CustomUser) -> DirectChat:
         chat = cls.objects.create(pk=cls.get_chat_id_from_users(user1, user2))
         chat.users.set([user1, user2])
         return chat
 
     @classmethod
-    def get_chat_id_from_users(cls, user1, user2):
+    def get_chat_id_from_users(cls, user1: CustomUser, user2: CustomUser) -> str:
         first_user = user1 if user1.pk < user2.pk else user2
         second_user = user2 if user1.pk < user2.pk else user1
         return f"{first_user.pk}_{second_user.pk}"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"DirectChat with {self.get_users_str()}"
 
     class Meta:
@@ -200,7 +202,7 @@ class BaseMessage(models.Model):
     is_edited = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Message<{self.pk}>"
 
     class Meta:
@@ -240,7 +242,7 @@ class ProjectChatMessage(BaseMessage):
         if self.reply_to and self.reply_to.chat != self.chat:
             raise ValidationError("Reply to message from another chat")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"ProjectChatMessage<{self.pk}>"
 
     class Meta:
@@ -278,7 +280,7 @@ class DirectChatMessage(BaseMessage):
         if self.reply_to and self.reply_to.chat != self.chat:
             raise ValidationError("Reply to message from another chat")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"DirectChatMessage<{self.pk}>"
 
     class Meta:
@@ -307,7 +309,7 @@ class FileToMessage(models.Model):
         null=True,
     )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"FileToMessage<{self.file}>"
 
     class Meta:
