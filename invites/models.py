@@ -3,6 +3,7 @@ from django.db import models
 from invites.managers import InviteManager
 from projects.models import Project
 from users.models import CustomUser
+from django_stubs_ext.db.models import TypedModelMeta
 
 
 class Invite(models.Model):
@@ -37,10 +38,10 @@ class Invite(models.Model):
 
     objects = InviteManager()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f'Invite from project "{self.project.name}" to {self.user.get_full_name()}'
 
-    class Meta:
+    class Meta(TypedModelMeta):
         verbose_name = "Приглашение"
         verbose_name_plural = "Приглашения"
         ordering = ["-datetime_created"]
