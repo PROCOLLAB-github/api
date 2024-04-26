@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from rest_framework import serializers
 
+
 from core.models import Skill, SkillToObject
 from core.serializers import SkillToObjectSerializer
 from projects.models import Project
