@@ -1,9 +1,10 @@
 from django_filters import rest_framework as filters
 
 from vacancy.models import Vacancy
+from django.db.models import QuerySet
 
 
-def project_id_filter(queryset, name, value):
+def project_id_filter(queryset, name, value) -> QuerySet:
     return queryset.filter(
         **{
             "project_id": value[0],
