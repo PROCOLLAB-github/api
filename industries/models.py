@@ -1,4 +1,5 @@
 from django.db import models
+from django_stubs_ext.db.models import TypedModelMeta
 
 
 class Industry(models.Model):
@@ -20,7 +21,7 @@ class Industry(models.Model):
     def __str__(self):
         return f"Industry<{self.id}> - {self.name}"
 
-    class Meta:
+    class Meta(TypedModelMeta):
         verbose_name = "Индустрия"
         verbose_name_plural = "Индустрии"
         ordering = ["name"]
