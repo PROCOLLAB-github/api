@@ -13,7 +13,7 @@ from users.models import CustomUser
 User = get_user_model()
 
 
-class NewsListCreateSerializer(serializers.ModelSerializer):
+class NewsListCreateSerializer(serializers.ModelSerializer[News]):
     class Meta:
         model = News
         fields = [
@@ -22,7 +22,7 @@ class NewsListCreateSerializer(serializers.ModelSerializer):
         ]
 
 
-class NewsListSerializer(serializers.ModelSerializer):
+class NewsListSerializer(serializers.ModelSerializer[News]):
     views_count = serializers.SerializerMethodField()
     likes_count = serializers.SerializerMethodField()
     name = serializers.SerializerMethodField()
@@ -63,7 +63,7 @@ class NewsListSerializer(serializers.ModelSerializer):
         ]
 
 
-class NewsFeedListSerializer(serializers.ModelSerializer):
+class NewsFeedListSerializer(serializers.ModelSerializer[News]):
     name = serializers.SerializerMethodField()
     image_address = serializers.SerializerMethodField()
     is_user_liked = serializers.SerializerMethodField()
@@ -125,7 +125,7 @@ class NewsFeedListSerializer(serializers.ModelSerializer):
         read_only_fields = ["views_count", "likes_count", "type_model"]
 
 
-class NewsDetailSerializer(serializers.ModelSerializer):
+class NewsDetailSerializer(serializers.ModelSerializer[News]):
     views_count = serializers.SerializerMethodField()
     likes_count = serializers.SerializerMethodField()
     name = serializers.SerializerMethodField()
