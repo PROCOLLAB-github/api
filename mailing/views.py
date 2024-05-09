@@ -2,6 +2,7 @@ import django.db.models
 from django.http import JsonResponse
 from django.shortcuts import render
 from rest_framework.views import APIView
+from rest_framework.request import Request
 
 from users.models import CustomUser
 from .utils import send_mass_mail
@@ -9,7 +10,7 @@ from .models import MailingSchema
 
 
 class SendMailView(APIView):
-    def post(self, request):
+    def post(self, request: Request) -> JsonResponse:
         users = request.POST.getlist("users[]")
         schema_id = request.POST["schemas"]
         subject = request.POST["subject"]
@@ -30,7 +31,7 @@ class MailingSchemaView(APIView):
 
 
 class TemplateFieldsView(APIView):
-    def get(self, request, schema_id):
+    def get(self, request: Request, schema_id: int) -> JsonResponse:
         return JsonResponse(
             dict(MailingTemplateRender().get_template_fields_context(schema_id))
         )

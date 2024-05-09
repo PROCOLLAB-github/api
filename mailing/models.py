@@ -4,6 +4,8 @@ import uuid
 from django.db import models
 from .constants import get_default_mailing_schema
 
+from django_stubs_ext.db.models import TypedModelMeta
+
 
 def get_template_path(instance, filename):
     ext = filename.split(".")[-1]
@@ -16,7 +18,7 @@ class MailingSchema(models.Model):
     schema = models.JSONField(default=get_default_mailing_schema, null=True, blank=True)
     template = models.TextField()
 
-    class Meta:
+    class Meta(TypedModelMeta):
         verbose_name = "Схема шаблона письма"
         verbose_name_plural = "Схемы шаблонов писем"
 
