@@ -21,7 +21,7 @@ class NewsMapping:
             return content_object.name
 
     @classmethod
-    def get_image_address(cls, content_object) -> str:
+    def get_image_address(cls, content_object):
         if isinstance(content_object, User):
             return content_object.avatar
         if isinstance(content_object, Project) or isinstance(
