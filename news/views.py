@@ -58,7 +58,7 @@ class NewsDetail(NewsQuerysetMixin, generics.RetrieveUpdateDestroyAPIView):
     serializer_class = NewsDetailSerializer
     permission_classes = [IsNewsCreatorOrReadOnly]
 
-    def get(self, request:Request, *args, **kwargs) -> Response:
+    def get(self, request: Request, *args, **kwargs) -> Response:
         try:
             news = self.get_queryset().get(pk=self.kwargs["pk"])
             context = {"user": request.user}
@@ -66,7 +66,7 @@ class NewsDetail(NewsQuerysetMixin, generics.RetrieveUpdateDestroyAPIView):
         except News.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
 
-    def update(self, request:Request, *args, **kwargs) -> Response:
+    def update(self, request: Request, *args, **kwargs) -> Response:
         try:
             news = self.get_queryset().get(pk=self.kwargs["pk"])
             context = {"user": request.user}
@@ -83,7 +83,7 @@ class NewsDetailSetViewed(NewsQuerysetMixin, generics.CreateAPIView):
     serializer_class = SetViewedSerializer
     permission_classes = [IsAuthenticated]
 
-    def post(self, request:Request, *args, **kwargs) -> Response:
+    def post(self, request: Request, *args, **kwargs) -> Response:
         try:
             news = self.get_queryset().get(pk=self.kwargs["pk"])
             add_view(news, request.user)
@@ -96,7 +96,7 @@ class NewsDetailSetLiked(NewsQuerysetMixin, generics.CreateAPIView):
     serializer_class = SetLikedSerializer
     permission_classes = [IsAuthenticated]
 
-    def post(self, request:Request, *args, **kwargs) -> Response:
+    def post(self, request: Request, *args, **kwargs) -> Response:
         try:
             news = self.get_queryset().get(pk=self.kwargs["pk"])
             set_like(news, request.user, request.data.get("is_liked"))
