@@ -1,5 +1,6 @@
+from typing import Union
 from django.contrib.auth import get_user_model
-
+from django.db.models.query import QuerySet
 from news.models import News
 from partner_programs.models import PartnerProgram
 from projects.models import Project
@@ -12,7 +13,7 @@ class NewsQuerysetMixin:
     Mixin for getting queryset for news
     """
 
-    def get_queryset_for_project(self):
+    def get_queryset_for_project(self) -> QuerySet:
         """Returns queryset of news for project"""
         project_pk = self.kwargs.get("project_pk")
         try:
@@ -25,7 +26,7 @@ class NewsQuerysetMixin:
             text="", content_type__model="project"
         )
 
-    def get_queryset_for_program(self):
+    def get_queryset_for_program(self) -> QuerySet:
         """Returns queryset of news for partner program"""
         partnerprogram_pk = self.kwargs.get("partnerprogram_pk")
         try:
@@ -35,7 +36,7 @@ class NewsQuerysetMixin:
             return News.objects.none()
         return News.objects.get_news(obj=program)
 
-    def get_queryset_for_user(self):
+    def get_queryset_for_user(self) -> QuerySet:
         """Returns queryset of news for user"""
         user_pk = self.kwargs.get("user_pk")
         try:
@@ -45,7 +46,7 @@ class NewsQuerysetMixin:
             return News.objects.none()
         return News.objects.get_news(obj=user)
 
-    def get_queryset(self):
+    def get_queryset(self) -> Union[QuerySet, None]:
         """Chooses what queryset to return - for project, program or user"""
         if self.kwargs.get("project_pk") is not None:
             return self.get_queryset_for_project()
