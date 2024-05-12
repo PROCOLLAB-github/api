@@ -7,11 +7,11 @@ if typing.TYPE_CHECKING:
 
 
 class NewsManager(models.Manager):
-    def get_news(self, obj: models.Model) -> QuerySet[News]:
+    def get_news(self, obj: models.Model) -> QuerySet["News"]:
         obj_type = ContentType.objects.get_for_model(obj)
         return self.get_queryset().filter(content_type=obj_type, object_id=obj.pk)
 
-    def add_news(self, obj: models.Model, **kwargs) -> News:
+    def add_news(self, obj: models.Model, **kwargs) -> "News":
         obj_type = ContentType.objects.get_for_model(obj)
         kwargs = dict(kwargs)
         files = kwargs.pop("files", [])
