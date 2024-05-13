@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 
+from django_stubs_ext import QuerySet
 from rest_framework import status
 from rest_framework.generics import (
     GenericAPIView,
@@ -34,11 +35,11 @@ class DirectChatList(ListAPIView):
     serializer_class = DirectChatListSerializer
     permission_classes = [IsAuthenticated]
 
-    def get_queryset(self):
+    def get_queryset(self) -> QuerySet[DirectChat]:
         user = self.request.user
         return user.direct_chats.all()
 
-    def get(self, request, *args, **kwargs):
+    def get(self, request, *args, **kwargs) -> Response:
         chats = self.get_queryset()
         serialized_chats = []
         for chat in chats:
@@ -68,7 +69,7 @@ class ProjectChatList(ListAPIView):
     serializer_class = ProjectChatListSerializer
     permission_classes = [IsAuthenticated]
 
-    def get_queryset(self):
+    def get_queryset(self) -> QuerySet[ProjectChat]:
         user = self.request.user
         return user.get_project_chats()
 
@@ -117,7 +118,9 @@ class DirectChatDetail(RetrieveAPIView):
         except ValueError:
             return Response(
                 status=status.HTTP_400_BAD_REQUEST,
-                data={"detail": "processed id must contain two integers separated by underscore"},
+                data={
+                    "detail": "processed id must contain two integers separated by underscore"
+                },
             )
         except AssertionError as e:
             return Response(status=status.HTTP_400_BAD_REQUEST, data={"detail": str(e)})
@@ -152,7 +155,7 @@ class ProjectChatMessageList(ListCreateAPIView):
     permission_classes = [IsProjectChatMember]
     pagination_class = MessageListPagination
 
-    def get_queryset(self):
+    def get_queryset(self) -> QuerySet[ProjectChat]:
         try:
             return (
                 ProjectChat.objects.get(id=self.kwargs["id"])
@@ -163,7 +166,7 @@ class ProjectChatMessageList(ListCreateAPIView):
         except ProjectChat.DoesNotExist:
             return ProjectChat.objects.none()
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs) -> Response:
         # TODO: try to create a message in a chat. If chat doesn't exist, create it and then create a message.
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -176,7 +179,7 @@ class DirectChatFileList(ListCreateAPIView):
     serializer_class = UserFileSerializer
     permission_classes = [IsAuthenticated]
 
-    def get_queryset(self):
+    def get_queryset(self) -> list[str]:
 
         messages = self.request.user.direct_chats.get(id=self.kwargs["id"]).messages.all()
 
@@ -187,7 +190,7 @@ class ProjectChatFileList(ListCreateAPIView):
     serializer_class = UserFileSerializer
     permission_classes = [IsProjectChatMember]
 
-    def get_queryset(self):
+    def get_queryset(self) -> QuerySet[UserFile]:
         try:
             messages = ProjectChat.objects.get(id=self.kwargs["id"]).messages.all()
             return get_all_files(messages)
@@ -216,7 +219,7 @@ class HasChatUnreadsView(GenericAPIView):
             )
         }
     )
-    def get(self, request, *args, **kwargs):
+    def get(self, request, *args, **kwargs) -> Response:
         user = request.user
         # get all user chats
         direct_messages = user.direct_chats.all().prefetch_related("messages")

@@ -10,12 +10,12 @@ from chats.models import (
 
 
 @admin.display(description="Пользователи чата")
-def chat_users(obj):
+def chat_users(obj) -> str:
     return f"{obj.get_users_str()}"
 
 
 @admin.display(description="Количество сообщений")
-def chat_message_count(obj):
+def chat_message_count(obj) -> int:
     return obj.messages.count()
 
 

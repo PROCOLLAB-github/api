@@ -9,7 +9,7 @@ from chats.exceptions import (
     WrongChatIdException,
     NonMatchingDirectChatIdException,
 )
-from chats.models import DirectChatMessage, ProjectChatMessage, FileToMessage
+from chats.models import DirectChatMessage, ProjectChatMessage, FileToMessage, BaseMessage
 from files.models import UserFile
 
 User = get_user_model()
@@ -106,7 +106,9 @@ async def create_file_to_message(
     )
 
 
-async def match_files_and_messages(file_urls, messages):
+async def match_files_and_messages(
+    file_urls: list[str], messages: dict[str, Union[str, None, ProjectChatMessage]]
+):
     for url in file_urls:
         file = await sync_to_async(UserFile.objects.get)(pk=url)
         # implicitly matches a file and a message
@@ -117,7 +119,7 @@ async def match_files_and_messages(file_urls, messages):
         )
 
 
-def get_all_files(messages):
+def get_all_files(messages: list[BaseMessage]) -> list[str]:
     # looks like something bad -
     files = []
     for message in messages:
