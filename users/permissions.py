@@ -38,3 +38,12 @@ class IsExpertPost(BasePermission):
 
     def has_permission(self, request, view):
         return True if request.user.user_type == 3 else False
+
+
+class CustomIsAuthenticated(BasePermission):
+    def has_permission(self, request, view):
+        if (
+            hasattr(view, "authentication_off") and view.authentication_off
+        ):  # Проверка наличия и значения атрибута
+            return True
+        return bool(request.user and request.user.is_authenticated)

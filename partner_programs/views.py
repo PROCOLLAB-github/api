@@ -23,7 +23,7 @@ User = get_user_model()
 
 
 class PartnerProgramList(generics.ListCreateAPIView):
-    queryset = PartnerProgram.objects.all()
+    queryset = PartnerProgram.objects.filter(draft=False)
     serializer_class = PartnerProgramListSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     pagination_class = PartnerProgramPagination
@@ -60,7 +60,7 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
 
     permission_classes = [AllowAny]
     serializer_class = PartnerProgramNewUserSerializer
-    queryset = PartnerProgram.objects.none()
+    queryset = PartnerProgram.objects.all()
 
     def post(self, request, *args, **kwargs):
         data = request.data
@@ -71,7 +71,7 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
         try:
             program = self.get_object()
         except PartnerProgram.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND)
+            return Response({"asd": "asd"}, status=status.HTTP_404_NOT_FOUND)
 
         # tilda cringe
         email = data.get("email") if data.get("email") else data.get("email_")
@@ -129,6 +129,7 @@ class PartnerProgramRegister(generics.GenericAPIView):
     """
     Register user to program and save additional program data
     """
+
     queryset = PartnerProgram.objects.none()
     permission_classes = [IsAuthenticated]
     serializer_class = PartnerProgramUserSerializer
