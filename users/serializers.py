@@ -481,5 +481,4 @@ class CustomObtainPairSerializer(TokenObtainPairSerializer):
     def get_token(cls, user):
         token = super().get_token(user)
         token["email"] = user.email
-        token["password"] = user.password
         return token
