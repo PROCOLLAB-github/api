@@ -34,6 +34,7 @@ CSRF_TRUSTED_ORIGINS = [
     "https://www.procollab.ru",
     "https://app.procollab.ru",
     "https://dev.procollab.ru",
+    "https://www.procollab.ru",
 ]
 
 ALLOWED_HOSTS = [
@@ -162,12 +163,12 @@ WSGI_APPLICATION = "procollab.wsgi.application"
 
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.IsAuthenticated",
+        "users.permissions.CustomIsAuthenticated",
     ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
         "rest_framework.authentication.BasicAuthentication",
-        "rest_framework.authentication.SessionAuthentication",
+        # "rest_framework.authentication.SessionAuthentication",S
     ],
     "DEFAULT_RENDERER_CLASSES": [
         "rest_framework.renderers.JSONRenderer",
@@ -251,7 +252,7 @@ AUTH_USER_MODEL = "users.CustomUser"
 
 # Internationalization
 
-LANGUAGE_CODE = "ru-ru"
+LANGUAGE_CODE = "en-en"
 
 TIME_ZONE = "Europe/Moscow"
 
@@ -294,6 +295,7 @@ default_user_authentication_rule",
     "SLIDING_TOKEN_REFRESH_EXP_CLAIM": "refresh_exp",
     "SLIDING_TOKEN_LIFETIME": timedelta(minutes=5),
     "SLIDING_TOKEN_REFRESH_LIFETIME": timedelta(days=1),
+    "TOKEN_OBTAIN_SERIALIZER": "users.serializers.CustomObtainPairSerializer",
 }
 
 if DEBUG:

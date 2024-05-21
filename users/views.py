@@ -2,9 +2,10 @@ import jwt
 from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.auth.hashers import check_password
 from django.db import transaction
 from django.db.models import Q
-from django.shortcuts import redirect
+from django.shortcuts import redirect, get_object_or_404
 from django_filters import rest_framework as filters
 from rest_framework import status, permissions
 from rest_framework import exceptions
@@ -57,6 +58,7 @@ from users.serializers import (
     UserSubscribedProjectsSerializer,
     SpecializationsSerializer,
     SpecializationSerializer,
+    UserCloneDataSerializer,
 )
 from .filters import UserFilter, SpecializationFilter
 from .pagination import UsersPagination
@@ -408,3 +410,14 @@ class UserSpecializationsInlineView(ListAPIView):
 
     def get_queryset(self):
         return Specialization.objects.all()
+
+
+class SingleUserDataView(ListAPIView):
+    serializer_class = UserCloneDataSerializer
+    permissions = [AllowAny]
+    authentication_off = True
+
+    def get_queryset(self) -> User:
+        user = get_object_or_404(User, email=self.request.data["email"])
+        if check_password(self.request.data["password"], user.password):
+            return [user]
