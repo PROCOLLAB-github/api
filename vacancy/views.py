@@ -63,10 +63,9 @@ class VacancyDetail(generics.RetrieveUpdateDestroyAPIView):
 
         if not request.data.get("is_active"):
             # automatically declining every vacancy response if the vacancy is not active
-            vacancy_requests = VacancyResponse.objects.filter(
-                vacancy=vacancy, is_approved=None
+            VacancyResponse.objects.filter(vacancy=vacancy, is_approved=None).update(
+                is_approved=False
             )
-            vacancy_requests.update(is_approved=False)
 
         if request.data.get("required_skills_ids"):
             vacancy.required_skills.all().delete()

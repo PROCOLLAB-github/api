@@ -93,6 +93,11 @@ class ProjectVacancyCreateListSerializer(
 
         required_skills_ids = validated_data.pop("required_skills_ids")
 
+        if validated_data["project"].draft:
+            validated_data["is_active"] = False
+        else:
+            validated_data["is_active"] = True
+
         vacancy = Vacancy.objects.create(**validated_data)
 
         for skill_id in required_skills_ids:

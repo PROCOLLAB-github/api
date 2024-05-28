@@ -4,9 +4,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from feed.pagination import FeedPagination
+from feed.services import get_liked_news
 
 from news.models import News
-from news.serializers import NewsFeedListSerializer
+from .serializers import NewsFeedListSerializer
 from projects.models import Project
 from vacancy.models import Vacancy
 
@@ -38,7 +39,12 @@ class NewSimpleFeed(APIView):
         paginator = self.pagination_class()
         paginated_data = paginator.paginate_queryset(self.get_queryset(), self.request)
         serializer = NewsFeedListSerializer(
-            paginated_data, context={"user": self.request.user}, many=True
+            paginated_data,
+            context={
+                "user": self.request.user,
+                "liked_news": get_liked_news(self.request.user, paginated_data),
+            },
+            many=True,
         )
 
         new_data = []
