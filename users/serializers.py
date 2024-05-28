@@ -12,6 +12,8 @@ from projects.validators import validate_project
 from .models import CustomUser, Expert, Investor, Member, Mentor, UserAchievement
 from .validators import specialization_exists_validator
 
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
 
 class AchievementListSerializer(serializers.ModelSerializer[UserAchievement]):
     class Meta:
@@ -466,3 +468,17 @@ class UserProjectListSerializer(serializers.ModelSerializer[Project]):
     def validate(self, data):
         super().validate(data)
         return validate_project(data)
+
+
+class UserCloneDataSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = "__all__"
+
+
+class CustomObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token["email"] = user.email
+        return token

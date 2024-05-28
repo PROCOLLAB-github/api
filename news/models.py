@@ -6,6 +6,7 @@ from django.utils import timezone
 from core.models import Like, View
 from files.models import UserFile
 from news.managers import NewsManager
+from django_stubs_ext.db.models import TypedModelMeta
 
 
 class News(models.Model):
@@ -43,7 +44,7 @@ class News(models.Model):
 
     objects = NewsManager()
 
-    class Meta:
+    class Meta(TypedModelMeta):
         verbose_name = "Новость"
         verbose_name_plural = "Новости"
         ordering = ["-datetime_created"]

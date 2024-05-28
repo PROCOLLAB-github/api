@@ -3,6 +3,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.request import Request
 
 from core.serializers import SetViewedSerializer, SetLikedSerializer
 from core.services import add_view, set_like
@@ -25,7 +26,7 @@ class NewsList(NewsQuerysetMixin, generics.ListCreateAPIView):
     permission_classes = [IsNewsCreatorOrReadOnly]
     pagination_class = NewsPagination
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request: Request, *args, **kwargs) -> Response:
         serializer = NewsListCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
@@ -46,7 +47,7 @@ class NewsList(NewsQuerysetMixin, generics.ListCreateAPIView):
         # creating partner program news, not implemented yet, return 400
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
-    def get(self, request, *args, **kwargs):
+    def get(self, request: Request, *args, **kwargs) -> Response:
         news = self.paginate_queryset(self.get_queryset())
         context = {"user": request.user}
         serializer = NewsListSerializer(news, context=context, many=True)
@@ -57,7 +58,7 @@ class NewsDetail(NewsQuerysetMixin, generics.RetrieveUpdateDestroyAPIView):
     serializer_class = NewsDetailSerializer
     permission_classes = [IsNewsCreatorOrReadOnly]
 
-    def get(self, request, *args, **kwargs):
+    def get(self, request: Request, *args, **kwargs) -> Response:
         try:
             news = self.get_queryset().get(pk=self.kwargs["pk"])
             context = {"user": request.user}
@@ -65,7 +66,7 @@ class NewsDetail(NewsQuerysetMixin, generics.RetrieveUpdateDestroyAPIView):
         except News.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
 
-    def update(self, request, *args, **kwargs):
+    def update(self, request: Request, *args, **kwargs) -> Response:
         try:
             news = self.get_queryset().get(pk=self.kwargs["pk"])
             context = {"user": request.user}
@@ -82,7 +83,7 @@ class NewsDetailSetViewed(NewsQuerysetMixin, generics.CreateAPIView):
     serializer_class = SetViewedSerializer
     permission_classes = [IsAuthenticated]
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request: Request, *args, **kwargs) -> Response:
         try:
             news = self.get_queryset().get(pk=self.kwargs["pk"])
             add_view(news, request.user)
@@ -95,7 +96,7 @@ class NewsDetailSetLiked(NewsQuerysetMixin, generics.CreateAPIView):
     serializer_class = SetLikedSerializer
     permission_classes = [IsAuthenticated]
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request: Request, *args, **kwargs) -> Response:
         try:
             news = self.get_queryset().get(pk=self.kwargs["pk"])
             set_like(news, request.user, request.data.get("is_liked"))

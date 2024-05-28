@@ -23,6 +23,7 @@ from users.views import (
     UserSubscribedProjectsList,
     UserSpecializationsNestedView,
     UserSpecializationsInlineView,
+    SingleUserDataView,
 )
 
 app_name = "users"
@@ -73,4 +74,6 @@ urlpatterns = [
         "reset_password/",
         include("django_rest_passwordreset.urls", namespace="password_reset"),
     ),
+    # for skills
+    path("users/clone-data", SingleUserDataView.as_view()),
 ]
