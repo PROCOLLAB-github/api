@@ -174,6 +174,21 @@ class UserSubscribedProjectsSerializer(serializers.ModelSerializer[Project]):
         read_only_fields = ["leader", "collaborator"]
 
 
+class SubscriptionSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    price = serializers.IntegerField()
+    features_list = serializers.ListField(child=serializers.CharField())
+
+
+class UserSubscriptionDataSerializer(serializers.Serializer):
+    is_subscribed = serializers.BooleanField()
+    last_subscription_date = serializers.CharField()
+    subscription_date_over = serializers.CharField()
+    last_subscription_type = SubscriptionSerializer()
+    is_autopay_allowed = serializers.BooleanField()
+
+
 class UserDetailSerializer(
     serializers.ModelSerializer[CustomUser], SkillsWriteSerializerMixin
 ):
