@@ -1,4 +1,5 @@
 import jwt
+import requests
 from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -59,6 +60,7 @@ from users.serializers import (
     SpecializationsSerializer,
     SpecializationSerializer,
     UserCloneDataSerializer,
+    UserSubscriptionDataSerializer,
 )
 from .filters import UserFilter, SpecializationFilter
 from .pagination import UsersPagination
@@ -177,7 +179,28 @@ class CurrentUser(GenericAPIView):
     def get(self, request):
         user = request.user
         serializer = self.get_serializer(user)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+
+        if settings.DEBUG:
+            skills_url_name = (
+                "https://skills.dev.procollab.ru/progress/subscription-data/"
+            )
+        else:
+            skills_url_name = (
+                "https://api.skills.procollab.ru/progress/subscription-data/"
+            )
+        subscription_data = requests.get(
+            skills_url_name,
+            headers={
+                "accept": "application/json",
+                "Authorization": request.META.get("HTTP_AUTHORIZATION"),
+            },
+        )
+
+        # raise ValueError(type(subscription_data.json()), subscription_data.json())
+        subscription_serializer = UserSubscriptionDataSerializer(subscription_data.json())
+        return Response(
+            serializer.data | subscription_serializer.data, status=status.HTTP_200_OK
+        )
 
 
 class UserTypesView(APIView):
