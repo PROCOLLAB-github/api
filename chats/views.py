@@ -94,8 +94,9 @@ class DirectChatDetail(RetrieveAPIView):
                 request.user.id == user1_id or request.user.id == user2_id
             ), "current user id is not present in raw id"
 
-            user1 = User.objects.get(pk=user1_id)
-            user2 = User.objects.get(pk=user2_id)
+            users = User.objects.filter(pk__in=[user1_id, user2_id])
+            user1 = users.get(pk=user1_id)
+            user2 = users.get(pk=user2_id)
 
             if user1 == request.user:
                 opponent = user2
@@ -117,7 +118,9 @@ class DirectChatDetail(RetrieveAPIView):
         except ValueError:
             return Response(
                 status=status.HTTP_400_BAD_REQUEST,
-                data={"detail": "processed id must contain two integers separated by underscore"},
+                data={
+                    "detail": "processed id must contain two integers separated by underscore"
+                },
             )
         except AssertionError as e:
             return Response(status=status.HTTP_400_BAD_REQUEST, data={"detail": str(e)})
@@ -223,10 +226,16 @@ class HasChatUnreadsView(GenericAPIView):
         project_chats = user.get_project_chats().prefetch_related("messages")
 
         has_direct_messages_unread = (
-            direct_messages.filter(messages__is_read=False).distinct().exists()
+            direct_messages.filter(messages__is_read=False)
+            .exclude(messages__is_deleted=True)
+            .distinct()
+            .exists()
         )
         has_project_messages_unread = (
-            project_chats.filter(messages__is_read=False).distinct().exists()
+            project_chats.filter(messages__is_read=False)
+            .exclude(messages__is_deleted=True)
+            .distinct()
+            .exists()
         )
         return Response(
             {"has_unreads": has_direct_messages_unread or has_project_messages_unread}

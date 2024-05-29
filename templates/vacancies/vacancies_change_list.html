@@ -1,0 +1,15 @@
+{% extends "admin/change_list.html" %}
+{% load i18n %}
+
+{% block object-tools-items %}
+    {{ block.super }}
+    <a href="#" class="addlink" previewlistener="true" onclick="get_emails_vacancies()">
+      Emal лидеров у проектов с вакансиями
+    </a>
+
+    <script>
+        function get_emails_vacancies() {
+            window.open("{% url 'admin:vacancy_leaders_email' %}", '_blank').focus();
+        }
+    </script>
+{% endblock %}

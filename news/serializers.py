@@ -2,13 +2,10 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from core.services import is_fan, get_likes_count, get_views_count
-from feed.mapping import CONTENT_OBJECT_MAPPING, CONTENT_OBJECT_SERIALIZER_MAPPING
 from files.serializers import UserFileSerializer
 from news.mapping import NewsMapping
 from news.models import News
 
-from projects.models import Project
-from users.models import CustomUser
 
 User = get_user_model()
 
@@ -63,7 +60,8 @@ class NewsListSerializer(serializers.ModelSerializer[News]):
         ]
 
 
-class NewsFeedListSerializer(serializers.ModelSerializer[News]):
+
+class NewsFeedListSerializer(serializers.ModelSerializer):
     name = serializers.SerializerMethodField()
     image_address = serializers.SerializerMethodField()
     is_user_liked = serializers.SerializerMethodField()
@@ -125,7 +123,9 @@ class NewsFeedListSerializer(serializers.ModelSerializer[News]):
         read_only_fields = ["views_count", "likes_count", "type_model"]
 
 
-class NewsDetailSerializer(serializers.ModelSerializer[News]):
+
+
+class NewsDetailSerializer(serializers.ModelSerializer):
     views_count = serializers.SerializerMethodField()
     likes_count = serializers.SerializerMethodField()
     name = serializers.SerializerMethodField()
