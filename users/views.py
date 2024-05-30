@@ -188,15 +188,17 @@ class CurrentUser(GenericAPIView):
             skills_url_name = (
                 "https://api.skills.procollab.ru/progress/subscription-data/"
             )
-        subscription_data = requests.get(
-            skills_url_name,
-            headers={
-                "accept": "application/json",
-                "Authorization": request.META.get("HTTP_AUTHORIZATION"),
-            },
-        )
+        try:
+            subscription_data = requests.get(
+                skills_url_name,
+                headers={
+                    "accept": "application/json",
+                    "Authorization": request.META.get("HTTP_AUTHORIZATION"),
+                },
+            )
+        except Exception:
+            subscription_data = {}
 
-        # raise ValueError(type(subscription_data.json()), subscription_data.json())
         subscription_serializer = UserSubscriptionDataSerializer(subscription_data.json())
         return Response(
             serializer.data | subscription_serializer.data, status=status.HTTP_200_OK
