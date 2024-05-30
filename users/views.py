@@ -196,10 +196,12 @@ class CurrentUser(GenericAPIView):
                     "Authorization": request.META.get("HTTP_AUTHORIZATION"),
                 },
             )
+            subscription_serializer = UserSubscriptionDataSerializer(
+                subscription_data.json()
+            )
         except Exception:
-            subscription_data = {}
+            subscription_serializer = {}
 
-        subscription_serializer = UserSubscriptionDataSerializer(subscription_data.json())
         return Response(
             serializer.data | subscription_serializer.data, status=status.HTTP_200_OK
         )
