@@ -199,12 +199,11 @@ class CurrentUser(GenericAPIView):
             subscription_serializer = UserSubscriptionDataSerializer(
                 subscription_data.json()
             )
+            subs_data = subscription_serializer.data
         except Exception:
-            subscription_serializer = {}
+            subs_data = {}
 
-        return Response(
-            serializer.data | subscription_serializer.data, status=status.HTTP_200_OK
-        )
+        return Response(serializer.data | subs_data, status=status.HTTP_200_OK)
 
 
 class UserTypesView(APIView):
