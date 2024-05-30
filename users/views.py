@@ -61,6 +61,7 @@ from users.serializers import (
     SpecializationSerializer,
     UserCloneDataSerializer,
     UserSubscriptionDataSerializer,
+    RemoteBuySubSerializer,
 )
 from .filters import UserFilter, SpecializationFilter
 from .pagination import UsersPagination
@@ -442,3 +443,69 @@ class SingleUserDataView(ListAPIView):
 
     def get_queryset(self) -> User:
         return [get_object_or_404(User, email=self.request.data["email"])]
+
+
+class RemoteViewSubscriptions(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        try:
+            subscriptions = self.get_response_from_remote_api()
+            return Response(subscriptions, status=status.HTTP_200_OK)
+        except requests.RequestException as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    def get_link_to_remote_api(self) -> str:
+        # TODO something to reuse this code
+        if settings.DEBUG:
+            subscriptions_url = "https://skills.dev.procollab.ru/subscription/"
+        else:
+            subscriptions_url = "https://api.skills.procollab.ru/subscription/"
+        return subscriptions_url
+
+    def get_response_from_remote_api(self):
+        subscriptions_url = self.get_link_to_remote_api()
+        response = requests.get(
+            subscriptions_url,
+            headers={
+                "accept": "application/json",
+                "Authorization": self.request.META.get("HTTP_AUTHORIZATION"),
+            },
+        )
+        response.raise_for_status()
+        return response.json()
+
+
+class RemoteCreatePayment(GenericAPIView):
+    serializer_class = RemoteBuySubSerializer
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        try:
+            subscriptions_buy_url = self.def_get_link_to_remote_api()
+            data, headers = self.get_data_to_request_remote_api()
+            response = requests.post(subscriptions_buy_url, json=data, headers=headers)
+            response.raise_for_status()
+            return Response(response.json(), status=status.HTTP_200_OK)
+        except requests.RequestException as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    def def_get_link_to_remote_api(self) -> str:
+        # TODO something to reuse this code
+        if settings.DEBUG:
+            subscriptions_buy_url = "https://skills.dev.procollab.ru/subscription/buy/"
+        else:
+            subscriptions_buy_url = "https://api.skills.procollab.ru/subscription/buy/"
+        return subscriptions_buy_url
+
+    def get_data_to_request_remote_api(self) -> tuple[dict, dict]:
+        serializer = self.serializer_class(data=self.request.data)
+        if serializer.is_valid():
+            data = serializer.validated_data
+            headers = {
+                "accept": "application/json",
+                "Authorization": self.request.META.get("HTTP_AUTHORIZATION"),
+            }
+            return data, headers
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
