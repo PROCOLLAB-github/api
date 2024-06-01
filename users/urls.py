@@ -24,6 +24,8 @@ from users.views import (
     UserSpecializationsNestedView,
     UserSpecializationsInlineView,
     SingleUserDataView,
+    RemoteViewSubscriptions,
+    RemoteCreatePayment,
 )
 
 app_name = "users"
@@ -76,4 +78,7 @@ urlpatterns = [
     ),
     # for skills
     path("users/clone-data", SingleUserDataView.as_view()),
+    # copy from skills
+    path("subscription/", RemoteViewSubscriptions.as_view()),
+    path("subscription/buy/", RemoteCreatePayment.as_view()),
 ]

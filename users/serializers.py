@@ -497,3 +497,8 @@ class CustomObtainPairSerializer(TokenObtainPairSerializer):
         token = super().get_token(user)
         token["email"] = user.email
         return token
+
+
+class RemoteBuySubSerializer(serializers.Serializer):
+    subscription_id = serializers.IntegerField()
+    redirect_url = serializers.CharField(required=False)
