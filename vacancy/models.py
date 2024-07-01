@@ -1,6 +1,7 @@
 from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
 
+from files.models import UserFile
 from projects.models import Project
 from vacancy.managers import VacancyManager, VacancyResponseManager
 from django_stubs_ext.db.models import TypedModelMeta
@@ -71,6 +72,7 @@ class VacancyResponse(models.Model):
         is_approved: A boolean indicating if VacancyResponse is approved.
         datetime_created: A DateTimeField indicating date of creation.
         datetime_updated: A DateTimeField indicating date of update.
+        accompanying_file: A OneToOneField to UserFile.
     """
 
     user = models.ForeignKey(
@@ -86,6 +88,14 @@ class VacancyResponse(models.Model):
         related_name="vacancy_requests",
     )
     why_me = models.TextField(blank=True)
+    accompanying_file = models.OneToOneField(
+        UserFile,
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="vacancy_file",
+        verbose_name="Сопроводительный файл",
+    )
 
     is_approved = models.BooleanField(
         blank=True,
