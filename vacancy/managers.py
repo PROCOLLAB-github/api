@@ -45,6 +45,27 @@ class VacancyResponseManager(Manager):
             )
         )
 
+    def create_vacancy_for_list_view(self):
+        return (
+            self.get_queryset()
+            .select_related(
+                "user",
+                "vacancy",
+                "vacancy__project",
+                "vacancy__project__leader",
+                "accompanying_file",
+            )
+            .only(
+                "user__id",
+                "vacancy__id",
+                "vacancy__project",
+                "vacancy__project__leader__id",
+                "why_me",
+                "accompanying_file",
+                "is_approved",
+            )
+        )
+
     def get_vacancy_response_for_detail_view(self):
         return (
             self.get_queryset()

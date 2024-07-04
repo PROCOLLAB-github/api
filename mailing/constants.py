@@ -10,3 +10,6 @@ def get_default_mailing_schema() -> dict[str, dict[str, str]]:
 
 
 MAILING_USERS_BATCH_SIZE = 100
+
+VACANCY_ACCEPT_SUBJECT: str = "На ваш отклик ответили"
+VACANCY_RECEIVE_RESPONSE: str = "Уведомление об отклике"

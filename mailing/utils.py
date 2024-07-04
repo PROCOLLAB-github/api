@@ -1,4 +1,5 @@
-from typing import Dict, List, Union
+from functools import singledispatch
+from typing import Dict, List, Union, Annotated
 from .constants import MAILING_USERS_BATCH_SIZE
 from .models import MailingSchema
 from users.models import CustomUser
@@ -9,10 +10,13 @@ from django.core import mail
 from django.core.mail import EmailMultiAlternatives
 from django.template import Context, Template
 
+from .typing import MailDataDict, DataToPrepare
+
 User = get_user_model()
 
 
-def prepare_mail_data(post_data) -> dict:
+@singledispatch
+def prepare_mail_data(post_data):
     users = post_data.getlist("users[]")
     schema_id = post_data["schemas"]
     subject = post_data["subject"]
@@ -23,32 +27,50 @@ def prepare_mail_data(post_data) -> dict:
         if key_in_post in post_data:
             context[variable_name] = post_data[key_in_post]
     users_to_send = CustomUser.objects.filter(pk__in=users)
-    data_dict = {
+    return {
         "users_to_send": users_to_send,
         "subject": subject,
         "mail_schema_template": mail_schema.template,
         "context": context,
     }
-    return data_dict
+
+
+@prepare_mail_data.register(DataToPrepare)
+def _(post_data: DataToPrepare) -> MailDataDict:
+    schema_id = post_data.schema_id
+    subject = post_data.subject
+    mail_schema = MailingSchema.objects.get(pk=schema_id)
+    context = {}
+    for variable_name in mail_schema.schema:
+        if variable_name in post_data.context_data:
+            context[variable_name] = post_data.context_data[variable_name]
+
+    users_to_send = CustomUser.objects.filter(pk__in=post_data.users_ids)
+    return {
+        "users": users_to_send,
+        "subject": subject,
+        "template_string": mail_schema.template,
+        "template_context": context,
+    }
 
 
 def create_message_groups(messages: list) -> list[list]:
     grouped_messages: list[list] = [
-        messages[message: message + MAILING_USERS_BATCH_SIZE]
+        messages[message : message + MAILING_USERS_BATCH_SIZE]  # noqa: E203
         for message in range(0, len(messages), MAILING_USERS_BATCH_SIZE)
     ]
     return grouped_messages
 
 
 def send_mail(
-        user: User,
-        subject: str,
-        template_string: str,
-        template_context: Union[
-            Dict,
-            List,
-        ] = None,
-        connection=None,
+    user: User,
+    subject: str,
+    template_string: str,
+    template_context: Union[
+        Dict,
+        List,
+    ] = None,
+    connection=None,
 ):
     return send_mass_mail([user], subject, template_string, template_context, connection)
 
@@ -61,15 +83,15 @@ def send_group_messages(messages: list) -> int:
 
 
 def send_mass_mail(
-        users: django.db.models.QuerySet | List[User],
-        subject: str,
-        template_string: str,
-        template_context: Union[
-            Dict,
-            List,
-        ] = None,
-        connection=None,
-) -> int:
+    users: django.db.models.QuerySet | List[User],
+    subject: str,
+    template_string: str,
+    template_context: Union[
+        MailDataDict,
+        list,
+    ] = None,
+    connection=None,
+) -> Annotated[int, "Количество отосланных сообщений"]:
     """
     Begin mailing to specified users, sending rendered template with template_text arg.
     Throws an error if template render is unsuccessful.
