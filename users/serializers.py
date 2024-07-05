@@ -204,6 +204,7 @@ class UserDetailSerializer(
     v2_speciality_id = serializers.IntegerField(
         write_only=True, validators=[specialization_exists_validator]
     )
+    dataset_migration_applied = serializers.BooleanField(read_only=True)
 
     def get_projects(self, user: CustomUser):
         return UserProjectsSerializer(
@@ -256,6 +257,7 @@ class UserDetailSerializer(
             "verification_date",
             "onboarding_stage",
             "projects",
+            "dataset_migration_applied",
         ]
 
     def update(self, instance, validated_data):

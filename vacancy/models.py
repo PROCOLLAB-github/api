@@ -13,7 +13,6 @@ class Vacancy(models.Model):
 
     Attributes:
         role: A CharField title of the vacancy.
-        required_skills_old: A CharField required skills for the vacancy (to be deprecated).
         required_skills: A GenericRelation of required skills for the vacancy.
         description: A TextField description of the vacancy.
         project: A ForeignKey referring to the Company model.
@@ -23,7 +22,6 @@ class Vacancy(models.Model):
     """
 
     role = models.CharField(max_length=256, null=False)
-    required_skills_old = models.TextField(blank=True)  # to be deprecated in future
     required_skills = GenericRelation(
         "core.SkillToObject",
         related_query_name="vacancies",
