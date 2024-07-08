@@ -1,65 +1,74 @@
-from mailing.constants import VACANCY_ACCEPT_SUBJECT, VACANCY_RECEIVE_RESPONSE
+import datetime
+
 from mailing.typing import DataToPrepare, ContextDataDict, MailDataDict
 from mailing.utils import send_mass_mail, prepare_mail_data
 from procollab.celery import app
+from vacancy.mapping import (
+    CeleryEmailParamsDict,
+    create_text_for_email,
+    message_type_to_button_text,
+    get_link,
+    MessageTypeEnum,
+    message_type_to_title,
+)
+from vacancy.models import Vacancy
 
 
 @app.task
-def email_notificate_vacancy_accepted(
-    user_id: int,
-    project_name: str,
-    project_id: int,
-    vacancy_role: str,
-    schema_id: int = 2,
-):
-    """Уведомление откликнувшегося по email о том, его его ваканси. одобрили"""
-
-    text = f"""
-    Ваш отклик на роль {vacancy_role} в проекте "{project_name}" не остался незамеченным.
-    Вас готовы принять в команду!
-    """
-    context_data: ContextDataDict = dict(
-        text=text,
-        title=VACANCY_ACCEPT_SUBJECT,
-        button_link=f"https://app.procollab.ru/office/projects/{project_id}",
-        button_text="Посмотреть проект",
+def send_email(data: CeleryEmailParamsDict):
+    context_data = ContextDataDict(
+        text=create_text_for_email(data),
+        title=message_type_to_title[data["message_type"]],
+        button_link=get_link(data),
+        button_text=message_type_to_button_text[data["message_type"]],
     )
     mail_data: MailDataDict = prepare_mail_data(
         DataToPrepare(
-            users_ids=[user_id],
-            schema_id=schema_id,
-            subject=VACANCY_ACCEPT_SUBJECT,
+            users_ids=[data["user_id"]],
+            schema_id=data["schema_id"],
+            subject=message_type_to_title[data["message_type"]],
             context_data=context_data,
         )
     )
     send_mass_mail(**mail_data)
 
 
-@app.task
-def email_notificate_vac_response_created(
-    user_id: int,
-    project_name: str,
-    project_id: int,
-    vacancy_role: str,
-    schema_id: int = 2,
-):
-    """Уведомление лидера по email о том, что кто-то откликнулся на вакансию его проекта"""
+# @app.task
+# def email_notificate_vac_response_created(
+#         user_id: int,
+#         project_name: str,
+#         project_id: int,
+#         vacancy_role: str,
+#         schema_id: int = 2,
+# ):
+#     """Уведомление лидера по email о том, что кто-то откликнулся на вакансию его проекта"""
+#
+#     send_email(
+#         project_id=project_id,
+#         schema_id=schema_id,
+#         text=f"На вакансию {vacancy_role} для проекта '{project_name}' оставили отклик.",
+#         user_id=user_id
+#     )
 
-    text = f"""
-    На вакансию {vacancy_role} для проекта "{project_name}" оставили отклик.
-    """
-    context_data: ContextDataDict = dict(
-        text=text,
-        title=VACANCY_RECEIVE_RESPONSE,
-        button_link=f"https://app.procollab.ru/office/projects/{project_id}/responses",
-        button_text="Посмотреть на отклики",
-    )
-    mail_data: MailDataDict = prepare_mail_data(
-        DataToPrepare(
-            users_ids=[user_id],
-            schema_id=schema_id,
-            subject=VACANCY_RECEIVE_RESPONSE,
-            context_data=context_data,
+
+@app.task
+def email_notificate_vacancy_outdated():
+    """Уведомление лидера по email о том, что вакансия просрочилась"""
+    expiration_check = datetime.datetime.now() - datetime.timedelta(days=30)
+
+    outdated_active_vacancies = Vacancy.objects.select_related(
+        "project", "project__leader"
+    ).filter(is_active=True, datetime_created__lte=expiration_check)
+
+    for vacancy in outdated_active_vacancies:
+        project = vacancy.project
+        data_to_send = CeleryEmailParamsDict(
+            message_type=MessageTypeEnum.OUTDATED.value,
+            user_id=project.leader.id,
+            project_name=project.name,
+            project_id=project.id,
+            vacancy_role=vacancy.role,
+            schema_id=2,
         )
-    )
-    send_mass_mail(**mail_data)
+        send_email.delay(data_to_send)
+    outdated_active_vacancies.update(is_active=False)

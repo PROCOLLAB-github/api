@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from core.models import Skill, SkillToObject
 from projects.models import Collaborator, Project
 from vacancy.filters import VacancyFilter
+from vacancy.mapping import CeleryEmailParamsDict, MessageTypeEnum
 from vacancy.models import Vacancy, VacancyResponse
 from vacancy.pagination import VacancyPagination
 from vacancy.permissions import (
@@ -23,10 +24,7 @@ from vacancy.serializers import (
     VacancyResponseListSerializer,
     ProjectVacancyCreateListSerializer,
 )
-from vacancy.tasks import (
-    email_notificate_vacancy_accepted,
-    email_notificate_vac_response_created,
-)
+from vacancy.tasks import send_email
 
 
 @swagger_auto_schema(
@@ -129,14 +127,22 @@ class VacancyResponseList(mixins.ListModelMixin, mixins.CreateModelMixin, Generi
 
         vacancy_response = self.create(request, vacancy_id)
 
-        queryset = VacancyResponse.objects.create_vacancy_for_list_view().get(
+        queryset = VacancyResponse.objects.get_vacancy_response_for_email().get(
             vacancy__id=self.kwargs["vacancy_id"]
         )
         project = queryset.vacancy.project
 
-        email_notificate_vac_response_created.delay(
-            project.leader.id, project.name, project.id, queryset.vacancy.role
+        send_email.delay(
+            CeleryEmailParamsDict(
+                message_type=MessageTypeEnum.RESPONDED.value,
+                user_id=project.leader.id,
+                project_name=project.name,
+                project_id=project.id,
+                vacancy_role=queryset.vacancy.role,
+                schema_id=2,
+            )
         )
+
         return vacancy_response
 
 
@@ -177,8 +183,15 @@ class VacancyResponseAccept(generics.GenericAPIView):
             role=role_add_as,
         )
 
-        email_notificate_vacancy_accepted.delay(
-            user_to_add.id, project_add_in.name, project_add_in.id, role_add_as
+        send_email.delay(
+            CeleryEmailParamsDict(
+                message_type=MessageTypeEnum.ACCEPTED.value,
+                user_id=user_to_add.id,
+                project_name=project_add_in.name,
+                project_id=project_add_in.id,
+                vacancy_role=role_add_as,
+                schema_id=2,
+            )
         )
 
         new_collaborator.save()

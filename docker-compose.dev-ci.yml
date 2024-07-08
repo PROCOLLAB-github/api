@@ -69,6 +69,7 @@ services:
     volumes:
       - redis-data:/data
 
+
 volumes:
   grafana-data:
   grafana-configs:

@@ -182,23 +182,23 @@ REST_FRAMEWORK = {
 ASGI_APPLICATION = "procollab.asgi.application"
 
 if DEBUG:
-    # DATABASES = {
-    #     "default": {
-    #         "ENGINE": "django_prometheus.db.backends.sqlite3",
-    #         "NAME": "db.sqlite3",
-    #     }
-    # }
-
     DATABASES = {
         "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": config("DATABASE_NAME", default="postgres", cast=str),
-            "USER": config("DATABASE_USER", default="postgres", cast=str),
-            "PASSWORD": config("DATABASE_PASSWORD", default="postgres", cast=str),
-            "HOST": config("DATABASE_HOST", default="db", cast=str),
-            "PORT": config("DATABASE_PORT", default="5432", cast=str),
+            "ENGINE": "django_prometheus.db.backends.sqlite3",
+            "NAME": "db.sqlite3",
         }
     }
+
+    # DATABASES = {
+    #     "default": {
+    #         "ENGINE": "django.db.backends.postgresql",
+    #         "NAME": config("DATABASE_NAME", default="postgres", cast=str),
+    #         "USER": config("DATABASE_USER", default="postgres", cast=str),
+    #         "PASSWORD": config("DATABASE_PASSWORD", default="postgres", cast=str),
+    #         "HOST": config("DATABASE_HOST", default="db", cast=str),
+    #         "PORT": config("DATABASE_PORT", default="5432", cast=str),
+    #     }
+    # }
 
     CACHES = {
         "default": {
