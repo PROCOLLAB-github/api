@@ -33,28 +33,28 @@ message_type_to_title: dict[EmailTextTypes, str] = {
 
 
 def get_link(data: CeleryEmailParamsDict):
-    if data["message_type"] == "accept":
-        return f"https://app.procollab.ru/office/projects/{data['project_id']}"
-
-    elif data["message_type"] == "responded":
-        return f"https://app.procollab.ru/office/projects/{data['project_id']}/responses"
-
-    elif data["message_type"] == "outdated":
-        return f"https://app.procollab.ru/office/projects/{data['project_id']}/edit"
+    match data["message_type"]:
+        case "accept":
+            return f"https://app.procollab.ru/office/projects/{data['project_id']}"
+        case "responded":
+            return (
+                f"https://app.procollab.ru/office/projects/{data['project_id']}/responses"
+            )
+        case "outdated":
+            return f"https://app.procollab.ru/office/projects/{data['project_id']}/edit"
 
 
 def create_text_for_email(data: CeleryEmailParamsDict) -> str:
-    if data["message_type"] == "accept":
-        return f"""
-    Ваш отклик на роль {data["vacancy_role"]} в проекте "{data["project_name"]}" не остался незамеченным.
-    Вас готовы принять в команду!
+    match data["message_type"]:
+        case "accept":
+            return f"""
+        Ваш отклик на роль {data["vacancy_role"]} в проекте "{data["project_name"]}" не остался незамеченным.
+        Вас готовы принять в команду!
+        """
+        case "responded":
+            return f"На вакансию {data['vacancy_role']} для проекта '{data['project_name']}' оставили отклик."
+        case "outdated":
+            return f"""
+            У вакансии {data["vacancy_role"]} для проекта '{data["project_name"]}' истёк срок годности.\n
+            Она более не будет показываться в поиске.
     """
-
-    elif data["message_type"] == "responded":
-        return f"На вакансию {data['vacancy_role']} для проекта '{data['project_name']}' оставили отклик."
-
-    elif data["message_type"] == "outdated":
-        return f"""
-        У вакансии {data["vacancy_role"]} для проекта '{data["project_name"]}' истёк срок годности.\n
-        Она более не будет показываться в поиске.
-"""

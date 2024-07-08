@@ -10,7 +10,7 @@ from django.core import mail
 from django.core.mail import EmailMultiAlternatives
 from django.template import Context, Template
 
-from .typing import MailDataDict, DataToPrepare
+from .typing import MailDataDict, EmailDataToPrepare
 
 User = get_user_model()
 
@@ -35,8 +35,8 @@ def prepare_mail_data(post_data):
     }
 
 
-@prepare_mail_data.register(DataToPrepare)
-def _(post_data: DataToPrepare) -> MailDataDict:
+@prepare_mail_data.register(EmailDataToPrepare)
+def _(post_data: EmailDataToPrepare) -> MailDataDict:
     schema_id = post_data.schema_id
     subject = post_data.subject
     mail_schema = MailingSchema.objects.get(pk=schema_id)

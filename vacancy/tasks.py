@@ -1,6 +1,6 @@
 import datetime
 
-from mailing.typing import DataToPrepare, ContextDataDict, MailDataDict
+from mailing.typing import EmailDataToPrepare, ContextDataDict, MailDataDict
 from mailing.utils import send_mass_mail, prepare_mail_data
 from procollab.celery import app
 from vacancy.mapping import (
@@ -23,7 +23,7 @@ def send_email(data: CeleryEmailParamsDict):
         button_text=message_type_to_button_text[data["message_type"]],
     )
     mail_data: MailDataDict = prepare_mail_data(
-        DataToPrepare(
+        EmailDataToPrepare(
             users_ids=[data["user_id"]],
             schema_id=data["schema_id"],
             subject=message_type_to_title[data["message_type"]],
@@ -31,24 +31,6 @@ def send_email(data: CeleryEmailParamsDict):
         )
     )
     send_mass_mail(**mail_data)
-
-
-# @app.task
-# def email_notificate_vac_response_created(
-#         user_id: int,
-#         project_name: str,
-#         project_id: int,
-#         vacancy_role: str,
-#         schema_id: int = 2,
-# ):
-#     """Уведомление лидера по email о том, что кто-то откликнулся на вакансию его проекта"""
-#
-#     send_email(
-#         project_id=project_id,
-#         schema_id=schema_id,
-#         text=f"На вакансию {vacancy_role} для проекта '{project_name}' оставили отклик.",
-#         user_id=user_id
-#     )
 
 
 @app.task

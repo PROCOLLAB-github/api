@@ -24,7 +24,7 @@ class ContextDataDict(TypedDict):
 
 
 @dataclass(frozen=True)
-class DataToPrepare:
+class EmailDataToPrepare:
     users_ids: list[int]
     subject: str
     schema_id: int
