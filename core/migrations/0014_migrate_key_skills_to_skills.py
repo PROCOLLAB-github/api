@@ -25,7 +25,8 @@ class Migration(migrations.Migration):
     dependencies = [
         ('contenttypes', '0001_initial'),
         ("core", "0013_add_skills_from_dataset"),
-        ("users", "0044_auto_20240128_2236"),
+        # CORRECT dependencies.
+        ("users", "0048_customuser_dataset_migration_applied"),
     ]
 
     operations = [

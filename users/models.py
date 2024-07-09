@@ -100,7 +100,7 @@ class CustomUser(AbstractUser):
         related_name="users",
         to="core.Specialization",
     )
-    speciality = models.CharField(max_length=255, null=True, blank=True)
+    speciality = models.CharField(max_length=255, null=True, blank=True)  # to be deprecated in future
     onboarding_stage = models.PositiveSmallIntegerField(
         null=True,
         blank=True,
@@ -117,6 +117,13 @@ class CustomUser(AbstractUser):
     )
     datetime_updated = models.DateTimeField(auto_now=True)
     datetime_created = models.DateTimeField(auto_now_add=True)
+    dataset_migration_applied = models.BooleanField(  # To be deprecated in future.
+        null=True,
+        blank=True,
+        default=False,
+        verbose_name="Временная мера для переноса навыка",
+        help_text="Yes если оба поля `v2_speciality` и `skills` есть, No если поля не перенеслись"
+    )
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
