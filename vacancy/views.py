@@ -1,5 +1,7 @@
 from django.contrib.contenttypes.models import ContentType
 from django_filters import rest_framework as filters
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
 from rest_framework import generics, mixins, permissions, status
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
@@ -8,6 +10,7 @@ from core.models import Skill, SkillToObject
 from projects.models import Collaborator
 from vacancy.filters import VacancyFilter
 from vacancy.models import Vacancy, VacancyResponse
+from vacancy.pagination import VacancyPagination
 from vacancy.permissions import (
     IsProjectLeaderForVacancyResponse,
     IsVacancyResponseOwnerOrReadOnly,
@@ -22,12 +25,21 @@ from vacancy.serializers import (
 )
 
 
+@swagger_auto_schema(
+    manual_parameters=[
+        openapi.Parameter(
+            "project_id", openapi.IN_QUERY, type=openapi.TYPE_STRING, required=False
+        ),
+        openapi.Parameter("is_active", openapi.IN_QUERY, type=openapi.TYPE_BOOLEAN),
+    ],
+)
 class VacancyList(generics.ListCreateAPIView):
     queryset = Vacancy.objects.get_vacancy_for_list_view()
     serializer_class = ProjectVacancyCreateListSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = VacancyFilter
+    pagination_class = VacancyPagination
 
 
 class VacancyDetail(generics.RetrieveUpdateDestroyAPIView):

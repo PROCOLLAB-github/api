@@ -35,11 +35,12 @@ class VacancyResponseManager(Manager):
     def get_vacancy_response_for_list_view(self):
         return (
             self.get_queryset()
-            .select_related("user", "vacancy")
+            .select_related("user", "vacancy", "accompanying_file")
             .only(
                 "user__id",
                 "vacancy__id",
                 "why_me",
+                "accompanying_file",
                 "is_approved",
             )
         )
@@ -47,11 +48,12 @@ class VacancyResponseManager(Manager):
     def get_vacancy_response_for_detail_view(self):
         return (
             self.get_queryset()
-            .select_related("user", "vacancy")
+            .select_related("user", "vacancy", "accompanying_file")
             .only(
                 "user",
                 "vacancy",
                 "why_me",
+                "accompanying_file",
                 "is_approved",
                 "datetime_created",
                 "datetime_updated",

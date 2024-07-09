@@ -30,6 +30,7 @@ class CustomUserAdmin(admin.ModelAdmin):
                     "user_type",
                     "verification_date",
                     "ordering_score",
+                    "dataset_migration_applied",
                 )
             },
         ),
@@ -93,6 +94,7 @@ class CustomUserAdmin(admin.ModelAdmin):
         "first_name",
         "ordering_score",
         "is_active",
+        "dataset_migration_applied",
         "v2_speciality",
     )
     list_display_links = (
