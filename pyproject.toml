@@ -66,6 +66,8 @@ djangorestframework-stubs = {extras = ["compatible-mypy"], version = "^3.14.4"}
 flake8-print = "^5.0.0"
 flake8-variables-names = "^0.0.6"
 pandas = "^2.2.1"
+celery = "^5.4.0"
+django-celery-beat = "^2.6.0"
 
 
 [build-system]

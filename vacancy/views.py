@@ -7,8 +7,9 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 
 from core.models import Skill, SkillToObject
-from projects.models import Collaborator
+from projects.models import Collaborator, Project
 from vacancy.filters import VacancyFilter
+from vacancy.mapping import CeleryEmailParamsDict, MessageTypeEnum
 from vacancy.models import Vacancy, VacancyResponse
 from vacancy.pagination import VacancyPagination
 from vacancy.permissions import (
@@ -23,6 +24,7 @@ from vacancy.serializers import (
     VacancyResponseListSerializer,
     ProjectVacancyCreateListSerializer,
 )
+from vacancy.tasks import send_email
 
 
 @swagger_auto_schema(
@@ -122,7 +124,26 @@ class VacancyResponseList(mixins.ListModelMixin, mixins.CreateModelMixin, Generi
             pass
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        return self.create(request, vacancy_id)
+
+        vacancy_response = self.create(request, vacancy_id)
+
+        queryset = VacancyResponse.objects.get_vacancy_response_for_email().get(
+            vacancy__id=self.kwargs["vacancy_id"]
+        )
+        project = queryset.vacancy.project
+
+        send_email.delay(
+            CeleryEmailParamsDict(
+                message_type=MessageTypeEnum.RESPONDED.value,
+                user_id=project.leader.id,
+                project_name=project.name,
+                project_id=project.id,
+                vacancy_role=queryset.vacancy.role,
+                schema_id=2,
+            )
+        )
+
+        return vacancy_response
 
 
 class VacancyResponseDetail(generics.RetrieveUpdateDestroyAPIView):
@@ -143,22 +164,36 @@ class VacancyResponseAccept(generics.GenericAPIView):
             # can't accept a vacancy that's already declined/accepted
             return Response(status=status.HTTP_400_BAD_REQUEST)
         vacancy_request.is_approved = True
+
         vacancy = vacancy_request.vacancy
+        project_add_in: Project = vacancy.project
+        user_to_add = vacancy_request.user
+        role_add_as: str = vacancy.role
 
         # check if this person already has a collaborator role in this project
-        if Collaborator.objects.filter(
-            project=vacancy.project, user=vacancy_request.user
-        ).exists():
+        if Collaborator.objects.filter(project=project_add_in, user=user_to_add).exists():
             return Response(
                 "You already work for this project, you can't accept a vacancy here",
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         new_collaborator = Collaborator(
-            user=vacancy_request.user,
-            project=vacancy.project,
-            role=vacancy.role,
+            user=user_to_add,
+            project=project_add_in,
+            role=role_add_as,
         )
+
+        send_email.delay(
+            CeleryEmailParamsDict(
+                message_type=MessageTypeEnum.ACCEPTED.value,
+                user_id=user_to_add.id,
+                project_name=project_add_in.name,
+                project_id=project_add_in.id,
+                vacancy_role=role_add_as,
+                schema_id=2,
+            )
+        )
+
         new_collaborator.save()
         # vacancy.project.collaborator_set.add(vacancy_request.user) -
         vacancy.project.save()
