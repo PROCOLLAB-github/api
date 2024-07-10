@@ -6,6 +6,10 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
 from rest_framework.exceptions import AuthenticationFailed
+from rest_framework.authtoken.models import Token
+from users.models import CustomUser
+from django.contrib.auth.models import AnonymousUser
+
 
 User = get_user_model()
 
@@ -22,10 +26,9 @@ class TokenAuthentication:
 
     model = None
 
-    def get_model(self):
+    def get_model(self) -> Token:
         if self.model is not None:
             return self.model
-        from rest_framework.authtoken.models import Token
 
         return Token
 
@@ -36,7 +39,7 @@ class TokenAuthentication:
     * user -- The user to which the token belongs
     """
 
-    def authenticate_credentials(self, key):
+    def authenticate_credentials(self, key: str) -> CustomUser:
         model = self.get_model()
         try:
             token = model.objects.select_related("user").get(key=key)
@@ -48,7 +51,7 @@ class TokenAuthentication:
 
         return token.user
 
-    def authenticate(self, token):
+    def authenticate(self, token: Token) -> CustomUser:
         """
         Returns a `User` if a correct username and password have been supplied
         Args:
@@ -71,14 +74,13 @@ class TokenAuthentication:
 
 
 @database_sync_to_async
-def get_user(scope):
+def get_user(scope: dict) -> CustomUser | AnonymousUser:
     """
     Return the user model instance associated with the given scope.
     If no user is retrieved, return an instance of `AnonymousUser`.
     """
     # postpone model import to avoid ImproperlyConfigured error before Django
     # setup is complete.
-    from django.contrib.auth.models import AnonymousUser
 
     if "token" not in scope:
         raise ValueError(

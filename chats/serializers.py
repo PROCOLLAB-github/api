@@ -16,22 +16,22 @@ class DirectChatListSerializer(serializers.ModelSerializer):
     name = serializers.SerializerMethodField(read_only=True)
     image_address = serializers.SerializerMethodField(read_only=True)
 
-    def get_opponent(self, chat: DirectChat):
+    def get_opponent(self, chat: DirectChat) -> dict:
         user = self.context.get("opponent")
         return UserDetailSerializer(
             user, context={"request": self.context.get("request")}
         ).data
 
-    def get_name(self, chat: DirectChat):
+    def get_name(self, chat: DirectChat) -> str:
         user = self.context.get("opponent")
         return user.get_full_name()
 
-    def get_image_address(self, chat: DirectChat):
+    def get_image_address(self, chat: DirectChat) -> str:
         user = self.context.get("opponent")
         return user.avatar
 
     @classmethod
-    def get_last_message(cls, chat: DirectChat):
+    def get_last_message(cls, chat: DirectChat) -> dict:
         return DirectChatMessageListSerializer(chat.get_last_message()).data
 
     class Meta:
@@ -42,7 +42,7 @@ class DirectChatListSerializer(serializers.ModelSerializer):
 class DirectChatDetailSerializer(serializers.ModelSerializer):
     opponent = serializers.SerializerMethodField()
 
-    def get_opponent(self, chat: DirectChat):
+    def get_opponent(self, chat: DirectChat) -> dict:
         user = self.context.get("opponent")
         return UserDetailSerializer(
             user, context={"request": self.context.get("request")}
@@ -62,15 +62,15 @@ class ProjectChatListSerializer(serializers.ModelSerializer):
     image_address = serializers.SerializerMethodField(read_only=True)
 
     @classmethod
-    def get_image_address(cls, chat: ProjectChat):
+    def get_image_address(cls, chat: ProjectChat) -> str:
         return chat.project.image_address
 
     @classmethod
-    def get_name(cls, chat: ProjectChat):
+    def get_name(cls, chat: ProjectChat) -> str:
         return chat.project.name
 
     @classmethod
-    def get_last_message(cls, chat: ProjectChat):
+    def get_last_message(cls, chat: ProjectChat) -> dict:
         return ProjectChatMessageListSerializer(chat.get_last_message()).data
 
     class Meta:
@@ -84,14 +84,14 @@ class ProjectChatDetailSerializer(serializers.ModelSerializer):
     image_address = serializers.SerializerMethodField(read_only=True)
 
     @classmethod
-    def get_image_address(cls, chat: ProjectChat):
+    def get_image_address(cls, chat: ProjectChat) -> str:
         return chat.project.image_address
 
     @classmethod
-    def get_name(cls, chat: ProjectChat):
+    def get_name(cls, chat: ProjectChat) -> str:
         return chat.project.name
 
-    def get_users(self, chat: ProjectChat):
+    def get_users(self, chat: ProjectChat) -> dict:
         return UserListSerializer(
             chat.get_users(), context={"request": self.context.get("request")}, many=True
         ).data
@@ -133,7 +133,7 @@ class DirectChatMessageListSerializer(serializers.ModelSerializer):
     files = serializers.SerializerMethodField()
 
     @classmethod
-    def get_files(cls, message: DirectChatMessage):
+    def get_files(cls, message: DirectChatMessage) -> list[dict]:
         data = []
         for file_to_message in message.file_to_message.all():
             file_data = UserFileSerializer(file_to_message.file).data
@@ -182,7 +182,7 @@ class ProjectChatMessageListSerializer(serializers.ModelSerializer):
     files = serializers.SerializerMethodField()
 
     @classmethod
-    def get_files(cls, message: DirectChatMessage):
+    def get_files(cls, message: DirectChatMessage) -> dict:
         data = []
         for file_to_message in message.file_to_message.all():
             file_data = UserFileSerializer(file_to_message.file).data
