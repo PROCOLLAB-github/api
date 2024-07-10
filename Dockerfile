@@ -27,5 +27,5 @@ RUN mkdir /procollab/static
 
 COPY . /procollab/
 
-CMD ["bash", "./scripts/startup.sh"]
+#CMD ["bash", "./scripts/startup.sh"]
 
