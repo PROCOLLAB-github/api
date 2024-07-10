@@ -1,10 +1,10 @@
-from django.contrib.contenttypes.models import ContentType
 from django_filters import rest_framework as filters
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import generics, mixins, permissions, status
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
+
 
 from core.models import Skill, SkillToObject
 from projects.models import Collaborator, Project
@@ -24,7 +24,9 @@ from vacancy.serializers import (
     VacancyResponseListSerializer,
     ProjectVacancyCreateListSerializer,
 )
+from vacancy.services import update_vacancy_skills
 from vacancy.tasks import send_email
+
 
 
 @swagger_auto_schema(
@@ -50,25 +52,7 @@ class VacancyDetail(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsVacancyProjectLeader]
 
     def patch(self, request, *args, **kwargs):
-        vacancy = self.get_object()
-        if "required_skills_ids" in request.data:
-            vacancy.required_skills.all().delete()
-
-            for skill_id in request.data["required_skills_ids"]:
-                try:
-                    skill = Skill.objects.get(id=skill_id)
-                except Skill.DoesNotExist:
-                    return Response(
-                        f"Skill with id {skill_id} does not exist",
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
-
-                SkillToObject.objects.create(
-                    skill=skill,
-                    content_type=ContentType.objects.get_for_model(Vacancy),
-                    object_id=vacancy.id,
-                )
-
+        update_vacancy_skills(request, self.get_object())
         return self.partial_update(request, *args, **kwargs)
 
     def put(self, request, *args, **kwargs):
@@ -81,23 +65,7 @@ class VacancyDetail(generics.RetrieveUpdateDestroyAPIView):
                 is_approved=False
             )
 
-        if request.data.get("required_skills_ids"):
-            vacancy.required_skills.all().delete()
-
-        for skill_id in request.data["required_skills_ids"]:
-            try:
-                skill = Skill.objects.get(id=skill_id)
-            except Skill.DoesNotExist:
-                return Response(
-                    f"Skill with id {skill_id} does not exist",
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            SkillToObject.objects.get_or_create(
-                skill=skill,
-                content_type=ContentType.objects.get_for_model(Vacancy),
-                object_id=vacancy.id,
-            )
+        update_vacancy_skills(request, vacancy)
 
         return self.update(request, *args, **kwargs)
 

@@ -1,4 +1,5 @@
 from django.contrib.contenttypes.models import ContentType
+from django.db.models import QuerySet
 from rest_framework.generics import CreateAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -16,16 +17,16 @@ class NewSimpleFeed(APIView):
     serializator_class = NewsFeedListSerializer
     pagination_class = FeedPagination
 
-    def get_filter_data(self):
-        filter_queries = self.request.query_params.get("type")
-        filter_queries = filter_queries if filter_queries else ""  # existence check
+    def get_filter_data(self) -> list[str]:
+        filter_queries: str | None = self.request.query_params.get("type")
+        filter_queries: str = filter_queries if filter_queries else ""  # existence check
 
-        news_types = filter_queries.split("|")
+        news_types: list[str] = filter_queries.split("|")
         if "news" in news_types:
             news_types.append("customuser")
         return news_types
 
-    def get_queryset(self):
+    def get_queryset(self) -> QuerySet[News]:
         filters = self.get_filter_data()
         queryset = (
             News.objects.select_related("content_type")
