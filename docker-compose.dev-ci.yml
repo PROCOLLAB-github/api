@@ -69,6 +69,23 @@ services:
     volumes:
       - redis-data:/data
 
+
+  celerys:
+    container_name: api_celery
+    restart: always
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    env_file:
+      - .env
+    command: bash ./scripts/celery.sh
+    depends_on:
+      - redis
+      #      - db
+      - web
+    volumes:
+      - .:/procollab
+
 volumes:
   grafana-data:
   grafana-configs:

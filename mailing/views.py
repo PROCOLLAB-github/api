@@ -104,7 +104,7 @@ class MailingTemplateRender:
         }
 
     @classmethod
-    def get_template_fields_context(cls, schema_id):
+    def get_template_fields_context(cls, schema_id: int) -> list[str]:
         context = {"template_fields": []}
         if schema_id is None:
             return list(context.items())

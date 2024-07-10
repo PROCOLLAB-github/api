@@ -103,6 +103,8 @@ INSTALLED_APPS = [
     "django_cleanup.apps.CleanupConfig",
     "django_rest_passwordreset",
     # Plugins
+    "celery",
+    "django_celery_beat",
     "corsheaders",
     "django_filters",
     "drf_yasg",
@@ -186,6 +188,17 @@ if DEBUG:
             "NAME": "db.sqlite3",
         }
     }
+
+    # DATABASES = {
+    #     "default": {
+    #         "ENGINE": "django.db.backends.postgresql",
+    #         "NAME": config("DATABASE_NAME", default="postgres", cast=str),
+    #         "USER": config("DATABASE_USER", default="postgres", cast=str),
+    #         "PASSWORD": config("DATABASE_PASSWORD", default="postgres", cast=str),
+    #         "HOST": config("DATABASE_HOST", default="db", cast=str),
+    #         "PORT": config("DATABASE_PORT", default="5432", cast=str),
+    #     }
+    # }
 
     CACHES = {
         "default": {
@@ -357,3 +370,12 @@ PROMETHEUS_LATENCY_BUCKETS = (
 )
 
 DATA_UPLOAD_MAX_NUMBER_FIELDS = None  # for mailing
+
+
+CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+CELERY_BROKER_URL = "redis://redis:6379/0"
+
+CELERY_RESULT_BACKEND = "redis://redis:6379"
+CELERY_ACCEPT_CONTENT = ["application/json"]
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TASK_SERIALIZER = "json"
