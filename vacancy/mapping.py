@@ -34,7 +34,7 @@ message_type_to_title: dict[EmailTextTypes, str] = {
 
 def get_link(data: CeleryEmailParamsDict):
     match data["message_type"]:
-        case "accept":
+        case "accepted":
             return f"https://app.procollab.ru/office/projects/{data['project_id']}"
         case "responded":
             return (
@@ -46,7 +46,7 @@ def get_link(data: CeleryEmailParamsDict):
 
 def create_text_for_email(data: CeleryEmailParamsDict) -> str:
     match data["message_type"]:
-        case "accept":
+        case "accepted":
             return f"""
         Ваш отклик на роль {data["vacancy_role"]} в проекте "{data["project_name"]}" не остался незамеченным.
         Вас готовы принять в команду!
