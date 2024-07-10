@@ -85,7 +85,6 @@ services:
       - web
     volumes:
       - .:/procollab
-      -
 
 volumes:
   grafana-data:
