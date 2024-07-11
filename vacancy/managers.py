@@ -45,13 +45,6 @@ class VacancyResponseManager(Manager):
                 "vacancy__project__leader",
                 "accompanying_file",
             )
-            .only(
-                "user__id",
-                "vacancy__id",
-                "why_me",
-                "accompanying_file",
-                "is_approved",
-            )
         )
 
     def get_vacancy_response_for_email(self):
