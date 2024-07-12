@@ -4,7 +4,7 @@ from rest_framework import serializers
 
 from core.models import Skill, SkillToObject
 from core.serializers import SkillToObjectSerializer
-from files.serializers import UserFileSerializer
+from files.models import UserFile
 from projects.models import Project
 from users.serializers import UserDetailSerializer
 from vacancy.models import Vacancy, VacancyResponse
@@ -134,7 +134,12 @@ class VacancyResponseListSerializer(serializers.ModelSerializer[VacancyResponse]
     is_approved = serializers.BooleanField(read_only=True)
     user = UserDetailSerializer(read_only=True)
     user_id = serializers.IntegerField(write_only=True)
-    accompanying_file = UserFileSerializer(required=False, allow_null=True)
+    accompanying_file = serializers.SlugRelatedField(
+        slug_field="link",
+        queryset=UserFile.objects.all(),
+        required=False,
+        allow_null=True,
+    )
 
     class Meta:
         model = VacancyResponse
@@ -177,7 +182,12 @@ class VacancyResponseDetailSerializer(serializers.ModelSerializer[VacancyRespons
     user = UserDetailSerializer(many=False, read_only=True)
     vacancy = VacancyListSerializer(many=False, read_only=True)
     is_approved = serializers.BooleanField(read_only=True)
-    accompanying_file = UserFileSerializer(required=False, allow_null=True)
+    accompanying_file = serializers.SlugRelatedField(
+        slug_field="link",
+        queryset=UserFile.objects.all(),
+        required=False,
+        allow_null=True,
+    )
 
     class Meta:
         model = VacancyResponse
