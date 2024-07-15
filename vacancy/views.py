@@ -6,7 +6,6 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 
 
-from core.models import Skill, SkillToObject
 from projects.models import Collaborator, Project
 from vacancy.filters import VacancyFilter
 from vacancy.mapping import CeleryEmailParamsDict, MessageTypeEnum
@@ -26,7 +25,6 @@ from vacancy.serializers import (
 )
 from vacancy.services import update_vacancy_skills
 from vacancy.tasks import send_email
-
 
 
 @swagger_auto_schema(
@@ -96,7 +94,7 @@ class VacancyResponseList(mixins.ListModelMixin, mixins.CreateModelMixin, Generi
         vacancy_response = self.create(request, vacancy_id)
 
         queryset = VacancyResponse.objects.get_vacancy_response_for_email().get(
-            vacancy__id=self.kwargs["vacancy_id"]
+            vacancy__id=self.kwargs["vacancy_id"], user=self.request.user
         )
         project = queryset.vacancy.project
 
@@ -183,4 +181,5 @@ class VacancyResponseDecline(generics.GenericAPIView):
             return Response(status=status.HTTP_400_BAD_REQUEST)
         vacancy_request.is_approved = False
         vacancy_request.save()
+
         return Response(status=status.HTTP_200_OK)
