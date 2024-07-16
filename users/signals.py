@@ -1,4 +1,5 @@
 from django.core.mail import EmailMultiAlternatives
+from django.db import transaction
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.template.loader import render_to_string
@@ -23,6 +24,21 @@ def create_or_update_user_types(sender, instance, created, **kwargs):
     if instance.ordering_score != current_ordering_score:
         instance.ordering_score = current_ordering_score
         instance.save()
+
+
+@receiver(post_save, sender=CustomUser)
+def update_dataset_migration_applied(sender, instance, **kwargs):
+    """Update the `dataset_migration_applied` attribute based on the presence of `v2_speciality` and `skills`."""
+
+    def update_migration():
+        dataset_migration_applied = bool(instance.v2_speciality and instance.skills.exists())
+        if instance.dataset_migration_applied != dataset_migration_applied:
+            CustomUser.objects.filter(pk=instance.pk).update(
+                dataset_migration_applied=dataset_migration_applied
+            )
+
+    # Delayed execution until transaction completes.
+    transaction.on_commit(update_migration)
 
 
 @receiver(reset_password_token_created)
