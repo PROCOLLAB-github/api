@@ -83,6 +83,10 @@ class VacancyResponseList(mixins.ListModelMixin, mixins.CreateModelMixin, Generi
         )
 
     def post(self, request, vacancy_id):
+        vacancy = Vacancy.objects.get(pk=vacancy_id)
+        if not vacancy.is_active:
+            return Response("You cannot apply for a closed vacancy", status.HTTP_400_BAD_REQUEST)
+
         try:
             request.data["user_id"] = self.request.user.id
             request.data["vacancy"] = vacancy_id
