@@ -159,12 +159,12 @@ class VacancyResponseAccept(generics.GenericAPIView):
                 schema_id=2,
             )
         )
-
+        # After acceptance, closes the vacancy.
+        vacancy.is_active = False
+        vacancy.save()
         new_collaborator.save()
-        # vacancy.project.collaborator_set.add(vacancy_request.user) -
         vacancy.project.save()
         vacancy_request.save()
-        vacancy.delete()
         return Response(status=status.HTTP_200_OK)
 
 
