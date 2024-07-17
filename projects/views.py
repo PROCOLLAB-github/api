@@ -2,6 +2,7 @@ import logging
 
 from django.contrib.auth import get_user_model
 from django.db.models import Q
+from django.shortcuts import get_object_or_404
 from django_filters import rest_framework as filters
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
@@ -22,7 +23,7 @@ from projects.helpers import (
     check_related_fields_update,
     update_partner_program,
 )
-from projects.models import Project, Achievement, ProjectNews
+from projects.models import Project, Achievement, ProjectNews, Collaborator
 from projects.pagination import ProjectNewsPagination, ProjectsPagination
 from projects.permissions import (
     IsProjectLeaderOrReadOnlyForNonDrafts,
@@ -461,3 +462,14 @@ class ProjectUnsubscribe(APIView):
         return Response(
             {"detail": "Subscriber was successfully removed"}, status=status.HTTP_200_OK
         )
+
+
+class LeaveProject(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk: int) -> Response:
+        collaborator = get_object_or_404(
+            Collaborator.objects.all(), project_id=pk, user_id=self.request.user.id
+        )
+        collaborator.delete()
+        return Response(status=204)
