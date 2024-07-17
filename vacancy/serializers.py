@@ -5,6 +5,7 @@ from rest_framework import serializers
 from core.models import Skill, SkillToObject
 from core.serializers import SkillToObjectSerializer
 from files.models import UserFile
+from files.serializers import UserFileSerializer
 from projects.models import Project
 from users.serializers import UserDetailSerializer
 from vacancy.models import Vacancy, VacancyResponse
@@ -176,6 +177,11 @@ class VacancyResponseListSerializer(serializers.ModelSerializer[VacancyResponse]
         user = User.objects.get(pk=user_id)
         vacancy_response = VacancyResponse.objects.create(user=user, **validated_data)
         return vacancy_response
+
+
+class VacancyResponseFullFileInfoListSerializer(VacancyResponseListSerializer):
+    """Returns full file info."""
+    accompanying_file = UserFileSerializer(read_only=True)
 
 
 class VacancyResponseDetailSerializer(serializers.ModelSerializer[VacancyResponse]):
