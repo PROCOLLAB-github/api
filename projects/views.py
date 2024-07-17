@@ -43,7 +43,7 @@ from projects.serializers import (
 from users.models import LikesOnProject
 from users.serializers import UserListSerializer
 from vacancy.models import VacancyResponse
-from vacancy.serializers import VacancyResponseListSerializer
+from vacancy.serializers import VacancyResponseFullFileInfoListSerializer
 
 logger = logging.getLogger()
 
@@ -281,7 +281,7 @@ class AchievementDetail(generics.RetrieveUpdateDestroyAPIView):
 
 
 class ProjectVacancyResponses(generics.GenericAPIView):
-    serializer_class = VacancyResponseListSerializer
+    serializer_class = VacancyResponseFullFileInfoListSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
