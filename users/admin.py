@@ -234,7 +234,8 @@ class CustomUserAdmin(admin.ModelAdmin):
 
         for baby in little_mans:
             projects_names = [
-                collab.project.industry.name for collab in baby.collaborations.all()
+                collab.project.industry.name if collab.project.industry else ""
+                for collab in baby.collaborations.all()
             ]
             response_data.append(
                 [
@@ -248,7 +249,8 @@ class CustomUserAdmin(admin.ModelAdmin):
 
         for big_man in big_mans:
             projects_names = [
-                collab.project.industry.name for collab in big_man.collaborations.all()
+                collab.project.industry.name if collab.project.industry else ""
+                for collab in big_man.collaborations.all()
             ]
             response_data.append(
                 [
