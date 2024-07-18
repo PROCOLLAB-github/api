@@ -1,4 +1,5 @@
 from django_filters import rest_framework as filters
+from django.shortcuts import get_object_or_404
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import generics, mixins, permissions, status
@@ -83,6 +84,10 @@ class VacancyResponseList(mixins.ListModelMixin, mixins.CreateModelMixin, Generi
         )
 
     def post(self, request, vacancy_id):
+        vacancy = get_object_or_404(Vacancy, pk=vacancy_id)
+        if not vacancy.is_active:
+            return Response("You cannot apply for a closed vacancy", status.HTTP_400_BAD_REQUEST)
+
         try:
             request.data["user_id"] = self.request.user.id
             request.data["vacancy"] = vacancy_id
@@ -159,12 +164,12 @@ class VacancyResponseAccept(generics.GenericAPIView):
                 schema_id=2,
             )
         )
-
+        # After acceptance, closes the vacancy.
+        vacancy.is_active = False
+        vacancy.save()
         new_collaborator.save()
-        # vacancy.project.collaborator_set.add(vacancy_request.user) -
         vacancy.project.save()
         vacancy_request.save()
-        vacancy.delete()
         return Response(status=status.HTTP_200_OK)
 
 
