@@ -257,8 +257,8 @@ class CustomUserAdmin(admin.ModelAdmin):
                     baby.first_name + " " + baby.last_name,
                     today.year - baby.birthday.year,
                     ", ".join(interests),
-                    "",
-                    "",
+                    baby.organization,
+                    baby.v2_speciality if baby.v2_speciality else baby.speciality,
                 ]
             )
 
