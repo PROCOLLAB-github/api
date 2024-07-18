@@ -2,6 +2,8 @@ import logging
 from typing import Annotated
 
 from django.contrib.auth import get_user_model
+from django.db.models import Q
+from django.shortcuts import get_object_or_404
 from django.db.models import Q, QuerySet
 from django_filters import rest_framework as filters
 from drf_yasg import openapi
@@ -464,6 +466,17 @@ class ProjectUnsubscribe(APIView):
         )
 
 
+class LeaveProject(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk: int) -> Response:
+        collaborator = get_object_or_404(
+            Collaborator.objects.all(), project_id=pk, user_id=self.request.user.id
+        )
+        collaborator.delete()
+        return Response(status=204)
+      
+        
 class DeleteProjectCollaborators(generics.GenericAPIView):
     permission_classes = [IsProjectLeader]
     queryset = Project.objects.all().select_related("leader")
