@@ -51,6 +51,8 @@ class CustomUser(AbstractUser):
         speciality: CharField instance the user's specialty.
         datetime_updated: A DateTimeField indicating date of update.
         datetime_created: A DateTimeField indicating date of creation.
+        dataset_migration_applied: A BooleanField indicating based on
+                    the `v2_speciality` and `skills`.
     """
 
     ADMIN = ADMIN
