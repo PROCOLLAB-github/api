@@ -1,3 +1,5 @@
+from datetime import date
+
 import tablib
 from django.conf import settings
 from django.contrib import admin
@@ -210,13 +212,63 @@ class CustomUserAdmin(admin.ModelAdmin):
         return redirect("admin:users_customuser_change", object_id)
 
     def get_export_users_emails(self, users):
-        response_data = tablib.Dataset(headers=["ФИО", "Email"])
+        response_data = tablib.Dataset(
+            headers=["Имя и фамилия", "Возраст", "Интересы", "ВУЗ", "Специальность"]
+        )
 
-        for user in users:
-            response_data.append([user.first_name + " " + user.last_name, user.email])
+        today = date.today()
+
+        date_limit_18 = date(today.year - 18, today.month, today.day)
+        users = (
+            CustomUser.objects.all()
+            .select_related("v2_speciality")
+            .prefetch_related(
+                "collaborations__project", "collaborations__project__industry"
+            )
+        )
+        little_mans = users.filter(birthday__lte=date_limit_18)
+        big_mans = users.exclude(id__in=little_mans.values_list("id", flat=True))
+
+        # whole_quality = users.count()
+        # quantity_little_mans = little_mans.count()
+        # quantity_big_mans = whole_quality - quantity_little_mans
+
+        for baby in little_mans:
+            projects_names = [
+                collab.project.industry.name for collab in baby.collaborations.all()
+            ]
+            response_data.append(
+                [
+                    baby.first_name + " " + baby.last_name,
+                    today.year - baby.birthday.year,
+                    ", ".join(projects_names),
+                    "",
+                    "",
+                ]
+            )
+
+        for big_man in big_mans:
+            projects_names = [
+                collab.project.industry.name for collab in big_man.collaborations.all()
+            ]
+            response_data.append(
+                [
+                    big_man.first_name + " " + big_man.last_name,
+                    today.year - big_man.birthday.year,
+                    ", ".join(projects_names),
+                    big_man.organization,
+                    big_man.speciality,
+                ]
+            )
+
+        # для малолеток указать теги проектов, если нет - навыки
+        # для старших - специальность, вуз, учебное заведение
+
+        # for user in users:
+        #     response_data.append([user.first_name + " " + user.last_name, user.email])
 
         binary_data = response_data.export("xlsx")
-        file_name = "all_users_names_emails"
+        file_name = "users"
         response = HttpResponse(
             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={"Content-Disposition": f'attachment; filename="{file_name}.xlsx"'},
