@@ -15,6 +15,7 @@ from .models import (
     Expert,
     Investor,
     UserLink,
+    UserSkillConfirmation,
 )
 
 from core.admin import SkillToObjectInline
@@ -238,3 +239,20 @@ class UserLinkAdmin(admin.ModelAdmin):
 @admin.register(Expert)
 class ExpertAdmin(admin.ModelAdmin):
     list_display = ("id", "user")
+
+
+@admin.register(UserSkillConfirmation)
+class UserSkillConfirmationAdmin(admin.ModelAdmin):
+    list_display = ("id", "get_user_and_skill", "confirmed_by", "confirmed_at")
+    search_fields = ("skill_to_object__skill__name", "confirmed_by__first_name", "confirmed_by__last_name")
+    raw_id_fields = ("skill_to_object", "confirmed_by")
+
+    def get_user_and_skill(self, obj):
+        try:
+            user = obj.skill_to_object.content_object
+            skill = obj.skill_to_object.skill
+            return f"{user} - {skill}"
+        # Possible contingencies with attributes.
+        except Exception:
+            return ""
+    get_user_and_skill.short_description = 'User and Skill'
