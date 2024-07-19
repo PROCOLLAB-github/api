@@ -26,6 +26,11 @@ class RequiredSkillsWriteSerializerMixin(RequiredSkillsSerializerMixin):
 class AbstractVacancyReadOnlyFields(serializers.Serializer):
     """Abstract read-only fields for Vacancy."""
     datetime_closed = serializers.DateTimeField(read_only=True)
+    response_count = serializers.SerializerMethodField(read_only=True)
+
+    def get_response_count(self, obj):
+        """Returns count non status responses."""
+        return obj.vacancy_requests.filter(is_approved=None).count()
 
 
 class ProjectForVacancySerializer(serializers.ModelSerializer[Project]):
@@ -59,6 +64,7 @@ class VacancyDetailSerializer(
             "datetime_created",
             "datetime_updated",
             "datetime_closed",
+            "response_count",
         ]
         read_only_fields = ["project"]
 
@@ -76,6 +82,8 @@ class VacancyListSerializer(
             "required_skills",
             "description",
             "is_active",
+            "datetime_closed",
+            "response_count",
         ]
         read_only_fields = [
             "project",
@@ -97,6 +105,7 @@ class ProjectVacancyListSerializer(
             "project",
             "is_active",
             "datetime_closed",
+            "response_count",
         ]
 
 
@@ -146,6 +155,7 @@ class ProjectVacancyCreateListSerializer(
             "project",
             "is_active",
             "datetime_closed",
+            "response_count",
         ]
 
 
