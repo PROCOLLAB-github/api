@@ -228,8 +228,8 @@ class UserSkillsApprouveDeclineView(
     )
     def post(self, request, *args, **kwargs) -> Response:
         """Create confirmation of user skill by current user."""
-        skill_to_object: SkillToObject = self.get_skill_to_object()
-        data: dict = {
+        skill_to_object: SkillToObject = self._get_skill_to_object()
+        data: dict[str, int] = {
             "skill_to_object": skill_to_object.id,
             "confirmed_by": request.user.id
         }
@@ -244,7 +244,7 @@ class UserSkillsApprouveDeclineView(
     )
     def delete(self, request, *args, **kwargs) -> Response:
         """Delete confirmation of user skill by current user."""
-        instance: UserSkillConfirmation = self.get_object()
+        instance: UserSkillConfirmation = self._get_object()
         if instance.confirmed_by != request.user:
             return Response(
                 {"error": "You can only delete your own confirmations."},
@@ -253,15 +253,15 @@ class UserSkillsApprouveDeclineView(
         instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    def get_object(self) -> UserSkillConfirmation:
+    def _get_object(self) -> UserSkillConfirmation:
         skill_confirmation_object = get_object_or_404(
             self.queryset,
-            skill_to_object=self.get_skill_to_object(),
+            skill_to_object=self._get_skill_to_object(),
             confirmed_by=self.request.user.pk,
         )
         return skill_confirmation_object
 
-    def get_skill_to_object(self) -> SkillToObject:
+    def _get_skill_to_object(self) -> SkillToObject:
         """Returns the `SkillToObject` instance of the user whose skill needs to be confirmed."""
         user_pk: int = self.kwargs["user_pk"]
         skill_pk: int = self.kwargs["skill_pk"]
