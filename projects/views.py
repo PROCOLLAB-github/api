@@ -2,7 +2,7 @@ import logging
 from typing import Annotated
 
 from django.contrib.auth import get_user_model
-from django.db.models import Q
+from django.core.exceptions import ObjectDoesNotExist
 from django.shortcuts import get_object_or_404
 from django.db.models import Q, QuerySet
 from django_filters import rest_framework as filters
@@ -18,6 +18,7 @@ from core.permissions import IsStaffOrReadOnly
 from core.serializers import SetLikedSerializer
 from core.services import add_view, set_like
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
+from projects.exceptions import CollaboratorDoesNotExist
 from projects.filters import ProjectFilter
 from projects.constants import VERBOSE_STEPS
 from projects.helpers import (
@@ -469,14 +470,16 @@ class ProjectUnsubscribe(APIView):
 class LeaveProject(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
 
-    def delete(self, request, pk: int) -> Response:
+    def delete(self, request, project_pk: int) -> Response:
         collaborator = get_object_or_404(
-            Collaborator.objects.all(), project_id=pk, user_id=self.request.user.id
+            Collaborator.objects.all(),
+            project_id=project_pk,
+            user_id=self.request.user.id,
         )
         collaborator.delete()
         return Response(status=204)
-      
-        
+
+
 class DeleteProjectCollaborators(generics.GenericAPIView):
     permission_classes = [IsProjectLeader]
     queryset = Project.objects.all().select_related("leader")
@@ -487,8 +490,9 @@ class DeleteProjectCollaborators(generics.GenericAPIView):
         project = self.get_object()
         return project.id, project.leader.id
 
+    @staticmethod
     def _collabs_queryset(
-        self, project_id: int, requested_ids: set[int], leader_id: int
+        project_id: int, requested_ids: set[int], leader_id: int
     ) -> QuerySet:
         return (
             Collaborator.objects.filter(
@@ -498,7 +502,7 @@ class DeleteProjectCollaborators(generics.GenericAPIView):
             .values_list("id", flat=True)
         )
 
-    def delete(self, request, pk: int) -> Response:
+    def delete(self, request, project_pk: int) -> Response:
         requested_collabs_ids: set[int] = set(request.data)
 
         project_id, leader_id = self._project_data()
@@ -520,4 +524,41 @@ class DeleteProjectCollaborators(generics.GenericAPIView):
             )
 
         Collaborator.objects.filter(id__in=existing_collabs_ids).delete()
+        return Response(status=204)
+
+
+class SwitchLeaderRole(generics.GenericAPIView):
+    permission_classes = [IsProjectLeader]
+    queryset = Project.objects.all().select_related("leader")
+
+    @staticmethod
+    def _get_new_leader(user_id: int, project: Project) -> Collaborator:
+        try:
+            return Collaborator.objects.select_related("user").get(
+                user_id=user_id, project=project
+            )
+        except ObjectDoesNotExist:
+            raise CollaboratorDoesNotExist(
+                f"""Collaborator with user_id: {user_id} does not exist. Either user_id is not correct, or project_id
+                is not correct, or try adding this user to a project (as collaborator) before making them a leader. """
+            )
+
+    @staticmethod
+    def _get_project(project_pk: int) -> Project:
+        return get_object_or_404(Project.objects.all(), id=project_pk)
+
+    def patch(self, request, project_pk: int, user_to_leader_pk: int) -> Response:
+        project = self._get_project(project_pk)
+
+        new_leader_id = user_to_leader_pk
+        new_leader = self._get_new_leader(new_leader_id, project)
+
+        if project.leader.id == new_leader_id:
+            return Response(
+                {"error": "User is already a leader of a project"},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+
+        project.leader = new_leader.user
+        project.save()
         return Response(status=204)
