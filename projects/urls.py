@@ -18,6 +18,7 @@ from projects.views import (
     SwitchLeaderRole,
     LeaveProject,
     DeleteProjectCollaborators,
+    SwitchLeaderRole,
 )
 
 app_name = "projects"
@@ -33,9 +34,12 @@ urlpatterns = [
     path("<int:project_pk>/news/<int:pk>/set_viewed/", NewsDetailSetViewed.as_view()),
     path("<int:project_pk>/news/<int:pk>/set_liked/", NewsDetailSetLiked.as_view()),
     path("<int:pk>/collaborators/", ProjectCollaborators.as_view()),
-    path("<int:pk>/collaborators/switch-leader/", SwitchLeaderRole.as_view()),
-    path("<int:pk>/collaborators/leave/", LeaveProject.as_view()),
-    path("<int:pk>/collaborators/kick/", DeleteProjectCollaborators.as_view()),
+    path("<int:project_pk>/collaborators/leave/", LeaveProject.as_view()),
+    path("<int:project_pk>/collaborators/kick/", DeleteProjectCollaborators.as_view()),
+    path(
+        "<int:project_pk>/collaborators/<int:user_to_leader_pk>/switch-leader/",
+        SwitchLeaderRole.as_view(),
+    ),
     path("<int:pk>/", ProjectDetail.as_view()),
     path("<int:pk>/recommended_users", ProjectRecommendedUsers.as_view()),
     path("count/", ProjectCountView.as_view()),
