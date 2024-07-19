@@ -15,6 +15,7 @@ from projects.views import (
     ProjectSubscribe,
     ProjectUnsubscribe,
     ProjectSubscribers,
+    SwitchLeaderRole,
     LeaveProject,
     DeleteProjectCollaborators,
     SwitchLeaderRole,
