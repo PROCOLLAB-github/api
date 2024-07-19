@@ -2,6 +2,7 @@ import logging
 from typing import Annotated
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.db.models import Q, QuerySet
@@ -18,6 +19,7 @@ from core.permissions import IsStaffOrReadOnly
 from core.serializers import SetLikedSerializer
 from core.services import add_view, set_like
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
+from projects.exceptions import CollaboratorDoesNotExist
 from projects.filters import ProjectFilter
 from projects.constants import VERBOSE_STEPS
 from projects.helpers import (
@@ -466,6 +468,39 @@ class ProjectUnsubscribe(APIView):
         )
 
 
+
+class SwitchLeaderRole(generics.GenericAPIView):
+    permission_classes = [IsProjectLeader]
+    queryset = Project.objects.all().select_related("leader")
+
+    def _get_new_leader(self, user_id: int, project: Project) -> Collaborator:
+        try:
+            return Collaborator.objects.select_related("user").get(
+                user_id=user_id, project=project
+            )
+        except ObjectDoesNotExist:
+            raise CollaboratorDoesNotExist(
+                f"""Collaborator with user_id: {user_id} does not exist. Either user_id is not correct, or project_id
+                is not correct, or try adding this user to a project (as collaborator) before making them a leader. """
+            )
+
+    def patch(self, request, pk: int):
+        project = self.get_object()
+
+        new_leader_id = int(request.data["new_leader_id"])
+        new_leader = self._get_new_leader(new_leader_id, project)
+
+        if project.leader.id == new_leader_id:
+            return Response(
+                {"error": "User is already a leader of a project"},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+
+        project.leader = new_leader.user
+        project.save()
+        return Response(status=204)
+
+        
 class LeaveProject(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
 
