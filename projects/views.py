@@ -551,13 +551,14 @@ class SwitchLeaderRole(generics.GenericAPIView):
         project = self._get_project(project_pk)
 
         new_leader_id = user_to_leader_pk
-        new_leader = self._get_new_leader(new_leader_id, project)
 
         if project.leader.id == new_leader_id:
             return Response(
                 {"error": "User is already a leader of a project"},
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
+
+        new_leader = self._get_new_leader(new_leader_id, project)
 
         project.leader = new_leader.user
         project.save()
