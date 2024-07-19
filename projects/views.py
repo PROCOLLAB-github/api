@@ -1,8 +1,11 @@
 import logging
+from typing import Annotated
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
+from django.shortcuts import get_object_or_404
+from django.db.models import Q, QuerySet
 from django_filters import rest_framework as filters
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
@@ -45,7 +48,7 @@ from projects.serializers import (
 from users.models import LikesOnProject
 from users.serializers import UserListSerializer
 from vacancy.models import VacancyResponse
-from vacancy.serializers import VacancyResponseListSerializer
+from vacancy.serializers import VacancyResponseFullFileInfoListSerializer
 
 logger = logging.getLogger()
 
@@ -283,7 +286,7 @@ class AchievementDetail(generics.RetrieveUpdateDestroyAPIView):
 
 
 class ProjectVacancyResponses(generics.GenericAPIView):
-    serializer_class = VacancyResponseListSerializer
+    serializer_class = VacancyResponseFullFileInfoListSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
@@ -465,6 +468,7 @@ class ProjectUnsubscribe(APIView):
         )
 
 
+
 class SwitchLeaderRole(generics.GenericAPIView):
     permission_classes = [IsProjectLeader]
     queryset = Project.objects.all().select_related("leader")
@@ -494,4 +498,61 @@ class SwitchLeaderRole(generics.GenericAPIView):
 
         project.leader = new_leader.user
         project.save()
+        return Response(status=204)
+
+        
+class LeaveProject(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk: int) -> Response:
+        collaborator = get_object_or_404(
+            Collaborator.objects.all(), project_id=pk, user_id=self.request.user.id
+        )
+        collaborator.delete()
+        return Response(status=204)
+      
+        
+class DeleteProjectCollaborators(generics.GenericAPIView):
+    permission_classes = [IsProjectLeader]
+    queryset = Project.objects.all().select_related("leader")
+
+    def _project_data(
+        self,
+    ) -> tuple[Annotated[int, "ID проекта"], Annotated[int, "ID лидера проекта"]]:
+        project = self.get_object()
+        return project.id, project.leader.id
+
+    def _collabs_queryset(
+        self, project_id: int, requested_ids: set[int], leader_id: int
+    ) -> QuerySet:
+        return (
+            Collaborator.objects.filter(
+                user__id__in=requested_ids, project__id=project_id
+            )
+            .exclude(user__id=leader_id)  # чтоб случайно лидер сам себя не удалил
+            .values_list("id", flat=True)
+        )
+
+    def delete(self, request, pk: int) -> Response:
+        requested_collabs_ids: set[int] = set(request.data)
+
+        project_id, leader_id = self._project_data()
+        existing_collabs_ids: set[int] = set(
+            self._collabs_queryset(project_id, requested_collabs_ids, leader_id)
+        )
+
+        if leader_id in requested_collabs_ids:
+            return Response(
+                {"error": f"User with id: {leader_id} is a leader of a project."},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+        if unexisting_collabs := requested_collabs_ids - existing_collabs_ids:
+            return Response(
+                {
+                    "error": f"Users with ids: {list(unexisting_collabs)} are not part of this project."
+                },
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+
+        Collaborator.objects.filter(id__in=existing_collabs_ids).delete()
         return Response(status=204)
