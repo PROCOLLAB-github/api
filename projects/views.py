@@ -515,12 +515,13 @@ class LeaveProject(generics.GenericAPIView):
 
 class DeleteProjectCollaborators(generics.GenericAPIView):
     permission_classes = [IsProjectLeader]
-    queryset = Project.objects.all().select_related("leader")
 
     def _project_data(
-        self,
+        self, project_pk: int
     ) -> tuple[Annotated[int, "ID проекта"], Annotated[int, "ID лидера проекта"]]:
-        project = self.get_object()
+        project = get_object_or_404(
+            Project.objects.select_related("leader"), id=project_pk
+        )
         return project.id, project.leader.id
 
     @staticmethod
@@ -538,7 +539,7 @@ class DeleteProjectCollaborators(generics.GenericAPIView):
     def delete(self, request, project_pk: int) -> Response:
         requested_collabs_ids: set[int] = set(request.data)
 
-        project_id, leader_id = self._project_data()
+        project_id, leader_id = self._project_data(project_pk)
         existing_collabs_ids: set[int] = set(
             self._collabs_queryset(project_id, requested_collabs_ids, leader_id)
         )
@@ -549,6 +550,9 @@ class DeleteProjectCollaborators(generics.GenericAPIView):
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
         if unexisting_collabs := requested_collabs_ids - existing_collabs_ids:
+            raise ValueError(
+                unexisting_collabs, ".", requested_collabs_ids, ".", existing_collabs_ids
+            )
             return Response(
                 {
                     "error": f"Users with ids: {list(unexisting_collabs)} are not part of this project."
