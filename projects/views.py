@@ -510,11 +510,7 @@ class LeaveProject(generics.GenericAPIView):
             project_id=project_pk,
             user_id=current_user_id,
         )
-        project = (
-            Project.objects.select_related("leader")
-            .get(id=project_pk)
-            .select_related("leader")
-        )
+        project = Project.objects.select_related("leader").get(id=project_pk)
         if project.leader.id == current_user_id:
             return Response(
                 {
