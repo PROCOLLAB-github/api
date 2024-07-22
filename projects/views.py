@@ -537,11 +537,21 @@ class LeaveProject(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
 
     def delete(self, request, project_pk: int) -> Response:
+        current_user_id = self.request.user.id
         collaborator = get_object_or_404(
             Collaborator.objects.all(),
             project_id=project_pk,
-            user_id=self.request.user.id,
+            user_id=current_user_id,
         )
+        project = Project.objects.get(id=project_pk).select_related("leader")
+        if project.leader.id == current_user_id:
+            return Response(
+                {
+                    "error": "You can't leave if you are a leader of a project. "
+                    "Please, switch leadership!"
+                },
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
         collaborator.delete()
         return Response(status=204)
 
