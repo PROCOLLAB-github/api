@@ -251,15 +251,48 @@ class ProjectCollaborators(generics.GenericAPIView):
         return Response(status=200)
 
     def delete(self, request, pk: int):
-        """delete collaborators from the project"""
-        m2m_manager = self.get_object().collaborators
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        collaborators = serializer.validated_data["collaborators"]
-        for user in collaborators:
-            # note: doesn't raise an error when we try to delete someone who isn't a collaborator
-            m2m_manager.remove(user)
-        return Response(status=200)
+        """delete collaborator from project"""
+        requested_collab_id: int = int(self.request.query_params.get("id"))
+
+        project_id, leader_id = self._project_data(pk)
+        existing_collab_id = self._collabs_queryset(
+            project_id, requested_collab_id, leader_id
+        )
+
+        if leader_id == requested_collab_id:
+            return Response(
+                {
+                    "error": f"User with id: {leader_id} is a leader of a project. "
+                    f"Be careful not to delete yourself from a project!"
+                },
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+        if not existing_collab_id:
+            return Response(
+                {
+                    "error": f"User with id: {requested_collab_id} are not part of this project."
+                },
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+
+        existing_collab_id.delete()
+        return Response(status=204)
+
+    def _project_data(
+        self, project_pk: int
+    ) -> tuple[Annotated[int, "ID проекта"], Annotated[int, "ID лидера проекта"]]:
+        project = get_object_or_404(
+            Project.objects.select_related("leader"), id=project_pk
+        )
+        return project.id, project.leader.id
+
+    @staticmethod
+    def _collabs_queryset(project_id: int, requested_id: int, leader_id: int) -> QuerySet:
+        return Collaborator.objects.exclude(
+            user__id=leader_id
+        ).get(  # чтоб случайно лидер сам себя не удалил
+            user__id=requested_id, project__id=project_id
+        )
 
 
 class ProjectSteps(APIView):
@@ -492,42 +525,38 @@ class DeleteProjectCollaborators(generics.GenericAPIView):
         return project.id, project.leader.id
 
     @staticmethod
-    def _collabs_queryset(
-        project_id: int, requested_ids: set[int], leader_id: int
-    ) -> QuerySet:
-        return (
-            Collaborator.objects.filter(
-                user__id__in=requested_ids, project__id=project_id
-            )
-            .exclude(user__id=leader_id)  # чтоб случайно лидер сам себя не удалил
-            .values_list("id", flat=True)
+    def _collabs_queryset(project_id: int, requested_id: int, leader_id: int) -> QuerySet:
+        return Collaborator.objects.exclude(
+            user__id=leader_id
+        ).get(  # чтоб случайно лидер сам себя не удалил
+            user__id=requested_id, project__id=project_id
         )
 
     def delete(self, request, project_pk: int) -> Response:
-        requested_collabs_ids: set[int] = set(request.data)
+        requested_collab_id: int = int(self.request.query_params.get("id"))
 
         project_id, leader_id = self._project_data(project_pk)
-        existing_collabs_ids: set[int] = set(
-            self._collabs_queryset(project_id, requested_collabs_ids, leader_id)
+        existing_collab_id = self._collabs_queryset(
+            project_id, requested_collab_id, leader_id
         )
 
-        if leader_id in requested_collabs_ids:
-            return Response(
-                {"error": f"User with id: {leader_id} is a leader of a project."},
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            )
-        if unexisting_collabs := requested_collabs_ids - existing_collabs_ids:
-            raise ValueError(
-                unexisting_collabs, ".", requested_collabs_ids, ".", existing_collabs_ids
-            )
+        if leader_id == requested_collab_id:
             return Response(
                 {
-                    "error": f"Users with ids: {list(unexisting_collabs)} are not part of this project."
+                    "error": f"User with id: {leader_id} is a leader of a project. "
+                    f"Be careful not to delete yourself from a project!"
+                },
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+        if not existing_collab_id:
+            return Response(
+                {
+                    "error": f"User with id: {requested_collab_id} are not part of this project."
                 },
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
 
-        Collaborator.objects.filter(id__in=existing_collabs_ids).delete()
+        existing_collab_id.delete()
         return Response(status=204)
 
 

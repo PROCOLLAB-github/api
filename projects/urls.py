@@ -16,7 +16,6 @@ from projects.views import (
     ProjectUnsubscribe,
     ProjectSubscribers,
     LeaveProject,
-    DeleteProjectCollaborators,
     SwitchLeaderRole,
 )
 
@@ -34,7 +33,6 @@ urlpatterns = [
     path("<int:project_pk>/news/<int:pk>/set_liked/", NewsDetailSetLiked.as_view()),
     path("<int:pk>/collaborators/", ProjectCollaborators.as_view()),
     path("<int:project_pk>/collaborators/leave/", LeaveProject.as_view()),
-    path("<int:project_pk>/collaborators/kick/", DeleteProjectCollaborators.as_view()),
     path(
         "<int:project_pk>/collaborators/<int:user_to_leader_pk>/switch-leader/",
         SwitchLeaderRole.as_view(),
