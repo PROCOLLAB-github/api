@@ -24,6 +24,7 @@ class VacancyAdmin(admin.ModelAdmin):
     inlines = [
         VacancySkillToObjectInline,
     ]
+    readonly_fields = ('datetime_closed',)
     list_display_links = ["role"]
 
     change_list_template = "vacancies/vacancies_change_list.html"

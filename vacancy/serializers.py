@@ -5,6 +5,7 @@ from rest_framework import serializers
 from core.models import Skill, SkillToObject
 from core.serializers import SkillToObjectSerializer
 from files.models import UserFile
+from files.serializers import UserFileSerializer
 from projects.models import Project
 from users.serializers import UserDetailSerializer
 from vacancy.models import Vacancy, VacancyResponse
@@ -22,6 +23,16 @@ class RequiredSkillsWriteSerializerMixin(RequiredSkillsSerializerMixin):
     )
 
 
+class AbstractVacancyReadOnlyFields(serializers.Serializer):
+    """Abstract read-only fields for Vacancy."""
+    datetime_closed = serializers.DateTimeField(read_only=True)
+    response_count = serializers.SerializerMethodField(read_only=True)
+
+    def get_response_count(self, obj):
+        """Returns count non status responses."""
+        return obj.vacancy_requests.filter(is_approved=None).count()
+
+
 class ProjectForVacancySerializer(serializers.ModelSerializer[Project]):
     class Meta:
         model = Project
@@ -34,7 +45,9 @@ class ProjectForVacancySerializer(serializers.ModelSerializer[Project]):
 
 
 class VacancyDetailSerializer(
-    serializers.ModelSerializer, RequiredSkillsWriteSerializerMixin[Vacancy]
+    serializers.ModelSerializer,
+    AbstractVacancyReadOnlyFields,
+    RequiredSkillsWriteSerializerMixin[Vacancy],
 ):
     project = ProjectForVacancySerializer(many=False, read_only=True)
 
@@ -50,11 +63,17 @@ class VacancyDetailSerializer(
             "is_active",
             "datetime_created",
             "datetime_updated",
+            "datetime_closed",
+            "response_count",
         ]
         read_only_fields = ["project"]
 
 
-class VacancyListSerializer(serializers.ModelSerializer, RequiredSkillsSerializerMixin[Vacancy]):
+class VacancyListSerializer(
+    serializers.ModelSerializer,
+    RequiredSkillsSerializerMixin[Vacancy],
+    AbstractVacancyReadOnlyFields,
+):
     class Meta:
         model = Vacancy
         fields = [
@@ -63,6 +82,8 @@ class VacancyListSerializer(serializers.ModelSerializer, RequiredSkillsSerialize
             "required_skills",
             "description",
             "is_active",
+            "datetime_closed",
+            "response_count",
         ]
         read_only_fields = [
             "project",
@@ -70,7 +91,9 @@ class VacancyListSerializer(serializers.ModelSerializer, RequiredSkillsSerialize
 
 
 class ProjectVacancyListSerializer(
-    serializers.ModelSerializer, RequiredSkillsSerializerMixin[Vacancy]
+    serializers.ModelSerializer,
+    AbstractVacancyReadOnlyFields,
+    RequiredSkillsSerializerMixin[Vacancy],
 ):
     class Meta:
         model = Vacancy
@@ -81,11 +104,15 @@ class ProjectVacancyListSerializer(
             "description",
             "project",
             "is_active",
+            "datetime_closed",
+            "response_count",
         ]
 
 
 class ProjectVacancyCreateListSerializer(
-    serializers.ModelSerializer, RequiredSkillsWriteSerializerMixin[Vacancy]
+    serializers.ModelSerializer,
+    AbstractVacancyReadOnlyFields,
+    RequiredSkillsWriteSerializerMixin[Vacancy],
 ):
     def create(self, validated_data):
         project = validated_data["project"]
@@ -127,6 +154,8 @@ class ProjectVacancyCreateListSerializer(
             "description",
             "project",
             "is_active",
+            "datetime_closed",
+            "response_count",
         ]
 
 
@@ -176,6 +205,11 @@ class VacancyResponseListSerializer(serializers.ModelSerializer[VacancyResponse]
         user = User.objects.get(pk=user_id)
         vacancy_response = VacancyResponse.objects.create(user=user, **validated_data)
         return vacancy_response
+
+
+class VacancyResponseFullFileInfoListSerializer(VacancyResponseListSerializer):
+    """Returns full file info."""
+    accompanying_file = UserFileSerializer(read_only=True)
 
 
 class VacancyResponseDetailSerializer(serializers.ModelSerializer[VacancyResponse]):

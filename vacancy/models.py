@@ -1,5 +1,6 @@
 from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
+from django.utils import timezone
 
 from files.models import UserFile
 from projects.models import Project
@@ -42,6 +43,9 @@ class Vacancy(models.Model):
     datetime_updated = models.DateTimeField(
         verbose_name="Дата обновления", null=False, auto_now=True
     )
+    datetime_closed = models.DateTimeField(
+        verbose_name="Дата закрытия", null=True, blank=True
+    )
 
     objects = VacancyManager()
 
@@ -50,6 +54,17 @@ class Vacancy(models.Model):
         for sto in self.required_skills.all():
             required_skills.append(sto.skill)
         return required_skills
+
+    def update_datetime_closed(self):
+        """Update datetime_closed based on the is_active status."""
+        if not self.is_active and self.datetime_closed is None:
+            self.datetime_closed = timezone.now()
+        elif self.is_active:
+            self.datetime_closed = None
+
+    def save(self, *args, **kwargs):
+        self.update_datetime_closed()
+        super().save(*args, **kwargs)
 
     def __str__(self) -> str:
         return f"Vacancy<{self.id}> - {self.role}"
