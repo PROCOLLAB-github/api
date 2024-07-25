@@ -1,9 +1,10 @@
+from django.db.models import QuerySet
 from django_filters import rest_framework as filters
 from django.shortcuts import get_object_or_404
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import generics, mixins, permissions, status
-from rest_framework.generics import GenericAPIView
+from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.response import Response
 
 
@@ -86,7 +87,9 @@ class VacancyResponseList(mixins.ListModelMixin, mixins.CreateModelMixin, Generi
     def post(self, request, vacancy_id):
         vacancy = get_object_or_404(Vacancy, pk=vacancy_id)
         if not vacancy.is_active:
-            return Response("You cannot apply for a closed vacancy", status.HTTP_400_BAD_REQUEST)
+            return Response(
+                "You cannot apply for a closed vacancy", status.HTTP_400_BAD_REQUEST
+            )
 
         try:
             request.data["user_id"] = self.request.user.id
@@ -200,3 +203,16 @@ class VacancyResponseDecline(generics.GenericAPIView):
         )
 
         return Response(status=status.HTTP_200_OK)
+
+
+class UserVacancyResponses(ListAPIView):
+    serializer_class = VacancyResponseListSerializer
+    permission_classes = [IsVacancyResponseOwnerOrReadOnly]
+    pagination_class = VacancyPagination
+
+    def get_queryset(self) -> QuerySet[VacancyResponse]:
+        return (
+            VacancyResponse.objects.get_vacancy_response_for_list_view()
+            .filter(user=self.request.user)
+            .order_by("datetime_created")
+        )
