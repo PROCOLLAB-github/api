@@ -26,6 +26,10 @@ class PartnerProgram(models.Model):
         datetime_created: A DateTimeField indicating date of creation.
         datetime_updated: A DateTimeField indicating date of update.
     """
+    PROJECTS_AVAILABILITY_CHOISES = [
+        ("all_users", "Всем пользователям"),
+        ("experts_only", "Только экспертам"),
+    ]
 
     name = models.TextField(
         verbose_name="Название",
@@ -74,6 +78,12 @@ class PartnerProgram(models.Model):
         through="PartnerProgramUserProfile",
     )
     draft = models.BooleanField(blank=False, default=True)
+    projects_availability = models.CharField(
+        choices=PROJECTS_AVAILABILITY_CHOISES,
+        max_length=25,
+        default="all_users",
+        verbose_name="Доступность к дочерним проектам",
+    )
     datetime_registration_ends = models.DateTimeField(
         verbose_name="Дата окончания регистрации",
     )
