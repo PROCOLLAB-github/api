@@ -37,14 +37,11 @@ class VacancyManager(Manager):
 
 class VacancyResponseManager(Manager):
     def get_vacancy_response_for_list_view(self):
-        return (
-            self.get_queryset()
-            .select_related(
-                "vacancy",
-                "vacancy__project",
-                "vacancy__project__leader",
-                "accompanying_file",
-            )
+        return self.get_queryset().select_related(
+            "vacancy",
+            "vacancy__project",
+            "vacancy__project__leader",
+            "accompanying_file",
         )
 
     def get_vacancy_response_for_email(self):
@@ -75,6 +72,7 @@ class VacancyResponseManager(Manager):
             .only(
                 "user",
                 "vacancy",
+                "vacancy__role",
                 "why_me",
                 "accompanying_file",
                 "is_approved",
