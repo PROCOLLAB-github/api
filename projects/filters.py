@@ -1,6 +1,7 @@
 from django.db.models import Count
 from django_filters import rest_framework as filters
 
+from users.models import Expert
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 from projects.models import Project
 
@@ -51,20 +52,24 @@ class ProjectFilter(filters.FilterSet):
             ).distinct()
         return queryset
 
-    @classmethod
-    def filter_by_partner_program(cls, queryset, name, value):
+    def filter_by_partner_program(self, queryset, name, value):
         program_id = value
+        user = self.request.user
         try:
             program = PartnerProgram.objects.get(pk=program_id)
-            profiles_qs = (
-                PartnerProgramUserProfile.objects.filter(
-                    partner_program=program, project__isnull=False
+            program_status = program.projects_availability
+            # If available to all users or request.user is an expert of this program.
+            if program_status == "all_users" or Expert.objects.filter(user=user, programs=program).exists():
+                profiles_qs = (
+                    PartnerProgramUserProfile.objects.filter(
+                        partner_program=program, project__isnull=False
+                    )
+                    .select_related("project")
+                    .only("project")
                 )
-                .select_related("project")
-                .only("project")
-            )
-
-            return queryset.filter(pk__in=[profile.project.pk for profile in profiles_qs])
+                return queryset.filter(pk__in=[profile.project.pk for profile in profiles_qs])
+            else:
+                return Project.objects.none()
 
         except PartnerProgram.DoesNotExist:
             return Project.objects.none()
