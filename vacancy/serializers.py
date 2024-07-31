@@ -25,6 +25,7 @@ class RequiredSkillsWriteSerializerMixin(RequiredSkillsSerializerMixin):
 
 class AbstractVacancyReadOnlyFields(serializers.Serializer):
     """Abstract read-only fields for Vacancy."""
+
     datetime_closed = serializers.DateTimeField(read_only=True)
     response_count = serializers.SerializerMethodField(read_only=True)
 
@@ -159,7 +160,7 @@ class ProjectVacancyCreateListSerializer(
         ]
 
 
-class VacancyResponseListSerializer(serializers.ModelSerializer[VacancyResponse]):
+class VacancyResponseListSerializer(serializers.ModelSerializer):
     is_approved = serializers.BooleanField(read_only=True)
     user = UserDetailSerializer(read_only=True)
     user_id = serializers.IntegerField(write_only=True)
@@ -169,6 +170,9 @@ class VacancyResponseListSerializer(serializers.ModelSerializer[VacancyResponse]
         required=False,
         allow_null=True,
     )
+    vacancy_role = (
+        serializers.SerializerMethodField()
+    )  # SerializerMethodField to access related field
 
     class Meta:
         model = VacancyResponse
@@ -180,10 +184,14 @@ class VacancyResponseListSerializer(serializers.ModelSerializer[VacancyResponse]
             "accompanying_file",
             "is_approved",
             "vacancy",
+            "vacancy_role",
         ]
         extra_kwargs = {
             "user_id": {"write_only": True},
         }
+
+    def get_vacancy_role(self, obj: VacancyResponse) -> str:
+        return obj.vacancy.role
 
     def validate(self, attrs):
         vacancy = attrs["vacancy"]
@@ -209,6 +217,7 @@ class VacancyResponseListSerializer(serializers.ModelSerializer[VacancyResponse]
 
 class VacancyResponseFullFileInfoListSerializer(VacancyResponseListSerializer):
     """Returns full file info."""
+
     accompanying_file = UserFileSerializer(read_only=True)
 
 
