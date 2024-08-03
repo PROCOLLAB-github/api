@@ -26,6 +26,7 @@ from users.views import (
     SingleUserDataView,
     RemoteViewSubscriptions,
     RemoteCreatePayment,
+    UserSkillsApprouveDeclineView,
 )
 
 app_name = "users"
@@ -49,6 +50,7 @@ urlpatterns = [
     path("users/<int:user_pk>/news/<int:pk>/", NewsDetail.as_view()),
     path("users/<int:user_pk>/news/<int:pk>/set_viewed/", NewsDetailSetViewed.as_view()),
     path("users/<int:user_pk>/news/<int:pk>/set_liked/", NewsDetailSetLiked.as_view()),
+    path("users/<int:user_pk>/skills/<int:skill_pk>/", UserSkillsApprouveDeclineView.as_view()),
     path("users/current/", CurrentUser.as_view()),
     # todo: change password view
     path("users/current/programs/", CurrentUserPrograms.as_view()),

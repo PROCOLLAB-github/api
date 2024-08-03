@@ -165,6 +165,14 @@ class SkillToObject(models.Model):
         verbose_name = "Ссылка на навык"
         verbose_name_plural = "Ссылки на навыки"
 
+    def __str__(self):
+        try:
+            return f"{self.skill.name} - {self.content_object}"
+        # Possible contingencies with attributes.
+        except Exception:
+            pass
+        return super().__str__()
+
 
 class SpecializationCategory(models.Model):
     name = models.TextField()
