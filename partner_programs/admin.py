@@ -32,7 +32,18 @@ class PartnerProgramAdmin(admin.ModelAdmin):
 
     filter_horizontal = ("users",)
     date_hierarchy = "datetime_started"
-    change_form_template = "partner_programs/admin/programs_change_form.html"
+
+    def change_view(self, request, object_id, form_url="", extra_context=None):
+        if "Руководитель программы" in request.user.groups.all().values_list(
+            "name", flat=True
+        ):
+            self.change_form_template = (
+                "partner_programs/admin/program_manager_change_form.html"
+            )
+        else:
+            self.change_form_template = "partner_programs/admin/programs_change_form.html"
+
+        return super().change_view(request, object_id, form_url, extra_context)
 
     def get_urls(self):
         default_urls = super(PartnerProgramAdmin, self).get_urls()
