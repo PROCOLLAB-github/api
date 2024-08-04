@@ -2,7 +2,8 @@ import pandas as pd
 import tablib
 import re
 from django.contrib import admin
-from django.http import HttpResponse
+from django.db.models import QuerySet
+from django.http import HttpResponse, HttpRequest
 from django.urls import path
 from django.utils import timezone
 
@@ -32,6 +33,17 @@ class PartnerProgramAdmin(admin.ModelAdmin):
 
     filter_horizontal = ("users",)
     date_hierarchy = "datetime_started"
+
+    def get_queryset(self, request: HttpRequest) -> QuerySet[PartnerProgram]:
+        qs = super().get_queryset(request)
+        if "Руководитель программы" in request.user.groups.all().values_list(
+            "name", flat=True
+        ):
+            user_programs: list[int] = request.user.expert.programs.values_list(
+                "id", flat=True
+            )
+            qs = qs.filter(id__in=user_programs)
+        return qs
 
     def change_view(self, request, object_id, form_url="", extra_context=None):
         if "Руководитель программы" in request.user.groups.all().values_list(
