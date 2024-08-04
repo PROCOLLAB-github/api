@@ -67,8 +67,6 @@ class PartnerProgramAdmin(admin.ModelAdmin):
         return custom_urls + default_urls
 
     def mailing(self, request, partner_program):
-        # if "Руководитель программы" in request.user.groups.all().values_list("name"):
-        #     return None
         profiles = PartnerProgramUserProfile.objects.filter(
             partner_program=partner_program
         )
