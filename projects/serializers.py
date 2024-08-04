@@ -64,6 +64,7 @@ class ProjectCollaboratorSerializer(serializers.ModelSerializer):
 
 
 class ProjectDetailSerializer(serializers.ModelSerializer):
+
     achievements = AchievementListSerializer(many=True, read_only=True)
     cover = UserFileSerializer(required=False)
     collaborators = CollaboratorSerializer(

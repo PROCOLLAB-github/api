@@ -17,7 +17,7 @@ class NewSimpleFeed(APIView):
     serializator_class = NewsFeedListSerializer
     pagination_class = FeedPagination
 
-    def get_filter_data(self) -> list[str]:
+    def _get_filter_data(self) -> list[str]:
         filter_queries: str | None = self.request.query_params.get("type")
         filter_queries: str = filter_queries if filter_queries else ""  # existence check
 
@@ -27,7 +27,7 @@ class NewSimpleFeed(APIView):
         return news_types
 
     def get_queryset(self) -> QuerySet[News]:
-        filters = self.get_filter_data()
+        filters = self._get_filter_data()
         queryset = (
             News.objects.select_related("content_type")
             .prefetch_related("content_object", "files")

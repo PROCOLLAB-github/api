@@ -215,7 +215,13 @@ class CustomUserAdmin(admin.ModelAdmin):
 
     def get_export_users_emails(self, users):
         response_data = tablib.Dataset(
-            headers=["Имя и фамилия", "Возраст", "Интересы", "ВУЗ", "Специальность"]
+            headers=[
+                "Имя и фамилия",
+                "Возраст",
+                "Интересы",
+                "ВУЗ / Школа",
+                "Специальность",
+            ]
         )
 
         today = date.today()
@@ -225,7 +231,9 @@ class CustomUserAdmin(admin.ModelAdmin):
             CustomUser.objects.all()
             .select_related("v2_speciality")
             .prefetch_related(
-                "collaborations__project", "collaborations__project__industry"
+                "collaborations__project",
+                "collaborations__project__industry",
+                "skills__skill",
             )
         )
         little_mans = users.filter(birthday__lte=date_limit_18)
@@ -236,30 +244,41 @@ class CustomUserAdmin(admin.ModelAdmin):
         # quantity_big_mans = whole_quality - quantity_little_mans
 
         for baby in little_mans:
-            projects_names = [
-                collab.project.industry.name for collab in baby.collaborations.all()
+            interests = [
+                collab.project.industry.name if collab.project.industry else ""
+                for collab in baby.collaborations.all()
             ]
+            if not len(interests):
+                interests = [
+                    skill_to_obj.skill.name if skill_to_obj.skill else ""
+                    for skill_to_obj in baby.skills.all()
+                ]
+            if not len(interests):
+                interests = baby.key_skills.split(",") if baby.key_skills else []
             response_data.append(
                 [
                     baby.first_name + " " + baby.last_name,
                     today.year - baby.birthday.year,
-                    ", ".join(projects_names),
-                    "",
-                    "",
+                    ", ".join(interests),
+                    baby.organization,
+                    baby.v2_speciality if baby.v2_speciality else baby.speciality,
                 ]
             )
 
         for big_man in big_mans:
-            projects_names = [
-                collab.project.industry.name for collab in big_man.collaborations.all()
+            industry_names = [
+                collab.project.industry.name if collab.project.industry else ""
+                for collab in big_man.collaborations.all()
             ]
             response_data.append(
                 [
                     big_man.first_name + " " + big_man.last_name,
                     today.year - big_man.birthday.year,
-                    ", ".join(projects_names),
+                    ", ".join(industry_names),
                     big_man.organization,
-                    big_man.speciality,
+                    big_man.v2_speciality
+                    if big_man.v2_speciality
+                    else big_man.speciality,
                 ]
             )
 
