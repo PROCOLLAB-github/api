@@ -4,9 +4,11 @@ from rest_framework import serializers
 
 from core.models import Skill, SkillToObject
 from core.serializers import SkillToObjectSerializer
+from core.services import get_views_count
 from files.models import UserFile
 from files.serializers import UserFileSerializer
 from projects.models import Project
+from projects.validators import validate_project
 from users.serializers import UserDetailSerializer
 from vacancy.models import Vacancy, VacancyResponse
 
@@ -32,6 +34,25 @@ class AbstractVacancyReadOnlyFields(serializers.Serializer):
     def get_response_count(self, obj):
         """Returns count non status responses."""
         return obj.vacancy_requests.filter(is_approved=None).count()
+
+
+class ProjectVacancyListSerializer(
+    serializers.ModelSerializer,
+    AbstractVacancyReadOnlyFields,
+    RequiredSkillsSerializerMixin[Vacancy],
+):
+    class Meta:
+        model = Vacancy
+        fields = [
+            "id",
+            "role",
+            "required_skills",
+            "description",
+            "project",
+            "is_active",
+            "datetime_closed",
+            "response_count",
+        ]
 
 
 class ProjectForVacancySerializer(serializers.ModelSerializer[Project]):
@@ -91,23 +112,38 @@ class VacancyListSerializer(
         ]
 
 
-class ProjectVacancyListSerializer(
-    serializers.ModelSerializer,
-    AbstractVacancyReadOnlyFields,
-    RequiredSkillsSerializerMixin[Vacancy],
-):
+class ProjectListSerializer(serializers.ModelSerializer):
+    views_count = serializers.SerializerMethodField(method_name="count_views")
+    short_description = serializers.SerializerMethodField()
+
+    @classmethod
+    def count_views(cls, project):
+        return get_views_count(project)
+
+    @classmethod
+    def get_short_description(cls, project):
+        return project.get_short_description()
+
     class Meta:
-        model = Vacancy
+        model = Project
         fields = [
             "id",
-            "role",
-            "required_skills",
-            "description",
-            "project",
-            "is_active",
-            "datetime_closed",
-            "response_count",
+            "name",
+            "leader",
+            "short_description",
+            "image_address",
+            "industry",
+            "views_count",
         ]
+
+        read_only_fields = ["leader", "views_count"]
+
+    def is_valid(self, *, raise_exception=False):
+        return super().is_valid(raise_exception=raise_exception)
+
+    def validate(self, data):
+        super().validate(data)
+        return validate_project(data)
 
 
 class ProjectVacancyCreateListSerializer(
@@ -115,6 +151,8 @@ class ProjectVacancyCreateListSerializer(
     AbstractVacancyReadOnlyFields,
     RequiredSkillsWriteSerializerMixin[Vacancy],
 ):
+    project = ProjectListSerializer()
+
     def create(self, validated_data):
         project = validated_data["project"]
         if project.leader != self.context["request"].user:
@@ -170,9 +208,7 @@ class VacancyResponseListSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True,
     )
-    vacancy_role = (
-        serializers.SerializerMethodField()
-    )  # SerializerMethodField to access related field
+    vacancy_role = serializers.SerializerMethodField()
 
     class Meta:
         model = VacancyResponse
