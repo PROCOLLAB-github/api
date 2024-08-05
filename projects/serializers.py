@@ -8,9 +8,32 @@ from files.serializers import UserFileSerializer
 from industries.models import Industry
 from projects.models import Project, Achievement, Collaborator, ProjectNews
 from projects.validators import validate_project
-from vacancy.serializers import ProjectVacancyListSerializer
+from vacancy.models import Vacancy
 
 User = get_user_model()
+
+
+class ProjectVacancyListSerializer(serializers.ModelSerializer):
+    datetime_closed = serializers.DateTimeField(read_only=True)
+    response_count = serializers.SerializerMethodField(read_only=True)
+    required_skills = SkillToObjectSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Vacancy
+        fields = [
+            "id",
+            "role",
+            "required_skills",
+            "description",
+            "project",
+            "is_active",
+            "datetime_closed",
+            "response_count",
+        ]
+
+    def get_response_count(self, obj):
+        """Returns count non status responses."""
+        return obj.vacancy_requests.filter(is_approved=None).count()
 
 
 class AchievementListSerializer(serializers.ModelSerializer):
