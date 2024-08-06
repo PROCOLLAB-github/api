@@ -3,6 +3,7 @@ from datetime import date
 import tablib
 from django.conf import settings
 from django.contrib import admin
+from django.contrib.auth.models import Permission
 from django.http import HttpResponse
 from django.shortcuts import redirect
 from django.urls import path
@@ -20,6 +21,8 @@ from .models import (
 )
 
 from core.admin import SkillToObjectInline
+
+admin.site.register(Permission)
 
 
 @admin.register(CustomUser)
