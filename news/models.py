@@ -32,7 +32,12 @@ class News(models.Model):
         Like,
         related_query_name="project_news",
     )
-
+    pin = models.BooleanField(
+        blank=True,
+        default=False,
+        verbose_name="Закрепить новость",
+        help_text="Закрепить новость (пока только для профиля программ)",
+    )
     datetime_created = models.DateTimeField(
         verbose_name="Дата создания", null=False, default=timezone.now
     )
