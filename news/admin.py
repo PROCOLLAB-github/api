@@ -14,6 +14,7 @@ class NewsAdmin(admin.ModelAdmin):
         "content_type",
         "object_id",
         "text",
+        "pin",
         "datetime_created",
         "datetime_updated",
     )
@@ -22,6 +23,7 @@ class NewsAdmin(admin.ModelAdmin):
         "content_type",
         "object_id",
         "text",
+        "pin",
         "datetime_created",
         "datetime_updated",
     )
