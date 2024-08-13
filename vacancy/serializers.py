@@ -112,7 +112,8 @@ class VacancyListSerializer(
         ]
 
 
-class ProjectListSerializer(serializers.ModelSerializer):
+# TODO FIX This (Copied serializer from projects) - hotfix: rename
+class ProjectListSerializer_TODO_FIX(serializers.ModelSerializer):
     views_count = serializers.SerializerMethodField(method_name="count_views")
     short_description = serializers.SerializerMethodField()
 
@@ -151,7 +152,8 @@ class ProjectVacancyCreateListSerializer(
     AbstractVacancyReadOnlyFields,
     RequiredSkillsWriteSerializerMixin[Vacancy],
 ):
-    project = ProjectListSerializer()
+    # TODO FIX This
+    project = ProjectListSerializer_TODO_FIX()
 
     def create(self, validated_data):
         project = validated_data["project"]
