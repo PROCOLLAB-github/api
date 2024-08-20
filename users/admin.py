@@ -221,6 +221,7 @@ class CustomUserAdmin(admin.ModelAdmin):
                 "Интересы",
                 "ВУЗ / Школа",
                 "Специальность",
+                "Эл. почта",
             ]
         )
 
@@ -262,6 +263,7 @@ class CustomUserAdmin(admin.ModelAdmin):
                     ", ".join(interests),
                     baby.organization,
                     baby.v2_speciality if baby.v2_speciality else baby.speciality,
+                    baby.email,
                 ]
             )
 
@@ -279,6 +281,7 @@ class CustomUserAdmin(admin.ModelAdmin):
                     big_man.v2_speciality
                     if big_man.v2_speciality
                     else big_man.speciality,
+                    big_man.email,
                 ]
             )
 

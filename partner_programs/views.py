@@ -18,6 +18,11 @@ from partner_programs.serializers import (
     PartnerProgramNewUserSerializer,
     PartnerProgramUserSerializer,
 )
+from vacancy.mapping import (
+    MessageTypeEnum,
+    UserProgramRegisterParamsDict,
+)
+from vacancy.tasks import send_email
 
 User = get_user_model()
 
@@ -55,7 +60,9 @@ class PartnerProgramDetail(generics.RetrieveAPIView):
 
 class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
     """
-    Create new user and register him to program and save additional data
+    Create new user and register him to program and save additional data.
+    If a user with such an email already exists in the system, then his profile
+    remains the same, but he registers in the program with the specified data.
     """
 
     permission_classes = [AllowAny]
@@ -93,32 +100,34 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
             "patronymic",
             "city",
         )
-        try:
-            user = User.objects.create(
+        user, created = User.objects.get_or_create(
+            email=email,
+            defaults={
+                "birthday": date_to_iso(data.get("birthday", "01-01-1900")),
+                "is_active": True,  # bypass email verification
+                "onboarding_stage": None,  # bypass onboarding
+                "verification_date": timezone.now(),  # bypass ClickUp verification
                 **{field_name: data.get(field_name, "") for field_name in user_fields},
-                birthday=date_to_iso(data.get("birthday", "01-01-1900")),
-                is_active=True,  # bypass email verification
-                onboarding_stage=None,  # bypass onboarding
-                verification_date=timezone.now(),  # bypass ClickUp verification
-                email=email,
-            )
-        except IntegrityError:
-            return Response(
-                data={"detail": "User with this email already exists."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        user.set_password(password)
-        user.save()
+            },
+        )
+        if created:  # Only when registering a new user.
+            user.set_password(password)
+            user.save()
 
         user_profile_program_data = {
             k: v for k, v in data.items() if k not in user_fields and k != "password"
         }
-        PartnerProgramUserProfile.objects.create(
-            partner_program_data=user_profile_program_data,
-            user=user,
-            partner_program=program,
-        )
+        try:
+            PartnerProgramUserProfile.objects.create(
+                partner_program_data=user_profile_program_data,
+                user=user,
+                partner_program=program,
+            )
+        except IntegrityError:
+            return Response(
+                data={"detail": "User has already registered in this program."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         return Response(status=status.HTTP_201_CREATED)
 
     def get(self, request, *args, **kwargs):
@@ -151,6 +160,16 @@ class PartnerProgramRegister(generics.GenericAPIView):
                 partner_program=program,
             )
             added_user_profile.save()
+
+            send_email.delay(
+                UserProgramRegisterParamsDict(
+                    message_type=MessageTypeEnum.REGISTERED_PROGRAM_USER.value,
+                    user_id=self.request.user.id,
+                    program_name=program.name,
+                    program_id=program.id,
+                    schema_id=2,
+                )
+            )
 
             return Response(status=status.HTTP_201_CREATED)
         except PartnerProgram.DoesNotExist:
