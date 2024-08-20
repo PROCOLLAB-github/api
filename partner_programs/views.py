@@ -18,6 +18,11 @@ from partner_programs.serializers import (
     PartnerProgramNewUserSerializer,
     PartnerProgramUserSerializer,
 )
+from vacancy.mapping import (
+    MessageTypeEnum,
+    UserProgramRegisterParamsDict,
+)
+from vacancy.tasks import send_email
 
 User = get_user_model()
 
@@ -103,7 +108,7 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
                 "onboarding_stage": None,  # bypass onboarding
                 "verification_date": timezone.now(),  # bypass ClickUp verification
                 **{field_name: data.get(field_name, "") for field_name in user_fields},
-            }
+            },
         )
         if created:  # Only when registering a new user.
             user.set_password(password)
@@ -123,6 +128,16 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
                 data={"detail": "User has already registered in this program."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        send_email.delay(
+            UserProgramRegisterParamsDict(
+                message_type=MessageTypeEnum.REGISTERED_PROGRAM_USER.value,
+                user_id=user.id,
+                program_name=program.name,
+                program_id=program.id,
+                schema_id=2,
+            )
+        )
         return Response(status=status.HTTP_201_CREATED)
 
     def get(self, request, *args, **kwargs):
@@ -134,7 +149,7 @@ class PartnerProgramRegister(generics.GenericAPIView):
     Register user to program and save additional program data
     """
 
-    queryset = PartnerProgram.objects.none()
+    queryset = PartnerProgram.objects.all()
     permission_classes = [IsAuthenticated]
     serializer_class = PartnerProgramUserSerializer
 
@@ -155,6 +170,16 @@ class PartnerProgramRegister(generics.GenericAPIView):
                 partner_program=program,
             )
             added_user_profile.save()
+
+            send_email.delay(
+                UserProgramRegisterParamsDict(
+                    message_type=MessageTypeEnum.REGISTERED_PROGRAM_USER.value,
+                    user_id=user_to_add.id,
+                    program_name=program.name,
+                    program_id=program.id,
+                    schema_id=2,
+                )
+            )
 
             return Response(status=status.HTTP_201_CREATED)
         except PartnerProgram.DoesNotExist:
