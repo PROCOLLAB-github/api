@@ -139,7 +139,7 @@ class PartnerProgramRegister(generics.GenericAPIView):
     Register user to program and save additional program data
     """
 
-    queryset = PartnerProgram.objects.none()
+    queryset = PartnerProgram.objects.all()
     permission_classes = [IsAuthenticated]
     serializer_class = PartnerProgramUserSerializer
 
@@ -164,7 +164,7 @@ class PartnerProgramRegister(generics.GenericAPIView):
             send_email.delay(
                 UserProgramRegisterParamsDict(
                     message_type=MessageTypeEnum.REGISTERED_PROGRAM_USER.value,
-                    user_id=self.request.user.id,
+                    user_id=user_to_add.id,
                     program_name=program.name,
                     program_id=program.id,
                     schema_id=2,
