@@ -18,6 +18,11 @@ from partner_programs.serializers import (
     PartnerProgramNewUserSerializer,
     PartnerProgramUserSerializer,
 )
+from vacancy.mapping import (
+    MessageTypeEnum,
+    UserProgramRegisterParamsDict,
+)
+from vacancy.tasks import send_email
 
 User = get_user_model()
 
@@ -103,7 +108,7 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
                 "onboarding_stage": None,  # bypass onboarding
                 "verification_date": timezone.now(),  # bypass ClickUp verification
                 **{field_name: data.get(field_name, "") for field_name in user_fields},
-            }
+            },
         )
         if created:  # Only when registering a new user.
             user.set_password(password)
@@ -155,6 +160,16 @@ class PartnerProgramRegister(generics.GenericAPIView):
                 partner_program=program,
             )
             added_user_profile.save()
+
+            send_email.delay(
+                UserProgramRegisterParamsDict(
+                    message_type=MessageTypeEnum.REGISTERED_PROGRAM_USER.value,
+                    user_id=self.request.user.id,
+                    program_name=program.name,
+                    program_id=program.id,
+                    schema_id=2,
+                )
+            )
 
             return Response(status=status.HTTP_201_CREATED)
         except PartnerProgram.DoesNotExist:
