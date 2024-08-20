@@ -128,6 +128,16 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
                 data={"detail": "User has already registered in this program."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        send_email.delay(
+            UserProgramRegisterParamsDict(
+                message_type=MessageTypeEnum.REGISTERED_PROGRAM_USER.value,
+                user_id=user.id,
+                program_name=program.name,
+                program_id=program.id,
+                schema_id=2,
+            )
+        )
         return Response(status=status.HTTP_201_CREATED)
 
     def get(self, request, *args, **kwargs):
