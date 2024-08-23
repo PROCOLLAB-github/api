@@ -67,7 +67,7 @@ class VacancyTestCase(TestCase):
         )
         self.assertEqual(response.data["description"], "Test")
         self.assertEqual(response.data["is_active"], not self.created_project.draft)
-        self.assertEqual(response.data["project"], self.vacancy_create_data["project"])
+        self.assertEqual(response.data["project"]["id"], self.vacancy_create_data["project"])
 
     def user_create(self):
         request = self.factory.post("auth/users/", USER_CREATE_DATA)

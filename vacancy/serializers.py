@@ -154,8 +154,6 @@ class ProjectVacancyCreateListSerializer(
     AbstractVacancyReadOnlyFields,
     RequiredSkillsWriteSerializerMixin[Vacancy],
 ):
-    # TODO FIX This
-    project = ProjectListSerializer_TODO_FIX()
 
     def create(self, validated_data):
         project = validated_data["project"]
@@ -186,6 +184,11 @@ class ProjectVacancyCreateListSerializer(
             )
 
         return vacancy
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        ret["project"] = ProjectListSerializer_TODO_FIX(instance.project).data
+        return ret
 
     class Meta:
         model = Vacancy
