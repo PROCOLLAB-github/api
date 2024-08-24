@@ -15,7 +15,8 @@ class ProjectFilter(filters.FilterSet):
         industry (int), step (int), region (str), name__contains (str),
          description__contains (str), collaborator__user__in (List[int]),
          datetime_created__gt (datetime.datetime), step (int), any_vacancies (bool),
-         member_count__gt (int), member_count__lt (int), leader (int), partner_program (int)
+         member_count__gt (int), member_count__lt (int), leader (int), partner_program (int),
+         is_company (bool).
 
     Examples:
         ?industry=1&name__contains=clown
@@ -26,6 +27,7 @@ class ProjectFilter(filters.FilterSet):
         ?step=1 equals to .filter(step=1)
         ?any_vacancies=true equals to .filter(any_vacancies=True)
         ?collaborator__count__gt=1 equals to .filter(collaborator__count__gt=1)
+        ?is_company=0/?is_company=false equals .filter(is_company=False)
     """
 
     @classmethod
@@ -84,6 +86,10 @@ class ProjectFilter(filters.FilterSet):
     datetime_created__gt = filters.DateTimeFilter(
         field_name="datetime_created", lookup_expr="gt"
     )
+    is_company = filters.BooleanFilter(
+        field_name="is_company",
+        label="is_company\n`1`/`true` is company\n`0`/`false` is not company"
+    )
 
     # filters by whether there are any vacancies in the project
     any_vacancies = filters.BooleanFilter(field_name="vacancies", method="vacancy_filter")
@@ -107,4 +113,5 @@ class ProjectFilter(filters.FilterSet):
             "leader",
             "step",
             "partner_program",
+            "is_company",
         )

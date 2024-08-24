@@ -70,6 +70,7 @@ class Project(models.Model):
         image_address: A URLField image URL address.
         leader: A ForeignKey referring to the User model.
         draft: A boolean indicating if Project is a draft.
+        is_company: A boolean indicating if Project is a company.
         cover: A ForeignKey referring to the UserFile model, which is the image cover of the project.
         datetime_created: A DateTimeField indicating date of creation.
         datetime_updated: A DateTimeField indicating date of update.
@@ -98,6 +99,7 @@ class Project(models.Model):
     )
 
     draft = models.BooleanField(blank=False, default=True)
+    is_company = models.BooleanField(null=False, default=False)
 
     cover = models.ForeignKey(
         UserFile,
@@ -135,7 +137,7 @@ class Project(models.Model):
         return f"Project<{self.id}> - {self.name}"
 
     class Meta:
-        ordering = ["-hidden_score", "-datetime_created"]
+        ordering = ["-is_company", "-hidden_score", "-datetime_created"]
         verbose_name = "Проект"
         verbose_name_plural = "Проекты"
 

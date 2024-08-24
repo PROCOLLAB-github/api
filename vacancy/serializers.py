@@ -63,6 +63,7 @@ class ProjectForVacancySerializer(serializers.ModelSerializer[Project]):
             "name",
             "description",
             "image_address",
+            "is_company",
         ]
 
 
@@ -135,9 +136,10 @@ class ProjectListSerializer_TODO_FIX(serializers.ModelSerializer):
             "image_address",
             "industry",
             "views_count",
+            "is_company",
         ]
 
-        read_only_fields = ["leader", "views_count"]
+        read_only_fields = ["leader", "views_count", "is_company"]
 
     def is_valid(self, *, raise_exception=False):
         return super().is_valid(raise_exception=raise_exception)
@@ -152,8 +154,6 @@ class ProjectVacancyCreateListSerializer(
     AbstractVacancyReadOnlyFields,
     RequiredSkillsWriteSerializerMixin[Vacancy],
 ):
-    # TODO FIX This
-    project = ProjectListSerializer_TODO_FIX()
 
     def create(self, validated_data):
         project = validated_data["project"]
@@ -184,6 +184,11 @@ class ProjectVacancyCreateListSerializer(
             )
 
         return vacancy
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        ret["project"] = ProjectListSerializer_TODO_FIX(instance.project).data
+        return ret
 
     class Meta:
         model = Vacancy
