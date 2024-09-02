@@ -121,7 +121,7 @@ class UserFilter(filters.FilterSet):
             "patronymic",
             "city",
             "region",
-            "organization",
+            "organization",  # TODO need to be removed in future.
             "user_type",
             "speciality",
         )

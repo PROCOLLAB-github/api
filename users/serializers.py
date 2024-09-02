@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.contrib.contenttypes.models import ContentType
 from django.forms.models import model_to_dict
 from rest_framework import serializers
@@ -9,7 +10,7 @@ from core.services import get_views_count
 from core.utils import get_user_online_cache_key
 from projects.models import Project, Collaborator
 from projects.validators import validate_project
-from .models import CustomUser, Expert, Investor, Member, Mentor, UserAchievement
+from .models import CustomUser, Expert, Investor, Member, Mentor, UserAchievement, UserEducation
 from .validators import specialization_exists_validator
 
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
@@ -191,6 +192,13 @@ class UserSubscriptionDataSerializer(serializers.Serializer):
     is_autopay_allowed = serializers.BooleanField()
 
 
+class UserEducationSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = UserEducation
+        fields = ["organization_name", "description", "entry_year"]
+
+
 class UserDetailSerializer(
     serializers.ModelSerializer[CustomUser], SkillsWriteSerializerMixin
 ):
@@ -199,6 +207,7 @@ class UserDetailSerializer(
     expert = ExpertSerializer(required=False)
     mentor = MentorSerializer(required=False)
     achievements = AchievementListSerializer(required=False, many=True)
+    education = UserEducationSerializer(many=True)
     links = serializers.SerializerMethodField()
     is_online = serializers.SerializerMethodField()
     projects = serializers.SerializerMethodField()
@@ -244,7 +253,8 @@ class UserDetailSerializer(
             "speciality",
             "v2_speciality",
             "v2_speciality_id",
-            "organization",
+            "organization",  # TODO need to be removed in future.
+            "education",
             "about_me",
             "avatar",
             "links",
@@ -262,6 +272,7 @@ class UserDetailSerializer(
             "dataset_migration_applied",
         ]
 
+    @transaction.atomic
     def update(self, instance, validated_data):
         IMMUTABLE_FIELDS = ("email", "is_active", "password")
         USER_TYPE_FIELDS = ("member", "investor", "expert", "mentor")
@@ -308,6 +319,10 @@ class UserDetailSerializer(
             CustomUser.MENTOR: Mentor,
         }
 
+        education_data = validated_data.pop("education", None)
+        if education_data:
+            self._update_user_education(instance, education_data)
+
         for attr, value in validated_data.items():
             if attr in IMMUTABLE_FIELDS + USER_TYPE_FIELDS + RELATED_FIELDS:
                 continue
@@ -347,6 +362,23 @@ class UserDetailSerializer(
         instance.save()
 
         return instance
+
+    @transaction.atomic
+    def _update_user_education(self, instance: CustomUser, data: list[dict]) -> None:
+        """
+        Update user education.
+        `PUT`/ `PATCH` methods require full data about education.
+        """
+        instance.education.all().delete()
+        UserEducation.objects.bulk_create([
+            UserEducation(
+                user=instance,
+                organization_name=organization.get("organization_name"),
+                description=organization.get("description"),
+                entry_year=organization.get("entry_year"),
+            )
+            for organization in data
+        ])
 
 
 class UserListSerializer(

@@ -36,3 +36,11 @@ def specialization_exists_validator(pk: int):
         raise serializers.ValidationError(
             {"v2_speciality_id": "Specialization with given id does not exist"}
         )
+
+
+def user_entry_year_education_validator(value: int):
+    """Check education entry year."""
+    if timezone.now().year < value:
+        raise ValidationError("Год поступления не может быть указан в бущуем")
+    if value < 1950:
+        raise ValidationError("Год поступления не быть раньше 1950")
