@@ -1,7 +1,9 @@
 import reprlib
 
 from django.contrib import admin
+from django.db.models.query import QuerySet
 from django.forms import ModelForm, FileField
+from django.http import HttpRequest
 
 from files.service import CDN, SelectelSwiftStorage
 from files.models import UserFile
@@ -81,3 +83,11 @@ class UserFileAdmin(admin.ModelAdmin):
         for obj in queryset:
             self.cdn.delete(obj.link)
         queryset.delete()
+
+    def get_queryset(self, request: HttpRequest) -> QuerySet[UserFile]:
+        qs = super().get_queryset(request)
+        if "Руководитель программы" in request.user.groups.all().values_list(
+            "name", flat=True
+        ):
+            return qs.filter(user=request.user)
+        return qs
