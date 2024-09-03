@@ -86,8 +86,6 @@ class UserFileAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[UserFile]:
         qs = super().get_queryset(request)
-        if "Руководитель программы" in request.user.groups.all().values_list(
-            "name", flat=True
-        ):
+        if request.user.groups.filter(name="Руководитель программы").exists():
             return qs.filter(user=request.user)
         return qs
