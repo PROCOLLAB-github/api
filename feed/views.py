@@ -29,7 +29,11 @@ class NewSimpleFeed(APIView):
 
     def _get_excluded_projects_ids(self) -> list[int]:
         """IDs for exclude projects which in Partner Program."""
-        excluded_projects = PartnerProgramUserProfile.objects.values_list("project_id", flat=True)
+        excluded_projects = (
+            PartnerProgramUserProfile.objects
+            .values_list("project_id", flat=True)
+            .exclude(project_id__isnull=True)
+        )
         return excluded_projects
 
     def get_queryset(self) -> QuerySet[News]:
