@@ -144,8 +144,9 @@ class UserProjectsSerializer(serializers.ModelSerializer[Project]):
             "industry",
             "views_count",
             "collaborator",
+            "is_company",
         ]
-        read_only_fields = ["leader", "collaborator"]
+        read_only_fields = ["leader", "collaborator", "is_company"]
 
 
 class UserSubscribedProjectsSerializer(serializers.ModelSerializer[Project]):
@@ -170,8 +171,9 @@ class UserSubscribedProjectsSerializer(serializers.ModelSerializer[Project]):
             "image_address",
             "industry",
             "views_count",
+            "is_company",
         ]
-        read_only_fields = ["leader", "collaborator"]
+        read_only_fields = ["leader", "collaborator", "is_company"]
 
 
 class SubscriptionSerializer(serializers.Serializer):
@@ -475,9 +477,10 @@ class UserProjectListSerializer(serializers.ModelSerializer[Project]):
             "industry",
             "views_count",
             "draft",
+            "is_company",
         ]
 
-        read_only_fields = ["leader", "views_count"]
+        read_only_fields = ["leader", "views_count", "is_company"]
 
     def is_valid(self, *, raise_exception=False):
         return super().is_valid(raise_exception=raise_exception)

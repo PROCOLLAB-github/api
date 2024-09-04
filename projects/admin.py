@@ -16,6 +16,7 @@ class ProjectAdmin(admin.ModelAdmin):
         "id",
         "name",
         "draft",
+        "is_company",
     )
     list_display_links = (
         "id",

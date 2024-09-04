@@ -33,7 +33,7 @@ class NewsQuerysetMixin:
         except PartnerProgram.DoesNotExist:
             # TODO: raise http 404 here
             return News.objects.none()
-        return News.objects.get_news(obj=program)
+        return News.objects.get_news(obj=program).order_by("-pin", "-datetime_created")
 
     def get_queryset_for_user(self) -> QuerySet[News]:
         """Returns queryset of news for user"""

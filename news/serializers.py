@@ -50,6 +50,7 @@ class NewsListSerializer(serializers.ModelSerializer[News]):
         fields = [
             "id",
             "name",
+            "pin",
             "image_address",
             "text",
             "datetime_created",
@@ -58,7 +59,7 @@ class NewsListSerializer(serializers.ModelSerializer[News]):
             "files",
             "is_user_liked",
         ]
-
+        read_only_fields = ["pin"]
 
 
 class NewsFeedListSerializer(serializers.ModelSerializer):
@@ -123,8 +124,6 @@ class NewsFeedListSerializer(serializers.ModelSerializer):
         read_only_fields = ["views_count", "likes_count", "type_model"]
 
 
-
-
 class NewsDetailSerializer(serializers.ModelSerializer):
     views_count = serializers.SerializerMethodField()
     likes_count = serializers.SerializerMethodField()
@@ -155,6 +154,7 @@ class NewsDetailSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "name",
+            "pin",
             "image_address",
             "text",
             "datetime_created",
@@ -164,3 +164,4 @@ class NewsDetailSerializer(serializers.ModelSerializer):
             "is_user_liked",
             "files",
         ]
+        read_only_fields = ["pin"]

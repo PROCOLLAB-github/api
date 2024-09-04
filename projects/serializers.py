@@ -64,6 +64,7 @@ class ProjectCollaboratorSerializer(serializers.ModelSerializer):
 
 
 class ProjectDetailSerializer(serializers.ModelSerializer):
+
     achievements = AchievementListSerializer(many=True, read_only=True)
     cover = UserFileSerializer(required=False)
     collaborators = CollaboratorSerializer(
@@ -121,6 +122,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "collaborators",
             "leader",
             "draft",
+            "is_company",
             "vacancies",
             "datetime_created",
             "datetime_updated",
@@ -133,6 +135,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "views_count",
             "datetime_created",
             "datetime_updated",
+            "is_company",
         ]
 
 
@@ -158,9 +161,10 @@ class ProjectListSerializer(serializers.ModelSerializer):
             "image_address",
             "industry",
             "views_count",
+            "is_company",
         ]
 
-        read_only_fields = ["leader", "views_count"]
+        read_only_fields = ["leader", "views_count", "is_company"]
 
     def is_valid(self, *, raise_exception=False):
         return super().is_valid(raise_exception=raise_exception)
