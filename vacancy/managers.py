@@ -5,7 +5,7 @@ from django.db.models import Manager
 
 class VacancyManager(Manager):
     def get_vacancy_for_list_view(self):
-        expiration_check = datetime.datetime.now() - datetime.timedelta(days=30)
+        expiration_check = datetime.datetime.now() - datetime.timedelta(days=90)
         return (
             self.get_queryset()
             .select_related("project")
