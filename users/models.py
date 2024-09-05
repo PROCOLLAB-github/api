@@ -19,7 +19,11 @@ from users.managers import (
     UserAchievementManager,
     LikesOnProjectManager,
 )
-from users.validators import user_birthday_validator, user_name_validator
+from users.validators import (
+    user_birthday_validator,
+    user_name_validator,
+    user_entry_year_education_validator,
+)
 
 
 def get_default_user_type():
@@ -71,7 +75,6 @@ class CustomUser(AbstractUser):
         choices=VERBOSE_USER_TYPES,
         default=get_default_user_type,
     )
-
     ordering_score = models.PositiveIntegerField(
         default=0,
         editable=False,
@@ -79,14 +82,17 @@ class CustomUser(AbstractUser):
     patronymic = models.CharField(
         max_length=255, validators=[user_name_validator], null=True, blank=True
     )
+    # TODO need to be removed in future `key_skills` -> `skills`.
     key_skills = models.CharField(
-        max_length=512, null=True, blank=True
-    )  # to be deprecated in future
+        max_length=512,
+        null=True,
+        blank=True,
+        help_text="Устаревшее поле -> skills",
+    )
     skills = GenericRelation(
         "core.SkillToObject",
         related_query_name="users",
     )
-
     avatar = models.URLField(null=True, blank=True)
     birthday = models.DateField(
         validators=[user_birthday_validator],
@@ -95,14 +101,26 @@ class CustomUser(AbstractUser):
     status = models.CharField(max_length=255, null=True, blank=True)
     region = models.CharField(max_length=255, null=True, blank=True)
     city = models.CharField(max_length=255, null=True, blank=True)
-    organization = models.CharField(max_length=255, null=True, blank=True)
+    # TODO need to be removed in future `organization` -> `education`.
+    organization = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text="Устаревшее поле -> UserEducation",
+    )
     v2_speciality = models.ForeignKey(
         on_delete=models.SET_NULL,
         null=True,
         related_name="users",
         to="core.Specialization",
     )
-    speciality = models.CharField(max_length=255, null=True, blank=True)  # to be deprecated in future
+    # TODO need to be removed in future `speciality` -> `v2_speciality`.
+    speciality = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text="Устаревшее поле -> v2_speciality",
+    )
     onboarding_stage = models.PositiveSmallIntegerField(
         null=True,
         blank=True,
@@ -119,7 +137,8 @@ class CustomUser(AbstractUser):
     )
     datetime_updated = models.DateTimeField(auto_now=True)
     datetime_created = models.DateTimeField(auto_now_add=True)
-    dataset_migration_applied = models.BooleanField(  # To be deprecated in future.
+    # TODO need to be removed in future.
+    dataset_migration_applied = models.BooleanField(
         null=True,
         blank=True,
         default=False,
@@ -157,7 +176,8 @@ class CustomUser(AbstractUser):
             score += 4
         if self.city:
             score += 4
-        if self.organization:
+        # TODO need to be removed in future.
+        if self.organization or self.education.all().exists():
             score += 6
         if self.speciality:
             score += 7
@@ -411,3 +431,47 @@ class UserLink(models.Model):
         verbose_name = "Ссылка пользователя"
         verbose_name_plural = "Ссылки пользователей"
         unique_together = ("user", "link")
+
+
+class UserEducation(models.Model):
+    """
+    User education model
+
+    User education information.
+
+    Attributes:
+            user: FK CustomUser.
+            organization_name: CharField Name of the organization.
+            description: CharField Organization Description.
+            entry_year: PositiveSmallIntegerField Year of admission.
+    """
+    user = models.ForeignKey(
+        to=CustomUser,
+        on_delete=models.CASCADE,
+        related_name="education",
+        verbose_name="Пользователь",
+    )
+    organization_name = models.CharField(
+        max_length=255,
+        verbose_name="Наименование организации",
+    )
+    description = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        verbose_name="Краткое описание",
+    )
+    entry_year = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[user_entry_year_education_validator],
+        verbose_name="Год поступления",
+    )
+
+    class Meta:
+        verbose_name = "Образование"
+        verbose_name_plural = "Образование"
+
+    def __str__(self) -> str:
+        return (f"{self.user.first_name}: {self.organization_name} - "
+                f"{self.entry_year} (id {self.id})")

@@ -18,11 +18,19 @@ from .models import (
     Expert,
     Investor,
     UserLink,
+    UserEducation,
 )
 
 from core.admin import SkillToObjectInline
 
 admin.site.register(Permission)
+
+
+class UserEducationInline(admin.TabularInline):
+    model = UserEducation
+    extra = 1
+    verbose_name = "Образование"
+    verbose_name_plural = "Образования"
 
 
 @admin.register(CustomUser)
@@ -68,7 +76,7 @@ class CustomUserAdmin(admin.ModelAdmin):
                     "status",
                     "city",
                     "region",
-                    "organization",
+                    "organization",  # TODO need to be removed in future.
                     "speciality",
                     "v2_speciality",
                     "key_skills",
@@ -124,6 +132,7 @@ class CustomUserAdmin(admin.ModelAdmin):
 
     inlines = [
         SkillToObjectInline,
+        UserEducationInline,
     ]
 
     readonly_fields = ("ordering_score",)
@@ -315,3 +324,10 @@ class UserLinkAdmin(admin.ModelAdmin):
 @admin.register(Expert)
 class ExpertAdmin(admin.ModelAdmin):
     list_display = ("id", "user")
+
+
+@admin.register(UserEducation)
+class UserEducationAdmin(admin.ModelAdmin):
+    list_display = ("id", "user", "organization_name", "entry_year")
+    list_display_links = ("id", "organization_name")
+    search_fields = ("user__first_name", "user__email")
