@@ -205,7 +205,7 @@ class UserProgramsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PartnerProgram
-        fields = ["tag", "name", "year"]
+        fields = ["id", "tag", "name", "year"]
 
     def get_year(self, program: PartnerProgram) -> int | None:
         user_program_profile = PartnerProgramUserProfile.objects.filter(
