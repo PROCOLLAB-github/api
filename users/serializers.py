@@ -8,6 +8,7 @@ from core.serializers import SkillToObjectSerializer
 from core.models import SpecializationCategory, Specialization, Skill, SkillToObject
 from core.services import get_views_count
 from core.utils import get_user_online_cache_key
+from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 from projects.models import Project, Collaborator
 from projects.validators import validate_project
 from .models import CustomUser, Expert, Investor, Member, Mentor, UserAchievement, UserEducation
@@ -199,6 +200,22 @@ class UserEducationSerializer(serializers.ModelSerializer):
         fields = ["organization_name", "description", "entry_year"]
 
 
+class UserProgramsSerializer(serializers.ModelSerializer):
+    year = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PartnerProgram
+        fields = ["id", "tag", "name", "year"]
+
+    def get_year(self, program: PartnerProgram) -> int | None:
+        user_program_profile = PartnerProgramUserProfile.objects.filter(
+            user=self.context.get("user"),
+            partner_program=program,
+        ).first()
+        if user_program_profile:
+            return user_program_profile.datetime_created.year
+
+
 class UserDetailSerializer(
     serializers.ModelSerializer[CustomUser], SkillsWriteSerializerMixin
 ):
@@ -211,6 +228,7 @@ class UserDetailSerializer(
     links = serializers.SerializerMethodField()
     is_online = serializers.SerializerMethodField()
     projects = serializers.SerializerMethodField()
+    programs = serializers.SerializerMethodField()
     v2_speciality = SpecializationSerializer(read_only=True)
     v2_speciality_id = serializers.IntegerField(
         write_only=True, validators=[specialization_exists_validator]
@@ -223,6 +241,18 @@ class UserDetailSerializer(
                 collab.project
                 for collab in user.collaborations.filter(project__draft=False)
             ],
+            context={"request": self.context.get("request"), "user": user},
+            many=True,
+        ).data
+
+    def get_programs(self, user: CustomUser):
+        user_program_profiles = (
+            user.partner_program_profiles
+            .select_related('partner_program')
+            .filter(partner_program__draft=False)
+        )
+        return UserProgramsSerializer(
+            [profile.partner_program for profile in user_program_profiles],
             context={"request": self.context.get("request"), "user": user},
             many=True,
         ).data
@@ -269,6 +299,7 @@ class UserDetailSerializer(
             "verification_date",
             "onboarding_stage",
             "projects",
+            "programs",
             "dataset_migration_applied",
         ]
 
