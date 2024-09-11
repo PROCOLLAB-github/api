@@ -86,3 +86,9 @@ class SpecializationCategoryAdmin(admin.ModelAdmin):
         "id",
         "name",
     )
+
+
+@admin.register(SkillToObject)
+class SkillToObjectAdmin(admin.ModelAdmin):
+    list_display = ("id", "__str__")
+    search_fields = ("skill__name",)
