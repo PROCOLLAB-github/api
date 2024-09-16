@@ -11,8 +11,17 @@ from core.utils import get_user_online_cache_key
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 from projects.models import Project, Collaborator
 from projects.validators import validate_project
-from .models import CustomUser, Expert, Investor, Member, Mentor, UserAchievement, UserEducation
-from .validators import specialization_exists_validator
+from users.validators import specialization_exists_validator
+from users.models import (
+    CustomUser,
+    Expert,
+    Investor,
+    Member,
+    Mentor,
+    UserAchievement,
+    UserEducation,
+    UserSkillConfirmation,
+)
 
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
@@ -88,6 +97,87 @@ class SpecializationSerializer(serializers.ModelSerializer[Specialization]):
         ]
 
 
+class UserDataConfirmationSerializer(serializers.ModelSerializer):
+    """Information about the User to add to the skill confirmation information."""
+    v2_speciality = SpecializationSerializer()
+
+    class Meta:
+        model = CustomUser
+        fields = [
+            "id",
+            "first_name",
+            "last_name",
+            "speciality",
+            "v2_speciality",
+            "avatar",
+        ]
+
+
+class UserSkillConfirmationSerializer(serializers.ModelSerializer):
+    """Represents a work that requires approval of the user's skills."""
+
+    class Meta:
+        model = UserSkillConfirmation
+        fields = [
+            "skill_to_object",
+            "confirmed_by",
+        ]
+        extra_kwargs = {
+            "skill_to_object": {"write_only": True},
+        }
+
+    def validate(self, attrs):
+        """User cant approve own skills."""
+        skill_to_object = attrs.get("skill_to_object")
+        confirmed_by = self.context["request"].user
+
+        if skill_to_object.content_object == confirmed_by:
+            raise serializers.ValidationError("User cant approve own skills.")
+
+        return attrs
+
+    def to_representation(self, instance):
+        """Returns correct data about user in `confirmed_by`."""
+        data = super().to_representation(instance)
+        data.pop("skill_to_object", None)
+        data["confirmed_by"] = UserDataConfirmationSerializer(instance.confirmed_by).data
+        return data
+
+
+class UserApproveSkillResponse(serializers.Serializer):
+    """For swagger response presentation."""
+    confirmed_by = UserDataConfirmationSerializer(read_only=True)
+
+
+class UserSkillsWithApprovesSerializer(SkillToObjectSerializer):
+    """Added field `approves` to response about User skills."""
+
+    approves = serializers.SerializerMethodField(allow_null=True, read_only=True)
+
+    class Meta:
+        model = SkillToObject
+        fields = [
+            "id",
+            "name",
+            "category",
+            "approves",
+        ]
+
+    def get_approves(self, obj):
+        """Adds information about confirm to the skill."""
+        confirmations = (
+            UserSkillConfirmation.objects
+            .filter(skill_to_object=obj)
+            .select_related('confirmed_by')
+        )
+        return [
+            {
+                "confirmed_by": UserDataConfirmationSerializer(confirmation.confirmed_by).data,
+            }
+            for confirmation in confirmations
+        ]
+
+
 class SpecializationsSerializer(serializers.ModelSerializer[SpecializationCategory]):
     specializations = SpecializationSerializer(many=True)
 
@@ -97,7 +187,7 @@ class SpecializationsSerializer(serializers.ModelSerializer[SpecializationCatego
 
 
 class SkillsSerializerMixin(serializers.Serializer):
-    skills = SkillToObjectSerializer(many=True, read_only=True)
+    skills = UserSkillsWithApprovesSerializer(many=True, read_only=True)
 
 
 class SkillsWriteSerializerMixin(SkillsSerializerMixin):

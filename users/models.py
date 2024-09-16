@@ -1,6 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.db.models import QuerySet
+from django.core.exceptions import ValidationError
 from django_stubs_ext.db.models import TypedModelMeta
 from django.contrib.contenttypes.fields import GenericRelation
 
@@ -475,3 +476,48 @@ class UserEducation(models.Model):
     def __str__(self) -> str:
         return (f"{self.user.first_name}: {self.organization_name} - "
                 f"{self.entry_year} (id {self.id})")
+
+
+class UserSkillConfirmation(models.Model):
+    """
+    Store confirmations for skills.
+
+    Attributes:
+            skill_to_object: FK SkillToObject.
+            confirmed_by: FK CustomUser.
+            confirmed_at: DateTimeField.
+    """
+    skill_to_object = models.ForeignKey(
+        "core.SkillToObject",
+        on_delete=models.CASCADE,
+        related_name="confirmations"
+    )
+    confirmed_by = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name="skill_confirmations"
+    )
+    confirmed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["skill_to_object", "confirmed_by"],
+                name="unique_skill_confirmed_by"
+            )
+        ]
+        verbose_name = "Подтверждение навыка"
+        verbose_name_plural = "Подтверждения навыков"
+
+    def clean(self) -> None:
+        # Check if the `skill_to_object` is related to a CustomUser.
+        if not isinstance(self.skill_to_object.content_object, CustomUser):
+            raise ValidationError("Skills can only be confirmed for users.")
+        # Check that the user does not confirm their own skill.
+        if self.confirmed_by == self.skill_to_object.content_object:
+            raise ValidationError("User cant approve own skills.")
+        return super().clean()
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
