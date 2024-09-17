@@ -1,6 +1,6 @@
-import pandas as pd
 import tablib
 import re
+import urllib.parse
 from django.contrib import admin
 from django.db.models import QuerySet
 from django.http import HttpResponse, HttpRequest
@@ -11,7 +11,7 @@ from mailing.views import MailingTemplateRender
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 from project_rates.models import Criteria, ProjectScore
 from projects.models import Project
-from users.models import Expert
+from partner_programs.services import XlsxFileToExport, ProjectScoreDataPreparer
 
 
 @admin.register(PartnerProgram)
@@ -154,85 +154,63 @@ class PartnerProgramAdmin(admin.ModelAdmin):
         return response
 
     def get_export_rates_view(self, request, object_id):
-        criterias = Criteria.objects.filter(partner_program__id=object_id).select_related(
-            "partner_program"
-        )
-        experts = Expert.objects.filter(programs=object_id).select_related("user")
-        scores = ProjectScore.objects.filter(criteria__in=criterias)
-        projects = Project.objects.filter(scores__in=scores)
-        return self.get_export_rates(criterias, experts, scores, projects)
+        rates_data_to_write: list[dict] = self._get_prepared_rates_data_for_export(object_id)
 
-    def get_export_rates(self, criterias, experts, scores, projects):
-        col_names = list(
-            criterias.exclude(name="Комментарий").values_list("name", flat=True)
-        )
+        xlsx_file_writer = XlsxFileToExport()
+        xlsx_file_writer.write_data_to_xlsx(rates_data_to_write)
+        binary_data_to_export: bytes = xlsx_file_writer.get_binary_data_from_self_file()
+        xlsx_file_writer.delete_self_xlsx_file_from_local_machine()
 
-        expert_names = [
-            expert.user.first_name + " " + expert.user.last_name for expert in experts
-        ]
-
-        all_projects_data = []
-        for project in projects:
-            project_data = [[project.name, *col_names, "Комментарий"]]
-
-            for expert, expert_name in zip(experts, expert_names):
-                single_rate_data = [expert_name]
-
-                scores_of_expert = []
-                criterias_to_check = criterias.exclude(name="Комментарий")
-                for criteria in criterias_to_check:
-                    checking_score = (
-                        scores.filter(
-                            criteria=criteria,
-                            user__first_name=expert.user.first_name,
-                            user__last_name=expert.user.last_name,
-                            project__name=project.name,
-                        )
-                        .exclude(criteria__name="Комментарий")
-                        .first()
-                    )
-                    if not checking_score:
-                        scores_of_expert.append("")
-                    else:
-                        scores_of_expert.append(checking_score.value)
-
-                commentary = scores.filter(
-                    user__first_name=expert.user.first_name,
-                    user__last_name=expert.user.last_name,
-                    criteria__name="Комментарий",
-                    project__name=project.name,
-                ).first()
-                commentary = [commentary.value] if commentary else [""]
-
-                scores_of_expert += commentary
-
-                single_rate_data += scores_of_expert
-
-                project_data.append(single_rate_data)
-            all_projects_data.append(project_data)
-
-        dataframed_projects_data = [
-            pd.DataFrame(project_data) for project_data in all_projects_data
-        ]
-        with pd.ExcelWriter("output.xlsx") as writer:
-            for df, pr_data in zip(dataframed_projects_data, all_projects_data):
-                df.to_excel(writer, sheet_name=pr_data[0][0], index=False)
-
-        with open("output.xlsx", "rb") as f:
-            binary_data = f.read()
-
-        # Формирование HTTP-ответа
-        file_name = (
-            f'{criterias.first().partner_program.name}_оценки {timezone.now().strftime("%d-%m-%Y %H:%M:%S")}'
+        encoded_file_name: str = urllib.parse.quote(
+            f'{PartnerProgram.objects.get(pk=object_id).name}_оценки {timezone.now().strftime("%d-%m-%Y %H:%M:%S")}'
             f".xlsx"
         )
         response = HttpResponse(
-            binary_data,
+            binary_data_to_export,
             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
-        response["Content-Disposition"] = f'attachment; filename="{file_name}"'
-
+        response["Content-Disposition"] = f'attachment; filename*=UTF-8\'\'{encoded_file_name}'
         return response
+
+    def _get_prepared_rates_data_for_export(self, program_id: int) -> list[dict]:
+        """
+        Prepares info (list if dicts) for export about prjects_rates by experts.
+        Columns example:
+            ФИО|Email|Регион_РФ|Учебное_заведение|Название_учебного_заведения|Класс_курс|Фамилия эксперта|**criteria
+        """
+        criterias = Criteria.objects.filter(partner_program__id=program_id).select_related("partner_program")
+        scores = (
+            ProjectScore.objects
+            .filter(criteria__in=criterias)
+            .select_related("user", "criteria", "project")
+            .order_by("project", "criteria")
+        )
+        user_programm_profiles = (
+            PartnerProgramUserProfile.objects
+            .filter(partner_program__id=program_id)
+            .select_related("user")
+        )
+        projects = Project.objects.filter(scores__in=scores).select_related("leader").distinct()
+
+        # To reduce the number of DB requests.
+        user_profiles_dict: dict[int, PartnerProgramUserProfile] = {
+            profile.project_id: profile for profile in user_programm_profiles
+        }
+        scores_dict: dict[int, list[ProjectScore]] = {}
+        for score in scores:
+            scores_dict.setdefault(score.project_id, []).append(score)
+
+        prepared_projects_rates_data: list[dict] = []
+        for project in projects:
+            project_data_preparer = ProjectScoreDataPreparer(user_profiles_dict, scores_dict, project.id, program_id)
+            full_project_rates_data: dict = {
+                **project_data_preparer.get_project_user_info(),
+                **project_data_preparer.get_project_expert_info(),
+                **project_data_preparer.get_project_scores_info(),
+            }
+            prepared_projects_rates_data.append(full_project_rates_data)
+
+        return prepared_projects_rates_data
 
 
 @admin.register(PartnerProgramUserProfile)
