@@ -4,6 +4,7 @@ from django_filters import rest_framework as filters
 from users.models import Expert
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 from projects.models import Project
+from project_rates.models import ProjectScore
 
 
 class ProjectFilter(filters.FilterSet):
@@ -76,6 +77,12 @@ class ProjectFilter(filters.FilterSet):
         except PartnerProgram.DoesNotExist:
             return Project.objects.none()
 
+    def filter_by_have_expert_rates(self, queryset, name, value):
+        rated_projects_ids = ProjectScore.objects.values_list("project_id", flat=True).distinct()
+        if value:
+            return queryset.filter(id__in=rated_projects_ids)
+        return queryset.exclude(id__in=rated_projects_ids)
+
     name__contains = filters.Filter(field_name="name", lookup_expr="contains")
     description__contains = filters.Filter(
         field_name="description", lookup_expr="contains"
@@ -102,6 +109,10 @@ class ProjectFilter(filters.FilterSet):
     step = filters.NumberFilter(field_name="step")
     partner_program = filters.NumberFilter(
         field_name="partner_program", method="filter_by_partner_program"
+    )
+    is_rated_by_expert = filters.BooleanFilter(
+        method="filter_by_have_expert_rates",
+        label=("is_rated_by_expert\n`1`/`true` rated projects\n`0`/`false` dosn't rated")
     )
 
     class Meta:

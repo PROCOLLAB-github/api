@@ -1,15 +1,14 @@
 import jwt
 import requests
+
 from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import get_user_model
-
+from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import redirect, get_object_or_404
-from django_filters import rest_framework as filters
-from rest_framework import status, permissions
-from rest_framework import exceptions
+from rest_framework import status, permissions, exceptions
 from rest_framework.generics import (
     GenericAPIView,
     ListAPIView,
@@ -23,7 +22,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
-from core.models import SpecializationCategory, Specialization
+from django_filters import rest_framework as filters
+from drf_yasg.utils import swagger_auto_schema
+
+from core.models import SpecializationCategory, Specialization, SkillToObject
 from core.pagination import Pagination
 from core.permissions import IsOwnerOrReadOnly
 from events.models import Event
@@ -46,7 +48,7 @@ from users.constants import (
     VERIFY_EMAIL_REDIRECT_URL,
     OnboardingStage,
 )
-from users.models import UserAchievement, LikesOnProject
+from users.models import UserAchievement, LikesOnProject, UserSkillConfirmation
 from users.permissions import IsAchievementOwnerOrReadOnly
 from users.serializers import (
     AchievementDetailSerializer,
@@ -57,6 +59,8 @@ from users.serializers import (
     ResendVerifyEmailSerializer,
     UserProjectListSerializer,
     UserSubscribedProjectsSerializer,
+    UserSkillConfirmationSerializer,
+    UserApproveSkillResponse,
     SpecializationsSerializer,
     SpecializationSerializer,
     UserCloneDataSerializer,
@@ -66,6 +70,7 @@ from users.serializers import (
 from .filters import UserFilter, SpecializationFilter
 from .pagination import UsersPagination
 from .services.verification import VerificationTasks
+from .schema import USER_PK_PARAM, SKILL_PK_PARAM
 
 User = get_user_model()
 Project = apps.get_model("projects", "Project")
@@ -170,6 +175,71 @@ class CurrentUserPrograms(RetrieveAPIView):
         ]
         serializer = self.get_serializer(programs, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class UserSkillsApproveDeclineView(APIView):
+    queryset = UserSkillConfirmation.objects.all()
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserSkillConfirmationSerializer
+
+    @swagger_auto_schema(
+        request_body=None,
+        operation_description=(
+            "Create skill confirmation.\nData in the body not required, "
+            "it is enough to pass the parameters `user_pk` == `user.id` "
+            "and `skill_pk` == `skill.id` in the query string."
+        ),
+        manual_parameters=[USER_PK_PARAM, SKILL_PK_PARAM],
+        responses={201: UserApproveSkillResponse}
+    )
+    def post(self, request, *args, **kwargs) -> Response:
+        """Create confirmation of user skill by current user."""
+        skill_to_object: SkillToObject = self._get_skill_to_object()
+        data: dict[str, int] = {
+            "skill_to_object": skill_to_object.id,
+            "confirmed_by": request.user.id
+        }
+        serializer = self.serializer_class(data=data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @swagger_auto_schema(
+        operation_description=(
+            "Delete skill confirmation. `user_pk` == `user.id` "
+            "`skill_pk` == `skill.id` in the query string."
+        ),
+        manual_parameters=[USER_PK_PARAM, SKILL_PK_PARAM],
+    )
+    def delete(self, request, *args, **kwargs) -> Response:
+        """Delete confirmation of user skill by current user."""
+        instance: UserSkillConfirmation = self.get_object()
+        if instance.confirmed_by != request.user:
+            return Response(
+                {"error": "You can only delete your own confirmations."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def get_object(self) -> UserSkillConfirmation:
+        skill_confirmation_object = get_object_or_404(
+            self.queryset,
+            skill_to_object=self._get_skill_to_object(),
+            confirmed_by=self.request.user.pk,
+        )
+        return skill_confirmation_object
+
+    def _get_skill_to_object(self) -> SkillToObject:
+        """Returns the `SkillToObject` instance of the user whose skill needs to be confirmed."""
+        content_type = ContentType.objects.get_for_model(User)
+        skill_to_object = get_object_or_404(
+            SkillToObject,
+            object_id=self.kwargs["user_pk"],
+            content_type=content_type,
+            skill_id=self.kwargs["skill_pk"],
+        )
+        return skill_to_object
 
 
 class CurrentUser(GenericAPIView):

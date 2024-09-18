@@ -18,11 +18,20 @@ from .models import (
     Expert,
     Investor,
     UserLink,
+    UserEducation,
+    UserSkillConfirmation,
 )
 
 from core.admin import SkillToObjectInline
 
 admin.site.register(Permission)
+
+
+class UserEducationInline(admin.TabularInline):
+    model = UserEducation
+    extra = 1
+    verbose_name = "Образование"
+    verbose_name_plural = "Образования"
 
 
 @admin.register(CustomUser)
@@ -68,7 +77,7 @@ class CustomUserAdmin(admin.ModelAdmin):
                     "status",
                     "city",
                     "region",
-                    "organization",
+                    "organization",  # TODO need to be removed in future.
                     "speciality",
                     "v2_speciality",
                     "key_skills",
@@ -124,6 +133,7 @@ class CustomUserAdmin(admin.ModelAdmin):
 
     inlines = [
         SkillToObjectInline,
+        UserEducationInline,
     ]
 
     readonly_fields = ("ordering_score",)
@@ -315,3 +325,28 @@ class UserLinkAdmin(admin.ModelAdmin):
 @admin.register(Expert)
 class ExpertAdmin(admin.ModelAdmin):
     list_display = ("id", "user")
+
+
+@admin.register(UserEducation)
+class UserEducationAdmin(admin.ModelAdmin):
+    list_display = ("id", "user", "organization_name", "entry_year")
+    list_display_links = ("id", "organization_name")
+    search_fields = ("user__first_name", "user__email")
+
+
+@admin.register(UserSkillConfirmation)
+class UserSkillConfirmationAdmin(admin.ModelAdmin):
+    list_display = ("id", "get_user_and_skill", "confirmed_by", "confirmed_at")
+    search_fields = ("skill_to_object__skill__name", "confirmed_by__first_name", "confirmed_by__last_name")
+    raw_id_fields = ("skill_to_object", "confirmed_by")
+    readonly_fields = ("confirmed_at",)
+
+    def get_user_and_skill(self, obj):
+        try:
+            user = obj.skill_to_object.content_object
+            skill = obj.skill_to_object.skill
+            return f"{user} - {skill}"
+        # Possible contingencies with attributes.
+        except Exception:
+            return ""
+    get_user_and_skill.short_description = 'User and Skill'
