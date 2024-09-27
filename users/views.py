@@ -1,5 +1,6 @@
 import jwt
 import requests
+import urllib.parse
 
 from django.apps import apps
 from django.conf import settings
@@ -7,7 +8,9 @@ from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.db.models import Q
+from django.http import HttpResponse
 from django.shortcuts import redirect, get_object_or_404
+from django.template.loader import render_to_string
 from rest_framework import status, permissions, exceptions
 from rest_framework.generics import (
     GenericAPIView,
@@ -24,6 +27,7 @@ from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
 from django_filters import rest_framework as filters
 from drf_yasg.utils import swagger_auto_schema
+from weasyprint import HTML
 
 from core.models import SpecializationCategory, Specialization, SkillToObject
 from core.pagination import Pagination
@@ -67,9 +71,11 @@ from users.serializers import (
     UserSubscriptionDataSerializer,
     RemoteBuySubSerializer,
 )
+from users.typing import UserCVData
 from .filters import UserFilter, SpecializationFilter
 from .pagination import UsersPagination
 from .services.verification import VerificationTasks
+from .services.cv_data_prepare import UserCVDataPreparer
 from .schema import USER_PK_PARAM, SKILL_PK_PARAM
 
 User = get_user_model()
@@ -582,3 +588,19 @@ class RemoteCreatePayment(GenericAPIView):
             return data, headers
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UserCVDownload(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs) -> HttpResponse:
+        data_preparer = UserCVDataPreparer(request.user.pk)
+        user_cv_data: UserCVData = data_preparer.get_prepared_data()
+
+        html_string: str = render_to_string('users/user_CV/user_CV_template.html', user_cv_data)
+        binary_pdf_file: bytes | None = HTML(string=html_string).write_pdf()
+
+        encoded_filename: str = urllib.parse.quote(f"{request.user.first_name}_{request.user.last_name}.pdf")
+        response = HttpResponse(binary_pdf_file, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{encoded_filename}"'
+        return response
