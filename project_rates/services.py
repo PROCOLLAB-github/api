@@ -22,9 +22,9 @@ def get_querysets(RatesRequestData) -> dict[str, QuerySet]:
     )
 
     if project_id:
-        projects = [Project.objects.get(id=project_id)]
+        projects = [Project.objects.get_projects_for_list_view().get(id=project_id)]
     else:
-        projects = Project.objects.filter(
+        projects = Project.objects.get_projects_for_list_view().filter(
             partner_program_profiles__partner_program_id=program_id
         ).distinct()
 
