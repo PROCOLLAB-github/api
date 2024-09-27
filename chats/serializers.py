@@ -7,7 +7,7 @@ from chats.models import (
     ProjectChatMessage,
 )
 from files.serializers import UserFileSerializer
-from users.serializers import UserListSerializer, UserDetailSerializer
+from users.serializers import UserListSerializer, UserDetailSerializer, UserChatSerializer
 
 
 class DirectChatListSerializer(serializers.ModelSerializer):
@@ -128,7 +128,8 @@ class DirectChatMessageSerializer(serializers.ModelSerializer):
 
 
 class DirectChatMessageListSerializer(serializers.ModelSerializer):
-    author = UserDetailSerializer()
+    # author = UserDetailSerializer()
+    author = UserChatSerializer()
     reply_to = DirectChatMessageSerializer(allow_null=True)
     files = serializers.SerializerMethodField()
 
