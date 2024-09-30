@@ -1,8 +1,9 @@
 from rest_framework import serializers
 
 from core.services import get_views_count
-from .models import Criteria, ProjectScore
 from projects.models import Project
+from .models import Criteria, ProjectScore
+from .typing import CriteriasResponse, ProjectScoresResponse
 from .validators import ProjectScoreValidator
 
 
@@ -40,14 +41,26 @@ class CriteriaSerializer(serializers.ModelSerializer):
 
 
 class ProjectScoreSerializer(serializers.ModelSerializer):
+    criteria = CriteriaSerializer()
+
     class Meta:
         model = ProjectScore
-        fields = ["criteria_id", "project_id", "value"]
+        fields = [
+            "criteria",
+            "value",
+        ]
+
+    def to_representation(self, instance):
+        """For a 'flat' structure without nesting."""
+        representation = super().to_representation(instance)
+        criteria_data = representation.pop("criteria")
+        return {**criteria_data, **representation}
 
 
-class ProjectScoreGetSerializer(serializers.ModelSerializer):
-    views_count = serializers.SerializerMethodField(method_name="count_views")
+class ProjectListForRateSerializer(serializers.ModelSerializer):
+    views_count = serializers.SerializerMethodField()
     criterias = serializers.SerializerMethodField()
+    scored = serializers.SerializerMethodField()
 
     class Meta:
         model = Project
@@ -61,45 +74,22 @@ class ProjectScoreGetSerializer(serializers.ModelSerializer):
             "industry",
             "region",
             "views_count",
+            "scored",
             "criterias",
         ]
 
-    def get_criterias(self, obj):
-        criterias = []
-        for criteria in self.context["data_criterias"]:
-            copied_criteria = criteria.copy()
-            for score in self.context["data_scores"]:
-                if (
-                    criteria["id"] == score["criteria_id"]
-                    and obj.id == score["project_id"]
-                ):
-                    copied_criteria["value"] = score["value"]
+    def get_views_count(self, obj) -> int:
+        return get_views_count(obj)
 
-            criterias.append(copied_criteria)
-        return criterias
+    def get_criterias(self, obj) -> CriteriasResponse | ProjectScoresResponse:
+        program_id = self.context["view"].kwargs.get("program_id")
+        if obj.scored:
+            scores = ProjectScore.objects.filter(project=obj).select_related("criteria")
+            serializer = ProjectScoreSerializer(scores, many=True)
+        else:
+            cirterias = Criteria.objects.filter(partner_program__id=program_id)
+            serializer = CriteriaSerializer(cirterias, many=True)
+        return serializer.data
 
-    @classmethod
-    def count_views(cls, project):
-        return get_views_count(project)
-
-
-class ScoredProjectsSerializer(ProjectScoreGetSerializer):
-    scores_count = serializers.IntegerField()
-
-    class Meta(ProjectScoreGetSerializer.Meta):
-        fields = ProjectScoreGetSerializer.Meta.fields + ["scores_count"]
-
-
-def serialize_data_func(criteria_to_get: list, data: dict):
-    criteria = Criteria.objects.in_bulk(criteria_to_get)
-
-    for criterion in data:
-        needed_criteria = criteria.get(int(criterion["criterion_id"]))
-
-        ProjectScoreValidator(
-            criteria_type=needed_criteria.type,
-            value=criterion["value"],
-            criteria_min_value=needed_criteria.min_value,
-            criteria_max_value=needed_criteria.max_value,
-        )
-        criterion["criteria_id"] = criterion.pop("criterion_id")
+    def get_scored(self, obj) -> bool:
+        return bool(obj.scored)

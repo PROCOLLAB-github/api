@@ -502,6 +502,29 @@ class UserDetailSerializer(
         ])
 
 
+class UserChatSerializer(serializers.ModelSerializer[CustomUser]):
+    is_online = serializers.SerializerMethodField()
+
+    def get_is_online(self, user: CustomUser):
+        request = self.context.get("request")
+        if request and request.user.is_authenticated and request.user.id == user.id:
+            return True
+        cache_key = get_user_online_cache_key(user)
+        return cache.get(cache_key, False)
+
+    class Meta:
+        model = CustomUser
+        fields = [
+            "id",
+            "first_name",
+            "last_name",
+            "patronymic",
+            "avatar",
+            "is_active",
+            "is_online",
+        ]
+
+
 class UserListSerializer(
     serializers.ModelSerializer[CustomUser], SkillsWriteSerializerMixin
 ):
