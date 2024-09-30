@@ -1,3 +1,4 @@
+import os
 import mimetypes
 from datetime import timedelta
 from pathlib import Path
@@ -275,6 +276,9 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "static"
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, "assets"),
+]
 
 STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
 
