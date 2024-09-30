@@ -1,20 +1,19 @@
 from django.contrib.auth import get_user_model
-from django.db.models import QuerySet
+from django.db.models import QuerySet, Count
 
 from rest_framework import generics, status
 from rest_framework.response import Response
 
-from project_rates.constants import RatesRequestData
-from project_rates.services import (
-    get_querysets,
-    serialize_project_criterias,
-    count_scored_criterias,
-)
+from django_filters import rest_framework as filters
+
+from partner_programs.models import PartnerProgramUserProfile
+from projects.models import Project
+from projects.filters import ProjectFilter
 from project_rates.models import ProjectScore
 from project_rates.pagination import RateProjectsPagination
 from project_rates.serializers import (
     ProjectScoreCreateSerializer,
-    ProjectScoreGetSerializer,
+    ProjectListForRateSerializer,
 )
 from users.models import Expert
 from users.permissions import IsExpert, IsExpertPost
@@ -70,57 +69,21 @@ class RateProject(generics.CreateAPIView):
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-class RateProjects(generics.ListAPIView):
-    serializer_class = ProjectScoreGetSerializer
+class ProjectListForRate(generics.ListAPIView):
     permission_classes = [IsExpert]
+    serializer_class = ProjectListForRateSerializer
+    filter_backends = [filters.DjangoFilterBackend]
+    filterset_class = ProjectFilter
     pagination_class = RateProjectsPagination
 
-    def get_request_data(self) -> RatesRequestData:
-        scored = True if self.request.query_params.get("scored") == "true" else False
-
-        return RatesRequestData(
-            program_id=self.kwargs.get("program_id"),
-            user=self.request.user,
-            view=self,
-            scored=scored,
+    def get_queryset(self) -> QuerySet[Project]:
+        projects_ids = PartnerProgramUserProfile.objects.filter(
+            project__isnull=False,
+            partner_program__id=self.kwargs.get("program_id")
+        ).values_list("project__id", flat=True)
+        # `Count` the easiest way to check for rate exist (0 -> does not exist).
+        return (
+            Project.objects
+            .filter(draft=False, id__in=projects_ids)
+            .annotate(scored=Count("scores"))
         )
-
-    def get_querysets_dict(self) -> dict[str, QuerySet]:
-        return get_querysets(self.get_request_data())
-
-    def serialize_querysets(self) -> list[dict]:
-        return serialize_project_criterias(self.get_querysets_dict())
-
-    def get(self, request, *args, **kwargs) -> Response:
-        serialized_data = self.serialize_querysets()
-
-        if self.request.query_params.get("scored") == "true":
-            [project.update({"is_scored": True}) for project in serialized_data]
-        else:
-            [count_scored_criterias(project) for project in serialized_data]
-
-        return self.get_paginated_response(serialized_data)
-
-
-class RateProjectsDetails(RateProjects):
-    permission_classes = [IsExpertPost]  # потом решить проблему с этим
-
-    def get_request_data(self) -> RatesRequestData:
-        request_data = super().get_request_data()
-
-        project_id = self.request.query_params.get("project_id")
-        program_id = self.request.query_params.get("program_id")
-
-        request_data.project_id = int(project_id) if project_id else None
-        request_data.program_id = int(program_id) if program_id else None
-        return request_data
-
-    def get(self, request, *args, **kwargs):
-        try:
-            serialized_data = self.serialize_querysets()[0]
-
-            count_scored_criterias(serialized_data)
-
-            return Response(serialized_data, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
