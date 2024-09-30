@@ -35,28 +35,20 @@ class DirectChatList(ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        user = self.request.user
-        return user.direct_chats.all()
+        return DirectChat.objects.prefetch_related("users").filter(
+            users=self.request.user
+        )
 
     def get(self, request, *args, **kwargs):
         chats = self.get_queryset()
         serialized_chats = []
         for chat in chats:
-            # fixme: move to function like get_user() and get_opponent()
-            chat_id = chat.id
-            user1_id, user2_id = map(int, chat_id.split("_"))
-
-            try:
-                user1 = User.objects.get(pk=user1_id)
-                user2 = User.objects.get(pk=user2_id)
-            except User.DoesNotExist:
-                # fixme: show deleted profile
-                continue
-
-            if user1 == request.user:
-                opponent = user2
-            else:  # fixme: if user1 == user2
-                opponent = user1
+            user1_id, _ = map(int, chat.id.split("_"))
+            # TODO сделать проверку на удаление профиля
+            if user1_id == request.user.id:
+                opponent = chat.users.all()[1]
+            else:
+                opponent = chat.users.first()
 
             context = {"opponent": opponent}
             serialized_chat = DirectChatListSerializer(chat, context=context).data
@@ -180,7 +172,6 @@ class DirectChatFileList(ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-
         messages = self.request.user.direct_chats.get(id=self.kwargs["id"]).messages.all()
 
         return get_all_files(messages)
