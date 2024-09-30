@@ -18,7 +18,7 @@ class DirectChatListSerializer(serializers.ModelSerializer):
 
     def get_opponent(self, chat: DirectChat):
         user = self.context.get("opponent")
-        return UserDetailSerializer(
+        return UserChatSerializer(
             user, context={"request": self.context.get("request")}
         ).data
 
