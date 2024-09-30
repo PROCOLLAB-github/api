@@ -43,16 +43,19 @@ class DirectChatList(ListAPIView):
         chats = self.get_queryset()
         serialized_chats = []
         for chat in chats:
-            user1_id, _ = map(int, chat.id.split("_"))
-            # TODO сделать проверку на удаление профиля
-            if user1_id == request.user.id:
-                opponent = chat.users.all()[1]
-            else:
-                opponent = chat.users.first()
+            try:
+                user1_id, _ = map(int, chat.id.split("_"))
+                # TODO сделать проверку на удаление профиля
+                if user1_id == request.user.id:
+                    opponent = chat.users.all()[1]
+                else:
+                    opponent = chat.users.first()
 
-            context = {"opponent": opponent}
-            serialized_chat = DirectChatListSerializer(chat, context=context).data
-            serialized_chats.append(serialized_chat)
+                context = {"opponent": opponent}
+                serialized_chat = DirectChatListSerializer(chat, context=context).data
+                serialized_chats.append(serialized_chat)
+            except IndexError:
+                pass
         return Response(serialized_chats, status=status.HTTP_200_OK)
 
 
