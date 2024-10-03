@@ -33,6 +33,7 @@ from projects.permissions import (
     HasInvolvementInProjectOrReadOnly,
     IsProjectLeader,
     IsNewsAuthorIsProjectLeaderOrReadOnly,
+    TimingAfterEndsProgramPermission,
 )
 from projects.serializers import (
     ProjectDetailSerializer,
@@ -129,7 +130,7 @@ class ProjectList(generics.ListCreateAPIView):
 
 class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Project.objects.get_projects_for_detail_view()
-    permission_classes = [HasInvolvementInProjectOrReadOnly]
+    permission_classes = [HasInvolvementInProjectOrReadOnly, TimingAfterEndsProgramPermission]
     serializer_class = ProjectDetailSerializer
 
     def retrieve(self, request, *args, **kwargs):

@@ -235,3 +235,9 @@ class PartnerProgramUserProfileAdmin(admin.ModelAdmin):
     )
     search_fields = ("user__first_name", "user__last_name", "partner_program_data")
     date_hierarchy = "datetime_created"
+
+    def get_form(self, request, obj=None, **kwargs):
+        """`partner_program` field is optional in admin panel (bc is nullable)."""
+        form = super().get_form(request, obj, **kwargs)
+        form.base_fields["project"].required = False
+        return form

@@ -1,10 +1,15 @@
 from random import sample
 
+from django.db import transaction
+from django.utils import timezone
 from django.contrib.auth import get_user_model
+
+from rest_framework.exceptions import ValidationError
 
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 from projects.constants import RECOMMENDATIONS_COUNT
 from projects.models import Project, ProjectLink, Achievement
+from users.models import CustomUser
 
 User = get_user_model()
 
@@ -87,14 +92,49 @@ def update_links(links, pk):
     )
 
 
+@transaction.atomic
 def update_partner_program(
-    partner_program_id: int, user: "User", instance: "Project"
+    program_id: int,
+    user: CustomUser,
+    instance: Project,
 ) -> None:
-    if partner_program_id:
-        partner_program = PartnerProgram.objects.get(pk=partner_program_id)
-        partner_program_profile = PartnerProgramUserProfile.objects.get(
-            user=user,
-            partner_program=partner_program,
-        )
-        partner_program_profile.project = instance
-        partner_program_profile.save()
+    """
+    According to the current logic, 1 user project can be linked to only 1 program.
+    The user cannot select a ready program, but can edit a project with a ready program
+    (if the time period allows access).
+    If he changes the program (completed), he will not be able to return it.
+    """
+    if program_id is not None:
+        # If the user removes the tag, frontend sends `int -> 0` (id == 0 cannot exist).
+        if program_id == 0:
+            clear_project_existing_from_profile(user, instance)
+        else:
+            partner_program = PartnerProgram.objects.get(pk=program_id)
+            existing_program_id: int | None = clear_project_existing_from_profile(user, instance)
+
+            if (
+                partner_program.datetime_finished < timezone.now()
+                and (existing_program_id != program_id)
+            ):
+                raise ValidationError({"error": "Cannot select a completed program."})
+
+            partner_program_profile = PartnerProgramUserProfile.objects.get(
+                user=user,
+                partner_program=partner_program,
+            )
+            partner_program_profile.project = instance
+            partner_program_profile.save()
+
+
+def clear_project_existing_from_profile(user, instance) -> None | int:
+    """Remove project from `PartnerProgramUserProfile` instance."""
+    existing_program_profile = (
+        PartnerProgramUserProfile.objects
+        .select_related("partner_program")
+        .filter(user=user, project=instance)
+        .first()
+    )
+    if existing_program_profile:
+        existing_program_profile.project = None
+        existing_program_profile.save()
+        return existing_program_profile.partner_program.id
