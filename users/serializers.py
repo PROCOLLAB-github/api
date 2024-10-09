@@ -603,7 +603,7 @@ class UserDetailSerializer(
         is available only to the profile owner (used for CV).
         """
         representation = super().to_representation(instance)
-        request = self.context["request"]
+        request = self.context.get("request")
         if request and request.user != instance:
             representation.pop("phone_number", None)
         return representation
