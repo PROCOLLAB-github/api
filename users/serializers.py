@@ -1,8 +1,12 @@
+from typing import Any
+
 from django.db import transaction
 from django.contrib.contenttypes.models import ContentType
 from django.forms.models import model_to_dict
-from rest_framework import serializers
 from django.core.cache import cache
+from django.core.exceptions import ValidationError as DjangoValidationError
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 from core.serializers import SkillToObjectSerializer
 from core.models import SpecializationCategory, Specialization, Skill, SkillToObject
@@ -11,6 +15,14 @@ from core.utils import get_user_online_cache_key
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 from projects.models import Project, Collaborator
 from projects.validators import validate_project
+from users.constants import (
+    NOT_VALID_NUMBER_MESSAGE,
+    COUNT_LANGUAGES_VALIDATION_MESSAGE,
+    UNIQUE_LANGUAGES_VALIDATION_MESSAGE,
+    USER_MAX_LANGUAGES_COUNT,
+    USER_EXPERIENCE_YEAR_VALIDATION_MESSAGE,
+)
+from users.utils import normalize_user_phone
 from users.validators import specialization_exists_validator
 from users.models import (
     CustomUser,
@@ -20,7 +32,9 @@ from users.models import (
     Mentor,
     UserAchievement,
     UserEducation,
+    UserWorkExperience,
     UserSkillConfirmation,
+    UserLanguages,
 )
 
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
@@ -283,11 +297,56 @@ class UserSubscriptionDataSerializer(serializers.Serializer):
     is_autopay_allowed = serializers.BooleanField()
 
 
-class UserEducationSerializer(serializers.ModelSerializer):
+class UserExperienceMixin:
+    """Mixin for Education and WorkExperience with same logic."""
+
+    def validate(self, attrs):
+        """Validate both years `entry` < `completion`"""
+        super().validate(attrs)
+        completion_year = attrs.get("completion_year")
+        entry_year = attrs.get("entry_year")
+        if (entry_year and completion_year) and (entry_year > completion_year):
+            raise ValidationError({
+                "entry_year": USER_EXPERIENCE_YEAR_VALIDATION_MESSAGE,
+            })
+        return attrs
+
+
+class UserEducationSerializer(UserExperienceMixin, serializers.ModelSerializer):
 
     class Meta:
         model = UserEducation
-        fields = ["organization_name", "description", "entry_year"]
+        fields = [
+            "organization_name",
+            "description",
+            "entry_year",
+            "completion_year",
+            "education_level",
+            "education_status",
+        ]
+
+
+class UserWorkExperienceSerializer(UserExperienceMixin, serializers.ModelSerializer):
+
+    class Meta:
+        model = UserWorkExperience
+        fields = [
+            "organization_name",
+            "description",
+            "entry_year",
+            "completion_year",
+            "job_position",
+        ]
+
+
+class UserLanguagesSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = UserLanguages
+        fields = [
+            "language",
+            "language_level",
+        ]
 
 
 class UserProgramsSerializer(serializers.ModelSerializer):
@@ -314,7 +373,9 @@ class UserDetailSerializer(
     expert = ExpertSerializer(required=False)
     mentor = MentorSerializer(required=False)
     achievements = AchievementListSerializer(required=False, many=True)
-    education = UserEducationSerializer(many=True)
+    education = UserEducationSerializer(required=False, many=True)
+    work_experience = UserWorkExperienceSerializer(required=False, many=True)
+    user_languages = UserLanguagesSerializer(required=False, many=True)
     links = serializers.SerializerMethodField()
     is_online = serializers.SerializerMethodField()
     projects = serializers.SerializerMethodField()
@@ -375,10 +436,13 @@ class UserDetailSerializer(
             "v2_speciality_id",
             "organization",  # TODO need to be removed in future.
             "education",
+            "work_experience",
+            "user_languages",
             "about_me",
             "avatar",
             "links",
             "city",
+            "phone_number",
             "is_active",
             "is_online",
             "member",
@@ -440,9 +504,18 @@ class UserDetailSerializer(
             CustomUser.MENTOR: Mentor,
         }
 
+        # Update education.
         education_data = validated_data.pop("education", None)
-        if education_data:
+        if education_data is not None and isinstance(education_data, list):
             self._update_user_education(instance, education_data)
+        # Update work experience.
+        work_experience_data = validated_data.pop("work_experience", None)
+        if work_experience_data is not None and isinstance(work_experience_data, list):
+            self._update_user_work_experience(instance, work_experience_data)
+        # Update knowledge of languages.
+        user_languages = validated_data.pop("user_languages", None)
+        if user_languages is not None and isinstance(user_languages, list):
+            self._update_user_languages(instance, user_languages)
 
         for attr, value in validated_data.items():
             if attr in IMMUTABLE_FIELDS + USER_TYPE_FIELDS + RELATED_FIELDS:
@@ -491,15 +564,60 @@ class UserDetailSerializer(
         `PUT`/ `PATCH` methods require full data about education.
         """
         instance.education.all().delete()
-        UserEducation.objects.bulk_create([
-            UserEducation(
-                user=instance,
-                organization_name=organization.get("organization_name"),
-                description=organization.get("description"),
-                entry_year=organization.get("entry_year"),
-            )
-            for organization in data
-        ])
+        serializer = UserEducationSerializer(data=data, many=True, context=self.context)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save(user=instance)
+
+    @transaction.atomic
+    def _update_user_work_experience(self, instance: CustomUser, data: list[dict]) -> None:
+        """
+        Update user work experience.
+        `PUT`/ `PATCH` methods require full data about education.
+        """
+        instance.work_experience.all().delete()
+        serializer = UserWorkExperienceSerializer(data=data, many=True, context=self.context)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save(user=instance)
+
+    @transaction.atomic
+    def _update_user_languages(self, instance: CustomUser, data: list[dict]) -> None:
+        """
+        Update knowledge of languages.
+        `PUT`/ `PATCH` methods require full data about education.
+        """
+        # Only unique languages in profile.
+        languages = [lang_data["language"] for lang_data in data]
+        if len(languages) != len(set(languages)):
+            raise ValidationError({"language": UNIQUE_LANGUAGES_VALIDATION_MESSAGE})
+        # Custom validation to limit the number of languages per user to `USER_MAX_LANGUAGES_COUNT`.
+        if len(languages) > USER_MAX_LANGUAGES_COUNT:
+            raise ValidationError(COUNT_LANGUAGES_VALIDATION_MESSAGE)
+        instance.user_languages.all().delete()
+        serializer = UserLanguagesSerializer(data=data, many=True, context=self.context)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save(user=instance)
+
+    def to_representation(self, instance) -> dict[str, Any]:
+        """
+        The phone number for viewing and editing
+        is available only to the profile owner (used for CV).
+        """
+        representation = super().to_representation(instance)
+        request = self.context.get("request")
+        if request and request.user != instance:
+            representation.pop("phone_number", None)
+        return representation
+
+    def validate_phone_number(self, data):
+        """
+        Normalize phone number accoerding international standart.
+        Handling DjangoExceptionn -> DrfException for correct response.
+        """
+        if data is not None:
+            try:
+                return normalize_user_phone(data)
+            except DjangoValidationError:
+                raise ValidationError(NOT_VALID_NUMBER_MESSAGE)
 
 
 class UserChatSerializer(serializers.ModelSerializer[CustomUser]):

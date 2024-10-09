@@ -75,7 +75,8 @@ class Migration(migrations.Migration):
                     models.PositiveSmallIntegerField(
                         blank=True,
                         null=True,
-                        validators=[users.validators.user_entry_year_education_validator],
+                        # Unable to perform new migrations due to missing validator:
+                        # validators=[users.validators.user_entry_year_education_validator],
                         verbose_name="Год поступления",
                     ),
                 ),
