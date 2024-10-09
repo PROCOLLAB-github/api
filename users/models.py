@@ -13,7 +13,15 @@ from users.constants import (
     MENTOR,
     VERBOSE_ROLE_TYPES,
     VERBOSE_USER_TYPES,
+    COUNT_LANGUAGES_VALIDATION_MESSAGE,
+    UNIQUE_LANGUAGES_VALIDATION_MESSAGE,
+    USER_MAX_LANGUAGES_COUNT,
+    USER_EXPERIENCE_YEAR_VALIDATION_MESSAGE,
     OnboardingStage,
+    UserEducationLevels,
+    UserEducationStatuses,
+    UserLanguagesEnum,
+    UserLanguagesLevels,
 )
 from users.managers import (
     CustomUserManager,
@@ -23,8 +31,10 @@ from users.managers import (
 from users.validators import (
     user_birthday_validator,
     user_name_validator,
-    user_entry_year_education_validator,
+    user_experience_years_range_validator,
+    user_phone_number_validation,
 )
+from users.utils import normalize_user_phone
 
 
 def get_default_user_type():
@@ -102,6 +112,14 @@ class CustomUser(AbstractUser):
     status = models.CharField(max_length=255, null=True, blank=True)
     region = models.CharField(max_length=255, null=True, blank=True)
     city = models.CharField(max_length=255, null=True, blank=True)
+    phone_number = models.CharField(
+        max_length=20,
+        validators=[user_phone_number_validation],
+        null=True,
+        blank=True,
+        verbose_name="Номер телефона",
+        help_text="Пример: +7 XXX XX-XX-XX | +7XXXXXXXXX | +7 (XXX) XX-XX-XX"
+    )
     # TODO need to be removed in future `organization` -> `education`.
     organization = models.CharField(
         max_length=255,
@@ -130,7 +148,6 @@ class CustomUser(AbstractUser):
         verbose_name="Стадия онбординга",
         help_text="0, 1, 2 - номера стадий онбординга, null(пустое) - онбординг пройден",
     )
-
     verification_date = models.DateField(
         null=True,
         blank=True,
@@ -195,6 +212,11 @@ class CustomUser(AbstractUser):
 
     def __str__(self) -> str:
         return f"User<{self.id}> - {self.first_name} {self.last_name}"
+
+    def save(self, *args, **kwargs):
+        if self.phone_number:
+            self.phone_number = normalize_user_phone(self.phone_number)
+        super().save(*args, **kwargs)
 
     class Meta(TypedModelMeta):
         verbose_name = "Пользователь"
@@ -434,30 +456,14 @@ class UserLink(models.Model):
         unique_together = ("user", "link")
 
 
-class UserEducation(models.Model):
-    """
-    User education model
-
-    User education information.
-
-    Attributes:
-            user: FK CustomUser.
-            organization_name: CharField Name of the organization.
-            description: CharField Organization Description.
-            entry_year: PositiveSmallIntegerField Year of admission.
-    """
-    user = models.ForeignKey(
-        to=CustomUser,
-        on_delete=models.CASCADE,
-        related_name="education",
-        verbose_name="Пользователь",
-    )
+class AbstractUserExperience(models.Model):
+    """Abstact help model for user work|education experience."""
     organization_name = models.CharField(
         max_length=255,
         verbose_name="Наименование организации",
     )
-    description = models.CharField(
-        max_length=255,
+    description = models.TextField(
+        max_length=1000,
         null=True,
         blank=True,
         verbose_name="Краткое описание",
@@ -465,17 +471,166 @@ class UserEducation(models.Model):
     entry_year = models.PositiveSmallIntegerField(
         null=True,
         blank=True,
-        validators=[user_entry_year_education_validator],
-        verbose_name="Год поступления",
+        validators=[user_experience_years_range_validator],
+        verbose_name="Год начала",
+    )
+    completion_year = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[user_experience_years_range_validator],
+        verbose_name="Год завершения",
     )
 
     class Meta:
-        verbose_name = "Образование"
-        verbose_name_plural = "Образование"
+        abstract = True
 
     def __str__(self) -> str:
-        return (f"{self.user.first_name}: {self.organization_name} - "
-                f"{self.entry_year} (id {self.id})")
+        return (
+            f"id: {self.id} - ({self.user.first_name} {self.user.last_name} user_id: {self.user.id})"
+        )
+
+    def clean(self) -> None:
+        """Validate both years `entry` <`completion`"""
+        super().clean()
+        if self.entry_year and self.completion_year:
+            if self.entry_year > self.completion_year:
+                raise ValidationError(USER_EXPERIENCE_YEAR_VALIDATION_MESSAGE)
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+
+
+class UserEducation(AbstractUserExperience):
+    """
+    User education model
+
+    User education information.
+
+    Attributes:
+        user: FK CustomUser.
+        education_level: CharField (choice) Education level.
+        education_status: CharField (choice) Education status.
+        organization_name: CharField Name of the organization.
+        description: CharField Organization Description.
+        entry_year: PositiveSmallIntegerField Year of admission.
+        completion_year: PositiveSmallIntegerField Graduation year.
+    """
+
+    user = models.ForeignKey(
+        to=CustomUser,
+        on_delete=models.CASCADE,
+        related_name="education",
+        verbose_name="Пользователь",
+    )
+    education_level = models.CharField(
+        max_length=256,
+        choices=UserEducationLevels.choices(),
+        blank=True,
+        null=True,
+        verbose_name="Уровень образования",
+    )
+    education_status = models.CharField(
+        max_length=256,
+        choices=UserEducationStatuses.choices(),
+        blank=True,
+        null=True,
+        verbose_name="Статус по обучению",
+    )
+
+    class Meta:
+        verbose_name = "Образование пользователя"
+        verbose_name_plural = "Образование пользователя"
+
+
+class UserWorkExperience(AbstractUserExperience):
+    """
+    User work experience.
+
+    User work experience information.
+
+    Attributes:
+        user: FK CustomUser.
+        job_position: CharField Job position.
+        organization_name: CharField Name of the organization.
+        description: CharField Organization Description.
+        entry_year: PositiveSmallIntegerField Year of admission.
+        completion_year: PositiveSmallIntegerField Year of dismissal.
+    """
+    user = models.ForeignKey(
+        to=CustomUser,
+        on_delete=models.CASCADE,
+        related_name="work_experience",
+        verbose_name="Пользователь",
+    )
+    job_position = models.CharField(
+        max_length=256,
+        null=True,
+        blank=True,
+        verbose_name="Должность",
+    )
+
+    class Meta:
+        verbose_name = "Работа пользователя"
+        verbose_name_plural = "Работа пользователя"
+
+
+class UserLanguages(models.Model):
+    """
+    User knowledge of languages.
+
+    User knowledge of languages information.
+
+    Attributes:
+        user: FK CustomUser.
+        language: CharField(choise) languages.
+        language_level: CharField(choise) language level.
+    """
+    user = models.ForeignKey(
+        to=CustomUser,
+        on_delete=models.CASCADE,
+        related_name="user_languages",
+        verbose_name="Пользователь",
+    )
+    language = models.CharField(
+        max_length=50,
+        choices=UserLanguagesEnum.choices(),
+        verbose_name="Язык",
+    )
+    language_level = models.CharField(
+        max_length=50,
+        choices=UserLanguagesLevels.choices(),
+        verbose_name="Уровнь владения",
+    )
+
+    class Meta:
+        verbose_name = "Знание языка"
+        verbose_name_plural = "Знание языков"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "language"],
+                name="unique_user_language",
+                violation_error_message=UNIQUE_LANGUAGES_VALIDATION_MESSAGE,
+            )
+        ]
+
+    def clean(self) -> None:
+        """
+        Custom validation to limit the number of languages per user to `USER_MAX_LANGUAGES_COUNT`.
+        """
+        super().clean()
+        user_languages = self.user.user_languages.values_list("language", flat=True)
+        if (self.language not in user_languages) and len(user_languages) == USER_MAX_LANGUAGES_COUNT:
+            raise ValidationError(COUNT_LANGUAGES_VALIDATION_MESSAGE)
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return (
+            f"id: {self.id} - ({self.user.first_name} {self.user.last_name} user_id: {self.user.id})"
+        )
 
 
 class UserSkillConfirmation(models.Model):

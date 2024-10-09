@@ -1,5 +1,11 @@
 from datetime import datetime, timedelta
+
 from django.db.models import Q
+from django.core.exceptions import ValidationError
+
+import phonenumbers
+
+from users.constants import NOT_VALID_NUMBER_MESSAGE
 
 
 def filter_age(queryset, start: int, stop: int):
@@ -18,3 +24,14 @@ def filter_age(queryset, start: int, stop: int):
         Q(birthday__gte=datetime.now() - timedelta(days=365.24 * int(stop)))
         & Q(birthday__lte=datetime.now() - timedelta(days=365.24 * int(start)))
     )
+
+
+def normalize_user_phone(phone_num: str):
+    """Normalize phone number accoerding international standart."""
+    try:
+        phone_number = phonenumbers.parse(phone_num, None)
+        if phonenumbers.is_valid_number(phone_number):
+            return phonenumbers.format_number(phone_number, phonenumbers.PhoneNumberFormat.INTERNATIONAL)
+        raise ValidationError(NOT_VALID_NUMBER_MESSAGE)
+    except phonenumbers.phonenumberutil.NumberParseException:
+        raise ValidationError(NOT_VALID_NUMBER_MESSAGE)
