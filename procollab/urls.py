@@ -55,6 +55,7 @@ urlpatterns = [
     path("api/token/verify/", TokenVerifyView.as_view(), name="token_verify"),
     path("", include("metrics.urls", namespace="metrics")),
     path("django_prometheus/", include("django_prometheus.urls")),
+    path("anymail/", include("anymail.urls")),
 ]
 
 if settings.DEBUG:

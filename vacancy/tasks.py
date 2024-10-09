@@ -54,3 +54,21 @@ def email_notificate_vacancy_outdated():
         )
         send_email.delay(data_to_send)
     outdated_active_vacancies.update(is_active=False)
+
+
+def t_email(data: CeleryEmailParamsDict):
+    context_data = ContextDataDict(
+        text=create_text_for_email(data),
+        title=message_type_to_title[data["message_type"]],
+        button_link=get_link(data),
+        button_text=message_type_to_button_text[data["message_type"]],
+    )
+    mail_data: MailDataDict = prepare_mail_data(
+        EmailDataToPrepare(
+            users_ids=[data["user_id"]],
+            schema_id=data["schema_id"],
+            subject=message_type_to_title[data["message_type"]],
+            context_data=context_data,
+        )
+    )
+    send_mass_mail(**mail_data)
