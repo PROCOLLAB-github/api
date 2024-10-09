@@ -323,8 +323,9 @@ SESSION_COOKIE_SECURE = False
 
 EMAIL_BACKEND = "anymail.backends.unisender_go.EmailBackend"
 
+UNISENDER_GO_API_KEY = config("UNISENDER_GO_API_KEY", default="", cast=str)
 ANYMAIL = {
-    "UNISENDER_GO_API_KEY": config("UNISENDER_GO_API_KEY", cast=str),
+    "UNISENDER_GO_API_KEY": UNISENDER_GO_API_KEY,
     "UNISENDER_GO_API_URL": "https://go1.unisender.ru/ru/transactional/api/v1/",
     "UNISENDER_GO_SEND_DEFAULTS": {
         "esp_extra": {
