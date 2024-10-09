@@ -69,6 +69,7 @@ pandas = "^2.2.1"
 celery = "^5.4.0"
 django-celery-beat = "^2.6.0"
 weasyprint = "^62.3"
+django-anymail = "^12.0"
 
 
 [build-system]
