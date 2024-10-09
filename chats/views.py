@@ -43,16 +43,19 @@ class DirectChatList(ListAPIView):
         chats = self.get_queryset()
         serialized_chats = []
         for chat in chats:
-            user1_id, _ = map(int, chat.id.split("_"))
-            # TODO сделать проверку на удаление профиля
-            if user1_id == request.user.id:
-                opponent = chat.users.all()[1]
-            else:
-                opponent = chat.users.first()
+            try:
+                user1_id, _ = map(int, chat.id.split("_"))
+                # TODO сделать проверку на удаление профиля
+                if user1_id == request.user.id:
+                    opponent = chat.users.all()[1]
+                else:
+                    opponent = chat.users.first()
 
-            context = {"opponent": opponent}
-            serialized_chat = DirectChatListSerializer(chat, context=context).data
-            serialized_chats.append(serialized_chat)
+                context = {"opponent": opponent}
+                serialized_chat = DirectChatListSerializer(chat, context=context).data
+                serialized_chats.append(serialized_chat)
+            except IndexError:
+                pass
         return Response(serialized_chats, status=status.HTTP_200_OK)
 
 
@@ -86,9 +89,8 @@ class DirectChatDetail(RetrieveAPIView):
                 request.user.id == user1_id or request.user.id == user2_id
             ), "current user id is not present in raw id"
 
-            users = User.objects.filter(pk__in=[user1_id, user2_id])
-            user1 = users.get(pk=user1_id)
-            user2 = users.get(pk=user2_id)
+            user1 = User.objects.get(pk=user1_id)
+            user2 = User.objects.get(pk=user2_id)
 
             if user1 == request.user:
                 opponent = user2
