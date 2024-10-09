@@ -5,24 +5,8 @@ from django.core.exceptions import ValidationError
 from django_stubs_ext.db.models import TypedModelMeta
 from django.contrib.contenttypes.fields import GenericRelation
 
-from users.constants import (
-    ADMIN,
-    EXPERT,
-    INVESTOR,
-    MEMBER,
-    MENTOR,
-    VERBOSE_ROLE_TYPES,
-    VERBOSE_USER_TYPES,
-    COUNT_LANGUAGES_VALIDATION_MESSAGE,
-    UNIQUE_LANGUAGES_VALIDATION_MESSAGE,
-    USER_MAX_LANGUAGES_COUNT,
-    USER_EXPERIENCE_YEAR_VALIDATION_MESSAGE,
-    OnboardingStage,
-    UserEducationLevels,
-    UserEducationStatuses,
-    UserLanguagesEnum,
-    UserLanguagesLevels,
-)
+from users import constants
+
 from users.managers import (
     CustomUserManager,
     UserAchievementManager,
@@ -70,11 +54,11 @@ class CustomUser(AbstractUser):
                     the `v2_speciality` and `skills`.
     """
 
-    ADMIN = ADMIN
-    MEMBER = MEMBER
-    MENTOR = MENTOR
-    EXPERT = EXPERT
-    INVESTOR = INVESTOR
+    ADMIN = constants.ADMIN
+    MEMBER = constants.MEMBER
+    MENTOR = constants.MENTOR
+    EXPERT = constants.EXPERT
+    INVESTOR = constants.INVESTOR
 
     username = None
     email = models.EmailField(unique=True)
@@ -83,7 +67,7 @@ class CustomUser(AbstractUser):
     password = models.CharField(max_length=255)
     is_active = models.BooleanField(default=False, editable=False)
     user_type = models.PositiveSmallIntegerField(
-        choices=VERBOSE_USER_TYPES,
+        choices=constants.VERBOSE_USER_TYPES,
         default=get_default_user_type,
     )
     ordering_score = models.PositiveIntegerField(
@@ -144,7 +128,7 @@ class CustomUser(AbstractUser):
         null=True,
         blank=True,
         editable=False,
-        default=OnboardingStage.intro.value,
+        default=constants.OnboardingStage.intro.value,
         verbose_name="Стадия онбординга",
         help_text="0, 1, 2 - номера стадий онбординга, null(пустое) - онбординг пройден",
     )
@@ -268,11 +252,11 @@ class AbstractUserWithRole(models.Model):
     """
 
     first_additional_role = models.PositiveSmallIntegerField(
-        choices=VERBOSE_ROLE_TYPES,
+        choices=constants.VERBOSE_ROLE_TYPES,
         null=True,
     )
     second_additional_role = models.PositiveSmallIntegerField(
-        choices=VERBOSE_ROLE_TYPES,
+        choices=constants.VERBOSE_ROLE_TYPES,
         null=True,
     )
 
@@ -494,7 +478,7 @@ class AbstractUserExperience(models.Model):
         super().clean()
         if self.entry_year and self.completion_year:
             if self.entry_year > self.completion_year:
-                raise ValidationError(USER_EXPERIENCE_YEAR_VALIDATION_MESSAGE)
+                raise ValidationError(constants.USER_EXPERIENCE_YEAR_VALIDATION_MESSAGE)
 
     def save(self, *args, **kwargs):
         self.clean()
@@ -525,14 +509,14 @@ class UserEducation(AbstractUserExperience):
     )
     education_level = models.CharField(
         max_length=256,
-        choices=UserEducationLevels.choices(),
+        choices=constants.UserEducationLevels.choices(),
         blank=True,
         null=True,
         verbose_name="Уровень образования",
     )
     education_status = models.CharField(
         max_length=256,
-        choices=UserEducationStatuses.choices(),
+        choices=constants.UserEducationStatuses.choices(),
         blank=True,
         null=True,
         verbose_name="Статус по обучению",
@@ -594,12 +578,12 @@ class UserLanguages(models.Model):
     )
     language = models.CharField(
         max_length=50,
-        choices=UserLanguagesEnum.choices(),
+        choices=constants.UserLanguagesEnum.choices(),
         verbose_name="Язык",
     )
     language_level = models.CharField(
         max_length=50,
-        choices=UserLanguagesLevels.choices(),
+        choices=constants.UserLanguagesLevels.choices(),
         verbose_name="Уровнь владения",
     )
 
@@ -610,7 +594,7 @@ class UserLanguages(models.Model):
             models.UniqueConstraint(
                 fields=["user", "language"],
                 name="unique_user_language",
-                violation_error_message=UNIQUE_LANGUAGES_VALIDATION_MESSAGE,
+                violation_error_message=constants.UNIQUE_LANGUAGES_VALIDATION_MESSAGE,
             )
         ]
 
@@ -620,8 +604,8 @@ class UserLanguages(models.Model):
         """
         super().clean()
         user_languages = self.user.user_languages.values_list("language", flat=True)
-        if (self.language not in user_languages) and len(user_languages) == USER_MAX_LANGUAGES_COUNT:
-            raise ValidationError(COUNT_LANGUAGES_VALIDATION_MESSAGE)
+        if (self.language not in user_languages) and len(user_languages) == constants.USER_MAX_LANGUAGES_COUNT:
+            raise ValidationError(constants.COUNT_LANGUAGES_VALIDATION_MESSAGE)
 
     def save(self, *args, **kwargs):
         self.clean()
