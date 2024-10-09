@@ -106,15 +106,6 @@ class VacancyResponseList(mixins.ListModelMixin, mixins.CreateModelMixin, Generi
         )
         project = queryset.vacancy.project
 
-        # t_email(CeleryEmailParamsDict(
-        #         message_type=MessageTypeEnum.RESPONDED.value,
-        #         user_id=project.leader.id,
-        #         project_name=project.name,
-        #         project_id=project.id,
-        #         vacancy_role=queryset.vacancy.role,
-        #         schema_id=2,
-        #     ))
-
         send_email.delay(
             CeleryEmailParamsDict(
                 message_type=MessageTypeEnum.RESPONDED.value,
