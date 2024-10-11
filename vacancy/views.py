@@ -10,7 +10,7 @@ from rest_framework.response import Response
 
 from projects.models import Collaborator, Project
 from vacancy.filters import VacancyFilter
-from vacancy.mapping import CeleryEmailParamsDict, MessageTypeEnum
+from vacancy.mapping import CeleryEmailParams, MessageTypeEnum
 from vacancy.models import Vacancy, VacancyResponse
 from vacancy.pagination import VacancyPagination
 from vacancy.permissions import (
@@ -107,7 +107,7 @@ class VacancyResponseList(mixins.ListModelMixin, mixins.CreateModelMixin, Generi
         project = queryset.vacancy.project
 
         send_email.delay(
-            CeleryEmailParamsDict(
+            CeleryEmailParams(
                 message_type=MessageTypeEnum.RESPONDED.value,
                 user_id=project.leader.id,
                 project_name=project.name,
@@ -158,7 +158,7 @@ class VacancyResponseAccept(generics.GenericAPIView):
         )
 
         send_email.delay(
-            CeleryEmailParamsDict(
+            CeleryEmailParams(
                 message_type=MessageTypeEnum.ACCEPTED.value,
                 user_id=user_to_add.id,
                 project_name=project_add_in.name,
@@ -192,7 +192,7 @@ class VacancyResponseDecline(generics.GenericAPIView):
 
         project = vacancy_request.vacancy.project
         send_email.delay(
-            CeleryEmailParamsDict(
+            CeleryEmailParams(
                 message_type=MessageTypeEnum.REJECTED.value,
                 user_id=project.leader.id,
                 project_name=project.name,

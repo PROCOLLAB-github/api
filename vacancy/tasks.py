@@ -4,7 +4,7 @@ from mailing.typing import EmailDataToPrepare, ContextDataDict, MailDataDict
 from mailing.utils import send_mass_mail, prepare_mail_data
 from procollab.celery import app
 from vacancy.mapping import (
-    CeleryEmailParamsDict,
+    CeleryEmailParams,
     create_text_for_email,
     message_type_to_button_text,
     get_link,
@@ -15,7 +15,7 @@ from vacancy.models import Vacancy
 
 
 @app.task
-def send_email(data: CeleryEmailParamsDict):
+def send_email(data: CeleryEmailParams):
     context_data = ContextDataDict(
         text=create_text_for_email(data),
         title=message_type_to_title[data["message_type"]],
@@ -44,7 +44,7 @@ def email_notificate_vacancy_outdated():
 
     for vacancy in outdated_active_vacancies:
         project = vacancy.project
-        data_to_send = CeleryEmailParamsDict(
+        data_to_send = CeleryEmailParams(
             message_type=MessageTypeEnum.OUTDATED.value,
             user_id=project.leader.id,
             project_name=project.name,

@@ -20,7 +20,7 @@ from partner_programs.serializers import (
 )
 from vacancy.mapping import (
     MessageTypeEnum,
-    UserProgramRegisterParamsDict,
+    UserProgramRegisterParams,
 )
 from vacancy.tasks import send_email
 
@@ -130,7 +130,7 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
             )
 
         send_email.delay(
-            UserProgramRegisterParamsDict(
+            UserProgramRegisterParams(
                 message_type=MessageTypeEnum.REGISTERED_PROGRAM_USER.value,
                 user_id=user.id,
                 program_name=program.name,
@@ -172,7 +172,7 @@ class PartnerProgramRegister(generics.GenericAPIView):
             added_user_profile.save()
 
             send_email.delay(
-                UserProgramRegisterParamsDict(
+                UserProgramRegisterParams(
                     message_type=MessageTypeEnum.REGISTERED_PROGRAM_USER.value,
                     user_id=user_to_add.id,
                     program_name=program.name,
