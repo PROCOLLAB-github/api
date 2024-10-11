@@ -2,7 +2,7 @@ from enum import Enum
 from typing import Literal, TypeAlias, TypedDict, Annotated
 
 EmailTextTypes: TypeAlias = Literal[
-    "accepted", "outdated", "responded", "rejected", "registered_program"
+    "accepted", "outdated", "responded", "rejected", "registered_program", "project_rated"
 ]
 
 
@@ -14,23 +14,35 @@ class MessageTypeEnum(Enum):
 
     REGISTERED_PROGRAM_USER = "registered_program"
 
+    PROJECT_RATED = "project_rated"
 
-class BaseEmailCeleryParamsDict(TypedDict):
+
+class BaseEmailCeleryParams(TypedDict):
     message_type: EmailTextTypes
     user_id: int
     schema_id: int  # = 2
 
 
-class CeleryEmailParamsDict(BaseEmailCeleryParamsDict):
+class CeleryEmailParams(BaseEmailCeleryParams):
     project_name: str
     project_id: int
     vacancy_role: str
 
 
-class UserProgramRegisterParamsDict(BaseEmailCeleryParamsDict):
+class UserProgramRegisterParams(BaseEmailCeleryParams):
     program_name: str
     program_id: int
 
+
+class ProjectRatedParams(BaseEmailCeleryParams):
+    program_name: str
+    project_name: str
+    project_id: int
+
+
+EmailParamsType: TypeAlias = (
+    CeleryEmailParams | ProjectRatedParams | UserProgramRegisterParams
+)
 
 message_type_to_button_text: dict[Annotated[str, EmailTextTypes], str] = {
     MessageTypeEnum.ACCEPTED.value: "Посмотреть на проект",
@@ -38,6 +50,7 @@ message_type_to_button_text: dict[Annotated[str, EmailTextTypes], str] = {
     MessageTypeEnum.OUTDATED.value: "Посмотреть на вакансию",
     MessageTypeEnum.REJECTED.value: "Посмотреть на проект",
     MessageTypeEnum.REGISTERED_PROGRAM_USER.value: "Посмотреть на программу",
+    MessageTypeEnum.PROJECT_RATED.value: "Посмотреть на проект",
 }
 
 message_type_to_title: dict[Annotated[str, EmailTextTypes], str] = {
@@ -49,7 +62,7 @@ message_type_to_title: dict[Annotated[str, EmailTextTypes], str] = {
 }
 
 
-def get_link(data: CeleryEmailParamsDict | UserProgramRegisterParamsDict):
+def get_link(data: EmailParamsType):
     match data["message_type"]:
         case MessageTypeEnum.ACCEPTED.value:
             return f"https://app.procollab.ru/office/projects/{data['project_id']}"
@@ -61,13 +74,15 @@ def get_link(data: CeleryEmailParamsDict | UserProgramRegisterParamsDict):
             return f"https://app.procollab.ru/office/projects/{data['project_id']}/edit"
         case MessageTypeEnum.REJECTED.value:
             return f"https://app.procollab.ru/office/projects/{data['project_id']}"
+
         case MessageTypeEnum.REGISTERED_PROGRAM_USER.value:
             return f"https://app.procollab.ru/office/program/{data['program_id']}"
 
+        case MessageTypeEnum.PROJECT_RATED.value:
+            return f"https://app.procollab.ru/office/projects/{data['project_id']}"
 
-def create_text_for_email(
-    data: CeleryEmailParamsDict | UserProgramRegisterParamsDict,
-) -> str:
+
+def create_text_for_email(data: EmailParamsType) -> str:
     match data["message_type"]:
         case MessageTypeEnum.ACCEPTED.value:
             return f"""
@@ -89,4 +104,9 @@ def create_text_for_email(
         case MessageTypeEnum.REGISTERED_PROGRAM_USER.value:
             return f"""
             Вы успешно зарегистрировались на программу {data['program_name']}
+    """
+        case MessageTypeEnum.PROJECT_RATED.value:
+            return f"""
+                Ваш проект '{data["project_name"]}' был оценён экспертом по программе '{data["program_name"]}'!
+                Скоро будут результаты.
     """
