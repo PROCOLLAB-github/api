@@ -12,6 +12,7 @@ class Command(BaseCommand):
     """
     Use: python manage.py migrate_education.
     """
+
     def handle(self, *args, **kwargs):
         self.stdout.write("Start manual migration ...")
         try:
@@ -22,9 +23,7 @@ class Command(BaseCommand):
                 )
             )
         except Exception as e:
-            self.stderr.write(
-                self.style.ERROR(f"Migration failed: {str(e)}")
-            )
+            self.stderr.write(self.style.ERROR(f"Migration failed: {str(e)}"))
 
 
 @transaction.atomic
@@ -33,12 +32,16 @@ def migrate_organization_to_education() -> int:
     Migrate old field `organization` to new model `Education`.
     Returns count migrated users.
     """
-    users_with_irganization = CustomUser.objects.exclude(organization=None).exclude(organization="")
-    UserEducation.objects.bulk_create([
-        UserEducation(
-            user=user,
-            organization_name=user.organization,
-        )
-        for user in users_with_irganization
-    ])
+    users_with_irganization = CustomUser.objects.exclude(organization=None).exclude(
+        organization=""
+    )
+    UserEducation.objects.bulk_create(
+        [
+            UserEducation(
+                user=user,
+                organization_name=user.organization,
+            )
+            for user in users_with_irganization
+        ]
+    )
     return users_with_irganization.count()

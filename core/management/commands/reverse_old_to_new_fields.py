@@ -12,6 +12,7 @@ class Command(BaseCommand):
     """
     DO NOT USE IN PROD, ONLY DEBUG.
     """
+
     def add_arguments(self, parser):
         parser.add_argument(
             "--confirm",
@@ -38,7 +39,9 @@ class Command(BaseCommand):
         self.stdout.write("Starting manual migrations...")
         try:
             reverse()
-            self.stdout.write(self.style.SUCCESS("Manual migrations completed successfully."))
+            self.stdout.write(
+                self.style.SUCCESS("Manual migrations completed successfully.")
+            )
         except Exception as e:
             self.stderr.write(self.style.ERROR(f"Manual migrations failed: {str(e)}"))
 
@@ -50,4 +53,6 @@ def reverse():
         user.dataset_migration_applied = False
         user.v2_speciality = None
         user.save()
-    SkillToObject.objects.filter(content_type=ContentType.objects.get_for_model(CustomUser)).delete()
+    SkillToObject.objects.filter(
+        content_type=ContentType.objects.get_for_model(CustomUser)
+    ).delete()

@@ -154,7 +154,9 @@ class PartnerProgramAdmin(admin.ModelAdmin):
         return response
 
     def get_export_rates_view(self, request, object_id):
-        rates_data_to_write: list[dict] = self._get_prepared_rates_data_for_export(object_id)
+        rates_data_to_write: list[dict] = self._get_prepared_rates_data_for_export(
+            object_id
+        )
 
         xlsx_file_writer = XlsxFileToExport()
         xlsx_file_writer.write_data_to_xlsx(rates_data_to_write)
@@ -169,7 +171,9 @@ class PartnerProgramAdmin(admin.ModelAdmin):
             binary_data_to_export,
             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
-        response["Content-Disposition"] = f'attachment; filename*=UTF-8\'\'{encoded_file_name}'
+        response[
+            "Content-Disposition"
+        ] = f"attachment; filename*=UTF-8''{encoded_file_name}"
         return response
 
     def _get_prepared_rates_data_for_export(self, program_id: int) -> list[dict]:
@@ -178,19 +182,20 @@ class PartnerProgramAdmin(admin.ModelAdmin):
         Columns example:
             ФИО|Email|Регион_РФ|Учебное_заведение|Название_учебного_заведения|Класс_курс|Фамилия эксперта|**criteria
         """
-        criterias = Criteria.objects.filter(partner_program__id=program_id).select_related("partner_program")
+        criterias = Criteria.objects.filter(
+            partner_program__id=program_id
+        ).select_related("partner_program")
         scores = (
-            ProjectScore.objects
-            .filter(criteria__in=criterias)
+            ProjectScore.objects.filter(criteria__in=criterias)
             .select_related("user", "criteria", "project")
             .order_by("project", "criteria")
         )
-        user_programm_profiles = (
-            PartnerProgramUserProfile.objects
-            .filter(partner_program__id=program_id)
-            .select_related("user")
+        user_programm_profiles = PartnerProgramUserProfile.objects.filter(
+            partner_program__id=program_id
+        ).select_related("user")
+        projects = (
+            Project.objects.filter(scores__in=scores).select_related("leader").distinct()
         )
-        projects = Project.objects.filter(scores__in=scores).select_related("leader").distinct()
 
         # To reduce the number of DB requests.
         user_profiles_dict: dict[int, PartnerProgramUserProfile] = {
@@ -202,7 +207,9 @@ class PartnerProgramAdmin(admin.ModelAdmin):
 
         prepared_projects_rates_data: list[dict] = []
         for project in projects:
-            project_data_preparer = ProjectScoreDataPreparer(user_profiles_dict, scores_dict, project.id, program_id)
+            project_data_preparer = ProjectScoreDataPreparer(
+                user_profiles_dict, scores_dict, project.id, program_id
+            )
             full_project_rates_data: dict = {
                 **project_data_preparer.get_project_user_info(),
                 **project_data_preparer.get_project_expert_info(),

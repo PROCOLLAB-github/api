@@ -3,7 +3,7 @@ from rest_framework import serializers
 from core.services import get_views_count
 from projects.models import Project
 from .models import Criteria, ProjectScore
-from .typing import CriteriasResponse, ProjectScoresResponse
+from .definitions import CriteriasResponse, ProjectScoresResponse
 from .validators import ProjectScoreValidator
 
 

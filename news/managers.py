@@ -2,6 +2,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models.query import QuerySet
 import typing
+
 if typing.TYPE_CHECKING:
     from news.models import News
 

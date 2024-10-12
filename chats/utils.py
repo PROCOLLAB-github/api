@@ -108,12 +108,12 @@ async def create_file_to_message(
 
 async def match_files_and_messages(file_urls, messages):
     for url in file_urls:
-        file = await sync_to_async(UserFile.objects.get)(pk=url)
+        user_file = await sync_to_async(UserFile.objects.get)(pk=url)
         # implicitly matches a file and a message
         await create_file_to_message(
             direct_message=messages["direct_message"],
             project_message=messages["project_message"],
-            file=file,
+            file=user_file,
         )
 
 

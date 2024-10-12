@@ -26,6 +26,7 @@ class PartnerProgram(models.Model):
         datetime_created: A DateTimeField indicating date of creation.
         datetime_updated: A DateTimeField indicating date of update.
     """
+
     PROJECTS_AVAILABILITY_CHOISES = [
         ("all_users", "Всем пользователям"),
         ("experts_only", "Только экспертам"),

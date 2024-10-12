@@ -17,13 +17,16 @@ class Command(BaseCommand):
         parser.add_argument(
             "--confirm",
             action="store_true",
-            help="Confirm delete Users educations from UserEducation model"
+            help="Confirm delete Users educations from UserEducation model",
         )
 
     def handle(self, *args, **kwargs):
         confirm = kwargs["confirm"]
-        self.stdout.write(self.style.WARNING(
-            "You are about to DELETE ALL INSTANCES in the UserEducation model."))
+        self.stdout.write(
+            self.style.WARNING(
+                "You are about to DELETE ALL INSTANCES in the UserEducation model."
+            )
+        )
 
         if not confirm:
             answer = input("Type 'yes' to continue, or 'no' to cancel: ").lower()
@@ -35,7 +38,9 @@ class Command(BaseCommand):
 
         try:
             deleted_instances = delete_all_instances_usereducation()
-            self.stdout.write(self.style.SUCCESS("Manual migrations completed successfully."))
+            self.stdout.write(
+                self.style.SUCCESS("Manual migrations completed successfully.")
+            )
             self.stdout.write(self.style.SUCCESS(f"Deleted: {deleted_instances}"))
         except Exception as e:
             self.stderr.write(self.style.ERROR(f"Manual migrations failed: {str(e)}"))
