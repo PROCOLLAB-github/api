@@ -113,6 +113,7 @@ class SpecializationSerializer(serializers.ModelSerializer[Specialization]):
 
 class UserDataConfirmationSerializer(serializers.ModelSerializer):
     """Information about the User to add to the skill confirmation information."""
+
     v2_speciality = SpecializationSerializer()
 
     class Meta:
@@ -160,6 +161,7 @@ class UserSkillConfirmationSerializer(serializers.ModelSerializer):
 
 class UserApproveSkillResponse(serializers.Serializer):
     """For swagger response presentation."""
+
     confirmed_by = UserDataConfirmationSerializer(read_only=True)
 
 
@@ -179,14 +181,14 @@ class UserSkillsWithApprovesSerializer(SkillToObjectSerializer):
 
     def get_approves(self, obj):
         """Adds information about confirm to the skill."""
-        confirmations = (
-            UserSkillConfirmation.objects
-            .filter(skill_to_object=obj)
-            .select_related('confirmed_by')
-        )
+        confirmations = UserSkillConfirmation.objects.filter(
+            skill_to_object=obj
+        ).select_related("confirmed_by")
         return [
             {
-                "confirmed_by": UserDataConfirmationSerializer(confirmation.confirmed_by).data,
+                "confirmed_by": UserDataConfirmationSerializer(
+                    confirmation.confirmed_by
+                ).data,
             }
             for confirmation in confirmations
         ]
@@ -283,7 +285,7 @@ class UserSubscribedProjectsSerializer(serializers.ModelSerializer[Project]):
 
 
 class SubscriptionSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
+    id = serializers.IntegerField()  # noqa A003 VNE003
     name = serializers.CharField()
     price = serializers.IntegerField()
     features_list = serializers.ListField(child=serializers.CharField())
@@ -306,14 +308,15 @@ class UserExperienceMixin:
         completion_year = attrs.get("completion_year")
         entry_year = attrs.get("entry_year")
         if (entry_year and completion_year) and (entry_year > completion_year):
-            raise ValidationError({
-                "entry_year": USER_EXPERIENCE_YEAR_VALIDATION_MESSAGE,
-            })
+            raise ValidationError(
+                {
+                    "entry_year": USER_EXPERIENCE_YEAR_VALIDATION_MESSAGE,
+                }
+            )
         return attrs
 
 
 class UserEducationSerializer(UserExperienceMixin, serializers.ModelSerializer):
-
     class Meta:
         model = UserEducation
         fields = [
@@ -327,7 +330,6 @@ class UserEducationSerializer(UserExperienceMixin, serializers.ModelSerializer):
 
 
 class UserWorkExperienceSerializer(UserExperienceMixin, serializers.ModelSerializer):
-
     class Meta:
         model = UserWorkExperience
         fields = [
@@ -340,7 +342,6 @@ class UserWorkExperienceSerializer(UserExperienceMixin, serializers.ModelSeriali
 
 
 class UserLanguagesSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = UserLanguages
         fields = [
@@ -397,11 +398,9 @@ class UserDetailSerializer(
         ).data
 
     def get_programs(self, user: CustomUser):
-        user_program_profiles = (
-            user.partner_program_profiles
-            .select_related('partner_program')
-            .filter(partner_program__draft=False)
-        )
+        user_program_profiles = user.partner_program_profiles.select_related(
+            "partner_program"
+        ).filter(partner_program__draft=False)
         return UserProgramsSerializer(
             [profile.partner_program for profile in user_program_profiles],
             context={"request": self.context.get("request"), "user": user},
@@ -569,13 +568,17 @@ class UserDetailSerializer(
             serializer.save(user=instance)
 
     @transaction.atomic
-    def _update_user_work_experience(self, instance: CustomUser, data: list[dict]) -> None:
+    def _update_user_work_experience(
+        self, instance: CustomUser, data: list[dict]
+    ) -> None:
         """
         Update user work experience.
         `PUT`/ `PATCH` methods require full data about education.
         """
         instance.work_experience.all().delete()
-        serializer = UserWorkExperienceSerializer(data=data, many=True, context=self.context)
+        serializer = UserWorkExperienceSerializer(
+            data=data, many=True, context=self.context
+        )
         if serializer.is_valid(raise_exception=True):
             serializer.save(user=instance)
 

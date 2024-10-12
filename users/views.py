@@ -71,7 +71,7 @@ from users.serializers import (
     UserSubscriptionDataSerializer,
     RemoteBuySubSerializer,
 )
-from users.typing import UserCVData
+from users.definitions import UserCVData
 from .filters import UserFilter, SpecializationFilter
 from .pagination import UsersPagination
 from .services.verification import VerificationTasks

@@ -154,7 +154,6 @@ class ProjectVacancyCreateListSerializer(
     AbstractVacancyReadOnlyFields,
     RequiredSkillsWriteSerializerMixin[Vacancy],
 ):
-
     def create(self, validated_data):
         project = validated_data["project"]
         if project.leader != self.context["request"].user:

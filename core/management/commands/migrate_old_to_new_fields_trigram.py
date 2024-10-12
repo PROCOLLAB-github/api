@@ -21,17 +21,22 @@ class Command(BaseCommand):
         $CREATE EXTENSION pg_trgm;
     Migrate old fields to new.
     """
+
     def handle(self, *args, **kwargs):
         self.stdout.write("Starting manual migrations...")
         try:
             start = time()
             migrate_old_to_new_fields_trigram()
             end = time()
-            self.stdout.write(self.style.SUCCESS(
-                f"Manual trigram migrations completed successfully, timing: {end - start}")
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"Manual trigram migrations completed successfully, timing: {end - start}"
+                )
             )
         except Exception as e:
-            self.stderr.write(self.style.ERROR(f"Manual trigram migrations failed: {str(e)}"))
+            self.stderr.write(
+                self.style.ERROR(f"Manual trigram migrations failed: {str(e)}")
+            )
 
 
 @transaction.atomic
@@ -64,7 +69,10 @@ def migrate_old_to_new_fields_trigram() -> None:
 
         # Migration `key_skills` -> `skills`.
         # (Only users who have not filled `skills`, but have filled in `key_skills`).
-        if user.key_skills and not SkillToObject.objects.filter(object_id=user.id).exists():
+        if (
+            user.key_skills
+            and not SkillToObject.objects.filter(object_id=user.id).exists()
+        ):
             for skill_name in user.key_skills.lower().split(","):
                 if not skill_name:
                     continue  # Skipping empty lines
@@ -85,7 +93,10 @@ def migrate_old_to_new_fields_trigram() -> None:
 
         # Boolean field is responsible for transferring data if both fields
         # were already there or were transferred = `True` (default value = `False`).
-        if user.v2_speciality and SkillToObject.objects.filter(object_id=user.id).exists():
+        if (
+            user.v2_speciality
+            and SkillToObject.objects.filter(object_id=user.id).exists()
+        ):
             user.dataset_migration_applied = True
 
         user.save()

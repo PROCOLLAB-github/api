@@ -31,7 +31,9 @@ def normalize_user_phone(phone_num: str):
     try:
         phone_number = phonenumbers.parse(phone_num, None)
         if phonenumbers.is_valid_number(phone_number):
-            return phonenumbers.format_number(phone_number, phonenumbers.PhoneNumberFormat.INTERNATIONAL)
+            return phonenumbers.format_number(
+                phone_number, phonenumbers.PhoneNumberFormat.INTERNATIONAL
+            )
         raise ValidationError(NOT_VALID_NUMBER_MESSAGE)
     except phonenumbers.phonenumberutil.NumberParseException:
         raise ValidationError(NOT_VALID_NUMBER_MESSAGE)

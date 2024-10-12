@@ -131,6 +131,7 @@ def get_links(obj):
 
 class Base64ImageEncoder:
     """Encode image to base64."""
+
     BASE_QUALITY: int = 85
 
     def get_encoded_base64_from_url(self, url: str, max_width: int = 300) -> str:
@@ -146,10 +147,12 @@ class Base64ImageEncoder:
     def get_encoded_base64_from_local_path(self, image_path: str) -> str:
         """Returns the full prepared base64 string pron url path."""
         with open(image_path, "rb") as image_file:
-            base64_image = base64.b64encode(image_file.read()).decode('utf-8')
+            base64_image = base64.b64encode(image_file.read()).decode("utf-8")
         return self._base64_full_string(base64_image, image_path.split(".")[-1])
 
-    def _base64_full_string(self, base_64_string: str, image_extension: str = "jpeg") -> str:
+    def _base64_full_string(
+        self, base_64_string: str, image_extension: str = "jpeg"
+    ) -> str:
         return f"data:image/{image_extension};base64,{base_64_string}"
 
     def _get_compressed_image(self, image_data, max_width: int) -> str:
@@ -158,5 +161,5 @@ class Base64ImageEncoder:
         image.thumbnail((max_width, max_width))
         buffer = BytesIO()
         image.save(buffer, format="JPEG", quality=self.BASE_QUALITY)
-        base64_image = base64.b64encode(buffer.getvalue()).decode('utf-8')
+        base64_image = base64.b64encode(buffer.getvalue()).decode("utf-8")
         return base64_image

@@ -130,7 +130,10 @@ class ProjectList(generics.ListCreateAPIView):
 
 class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Project.objects.get_projects_for_detail_view()
-    permission_classes = [HasInvolvementInProjectOrReadOnly, TimingAfterEndsProgramPermission]
+    permission_classes = [
+        HasInvolvementInProjectOrReadOnly,
+        TimingAfterEndsProgramPermission,
+    ]
     serializer_class = ProjectDetailSerializer
 
     def retrieve(self, request, *args, **kwargs):
@@ -308,7 +311,7 @@ class ProjectCollaborators(generics.GenericAPIView):
 class ProjectSteps(APIView):
     permission_classes = [IsStaffOrReadOnly]
 
-    def get(self, request, format=None):
+    def get(self, request):
         """
         Return a tuple of project steps.
         """
