@@ -2,10 +2,10 @@ from typing import TypedDict
 
 
 class CriteriasResponse(TypedDict):
-    id: int
+    id: int  # noqa A003 VNE003
     name: str
     description: str
-    type: str
+    type: str  # noqa A003 VNE003
     min_value: int | float | None
     max_value: int | float | None
 

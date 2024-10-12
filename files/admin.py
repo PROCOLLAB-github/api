@@ -9,7 +9,7 @@ from files.models import UserFile
 
 
 class UserFileForm(ModelForm):
-    file = FileField(required=True)
+    file = FileField(required=True)  # noqa VNE002
 
     class Meta:
         model = UserFile
@@ -51,7 +51,8 @@ class UserFileAdmin(admin.ModelAdmin):
 
     @admin.display(empty_value="Empty link")
     def short_link(self, obj):
-        return reprlib.repr(obj.link.lstrip("https://")).strip("'")
+        link = obj.link.removeprefix("https://")
+        return reprlib.repr(link).removesuffix("'").removeprefix("'")
 
     def get_fieldsets(self, request, obj=None):
         fieldsets = super().get_fieldsets(request, obj)

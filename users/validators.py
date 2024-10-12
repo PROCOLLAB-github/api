@@ -49,7 +49,9 @@ def user_experience_years_range_validator(value: int):
     (2000 - `now.year`)
     """
     if value not in range(2000, timezone.now().year + 1):
-        raise DjangoValidationError(f"Год должен быть в диапазоне 2000 - {timezone.now().year}")
+        raise DjangoValidationError(
+            f"Год должен быть в диапазоне 2000 - {timezone.now().year}"
+        )
 
 
 def user_phone_number_validation(value: str):

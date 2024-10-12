@@ -1,11 +1,6 @@
 [flake8]
 max-line-length = 120
 
-ignore =
-  VNE002
-  VNE003
-  W503
-
 exclude =
   ./.cache,
   ./.git,
@@ -20,4 +15,4 @@ exclude =
   ./.vscode,
   *migrations*,
 
-  enable-extensions = print, VNE
+  enable-extensions = print, VNE, B, A, C4, BLK

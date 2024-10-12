@@ -18,33 +18,36 @@ User = get_user_model()
 
 class File:
     def __init__(
-        self, file: TemporaryUploadedFile | InMemoryUploadedFile, quality: int = 70
+        self,
+        file_obj: TemporaryUploadedFile | InMemoryUploadedFile,
+        quality: int = 70,
     ):
-        self.size = file.size
-        self.name = File._get_name(file)
-        self.extension = File._get_extension(file)
-        self.buffer = file.open(mode="rb")
-        self.content_type = file.content_type
+        self.size = file_obj.size
+        self.name = File._get_name(file_obj)
+        self.extension = File._get_extension(file_obj)
+        self.buffer = file_obj.open(mode="rb")
+        self.content_type = file_obj.content_type
 
         # we can compress given type of image
         if self.content_type in SUPPORTED_IMAGES_TYPES:
-            webp_image = convert_image_to_webp(file, quality)
+            webp_image = convert_image_to_webp(file_obj, quality)
             self.buffer = webp_image.buffer()
             self.size = webp_image.size
             self.content_type = "image/webp"
             self.extension = "webp"
 
     @staticmethod
-    def _get_name(file) -> str:
-        name_parts = file.name.split(".")
-        if len(name_parts) == 1:
-            return name_parts[0]
-        return ".".join(name_parts[:-1])
+    def _get_name(file_obj) -> str:
+        file_name_parts = file_obj.name.split(".")
+        if len(file_name_parts) == 1:
+            return file_name_parts[0]
+        return ".".join(file_name_parts[:-1])
 
     @staticmethod
-    def _get_extension(file) -> str:
-        if len(file.name.split(".")) > 1:
-            return file.name.split(".")[-1]
+    def _get_extension(file_obj) -> str:
+        file_name_parts = file_obj.name.split(".")
+        if len(file_name_parts) > 1:
+            return file_name_parts[-1]
         return ""
 
 
@@ -54,7 +57,7 @@ class Storage(ABC):
         pass
 
     @abstractmethod
-    def upload(self, file: File, user: User) -> FileInfo:
+    def upload(self, file_obj: File, user: User) -> FileInfo:
         pass
 
 
@@ -63,32 +66,32 @@ class SelectelSwiftStorage(Storage):
         token = self._get_auth_token()
         return requests.delete(url, headers={"X-Auth-Token": token})
 
-    def upload(self, file: File, user: User) -> FileInfo:
-        url = self._upload(file, user)
+    def upload(self, file_obj: File, user: User) -> FileInfo:
+        url = self._upload(file_obj, user)
         return FileInfo(
             url=url,
-            name=file.name,
-            extension=file.extension,
-            mime_type=file.content_type,
-            size=file.size,
+            name=file_obj.name,
+            extension=file_obj.extension,
+            mime_type=file_obj.content_type,
+            size=file_obj.size,
         )
 
-    def _upload(self, file: File, user: User) -> str:
+    def _upload(self, file_obj: File, user: User) -> str:
         token = self._get_auth_token()
-        url = self._generate_url(file, user)
+        url = self._generate_url(file_obj, user)
 
         requests.put(
             url,
             headers={
                 "X-Auth-Token": token,
-                "Content-Type": file.content_type,
+                "Content-Type": file_obj.content_type,
             },
-            data=file.buffer,
+            data=file_obj.buffer,
         )
 
         return url
 
-    def _generate_url(self, file: File, user: User) -> str:
+    def _generate_url(self, file_obj: File, user: User) -> str:
         """
         Generates url for selcdn
         Returns:
@@ -97,9 +100,9 @@ class SelectelSwiftStorage(Storage):
         return (
             f"{SELECTEL_SWIFT_URL}"
             f"{abs(hash(user.email))}"
-            f"/{abs(hash(file.name))}"
+            f"/{abs(hash(file_obj.name))}"
             f"_{abs(hash(time.time()))}"
-            f".{file.extension}"
+            f".{file_obj.extension}"
         )
 
     @staticmethod
@@ -138,8 +141,8 @@ class CDN:
 
     def upload(
         self,
-        file: TemporaryUploadedFile | InMemoryUploadedFile,
+        file_obj: TemporaryUploadedFile | InMemoryUploadedFile,
         user: User,
         quality: int = 70,
     ) -> FileInfo:
-        return self.storage.upload(File(file, quality), user)
+        return self.storage.upload(File(file_obj, quality), user)

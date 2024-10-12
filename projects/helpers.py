@@ -110,11 +110,12 @@ def update_partner_program(
             clear_project_existing_from_profile(user, instance)
         else:
             partner_program = PartnerProgram.objects.get(pk=program_id)
-            existing_program_id: int | None = clear_project_existing_from_profile(user, instance)
+            existing_program_id: int | None = clear_project_existing_from_profile(
+                user, instance
+            )
 
-            if (
-                partner_program.datetime_finished < timezone.now()
-                and (existing_program_id != program_id)
+            if partner_program.datetime_finished < timezone.now() and (
+                existing_program_id != program_id
             ):
                 raise ValidationError({"error": "Cannot select a completed program."})
 
@@ -129,8 +130,7 @@ def update_partner_program(
 def clear_project_existing_from_profile(user, instance) -> None | int:
     """Remove project from `PartnerProgramUserProfile` instance."""
     existing_program_profile = (
-        PartnerProgramUserProfile.objects
-        .select_related("partner_program")
+        PartnerProgramUserProfile.objects.select_related("partner_program")
         .filter(user=user, project=instance)
         .first()
     )
