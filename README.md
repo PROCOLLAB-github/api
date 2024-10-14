@@ -11,8 +11,9 @@
 🔑 Copy `.env.example` to `.env` and change api settings
 
 ### Install dependencies
-
-* 🐍 Install poetry with command `pip install poetry`
+Before installing dependencies, make sure that you have python 3.11 (see the recommendations section below)  
+  
+* 🐍 Install poetry with command `pip install poetry==1.2.2`
 * 📎 Install dependencies with command `poetry install`
 
 ### Accept migrations
@@ -22,6 +23,73 @@
 ### Run project
 
 🚀 Run project via `python manage.py runserver`
+
+## Recommendations  
+  
+### 1.Installing Pyenv  
+  
+Clone Pyenv from the official GitHub repository:  
+  
+```zsh  
+curl https://pyenv.run | bash  
+```  
+  
+Add Pyenv to your shell profile (e.g., .bashrc, .bash_profile, or .zshrc):  
+  
+```zsh  
+export PATH="$HOME/.pyenv/bin:$PATH"eval "$(pyenv init --path)"  
+eval "$(pyenv init -)"  
+eval "$(pyenv virtualenv-init -)"  
+```  
+  
+Apply changes to your shell environment:  
+  
+```zsh  
+source ~/.bashrc # or equivalent profile, e.g., for Zsh use .zshrc
+```  
+  
+Verify Pyenv is installed correctly:  
+  
+pyenv --version  
+  
+### 2. Installing Python 3.11  
+  
+Once Pyenv is set up, you can install Python 3.11 with the following steps:  
+  
+Install Python 3.11:  
+  
+```zsh  
+pyenv install 3.11.0
+```  
+  
+Verify Python 3.11 has been installed:  
+  
+pyenv versions  
+  
+### 3. Setting Python 3.11 as the Default Version  
+  
+To set Python 3.11 as the default global version, use the following command:  
+  
+```zsh  
+pyenv global 3.11.0
+```  
+  
+This will switch your system's Python interpreter to use Python 3.11 by default.  
+  
+### 4. Verification  
+  
+Check that Python 3.11 is now the active version:  
+  
+```zsh  
+python --version
+```  
+  
+You should see:  
+  
+```zsh  
+Python 3.11.0
+```
+
 ## For developers
 
 ### Install pre-commit hooks
