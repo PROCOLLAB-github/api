@@ -344,6 +344,7 @@ EMAIL_USE_TLS = True
 EMAIL_HOST = config("EMAIL_HOST", default="smtp.gmail.com", cast=str)
 EMAIL_PORT = config("EMAIL_PORT", default=587, cast=int)
 EMAIL_HOST_USER = config("EMAIL_USER", cast=str, default="example@mail.ru")
+EMAIL_USER = EMAIL_HOST_USER
 EMAIL_HOST_PASSWORD = config("EMAIL_PASSWORD", cast=str, default="password")
 
 SELECTEL_ACCOUNT_ID = config("SELECTEL_ACCOUNT_ID", cast=str, default="123456")
