@@ -1,6 +1,11 @@
 from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
+from django.core.exceptions import ValidationError as DjangoValidationError
+
+import phonenumbers
+
+from users.constants import NOT_VALID_NUMBER_MESSAGE
 
 
 def user_birthday_validator(birthday):
@@ -38,9 +43,19 @@ def specialization_exists_validator(pk: int):
         )
 
 
-def user_entry_year_education_validator(value: int):
-    """Check education entry year."""
-    if timezone.now().year < value:
-        raise ValidationError("Год поступления не может быть указан в бущуем")
-    if value < 1950:
-        raise ValidationError("Год поступления не быть раньше 1950")
+def user_experience_years_range_validator(value: int):
+    """
+    Check range for choice entry/completion year.
+    (2000 - `now.year`)
+    """
+    if value not in range(2000, timezone.now().year + 1):
+        raise DjangoValidationError(f"Год должен быть в диапазоне 2000 - {timezone.now().year}")
+
+
+def user_phone_number_validation(value: str):
+    """Validates phone number according to the international standard."""
+    try:
+        phone_number = phonenumbers.parse(value, None)
+        return phonenumbers.is_valid_number(phone_number)
+    except phonenumbers.phonenumberutil.NumberParseException:
+        raise DjangoValidationError(NOT_VALID_NUMBER_MESSAGE)

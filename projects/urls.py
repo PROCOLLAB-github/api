@@ -17,7 +17,6 @@ from projects.views import (
     ProjectSubscribers,
     SwitchLeaderRole,
     LeaveProject,
-    SwitchLeaderRole,
 )
 
 app_name = "projects"
