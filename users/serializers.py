@@ -15,13 +15,7 @@ from core.utils import get_user_online_cache_key
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 from projects.models import Project, Collaborator
 from projects.validators import validate_project
-from users.constants import (
-    NOT_VALID_NUMBER_MESSAGE,
-    COUNT_LANGUAGES_VALIDATION_MESSAGE,
-    UNIQUE_LANGUAGES_VALIDATION_MESSAGE,
-    USER_MAX_LANGUAGES_COUNT,
-    USER_EXPERIENCE_YEAR_VALIDATION_MESSAGE,
-)
+from users import constants
 from users.utils import normalize_user_phone
 from users.validators import specialization_exists_validator
 from users.models import (
@@ -307,7 +301,7 @@ class UserExperienceMixin:
         entry_year = attrs.get("entry_year")
         if (entry_year and completion_year) and (entry_year > completion_year):
             raise ValidationError({
-                "entry_year": USER_EXPERIENCE_YEAR_VALIDATION_MESSAGE,
+                "entry_year": constants.USER_EXPERIENCE_YEAR_VALIDATION_MESSAGE,
             })
         return attrs
 
@@ -508,14 +502,23 @@ class UserDetailSerializer(
         education_data = validated_data.pop("education", None)
         if education_data is not None and isinstance(education_data, list):
             self._update_user_education(instance, education_data)
+
         # Update work experience.
         work_experience_data = validated_data.pop("work_experience", None)
         if work_experience_data is not None and isinstance(work_experience_data, list):
             self._update_user_work_experience(instance, work_experience_data)
+
         # Update knowledge of languages.
         user_languages = validated_data.pop("user_languages", None)
         if user_languages is not None and isinstance(user_languages, list):
             self._update_user_languages(instance, user_languages)
+
+        # Update update user skills.
+        user_skills = validated_data.pop("skills_ids", None)
+        if user_skills is not None and isinstance(user_skills, list):
+            self._update_user_skills(instance, user_skills)
+        else:
+            self._user_skills_quantity_limit_validation(instance)
 
         for attr, value in validated_data.items():
             if attr in IMMUTABLE_FIELDS + USER_TYPE_FIELDS + RELATED_FIELDS:
@@ -537,21 +540,6 @@ class UserDetailSerializer(
                 new_user_type = user_types_to_model[value](user=instance)
                 new_user_type.save()
             setattr(instance, attr, value)
-
-            if attr == "skills_ids":
-                instance.skills.all().delete()
-
-                for skill_id in value:
-                    try:
-                        skill = Skill.objects.get(id=skill_id)
-                    except Skill.DoesNotExist:
-                        raise serializers.ValidationError("Skill does not exist")
-
-                    SkillToObject.objects.create(
-                        skill=skill,
-                        content_type=ContentType.objects.get_for_model(CustomUser),
-                        object_id=instance.id,
-                    )
 
         instance.save()
 
@@ -588,14 +576,40 @@ class UserDetailSerializer(
         # Only unique languages in profile.
         languages = [lang_data["language"] for lang_data in data]
         if len(languages) != len(set(languages)):
-            raise ValidationError({"language": UNIQUE_LANGUAGES_VALIDATION_MESSAGE})
+            raise ValidationError({"language": constants.UNIQUE_LANGUAGES_VALIDATION_MESSAGE})
         # Custom validation to limit the number of languages per user to `USER_MAX_LANGUAGES_COUNT`.
-        if len(languages) > USER_MAX_LANGUAGES_COUNT:
-            raise ValidationError(COUNT_LANGUAGES_VALIDATION_MESSAGE)
+        if len(languages) > constants.USER_MAX_LANGUAGES_COUNT:
+            raise ValidationError(constants.COUNT_LANGUAGES_VALIDATION_MESSAGE)
         instance.user_languages.all().delete()
         serializer = UserLanguagesSerializer(data=data, many=True, context=self.context)
         if serializer.is_valid(raise_exception=True):
             serializer.save(user=instance)
+
+    @transaction.atomic
+    def _update_user_skills(self, instance: CustomUser, data: list[int]) -> None:
+        """
+        Update user skills.
+        Required count of skills between 1 and `USER_MAX_SKILL_QUANTITY`.
+        """
+        if not (1 <= len(data) <= constants.USER_MAX_SKILL_QUANTITY):
+            raise serializers.ValidationError(constants.USER_SKILL_QUANTITY_VALIDATIONS_MESSAGE)
+        skills = Skill.objects.filter(id__in=data)
+        if len(skills) != len(data):
+            raise serializers.ValidationError("Skill does not exist")
+        instance.skills.all().delete()
+        skill_objects = [
+            SkillToObject(
+                skill=skill,
+                content_type=ContentType.objects.get_for_model(CustomUser),
+                object_id=instance.id,
+            )
+            for skill in skills
+        ]
+        SkillToObject.objects.bulk_create(skill_objects)
+
+    def _user_skills_quantity_limit_validation(self, instance: CustomUser) -> None:
+        if instance.skills_count > constants.USER_MAX_SKILL_QUANTITY:
+            raise serializers.ValidationError(constants.USER_SKILL_QUANTITY_VALIDATIONS_MESSAGE)
 
     def to_representation(self, instance) -> dict[str, Any]:
         """
@@ -617,7 +631,7 @@ class UserDetailSerializer(
             try:
                 return normalize_user_phone(data)
             except DjangoValidationError:
-                raise ValidationError(NOT_VALID_NUMBER_MESSAGE)
+                raise ValidationError(constants.NOT_VALID_NUMBER_MESSAGE)
 
 
 class UserChatSerializer(serializers.ModelSerializer[CustomUser]):

@@ -73,9 +73,13 @@ class UserEducationStatuses(Enum):
 
 USER_EXPERIENCE_YEAR_VALIDATION_MESSAGE: str = "Год начала не может быть больше года завершения"
 
+# Working with user skills:
+USER_MAX_SKILL_QUANTITY: int = 20
+USER_SKILL_QUANTITY_VALIDATIONS_MESSAGE: str = "Необходимо указать от 1 до 20 навыков"
+
 # Working with user languages:
 USER_MAX_LANGUAGES_COUNT: int = 4
-COUNT_LANGUAGES_VALIDATION_MESSAGE: str = "Пользователь не может указать более 4 языков."
+COUNT_LANGUAGES_VALIDATION_MESSAGE: str = "Пользователь не может указать более 4 языков"
 UNIQUE_LANGUAGES_VALIDATION_MESSAGE: str = "Нельзя добавлять дубликаты языков"
 
 
