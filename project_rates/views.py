@@ -66,7 +66,7 @@ class RateProject(generics.CreateAPIView):
             send_email.delay(
                 ProjectRatedParams(
                     message_type=MessageTypeEnum.PROJECT_RATED.value,
-                    user_id=project.leader.name,
+                    user_id=project.leader.id,
                     project_name=project.name,
                     project_id=project.id,
                     schema_id=2,
