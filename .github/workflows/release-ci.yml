@@ -127,5 +127,7 @@ jobs:
               echo "CLICKUP_SPACE_ID=${{ secrets.CLICKUP_SPACE_ID }}" >> .env &&
               
               echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" >> .env &&
+
+              echo "UNISENDER_GO_API_KEY=${{ secrets.UNISENDER_GO_API_KEY }}" >> .env &&
               
               docker compose -f docker-compose.prod-ci.yml -p prod up -d
