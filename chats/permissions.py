@@ -20,3 +20,16 @@ class IsProjectChatMember(BasePermission):
         if request.user in obj.project.get_collaborators_user_list():
             return True
         return False
+
+
+class IsChatMember(BasePermission):
+    """
+    Allows access only to authenticated users.
+    """
+
+    def has_permission(self, request, view):
+        kwargs = request.parser_context.get("kwargs")
+
+        chat_id: str = kwargs["id"]
+
+        return str(request.user.id) in chat_id
