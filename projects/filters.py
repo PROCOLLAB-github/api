@@ -57,12 +57,16 @@ class ProjectFilter(filters.FilterSet):
 
     def filter_by_partner_program(self, queryset, name, value):
         program_id = value
+
         user = self.request.user
         try:
             program = PartnerProgram.objects.get(pk=program_id)
             program_status = program.projects_availability
             # If available to all users or request.user is an expert of this program.
-            if program_status == "all_users" or Expert.objects.filter(user=user, programs=program).exists():
+            if (
+                program_status == "all_users"
+                or Expert.objects.filter(user=user, programs=program).exists()
+            ):
                 profiles_qs = (
                     PartnerProgramUserProfile.objects.filter(
                         partner_program=program, project__isnull=False
@@ -70,7 +74,9 @@ class ProjectFilter(filters.FilterSet):
                     .select_related("project")
                     .only("project")
                 )
-                return queryset.filter(pk__in=[profile.project.pk for profile in profiles_qs])
+                return queryset.filter(
+                    pk__in=[profile.project.pk for profile in profiles_qs]
+                )
             else:
                 return Project.objects.none()
 
@@ -78,7 +84,9 @@ class ProjectFilter(filters.FilterSet):
             return Project.objects.none()
 
     def filter_by_have_expert_rates(self, queryset, name, value):
-        rated_projects_ids = ProjectScore.objects.values_list("project_id", flat=True).distinct()
+        rated_projects_ids = ProjectScore.objects.values_list(
+            "project_id", flat=True
+        ).distinct()
         if value:
             return queryset.filter(id__in=rated_projects_ids)
         return queryset.exclude(id__in=rated_projects_ids)
@@ -95,7 +103,7 @@ class ProjectFilter(filters.FilterSet):
     )
     is_company = filters.BooleanFilter(
         field_name="is_company",
-        label="is_company\n`1`/`true` is company\n`0`/`false` is not company"
+        label="is_company\n`1`/`true` is company\n`0`/`false` is not company",
     )
 
     # filters by whether there are any vacancies in the project
@@ -112,7 +120,7 @@ class ProjectFilter(filters.FilterSet):
     )
     is_rated_by_expert = filters.BooleanFilter(
         method="filter_by_have_expert_rates",
-        label=("is_rated_by_expert\n`1`/`true` rated projects\n`0`/`false` dosn't rated")
+        label=("is_rated_by_expert\n`1`/`true` rated projects\n`0`/`false` dosn't rated"),
     )
 
     class Meta:

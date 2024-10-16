@@ -19,7 +19,9 @@ from .models import (
     Investor,
     UserLink,
     UserEducation,
+    UserWorkExperience,
     UserSkillConfirmation,
+    UserLanguages,
 )
 
 from core.admin import SkillToObjectInline
@@ -30,8 +32,22 @@ admin.site.register(Permission)
 class UserEducationInline(admin.TabularInline):
     model = UserEducation
     extra = 1
-    verbose_name = "Образование"
-    verbose_name_plural = "Образования"
+    verbose_name = "Образование пользователя"
+    verbose_name_plural = "Образование пользователя"
+
+
+class UserWorkExperienceInline(admin.TabularInline):
+    model = UserWorkExperience
+    extra = 1
+    verbose_name = "Работа пользователя"
+    verbose_name_plural = "Работа пользователя"
+
+
+class UserLanguagesInline(admin.TabularInline):
+    model = UserLanguages
+    extra = 1
+    verbose_name = "Знание языка"
+    verbose_name_plural = "Знание языков"
 
 
 @admin.register(CustomUser)
@@ -54,6 +70,7 @@ class CustomUserAdmin(admin.ModelAdmin):
                 "fields": (
                     "email",
                     "password",
+                    "phone_number",
                 )
             },
         ),
@@ -134,6 +151,8 @@ class CustomUserAdmin(admin.ModelAdmin):
     inlines = [
         SkillToObjectInline,
         UserEducationInline,
+        UserWorkExperienceInline,
+        UserLanguagesInline,
     ]
 
     readonly_fields = ("ordering_score",)
@@ -331,6 +350,20 @@ class ExpertAdmin(admin.ModelAdmin):
 class UserEducationAdmin(admin.ModelAdmin):
     list_display = ("id", "user", "organization_name", "entry_year")
     list_display_links = ("id", "organization_name")
+    search_fields = ("user__first_name", "user__email")
+
+
+@admin.register(UserWorkExperience)
+class UserWorkExperienceAdmin(admin.ModelAdmin):
+    list_display = ("id", "user", "organization_name", "entry_year")
+    list_display_links = ("id", "organization_name")
+    search_fields = ("user__first_name", "user__email")
+
+
+@admin.register(UserLanguages)
+class UserLanguagesAdmin(admin.ModelAdmin):
+    list_display = ("id", "user", "language", "language_level")
+    list_display_links = ("id", "user")
     search_fields = ("user__first_name", "user__email")
 
 

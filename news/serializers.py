@@ -5,6 +5,9 @@ from core.services import is_fan, get_likes_count, get_views_count
 from files.serializers import UserFileSerializer
 from news.mapping import NewsMapping
 from news.models import News
+from projects.models import Project
+from users.models import CustomUser
+from feed.mapping import CONTENT_OBJECT_MAPPING, CONTENT_OBJECT_SERIALIZER_MAPPING
 
 
 User = get_user_model()

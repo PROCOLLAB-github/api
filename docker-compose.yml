@@ -1,14 +1,11 @@
 version: '3.9'
 
-
-
 services:
   web:
     container_name: web
     build:
       context: .
       dockerfile: ./Dockerfile
-    image: ghcr.io/procollab-github/api:latest
     restart: always
     command: bash ./scripts/startup.sh
     volumes:
@@ -19,27 +16,22 @@ services:
       HOST: 0.0.0.0
     expose:
       - 8000
-#    depends_on:
-#      - db
 
   grafana:
+    image: grafana/grafana-enterprise
     container_name: grafana
-    image: grafana/grafana:latest
-    expose:
-      - 3000
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
     volumes:
-      - grafana-data:/var/lib/grafana
-      - grafana-configs:/etc/grafana
-    environment:
-      - GF_SERVER_ROOT_URL=%(protocol)s://%(domain)s:%(http_port)s/grafana
-      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+      - grafana-storage:/var/lib/grafana
 
 
   prometheus:
     container_name: prometheus
     image: prom/prometheus:v2.36.0
-    expose:
-      - 9090
+    ports:
+      - '9090:9090'
     volumes:
       - prom-data:/prometheus
       - ./prometheus:/etc/prometheus
@@ -51,20 +43,21 @@ services:
     depends_on:
       - web
     ports:
-      - 8000:80
-  loki:
-    image: grafana/loki:2.9.0
-    ports:
-      - "3100:3100"
-    command: -config.file=/etc/loki/local-config.yaml
-
-  promtail:
-    image: grafana/promtail:2.9.0
-    volumes:
-      - /var/log:/var/log
-      - ./promtail:/etc/promtail
-      - ./log:/procollab/log
-    command: -config.file=/etc/promtail/config.yml
+      - "8000:80"
+# todo: настроим позже
+#  loki:
+#    image: grafana/loki:2.9.0
+#    ports:
+#      - "3100:3100"
+#    command: -config.file=/etc/loki/local-config.yaml
+#
+#  promtail:
+#    image: grafana/promtail:2.9.0
+#    volumes:
+#      - /var/log:/var/log
+#      - ./promtail:/etc/promtail
+#      - ./log:/procollab/log
+#    command: -config.file=/etc/promtail/config.yml
 
   redis:
     container_name: redis
@@ -85,26 +78,9 @@ services:
     command: bash ./scripts/celery.sh
     depends_on:
       - redis
-#      - db
       - web
     volumes:
       - .:/procollab
-
-
-
-#  db: # не удалять нужно для тестов celery
-#    container_name: db
-#    image: postgres
-#    environment:
-#      POSTGRES_DB: postgres
-#      POSTGRES_USER: postgres
-#      POSTGRES_PASSWORD: postgres
-#    ports:
-#      - 5432:5432
-#    restart: always
-#    volumes:
-#      - postgres_data:/var/lib/postgresql/data/
-
 
 volumes:
   grafana-data:
@@ -114,4 +90,4 @@ volumes:
   log:
   promtail:
   redis-data:
-#  postgres_data:
+  grafana-storage: {}

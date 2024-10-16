@@ -4,6 +4,8 @@ import urllib.parse
 
 from django.apps import apps
 from django.conf import settings
+from django.core.cache import cache
+from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
@@ -72,11 +74,13 @@ from users.serializers import (
     RemoteBuySubSerializer,
 )
 from users.typing import UserCVData
+from .helpers import check_chache_for_cv
 from .filters import UserFilter, SpecializationFilter
 from .pagination import UsersPagination
 from .services.verification import VerificationTasks
 from .services.cv_data_prepare import UserCVDataPreparer
 from .schema import USER_PK_PARAM, SKILL_PK_PARAM
+from .tasks import send_mail_cv
 
 User = get_user_model()
 Project = apps.get_model("projects", "Project")
@@ -196,14 +200,14 @@ class UserSkillsApproveDeclineView(APIView):
             "and `skill_pk` == `skill.id` in the query string."
         ),
         manual_parameters=[USER_PK_PARAM, SKILL_PK_PARAM],
-        responses={201: UserApproveSkillResponse}
+        responses={201: UserApproveSkillResponse},
     )
     def post(self, request, *args, **kwargs) -> Response:
         """Create confirmation of user skill by current user."""
         skill_to_object: SkillToObject = self._get_skill_to_object()
         data: dict[str, int] = {
             "skill_to_object": skill_to_object.id,
-            "confirmed_by": request.user.id
+            "confirmed_by": request.user.id,
         }
         serializer = self.serializer_class(data=data, context={"request": request})
         serializer.is_valid(raise_exception=True)
@@ -529,12 +533,12 @@ class RemoteViewSubscriptions(APIView):
 
     def get(self, request, *args, **kwargs):
         try:
-            subscriptions = self.get_response_from_remote_api()
+            subscriptions = self._get_response_from_remote_api()
             return Response(subscriptions, status=status.HTTP_200_OK)
         except requests.RequestException as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-    def get_link_to_remote_api(self) -> str:
+    def _get_link_to_remote_api(self) -> str:
         # TODO something to reuse this code
         if settings.DEBUG:
             subscriptions_url = "https://skills.dev.procollab.ru/subscription/"
@@ -542,8 +546,8 @@ class RemoteViewSubscriptions(APIView):
             subscriptions_url = "https://api.skills.procollab.ru/subscription/"
         return subscriptions_url
 
-    def get_response_from_remote_api(self):
-        subscriptions_url = self.get_link_to_remote_api()
+    def _get_response_from_remote_api(self):
+        subscriptions_url = self._get_link_to_remote_api()
         response = requests.get(
             subscriptions_url,
             headers={
@@ -561,15 +565,15 @@ class RemoteCreatePayment(GenericAPIView):
 
     def post(self, request, *args, **kwargs):
         try:
-            subscriptions_buy_url = self.def_get_link_to_remote_api()
-            data, headers = self.get_data_to_request_remote_api()
+            subscriptions_buy_url = self._get_link_to_remote_api()
+            data, headers = self._get_data_to_request_remote_api()
             response = requests.post(subscriptions_buy_url, json=data, headers=headers)
             response.raise_for_status()
             return Response(response.json(), status=status.HTTP_200_OK)
         except requests.RequestException as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-    def def_get_link_to_remote_api(self) -> str:
+    def _get_link_to_remote_api(self) -> str:
         # TODO something to reuse this code
         if settings.DEBUG:
             subscriptions_buy_url = "https://skills.dev.procollab.ru/subscription/buy/"
@@ -577,7 +581,7 @@ class RemoteCreatePayment(GenericAPIView):
             subscriptions_buy_url = "https://api.skills.procollab.ru/subscription/buy/"
         return subscriptions_buy_url
 
-    def get_data_to_request_remote_api(self) -> tuple[dict, dict]:
+    def _get_data_to_request_remote_api(self) -> tuple[dict, dict]:
         serializer = self.serializer_class(data=self.request.data)
         if serializer.is_valid():
             data = serializer.validated_data
@@ -586,6 +590,7 @@ class RemoteCreatePayment(GenericAPIView):
                 "Authorization": self.request.META.get("HTTP_AUTHORIZATION"),
             }
             return data, headers
+
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -594,13 +599,62 @@ class UserCVDownload(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs) -> HttpResponse:
+        user_id: int = request.user.id
+        cache_key: str = f"user_cv_download_mail_{user_id}"
+        cooldown_time: int = 60
+
+        # Downlaod file info cached by `cooldown_time`:
+        remaining_time: int | None = check_chache_for_cv(cache_key, cooldown_time)
+        if remaining_time is not None:
+            return Response(
+                {"seconds_after_retry": remaining_time},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         data_preparer = UserCVDataPreparer(request.user.pk)
         user_cv_data: UserCVData = data_preparer.get_prepared_data()
 
-        html_string: str = render_to_string('users/user_CV/user_CV_template.html', user_cv_data)
+        html_string: str = render_to_string(
+            "users/user_CV/user_CV_template.html", user_cv_data
+        )
         binary_pdf_file: bytes | None = HTML(string=html_string).write_pdf()
 
-        encoded_filename: str = urllib.parse.quote(f"{request.user.first_name}_{request.user.last_name}.pdf")
+        encoded_filename: str = urllib.parse.quote(
+            f"{request.user.first_name}_{request.user.last_name}.pdf"
+        )
         response = HttpResponse(binary_pdf_file, content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="{encoded_filename}"'
+
+        cache.set(cache_key, timezone.now(), timeout=cooldown_time)
         return response
+
+
+class UserCVMailing(APIView):
+    """
+    Sending a CV by email (is a temporary solution).
+    Full-fledged work `UserCVDownload`.
+    The user can send a letter once per minute.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        user_id: int = request.user.id
+        cache_key: str = f"user_cv_send_mail_{user_id}"
+        cooldown_time: int = 60
+
+        # send email cached by `cooldown_time`:
+        remaining_time: int | None = check_chache_for_cv(cache_key, cooldown_time)
+        if remaining_time is not None:
+            return Response(
+                {"seconds_after_retry": remaining_time},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        send_mail_cv.delay(
+            user_id=user_id,
+            user_email=request.user.email,
+            filename=f"{request.user.first_name}_{request.user.last_name}",
+        )
+        cache.set(cache_key, timezone.now(), timeout=cooldown_time)
+
+        return Response(data={"detail": "success"}, status=status.HTTP_200_OK)

@@ -28,6 +28,7 @@ from users.views import (
     RemoteViewSubscriptions,
     RemoteCreatePayment,
     UserCVDownload,
+    UserCVMailing,
 )
 
 app_name = "users"
@@ -44,6 +45,7 @@ urlpatterns = [
     path("users/specializations/nested/", UserSpecializationsNestedView.as_view()),
     path("users/specializations/inline/", UserSpecializationsInlineView.as_view()),
     path("users/download_cv/", UserCVDownload.as_view()),
+    path("users/send_mail_cv/", UserCVMailing.as_view()),
     path("users/<int:pk>/", UserDetail.as_view()),
     path("users/<int:pk>/subscribed_projects/", UserSubscribedProjectsList.as_view()),
     path("users/<int:pk>/set_onboarding_stage/", SetUserOnboardingStage.as_view()),

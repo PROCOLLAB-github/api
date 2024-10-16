@@ -1,5 +1,7 @@
 from functools import singledispatch
 from typing import Dict, List, Union, Annotated
+
+from procollab import settings
 from .constants import MAILING_USERS_BATCH_SIZE
 from .models import MailingSchema
 from users.models import CustomUser
@@ -111,7 +113,9 @@ def send_mass_mail(
         template_context["user"] = user
         html_msg = template.render(Context(template_context))
         plain_msg = template.render(Context(template_context))
-        msg = EmailMultiAlternatives(subject, plain_msg, None, [user.email])
+        msg = EmailMultiAlternatives(
+            subject, plain_msg, settings.EMAIL_USER, [user.email]
+        )
         msg.attach_alternative(html_msg, "text/html")
         messages.append(msg)
 
