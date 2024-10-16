@@ -27,7 +27,7 @@ class RateProject(generics.CreateAPIView):
     serializer_class = ProjectScoreCreateSerializer
     permission_classes = [IsExpertPost]
 
-    def get_needed_data(self) -> tuple[dict, list[int]]:
+    def get_needed_data(self) -> tuple[dict, list[int], str]:
         data = self.request.data
         user_id = self.request.user.id
         project_id = self.kwargs.get("project_id")
@@ -36,18 +36,20 @@ class RateProject(generics.CreateAPIView):
             criterion["criterion_id"] for criterion in data
         ]  # is needed for validation later
 
-        Expert.objects.get(user__id=user_id, programs__criterias__id=criteria_to_get[0])
+        expert = Expert.objects.get(
+            user__id=user_id, programs__criterias__id=criteria_to_get[0]
+        )
 
         for criterion in data:
             criterion["user"] = user_id
             criterion["project"] = project_id
             criterion["criteria"] = criterion.pop("criterion_id")
 
-        return data, criteria_to_get
+        return data, criteria_to_get, expert.programs.all().first().name
 
     def create(self, request, *args, **kwargs) -> Response:
         try:
-            data, criteria_to_get = self.get_needed_data()
+            data, criteria_to_get, program_name = self.get_needed_data()
 
             serializer = ProjectScoreCreateSerializer(
                 data=data, criteria_to_get=criteria_to_get, many=True
@@ -70,6 +72,7 @@ class RateProject(generics.CreateAPIView):
                     project_name=project.name,
                     project_id=project.id,
                     schema_id=2,
+                    program_name=program_name,
                 )
             )
 
