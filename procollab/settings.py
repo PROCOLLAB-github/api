@@ -321,23 +321,30 @@ if DEBUG:
 
 SESSION_COOKIE_SECURE = False
 
-EMAIL_BACKEND = "anymail.backends.unisender_go.EmailBackend"
+# EMAIL_BACKEND = "anymail.backends.unisender_go.EmailBackend"
+#
+# UNISENDER_GO_API_KEY = config("UNISENDER_GO_API_KEY", default="", cast=str)
+# ANYMAIL = {
+#     "UNISENDER_GO_API_KEY": UNISENDER_GO_API_KEY,
+#     "UNISENDER_GO_API_URL": "https://go1.unisender.ru/ru/transactional/api/v1/",
+#     "UNISENDER_GO_SEND_DEFAULTS": {
+#         "esp_extra": {
+#             "global_language": "ru",
+#         }
+#     },
+# }
 
-UNISENDER_GO_API_KEY = config("UNISENDER_GO_API_KEY", default="", cast=str)
-ANYMAIL = {
-    "UNISENDER_GO_API_KEY": UNISENDER_GO_API_KEY,
-    "UNISENDER_GO_API_URL": "https://go1.unisender.ru/ru/transactional/api/v1/",
-    "UNISENDER_GO_SEND_DEFAULTS": {
-        "esp_extra": {
-            "global_language": "ru",
-        }
-    },
-}
+# EMAIL_USE_TLS = True
+#
+# EMAIL_PORT = config("EMAIL_PORT", default=587, cast=int)
+# EMAIL_USER = config("EMAIL_USER", cast=str, default="example@mail.ru")
 
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_USE_TLS = True
-
+EMAIL_HOST = config("EMAIL_HOST", default="smtp.gmail.com", cast=str)
 EMAIL_PORT = config("EMAIL_PORT", default=587, cast=int)
-EMAIL_USER = config("EMAIL_USER", cast=str, default="example@mail.ru")
+EMAIL_HOST_USER = config("EMAIL_USER", cast=str, default="example@mail.ru")
+EMAIL_HOST_PASSWORD = config("EMAIL_PASSWORD", cast=str, default="password")
 
 SELECTEL_ACCOUNT_ID = config("SELECTEL_ACCOUNT_ID", cast=str, default="123456")
 SELECTEL_CONTAINER_NAME = config(
