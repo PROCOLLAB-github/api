@@ -4,6 +4,8 @@ import urllib.parse
 
 from django.apps import apps
 from django.conf import settings
+from django.core.cache import cache
+from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
@@ -72,11 +74,13 @@ from users.serializers import (
     RemoteBuySubSerializer,
 )
 from users.typing import UserCVData
+from .helpers import check_chache_for_cv
 from .filters import UserFilter, SpecializationFilter
 from .pagination import UsersPagination
 from .services.verification import VerificationTasks
 from .services.cv_data_prepare import UserCVDataPreparer
 from .schema import USER_PK_PARAM, SKILL_PK_PARAM
+from .tasks import send_mail_cv
 
 User = get_user_model()
 Project = apps.get_model("projects", "Project")
@@ -595,6 +599,18 @@ class UserCVDownload(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs) -> HttpResponse:
+        user_id: int = request.user.id
+        cache_key: str = f"user_cv_download_mail_{user_id}"
+        cooldown_time: int = 60
+
+        # Downlaod file info cached by `cooldown_time`:
+        remaining_time: int | None = check_chache_for_cv(cache_key, cooldown_time)
+        if remaining_time is not None:
+            return Response(
+                {"seconds_after_retry": remaining_time},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         data_preparer = UserCVDataPreparer(request.user.pk)
         user_cv_data: UserCVData = data_preparer.get_prepared_data()
 
@@ -608,4 +624,37 @@ class UserCVDownload(APIView):
         )
         response = HttpResponse(binary_pdf_file, content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="{encoded_filename}"'
+
+        cache.set(cache_key, timezone.now(), timeout=cooldown_time)
         return response
+
+
+class UserCVMailing(APIView):
+    """
+    Sending a CV by email (is a temporary solution).
+    Full-fledged work `UserCVDownload`.
+    The user can send a letter once per minute.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        user_id: int = request.user.id
+        cache_key: str = f"user_cv_send_mail_{user_id}"
+        cooldown_time: int = 60
+
+        # send email cached by `cooldown_time`:
+        remaining_time: int | None = check_chache_for_cv(cache_key, cooldown_time)
+        if remaining_time is not None:
+            return Response(
+                {"seconds_after_retry": remaining_time},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        send_mail_cv.delay(
+            user_id=user_id,
+            user_email=request.user.email,
+            filename=f"{request.user.first_name}_{request.user.last_name}",
+        )
+        cache.set(cache_key, timezone.now(), timeout=cooldown_time)
+
+        return Response(data={"detail": "success"}, status=status.HTTP_200_OK)

@@ -1,4 +1,6 @@
 from django.conf import settings
+from django.core.cache import cache
+from django.utils import timezone
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.sites.shortcuts import get_current_site
@@ -96,3 +98,11 @@ def force_verify_user(user: User) -> None:
     # todo: send email
     user.is_active = True
     user.save()
+
+
+def check_chache_for_cv(cache_key: str, cooldown_time: int) -> int | None:
+    cached_timestamp = cache.get(cache_key)
+    if cached_timestamp:
+        time_passed = timezone.now() - cached_timestamp
+        remaining_time = cooldown_time - int(time_passed.total_seconds())
+        return remaining_time
