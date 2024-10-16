@@ -10,12 +10,13 @@ from vacancy.mapping import (
     get_link,
     MessageTypeEnum,
     message_type_to_title,
+    EmailParamsType,
 )
 from vacancy.models import Vacancy
 
 
 @app.task
-def send_email(data: CeleryEmailParams):
+def send_email(data: EmailParamsType):
     context_data = ContextDataDict(
         text=create_text_for_email(data),
         title=message_type_to_title[data["message_type"]],

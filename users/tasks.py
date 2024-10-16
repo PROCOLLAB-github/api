@@ -5,6 +5,7 @@ from django.template.loader import render_to_string
 from weasyprint import HTML
 
 from procollab.celery import app
+from procollab.settings import EMAIL_USER
 from users.typing import UserCVData
 from users.services.cv_data_prepare import UserCVDataPreparer
 
@@ -24,8 +25,9 @@ def send_mail_cv(user_id: int, user_email: str, filename: str):
         template_content = f.read()
 
     email = EmailMessage(
-        subject='Procollab | Резюме',
+        subject="Procollab | Резюме",
         body=template_content,
+        from_email=EMAIL_USER,
         to=[user_email],
     )
     email.content_subtype = "html"
