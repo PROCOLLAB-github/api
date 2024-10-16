@@ -59,6 +59,7 @@ message_type_to_title: dict[Annotated[str, EmailTextTypes], str] = {
     MessageTypeEnum.OUTDATED.value: "У вашей вакансии истёк срок годности",
     MessageTypeEnum.REJECTED.value: "На ваш отклик ответили отказом",
     MessageTypeEnum.REGISTERED_PROGRAM_USER.value: "Вы зарегистрировались на программу",
+    MessageTypeEnum.PROJECT_RATED.value: "Ваш проект был оценён",
 }
 
 
