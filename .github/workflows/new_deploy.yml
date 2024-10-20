@@ -1,0 +1,51 @@
+name: 'new deploy prod server'
+
+on:
+  push:
+    branches: 
+      - dev
+  workflow_dispatch:
+
+jobs:
+  deploy:
+      runs-on: ubuntu-latest
+      steps:
+        - name: run on server
+          uses: garygrossgarten/github-action-ssh@release
+          with:
+            host: ${{ secrets.SERVER_HOST }}
+            username: ${{ secrets.SERVER_USER }}
+            password: ${{ secrets.SERVER_PASSWORD }}
+            command: |
+              cd /root/new_api &&
+              git checkout master &&
+              git pull &&
+              
+              rm -f .env &&
+              touch .env &&
+              
+              echo "DJANGO_SECRET_KEY=${{ secrets.DEV_DJANGO_SECRET_KEY }}" >> .env &&
+              
+              echo "DATABASE_NAME=${{ secrets.DEV_DATABASE_NAME }}" >> .env &&
+              echo "DATABASE_PASSWORD=${{ secrets.DEV_DATABASE_PASSWORD }}" >> .env &&
+              echo "DATABASE_USER=${{ secrets.DEV_DATABASE_USER }}" >> .env &&
+              echo "DATABASE_HOST=${{ secrets.DEV_DATABASE_HOST }}" >> .env &&
+              echo "DATABASE_PORT=${{ secrets.DEV_DATABASE_PORT }}" >> .env &&
+              
+              echo "EMAIL_USER=${{ secrets.EMAIL_USER }}" >> .env &&
+              echo "EMAIL_PASSWORD=${{ secrets.EMAIL_PASSWORD }}" >> .env &&
+              echo "EMAIL_HOST=${{ secrets.EMAIL_HOST }}" >> .env &&
+              echo "EMAIL_PORT=${{ secrets.EMAIL_PORT }}" >> .env &&
+              echo "SELECTEL_ACCOUNT_ID=${{ secrets.SELECTEL_ACCOUNT_ID }}" >> .env &&
+              echo "SELECTEL_CONTAINER_NAME=${{ secrets.SELECTEL_CONTAINER_NAME }}" >> .env &&
+              echo "SELECTEL_CONTAINER_PASSWORD=${{ secrets.SELECTEL_CONTAINER_PASSWORD }}" >> .env &&
+              echo "SELECTEL_CONTAINER_USERNAME=${{ secrets.SELECTEL_CONTAINER_USERNAME }}" >> .env &&
+              
+              echo "CLICKUP_API_TOKEN=${{ secrets.CLICKUP_API_TOKEN }}" >> .env &&
+              echo "CLICKUP_SPACE_ID=${{ secrets.CLICKUP_SPACE_ID }}" >> .env &&
+              
+              echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" >> .env &&
+
+              echo "UNISENDER_GO_API_KEY=${{ secrets.UNISENDER_GO_API_KEY }}" >> .env &&
+              
+              docker compose -f docker-compose.prod-ci.yml -p prod up -d --build
