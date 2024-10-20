@@ -15,8 +15,7 @@ jobs:
             password: ${{ secrets.SERVER_PASSWORD }}
             command: |
               cd /home/app/new_procollab_deploy &&
-              git checkout master &&
-              git pull &&
+              git pull origin master &&
               
               rm -f .env &&
               touch .env &&
