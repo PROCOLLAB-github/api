@@ -14,7 +14,7 @@ jobs:
             username: ${{ secrets.SERVER_USER }}
             password: ${{ secrets.SERVER_PASSWORD }}
             command: |
-              cd /root/new_api &&
+              cd /home/app/new_procollab_deploy &&
               git checkout master &&
               git pull &&
               
