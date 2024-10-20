@@ -27,9 +27,9 @@ class IsChatMember(BasePermission):
     Allows access only to authenticated users.
     """
 
-    def has_permission(self, request, view):
+    def has_permission(self, request, view) -> bool:
         kwargs = request.parser_context.get("kwargs")
 
         chat_id: str = kwargs["id"]
 
-        return str(request.user.id) in chat_id
+        return str(request.user.id) in chat_id.split("_")
