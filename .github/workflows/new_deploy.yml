@@ -1,10 +1,7 @@
 name: 'new deploy prod server'
 
 on:
-  push:
-    branches: 
-      - dev
-  workflow_dispatch:
+   workflow_dispatch:
 
 jobs:
   deploy:
