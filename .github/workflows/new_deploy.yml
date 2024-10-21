@@ -44,4 +44,4 @@ jobs:
 
               echo "UNISENDER_GO_API_KEY=${{ secrets.UNISENDER_GO_API_KEY }}" >> .env &&
               
-              docker compose -f docker-compose.prod-ci.yml -p prod up -d --build
+              docker compose -f docker-compose.prod-ci.yml -p prod up -d --build --force-recreate
