@@ -593,19 +593,35 @@ class UserDetailSerializer(
         """
         if not (1 <= len(data) <= constants.USER_MAX_SKILL_QUANTITY):
             raise serializers.ValidationError(constants.USER_SKILL_QUANTITY_VALIDATIONS_MESSAGE)
-        skills = Skill.objects.filter(id__in=data)
-        if len(skills) != len(data):
-            raise serializers.ValidationError("Skill does not exist")
-        instance.skills.all().delete()
-        skill_objects = [
-            SkillToObject(
-                skill=skill,
-                content_type=ContentType.objects.get_for_model(CustomUser),
+
+        user_content_type = ContentType.objects.get_for_model(CustomUser)
+
+        current_user_skills_ids = SkillToObject.objects.filter(
+            content_type=user_content_type,
+            object_id=instance.id,
+        ).values_list("skill__id", flat=True)
+
+        skills_to_add: set[int] = set(data) - set(current_user_skills_ids)
+        skills_to_remove: set[int] = set(current_user_skills_ids) - set(data)
+
+        if skills_to_remove:
+            SkillToObject.objects.filter(
+                skill__id__in=skills_to_remove,
+                content_type=user_content_type,
                 object_id=instance.id,
-            )
-            for skill in skills
-        ]
-        SkillToObject.objects.bulk_create(skill_objects)
+            ).delete()
+
+        if skills_to_add:
+            skills = Skill.objects.filter(id__in=skills_to_add)
+            skill_objects = [
+                SkillToObject(
+                    skill=skill,
+                    content_type=user_content_type,
+                    object_id=instance.id,
+                )
+                for skill in skills
+            ]
+            SkillToObject.objects.bulk_create(skill_objects)
 
     def _user_skills_quantity_limit_validation(self, instance: CustomUser) -> None:
         if instance.skills_count > constants.USER_MAX_SKILL_QUANTITY:
