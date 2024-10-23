@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @page {
+      size: A4;
+      margin: 0;
+    }
+    /*
+    @page :nth(2) {
+      margin-top: 50px;
+    }
+    */
+
+    @font-face {
+      font-family: "Mont-SemiBold";
+      src: url("file:///{{ fonts.font_semibold_path }}") format("truetype");
+      font-style: normal;
+    }
+
+    @font-face {
+        font-family: "Mont-Heavy";
+        src: url("file:///{{ fonts.font_heavy_path }}") format("truetype");
+        font-style: normal;
+    }
+
+    @font-face {
+        font-family: "Mont-ExtraLight";
+        src: url("file:///{{ fonts.font_extralight_path }}") format("truetype");
+        font-style: normal;
+    }
+
+    @font-face {
+        font-family: "Mont-Regular";
+        src: url("file:///{{ fonts.font_regular_path }}") format("truetype");
+        font-style: normal;
+    }
+
+    /* Основное тело. */
+    body {
+      font-family: "Mont-SemiBold", sans-serif;
+      margin: 0;
+      padding: 0;
+      display: table;
+      font-size: 14px;
+    }
+
+    /* Сайдбар */
+    .sidebar {
+      display: table-cell;
+      width: 33%;
+      box-sizing: border-box;
+      background-color: #6C27FF;
+      color: white;
+      z-index: 1;
+      page-break-inside: auto;
+      text-align: center;
+    }
+
+    /* Синий фон сайдбара (чтобы ехал сбоку по всем страницам) */
+    .sidebar-background {
+      position: fixed !important;
+      width: 33%;
+      height: 100% !important;
+      background-color: #6C27FF;
+      float: left;
+      left: 0px !important;
+      top: 0px !important;
+      z-index: -1;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+    /* Верхняя часть сайдбара, чтобы опустить контакты вниз (альтернативы не работали). */
+    .sidebar_top_elements {
+      min-height: 650px;
+    }
+
+    /* Круглый аватар. */
+    .circle_image {
+      position: relative;
+      z-index: 2;
+      border-radius: 50%;
+      display: block;
+      object-fit: cover;
+      width: 170px;
+      height: 170px;
+      border: 2px solid #ffffff;
+      margin-top: 34px;
+      margin-bottom: 30px;
+    }
+
+    /* Контент сайдбара. */
+    .sidebar_container {
+      padding-left: 30px;
+      padding-right: 30px;
+      text-align: left;
+    }
+
+    /* Заголовки сайдбара. */
+    .sidebar_header {
+      font-size: 22px;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+
+    /* Навык в сайдбаре (длинное наименование). */
+    .sidebar_skill {
+      color: #6C27FF;
+      background-color: #ffffff;
+      padding: 8px;
+      font-size: 12px;
+      border-radius: 10px;
+      margin-bottom: 10px;
+    }
+
+    /* Навык контейнер для коротких наименований. */
+    .div_sidebar_skill {
+      padding-bottom: 20px;
+      padding-top: 8px;
+      display: inline-block;
+    }
+
+    /* ОБертка футера в сайдбаре. */
+    .sidebar_footer_wrapper {
+      page-break-inside: avoid;
+    }
+
+    /* Контакты в сайдбаре. */
+    .sidebar_contacts {
+      color: #ffffff9a;
+      margin-bottom: 10px;
+    }
+
+    /* Блок с иконкой в сайдбаре. */
+    .sidebar_icon_wrapper {
+      font-family: "Mont-ExtraLight", sans-serif;
+      margin-top: 40px;
+      display: inline-block;
+      vertical-align: middle;
+      color: hwb(0 100% 0%);
+    }
+
+    /* Иконка в сайдбаре. */
+    .sidebar_icon {
+      transform: scale(0.9);
+      display: inline-block;
+      vertical-align: middle;
+    }
+
+    /* Основная страница. */
+    .page {
+      display: table-cell;
+      width: 67%;
+      box-sizing: border-box;
+      vertical-align: top;
+      padding-left: 20px;
+      padding-right: 80px;
+    }
+
+    /* Главный хедер (Имя | Фамилия). */
+    .page_main_header {
+      font-family: "Mont-SemiBold", sans-serif;
+      font-size: 25px;
+      margin-top: 25px;
+      margin-bottom: 10px;
+    }
+
+    /* Подзаголовок (Позиция пользователя). */
+    .page_user_position {
+      font-family: "Mont-ExtraLight", sans-serif;
+      font-size: 15px;
+      margin-bottom: 20px;
+    }
+
+    /* Подзаголовок (Город | Возраст). */
+    .page_age_city {
+      font-family: "Mont-ExtraLight", sans-serif;
+      font-size: 15px;
+      margin-bottom: 35px;
+      color: hsla(0, 0%, 0%, 0.7);
+    }
+
+    /* Подзаголовок (Образование | Опыт работы | Языки). */
+    .page_content_header {
+      font-family: "Mont-SemiBold", sans-serif;
+      font-size: 21px;
+      margin-bottom: 20px;
+    }
+
+    /* Подзаголовок (Наименование места Работы | Учебы). */
+    .page_expirence_name {
+      font-family: "Mont-SemiBold", sans-serif;
+      font-size: 13px;
+      padding-bottom: 8px;
+      line-height: 1.2;
+    }
+
+    /* Подзаголовок (Позиция на работе). */
+    .page_expirence_role {
+      font-family: "Mont-ExtraLight", sans-serif;
+      font-size: 11px;
+      margin-bottom: 5px;
+    }
+
+     /* Описание (Работы | Учебы). */
+    .page_expirence_description {
+      font-family: "Mont-ExtraLight", sans-serif;
+      font-size: 10px;
+    }
+
+    /* Контейнер для всей секции образования. */
+    .experience_container {
+      display: block;
+      flex-direction: column;
+      page-break-inside: auto;
+    }
+
+    /* Один блок с опытом. */
+    .experience_item {
+      display: flex;
+      margin-bottom: 30px;
+      page-break-inside: avoid;
+    }
+
+    /* Колонка с годами. */
+    .years_column {
+      display: flex;
+      flex-direction: column;
+      text-align: right;
+      flex-shrink: 0;
+      min-width: 30px;
+    }
+
+    /* Колонка с содержимым. */
+    .content_column {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      page-break-inside: avoid;
+      margin-left: 10px;
+    }
+
+    /* Контейнер для маркера и линии. */
+    .experience_marker_container {
+      position: relative;
+      margin-left: 30px;
+      flex-shrink: 0;
+    }
+
+    /* Синяя точка. */
+    .experience_marker {
+      width: 10px;
+      height: 10px;
+      background-color: #6C27FF;
+      border-radius: 50%;
+      position: relative;
+    }
+
+    /* Линия, которая растягивается вниз. */
+    .experience_marker_container::after {
+      content: '';
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      width: 2px;
+      bottom: 0;
+      background-color: #6C27FF;
+      transform: translateX(-50%);
+    }
+
+    /* Года. */
+    .page_years {
+      font-family: "Mont-SemiBold", sans-serif;
+      color: #6C27FF;
+      font-size: 13px;
+      padding-bottom: 3px;
+    }
+
+    /* Описание учебного заведения */
+    .page_expirence_description {
+      font-family: "Mont-ExtraLight", sans-serif;
+      font-size: 10px;
+      color: #000000af;
+      text-align: justify;
+    }
+
+    /* Заголовок Языки. */
+    .page_content_langs_header {
+      font-family: "Mont-SemiBold", sans-serif;
+      font-size: 20px;
+      margin-top: 50px;
+      margin-bottom: 20px;
+    }
+
+    /* Сам язык. */
+    .page_langs {
+      margin-bottom: 10px;
+    }
+
+    /* Уровень языка. */
+    .page_lang_level {
+      font-family: "Mont-ExtraLight", sans-serif;
+    }
+
+  </style>
+</head>
+
+<body>
+  <!------------------------ Сайдбар с информацией. ------------------------>
+  <div class="sidebar">
+
+    <!-- Верхняя часть с аватаркой. -->
+    <div>
+      <figure>
+        <img src="{{ user_avatar }}" class="circle_image">
+      </figure>
+    </div>
+
+    <!-- Контент сайдбара. -->
+    <div class="sidebar_container">
+      <!-- Скиллы/Навыки. -->
+      {% if skills_to_obj %}
+        <div class="sidebar_header">Навыки</div>
+        <div class="sidebar_top_elements">
+          {% for skill_to_obj in skills_to_obj %}
+            {% if skill_to_obj.skill.name|length > 18 %}
+              <div class="sidebar_skill">{{ skill_to_obj.skill.name }}</div>
+            {% else %}
+              <div class="div_sidebar_skill">
+                <span class="sidebar_skill">{{ skill_to_obj.skill.name }}</span>
+              </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <!-- Контакты. -->
+      <div class="sidebar_footer_wrapper">
+        <div>
+          <div class="sidebar_header">Контакты</div>
+            <div class="sidebar_contacts">{{ base_user_info.email }}</div>
+            {% if base_user_info.phone_number %}
+              <div class="sidebar_contacts">{{ base_user_info.phone_number }}</div>
+            {% endif %}
+        </div>
+
+        <!-- Футер лого с текстом. -->
+        <div class="sidebar_icon_wrapper">
+          сделано с <img class="sidebar_icon" src="{{ procollab_logo }}">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Синий фон сайдбара, чтобы растягиваться на все страницы. -->
+  <div class="sidebar-background"></div>
+
+  <!------------------------ Основной контент страницы ------------------------>
+  <div class="page">
+    <!-- Имя фамилия + специальность (если есть). -->
+    <div>&nbsp</div>
+    <div>
+      <div class="page_main_header">{{ base_user_info.first_name }} {{ base_user_info.last_name }}</div>
+      {% if position %}
+        <div class="page_user_position">{{ position }}</div>
+      {% endif %}
+      {% if base_user_info.city %}
+        <div class="page_age_city">{{ base_user_info.city }}, {{ user_age }}</div>
+      {% else %}
+        <div class="page_age_city">{{ user_age }}</div>
+      {% endif %}
+    </div>
+
+
+    <!-- Опыт/образование (если есть). -->
+    {% if education %}
+      <div class="page_content_header">Образование</div>
+      <div class="experience_container">
+        {% for exp in education %}
+          <div class="experience_item">
+
+            <!-- Колонка с годами. -->
+            <div class="years_column">
+              {% if exp.entry_year %}
+                <div class="page_years">{{ exp.entry_year }}</div>
+              {% else %}
+                <div class="page_years">год</div>
+              {% endif %}
+              {% if exp.completion_year %}
+                <div class="page_years">{{ exp.completion_year }}</div>
+              {% else %}
+                <div class="page_years">н.в.</div>
+              {% endif %}
+            </div>
+
+            <!-- Маркер с полоской. -->
+            <div class="experience_marker_container">
+              <div class="experience_marker"></div>
+            </div>
+
+            <!-- Колонка с содержимым. -->
+            <div class="content_column">
+              <div class="page_expirence_name">{{ exp.organization_name }}</div>
+              {% if exp.description %}
+                <div class="page_expirence_description">{{ exp.description|linebreaksbr }}</div>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <!-- Опыт работы (если есть). -->
+    {% if work_experience %}
+      <div class="page_content_header">Опыт работы</div>
+      <div class="experience_container">
+        {% for exp in work_experience %}
+          <div class="experience_item">
+
+            <!-- Колонка с годами. -->
+            <div class="years_column">
+              {% if exp.entry_year %}
+                <div class="page_years">{{ exp.entry_year }}</div>
+              {% else %}
+                <div class="page_years">год</div>
+              {% endif %}
+              {% if exp.completion_year %}
+                <div class="page_years">{{ exp.completion_year }}</div>
+              {% else %}
+                <div class="page_years">н.в.</div>
+              {% endif %}
+            </div>
+
+            <!-- Маркер с полоской. -->
+            <div class="experience_marker_container">
+              <div class="experience_marker"></div>
+            </div>
+
+            <!-- Колонка с содержимым. -->
+            <div class="content_column">
+              <div class="page_expirence_name">{{ exp.organization_name }}</div>
+              {% if exp.job_position %}
+                <div class="page_expirence_role">{{ exp.job_position }}</div>
+              {% endif %}
+              {% if exp.description %}
+                <div class="page_expirence_description">{{ exp.description|linebreaksbr }}</div>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+
+    <!-- Языки. -->
+    {% if user_languages %}
+      <div style="page-break-inside: avoid;">
+        <div class="page_content_langs_header">Языки</div>
+          {% for language in user_languages %}
+            <div class="page_langs">{{ language.language }}: <span class="page_lang_level">{{ language.language_level }}</span></div>
+          {% endfor %}
+          <div>&nbsp</div>
+      </div>
+    {% endif %}
+  </div>
+</body>
+</html>

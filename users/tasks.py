@@ -6,18 +6,18 @@ from weasyprint import HTML
 
 from procollab.celery import app
 from procollab.settings import EMAIL_USER
-from users.typing import UserCVData
-from users.services.cv_data_prepare import UserCVDataPreparer
+from users.typing import UserCVDataV2
+from users.services.cv_data_prepare import UserCVDataPreparerV2
 
 
 @app.task
 def send_mail_cv(user_id: int, user_email: str, filename: str):
     """Sending mail CV.pdf account owner."""
-    data_preparer = UserCVDataPreparer(user_id)
-    user_cv_data: UserCVData = data_preparer.get_prepared_data()
+    data_preparer = UserCVDataPreparerV2(user_id)
+    user_cv_data: UserCVDataV2 = data_preparer.get_prepared_data()
 
     html_string: str = render_to_string(
-        "users/user_CV/user_CV_template.html", user_cv_data
+        data_preparer.TEMPLATE_PATH, user_cv_data
     )
     binary_pdf_file: bytes | None = HTML(string=html_string).write_pdf()
 
