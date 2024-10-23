@@ -29,6 +29,7 @@ packages = []
 
 [tool.poetry.dependencies]
 python = "^3.11"
+poetry = { version = "1.2.2", optional = true }
 djangorestframework = "^3.14.0"
 flake8 = "^5.0.4"
 python-decouple = "^3.6"
