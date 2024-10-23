@@ -4,46 +4,35 @@ from django.db.models import QuerySet
 
 from users.models import (
     CustomUser,
-    UserAchievement,
     UserEducation,
-    UserLink,
+    UserWorkExperience,
+    UserLanguages,
 )
-from partner_programs.models import PartnerProgramUserProfile
 from core.models import SkillToObject
 
 
-class UserCVData(TypedDict):
+class UserCVDataV2(TypedDict):
     """Typed dict.
     Params:
         - base_user_info: CustomUser -> Simple user info from user instance.
         - position: str -> Position (user have 2 fields for this).
-        - user_age: int -> Age need to be prepared before render.
-        - user_link_from_procollab: str -> Procollab link + user.id.
+        - user_age: str -> Age need to be prepared before render.
         - skills_to_obj: QuerySet[SkillToObject] -> User skills.
-        - experience: QuerySet[UserEducation] -> User experience.
-        - achievements: QuerySet[UserAchievement] -> User achievements.
-        - user_contacts: QuerySet[UserLink] -> User contacts.
-        - user_programs: QuerySet[PartnerProgramUserProfile] -> User programs.
+        - education: QuerySet[UserEducation] -> User education experience.
+        - work_experience: QuerySet[UserWorkExperience] -> User work experience.
+        - user_languages: QuerySet[UserLanguages] -> User languages knowledges.
         - user_avatar: str -> Image need to be prepared(base64) before render.
         - procollab_logo: str -> Image need to be prepared(base64) before render.
-        - ic_location: str -> Image need to be prepared(base64) before render.
-        - encoded_ic_profile: str -> Image need to be prepared(base64) before render.
-        - infinity_gradient: str -> Image need to be prepared(base64) before render.
         - fonts: dict[str, str] -> Absolute paths to fonts.
     """
 
     base_user_info: CustomUser
     position: str
-    user_age: int
+    user_age: str
     skills_to_obj: QuerySet[SkillToObject]
-    experience: QuerySet[UserEducation]
-    achievements: QuerySet[UserAchievement]
-    user_contacts: QuerySet[UserLink]
-    user_programs: QuerySet[PartnerProgramUserProfile]
-    user_link_from_procollab: str
+    education: QuerySet[UserEducation]
+    work_experience: QuerySet[UserWorkExperience]
+    user_languages: QuerySet[UserLanguages]
     user_avatar: str
     procollab_logo: str
-    ic_location: str
-    encoded_ic_profile: str
-    infinity_gradient: str
     fonts: dict[str, str]
