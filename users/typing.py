@@ -28,7 +28,7 @@ class UserCVDataV2(TypedDict):
 
     base_user_info: CustomUser
     position: str
-    user_age: str
+    user_age: str | None
     skills_to_obj: QuerySet[SkillToObject]
     education: QuerySet[UserEducation]
     work_experience: QuerySet[UserWorkExperience]

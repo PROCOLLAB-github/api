@@ -85,23 +85,23 @@ class UserCVDataPreparerV2(AbstractUserCVDataPreparer):
         )
         return user
 
-    def _get_user_age(self, user_instance: CustomUser) -> str:
+    def _get_user_age(self, user_instance: CustomUser) -> str | None:
         """Prepares the user's age with Russian case forms."""
         today = date.today()
         birthday = user_instance.birthday
-        if birthday:
-            age = today.year - birthday.year - ((today.month, today.day) < (birthday.month, birthday.day))
-            last_digit = age % 10
-            last_two_digits = age % 100
-            if 11 <= last_two_digits <= 19:
-                return f"{age} лет"
-            elif last_digit == 1:
-                return f"{age} год"
-            elif 2 <= last_digit <= 4:
-                return f"{age} года"
-            else:
-                return f"{age} лет"
-        return None
+        if birthday is None:
+            return None
+        age = today.year - birthday.year - ((today.month, today.day) < (birthday.month, birthday.day))
+        last_digit = age % 10
+        last_two_digits = age % 100
+        if 11 <= last_two_digits <= 19:
+            return f"{age} лет"
+        elif last_digit == 1:
+            return f"{age} год"
+        elif 2 <= last_digit <= 4:
+            return f"{age} года"
+        else:
+            return f"{age} лет"
 
     def _get_encoded_image_from_local_path(self, path_to_image: str) -> str:
         """Local files also need to be converted to base64 for rendering."""
