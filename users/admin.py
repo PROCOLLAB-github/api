@@ -94,7 +94,6 @@ class CustomUserAdmin(admin.ModelAdmin):
                     "status",
                     "city",
                     "region",
-                    "organization",  # TODO need to be removed in future.
                     "speciality",
                     "v2_speciality",
                     "key_skills",
@@ -264,6 +263,7 @@ class CustomUserAdmin(admin.ModelAdmin):
                 "collaborations__project",
                 "collaborations__project__industry",
                 "skills__skill",
+                "education",
             )
         )
         little_mans = users.filter(birthday__lte=date_limit_18)
@@ -290,7 +290,7 @@ class CustomUserAdmin(admin.ModelAdmin):
                     baby.first_name + " " + baby.last_name,
                     today.year - baby.birthday.year,
                     ", ".join(interests),
-                    baby.organization,
+                    "; ".join(baby.education.values_list("organization_name", flat=True)),
                     baby.v2_speciality if baby.v2_speciality else baby.speciality,
                     baby.email,
                 ]
@@ -306,7 +306,7 @@ class CustomUserAdmin(admin.ModelAdmin):
                     big_man.first_name + " " + big_man.last_name,
                     today.year - big_man.birthday.year,
                     ", ".join(industry_names),
-                    big_man.organization,
+                    "; ".join(big_man.education.values_list("organization_name", flat=True)),
                     big_man.v2_speciality
                     if big_man.v2_speciality
                     else big_man.speciality,
