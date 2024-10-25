@@ -19,7 +19,7 @@ class UserFilter(filters.FilterSet):
 
     Parameters to filter by:
         first_name (str), last_name (str), patronymic (str),
-        city (str), region (str), organization (str), about_me__contains (str),
+        city (str), region (str), about_me__contains (str),
         useful_to_project__contains (str)
 
     Examples:
@@ -121,7 +121,6 @@ class UserFilter(filters.FilterSet):
             "patronymic",
             "city",
             "region",
-            "organization",  # TODO need to be removed in future.
             "user_type",
             "speciality",
         )

@@ -428,7 +428,6 @@ class UserDetailSerializer(
             "speciality",
             "v2_speciality",
             "v2_speciality_id",
-            "organization",  # TODO need to be removed in future.
             "education",
             "work_experience",
             "user_languages",
