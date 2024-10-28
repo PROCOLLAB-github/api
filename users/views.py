@@ -73,12 +73,12 @@ from users.serializers import (
     UserSubscriptionDataSerializer,
     RemoteBuySubSerializer,
 )
-from users.typing import UserCVData
+from users.typing import UserCVDataV2
 from .helpers import check_chache_for_cv
 from .filters import UserFilter, SpecializationFilter
 from .pagination import UsersPagination
 from .services.verification import VerificationTasks
-from .services.cv_data_prepare import UserCVDataPreparer
+from .services.cv_data_prepare import UserCVDataPreparerV2
 from .schema import USER_PK_PARAM, SKILL_PK_PARAM
 from .tasks import send_mail_cv
 
@@ -611,11 +611,11 @@ class UserCVDownload(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        data_preparer = UserCVDataPreparer(request.user.pk)
-        user_cv_data: UserCVData = data_preparer.get_prepared_data()
+        data_preparer = UserCVDataPreparerV2(request.user.pk)
+        user_cv_data: UserCVDataV2 = data_preparer.get_prepared_data()
 
         html_string: str = render_to_string(
-            "users/user_CV/user_CV_template.html", user_cv_data
+            data_preparer.TEMPLATE_PATH, user_cv_data
         )
         binary_pdf_file: bytes | None = HTML(string=html_string).write_pdf()
 
