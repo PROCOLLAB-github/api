@@ -470,8 +470,6 @@ class ResendVerifyEmail(GenericAPIView):
             return Response(
                 "User with given email does not exists!", status=status.HTTP_404_NOT_FOUND
             )
-        except Exception:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
 class ForceVerifyView(APIView):
@@ -614,9 +612,7 @@ class UserCVDownload(APIView):
         data_preparer = UserCVDataPreparerV2(request.user.pk)
         user_cv_data: UserCVDataV2 = data_preparer.get_prepared_data()
 
-        html_string: str = render_to_string(
-            data_preparer.TEMPLATE_PATH, user_cv_data
-        )
+        html_string: str = render_to_string(data_preparer.TEMPLATE_PATH, user_cv_data)
         binary_pdf_file: bytes | None = HTML(string=html_string).write_pdf()
 
         encoded_filename: str = urllib.parse.quote(
@@ -635,6 +631,7 @@ class UserCVMailing(APIView):
     Full-fledged work `UserCVDownload`.
     The user can send a letter once per minute.
     """
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):

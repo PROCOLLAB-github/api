@@ -50,6 +50,11 @@ class UserLanguagesInline(admin.TabularInline):
     verbose_name_plural = "Знание языков"
 
 
+@admin.action(description="Сделать выбранных пользователей подтверждёнными")
+def make_active(modeladmin, request, queryset):
+    queryset.update(is_active=True)
+
+
 @admin.register(CustomUser)
 class CustomUserAdmin(admin.ModelAdmin):
     fieldsets = (
@@ -126,6 +131,7 @@ class CustomUserAdmin(admin.ModelAdmin):
         "is_active",
         "dataset_migration_applied",
         "v2_speciality",
+        "datetime_created",
     )
     list_display_links = (
         "id",
@@ -153,6 +159,7 @@ class CustomUserAdmin(admin.ModelAdmin):
         UserWorkExperienceInline,
         UserLanguagesInline,
     ]
+    actions = [make_active]
 
     readonly_fields = ("ordering_score",)
     change_form_template = "users/admin/users_change_form.html"
@@ -370,7 +377,11 @@ class UserLanguagesAdmin(admin.ModelAdmin):
 @admin.register(UserSkillConfirmation)
 class UserSkillConfirmationAdmin(admin.ModelAdmin):
     list_display = ("id", "get_user_and_skill", "confirmed_by", "confirmed_at")
-    search_fields = ("skill_to_object__skill__name", "confirmed_by__first_name", "confirmed_by__last_name")
+    search_fields = (
+        "skill_to_object__skill__name",
+        "confirmed_by__first_name",
+        "confirmed_by__last_name",
+    )
     raw_id_fields = ("skill_to_object", "confirmed_by")
     readonly_fields = ("confirmed_at",)
 
@@ -382,4 +393,5 @@ class UserSkillConfirmationAdmin(admin.ModelAdmin):
         # Possible contingencies with attributes.
         except Exception:
             return ""
-    get_user_and_skill.short_description = 'User and Skill'
+
+    get_user_and_skill.short_description = "User and Skill"
