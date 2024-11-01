@@ -46,7 +46,6 @@ class CustomUser(AbstractUser):
         status: CharField instance notifies about the user's status.
         region: CharField instance the user's name region.
         city: CharField instance the user's name city.
-        organization: CharField instance the user's place of study or work.
         speciality: CharField instance the user's specialty.
         datetime_updated: A DateTimeField indicating date of update.
         datetime_created: A DateTimeField indicating date of creation.
@@ -103,13 +102,6 @@ class CustomUser(AbstractUser):
         blank=True,
         verbose_name="Номер телефона",
         help_text="Пример: +7 XXX XX-XX-XX | +7XXXXXXXXX | +7 (XXX) XX-XX-XX"
-    )
-    # TODO need to be removed in future `organization` -> `education`.
-    organization = models.CharField(
-        max_length=255,
-        null=True,
-        blank=True,
-        help_text="Устаревшее поле -> UserEducation",
     )
     v2_speciality = models.ForeignKey(
         on_delete=models.SET_NULL,
@@ -179,7 +171,7 @@ class CustomUser(AbstractUser):
         if self.city:
             score += 4
         # TODO need to be removed in future.
-        if self.organization or self.education.all().exists():
+        if self.education.all().exists():
             score += 6
         if self.speciality:
             score += 7
