@@ -1,5 +1,6 @@
 from django.core.mail import EmailMultiAlternatives
 from django.db import transaction
+from django.conf import settings
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.template.loader import render_to_string
@@ -58,7 +59,7 @@ def password_reset_token_created(sender, instance, reset_password_token, *args, 
     msg = EmailMultiAlternatives(
         "Сброс пароля | Procollab",
         email_plaintext_message,
-        "procollab2022@gmail.com",
+        settings.EMAIL_USER,
         [reset_password_token.user.email],
     )
     msg.attach_alternative(email_html_message, "text/html")
