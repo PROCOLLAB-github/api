@@ -286,11 +286,9 @@ class CustomUserAdmin(admin.ModelAdmin):
         today = date.today()
 
         # date_limit_18 = date(today.year - 18, today.month, today.day)
-        user_ed = (
-            UserEducation.objects
-            .select_related("user", "user__v2_speciality")
-            .filter(education_status="Студент")
-        )
+        user_ed = UserEducation.objects.select_related(
+            "user", "user__v2_speciality"
+        ).filter(education_status="Студент")
         # users = (
         #     CustomUser.objects.all()
         #     .select_related("v2_speciality")
@@ -304,15 +302,17 @@ class CustomUserAdmin(admin.ModelAdmin):
 
         for ed in user_ed:
             response_data.append(
-            [
-                ed.user.first_name + " " + ed.user.last_name,
-                (today.year - ed.user.birthday.year) if ed.user.birthday.year else None,
-                ed.organization_name,
-                ed.user.speciality_v2 if ed.user.speciality_v2 else ed.user.speciality,
-                ed.user.email
-
-            ]
-
+                [
+                    ed.user.first_name + " " + ed.user.last_name,
+                    (today.year - ed.user.birthday.year)
+                    if ed.user.birthday.year
+                    else None,
+                    ed.organization_name,
+                    ed.user.speciality_v2
+                    if ed.user.speciality_v2
+                    else ed.user.speciality,
+                    ed.user.email,
+                ]
             )
 
         # for baby in little_mans:
