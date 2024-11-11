@@ -253,7 +253,7 @@ class CustomUserAdmin(admin.ModelAdmin):
             headers=[
                 "Имя и фамилия",
                 "Возраст",
-                "ВУЗ",
+                "Город",
                 "Специальность",
                 "Эл. почта",
             ]
@@ -261,14 +261,19 @@ class CustomUserAdmin(admin.ModelAdmin):
 
         today = date.today()
 
-        # date_limit_18 = date(today.year - 18, today.month, today.day)
-        user_ed = UserEducation.objects.select_related(
-            "user", "user__v2_speciality"
-        ).filter(education_status="Студент")
-        # users = (
-        #     CustomUser.objects.all()
-        #     .select_related("v2_speciality")
-        # )
+        date_limit_18 = date(today.year - 18, today.month, today.day)
+        date_limit_22 = date(today.year - 22, today.month, today.day)
+        # user_ed = UserEducation.objects.select_related(
+        #     "user", "user__v2_speciality"
+        # ).filter(education_status="Студент")
+        users = (
+            CustomUser.objects.all()
+            .select_related("v2_speciality")
+            .filter(
+                birthday__gte=date_limit_18,
+                birthday__lte=date_limit_22
+            )
+        )
         # little_mans = users.filter(birthday__lte=date_limit_18)
         # big_mans = users.exclude(id__in=little_mans.values_list("id", flat=True))
 
@@ -276,18 +281,18 @@ class CustomUserAdmin(admin.ModelAdmin):
         # quantity_little_mans = little_mans.count()
         # quantity_big_mans = whole_quality - quantity_little_mans
 
-        for ed in user_ed:
+        for user in users:
             response_data.append(
                 [
-                    ed.user.first_name + " " + ed.user.last_name,
-                    (today.year - ed.user.birthday.year)
-                    if ed.user.birthday.year
+                    user.first_name + " " + user.last_name,
+                    (today.year - user.birthday.year)
+                    if user.birthday.year
                     else None,
-                    ed.organization_name,
-                    ed.user.v2_speciality
-                    if ed.user.v2_speciality
-                    else ed.user.speciality,
-                    ed.user.email,
+                    user.city,
+                    user.v2_speciality
+                    if user.v2_speciality
+                    else user.speciality,
+                    user.email,
                 ]
             )
 
