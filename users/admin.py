@@ -308,8 +308,8 @@ class CustomUserAdmin(admin.ModelAdmin):
                     if ed.user.birthday.year
                     else None,
                     ed.organization_name,
-                    ed.user.speciality_v2
-                    if ed.user.speciality_v2
+                    ed.user.v2_speciality
+                    if ed.user.v2_speciality
                     else ed.user.speciality,
                     ed.user.email,
                 ]
