@@ -294,8 +294,8 @@ class CustomUserAdmin(admin.ModelAdmin):
             CustomUser.objects.all()
             .select_related("v2_speciality")
             .filter(
-                birthday__gte=date_limit_18,
-                birthday__lte=date_limit_22
+                birthday__lte=date_limit_18,
+                birthday__gte=date_limit_22
             )
         )
         # little_mans = users.filter(birthday__lte=date_limit_18)
