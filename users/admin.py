@@ -1,6 +1,7 @@
 from datetime import date
 
 import tablib
+import urllib.parse
 from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth.models import Permission
@@ -8,7 +9,9 @@ from django.http import HttpResponse
 from django.shortcuts import redirect
 from django.urls import path
 
+from core.utils import XlsxFileToExport
 from mailing.views import MailingTemplateRender
+from users.services.users_activity import UserActivityDataPreparer
 from .helpers import send_verification_completed_email, force_verify_user
 from .models import (
     CustomUser,
@@ -227,6 +230,11 @@ class CustomUserAdmin(admin.ModelAdmin):
                 self.admin_site.admin_view(self.all_users_email_excel),
                 name="users_email_excel",
             ),
+            path(
+                "users-activity-excel/",
+                self.admin_site.admin_view(self.get_users_activity),
+                name="users_activity_excel",
+            ),
         ]
         return custom_urls + default_urls
 
@@ -247,6 +255,22 @@ class CustomUserAdmin(admin.ModelAdmin):
         user = CustomUser.objects.get(pk=object_id)
         force_verify_user(user)
         return redirect("admin:users_customuser_change", object_id)
+
+    def get_users_activity(self, _) -> HttpResponse:
+        activity_prepare = UserActivityDataPreparer()
+        xlsx_file_writer = XlsxFileToExport("активность_пользователей.xlsx")
+        xlsx_file_writer.write_data_to_xlsx(activity_prepare.get_users_prepared_data())
+        binary_data_to_export: bytes = xlsx_file_writer.get_binary_data_from_self_file()
+        xlsx_file_writer.delete_self_xlsx_file_from_local_machine()
+
+        encoded_file_name: str = urllib.parse.quote("активность_пользователей.xlsx")
+        response = HttpResponse(
+            binary_data_to_export,
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        response["Content-Disposition"] = f'attachment; filename*=UTF-8\'\'{encoded_file_name}'
+
+        return response
 
     def get_export_users_emails(self, users):
         response_data = tablib.Dataset(

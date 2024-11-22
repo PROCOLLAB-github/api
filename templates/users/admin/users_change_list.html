@@ -3,13 +3,24 @@
 
 {% block object-tools-items %}
     {{ block.super }}
-    <a href="#" class="addlink" previewlistener="true" onclick="get_users()">
-      Выгрузка ФИО|Email всех пользователей
-    </a>
+    <li>
+        <a href="#" class="addlink" previewlistener="true" onclick="get_users()">
+        Выгрузка ФИО|Email всех пользователей
+        </a>
+    </li>
+    <li>
+        <a href="#" class="addlink" previewlistener="true" onclick="get_users_activity()">
+            Выгрузка активности
+        </a>
+    </li>
 
     <script>
         function get_users() {
             window.open("{% url 'admin:users_email_excel' %}", '_blank').focus();
+        }
+
+        function get_users_activity() {
+            window.open("{% url 'admin:users_activity_excel' %}", '_blank').focus();
         }
     </script>
 {% endblock %}
