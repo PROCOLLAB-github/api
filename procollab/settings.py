@@ -403,3 +403,8 @@ CELERY_RESULT_BACKEND = "redis://redis:6379"
 CELERY_ACCEPT_CONTENT = ["application/json"]
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TASK_SERIALIZER = "json"
+
+VKID_APP_ID = config("VKID_APP_ID", cast=int, default="52467498")
+VKID_REDIRECT_URI = config(
+    "VKID_REDIRECT_URI", cast=str, default="https://app.procollab.ru/auth/login/"
+)
