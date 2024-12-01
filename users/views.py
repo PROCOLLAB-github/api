@@ -54,6 +54,7 @@ from users.constants import (
     VERIFY_EMAIL_REDIRECT_URL,
     OnboardingStage,
 )
+from users.metrics import GET_TOKEN_COUNTER
 from users.models import UserAchievement, LikesOnProject, UserSkillConfirmation
 from users.permissions import IsAchievementOwnerOrReadOnly
 from users.serializers import (
@@ -82,7 +83,16 @@ from .services.cv_data_prepare import UserCVDataPreparerV2
 from .schema import USER_PK_PARAM, SKILL_PK_PARAM
 from .tasks import send_mail_cv
 
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+)
+
+import logging
+
+logger = logging.getLogger(__name__)
+
 User = get_user_model()
+
 Project = apps.get_model("projects", "Project")
 
 
@@ -655,3 +665,10 @@ class UserCVMailing(APIView):
         cache.set(cache_key, timezone.now(), timeout=cooldown_time)
 
         return Response(data={"detail": "success"}, status=status.HTTP_200_OK)
+
+
+class GetJWTToken(TokenObtainPairView):
+    def post(self, request: Request, *args, **kwargs) -> Response:
+        # fixme: это тестовая метрика, удалю потом
+        GET_TOKEN_COUNTER.inc()
+        return super().post(request, *args, **kwargs)

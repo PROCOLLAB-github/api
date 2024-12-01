@@ -1,0 +1,19 @@
+groups:
+- name: example
+  rules:
+  - alert: SpikeInTokenRequests
+    expr: rate(get_token_counter_total[1m]) > 3 * rate(get_token_counter_total[5m])
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Всплеск числа запросов на получение токенов"
+      description: "Число запросов на получение токенов увеличилось более чем в три раза по сравнению со средним значением за последние 5 минут."
+  - alert: HighErrorRate
+    expr: increase(django_http_responses_total_by_status_view_method_total{status=~"5.."}[5m]) / increase(django_http_responses_total_by_status_view_method_total[5m]) > 0.1
+    for: 1s
+    labels:
+      severity: critical
+    annotations:
+      summary: "Высокий уровень 5xx ошибок на {{ $labels.instance }}"
+      description: "Уровень ошибок {{ $labels.instance }} превышает 5% за последние 5 минут."

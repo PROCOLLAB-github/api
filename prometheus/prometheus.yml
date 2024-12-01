@@ -1,6 +1,17 @@
 global:
-  scrape_interval: 15s
-  evaluation_interval: 15s
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+rule_files:
+  - alerts.yml
+
+
+alerting:
+     alertmanagers:
+     - static_configs:
+       - targets:
+         - 'alertmanager:9093'
+
 
 scrape_configs:
   - job_name: monitoring
@@ -8,3 +19,4 @@ scrape_configs:
     static_configs:
       - targets:
         - web:8000
+
