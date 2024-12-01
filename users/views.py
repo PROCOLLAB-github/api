@@ -54,6 +54,7 @@ from users.constants import (
     VERIFY_EMAIL_REDIRECT_URL,
     OnboardingStage,
 )
+from users.metrics import GET_TOKEN_COUNTER
 from users.models import UserAchievement, LikesOnProject, UserSkillConfirmation
 from users.permissions import IsAchievementOwnerOrReadOnly
 from users.serializers import (
@@ -82,7 +83,16 @@ from .services.cv_data_prepare import UserCVDataPreparerV2
 from .schema import USER_PK_PARAM, SKILL_PK_PARAM
 from .tasks import send_mail_cv
 
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+)
+
+import logging
+
+logger = logging.getLogger(__name__)
+
 User = get_user_model()
+
 Project = apps.get_model("projects", "Project")
 
 
@@ -614,9 +624,7 @@ class UserCVDownload(APIView):
         data_preparer = UserCVDataPreparerV2(request.user.pk)
         user_cv_data: UserCVDataV2 = data_preparer.get_prepared_data()
 
-        html_string: str = render_to_string(
-            data_preparer.TEMPLATE_PATH, user_cv_data
-        )
+        html_string: str = render_to_string(data_preparer.TEMPLATE_PATH, user_cv_data)
         binary_pdf_file: bytes | None = HTML(string=html_string).write_pdf()
 
         encoded_filename: str = urllib.parse.quote(
@@ -635,6 +643,7 @@ class UserCVMailing(APIView):
     Full-fledged work `UserCVDownload`.
     The user can send a letter once per minute.
     """
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
@@ -658,3 +667,10 @@ class UserCVMailing(APIView):
         cache.set(cache_key, timezone.now(), timeout=cooldown_time)
 
         return Response(data={"detail": "success"}, status=status.HTTP_200_OK)
+
+
+class GetJWTToken(TokenObtainPairView):
+    def post(self, request: Request, *args, **kwargs) -> Response:
+        # fixme: это тестовая метрика, удалю потом
+        GET_TOKEN_COUNTER.inc()
+        return super().post(request, *args, **kwargs)

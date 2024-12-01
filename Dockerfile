@@ -2,6 +2,10 @@ FROM python:3.11
 
 RUN apt update --no-install-recommends -y
 
+RUN apt-get update && \
+    apt-get install -y cmake && \
+    rm -rf /var/lib/apt/lists/*
+
 ENV PYTHONFAULTHANDLER=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONHASHSEED=random \

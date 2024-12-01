@@ -1,13 +1,11 @@
 import os
 
 from celery import Celery
-import django
 
 # from celery.schedules import crontab
 from celery.schedules import crontab
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "procollab.settings")
-django.setup()
 
 app = Celery("procollab")
 

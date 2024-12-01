@@ -28,6 +28,10 @@ TAGGIT_CASE_INSENSITIVE = True
 
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:8000",
+    "http://localhost:9090",
+    "http://localhost:9093",
+    "http://alertmanager:9093",
+    "http://prometheus:9093",
     "http://127.0.0.1:8000",
     "http://0.0.0.0:8000",
     "https://api.procollab.ru",
@@ -50,6 +54,8 @@ ALLOWED_HOSTS = [
     "dev.procollab.ru",
     "web",  # From Docker
 ]
+
+CORS_ALLOW_CREDENTIALS = True
 
 PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.BCryptSHA256PasswordHasher",
@@ -97,6 +103,7 @@ INSTALLED_APPS = [
     "mailing.apps.MailingConfig",
     "feed.apps.FeedConfig",
     "project_rates.apps.ProjectRatesConfig",
+    "alerts.apps.AlertsConfig",
     # Rest framework
     "rest_framework",
     "rest_framework_simplejwt",
@@ -403,3 +410,9 @@ CELERY_RESULT_BACKEND = "redis://redis:6379"
 CELERY_ACCEPT_CONTENT = ["application/json"]
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TASK_SERIALIZER = "json"
+
+# Alertmanager
+
+ALERTMANAGER_TELEGRAM_TOKEN = config("ALERTMANAGER_TELEGRAM_TOKEN", cast=str)
+
+ALERTMANAGER_TELEGRAM_CHAT_ID = config("ALERTMANAGER_TELEGRAM_CHAT_ID", cast=int)
