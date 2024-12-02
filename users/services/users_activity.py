@@ -4,7 +4,6 @@ from typing import Any
 from django.contrib.contenttypes.models import ContentType
 
 from django.db.models import (
-    Q,
     Count,
     Value,
     QuerySet,
