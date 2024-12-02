@@ -1,45 +1,10 @@
 import logging
-import os
-import pandas as pd
 
 from partner_programs.models import PartnerProgramUserProfile
 from project_rates.models import Criteria, ProjectScore
 
 
 logger = logging.getLogger()
-
-
-class XlsxFileToExport:
-    """
-    Writing data to `xlsx` file.
-    `filename` must contain `.xlsx` format prefix.
-    All data on 1 page.
-    """
-
-    def __init__(self, filename="output.xlsx"):
-        self.filename = filename
-
-    def write_data_to_xlsx(self, data: list[dict], sheet_name="scores") -> None:
-        try:
-            data_frames = pd.DataFrame(data)
-            with pd.ExcelWriter(self.filename) as writer:
-                data_frames.to_excel(writer, sheet_name=sheet_name, index=False)
-        except Exception as e:
-            logger.error(f"Write export rates data error: {str(e)}", exc_info=True)
-            raise
-
-    def get_binary_data_from_self_file(self) -> bytes:
-        try:
-            with open(self.filename, "rb") as f:
-                binary_data = f.read()
-            return binary_data
-        except Exception as e:
-            logger.error(f"Read export rates data error: {str(e)}", exc_info=True)
-            raise
-
-    def delete_self_xlsx_file_from_local_machine(self) -> None:
-        if os.path.isfile(self.filename) and self.filename.endswith(".xlsx"):
-            os.remove(self.filename)
 
 
 class ProjectScoreDataPreparer:
