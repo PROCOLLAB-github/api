@@ -50,6 +50,11 @@ class DefaultProjectCover(models.Model):
         # FIXME: this is not efficient, but for ~10 default covers it should be ok
         return cls.objects.order_by("?").first().image
 
+    @classmethod
+    def get_random_file_link(cls):
+        # FIXME: this is not efficient, but for ~10 default covers it should be ok
+        return cls.objects.order_by("?").first().image.link if cls.objects.order_by("?").first().image else None
+
     class Meta:
         verbose_name = "Обложка проекта"
         verbose_name_plural = "Обложки проектов"
@@ -71,6 +76,7 @@ class Project(models.Model):
         leader: A ForeignKey referring to the User model.
         draft: A boolean indicating if Project is a draft.
         is_company: A boolean indicating if Project is a company.
+        cover_image_address: A URLField cover image URL address.
         cover: A ForeignKey referring to the UserFile model, which is the image cover of the project.
         datetime_created: A DateTimeField indicating date of creation.
         datetime_updated: A DateTimeField indicating date of update.
@@ -101,6 +107,14 @@ class Project(models.Model):
     draft = models.BooleanField(blank=False, default=True)
     is_company = models.BooleanField(null=False, default=False)
 
+    cover_image_address = models.URLField(
+        null=True,
+        blank=True,
+        default=DefaultProjectCover.get_random_file_link,
+        help_text="If left blank, will set a link to the image from the 'Обложки проектов'",
+    )
+
+    # TODO DELETE (deprecated field) after full migrate `cover_image_address`.
     cover = models.ForeignKey(
         UserFile,
         default=DefaultProjectCover.get_random_file,
@@ -135,6 +149,12 @@ class Project(models.Model):
 
     def __str__(self):
         return f"Project<{self.id}> - {self.name}"
+
+    def save(self, *args, **kwargs):
+        """Set random cover image if `cover_image_address` blank."""
+        if self.cover_image_address is None:
+            self.cover_image_address = DefaultProjectCover.get_random_file_link()
+        super().save(*args, **kwargs)
 
     class Meta:
         ordering = ["-is_company", "-hidden_score", "-datetime_created"]

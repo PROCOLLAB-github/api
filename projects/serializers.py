@@ -128,6 +128,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "datetime_updated",
             "views_count",
             "cover",
+            "cover_image_address",
             "partner_programs_tags",
         ]
         read_only_fields = [
