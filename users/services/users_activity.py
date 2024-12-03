@@ -5,11 +5,13 @@ from django.contrib.contenttypes.models import ContentType
 
 from django.db.models import (
     Count,
+    Value,
     QuerySet,
     OuterRef,
     Subquery,
     IntegerField,
 )
+from django.db.models.functions import Coalesce
 
 from users.models import CustomUser
 from news.models import News
@@ -90,18 +92,33 @@ class UserActivityDataPreparer(AbcstractUserActivityDataPreparer):
 
     def __get_user_queryset(self) -> QuerySet[CustomUser]:
         user_content_type = ContentType.objects.get_for_model(CustomUser)
-        projects_in_program_subqury = (
+        projects_in_program_subquery = (
             PartnerProgramUserProfile.objects
             .filter(user_id=OuterRef("id"))
             .exclude(project=None)
-            .annotate(count=Count("id"))
-            .values("count")
+            .values("user_id")
+            .annotate(total=Count("id"))
+            .values("total")
         )
-        posts_count_subqury = (
+        posts_count_subquery = (
             News.objects
             .filter(content_type=user_content_type, object_id=OuterRef("id"))
-            .annotate(count=Count("id"))
-            .values("count")
+            .values("object_id")
+            .annotate(total=Count("id"))
+            .values("total")
+        )
+        likes_count_subquery = (
+            CustomUser.objects
+            .filter(likes__user_id=OuterRef("id"))
+            .annotate(total_likes=Count("likes"))
+            .values("total_likes")
+        )
+
+        projects_in_program_subquery = (
+            CustomUser.objects
+            .filter(partner_program_profiles__user_id=OuterRef("id"))
+            .annotate(total_proj=Count("id"))
+            .values("total_proj")
         )
 
         users: QuerySet[CustomUser] = (
@@ -116,11 +133,27 @@ class UserActivityDataPreparer(AbcstractUserActivityDataPreparer):
                 "partner_program_profiles__partner_program",
             )
             .annotate(
-                likes_count=Count("likes"),
                 projects_count=Count("leaders_projects"),
-                program_profiles_count=Count("partner_program_profiles"),
-                projects_in_program=Subquery(projects_in_program_subqury, output_field=IntegerField()),
-                posts_count=Subquery(posts_count_subqury, output_field=IntegerField()),
+                likes_count=Coalesce(
+                    Subquery(likes_count_subquery, output_field=IntegerField()),
+                    Value(0),
+                    output_field=IntegerField(),
+                ),
+                program_profiles_count=Coalesce(
+                    Subquery(projects_in_program_subquery, output_field=IntegerField()),
+                    Value(0),
+                    output_field=IntegerField(),
+                ),
+                projects_in_program=Coalesce(
+                    Subquery(projects_in_program_subquery, output_field=IntegerField()),
+                    Value(0),
+                    output_field=IntegerField(),
+                ),
+                posts_count=Coalesce(
+                    Subquery(posts_count_subquery, output_field=IntegerField()),
+                    Value(0),
+                    output_field=IntegerField(),
+                ),
             )
         )
         return users
