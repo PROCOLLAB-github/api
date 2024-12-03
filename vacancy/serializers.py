@@ -88,6 +88,9 @@ class VacancyDetailSerializer(
             "datetime_updated",
             "datetime_closed",
             "response_count",
+            "required_experience",
+            "work_schedule",
+            "work_format",
         ]
         read_only_fields = ["project"]
 
@@ -202,6 +205,9 @@ class ProjectVacancyCreateListSerializer(
             "is_active",
             "datetime_closed",
             "response_count",
+            "required_experience",
+            "work_schedule",
+            "work_format",
         ]
 
 
