@@ -1,5 +1,6 @@
 from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
+from django.core.validators import MinValueValidator
 from django.utils import timezone
 
 from files.models import UserFile
@@ -52,6 +53,12 @@ class Vacancy(models.Model):
         blank=True,
         null=True,
         verbose_name="Формат работы",
+    )
+    salary = models.IntegerField(
+        blank=True,
+        null=True,
+        validators=[MinValueValidator(0)],
+        verbose_name="Зарплата",
     )
     project = models.ForeignKey(
         Project,
