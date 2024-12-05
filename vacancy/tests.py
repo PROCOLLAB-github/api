@@ -8,6 +8,11 @@ from projects.models import Project
 from tests.constants import USER_CREATE_DATA
 from users.models import CustomUser
 from users.views import UserList
+from vacancy.constants import (
+    WorkExperience,
+    WorkSchedule,
+    WorkFormat,
+)
 from vacancy.views import (
     VacancyList,
     VacancyDetail,
@@ -37,6 +42,10 @@ class VacancyTestCase(TestCase):
             "description": "Test",
             "is_active": True,
             "project": self.created_project.id,
+            "required_experience": WorkExperience.NO_EXPERIENCE.value,
+            "work_schedule": WorkSchedule.FULL_TIME.value,
+            "work_format": WorkFormat.REMOTE.value,
+            "salary": 100,
         }
 
     def test_vacancy_creation(self):
@@ -68,6 +77,10 @@ class VacancyTestCase(TestCase):
         self.assertEqual(response.data["description"], "Test")
         self.assertEqual(response.data["is_active"], not self.created_project.draft)
         self.assertEqual(response.data["project"]["id"], self.vacancy_create_data["project"])
+        self.assertEqual(response.data["required_experience"], WorkExperience.NO_EXPERIENCE.value)
+        self.assertEqual(response.data["work_schedule"], WorkSchedule.FULL_TIME.value)
+        self.assertEqual(response.data["work_format"], WorkFormat.REMOTE.value)
+        self.assertEqual(response.data["salary"], 100)
 
     def user_create(self):
         request = self.factory.post("auth/users/", USER_CREATE_DATA)
