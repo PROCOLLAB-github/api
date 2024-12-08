@@ -1,3 +1,5 @@
+import binascii
+import os
 from datetime import datetime, timedelta
 
 from django.db.models import Q
@@ -31,7 +33,18 @@ def normalize_user_phone(phone_num: str):
     try:
         phone_number = phonenumbers.parse(phone_num, None)
         if phonenumbers.is_valid_number(phone_number):
-            return phonenumbers.format_number(phone_number, phonenumbers.PhoneNumberFormat.INTERNATIONAL)
+            return phonenumbers.format_number(
+                phone_number, phonenumbers.PhoneNumberFormat.INTERNATIONAL
+            )
         raise ValidationError(NOT_VALID_NUMBER_MESSAGE)
     except phonenumbers.phonenumberutil.NumberParseException:
         raise ValidationError(NOT_VALID_NUMBER_MESSAGE)
+
+
+def random_bytes_in_hex(count: int) -> str:
+    """Генерация случайных байтов в формате hex."""
+    try:
+        random_bytes = os.urandom(count)
+        return binascii.hexlify(random_bytes).decode()
+    except Exception as e:
+        raise ValueError(f"Could not generate {count} random bytes: {e}")

@@ -29,6 +29,7 @@ from users.views import (
     RemoteCreatePayment,
     UserCVDownload,
     UserCVMailing,
+    VKIDOauth2View,
 )
 
 app_name = "users"
@@ -54,7 +55,10 @@ urlpatterns = [
     path("users/<int:user_pk>/news/<int:pk>/", NewsDetail.as_view()),
     path("users/<int:user_pk>/news/<int:pk>/set_viewed/", NewsDetailSetViewed.as_view()),
     path("users/<int:user_pk>/news/<int:pk>/set_liked/", NewsDetailSetLiked.as_view()),
-    path("users/<int:user_pk>/approve_skill/<int:skill_pk>/", UserSkillsApproveDeclineView.as_view()),
+    path(
+        "users/<int:user_pk>/approve_skill/<int:skill_pk>/",
+        UserSkillsApproveDeclineView.as_view(),
+    ),
     path("users/current/", CurrentUser.as_view()),
     # todo: change password view
     path("users/current/programs/", CurrentUserPrograms.as_view()),
@@ -87,4 +91,5 @@ urlpatterns = [
     # copy from skills
     path("subscription/", RemoteViewSubscriptions.as_view()),
     path("subscription/buy/", RemoteCreatePayment.as_view()),
+    path("vkid/", VKIDOauth2View.as_view()),
 ]

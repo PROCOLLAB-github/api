@@ -1,3 +1,5 @@
+import base64
+import hashlib
 import jwt
 import requests
 import urllib.parse
@@ -81,6 +83,7 @@ from .services.verification import VerificationTasks
 from .services.cv_data_prepare import UserCVDataPreparerV2
 from .schema import USER_PK_PARAM, SKILL_PK_PARAM
 from .tasks import send_mail_cv
+from .utils import random_bytes_in_hex
 
 User = get_user_model()
 Project = apps.get_model("projects", "Project")
@@ -655,3 +658,108 @@ class UserCVMailing(APIView):
         cache.set(cache_key, timezone.now(), timeout=cooldown_time)
 
         return Response(data={"detail": "success"}, status=status.HTTP_200_OK)
+
+
+class VKIDOauth2View(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        """
+        Генерация state и code_challenge для OAuth2.
+        """
+        code_verifier = random_bytes_in_hex(32)
+        code_challenge = (
+            base64.urlsafe_b64encode(hashlib.sha256(code_verifier.encode()).digest())
+            .decode()
+            .rstrip("=")
+        )
+        state = random_bytes_in_hex(24)
+        cache_timeout = 15 * 60
+        cache.set(state, code_verifier, cache_timeout)
+
+        return Response(
+            {
+                "redirect_uri": settings.VKID_REDIRECT_URI,
+                "state": state,
+                "code_challenge": code_challenge,
+                "client_id": settings.VKID_APP_ID,
+                "scope": "email",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    def post(self, request, *args, **kwargs):
+        """
+        Обработка callback после авторизации пользователя.
+        """
+        required_fields = ["code", "device_id", "state"]
+        data = request.data
+        missing_fields = [field for field in required_fields if field not in data]
+        if missing_fields:
+            return Response(
+                {"detail": f"Missing required fields: {', '.join(missing_fields)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        code_verifier = cache.get(data.get("state"))
+        client_id = settings.VKID_APP_ID
+        request_data = {
+            "code_verifier": code_verifier,
+            "code": data.get("code"),
+            "device_id": data.get("device_id"),
+            "client_id": client_id,
+            "redirect_uri": settings.VKID_REDIRECT_URI,
+            "grant_type": "authorization_code",
+            "scope": "email",
+        }
+        try:
+            token_response = requests.post(
+                "https://id.vk.com/oauth2/auth", data=request_data
+            )
+            token_response.raise_for_status()
+            token_data = token_response.json()
+        except requests.RequestException as e:
+            return Response(
+                {"detail": f"Failed to fetch token: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        access_token = token_data.get("access_token")
+        if not access_token:
+            return Response(
+                {"detail": "Access token not provided by VK"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            user_info_response = requests.post(
+                "https://id.vk.com/oauth2/user_info",
+                data={"access_token": access_token, "client_id": client_id},
+            )
+            user_info_response.raise_for_status()
+            user_info = user_info_response.json()
+        except requests.RequestException as e:
+            return Response(
+                {"detail": f"Failed to fetch user info: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        user_email = user_info.get("user", {}).get("email")
+        if not user_email:
+            return Response(
+                {"detail": "User email not provided by VK"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            user = User.objects.get(email=user_email)
+        except User.DoesNotExist:
+            return Response(
+                {"error": "User does not exist"}, status=status.HTTP_404_NOT_FOUND
+            )
+        access_token = str(RefreshToken.for_user(user).access_token)
+        refresh_token = str(RefreshToken.for_user(user))
+        return Response(
+            {
+                "access": access_token,
+                "refresh": refresh_token,
+            },
+            status=status.HTTP_200_OK,
+        )
