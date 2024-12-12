@@ -18,7 +18,6 @@ class NewsFilter(filters.FilterSet):
             .filter(datetime_created__gt=datetime.datetime(...))
     """
 
-    # title__contains = filters.Filter(field_name="title", lookup_expr="contains")
     text__contains = filters.Filter(field_name="text", lookup_expr="contains")
     datetime_created__gt = filters.DateTimeFilter(
         field_name="datetime_created", lookup_expr="gt"
