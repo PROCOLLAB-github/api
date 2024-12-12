@@ -1,12 +1,13 @@
-from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.db.models import QuerySet
+from django.utils import timezone
 from django.core.exceptions import ValidationError
-from django_stubs_ext.db.models import TypedModelMeta
+from django.contrib.auth.models import AbstractUser
 from django.contrib.contenttypes.fields import GenericRelation
 
-from users import constants
+from django_stubs_ext.db.models import TypedModelMeta
 
+from users import constants
 from users.managers import (
     CustomUserManager,
     UserAchievementManager,
@@ -185,6 +186,13 @@ class CustomUser(AbstractUser):
 
     def get_full_name(self) -> str:
         return f"{self.first_name} {self.last_name}"
+
+    def get_user_age(self) -> int:
+        if self.birthday is None:
+            return None
+        today = timezone.now()
+        birthday = self.birthday
+        return today.year - birthday.year - ((today.month, today.day) < (birthday.month, birthday.day))
 
     def __str__(self) -> str:
         return f"User<{self.id}> - {self.first_name} {self.last_name}"

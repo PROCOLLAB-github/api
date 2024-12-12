@@ -8,10 +8,11 @@ from django.urls import path
 from django.utils import timezone
 
 from mailing.views import MailingTemplateRender
+from core.utils import XlsxFileToExport
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 from project_rates.models import Criteria, ProjectScore
 from projects.models import Project
-from partner_programs.services import XlsxFileToExport, ProjectScoreDataPreparer
+from partner_programs.services import ProjectScoreDataPreparer
 
 
 @admin.register(PartnerProgram)

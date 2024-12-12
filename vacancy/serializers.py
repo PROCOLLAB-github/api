@@ -10,6 +10,7 @@ from files.serializers import UserFileSerializer
 from projects.models import Project
 from projects.validators import validate_project
 from users.serializers import UserDetailSerializer
+from vacancy.constants import WorkExperience, WorkSchedule, WorkFormat
 from vacancy.models import Vacancy, VacancyResponse
 
 User = get_user_model()
@@ -23,6 +24,37 @@ class RequiredSkillsWriteSerializerMixin(RequiredSkillsSerializerMixin):
     required_skills_ids = serializers.ListField(
         child=serializers.IntegerField(), write_only=True, required=False
     )
+
+
+class AbstractVacancyEnumFields(serializers.Serializer):
+    required_experience = serializers.CharField(allow_null=True)
+    work_schedule = serializers.CharField(allow_null=True)
+    work_format = serializers.CharField(allow_null=True)
+
+    def validate_required_experience(self, value):
+        try:
+            return WorkExperience.from_display(value)
+        except ValueError as e:
+            raise serializers.ValidationError(str(e))
+
+    def validate_work_schedule(self, value):
+        try:
+            return WorkSchedule.from_display(value)
+        except ValueError as e:
+            raise serializers.ValidationError(str(e))
+
+    def validate_work_format(self, value):
+        try:
+            return WorkFormat.from_display(value)
+        except ValueError as e:
+            raise serializers.ValidationError(str(e))
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation["required_experience"] = WorkExperience.to_display(instance.required_experience)
+        representation["work_schedule"] = WorkSchedule.to_display(instance.work_schedule)
+        representation["work_format"] = WorkFormat.to_display(instance.work_format)
+        return representation
 
 
 class AbstractVacancyReadOnlyFields(serializers.Serializer):
@@ -70,6 +102,7 @@ class ProjectForVacancySerializer(serializers.ModelSerializer[Project]):
 class VacancyDetailSerializer(
     serializers.ModelSerializer,
     AbstractVacancyReadOnlyFields,
+    AbstractVacancyEnumFields,
     RequiredSkillsWriteSerializerMixin[Vacancy],
 ):
     project = ProjectForVacancySerializer(many=False, read_only=True)
@@ -88,6 +121,10 @@ class VacancyDetailSerializer(
             "datetime_updated",
             "datetime_closed",
             "response_count",
+            "required_experience",
+            "work_schedule",
+            "work_format",
+            "salary",
         ]
         read_only_fields = ["project"]
 
@@ -152,6 +189,7 @@ class ProjectListSerializer_TODO_FIX(serializers.ModelSerializer):
 class ProjectVacancyCreateListSerializer(
     serializers.ModelSerializer,
     AbstractVacancyReadOnlyFields,
+    AbstractVacancyEnumFields,
     RequiredSkillsWriteSerializerMixin[Vacancy],
 ):
 
@@ -202,6 +240,10 @@ class ProjectVacancyCreateListSerializer(
             "is_active",
             "datetime_closed",
             "response_count",
+            "required_experience",
+            "work_schedule",
+            "work_format",
+            "salary",
         ]
 
 

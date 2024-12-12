@@ -1,9 +1,11 @@
 from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
+from django.core.validators import MinValueValidator
 from django.utils import timezone
 
 from files.models import UserFile
 from projects.models import Project
+from vacancy.constants import WorkExperience, WorkSchedule, WorkFormat
 from vacancy.managers import VacancyManager, VacancyResponseManager
 from django_stubs_ext.db.models import TypedModelMeta
 
@@ -16,6 +18,9 @@ class Vacancy(models.Model):
         role: A CharField title of the vacancy.
         required_skills: A GenericRelation of required skills for the vacancy.
         description: A TextField description of the vacancy.
+        required_experience: CharField (choice).
+        work_schedule: CharField (choice).
+        work_format: CharField (choice).
         project: A ForeignKey referring to the Company model.
         is_active: A boolean indicating if Vacancy is active.
         datetime_created: A DateTimeField indicating date of creation.
@@ -28,24 +33,55 @@ class Vacancy(models.Model):
         related_query_name="vacancies",
     )
     description = models.TextField(blank=True)
+    required_experience = models.CharField(
+        max_length=50,
+        choices=WorkExperience.choices(),
+        blank=True,
+        null=True,
+        verbose_name="Требуемый опыт",
+    )
+    work_schedule = models.CharField(
+        max_length=50,
+        choices=WorkSchedule.choices(),
+        blank=True,
+        null=True,
+        verbose_name="График работы",
+    )
+    work_format = models.CharField(
+        max_length=50,
+        choices=WorkFormat.choices(),
+        blank=True,
+        null=True,
+        verbose_name="Формат работы",
+    )
+    salary = models.IntegerField(
+        blank=True,
+        null=True,
+        validators=[MinValueValidator(0)],
+        verbose_name="Зарплата",
+    )
     project = models.ForeignKey(
         Project,
         on_delete=models.CASCADE,
         null=False,
         related_name="vacancies",
     )
-
-    is_active = models.BooleanField(blank=False, default=True)
-
     datetime_created = models.DateTimeField(
-        verbose_name="Дата создания", null=False, auto_now_add=True
+        null=False,
+        auto_now_add=True,
+        verbose_name="Дата создания",
     )
     datetime_updated = models.DateTimeField(
-        verbose_name="Дата обновления", null=False, auto_now=True
+        null=False,
+        auto_now=True,
+        verbose_name="Дата обновления",
     )
     datetime_closed = models.DateTimeField(
-        verbose_name="Дата закрытия", null=True, blank=True
+        null=True,
+        blank=True,
+        verbose_name="Дата закрытия",
     )
+    is_active = models.BooleanField(blank=False, default=True)
 
     objects = VacancyManager()
 
