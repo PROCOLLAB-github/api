@@ -90,6 +90,11 @@ class VacancyFilter(filters.FilterSet):
         except ValueError:
             return queryset
 
+    def filter_by_role(self, queryset: QuerySet[Vacancy], name, value: list[str]) -> QuerySet[Vacancy]:
+        if not value:
+            return queryset
+        return queryset.filter(role__icontains=value[0])
+
     project_id = filters.Filter(method=project_id_filter)
     is_active = filters.BooleanFilter(field_name="is_active")
 
@@ -106,12 +111,14 @@ class VacancyFilter(filters.FilterSet):
         choices=WorkFormat.choices(),
     )
 
+    role_contains = filters.Filter(method="filter_by_role")
     salary_min = filters.Filter(method="filter_by_salary_min")
     salary_max = filters.Filter(method="filter_by_salary_max")
 
     class Meta:
         model = Vacancy
         fields = (
+            "role_contains",
             "project_id",
             "is_active",
             "required_experience",
