@@ -1,0 +1,10 @@
+global:
+  resolve_timeout: 10s
+
+route:
+  receiver: telegram
+
+receivers:
+- name: telegram
+  webhook_configs:
+  - url: http://web:8000/alerts/webhook/

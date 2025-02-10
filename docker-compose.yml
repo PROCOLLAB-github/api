@@ -10,13 +10,14 @@ services:
     command: bash ./scripts/startup.sh
     volumes:
       - ./log:/procollab/log
+      - ./db.sqlite3:/procollab/db.sqlite3
+      - ./:/procollab
     env_file:
       - .env
     environment:
       HOST: 0.0.0.0
     expose:
       - 8000
-
   grafana:
     image: grafana/grafana-enterprise
     container_name: grafana
@@ -36,6 +37,15 @@ services:
       - prom-data:/prometheus
       - ./prometheus:/etc/prometheus
 
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    volumes:
+      - ./prometheus/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+    ports:
+      - '9093:9093'
 
   nginx:
     container_name: nginx
