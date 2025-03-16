@@ -11,6 +11,8 @@ ENV PYTHONFAULTHANDLER=1 \
     POETRY_VERSION=1.2.2
 
 RUN pip install "poetry==$POETRY_VERSION"
+RUN apt install -y cmake
+RUN rm -rf /var/lib/apt/lists/*
 
 RUN mkdir /procollab
 
