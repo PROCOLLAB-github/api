@@ -284,7 +284,26 @@ class CurrentUser(GenericAPIView):
 
     def get(self, request):
         user = request.user
+
+        max_skills = request.query_params.get("max_skills", None)
+        if max_skills is not None:
+            try:
+                max_skills = int(max_skills)
+                if max_skills < 0:
+                    return Response(
+                        {"error": "max_skills must be a positive integer"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+            except ValueError:
+                return Response(
+                    {"error": "max_skills must be an integer"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         serializer = self.get_serializer(user)
+
+        if max_skills is not None and "skills" in serializer.data:
+            serializer.data["skills"] = serializer.data["skills"][:max_skills]
 
         if settings.DEBUG:
             skills_url_name = (
