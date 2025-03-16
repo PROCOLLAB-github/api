@@ -24,6 +24,10 @@ Before installing dependencies, make sure that you have python 3.11 (see the rec
 
 🚀 Run project via `python manage.py runserver`
 
+### Run project in docker 
+
+You can run project in docker with commands from Makefile (e.g. `make up`)
+
 ## Recommendations  
   
 ### 1.Installing Pyenv  
