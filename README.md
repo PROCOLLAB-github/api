@@ -15,6 +15,7 @@ Before installing dependencies, make sure that you have python 3.11 (see the rec
   
 * 🐍 Install poetry with command `pip install poetry==1.2.2`
 * 📎 Install dependencies with command `poetry install`
+* 🐚 Активируйте виртуальное окружение: `poetry shell`
 
 ### Accept migrations
 
@@ -63,7 +64,7 @@ Once Pyenv is set up, you can install Python 3.11 with the following steps:
 Install Python 3.11:  
   
 ```zsh  
-pyenv install 3.11.0
+pyenv install 3.11
 ```  
   
 Verify Python 3.11 has been installed:  
@@ -75,7 +76,7 @@ pyenv versions
 To set Python 3.11 as the default global version, use the following command:  
   
 ```zsh  
-pyenv global 3.11.0
+pyenv local 3.11
 ```  
   
 This will switch your system's Python interpreter to use Python 3.11 by default.  
