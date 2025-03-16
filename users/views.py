@@ -94,6 +94,31 @@ class UserList(ListCreateAPIView):
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = UserFilter
 
+    def list(self, request, *args, **kwargs):
+        max_skills = request.query_params.get("max_skills", None)
+        if max_skills is not None:
+            try:
+                max_skills = int(max_skills)
+                if max_skills < 0:
+                    return Response(
+                        {"error": "max_skills must be a positive integer"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+            except ValueError:
+                return Response(
+                    {"error": "max_skills must be an integer"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        response = super().list(request, *args, **kwargs)
+
+        if max_skills is not None:
+            for user_data in response.data.get("results", []):
+                if "skills" in user_data:
+                    user_data["skills"] = user_data["skills"][:max_skills]
+
+        return response
+
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -259,7 +284,26 @@ class CurrentUser(GenericAPIView):
 
     def get(self, request):
         user = request.user
+
+        max_skills = request.query_params.get("max_skills", None)
+        if max_skills is not None:
+            try:
+                max_skills = int(max_skills)
+                if max_skills < 0:
+                    return Response(
+                        {"error": "max_skills must be a positive integer"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+            except ValueError:
+                return Response(
+                    {"error": "max_skills must be an integer"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         serializer = self.get_serializer(user)
+
+        if max_skills is not None and "skills" in serializer.data:
+            serializer.data["skills"] = serializer.data["skills"][:max_skills]
 
         if settings.DEBUG:
             skills_url_name = (
