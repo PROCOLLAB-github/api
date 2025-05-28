@@ -21,7 +21,7 @@ from rest_framework.generics import (
     RetrieveUpdateDestroyAPIView,
     RetrieveAPIView,
 )
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -88,11 +88,19 @@ Project = apps.get_model("projects", "Project")
 
 class UserList(ListCreateAPIView):
     queryset = User.objects.get_active()
-    permission_classes = [AllowAny]  # FIXME: change to IsAuthorized
     serializer_class = UserListSerializer
     pagination_class = UsersPagination
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = UserFilter
+
+    def get_permissions(self):
+        if self.request.method == "POST":
+            permission_classes = [AllowAny]
+        else:
+            permission_classes = [
+                IsAdminUser
+            ]
+        return [permission() for permission in permission_classes]
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -104,7 +112,9 @@ class UserList(ListCreateAPIView):
 
         verify_email(user, request)
 
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        return Response(
+            serializer.data, status=status.HTTP_201_CREATED, headers=headers
+        )
 
 
 class LikedProjectList(ListAPIView):
@@ -305,7 +315,9 @@ class VerifyEmail(GenericAPIView):
         token = request.GET.get("token")
 
         try:
-            payload = jwt.decode(jwt=token, key=settings.SECRET_KEY, algorithms=["HS256"])
+            payload = jwt.decode(
+                jwt=token, key=settings.SECRET_KEY, algorithms=["HS256"]
+            )
             user = User.objects.get(id=payload["user_id"])
             access_token = RefreshToken.for_user(user).access_token
             refresh_token = RefreshToken.for_user(user)
@@ -357,7 +369,9 @@ class AchievementList(ListCreateAPIView):
             )
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        return Response(
+            serializer.data, status=status.HTTP_201_CREATED, headers=headers
+        )
 
 
 class AchievementDetail(RetrieveUpdateDestroyAPIView):
@@ -448,7 +462,8 @@ class SetUserOnboardingStage(APIView):
             return Response(status=status.HTTP_200_OK, data=data)
         except Exception:
             return Response(
-                status=status.HTTP_400_BAD_REQUEST, data={"error": "Something went wrong"}
+                status=status.HTTP_400_BAD_REQUEST,
+                data={"error": "Something went wrong"},
             )
 
 
@@ -468,7 +483,8 @@ class ResendVerifyEmail(GenericAPIView):
             return Response("User already verified!", status=status.HTTP_200_OK)
         except User.DoesNotExist:
             return Response(
-                "User with given email does not exists!", status=status.HTTP_404_NOT_FOUND
+                "User with given email does not exists!",
+                status=status.HTTP_404_NOT_FOUND,
             )
 
 
