@@ -5,6 +5,7 @@ from users.views import (
     AchievementDetail,
     AchievementList,
     CurrentUser,
+    PublicUserListView,
     SpecialistsList,
     UserAdditionalRolesView,
     UserDetail,
@@ -38,6 +39,7 @@ urlpatterns = [
         "specialists/", SpecialistsList.as_view()
     ),  # this url actually returns  mentors, experts and investors
     path("users/", UserList.as_view()),
+    path('public-users/', PublicUserListView.as_view(), name='public-users'),
     path("users/projects/", UserProjectsList.as_view()),
     path("users/liked/", LikedProjectList.as_view()),
     path("users/roles/", UserAdditionalRolesView.as_view()),
