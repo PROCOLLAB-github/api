@@ -283,7 +283,7 @@ class UserSubscribedProjectsSerializer(serializers.ModelSerializer[Project]):
 
 
 class SubscriptionSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
+    id = serializers.IntegerField()  # noqa A003 VNE003
     name = serializers.CharField()
     price = serializers.IntegerField()
     features_list = serializers.ListField(child=serializers.CharField())

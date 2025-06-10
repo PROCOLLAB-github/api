@@ -71,7 +71,9 @@ class UserEducationStatuses(Enum):
         return [(item.value, item.value) for item in cls]
 
 
-USER_EXPERIENCE_YEAR_VALIDATION_MESSAGE: str = "Год начала не может быть больше года завершения"
+USER_EXPERIENCE_YEAR_VALIDATION_MESSAGE: str = (
+    "Год начала не может быть больше года завершения"
+)
 
 # Working with user skills:
 USER_MAX_SKILL_QUANTITY: int = 20

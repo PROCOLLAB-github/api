@@ -79,6 +79,7 @@ class TimingAfterEndsProgramPermission(BasePermission):
     for `_SECONDS_AFTER_CANT_EDIT` seconds -> days from the end of the program.
     If the project is not in program or the request in `SAFE_METHODS` -> allowed.
     """
+
     _SECONDS_AFTER_CANT_EDIT: int = 60 * 60 * 24 * 30  # Now 30 days.
 
     def has_object_permission(self, request, view, obj) -> bool:
@@ -86,22 +87,29 @@ class TimingAfterEndsProgramPermission(BasePermission):
             return True
 
         program_profile = (
-            PartnerProgramUserProfile.objects
-            .filter(user=request.user, project=obj)
+            PartnerProgramUserProfile.objects.filter(user=request.user, project=obj)
             .select_related("partner_program")
             .first()
         )
         moscow_time: datetime = timezone.localtime(timezone.now())
 
         if program_profile:
-            date_from_end_program: timedelta = (moscow_time - program_profile.partner_program.datetime_finished)
+            date_from_end_program: timedelta = (
+                moscow_time - program_profile.partner_program.datetime_finished
+            )
             days_from_end_program: int = date_from_end_program.days
             seconds_from_end_program: int = date_from_end_program.total_seconds()
             if 0 <= seconds_from_end_program <= self._SECONDS_AFTER_CANT_EDIT:
-                raise PermissionDenied(detail=self._prepare_exception_detail(days_from_end_program, program_profile))
+                raise PermissionDenied(
+                    detail=self._prepare_exception_detail(
+                        days_from_end_program, program_profile
+                    )
+                )
         return True
 
-    def _prepare_exception_detail(self, days_from_end_program: int, program_profile: PartnerProgramUserProfile):
+    def _prepare_exception_detail(
+        self, days_from_end_program: int, program_profile: PartnerProgramUserProfile
+    ):
         """
         Prepare response body when `PermissionDenied` exception raised:
             program_name: str -> Program title
@@ -112,7 +120,9 @@ class TimingAfterEndsProgramPermission(BasePermission):
         when_can_edit: datetime = timezone.localtime(
             datetime_finished + timedelta(seconds=self._SECONDS_AFTER_CANT_EDIT)
         )
-        days_until_resolution: int = int(self._SECONDS_AFTER_CANT_EDIT / 60 / 60 / 24) - days_from_end_program - 1
+        days_until_resolution: int = (
+            int(self._SECONDS_AFTER_CANT_EDIT / 60 / 60 / 24) - days_from_end_program - 1
+        )
         return {
             "program_name": program_profile.partner_program.name,
             "when_can_edit": when_can_edit,

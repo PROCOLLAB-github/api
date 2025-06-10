@@ -32,7 +32,9 @@ def update_dataset_migration_applied(sender, instance, **kwargs):
     """Update the `dataset_migration_applied` attribute based on the presence of `v2_speciality` and `skills`."""
 
     def update_migration():
-        dataset_migration_applied = bool(instance.v2_speciality and instance.skills.exists())
+        dataset_migration_applied = bool(
+            instance.v2_speciality and instance.skills.exists()
+        )
         if instance.dataset_migration_applied != dataset_migration_applied:
             CustomUser.objects.filter(pk=instance.pk).update(
                 dataset_migration_applied=dataset_migration_applied

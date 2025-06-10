@@ -1,6 +1,6 @@
 import datetime
 
-from mailing.typing import EmailDataToPrepare, ContextDataDict, MailDataDict
+from mailing.definitions import EmailDataToPrepare, ContextDataDict, MailDataDict
 from mailing.utils import send_mass_mail, prepare_mail_data
 from procollab.celery import app
 from vacancy.mapping import (

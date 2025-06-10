@@ -27,5 +27,5 @@ class EventGroupType(str, Enum):
 
 @dataclass(frozen=True)
 class Event:
-    type: EventType
+    type: EventType  # noqa: A003, VNE003
     content: dict

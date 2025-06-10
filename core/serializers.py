@@ -29,7 +29,7 @@ class SkillSerializer(serializers.ModelSerializer):
 
 
 class SkillToObjectSerializer(serializers.ModelSerializer):
-    id = serializers.IntegerField(source="skill.id")
+    id = serializers.IntegerField(source="skill.id")  # noqa A003 VNE003
     name = serializers.CharField(source="skill.name")
     category = SkillCategorySerializer(source="skill.category")
 
