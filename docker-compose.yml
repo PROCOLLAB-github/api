@@ -10,6 +10,7 @@ services:
     command: bash ./scripts/startup.sh
     volumes:
       - ./log:/procollab/log
+      - ./:/procollab/.
     env_file:
       - .env
     environment:
