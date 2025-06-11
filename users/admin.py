@@ -1,34 +1,33 @@
-import urllib.parse
 from datetime import date
 
 import tablib
+import urllib.parse
 from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth.models import Permission
 from django.http import HttpResponse
 from django.shortcuts import redirect
 from django.urls import path
-from django.utils.timezone import now
 
-from core.admin import SkillToObjectInline
 from core.utils import XlsxFileToExport
 from mailing.views import MailingTemplateRender
 from users.services.users_activity import UserActivityDataPreparer
-
-from .helpers import force_verify_user, send_verification_completed_email
+from .helpers import send_verification_completed_email, force_verify_user
 from .models import (
     CustomUser,
-    Expert,
-    Investor,
+    UserAchievement,
     Member,
     Mentor,
-    UserAchievement,
-    UserEducation,
-    UserLanguages,
+    Expert,
+    Investor,
     UserLink,
-    UserSkillConfirmation,
+    UserEducation,
     UserWorkExperience,
+    UserSkillConfirmation,
+    UserLanguages,
 )
+
+from core.admin import SkillToObjectInline
 
 admin.site.register(Permission)
 
@@ -56,7 +55,7 @@ class UserLanguagesInline(admin.TabularInline):
 
 @admin.action(description="Сделать выбранных пользователей подтверждёнными")
 def make_active(modeladmin, request, queryset):
-    queryset.update(is_active=True, verification_date=now().date())
+    queryset.update(is_active=True)
 
 
 @admin.register(CustomUser)
@@ -269,9 +268,7 @@ class CustomUserAdmin(admin.ModelAdmin):
             binary_data_to_export,
             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
-        response["Content-Disposition"] = (
-            f"attachment; filename*=UTF-8''{encoded_file_name}"
-        )
+        response["Content-Disposition"] = f'attachment; filename*=UTF-8\'\'{encoded_file_name}'
 
         return response
 
@@ -280,8 +277,7 @@ class CustomUserAdmin(admin.ModelAdmin):
             headers=[
                 "Имя и фамилия",
                 "Возраст",
-                "Интересы",
-                "ВУЗ / Школа",
+                "Город",
                 "Специальность",
                 "Эл. почта",
             ]
@@ -290,67 +286,80 @@ class CustomUserAdmin(admin.ModelAdmin):
         today = date.today()
 
         date_limit_18 = date(today.year - 18, today.month, today.day)
+        date_limit_22 = date(today.year - 22, today.month, today.day)
+        # user_ed = UserEducation.objects.select_related(
+        #     "user", "user__v2_speciality"
+        # ).filter(education_status="Студент")
         users = (
             CustomUser.objects.all()
             .select_related("v2_speciality")
-            .prefetch_related(
-                "collaborations__project",
-                "collaborations__project__industry",
-                "skills__skill",
-                "education",
+            .filter(
+                birthday__lte=date_limit_18,
+                birthday__gte=date_limit_22
             )
         )
-        little_mans = users.filter(birthday__lte=date_limit_18)
-        big_mans = users.exclude(id__in=little_mans.values_list("id", flat=True))
+        # little_mans = users.filter(birthday__lte=date_limit_18)
+        # big_mans = users.exclude(id__in=little_mans.values_list("id", flat=True))
 
         # whole_quality = users.count()
         # quantity_little_mans = little_mans.count()
         # quantity_big_mans = whole_quality - quantity_little_mans
 
-        for baby in little_mans:
-            interests = [
-                collab.project.industry.name if collab.project.industry else ""
-                for collab in baby.collaborations.all()
-            ]
-            if not len(interests):
-                interests = [
-                    skill_to_obj.skill.name if skill_to_obj.skill else ""
-                    for skill_to_obj in baby.skills.all()
-                ]
-            if not len(interests):
-                interests = baby.key_skills.split(",") if baby.key_skills else []
+        for user in users:
             response_data.append(
                 [
-                    baby.first_name + " " + baby.last_name,
-                    today.year - baby.birthday.year,
-                    ", ".join(interests),
-                    "; ".join(
-                        baby.education.values_list("organization_name", flat=True)
-                    ),
-                    baby.v2_speciality if baby.v2_speciality else baby.speciality,
-                    baby.email,
+                    user.first_name + " " + user.last_name,
+                    (today.year - user.birthday.year)
+                    if user.birthday.year
+                    else None,
+                    user.city,
+                    user.v2_speciality
+                    if user.v2_speciality
+                    else user.speciality,
+                    user.email,
                 ]
             )
 
-        for big_man in big_mans:
-            industry_names = [
-                collab.project.industry.name if collab.project.industry else ""
-                for collab in big_man.collaborations.all()
-            ]
-            response_data.append(
-                [
-                    big_man.first_name + " " + big_man.last_name,
-                    today.year - big_man.birthday.year,
-                    ", ".join(industry_names),
-                    "; ".join(
-                        big_man.education.values_list("organization_name", flat=True)
-                    ),
-                    big_man.v2_speciality
-                    if big_man.v2_speciality
-                    else big_man.speciality,
-                    big_man.email,
-                ]
-            )
+        # for baby in little_mans:
+        #     interests = [
+        #         collab.project.industry.name if collab.project.industry else ""
+        #         for collab in baby.collaborations.all()
+        #     ]
+        #     if not len(interests):
+        #         interests = [
+        #             skill_to_obj.skill.name if skill_to_obj.skill else ""
+        #             for skill_to_obj in baby.skills.all()
+        #         ]
+        #     if not len(interests):
+        #         interests = baby.key_skills.split(",") if baby.key_skills else []
+        #     response_data.append(
+        #         [
+        #             baby.first_name + " " + baby.last_name,
+        #             today.year - baby.birthday.year,
+        #             ", ".join(interests),
+        #             "; ".join(baby.education.values_list("organization_name", flat=True)),
+        #             baby.v2_speciality if baby.v2_speciality else baby.speciality,
+        #             baby.email,
+        #         ]
+        #     )
+        #
+        # for big_man in big_mans:
+        #     industry_names = [
+        #         collab.project.industry.name if collab.project.industry else ""
+        #         for collab in big_man.collaborations.all()
+        #     ]
+        #     response_data.append(
+        #         [
+        #             big_man.first_name + " " + big_man.last_name,
+        #             today.year - big_man.birthday.year,
+        #             ", ".join(industry_names),
+        #             "; ".join(big_man.education.values_list("organization_name", flat=True)),
+        #             big_man.v2_speciality
+        #             if big_man.v2_speciality
+        #             else big_man.speciality,
+        #             big_man.email,
+        #         ]
+        #     )
 
         # для малолеток указать теги проектов, если нет - навыки
         # для старших - специальность, вуз, учебное заведение
