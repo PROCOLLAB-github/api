@@ -1,10 +1,11 @@
 from django.conf import settings
-from django.core.cache import cache
-from django.utils import timezone
 from django.contrib.auth import get_user_model
-from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.sites.shortcuts import get_current_site
+from django.core.cache import cache
 from django.urls import reverse
+from django.utils import timezone
+from django.utils.timezone import now
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from mailing.utils import send_mail
 from users.constants import PROTOCOL
@@ -31,7 +32,8 @@ def verify_email(user, request):
 
 def send_verification_completed_email(user: User):
     template_content = open(
-        settings.BASE_DIR / "templates/email/verification-succeed.html", encoding="utf-8"
+        settings.BASE_DIR / "templates/email/verification-succeed.html",
+        encoding="utf-8",
     ).read()
     send_mail(
         user=user,
@@ -97,6 +99,8 @@ def force_verify_user(user: User) -> None:
 
     # todo: send email
     user.is_active = True
+    if hasattr(user, "verification_date"):
+        user.verification_date = now().date()
     user.save()
 
 
