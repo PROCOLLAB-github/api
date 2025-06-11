@@ -280,8 +280,7 @@ class CustomUserAdmin(admin.ModelAdmin):
             headers=[
                 "Имя и фамилия",
                 "Возраст",
-                "Интересы",
-                "ВУЗ / Школа",
+                "Город",
                 "Специальность",
                 "Эл. почта",
             ]
@@ -290,67 +289,80 @@ class CustomUserAdmin(admin.ModelAdmin):
         today = date.today()
 
         date_limit_18 = date(today.year - 18, today.month, today.day)
+        date_limit_22 = date(today.year - 22, today.month, today.day)
+        # user_ed = UserEducation.objects.select_related(
+        #     "user", "user__v2_speciality"
+        # ).filter(education_status="Студент")
         users = (
             CustomUser.objects.all()
             .select_related("v2_speciality")
-            .prefetch_related(
-                "collaborations__project",
-                "collaborations__project__industry",
-                "skills__skill",
-                "education",
+            .filter(
+                birthday__lte=date_limit_18,
+                birthday__gte=date_limit_22
             )
         )
-        little_mans = users.filter(birthday__lte=date_limit_18)
-        big_mans = users.exclude(id__in=little_mans.values_list("id", flat=True))
+        # little_mans = users.filter(birthday__lte=date_limit_18)
+        # big_mans = users.exclude(id__in=little_mans.values_list("id", flat=True))
 
         # whole_quality = users.count()
         # quantity_little_mans = little_mans.count()
         # quantity_big_mans = whole_quality - quantity_little_mans
 
-        for baby in little_mans:
-            interests = [
-                collab.project.industry.name if collab.project.industry else ""
-                for collab in baby.collaborations.all()
-            ]
-            if not len(interests):
-                interests = [
-                    skill_to_obj.skill.name if skill_to_obj.skill else ""
-                    for skill_to_obj in baby.skills.all()
-                ]
-            if not len(interests):
-                interests = baby.key_skills.split(",") if baby.key_skills else []
+        for user in users:
             response_data.append(
                 [
-                    baby.first_name + " " + baby.last_name,
-                    today.year - baby.birthday.year,
-                    ", ".join(interests),
-                    "; ".join(
-                        baby.education.values_list("organization_name", flat=True)
-                    ),
-                    baby.v2_speciality if baby.v2_speciality else baby.speciality,
-                    baby.email,
+                    user.first_name + " " + user.last_name,
+                    (today.year - user.birthday.year)
+                    if user.birthday.year
+                    else None,
+                    user.city,
+                    user.v2_speciality
+                    if user.v2_speciality
+                    else user.speciality,
+                    user.email,
                 ]
             )
 
-        for big_man in big_mans:
-            industry_names = [
-                collab.project.industry.name if collab.project.industry else ""
-                for collab in big_man.collaborations.all()
-            ]
-            response_data.append(
-                [
-                    big_man.first_name + " " + big_man.last_name,
-                    today.year - big_man.birthday.year,
-                    ", ".join(industry_names),
-                    "; ".join(
-                        big_man.education.values_list("organization_name", flat=True)
-                    ),
-                    big_man.v2_speciality
-                    if big_man.v2_speciality
-                    else big_man.speciality,
-                    big_man.email,
-                ]
-            )
+        # for baby in little_mans:
+        #     interests = [
+        #         collab.project.industry.name if collab.project.industry else ""
+        #         for collab in baby.collaborations.all()
+        #     ]
+        #     if not len(interests):
+        #         interests = [
+        #             skill_to_obj.skill.name if skill_to_obj.skill else ""
+        #             for skill_to_obj in baby.skills.all()
+        #         ]
+        #     if not len(interests):
+        #         interests = baby.key_skills.split(",") if baby.key_skills else []
+        #     response_data.append(
+        #         [
+        #             baby.first_name + " " + baby.last_name,
+        #             today.year - baby.birthday.year,
+        #             ", ".join(interests),
+        #             "; ".join(baby.education.values_list("organization_name", flat=True)),
+        #             baby.v2_speciality if baby.v2_speciality else baby.speciality,
+        #             baby.email,
+        #         ]
+        #     )
+        #
+        # for big_man in big_mans:
+        #     industry_names = [
+        #         collab.project.industry.name if collab.project.industry else ""
+        #         for collab in big_man.collaborations.all()
+        #     ]
+        #     response_data.append(
+        #         [
+        #             big_man.first_name + " " + big_man.last_name,
+        #             today.year - big_man.birthday.year,
+        #             ", ".join(industry_names),
+        #             "; ".join(big_man.education.values_list("organization_name", flat=True)),
+        #             big_man.v2_speciality
+        #             if big_man.v2_speciality
+        #             else big_man.speciality,
+        #             big_man.email,
+        #         ]
+        #     )
 
         # для малолеток указать теги проектов, если нет - навыки
         # для старших - специальность, вуз, учебное заведение
