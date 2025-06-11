@@ -1,33 +1,34 @@
+import urllib.parse
 from datetime import date
 
 import tablib
-import urllib.parse
 from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth.models import Permission
 from django.http import HttpResponse
 from django.shortcuts import redirect
 from django.urls import path
+from django.utils.timezone import now
 
+from core.admin import SkillToObjectInline
 from core.utils import XlsxFileToExport
 from mailing.views import MailingTemplateRender
 from users.services.users_activity import UserActivityDataPreparer
-from .helpers import send_verification_completed_email, force_verify_user
+
+from .helpers import force_verify_user, send_verification_completed_email
 from .models import (
     CustomUser,
-    UserAchievement,
-    Member,
-    Mentor,
     Expert,
     Investor,
-    UserLink,
+    Member,
+    Mentor,
+    UserAchievement,
     UserEducation,
-    UserWorkExperience,
-    UserSkillConfirmation,
     UserLanguages,
+    UserLink,
+    UserSkillConfirmation,
+    UserWorkExperience,
 )
-
-from core.admin import SkillToObjectInline
 
 admin.site.register(Permission)
 
@@ -55,7 +56,7 @@ class UserLanguagesInline(admin.TabularInline):
 
 @admin.action(description="Сделать выбранных пользователей подтверждёнными")
 def make_active(modeladmin, request, queryset):
-    queryset.update(is_active=True)
+    queryset.update(is_active=True, verification_date=now().date())
 
 
 @admin.register(CustomUser)
@@ -268,7 +269,9 @@ class CustomUserAdmin(admin.ModelAdmin):
             binary_data_to_export,
             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
-        response["Content-Disposition"] = f'attachment; filename*=UTF-8\'\'{encoded_file_name}'
+        response["Content-Disposition"] = (
+            f"attachment; filename*=UTF-8''{encoded_file_name}"
+        )
 
         return response
 

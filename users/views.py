@@ -1,85 +1,86 @@
-import jwt
-import requests
 import urllib.parse
 
+import jwt
+import requests
 from django.apps import apps
 from django.conf import settings
-from django.core.cache import cache
-from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
+from django.core.cache import cache
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from django.http import HttpResponse
-from django.shortcuts import redirect, get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
 from django.template.loader import render_to_string
-from rest_framework import status, permissions, exceptions
+from django.utils import timezone
+from django_filters import rest_framework as filters
+from drf_yasg.utils import swagger_auto_schema
+from rest_framework import exceptions, permissions, status
 from rest_framework.generics import (
     GenericAPIView,
     ListAPIView,
     ListCreateAPIView,
-    RetrieveUpdateDestroyAPIView,
     RetrieveAPIView,
+    RetrieveUpdateDestroyAPIView,
 )
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
-
-from django_filters import rest_framework as filters
-from drf_yasg.utils import swagger_auto_schema
 from weasyprint import HTML
 
-from core.models import SpecializationCategory, Specialization, SkillToObject
+from core.models import SkillToObject, Specialization, SpecializationCategory
 from core.pagination import Pagination
 from core.permissions import IsOwnerOrReadOnly
 from events.models import Event
 from events.serializers import EventsListSerializer
 from partner_programs.models import PartnerProgram
 from partner_programs.serializers import (
-    UserProgramsSerializer,
     PartnerProgramListSerializer,
+    UserProgramsSerializer,
 )
 from projects.pagination import ProjectsPagination
 from projects.serializers import ProjectListSerializer
-from users.helpers import (
-    verify_email,
-    check_related_fields_update,
-    force_verify_user,
-)
 from users.constants import (
     VERBOSE_ROLE_TYPES,
     VERBOSE_USER_TYPES,
     VERIFY_EMAIL_REDIRECT_URL,
     OnboardingStage,
 )
-from users.models import UserAchievement, LikesOnProject, UserSkillConfirmation
+from users.helpers import (
+    check_related_fields_update,
+    force_verify_user,
+    verify_email,
+)
+from users.models import LikesOnProject, UserAchievement, UserSkillConfirmation
 from users.permissions import IsAchievementOwnerOrReadOnly
 from users.serializers import (
     AchievementDetailSerializer,
     AchievementListSerializer,
+    PublicUserSerializer,
+    RemoteBuySubSerializer,
+    ResendVerifyEmailSerializer,
+    SpecializationSerializer,
+    SpecializationsSerializer,
+    UserApproveSkillResponse,
+    UserCloneDataSerializer,
     UserDetailSerializer,
     UserListSerializer,
-    VerifyEmailSerializer,
-    ResendVerifyEmailSerializer,
     UserProjectListSerializer,
-    UserSubscribedProjectsSerializer,
     UserSkillConfirmationSerializer,
-    UserApproveSkillResponse,
-    SpecializationsSerializer,
-    SpecializationSerializer,
-    UserCloneDataSerializer,
+    UserSubscribedProjectsSerializer,
     UserSubscriptionDataSerializer,
-    RemoteBuySubSerializer,
+    VerifyEmailSerializer,
 )
 from users.typing import UserCVDataV2
+
+from .filters import SpecializationFilter, UserFilter
 from .helpers import check_chache_for_cv
-from .filters import UserFilter, SpecializationFilter
 from .pagination import UsersPagination
-from .services.verification import VerificationTasks
+from .schema import SKILL_PK_PARAM, USER_PK_PARAM
 from .services.cv_data_prepare import UserCVDataPreparerV2
-from .schema import USER_PK_PARAM, SKILL_PK_PARAM
+from .services.verification import VerificationTasks
 from .tasks import send_mail_cv
 
 User = get_user_model()
@@ -88,11 +89,17 @@ Project = apps.get_model("projects", "Project")
 
 class UserList(ListCreateAPIView):
     queryset = User.objects.get_active()
-    permission_classes = [AllowAny]  # FIXME: change to IsAuthorized
     serializer_class = UserListSerializer
     pagination_class = UsersPagination
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = UserFilter
+
+    def get_permissions(self):
+        if self.request.method == "POST":
+            permission_classes = [AllowAny]
+        else:
+            permission_classes = [IsAdminUser]
+        return [permission() for permission in permission_classes]
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -104,7 +111,9 @@ class UserList(ListCreateAPIView):
 
         verify_email(user, request)
 
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        return Response(
+            serializer.data, status=status.HTTP_201_CREATED, headers=headers
+        )
 
 
 class LikedProjectList(ListAPIView):
@@ -305,7 +314,9 @@ class VerifyEmail(GenericAPIView):
         token = request.GET.get("token")
 
         try:
-            payload = jwt.decode(jwt=token, key=settings.SECRET_KEY, algorithms=["HS256"])
+            payload = jwt.decode(
+                jwt=token, key=settings.SECRET_KEY, algorithms=["HS256"]
+            )
             user = User.objects.get(id=payload["user_id"])
             access_token = RefreshToken.for_user(user).access_token
             refresh_token = RefreshToken.for_user(user)
@@ -357,7 +368,9 @@ class AchievementList(ListCreateAPIView):
             )
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        return Response(
+            serializer.data, status=status.HTTP_201_CREATED, headers=headers
+        )
 
 
 class AchievementDetail(RetrieveUpdateDestroyAPIView):
@@ -448,7 +461,8 @@ class SetUserOnboardingStage(APIView):
             return Response(status=status.HTTP_200_OK, data=data)
         except Exception:
             return Response(
-                status=status.HTTP_400_BAD_REQUEST, data={"error": "Something went wrong"}
+                status=status.HTTP_400_BAD_REQUEST,
+                data={"error": "Something went wrong"},
             )
 
 
@@ -468,7 +482,8 @@ class ResendVerifyEmail(GenericAPIView):
             return Response("User already verified!", status=status.HTTP_200_OK)
         except User.DoesNotExist:
             return Response(
-                "User with given email does not exists!", status=status.HTTP_404_NOT_FOUND
+                "User with given email does not exists!",
+                status=status.HTTP_404_NOT_FOUND,
             )
 
 
@@ -655,3 +670,28 @@ class UserCVMailing(APIView):
         cache.set(cache_key, timezone.now(), timeout=cooldown_time)
 
         return Response(data={"detail": "success"}, status=status.HTTP_200_OK)
+
+
+class PublicUserListView(ListAPIView):
+    queryset = User.objects.get_active()
+    serializer_class = PublicUserSerializer
+    pagination_class = UsersPagination
+    filter_backends = (filters.DjangoFilterBackend,)
+    filterset_class = UserFilter
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        """Оптимизация запросов для навыков и категорий"""
+        return (
+            super()
+            .get_queryset()
+            .prefetch_related(
+                Prefetch(
+                    "skills",
+                    queryset=SkillToObject.objects.select_related(
+                        "skill", "skill__category"
+                    ),
+                    to_attr="prefetched_skills",
+                )
+            )
+        )
