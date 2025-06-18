@@ -3,13 +3,13 @@ from django.contrib.contenttypes.admin import GenericStackedInline
 
 from core.models import (
     Like,
-    View,
     Link,
-    Specialization,
-    SpecializationCategory,
     Skill,
     SkillCategory,
     SkillToObject,
+    Specialization,
+    SpecializationCategory,
+    View,
 )
 
 
@@ -69,11 +69,24 @@ class SpecializationAdmin(admin.ModelAdmin):
         "id",
         "name",
         "category",
+        "category_id",
     )
     list_display_links = (
         "id",
         "name",
+        "category_id",
     )
+
+
+class SpecializationInline(admin.TabularInline):
+    model = Specialization
+    extra = 0
+    fields = ("name",)
+    show_change_link = True
+    can_delete = False
+
+    def has_change_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(SpecializationCategory)
@@ -86,6 +99,7 @@ class SpecializationCategoryAdmin(admin.ModelAdmin):
         "id",
         "name",
     )
+    inlines = [SpecializationInline]
 
 
 @admin.register(SkillToObject)
