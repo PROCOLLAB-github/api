@@ -3,9 +3,7 @@ name: Django CI
 on:
   push:
     branches:
-      - '*'         # matches every branch that doesn't contain a '/'
-      - '*/*'       # matches every branch containing a single '/'
-      - '**'        # matches every branch
+      - '**'
 
 jobs:
   django-test:
@@ -18,11 +16,11 @@ jobs:
         with:
           python-version: 3.11
 
-      - name: cache poetry install
+      - name: Cache Poetry
         uses: actions/cache@v4
         with:
           path: ~/.local
-          key: poetry-1.2.2-0
+          key: poetry-1.2.2-${{ hashFiles('**/poetry.lock') }}
 
       - uses: snok/install-poetry@v1
         with:
@@ -30,20 +28,21 @@ jobs:
           virtualenvs-create: true
           virtualenvs-in-project: true
 
-      - name: cache deps
+      - name: Cache dependencies
         id: cache-deps
         uses: actions/cache@v4
         with:
           path: .venv
           key: pydeps-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            pydeps-
 
-      - run: poetry install --no-root
-        if: steps.cache-deps.outputs.cache-hit != 'true'
-
-      # install setuptools
-      - run: poetry run pip install setuptools
+      - name: Install dependencies
+        run: poetry install
 
       - name: Run tests
-        run: poetry run python manage.py test
+        run: poetry run python manage.py test --verbosity=2
         env:
           DEBUG: True
+          DJANGO_SETTINGS_MODULE: procollab.settings
+          PYTHONUNBUFFERED: 1
