@@ -85,7 +85,7 @@ class ProjectChat(BaseChat):
         created_at: A DateTimeField indicating date of creation.
     """
 
-    id = models.PositiveIntegerField(primary_key=True, unique=True)
+    id = models.PositiveIntegerField(primary_key=True, unique=True)  # noqa A003 VNE003
     project = models.ForeignKey(
         Project, on_delete=models.CASCADE, related_name="project_chats"
     )
@@ -126,7 +126,7 @@ class DirectChat(BaseChat):
         get_users: returns list of users, who are in chat
     """
 
-    id = models.CharField(primary_key=True, max_length=64)
+    id = models.CharField(primary_key=True, max_length=64)  # noqa A003 VNE003
     users = models.ManyToManyField(User, related_name="direct_chats")
 
     def get_users(self):
@@ -287,7 +287,7 @@ class DirectChatMessage(BaseMessage):
 
 
 class FileToMessage(models.Model):
-    file = models.OneToOneField(
+    file = models.OneToOneField(  # noqa VNE002
         UserFile,
         on_delete=models.CASCADE,
         related_name="file_to_message",

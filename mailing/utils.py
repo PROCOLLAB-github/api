@@ -12,7 +12,7 @@ from django.core import mail
 from django.core.mail import EmailMultiAlternatives
 from django.template import Context, Template
 
-from .typing import MailDataDict, EmailDataToPrepare
+from .definitions import MailDataDict, EmailDataToPrepare
 
 User = get_user_model()
 

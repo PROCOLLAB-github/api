@@ -249,8 +249,9 @@ else:
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        "NAME": "django.contrib.auth.password_validation.\
-UserAttributeSimilarityValidator",
+        "NAME": (
+            "django.contrib.auth.password_validation." "UserAttributeSimilarityValidator"
+        ),
     },
     {
         "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
@@ -304,8 +305,9 @@ SIMPLE_JWT = {
     "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
     "USER_ID_FIELD": "id",
     "USER_ID_CLAIM": "user_id",
-    "USER_AUTHENTICATION_RULE": "rest_framework_simplejwt.authentication.\
-default_user_authentication_rule",
+    "USER_AUTHENTICATION_RULE": (
+        "rest_framework_simplejwt.authentication." "default_user_authentication_rule",
+    ),
     "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
     "TOKEN_TYPE_CLAIM": "token_type",
     "TOKEN_USER_CLASS": "rest_framework_simplejwt.models.TokenUser",
@@ -394,7 +396,6 @@ PROMETHEUS_LATENCY_BUCKETS = (
 )
 
 DATA_UPLOAD_MAX_NUMBER_FIELDS = None  # for mailing
-
 
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 CELERY_BROKER_URL = "redis://redis:6379/0"

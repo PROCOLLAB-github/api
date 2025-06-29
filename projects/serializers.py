@@ -176,7 +176,6 @@ class ProjectListSerializer(serializers.ModelSerializer):
 
 
 class ProjectIndustrySerializer(serializers.ModelSerializer):
-    id = serializers.IntegerField()
     name = serializers.CharField(read_only=True)
 
     class Meta:

@@ -20,7 +20,7 @@ class MetricsView(APIView):
 
     permission_classes = [permissions.IsAdminUser]
 
-    def get(self, request, format=None):
+    def get(self, request):
         data = {}
 
         models = [User, Expert, Investor, Member, Mentor, Project, Vacancy]

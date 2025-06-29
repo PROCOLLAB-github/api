@@ -102,7 +102,7 @@ class CustomUser(AbstractUser):
         null=True,
         blank=True,
         verbose_name="Номер телефона",
-        help_text="Пример: +7 XXX XX-XX-XX | +7XXXXXXXXX | +7 (XXX) XX-XX-XX"
+        help_text="Пример: +7 XXX XX-XX-XX | +7XXXXXXXXX | +7 (XXX) XX-XX-XX",
     )
     v2_speciality = models.ForeignKey(
         on_delete=models.SET_NULL,
@@ -138,7 +138,7 @@ class CustomUser(AbstractUser):
         blank=True,
         default=False,
         verbose_name="Временная мера для переноса навыка",
-        help_text="Yes если оба поля `v2_speciality` и `skills` есть, No если поля не перенеслись"
+        help_text="Yes если оба поля `v2_speciality` и `skills` есть, No если поля не перенеслись",
     )
 
     USERNAME_FIELD = "email"
@@ -442,6 +442,7 @@ class UserLink(models.Model):
 
 class AbstractUserExperience(models.Model):
     """Abstact help model for user work|education experience."""
+
     organization_name = models.CharField(
         max_length=255,
         verbose_name="Наименование организации",
@@ -469,9 +470,7 @@ class AbstractUserExperience(models.Model):
         abstract = True
 
     def __str__(self) -> str:
-        return (
-            f"id: {self.id} - ({self.user.first_name} {self.user.last_name} user_id: {self.user.id})"
-        )
+        return f"id: {self.id} - ({self.user.first_name} {self.user.last_name} user_id: {self.user.id})"
 
     def clean(self) -> None:
         """Validate both years `entry` <`completion`"""
@@ -541,6 +540,7 @@ class UserWorkExperience(AbstractUserExperience):
         entry_year: PositiveSmallIntegerField Year of admission.
         completion_year: PositiveSmallIntegerField Year of dismissal.
     """
+
     user = models.ForeignKey(
         to=CustomUser,
         on_delete=models.CASCADE,
@@ -570,6 +570,7 @@ class UserLanguages(models.Model):
         language: CharField(choise) languages.
         language_level: CharField(choise) language level.
     """
+
     user = models.ForeignKey(
         to=CustomUser,
         on_delete=models.CASCADE,
@@ -604,7 +605,9 @@ class UserLanguages(models.Model):
         """
         super().clean()
         user_languages = self.user.user_languages.values_list("language", flat=True)
-        if (self.language not in user_languages) and len(user_languages) == constants.USER_MAX_LANGUAGES_COUNT:
+        if (self.language not in user_languages) and len(
+            user_languages
+        ) == constants.USER_MAX_LANGUAGES_COUNT:
             raise ValidationError(constants.COUNT_LANGUAGES_VALIDATION_MESSAGE)
 
     def save(self, *args, **kwargs):
@@ -612,9 +615,7 @@ class UserLanguages(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self) -> str:
-        return (
-            f"id: {self.id} - ({self.user.first_name} {self.user.last_name} user_id: {self.user.id})"
-        )
+        return f"id: {self.id} - ({self.user.first_name} {self.user.last_name} user_id: {self.user.id})"
 
 
 class UserSkillConfirmation(models.Model):
@@ -626,15 +627,12 @@ class UserSkillConfirmation(models.Model):
             confirmed_by: FK CustomUser.
             confirmed_at: DateTimeField.
     """
+
     skill_to_object = models.ForeignKey(
-        "core.SkillToObject",
-        on_delete=models.CASCADE,
-        related_name="confirmations"
+        "core.SkillToObject", on_delete=models.CASCADE, related_name="confirmations"
     )
     confirmed_by = models.ForeignKey(
-        CustomUser,
-        on_delete=models.CASCADE,
-        related_name="skill_confirmations"
+        CustomUser, on_delete=models.CASCADE, related_name="skill_confirmations"
     )
     confirmed_at = models.DateTimeField(auto_now_add=True)
 
@@ -642,7 +640,7 @@ class UserSkillConfirmation(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["skill_to_object", "confirmed_by"],
-                name="unique_skill_confirmed_by"
+                name="unique_skill_confirmed_by",
             )
         ]
         verbose_name = "Подтверждение навыка"
