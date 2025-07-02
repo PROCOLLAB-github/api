@@ -140,6 +140,18 @@ class CustomUser(AbstractUser):
         verbose_name="Временная мера для переноса навыка",
         help_text="Yes если оба поля `v2_speciality` и `skills` есть, No если поля не перенеслись"
     )
+    is_mospolytech_student = models.BooleanField(
+        default=False,
+        verbose_name="Студент Московского Политеха",
+        help_text="Флаг, указывающий, является ли пользователь студентом МосПолитеха"
+    )
+    study_group = models.CharField(
+        max_length=10,
+        null=True,
+        blank=True,
+        verbose_name="Учебная группа",
+        help_text="Краткое обозначение учебной группы (до 10 символов)"
+    )
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []

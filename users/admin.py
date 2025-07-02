@@ -124,6 +124,11 @@ class CustomUserAdmin(admin.ModelAdmin):
             "Важные даты",
             {"fields": ("last_login", "date_joined")},
         ),
+                (
+            "Студенты мосполитеха",
+            {"fields": ("is_mospolytech_student", "study_group")},
+        ),
+        
     )
 
     list_display = (
