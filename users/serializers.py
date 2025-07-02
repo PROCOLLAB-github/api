@@ -1,23 +1,22 @@
 from typing import Any
 
-from django.db import transaction
 from django.contrib.contenttypes.models import ContentType
-from django.forms.models import model_to_dict
 from django.core.cache import cache
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import transaction
+from django.forms.models import model_to_dict
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
+from core.models import Skill, SkillToObject, Specialization, SpecializationCategory
 from core.serializers import SkillToObjectSerializer
-from core.models import SpecializationCategory, Specialization, Skill, SkillToObject
 from core.services import get_views_count
 from core.utils import get_user_online_cache_key
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
-from projects.models import Project, Collaborator
+from projects.models import Collaborator, Project
 from projects.validators import validate_project
 from users import constants
-from users.utils import normalize_user_phone
-from users.validators import specialization_exists_validator
 from users.models import (
     CustomUser,
     Expert,
@@ -26,12 +25,12 @@ from users.models import (
     Mentor,
     UserAchievement,
     UserEducation,
-    UserWorkExperience,
-    UserSkillConfirmation,
     UserLanguages,
+    UserSkillConfirmation,
+    UserWorkExperience,
 )
-
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from users.utils import normalize_user_phone
+from users.validators import specialization_exists_validator
 
 
 class AchievementListSerializer(serializers.ModelSerializer[UserAchievement]):
