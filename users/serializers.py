@@ -451,6 +451,8 @@ class UserDetailSerializer(
             "projects",
             "programs",
             "dataset_migration_applied",
+            "is_mospolytech_student",  # новое булево поле
+            "study_group",
         ]
 
     @transaction.atomic
