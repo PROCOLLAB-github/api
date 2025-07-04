@@ -2,8 +2,10 @@ from typing import Optional
 
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericRelation
+from django.core.validators import MaxLengthValidator
 from django.db import models
 from django.db.models import UniqueConstraint
+
 
 from core.models import Like, View
 from files.models import UserFile
@@ -87,6 +89,49 @@ class Project(models.Model):
     region = models.CharField(max_length=256, null=True, blank=True)
     step = models.PositiveSmallIntegerField(choices=VERBOSE_STEPS, null=True, blank=True)
     hidden_score = models.PositiveSmallIntegerField(default=100)
+
+    track = models.CharField(
+        max_length=256,
+        blank=True,
+        null=True,
+        verbose_name="Трек",
+        help_text="Направление/курс, в рамках которого реализуется проект",
+    )
+    direction = models.CharField(
+        max_length=256,
+        blank=True,
+        null=True,
+        verbose_name="Направление",
+        help_text="Более общее направление деятельности проекта",
+    )
+    specialty = models.CharField(
+        max_length=256,
+        blank=True,
+        null=True,
+        verbose_name="Специальность",
+        help_text="Специализация проекта",
+    )
+    actuality = models.TextField(
+        blank=True,
+        null=True,
+        validators=[MaxLengthValidator(1000)],
+        verbose_name="Актуальность",
+        help_text="Почему проект важен (до 1000 симв.)",
+    )
+    goal = models.CharField(
+        max_length=500,
+        blank=True,
+        null=True,
+        verbose_name="Цель",
+        help_text="Главная цель проекта (до 500 симв.)",
+    )
+    problem = models.TextField(
+        blank=True,
+        null=True,
+        validators=[MaxLengthValidator(1000)],
+        verbose_name="Проблема",
+        help_text="Какую проблему решает проект (до 1000 симв.)",
+    )
 
     industry = models.ForeignKey(
         Industry,

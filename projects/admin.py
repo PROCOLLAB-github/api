@@ -17,11 +17,67 @@ class ProjectAdmin(admin.ModelAdmin):
         "name",
         "draft",
         "is_company",
+        "track",
+        "direction",
+        "specialty",
     )
     list_display_links = (
         "id",
         "name",
     )
+    search_fields = (
+        "name",
+        "track",
+        "specialty",
+    )
+    list_filter = (
+        "draft",
+        "is_company",
+        "track",
+        "direction",
+        "specialty",
+    )
+
+    fieldsets = (
+        ("Основная информация", {
+            "fields": (
+                "name",
+                "description",
+                "leader",
+                "industry",
+                "region",
+                "step",
+                "draft",
+                "is_company",
+            )
+        }),
+        ("Для проектов ПД МосПолитеха", {
+            "fields": (
+                "track",
+                "direction",
+                "specialty",
+                "actuality",
+                "goal",
+                "problem",
+            )
+        }),
+        ("Медиа и обложка", {
+            "fields": (
+                "presentation_address",
+                "image_address",
+                "cover",
+                "cover_image_address",
+            )
+        }),
+        ("Служебные поля", {
+            "fields": (
+                "hidden_score",
+                "datetime_created",
+                "datetime_updated",
+            )
+        }),
+    )
+    readonly_fields = ("datetime_created", "datetime_updated")
 
 
 @admin.register(ProjectNews)
