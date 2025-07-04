@@ -130,6 +130,12 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "cover",
             "cover_image_address",
             "partner_programs_tags",
+            "track",
+            "direction",
+            "specialty",
+            "actuality",
+            "goal",
+            "problem",
         ]
         read_only_fields = [
             "leader",
