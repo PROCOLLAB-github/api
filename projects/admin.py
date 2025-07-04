@@ -1,10 +1,10 @@
 from django.contrib import admin
 
 from projects.models import (
-    DefaultProjectCover,
-    Project,
     Achievement,
     Collaborator,
+    DefaultProjectCover,
+    Project,
     ProjectLink,
     ProjectNews,
 )
@@ -39,43 +39,55 @@ class ProjectAdmin(admin.ModelAdmin):
     )
 
     fieldsets = (
-        ("Основная информация", {
-            "fields": (
-                "name",
-                "description",
-                "leader",
-                "industry",
-                "region",
-                "step",
-                "draft",
-                "is_company",
-            )
-        }),
-        ("Для проектов ПД МосПолитеха", {
-            "fields": (
-                "track",
-                "direction",
-                "specialty",
-                "actuality",
-                "goal",
-                "problem",
-            )
-        }),
-        ("Медиа и обложка", {
-            "fields": (
-                "presentation_address",
-                "image_address",
-                "cover",
-                "cover_image_address",
-            )
-        }),
-        ("Служебные поля", {
-            "fields": (
-                "hidden_score",
-                "datetime_created",
-                "datetime_updated",
-            )
-        }),
+        (
+            "Основная информация",
+            {
+                "fields": (
+                    "name",
+                    "description",
+                    "leader",
+                    "industry",
+                    "region",
+                    "step",
+                    "draft",
+                    "is_company",
+                )
+            },
+        ),
+        (
+            "Для проектов ПД МосПолитеха",
+            {
+                "fields": (
+                    "track",
+                    "direction",
+                    "specialty",
+                    "actuality",
+                    "goal",
+                    "problem",
+                )
+            },
+        ),
+        (
+            "Медиа и обложка",
+            {
+                "fields": (
+                    "presentation_address",
+                    "image_address",
+                    "cover",
+                    "cover_image_address",
+                )
+            },
+        ),
+        (
+            "Служебные поля",
+            {
+                "fields": (
+                    "hidden_score",
+                    "datetime_created",
+                    "datetime_updated",
+                )
+            },
+        ),
     )
     readonly_fields = ("datetime_created", "datetime_updated")
 

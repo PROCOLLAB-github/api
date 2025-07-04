@@ -6,11 +6,9 @@ from django.core.validators import MaxLengthValidator
 from django.db import models
 from django.db.models import UniqueConstraint
 
-
 from core.models import Like, View
 from files.models import UserFile
 from industries.models import Industry
-
 from projects.constants import VERBOSE_STEPS
 from projects.managers import AchievementManager, CollaboratorManager, ProjectManager
 from users.models import CustomUser
@@ -55,7 +53,11 @@ class DefaultProjectCover(models.Model):
     @classmethod
     def get_random_file_link(cls):
         # FIXME: this is not efficient, but for ~10 default covers it should be ok
-        return cls.objects.order_by("?").first().image.link if cls.objects.order_by("?").first().image else None
+        return (
+            cls.objects.order_by("?").first().image.link
+            if cls.objects.order_by("?").first().image
+            else None
+        )
 
     class Meta:
         verbose_name = "Обложка проекта"
@@ -87,7 +89,9 @@ class Project(models.Model):
     name = models.CharField(max_length=256, null=True, blank=True)
     description = models.TextField(null=True, blank=True)
     region = models.CharField(max_length=256, null=True, blank=True)
-    step = models.PositiveSmallIntegerField(choices=VERBOSE_STEPS, null=True, blank=True)
+    step = models.PositiveSmallIntegerField(
+        choices=VERBOSE_STEPS, null=True, blank=True
+    )
     hidden_score = models.PositiveSmallIntegerField(default=100)
 
     track = models.CharField(
