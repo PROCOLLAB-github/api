@@ -76,6 +76,11 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     views_count = serializers.SerializerMethodField(method_name="count_views")
     links = serializers.SerializerMethodField()
     partner_programs_tags = serializers.SerializerMethodField()
+    track = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    direction = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    actuality = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    goal = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    problem = serializers.CharField(required=False, allow_null=True, allow_blank=True)
 
     @classmethod
     def get_partner_programs_tags(cls, project):
@@ -132,7 +137,6 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "partner_programs_tags",
             "track",
             "direction",
-            "specialty",
             "actuality",
             "goal",
             "problem",

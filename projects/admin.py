@@ -19,7 +19,6 @@ class ProjectAdmin(admin.ModelAdmin):
         "is_company",
         "track",
         "direction",
-        "specialty",
     )
     list_display_links = (
         "id",
@@ -28,14 +27,12 @@ class ProjectAdmin(admin.ModelAdmin):
     search_fields = (
         "name",
         "track",
-        "specialty",
     )
     list_filter = (
         "draft",
         "is_company",
         "track",
         "direction",
-        "specialty",
     )
 
     fieldsets = (
@@ -60,7 +57,6 @@ class ProjectAdmin(admin.ModelAdmin):
                 "fields": (
                     "track",
                     "direction",
-                    "specialty",
                     "actuality",
                     "goal",
                     "problem",

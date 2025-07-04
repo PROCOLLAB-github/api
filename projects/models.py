@@ -108,13 +108,6 @@ class Project(models.Model):
         verbose_name="Направление",
         help_text="Более общее направление деятельности проекта",
     )
-    specialty = models.CharField(
-        max_length=256,
-        blank=True,
-        null=True,
-        verbose_name="Специальность",
-        help_text="Специализация проекта",
-    )
     actuality = models.TextField(
         blank=True,
         null=True,
