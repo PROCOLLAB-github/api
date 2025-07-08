@@ -1,9 +1,9 @@
 from django.db import models
+from django_stubs_ext.db.models import TypedModelMeta
 
 from invites.managers import InviteManager
 from projects.models import Project
 from users.models import CustomUser
-from django_stubs_ext.db.models import TypedModelMeta
 
 
 class Invite(models.Model):
@@ -32,7 +32,7 @@ class Invite(models.Model):
         blank=True,
         null=True,
         default=None,
-        verbose_name="Специализация"
+        verbose_name="Специализация",
     )
     is_accepted = models.BooleanField(blank=False, null=True, default=None)
 
@@ -46,7 +46,9 @@ class Invite(models.Model):
     objects = InviteManager()
 
     def __str__(self) -> str:
-        return f'Invite from project "{self.project.name}" to {self.user.get_full_name()}'
+        return (
+            f'Invite from project "{self.project.name}" to {self.user.get_full_name()}'
+        )
 
     class Meta(TypedModelMeta):
         verbose_name = "Приглашение"

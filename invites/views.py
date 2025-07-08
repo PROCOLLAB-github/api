@@ -4,7 +4,7 @@ from rest_framework.response import Response
 
 from invites.filters import InviteFilter
 from invites.models import Invite
-from invites.serializers import InviteListSerializer, InviteDetailSerializer
+from invites.serializers import InviteDetailSerializer, InviteListSerializer
 from projects.models import Collaborator
 
 
