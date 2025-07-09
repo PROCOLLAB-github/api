@@ -113,6 +113,11 @@ class UserFilter(filters.FilterSet):
 
     skills__contains = filters.Filter(method="filter_by_skills")
 
+    is_mospolytech_student = filters.BooleanFilter(
+        field_name="is_mospolytech_student",
+        label="Студент Московского Политеха",
+    )
+
     class Meta:
         model = User
         fields = (

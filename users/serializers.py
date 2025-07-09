@@ -792,6 +792,7 @@ class PublicUserSerializer(serializers.ModelSerializer):
             "is_online",
             "birthday",
             "speciality",
+            "is_mospolytech_student",
         ]
 
 
