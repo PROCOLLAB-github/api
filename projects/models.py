@@ -264,6 +264,7 @@ class Collaborator(models.Model):
         user: A ForeignKey referencing the user who is collaborating in the project.
         project: A ForeignKey referencing the project the user is collaborating in.
         role: A CharField meaning the role the user is fulfilling in the project.
+        specialization: A CharField indicating the user's specialization within the project.
         datetime_created: A DateTimeField indicating date of creation.
         datetime_updated: A DateTimeField indicating date of update.
     """
@@ -276,6 +277,14 @@ class Collaborator(models.Model):
     )
     project = models.ForeignKey(Project, models.CASCADE, verbose_name="Проект")
     role = models.CharField("Роль", max_length=1024, blank=True, null=True)
+    specialization = models.CharField(
+        "Специализация",
+        max_length=100,
+        blank=True,
+        null=True,
+        default=None,
+        help_text="Направления работы участника в рамках проекта",
+    )
 
     datetime_created = models.DateTimeField(
         verbose_name="Дата создания", null=False, auto_now_add=True
