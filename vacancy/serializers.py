@@ -10,7 +10,7 @@ from files.serializers import UserFileSerializer
 from projects.models import Project
 from projects.validators import validate_project
 from users.serializers import UserDetailSerializer
-from vacancy.constants import WorkExperience, WorkSchedule, WorkFormat
+from vacancy.constants import WorkExperience, WorkFormat, WorkSchedule
 from vacancy.models import Vacancy, VacancyResponse
 
 User = get_user_model()
@@ -51,8 +51,12 @@ class AbstractVacancyEnumFields(serializers.Serializer):
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-        representation["required_experience"] = WorkExperience.to_display(instance.required_experience)
-        representation["work_schedule"] = WorkSchedule.to_display(instance.work_schedule)
+        representation["required_experience"] = WorkExperience.to_display(
+            instance.required_experience
+        )
+        representation["work_schedule"] = WorkSchedule.to_display(
+            instance.work_schedule
+        )
         representation["work_format"] = WorkFormat.to_display(instance.work_format)
         return representation
 
@@ -112,6 +116,7 @@ class VacancyDetailSerializer(
         fields = [
             "id",
             "role",
+            "specialization",
             "required_skills",
             "required_skills_ids",
             "description",
@@ -139,6 +144,7 @@ class VacancyListSerializer(
         fields = [
             "id",
             "role",
+            "specialization",
             "required_skills",
             "description",
             "is_active",
@@ -192,7 +198,6 @@ class ProjectVacancyCreateListSerializer(
     AbstractVacancyEnumFields,
     RequiredSkillsWriteSerializerMixin[Vacancy],
 ):
-
     def create(self, validated_data):
         project = validated_data["project"]
         if project.leader != self.context["request"].user:
@@ -233,6 +238,7 @@ class ProjectVacancyCreateListSerializer(
         fields = [
             "id",
             "role",
+            "specialization",
             "required_skills",
             "required_skills_ids",
             "description",
