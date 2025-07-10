@@ -14,6 +14,7 @@ class InviteListSerializer(serializers.ModelSerializer[Invite]):
             "user",
             "motivational_letter",
             "role",
+            "specialization",
             "is_accepted",
         ]
 
