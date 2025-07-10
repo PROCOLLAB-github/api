@@ -15,6 +15,7 @@ class VacancySkillToObjectInline(SkillToObjectInline):
 class VacancyAdmin(admin.ModelAdmin):
     list_display = [
         "role",
+        "specialization",
         "description",
         "project",
         "is_active",

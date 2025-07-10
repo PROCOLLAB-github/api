@@ -112,6 +112,7 @@ class VacancyDetailSerializer(
         fields = [
             "id",
             "role",
+            "specialization",
             "required_skills",
             "required_skills_ids",
             "description",
@@ -139,6 +140,7 @@ class VacancyListSerializer(
         fields = [
             "id",
             "role",
+            "specialization",
             "required_skills",
             "description",
             "is_active",
@@ -233,6 +235,7 @@ class ProjectVacancyCreateListSerializer(
         fields = [
             "id",
             "role",
+            "specialization",
             "required_skills",
             "required_skills_ids",
             "description",

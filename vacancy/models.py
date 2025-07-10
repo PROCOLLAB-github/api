@@ -28,6 +28,12 @@ class Vacancy(models.Model):
     """
 
     role = models.CharField(max_length=256, null=False)
+    specialization = models.CharField(
+        max_length=128,
+        null=True,
+        blank=True,
+        verbose_name="Специализация"
+    )
     required_skills = GenericRelation(
         "core.SkillToObject",
         related_query_name="vacancies",
