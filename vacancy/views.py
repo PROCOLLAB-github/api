@@ -70,7 +70,9 @@ class VacancyDetail(generics.RetrieveUpdateDestroyAPIView):
         return self.update(request, *args, **kwargs)
 
 
-class VacancyResponseList(mixins.ListModelMixin, mixins.CreateModelMixin, GenericAPIView):
+class VacancyResponseList(
+    mixins.ListModelMixin, mixins.CreateModelMixin, GenericAPIView
+):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     serializer_class = VacancyResponseListSerializer
 
@@ -145,7 +147,9 @@ class VacancyResponseAccept(generics.GenericAPIView):
         role_add_as: str = vacancy.role
 
         # check if this person already has a collaborator role in this project
-        if Collaborator.objects.filter(project=project_add_in, user=user_to_add).exists():
+        if Collaborator.objects.filter(
+            project=project_add_in, user=user_to_add
+        ).exists():
             return Response(
                 "You already work for this project, you can't accept a vacancy here",
                 status=status.HTTP_400_BAD_REQUEST,

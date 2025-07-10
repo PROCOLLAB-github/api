@@ -1,16 +1,16 @@
 import datetime
 
-from mailing.typing import EmailDataToPrepare, ContextDataDict, MailDataDict
-from mailing.utils import send_mass_mail, prepare_mail_data
+from mailing.typing import ContextDataDict, EmailDataToPrepare, MailDataDict
+from mailing.utils import prepare_mail_data, send_mass_mail
 from procollab.celery import app
 from vacancy.mapping import (
     CeleryEmailParams,
-    create_text_for_email,
-    message_type_to_button_text,
-    get_link,
-    MessageTypeEnum,
-    message_type_to_title,
     EmailParamsType,
+    MessageTypeEnum,
+    create_text_for_email,
+    get_link,
+    message_type_to_button_text,
+    message_type_to_title,
 )
 from vacancy.models import Vacancy
 
