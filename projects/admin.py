@@ -3,6 +3,7 @@ from django.contrib import admin
 from projects.models import (
     Achievement,
     Collaborator,
+    DefaultProjectAvatar,
     DefaultProjectCover,
     Project,
     ProjectLink,
@@ -141,3 +142,8 @@ class DefaultProjectCoverAdmin(admin.ModelAdmin):
         "datetime_created",
         "datetime_updated",
     )
+
+
+@admin.register(DefaultProjectAvatar)
+class DefaultProjectAvatarAdmin(admin.ModelAdmin):
+    list_display = ("id", "image", "datetime_created")

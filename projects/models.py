@@ -16,52 +16,46 @@ from users.models import CustomUser
 User = get_user_model()
 
 
-class DefaultProjectCover(models.Model):
+class AbstractDefaultProjectImage(models.Model):
     """
-    Default cover model for projects, is chosen randomly at project creation
-
-    Attributes:
-        image: A ForeignKey referencing the image of the cover.
-        datetime_created: A DateTimeField indicating date of creation.
-        datetime_updated: A DateTimeField indicating date of update.
+    Абстрактная модель для хранения изображений проекта по умолчанию.
     """
 
     image = models.ForeignKey(
         UserFile,
         on_delete=models.CASCADE,
-        related_name="default_covers",
         null=True,
         blank=True,
     )
+    datetime_created = models.DateTimeField(auto_now_add=True)
+    datetime_updated = models.DateTimeField(auto_now=True)
 
-    datetime_created = models.DateTimeField(
-        verbose_name="Дата создания",
-        null=False,
-        auto_now_add=True,
-    )
-    datetime_updated = models.DateTimeField(
-        verbose_name="Дата изменения",
-        null=False,
-        auto_now=True,
-    )
+    class Meta:
+        abstract = True
 
     @classmethod
-    def get_random_file(cls):
-        # FIXME: this is not efficient, but for ~10 default covers it should be ok
-        return cls.objects.order_by("?").first().image
+    def get_random_file(cls) -> Optional[UserFile]:
+        if not cls.objects.exists():
+            return None
+        obj = cls.objects.order_by("?").first()
+        return obj.image if obj and obj.image else None
 
     @classmethod
-    def get_random_file_link(cls):
-        # FIXME: this is not efficient, but for ~10 default covers it should be ok
-        return (
-            cls.objects.order_by("?").first().image.link
-            if cls.objects.order_by("?").first().image
-            else None
-        )
+    def get_random_file_link(cls) -> Optional[str]:
+        file = cls.get_random_file()
+        return file.link if file else None
 
+
+class DefaultProjectCover(AbstractDefaultProjectImage):
     class Meta:
         verbose_name = "Обложка проекта"
         verbose_name_plural = "Обложки проектов"
+
+
+class DefaultProjectAvatar(AbstractDefaultProjectImage):
+    class Meta:
+        verbose_name = "Аватарка проекта"
+        verbose_name_plural = "Аватарки проектов"
 
 
 class Project(models.Model):
@@ -193,9 +187,13 @@ class Project(models.Model):
         return f"Project<{self.id}> - {self.name}"
 
     def save(self, *args, **kwargs):
-        """Set random cover image if `cover_image_address` blank."""
-        if self.cover_image_address is None:
+        """Set random cover and avatar images if not provided."""
+        if not self.cover_image_address:
             self.cover_image_address = DefaultProjectCover.get_random_file_link()
+
+        if not self.image_address:
+            self.image_address = DefaultProjectAvatar.get_random_file_link()
+
         super().save(*args, **kwargs)
 
     class Meta:
