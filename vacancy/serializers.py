@@ -82,6 +82,7 @@ class ProjectVacancyListSerializer(
         fields = [
             "id",
             "role",
+            "specialization",
             "required_skills",
             "description",
             "project",
