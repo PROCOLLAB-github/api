@@ -1,13 +1,13 @@
 from django.contrib.contenttypes.fields import GenericRelation
-from django.db import models
 from django.core.validators import MinValueValidator
+from django.db import models
 from django.utils import timezone
+from django_stubs_ext.db.models import TypedModelMeta
 
 from files.models import UserFile
 from projects.models import Project
-from vacancy.constants import WorkExperience, WorkSchedule, WorkFormat
+from vacancy.constants import WorkExperience, WorkFormat, WorkSchedule
 from vacancy.managers import VacancyManager, VacancyResponseManager
-from django_stubs_ext.db.models import TypedModelMeta
 
 
 class Vacancy(models.Model):
@@ -28,6 +28,9 @@ class Vacancy(models.Model):
     """
 
     role = models.CharField(max_length=256, null=False)
+    specialization = models.CharField(
+        max_length=128, null=True, blank=True, verbose_name="Специализация"
+    )
     required_skills = GenericRelation(
         "core.SkillToObject",
         related_query_name="vacancies",

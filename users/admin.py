@@ -124,6 +124,10 @@ class CustomUserAdmin(admin.ModelAdmin):
             "Важные даты",
             {"fields": ("last_login", "date_joined")},
         ),
+        (
+            "Студенты мосполитеха",
+            {"fields": ("is_mospolytech_student", "study_group")},
+        ),
     )
 
     list_display = (
@@ -296,10 +300,7 @@ class CustomUserAdmin(admin.ModelAdmin):
         users = (
             CustomUser.objects.all()
             .select_related("v2_speciality")
-            .filter(
-                birthday__lte=date_limit_18,
-                birthday__gte=date_limit_22
-            )
+            .filter(birthday__lte=date_limit_18, birthday__gte=date_limit_22)
         )
         # little_mans = users.filter(birthday__lte=date_limit_18)
         # big_mans = users.exclude(id__in=little_mans.values_list("id", flat=True))
@@ -312,13 +313,9 @@ class CustomUserAdmin(admin.ModelAdmin):
             response_data.append(
                 [
                     user.first_name + " " + user.last_name,
-                    (today.year - user.birthday.year)
-                    if user.birthday.year
-                    else None,
+                    (today.year - user.birthday.year) if user.birthday.year else None,
                     user.city,
-                    user.v2_speciality
-                    if user.v2_speciality
-                    else user.speciality,
+                    user.v2_speciality if user.v2_speciality else user.speciality,
                     user.email,
                 ]
             )

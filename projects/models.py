@@ -2,13 +2,13 @@ from typing import Optional
 
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericRelation
+from django.core.validators import MaxLengthValidator
 from django.db import models
 from django.db.models import UniqueConstraint
 
 from core.models import Like, View
 from files.models import UserFile
 from industries.models import Industry
-
 from projects.constants import VERBOSE_STEPS
 from projects.managers import AchievementManager, CollaboratorManager, ProjectManager
 from users.models import CustomUser
@@ -16,48 +16,46 @@ from users.models import CustomUser
 User = get_user_model()
 
 
-class DefaultProjectCover(models.Model):
+class AbstractDefaultProjectImage(models.Model):
     """
-    Default cover model for projects, is chosen randomly at project creation
-
-    Attributes:
-        image: A ForeignKey referencing the image of the cover.
-        datetime_created: A DateTimeField indicating date of creation.
-        datetime_updated: A DateTimeField indicating date of update.
+    Абстрактная модель для хранения изображений проекта по умолчанию.
     """
 
     image = models.ForeignKey(
         UserFile,
         on_delete=models.CASCADE,
-        related_name="default_covers",
         null=True,
         blank=True,
     )
+    datetime_created = models.DateTimeField(auto_now_add=True)
+    datetime_updated = models.DateTimeField(auto_now=True)
 
-    datetime_created = models.DateTimeField(
-        verbose_name="Дата создания",
-        null=False,
-        auto_now_add=True,
-    )
-    datetime_updated = models.DateTimeField(
-        verbose_name="Дата изменения",
-        null=False,
-        auto_now=True,
-    )
+    class Meta:
+        abstract = True
 
     @classmethod
-    def get_random_file(cls):
-        # FIXME: this is not efficient, but for ~10 default covers it should be ok
-        return cls.objects.order_by("?").first().image
+    def get_random_file(cls) -> Optional[UserFile]:
+        if not cls.objects.exists():
+            return None
+        obj = cls.objects.order_by("?").first()
+        return obj.image if obj and obj.image else None
 
     @classmethod
-    def get_random_file_link(cls):
-        # FIXME: this is not efficient, but for ~10 default covers it should be ok
-        return cls.objects.order_by("?").first().image.link if cls.objects.order_by("?").first().image else None
+    def get_random_file_link(cls) -> Optional[str]:
+        file = cls.get_random_file()
+        return file.link if file else None
 
+
+class DefaultProjectCover(AbstractDefaultProjectImage):
     class Meta:
         verbose_name = "Обложка проекта"
         verbose_name_plural = "Обложки проектов"
+
+
+class DefaultProjectAvatar(AbstractDefaultProjectImage):
+    class Meta:
+        verbose_name = "Аватарка проекта"
+        verbose_name_plural = "Аватарки проектов"
 
 
 class Project(models.Model):
@@ -85,8 +83,46 @@ class Project(models.Model):
     name = models.CharField(max_length=256, null=True, blank=True)
     description = models.TextField(null=True, blank=True)
     region = models.CharField(max_length=256, null=True, blank=True)
-    step = models.PositiveSmallIntegerField(choices=VERBOSE_STEPS, null=True, blank=True)
+    step = models.PositiveSmallIntegerField(
+        choices=VERBOSE_STEPS, null=True, blank=True
+    )
     hidden_score = models.PositiveSmallIntegerField(default=100)
+
+    track = models.CharField(
+        max_length=256,
+        blank=True,
+        null=True,
+        verbose_name="Трек",
+        help_text="Направление/курс, в рамках которого реализуется проект",
+    )
+    direction = models.CharField(
+        max_length=256,
+        blank=True,
+        null=True,
+        verbose_name="Направление",
+        help_text="Более общее направление деятельности проекта",
+    )
+    actuality = models.TextField(
+        blank=True,
+        null=True,
+        validators=[MaxLengthValidator(1000)],
+        verbose_name="Актуальность",
+        help_text="Почему проект важен (до 1000 симв.)",
+    )
+    goal = models.CharField(
+        max_length=500,
+        blank=True,
+        null=True,
+        verbose_name="Цель",
+        help_text="Главная цель проекта (до 500 симв.)",
+    )
+    problem = models.TextField(
+        blank=True,
+        null=True,
+        validators=[MaxLengthValidator(1000)],
+        verbose_name="Проблема",
+        help_text="Какую проблему решает проект (до 1000 симв.)",
+    )
 
     industry = models.ForeignKey(
         Industry,
@@ -151,9 +187,13 @@ class Project(models.Model):
         return f"Project<{self.id}> - {self.name}"
 
     def save(self, *args, **kwargs):
-        """Set random cover image if `cover_image_address` blank."""
-        if self.cover_image_address is None:
+        """Set random cover and avatar images if not provided."""
+        if not self.cover_image_address:
             self.cover_image_address = DefaultProjectCover.get_random_file_link()
+
+        if not self.image_address:
+            self.image_address = DefaultProjectAvatar.get_random_file_link()
+
         super().save(*args, **kwargs)
 
     class Meta:
@@ -222,6 +262,7 @@ class Collaborator(models.Model):
         user: A ForeignKey referencing the user who is collaborating in the project.
         project: A ForeignKey referencing the project the user is collaborating in.
         role: A CharField meaning the role the user is fulfilling in the project.
+        specialization: A CharField indicating the user's specialization within the project.
         datetime_created: A DateTimeField indicating date of creation.
         datetime_updated: A DateTimeField indicating date of update.
     """
@@ -234,6 +275,14 @@ class Collaborator(models.Model):
     )
     project = models.ForeignKey(Project, models.CASCADE, verbose_name="Проект")
     role = models.CharField("Роль", max_length=1024, blank=True, null=True)
+    specialization = models.CharField(
+        "Специализация",
+        max_length=100,
+        blank=True,
+        null=True,
+        default=None,
+        help_text="Направления работы участника в рамках проекта",
+    )
 
     datetime_created = models.DateTimeField(
         verbose_name="Дата создания", null=False, auto_now_add=True

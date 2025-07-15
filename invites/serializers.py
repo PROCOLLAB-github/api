@@ -14,6 +14,7 @@ class InviteListSerializer(serializers.ModelSerializer[Invite]):
             "user",
             "motivational_letter",
             "role",
+            "specialization",
             "is_accepted",
         ]
 
@@ -21,6 +22,9 @@ class InviteListSerializer(serializers.ModelSerializer[Invite]):
 class InviteDetailSerializer(serializers.ModelSerializer[Invite]):
     user = UserDetailSerializer(many=False, read_only=True)
     project = ProjectListSerializer(many=False, read_only=True)
+    specialization = serializers.CharField(
+        required=False, allow_null=True, allow_blank=True
+    )
 
     class Meta:
         model = Invite
@@ -30,6 +34,7 @@ class InviteDetailSerializer(serializers.ModelSerializer[Invite]):
             "user",
             "motivational_letter",
             "role",
+            "specialization",
             "is_accepted",
             "datetime_created",
             "datetime_updated",

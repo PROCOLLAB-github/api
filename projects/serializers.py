@@ -1,12 +1,13 @@
 from django.contrib.auth import get_user_model
-from rest_framework import serializers
 from django.core.cache import cache
+from rest_framework import serializers
+
 from core.serializers import SkillToObjectSerializer
-from core.services import get_views_count, get_likes_count, is_fan
+from core.services import get_likes_count, get_views_count, is_fan
 from core.utils import get_user_online_cache_key
 from files.serializers import UserFileSerializer
 from industries.models import Industry
-from projects.models import Project, Achievement, Collaborator, ProjectNews
+from projects.models import Achievement, Collaborator, Project, ProjectNews
 from projects.validators import validate_project
 from vacancy.serializers import ProjectVacancyListSerializer
 
@@ -64,7 +65,6 @@ class ProjectCollaboratorSerializer(serializers.ModelSerializer):
 
 
 class ProjectDetailSerializer(serializers.ModelSerializer):
-
     achievements = AchievementListSerializer(many=True, read_only=True)
     cover = UserFileSerializer(required=False)
     collaborators = CollaboratorSerializer(
@@ -76,6 +76,11 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     views_count = serializers.SerializerMethodField(method_name="count_views")
     links = serializers.SerializerMethodField()
     partner_programs_tags = serializers.SerializerMethodField()
+    track = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    direction = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    actuality = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    goal = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    problem = serializers.CharField(required=False, allow_null=True, allow_blank=True)
 
     @classmethod
     def get_partner_programs_tags(cls, project):
@@ -130,6 +135,11 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "cover",
             "cover_image_address",
             "partner_programs_tags",
+            "track",
+            "direction",
+            "actuality",
+            "goal",
+            "problem",
         ]
         read_only_fields = [
             "leader",

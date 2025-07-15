@@ -1,10 +1,11 @@
 from django.contrib import admin
 
 from projects.models import (
-    DefaultProjectCover,
-    Project,
     Achievement,
     Collaborator,
+    DefaultProjectAvatar,
+    DefaultProjectCover,
+    Project,
     ProjectLink,
     ProjectNews,
 )
@@ -17,11 +18,75 @@ class ProjectAdmin(admin.ModelAdmin):
         "name",
         "draft",
         "is_company",
+        "track",
+        "direction",
     )
     list_display_links = (
         "id",
         "name",
     )
+    search_fields = (
+        "name",
+        "track",
+    )
+    list_filter = (
+        "draft",
+        "is_company",
+        "track",
+        "direction",
+    )
+
+    fieldsets = (
+        (
+            "Основная информация",
+            {
+                "fields": (
+                    "name",
+                    "description",
+                    "leader",
+                    "industry",
+                    "region",
+                    "step",
+                    "draft",
+                    "is_company",
+                )
+            },
+        ),
+        (
+            "Для проектов ПД МосПолитеха",
+            {
+                "fields": (
+                    "track",
+                    "direction",
+                    "actuality",
+                    "goal",
+                    "problem",
+                )
+            },
+        ),
+        (
+            "Медиа и обложка",
+            {
+                "fields": (
+                    "presentation_address",
+                    "image_address",
+                    "cover",
+                    "cover_image_address",
+                )
+            },
+        ),
+        (
+            "Служебные поля",
+            {
+                "fields": (
+                    "hidden_score",
+                    "datetime_created",
+                    "datetime_updated",
+                )
+            },
+        ),
+    )
+    readonly_fields = ("datetime_created", "datetime_updated")
 
 
 @admin.register(ProjectNews)
@@ -77,3 +142,8 @@ class DefaultProjectCoverAdmin(admin.ModelAdmin):
         "datetime_created",
         "datetime_updated",
     )
+
+
+@admin.register(DefaultProjectAvatar)
+class DefaultProjectAvatarAdmin(admin.ModelAdmin):
+    list_display = ("id", "image", "datetime_created")
