@@ -45,7 +45,7 @@ class PartnerProgramAdmin(admin.ModelAdmin):
     )
     list_filter = ("city",)
 
-    filter_horizontal = ("users",)
+    filter_horizontal = ("users", "managers")
     date_hierarchy = "datetime_started"
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[PartnerProgram]:

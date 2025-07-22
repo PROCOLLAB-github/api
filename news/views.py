@@ -2,20 +2,21 @@ from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 from rest_framework.request import Request
+from rest_framework.response import Response
 
-from core.serializers import SetViewedSerializer, SetLikedSerializer
+from core.serializers import SetLikedSerializer, SetViewedSerializer
 from core.services import add_view, set_like
 from news.mixins import NewsQuerysetMixin
 from news.models import News
 from news.pagination import NewsPagination
 from news.permissions import IsNewsCreatorOrReadOnly
 from news.serializers import (
-    NewsListSerializer,
     NewsDetailSerializer,
     NewsListCreateSerializer,
+    NewsListSerializer,
 )
+from partner_programs.models import PartnerProgram
 from projects.models import Project
 
 User = get_user_model()
@@ -44,7 +45,12 @@ class NewsList(NewsQuerysetMixin, generics.ListCreateAPIView):
                 NewsDetailSerializer(news).data, status=status.HTTP_201_CREATED
             )
 
-        # creating partner program news, not implemented yet, return 400
+        if kwargs.get("partnerprogram_pk"):
+            program = get_object_or_404(PartnerProgram, pk=kwargs["partnerprogram_pk"])
+            news = News.objects.add_news(program, **data)
+            return Response(
+                NewsDetailSerializer(news).data, status=status.HTTP_201_CREATED
+            )
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
     def get(self, request: Request, *args, **kwargs) -> Response:

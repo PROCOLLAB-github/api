@@ -80,6 +80,13 @@ class PartnerProgram(models.Model):
         verbose_name="Участники программы",
         through="PartnerProgramUserProfile",
     )
+    managers = models.ManyToManyField(
+        User,
+        related_name="managed_partner_programs",
+        blank=True,
+        verbose_name="Менеджеры программы",
+        help_text="Пользователи, имеющие право создавать и редактировать новости",
+    )
     draft = models.BooleanField(blank=False, default=True)
     projects_availability = models.CharField(
         choices=PROJECTS_AVAILABILITY_CHOISES,
@@ -102,6 +109,14 @@ class PartnerProgram(models.Model):
     datetime_updated = models.DateTimeField(
         verbose_name="Дата изменения", auto_now=True
     )
+
+    def is_manager(self, user: User) -> bool:
+        """
+        Возвращает True, если пользователь — менеджер этой программы.
+        """
+        if not user or not user.is_authenticated:
+            return False
+        return self.managers.filter(pk=user.pk).exists()
 
     class Meta:
         verbose_name = "Программа"
