@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from core.services import get_likes_count, get_links, get_views_count, is_fan
-from partner_programs.models import PartnerProgram
+from partner_programs.models import PartnerProgram, PartnerProgramMaterial
 
 User = get_user_model()
 
@@ -49,7 +49,18 @@ class PartnerProgramListSerializer(serializers.ModelSerializer):
         )
 
 
-class PartnerProgramForMemberSerializer(serializers.ModelSerializer):
+class PartnerProgramWithMaterialsMixin(serializers.ModelSerializer):
+    materials = serializers.SerializerMethodField()
+
+    def get_materials(self, program):
+        materials = program.materials.all()
+        return PartnerProgramMaterialSerializer(materials, many=True).data
+
+    class Meta:
+        abstract = True
+
+
+class PartnerProgramForMemberSerializer(PartnerProgramWithMaterialsMixin):
     """Serializer for PartnerProgram model for member of this program"""
 
     views_count = serializers.SerializerMethodField(method_name="count_views")
@@ -79,6 +90,7 @@ class PartnerProgramForMemberSerializer(serializers.ModelSerializer):
             "description",
             "city",
             "links",
+            "materials",
             "image_address",
             "cover_image_address",
             "presentation_address",
@@ -87,7 +99,7 @@ class PartnerProgramForMemberSerializer(serializers.ModelSerializer):
         )
 
 
-class PartnerProgramForUnregisteredUserSerializer(serializers.ModelSerializer):
+class PartnerProgramForUnregisteredUserSerializer(PartnerProgramWithMaterialsMixin):
     """Serializer for PartnerProgram model for unregistered users in the program"""
 
     class Meta:
@@ -97,6 +109,7 @@ class PartnerProgramForUnregisteredUserSerializer(serializers.ModelSerializer):
             "name",
             "tag",
             "city",
+            "materials",
             "image_address",
             "cover_image_address",
             "advertisement_image_address",
@@ -138,3 +151,9 @@ class UserProgramsSerializer(serializers.ModelSerializer):
             "name",
             "tag",
         ]
+
+
+class PartnerProgramMaterialSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PartnerProgramMaterial
+        fields = ("title", "url")

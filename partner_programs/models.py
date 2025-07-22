@@ -1,6 +1,8 @@
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.db import models
 
+from files.models import UserFile
 from partner_programs.constants import get_default_data_schema
 from projects.models import Project
 
@@ -26,6 +28,7 @@ class PartnerProgram(models.Model):
         datetime_created: A DateTimeField indicating date of creation.
         datetime_updated: A DateTimeField indicating date of update.
     """
+
     PROJECTS_AVAILABILITY_CHOISES = [
         ("all_users", "Всем пользователям"),
         ("experts_only", "Только экспертам"),
@@ -96,7 +99,9 @@ class PartnerProgram(models.Model):
     datetime_created = models.DateTimeField(
         verbose_name="Дата создания", auto_now_add=True
     )
-    datetime_updated = models.DateTimeField(verbose_name="Дата изменения", auto_now=True)
+    datetime_updated = models.DateTimeField(
+        verbose_name="Дата изменения", auto_now=True
+    )
 
     class Meta:
         verbose_name = "Программа"
@@ -148,3 +153,62 @@ class PartnerProgramUserProfile(models.Model):
 
     def __str__(self):
         return f"PartnerProgramUserProfile<{self.pk}> - {self.user} {self.project} {self.partner_program}"
+
+
+class PartnerProgramMaterial(models.Model):
+    """
+    Материал для программы: прямая ссылка или ссылка на прикреплённый файл.
+    """
+
+    program = models.ForeignKey(
+        PartnerProgram,
+        on_delete=models.CASCADE,
+        related_name="materials",
+        verbose_name="Программа",
+    )
+
+    title = models.CharField(
+        max_length=255,
+        verbose_name="Название материала",
+        help_text="Укажите текст для гиперссылки",
+    )
+
+    url = models.URLField(
+        blank=True,
+        null=True,
+        verbose_name="Ссылка на материал",
+        help_text="Укажите ссылку вручную или прикрепите файл",
+    )
+
+    file = models.ForeignKey(
+        UserFile,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        verbose_name="Файл",
+        help_text="Если указан файл, ссылка берётся из него",
+    )
+
+    datetime_created = models.DateTimeField(auto_now_add=True)
+    datetime_updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Материал программы"
+        verbose_name_plural = "Материалы программ"
+
+    def clean(self):
+        if self.file and not self.url:
+            self.url = self.file.link
+
+        if not self.file and not self.url:
+            raise ValidationError("Необходимо указать либо файл, либо ссылку.")
+
+        if self.file and self.url and self.url != self.file.link:
+            raise ValidationError("Укажите либо файл, либо ссылку, но не оба сразу.")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.title} для программы {self.program.name}"

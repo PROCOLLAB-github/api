@@ -1,22 +1,35 @@
-import tablib
 import re
 import urllib.parse
+
+import tablib
 from django.contrib import admin
 from django.db.models import QuerySet
-from django.http import HttpResponse, HttpRequest
+from django.http import HttpRequest, HttpResponse
 from django.urls import path
 from django.utils import timezone
 
-from mailing.views import MailingTemplateRender
 from core.utils import XlsxFileToExport
-from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
+from mailing.views import MailingTemplateRender
+from partner_programs.models import (
+    PartnerProgram,
+    PartnerProgramMaterial,
+    PartnerProgramUserProfile,
+)
+from partner_programs.services import ProjectScoreDataPreparer
 from project_rates.models import Criteria, ProjectScore
 from projects.models import Project
-from partner_programs.services import ProjectScoreDataPreparer
+
+
+class PartnerProgramMaterialInline(admin.StackedInline):
+    model = PartnerProgramMaterial
+    extra = 1
+    fields = ("title", "url", "file")
+    readonly_fields = ("datetime_created", "datetime_updated")
 
 
 @admin.register(PartnerProgram)
 class PartnerProgramAdmin(admin.ModelAdmin):
+    inlines = [PartnerProgramMaterialInline]
     list_display = ("id", "name", "tag", "city", "datetime_created")
     list_display_links = (
         "id",
@@ -54,7 +67,9 @@ class PartnerProgramAdmin(admin.ModelAdmin):
                 "partner_programs/admin/program_manager_change_form.html"
             )
         else:
-            self.change_form_template = "partner_programs/admin/programs_change_form.html"
+            self.change_form_template = (
+                "partner_programs/admin/programs_change_form.html"
+            )
 
         return super().change_view(request, object_id, form_url, extra_context)
 
@@ -145,7 +160,7 @@ class PartnerProgramAdmin(admin.ModelAdmin):
 
         binary_data = response_data.export("xlsx")
         file_name = (
-            f'{partner_program.name} {timezone.now().strftime("%d-%m-%Y %H:%M:%S")}'
+            f"{partner_program.name} {timezone.now().strftime('%d-%m-%Y %H:%M:%S')}"
         )
         response = HttpResponse(
             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -155,7 +170,9 @@ class PartnerProgramAdmin(admin.ModelAdmin):
         return response
 
     def get_export_rates_view(self, request, object_id):
-        rates_data_to_write: list[dict] = self._get_prepared_rates_data_for_export(object_id)
+        rates_data_to_write: list[dict] = self._get_prepared_rates_data_for_export(
+            object_id
+        )
 
         xlsx_file_writer = XlsxFileToExport()
         xlsx_file_writer.write_data_to_xlsx(rates_data_to_write)
@@ -163,14 +180,16 @@ class PartnerProgramAdmin(admin.ModelAdmin):
         xlsx_file_writer.delete_self_xlsx_file_from_local_machine()
 
         encoded_file_name: str = urllib.parse.quote(
-            f'{PartnerProgram.objects.get(pk=object_id).name}_оценки {timezone.now().strftime("%d-%m-%Y %H:%M:%S")}'
+            f"{PartnerProgram.objects.get(pk=object_id).name}_оценки {timezone.now().strftime('%d-%m-%Y %H:%M:%S')}"
             f".xlsx"
         )
         response = HttpResponse(
             binary_data_to_export,
             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
-        response["Content-Disposition"] = f'attachment; filename*=UTF-8\'\'{encoded_file_name}'
+        response["Content-Disposition"] = (
+            f"attachment; filename*=UTF-8''{encoded_file_name}"
+        )
         return response
 
     def _get_prepared_rates_data_for_export(self, program_id: int) -> list[dict]:
@@ -179,19 +198,22 @@ class PartnerProgramAdmin(admin.ModelAdmin):
         Columns example:
             ФИО|Email|Регион_РФ|Учебное_заведение|Название_учебного_заведения|Класс_курс|Фамилия эксперта|**criteria
         """
-        criterias = Criteria.objects.filter(partner_program__id=program_id).select_related("partner_program")
+        criterias = Criteria.objects.filter(
+            partner_program__id=program_id
+        ).select_related("partner_program")
         scores = (
-            ProjectScore.objects
-            .filter(criteria__in=criterias)
+            ProjectScore.objects.filter(criteria__in=criterias)
             .select_related("user", "criteria", "project")
             .order_by("project", "criteria")
         )
-        user_programm_profiles = (
-            PartnerProgramUserProfile.objects
-            .filter(partner_program__id=program_id)
-            .select_related("user")
+        user_programm_profiles = PartnerProgramUserProfile.objects.filter(
+            partner_program__id=program_id
+        ).select_related("user")
+        projects = (
+            Project.objects.filter(scores__in=scores)
+            .select_related("leader")
+            .distinct()
         )
-        projects = Project.objects.filter(scores__in=scores).select_related("leader").distinct()
 
         # To reduce the number of DB requests.
         user_profiles_dict: dict[int, PartnerProgramUserProfile] = {
@@ -203,7 +225,9 @@ class PartnerProgramAdmin(admin.ModelAdmin):
 
         prepared_projects_rates_data: list[dict] = []
         for project in projects:
-            project_data_preparer = ProjectScoreDataPreparer(user_profiles_dict, scores_dict, project.id, program_id)
+            project_data_preparer = ProjectScoreDataPreparer(
+                user_profiles_dict, scores_dict, project.id, program_id
+            )
             full_project_rates_data: dict = {
                 **project_data_preparer.get_project_user_info(),
                 **project_data_preparer.get_project_expert_info(),
@@ -242,3 +266,23 @@ class PartnerProgramUserProfileAdmin(admin.ModelAdmin):
         form = super().get_form(request, obj, **kwargs)
         form.base_fields["project"].required = False
         return form
+
+
+@admin.register(PartnerProgramMaterial)
+class PartnerProgramMaterialAdmin(admin.ModelAdmin):
+    list_display = ("title", "program", "short_url", "has_file", "datetime_created")
+    list_filter = ("program",)
+    search_fields = ("title", "program__name")
+
+    readonly_fields = ("datetime_created", "datetime_updated")
+
+    def short_url(self, obj):
+        return obj.url[:60] if obj.url else "—"
+
+    short_url.short_description = "Ссылка"
+
+    def has_file(self, obj):
+        return bool(obj.file)
+
+    has_file.boolean = True
+    has_file.short_description = "Файл"
