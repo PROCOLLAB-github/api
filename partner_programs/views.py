@@ -35,27 +35,25 @@ class PartnerProgramList(generics.ListCreateAPIView):
 
 
 class PartnerProgramDetail(generics.RetrieveAPIView):
-    queryset = PartnerProgram.objects.all()
+    queryset = PartnerProgram.objects.prefetch_related("materials", "managers").all()
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-    serializer_class = PartnerProgramForUnregisteredUserSerializer
 
     def get(self, request, *args, **kwargs):
-        try:
-            program = self.get_object()
-            is_user_member = program.users.filter(pk=request.user.pk).exists()
-            serializer_class = (
-                PartnerProgramForMemberSerializer
-                if is_user_member
-                else PartnerProgramForUnregisteredUserSerializer
-            )
-            data = serializer_class(program).data
-            data["is_user_member"] = is_user_member
-            if request.user.is_authenticated:
-                add_view(program, request.user)
-
-            return Response(data=data, status=status.HTTP_200_OK)
-        except PartnerProgram.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND)
+        program = self.get_object()
+        is_user_member = program.users.filter(pk=request.user.pk).exists()
+        serializer_class = (
+            PartnerProgramForMemberSerializer
+            if is_user_member
+            else PartnerProgramForUnregisteredUserSerializer
+        )
+        serializer = serializer_class(
+            program, context={"request": request, "user": request.user}
+        )
+        data = serializer.data
+        data["is_user_member"] = is_user_member
+        if request.user.is_authenticated:
+            add_view(program, request.user)
+        return Response(data, status=status.HTTP_200_OK)
 
 
 class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
