@@ -5,7 +5,6 @@ from rest_framework import serializers
 from core.serializers import SkillToObjectSerializer
 from core.services import get_likes_count, get_views_count, is_fan
 from core.utils import get_user_online_cache_key
-from files.models import UserFile
 from files.serializers import UserFileSerializer
 from industries.models import Industry
 from partner_programs.models import (
