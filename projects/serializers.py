@@ -5,8 +5,19 @@ from rest_framework import serializers
 from core.serializers import SkillToObjectSerializer
 from core.services import get_likes_count, get_views_count, is_fan
 from core.utils import get_user_online_cache_key
+from files.models import UserFile
 from files.serializers import UserFileSerializer
 from industries.models import Industry
+from partner_programs.models import (
+    PartnerProgram,
+    PartnerProgramField,
+    PartnerProgramFieldValue,
+    PartnerProgramProject,
+)
+from partner_programs.serializers import (
+    PartnerProgramFieldSerializer,
+    PartnerProgramFieldValueSerializer,
+)
 from projects.models import Achievement, Collaborator, Project, ProjectNews
 from projects.validators import validate_project
 from vacancy.serializers import ProjectVacancyListSerializer
@@ -81,6 +92,32 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     actuality = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     goal = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     problem = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    partner_program_fields = serializers.SerializerMethodField()
+    partner_program_field_values = serializers.SerializerMethodField()
+
+    def get_partner_program_fields(self, project):
+        try:
+            program_project = project.program_links.select_related(
+                "partner_program"
+            ).get()
+        except PartnerProgramProject.DoesNotExist:
+            return []
+        fields_qs = program_project.partner_program.fields.all()
+        serializer = PartnerProgramFieldSerializer(fields_qs, many=True)
+        return serializer.data
+
+    def get_partner_program_field_values(self, project):
+        try:
+            program_project = project.program_links.select_related(
+                "partner_program"
+            ).get()
+        except PartnerProgramProject.DoesNotExist:
+            return []
+        values_qs = PartnerProgramFieldValue.objects.filter(
+            program_project=program_project
+        ).select_related("field")
+        serializer = PartnerProgramFieldValueSerializer(values_qs, many=True)
+        return serializer.data
 
     @classmethod
     def get_partner_programs_tags(cls, project):
@@ -135,6 +172,8 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "cover",
             "cover_image_address",
             "partner_programs_tags",
+            "partner_program_fields",
+            "partner_program_field_values",
             "track",
             "direction",
             "actuality",
@@ -314,3 +353,89 @@ class ProjectSubscribersListSerializer(serializers.ModelSerializer):
             "avatar",
             "is_online",
         ]
+
+
+class ProjectDuplicateRequestSerializer(serializers.Serializer):
+    project_id = serializers.IntegerField()
+    partner_program_id = serializers.IntegerField()
+
+    def validate(self, data):
+        project_id = data["project_id"]
+        partner_program_id = data["partner_program_id"]
+        request = self.context["request"]
+
+        try:
+            project = Project.objects.get(pk=project_id)
+        except Project.DoesNotExist:
+            raise serializers.ValidationError("Проект с указанным ID не найден.")
+
+        if project.leader != request.user:
+            raise serializers.ValidationError(
+                "Только лидер проекта может дублировать его в программу."
+            )
+
+        try:
+            partner_program = PartnerProgram.objects.get(pk=partner_program_id)
+        except PartnerProgram.DoesNotExist:
+            raise serializers.ValidationError(
+                "Партнёрская программа с указанным ID не найдена."
+            )
+
+        exists = PartnerProgramProject.objects.filter(
+            project__name=project.name, partner_program=partner_program
+        ).exists()
+
+        if exists:
+            raise serializers.ValidationError(
+                f"Проект с именем '{project.name}' уже привязан к партнёрской программе '{partner_program.name}'."
+            )
+
+        return data
+
+
+class PartnerProgramFieldValueUpdateSerializer(serializers.Serializer):
+    field_id = serializers.PrimaryKeyRelatedField(
+        queryset=PartnerProgramField.objects.all(),
+        source="field",
+    )
+    value_text = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+        help_text="Укажите значение для текстового поля.",
+    )
+
+    def validate(self, attrs):
+        field = attrs.get("field")
+        value_text = attrs.get("value_text")
+
+        is_required = field.is_required
+
+        if field.field_type == "text" or field.field_type == "text":
+            if is_required and (value_text is None or value_text == "textarea"):
+                raise serializers.ValidationError(
+                    "Поле должно содержать текстовое значение."
+                )
+        elif field.field_type == "checkbox":
+            if is_required and value_text in (None, ""):
+                raise serializers.ValidationError(
+                    "Значение обязательно для поля типа 'checkbox'."
+                )
+            if value_text is not None:
+                if isinstance(value_text, bool):
+                    attrs["value_text"] = "true" if value_text else "false"
+                elif isinstance(value_text, str):
+                    if value_text.lower() not in ("true", "false"):
+                        raise serializers.ValidationError(
+                            "Для поля типа 'checkbox' ожидается 'true' или 'false'."
+                        )
+                    attrs["value_text"] = value_text.lower()
+                else:
+                    raise serializers.ValidationError(
+                        "Неверный тип значения для поля 'checkbox'."
+                    )
+        else:
+            raise serializers.ValidationError(
+                f"Тип поля '{field.field_type}' не поддерживается."
+            )
+        return attrs

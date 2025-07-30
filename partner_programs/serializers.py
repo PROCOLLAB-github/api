@@ -2,7 +2,12 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from core.services import get_likes_count, get_links, get_views_count, is_fan
-from partner_programs.models import PartnerProgram, PartnerProgramMaterial
+from partner_programs.models import (
+    PartnerProgram,
+    PartnerProgramField,
+    PartnerProgramFieldValue,
+    PartnerProgramMaterial,
+)
 
 User = get_user_model()
 
@@ -172,3 +177,39 @@ class PartnerProgramMaterialSerializer(serializers.ModelSerializer):
     class Meta:
         model = PartnerProgramMaterial
         fields = ("title", "url")
+
+
+class PartnerProgramFieldValueSerializer(serializers.ModelSerializer):
+    field_name = serializers.CharField(source="field.name")
+    value = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PartnerProgramFieldValue
+        fields = [
+            "field_name",
+            "value",
+        ]
+
+    def get_value(self, obj):
+        if obj.field.field_type == "file":
+            return obj.value_file.link if obj.value_file else None
+        return obj.value_text
+
+
+class PartnerProgramFieldSerializer(serializers.ModelSerializer):
+    options = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PartnerProgramField
+        fields = [
+            "id",
+            "name",
+            "label",
+            "field_type",
+            "is_required",
+            "help_text",
+            "options",
+        ]
+
+    def get_options(self, obj):
+        return obj.get_options_list()

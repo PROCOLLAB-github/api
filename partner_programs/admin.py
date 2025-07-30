@@ -12,7 +12,10 @@ from core.utils import XlsxFileToExport
 from mailing.views import MailingTemplateRender
 from partner_programs.models import (
     PartnerProgram,
+    PartnerProgramField,
+    PartnerProgramFieldValue,
     PartnerProgramMaterial,
+    PartnerProgramProject,
     PartnerProgramUserProfile,
 )
 from partner_programs.services import ProjectScoreDataPreparer
@@ -27,9 +30,14 @@ class PartnerProgramMaterialInline(admin.StackedInline):
     readonly_fields = ("datetime_created", "datetime_updated")
 
 
+class PartnerProgramFieldInline(admin.TabularInline):
+    model = PartnerProgramField
+    extra = 0
+
+
 @admin.register(PartnerProgram)
 class PartnerProgramAdmin(admin.ModelAdmin):
-    inlines = [PartnerProgramMaterialInline]
+    inlines = [PartnerProgramMaterialInline, PartnerProgramFieldInline]
     list_display = ("id", "name", "tag", "city", "datetime_created")
     list_display_links = (
         "id",
@@ -286,3 +294,38 @@ class PartnerProgramMaterialAdmin(admin.ModelAdmin):
 
     has_file.boolean = True
     has_file.short_description = "Файл"
+
+
+class PartnerProgramFieldValueInline(admin.TabularInline):
+    model = PartnerProgramFieldValue
+    extra = 0
+    autocomplete_fields = ("field",)
+    readonly_fields = ("get_display_value",)
+
+    def get_display_value(self, obj):
+        return obj.value_text or "-"
+
+    get_display_value.short_description = "Значение"
+
+
+@admin.register(PartnerProgramProject)
+class PartnerProgramProjectAdmin(admin.ModelAdmin):
+    list_display = ("project", "partner_program", "datetime_created")
+    list_filter = ("partner_program",)
+    search_fields = ("project__name", "partner_program__name")
+    inlines = [PartnerProgramFieldValueInline]
+    autocomplete_fields = ("project", "partner_program")
+
+
+@admin.register(PartnerProgramField)
+class PartnerProgramFieldAdmin(admin.ModelAdmin):
+    list_display = (
+        "partner_program",
+        "name",
+        "label",
+        "field_type",
+        "is_required",
+        "show_filter",
+    )
+    list_filter = ("partner_program",)
+    search_fields = ("name", "label", "help_text")

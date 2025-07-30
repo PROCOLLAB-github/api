@@ -1,14 +1,22 @@
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
 from django.utils import timezone
+from drf_yasg.utils import swagger_auto_schema
 from rest_framework import generics, permissions, status
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from core.serializers import SetLikedSerializer, SetViewedSerializer
 from core.services import add_view, set_like
 from partner_programs.helpers import date_to_iso
-from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
+from partner_programs.models import (
+    PartnerProgram,
+    PartnerProgramFieldValue,
+    PartnerProgramProject,
+    PartnerProgramUserProfile,
+)
 from partner_programs.pagination import PartnerProgramPagination
 from partner_programs.serializers import (
     PartnerProgramDataSchemaSerializer,
@@ -18,6 +26,8 @@ from partner_programs.serializers import (
     PartnerProgramNewUserSerializer,
     PartnerProgramUserSerializer,
 )
+from projects.models import Project
+from projects.serializers import PartnerProgramFieldValueUpdateSerializer
 from vacancy.mapping import (
     MessageTypeEnum,
     UserProgramRegisterParams,
@@ -221,3 +231,56 @@ class PartnerProgramDataSchema(generics.RetrieveAPIView):
     queryset = PartnerProgram.objects.all()
     serializer_class = PartnerProgramDataSchemaSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+
+class PartnerProgramFieldValueBulkUpdateView(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = PartnerProgramFieldValueUpdateSerializer
+
+    def get_project(self, project_id):
+        try:
+            return Project.objects.get(id=project_id)
+        except Project.DoesNotExist:
+            raise NotFound("Проект не найден")
+
+    @swagger_auto_schema(
+        request_body=PartnerProgramFieldValueUpdateSerializer(many=True)
+    )
+    def put(self, request, project_id, *args, **kwargs):
+        project = self.get_project(project_id)
+
+        if project.leader != request.user:
+            raise PermissionDenied("Вы не являетесь лидером этого проекта")
+
+        try:
+            program_project = PartnerProgramProject.objects.select_related(
+                "partner_program"
+            ).get(project=project)
+        except PartnerProgramProject.DoesNotExist:
+            raise ValidationError("Проект не привязан ни к одной программе")
+
+        partner_program = program_project.partner_program
+
+        serializer = self.serializer_class(data=request.data, many=True)
+        serializer.is_valid(raise_exception=True)
+
+        for item in serializer.validated_data:
+            field = item["field"]
+
+            if field.partner_program_id != partner_program.id:
+                raise ValidationError(
+                    f"Поле с id={field.id} не относится к программе этого проекта"
+                )
+
+            value_text = item.get("value_text")
+
+            PartnerProgramFieldValue.objects.update_or_create(
+                program_project=program_project,
+                field=field,
+                defaults={"value_text": value_text},
+            )
+
+        return Response(
+            {"detail": "Значения успешно обновлены"},
+            status=status.HTTP_200_OK,
+        )
