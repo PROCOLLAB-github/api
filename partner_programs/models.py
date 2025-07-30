@@ -227,3 +227,84 @@ class PartnerProgramMaterial(models.Model):
 
     def __str__(self):
         return f"{self.title} для программы {self.program.name}"
+
+
+class PartnerProgramProject(models.Model):
+    partner_program = models.ForeignKey(
+        PartnerProgram, on_delete=models.CASCADE, related_name="program_projects"
+    )
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name="program_links"
+    )
+    datetime_created = models.DateTimeField(auto_now_add=True)
+    datetime_updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("partner_program", "project")
+        verbose_name = "Проект участующий в программе"
+        verbose_name_plural = "Проекеты участвующие в программах"
+
+    def __str__(self):
+        return f"{self.project} в программе {self.partner_program}"
+
+
+class PartnerProgramField(models.Model):
+    FIELD_TYPES = [
+        ("text", "Однострочный текст"),
+        ("textarea", "Многострочный текст"),
+        ("checkbox", "Чекбокс"),
+        ("select", "Выпадающий список"),
+        ("radio", "Радио-кнопка"),
+        ("file", "Файл"),
+    ]
+
+    partner_program = models.ForeignKey(
+        PartnerProgram, on_delete=models.CASCADE, related_name="fields"
+    )
+    name = models.CharField(max_length=128, verbose_name="Служебное имя")
+    label = models.CharField(max_length=256, verbose_name="Отображаемое название")
+    field_type = models.CharField(max_length=20, choices=FIELD_TYPES)
+    is_required = models.BooleanField(default=False)
+    help_text = models.TextField(blank=True, null=True)
+    show_filter = models.BooleanField(default=False)
+    options = models.TextField(
+        blank=True, null=True, help_text="Опции через | (для select/radio/checkbox)"
+    )
+
+    def __str__(self):
+        return f"{self.partner_program.name} — {self.label} ({self.name})"
+
+    class Meta:
+        verbose_name = "Дополнительное поле программы"
+        verbose_name_plural = "Дополнительные поля программ"
+        unique_together = ("partner_program", "name")
+
+    def get_options_list(self) -> list[str]:
+        opts = self.options.split("|") if self.options else []
+        return [opt.strip() for opt in opts if opt.strip()]
+
+
+class PartnerProgramFieldValue(models.Model):
+    program_project = models.ForeignKey(
+        PartnerProgramProject, on_delete=models.CASCADE, related_name="field_values"
+    )
+    field = models.ForeignKey(
+        PartnerProgramField, on_delete=models.CASCADE, related_name="values"
+    )
+    value_text = models.TextField(blank=False)
+
+    class Meta:
+        unique_together = ("program_project", "field")
+        verbose_name = "Значение поля программы для проекта"
+        verbose_name_plural = "Значения полей программы для проекта"
+        indexes = [
+            models.Index(fields=["program_project"]),
+            models.Index(fields=["field"]),
+        ]
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+
+    def get_value(self):
+        return self.value_text
