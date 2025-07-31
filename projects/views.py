@@ -703,7 +703,6 @@ class DuplicateProjectView(APIView):
                 goal=original_project.goal,
                 problem=original_project.problem,
                 industry=original_project.industry,
-                presentation_address=original_project.presentation_address,
                 image_address=original_project.image_address,
                 leader=request.user,
                 draft=True,

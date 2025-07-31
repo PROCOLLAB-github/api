@@ -93,6 +93,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     problem = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     partner_program_fields = serializers.SerializerMethodField()
     partner_program_field_values = serializers.SerializerMethodField()
+    partner_program_id = serializers.SerializerMethodField()
 
     def get_partner_program_fields(self, project):
         try:
@@ -117,6 +118,13 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
         ).select_related("field")
         serializer = PartnerProgramFieldValueSerializer(values_qs, many=True)
         return serializer.data
+
+    def get_partner_program_id(self, project):
+        try:
+            link = project.program_links.select_related("partner_program").get()
+            return link.partner_program.id
+        except PartnerProgramProject.DoesNotExist:
+            return None
 
     @classmethod
     def get_partner_programs_tags(cls, project):
@@ -171,6 +179,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "cover",
             "cover_image_address",
             "partner_programs_tags",
+            "partner_program_id",
             "partner_program_fields",
             "partner_program_field_values",
             "track",
