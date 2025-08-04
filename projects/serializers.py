@@ -1,3 +1,5 @@
+from urllib.parse import urlparse
+
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from rest_framework import serializers
@@ -410,40 +412,120 @@ class PartnerProgramFieldValueUpdateSerializer(serializers.Serializer):
         required=False,
         allow_blank=True,
         allow_null=True,
-        help_text="Укажите значение для текстового поля.",
+        help_text="Укажите значение для поля.",
     )
 
     def validate(self, attrs):
         field = attrs.get("field")
         value_text = attrs.get("value_text")
 
-        is_required = field.is_required
+        validator = self._get_validator(field)
+        validator(field, value_text, attrs)
 
-        if field.field_type == "text" or field.field_type == "text":
-            if is_required and (value_text is None or value_text == "textarea"):
-                raise serializers.ValidationError(
-                    "Поле должно содержать текстовое значение."
-                )
-        elif field.field_type == "checkbox":
-            if is_required and value_text in (None, ""):
-                raise serializers.ValidationError(
-                    "Значение обязательно для поля типа 'checkbox'."
-                )
-            if value_text is not None:
-                if isinstance(value_text, bool):
-                    attrs["value_text"] = "true" if value_text else "false"
-                elif isinstance(value_text, str):
-                    if value_text.lower() not in ("true", "false"):
-                        raise serializers.ValidationError(
-                            "Для поля типа 'checkbox' ожидается 'true' или 'false'."
-                        )
-                    attrs["value_text"] = value_text.lower()
-                else:
-                    raise serializers.ValidationError(
-                        "Неверный тип значения для поля 'checkbox'."
-                    )
-        else:
+        return attrs
+
+    def _get_validator(self, field):
+        validators = {
+            "text": self._validate_text,
+            "textarea": self._validate_text,
+            "checkbox": self._validate_checkbox,
+            "select": self._validate_select,
+            "radio": self._validate_radio,
+            "file": self._validate_file,
+        }
+        try:
+            return validators[field.field_type]
+        except KeyError:
             raise serializers.ValidationError(
                 f"Тип поля '{field.field_type}' не поддерживается."
             )
-        return attrs
+
+    def _validate_text(self, field, value, attrs):
+        if field.is_required:
+            if value is None or str(value).strip() == "":
+                raise serializers.ValidationError(
+                    "Поле должно содержать текстовое значение."
+                )
+        else:
+            if value is not None and not isinstance(value, str):
+                raise serializers.ValidationError(
+                    "Ожидается строка для текстового поля."
+                )
+
+    def _validate_checkbox(self, field, value, attrs):
+        if field.is_required and value in (None, ""):
+            raise serializers.ValidationError(
+                "Значение обязательно для поля типа 'checkbox'."
+            )
+
+        if value is not None:
+            if isinstance(value, bool):
+                attrs["value_text"] = "true" if value else "false"
+            elif isinstance(value, str):
+                normalized = value.strip().lower()
+                if normalized not in ("true", "false"):
+                    raise serializers.ValidationError(
+                        "Для поля типа 'checkbox' ожидается 'true' или 'false'."
+                    )
+                attrs["value_text"] = normalized
+            else:
+                raise serializers.ValidationError(
+                    "Неверный тип значения для поля 'checkbox'."
+                )
+
+    def _validate_select(self, field, value, attrs):
+        self._validate_choice_field(field, value, "select")
+
+    def _validate_radio(self, field, value, attrs):
+        self._validate_choice_field(field, value, "radio")
+
+    def _validate_choice_field(self, field, value, field_type):
+        options = field.get_options_list()
+
+        if not options:
+            raise serializers.ValidationError(
+                f"Для поля типа '{field_type}' не заданы допустимые значения."
+            )
+
+        if field.is_required:
+            if value is None or value == "":
+                raise serializers.ValidationError(
+                    f"Значение обязательно для поля типа '{field_type}'."
+                )
+        else:
+            if value is None or value == "":
+                return  # Пустое значение для необязательного поля допустимо
+
+        if value is not None:
+            if not isinstance(value, str):
+                raise serializers.ValidationError(
+                    f"Ожидается строковое значение для поля типа '{field_type}'."
+                )
+            if value not in options:
+                raise serializers.ValidationError(
+                    f"Недопустимое значение для поля типа '{field_type}'. "
+                    f"Ожидается одно из: {options}."
+                )
+
+    def _validate_file(self, field, value, attrs):
+        if field.is_required:
+            if value is None or value == "":
+                raise serializers.ValidationError("Файл обязателен для этого поля.")
+
+        if value is not None:
+            if not isinstance(value, str):
+                raise serializers.ValidationError(
+                    "Ожидается строковое значение для поля 'file'."
+                )
+
+            if not self._is_valid_url(value):
+                raise serializers.ValidationError(
+                    "Ожидается корректная ссылка (URL) на файл."
+                )
+
+    def _is_valid_url(self, url: str) -> bool:
+        try:
+            parsed = urlparse(url)
+            return parsed.scheme in ("http", "https") and bool(parsed.netloc)
+        except Exception:
+            return False
