@@ -45,6 +45,11 @@ class PartnerProgram(models.Model):
         blank=True,
         verbose_name="Описание",
     )
+    is_competitive = models.BooleanField(
+        default=False,
+        verbose_name="Конкурсная программа",
+        help_text="Если включено, проекты участников подлежат сдаче на проверку",
+    )
     city = models.TextField(
         verbose_name="Город",
     )
@@ -238,6 +243,22 @@ class PartnerProgramProject(models.Model):
     )
     datetime_created = models.DateTimeField(auto_now_add=True)
     datetime_updated = models.DateTimeField(auto_now=True)
+    submitted = models.BooleanField(default=False, verbose_name="Проект сдан")
+    datetime_submitted = models.DateTimeField(
+        null=True, blank=True, verbose_name="Дата сдачи проекта"
+    )
+
+    def can_edit(self, user: User) -> bool:
+        if not user or not user.is_authenticated:
+            return False
+
+        if user.is_superuser or user.is_staff:
+            return True
+
+        if self.project.leader_id == user.id:
+            return not self.submitted
+
+        return False
 
     class Meta:
         unique_together = ("partner_program", "project")
@@ -302,9 +323,21 @@ class PartnerProgramFieldValue(models.Model):
             models.Index(fields=["field"]),
         ]
 
-    def save(self, *args, **kwargs):
-        self.clean()
-        super().save(*args, **kwargs)
+    def __str__(self):
+        return f"{self.field}: {self.value_text[:50]}"
 
     def get_value(self):
         return self.value_text
+
+    def clean(self):
+        if (
+            self.program_project.partner_program.is_competitive
+            and self.program_project.submitted
+        ):
+            raise ValidationError(
+                "Нельзя изменять значения полей программы после сдачи проекта на проверку."
+            )
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)

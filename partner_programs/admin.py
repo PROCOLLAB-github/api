@@ -310,7 +310,14 @@ class PartnerProgramFieldValueInline(admin.TabularInline):
 
 @admin.register(PartnerProgramProject)
 class PartnerProgramProjectAdmin(admin.ModelAdmin):
-    list_display = ("project", "partner_program", "datetime_created")
+    list_display = (
+        "id",
+        "project",
+        "partner_program",
+        "datetime_created",
+        "submitted",
+        "datetime_submitted",
+    )
     list_filter = ("partner_program",)
     search_fields = ("project__name", "partner_program__name")
     inlines = [PartnerProgramFieldValueInline]
@@ -320,6 +327,7 @@ class PartnerProgramProjectAdmin(admin.ModelAdmin):
 @admin.register(PartnerProgramField)
 class PartnerProgramFieldAdmin(admin.ModelAdmin):
     list_display = (
+        "id",
         "partner_program",
         "name",
         "label",
