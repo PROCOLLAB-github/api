@@ -76,6 +76,39 @@ class ProjectCollaboratorSerializer(serializers.ModelSerializer):
         fields = ["collaborators"]
 
 
+class PartnerProgramProjectSerializer(serializers.ModelSerializer):
+    program_link_id = serializers.IntegerField(source="pk", read_only=True)
+    program_id = serializers.IntegerField(source="partner_program.id", read_only=True)
+    is_submitted = serializers.BooleanField(source="submitted", read_only=True)
+    can_submit = serializers.SerializerMethodField()
+    program_fields = serializers.SerializerMethodField()
+    program_field_values = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PartnerProgramProject
+        fields = [
+            "program_link_id",
+            "program_id",
+            "is_submitted",
+            "can_submit",
+            "program_fields",
+            "program_field_values",
+        ]
+
+    def get_can_submit(self, obj):
+        return obj.partner_program.is_competitive and not obj.submitted
+
+    def get_program_fields(self, obj):
+        fields_qs = obj.partner_program.fields.all()
+        return PartnerProgramFieldSerializer(fields_qs, many=True).data
+
+    def get_program_field_values(self, obj):
+        values_qs = PartnerProgramFieldValue.objects.filter(
+            program_project=obj
+        ).select_related("field")
+        return PartnerProgramFieldValueSerializer(values_qs, many=True).data
+
+
 class ProjectDetailSerializer(serializers.ModelSerializer):
     achievements = AchievementListSerializer(many=True, read_only=True)
     cover = UserFileSerializer(required=False)
@@ -87,73 +120,23 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     industry_id = serializers.IntegerField(required=False)
     views_count = serializers.SerializerMethodField(method_name="count_views")
     links = serializers.SerializerMethodField()
-    partner_programs_tags = serializers.SerializerMethodField()
+    partner_program = serializers.SerializerMethodField()
+    partner_program_tags = serializers.SerializerMethodField()
     track = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     direction = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     actuality = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     goal = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     problem = serializers.CharField(required=False, allow_null=True, allow_blank=True)
-    can_submit = serializers.SerializerMethodField()
-    is_submitted = serializers.SerializerMethodField()
-    partner_program_fields = serializers.SerializerMethodField()
-    partner_program_field_values = serializers.SerializerMethodField()
-    partner_program_id = serializers.SerializerMethodField()
 
-    #  Необходимо оптимизировать запросы с получением информации
-    # о програмах по всему классу.
-    def get_program_project(self, project):
-        try:
-            return project.program_links.select_related("partner_program").get()
-        except PartnerProgramProject.DoesNotExist:
-            return None
-
-    def get_is_submitted(self, project):
-        program_project = self.get_program_project(project)
-        return program_project.submitted if program_project else False
-
-    def get_can_submit(self, project):
-        program_project = self.get_program_project(project)
-        if not program_project:
-            return False
-
-        return (
-            program_project.partner_program.is_competitive
-            and not program_project.submitted
-        )
-
-    def get_partner_program_fields(self, project):
-        try:
-            program_project = project.program_links.select_related(
-                "partner_program"
-            ).get()
-        except PartnerProgramProject.DoesNotExist:
-            return []
-        fields_qs = program_project.partner_program.fields.all()
-        serializer = PartnerProgramFieldSerializer(fields_qs, many=True)
-        return serializer.data
-
-    def get_partner_program_field_values(self, project):
-        try:
-            program_project = project.program_links.select_related(
-                "partner_program"
-            ).get()
-        except PartnerProgramProject.DoesNotExist:
-            return []
-        values_qs = PartnerProgramFieldValue.objects.filter(
-            program_project=program_project
-        ).select_related("field")
-        serializer = PartnerProgramFieldValueSerializer(values_qs, many=True)
-        return serializer.data
-
-    def get_partner_program_id(self, project):
+    def get_partner_program(self, project):
         try:
             link = project.program_links.select_related("partner_program").get()
-            return link.partner_program.id
+            return PartnerProgramProjectSerializer(link).data
         except PartnerProgramProject.DoesNotExist:
             return None
 
     @classmethod
-    def get_partner_programs_tags(cls, project):
+    def get_partner_program_tags(cls, project):
         profiles_qs = project.partner_program_profiles.select_related(
             "partner_program"
         ).only("partner_program__tag")
@@ -204,17 +187,13 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "views_count",
             "cover",
             "cover_image_address",
-            "can_submit",
-            "is_submitted",
-            "partner_programs_tags",
-            "partner_program_id",
-            "partner_program_fields",
-            "partner_program_field_values",
             "track",
             "direction",
             "actuality",
             "goal",
             "problem",
+            "partner_program_tags",
+            "partner_program",
         ]
         read_only_fields = [
             "leader",
