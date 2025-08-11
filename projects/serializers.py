@@ -93,9 +93,33 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     actuality = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     goal = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     problem = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    can_submit = serializers.SerializerMethodField()
+    is_submitted = serializers.SerializerMethodField()
     partner_program_fields = serializers.SerializerMethodField()
     partner_program_field_values = serializers.SerializerMethodField()
     partner_program_id = serializers.SerializerMethodField()
+
+    #  Необходимо оптимизировать запросы с получением информации
+    # о програмах по всему классу.
+    def get_program_project(self, project):
+        try:
+            return project.program_links.select_related("partner_program").get()
+        except PartnerProgramProject.DoesNotExist:
+            return None
+
+    def get_is_submitted(self, project):
+        program_project = self.get_program_project(project)
+        return program_project.submitted if program_project else False
+
+    def get_can_submit(self, project):
+        program_project = self.get_program_project(project)
+        if not program_project:
+            return False
+
+        return (
+            program_project.partner_program.is_competitive
+            and not program_project.submitted
+        )
 
     def get_partner_program_fields(self, project):
         try:
@@ -180,6 +204,8 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "views_count",
             "cover",
             "cover_image_address",
+            "can_submit",
+            "is_submitted",
             "partner_programs_tags",
             "partner_program_id",
             "partner_program_fields",

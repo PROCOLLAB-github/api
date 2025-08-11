@@ -1,9 +1,12 @@
 from django.contrib.auth import get_user_model
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.utils import timezone
+from django.utils.timezone import now
+from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import generics, permissions, status
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
+from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -18,6 +21,7 @@ from partner_programs.models import (
     PartnerProgramUserProfile,
 )
 from partner_programs.pagination import PartnerProgramPagination
+from partner_programs.permissions import IsProjectLeader
 from partner_programs.serializers import (
     PartnerProgramDataSchemaSerializer,
     PartnerProgramForMemberSerializer,
@@ -261,26 +265,79 @@ class PartnerProgramFieldValueBulkUpdateView(APIView):
 
         partner_program = program_project.partner_program
 
+        if partner_program.is_competitive and program_project.submitted:
+            raise ValidationError(
+                "Нельзя изменять значения полей программы после сдачи проекта на проверку."
+            )
+
         serializer = self.serializer_class(data=request.data, many=True)
         serializer.is_valid(raise_exception=True)
 
-        for item in serializer.validated_data:
-            field = item["field"]
+        with transaction.atomic():
+            for item in serializer.validated_data:
+                field = item["field"]
 
-            if field.partner_program_id != partner_program.id:
-                raise ValidationError(
-                    f"Поле с id={field.id} не относится к программе этого проекта"
+                if field.partner_program_id != partner_program.id:
+                    raise ValidationError(
+                        f"Поле с id={field.id} не относится к программе этого проекта"
+                    )
+
+                value_text = item.get("value_text")
+
+                obj, created = PartnerProgramFieldValue.objects.update_or_create(
+                    program_project=program_project,
+                    field=field,
+                    defaults={"value_text": value_text},
                 )
 
-            value_text = item.get("value_text")
-
-            PartnerProgramFieldValue.objects.update_or_create(
-                program_project=program_project,
-                field=field,
-                defaults={"value_text": value_text},
-            )
+                if created:
+                    try:
+                        obj.full_clean()
+                    except ValidationError as e:
+                        raise ValidationError(e.message_dict)
 
         return Response(
             {"detail": "Значения успешно обновлены"},
+            status=status.HTTP_200_OK,
+        )
+
+
+class PartnerProgramProjectSubmitView(GenericAPIView):
+    permission_classes = [IsAuthenticated, IsProjectLeader]
+    serializer_class = None
+    queryset = PartnerProgramProject.objects.all()
+
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                name="id",
+                in_=openapi.IN_PATH,
+                description="Уникальный идентификатор связи проекта и программы",
+                type=openapi.TYPE_INTEGER,
+                required=True,
+            ),
+        ]
+    )
+    def post(self, request, pk, *args, **kwargs):
+        program_project = self.get_object()
+
+        if not program_project.partner_program.is_competitive:
+            return Response(
+                {"detail": "Программа не является конкурсной."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if program_project.submitted:
+            return Response(
+                {"detail": "Проект уже был сдан на проверку."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        program_project.submitted = True
+        program_project.datetime_submitted = now()
+        program_project.save()
+
+        return Response(
+            {"detail": "Проект успешно сдан на проверку."},
             status=status.HTTP_200_OK,
         )
