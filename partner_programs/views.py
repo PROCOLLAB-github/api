@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.timezone import now
 from drf_yasg import openapi
@@ -16,6 +17,7 @@ from core.services import add_view, set_like
 from partner_programs.helpers import date_to_iso
 from partner_programs.models import (
     PartnerProgram,
+    PartnerProgramField,
     PartnerProgramFieldValue,
     PartnerProgramProject,
     PartnerProgramUserProfile,
@@ -24,14 +26,20 @@ from partner_programs.pagination import PartnerProgramPagination
 from partner_programs.permissions import IsProjectLeader
 from partner_programs.serializers import (
     PartnerProgramDataSchemaSerializer,
+    PartnerProgramFieldSerializer,
     PartnerProgramForMemberSerializer,
     PartnerProgramForUnregisteredUserSerializer,
     PartnerProgramListSerializer,
     PartnerProgramNewUserSerializer,
     PartnerProgramUserSerializer,
+    ProgramProjectFilterRequestSerializer,
 )
+from partner_programs.utils import filter_program_projects_by_field_name
 from projects.models import Project
-from projects.serializers import PartnerProgramFieldValueUpdateSerializer
+from projects.serializers import (
+    PartnerProgramFieldValueUpdateSerializer,
+    ProjectListSerializer,
+)
 from vacancy.mapping import (
     MessageTypeEnum,
     UserProgramRegisterParams,
@@ -341,3 +349,78 @@ class PartnerProgramProjectSubmitView(GenericAPIView):
             {"detail": "Проект успешно сдан на проверку."},
             status=status.HTTP_200_OK,
         )
+
+
+class ProgramFiltersAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, pk):
+        program = get_object_or_404(PartnerProgram, pk=pk)
+        fields = PartnerProgramField.objects.filter(
+            partner_program=program, show_filter=True
+        )
+        serializer = PartnerProgramFieldSerializer(fields, many=True)
+        return Response(serializer.data)
+
+
+class ProgramProjectFilterAPIView(GenericAPIView):
+    serializer_class = ProgramProjectFilterRequestSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    pagination_class = PartnerProgramPagination
+
+    def post(self, request, pk):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        program = get_object_or_404(PartnerProgram, pk=pk)
+        filters = data.get("filters", {})
+
+        field_names = list(filters.keys())
+        field_qs = PartnerProgramField.objects.filter(
+            partner_program=program, name__in=field_names
+        )
+        field_by_name = {f.name: f for f in field_qs}
+
+        missing = [name for name in field_names if name not in field_by_name]
+        if missing:
+            return Response(
+                {"detail": f"Поля не найденные в программе: {missing}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        for field_name, values in filters.items():
+            field_obj = field_by_name[field_name]
+            if not field_obj.show_filter:
+                return Response(
+                    {
+                        "detail": f"Поле '{field_name}' недоступно для фильтрации (show_filter=False)."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            opts = field_obj.get_options_list()
+            if opts:
+                invalid_values = [val for val in values if val not in opts]
+                if invalid_values:
+                    return Response(
+                        {
+                            "detail": f"Неверные значения для поля '{field_name}'.",
+                            "invalid": invalid_values,
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+            else:
+                return Response(
+                    {"detail": f"Поле '{field_name}' не имеет вариантов (options)."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        qs = filter_program_projects_by_field_name(program, filters)
+
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(qs, request, view=self)
+        projects = [pp.project for pp in page]
+        serializer_out = ProjectListSerializer(
+            projects, many=True, context={"request": request}
+        )
+        return paginator.get_paginated_response(serializer_out.data)

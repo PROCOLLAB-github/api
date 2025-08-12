@@ -10,6 +10,8 @@ from partner_programs.views import (
     PartnerProgramRegister,
     PartnerProgramSetLiked,
     PartnerProgramSetViewed,
+    ProgramFiltersAPIView,
+    ProgramProjectFilterAPIView,
 )
 
 app_name = "partner_programs"
@@ -35,5 +37,11 @@ urlpatterns = [
     ),
     path(
         "<int:partnerprogram_pk>/news/<int:pk>/set_liked/", NewsDetailSetLiked.as_view()
+    ),
+    path("<int:pk>/filters/", ProgramFiltersAPIView.as_view(), name="program-filters"),
+    path(
+        "<int:pk>/projects/filter/",
+        ProgramProjectFilterAPIView.as_view(),
+        name="program-projects-filter",
     ),
 ]

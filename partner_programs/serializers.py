@@ -207,9 +207,57 @@ class PartnerProgramFieldSerializer(serializers.ModelSerializer):
             "label",
             "field_type",
             "is_required",
+            "show_filter",
             "help_text",
             "options",
         ]
 
     def get_options(self, obj):
         return obj.get_options_list()
+
+
+class ProgramProjectFilterRequestSerializer(serializers.Serializer):
+    filters = serializers.DictField(
+        child=serializers.ListField(child=serializers.CharField()),
+        required=False,
+        help_text="Словарь: ключ = PartnerProgramField.name, значение = список выбранных опций",
+    )
+    page = serializers.IntegerField(required=False, default=1, min_value=1)
+    page_size = serializers.IntegerField(
+        required=False, default=20, min_value=1, max_value=200
+    )
+    MAX_FILTERS = 3
+
+    def validate_filters(self, value):
+        if not isinstance(value, dict):
+            raise serializers.ValidationError(
+                "Поле filters должно быть объектом (словарём ключ-значение)"
+            )
+
+        if len(value) > self.MAX_FILTERS:
+            raise serializers.ValidationError(
+                f"Можно передать не более {self.MAX_FILTERS} фильтров."
+            )
+
+        cleaned: dict = {}
+        for key, raw_values in value.items():
+            if not isinstance(key, str) or not key.strip():
+                raise serializers.ValidationError(
+                    f"Ключи фильтров должны быть непустыми строками. Некорректный ключ: {key}"
+                )
+
+            if isinstance(raw_values, list):
+                normalized_values = [
+                    str(item).strip() for item in raw_values if str(item).strip() != ""
+                ]
+            else:
+                normalized_values = (
+                    [str(raw_values).strip()] if str(raw_values).strip() != "" else []
+                )
+
+            if not normalized_values:
+                continue
+
+            cleaned[key.strip()] = normalized_values
+
+        return cleaned
