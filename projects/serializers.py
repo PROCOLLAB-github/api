@@ -1,3 +1,5 @@
+from urllib.parse import urlparse
+
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from rest_framework import serializers
@@ -7,6 +9,16 @@ from core.services import get_likes_count, get_views_count, is_fan
 from core.utils import get_user_online_cache_key
 from files.serializers import UserFileSerializer
 from industries.models import Industry
+from partner_programs.models import (
+    PartnerProgram,
+    PartnerProgramField,
+    PartnerProgramFieldValue,
+    PartnerProgramProject,
+)
+from partner_programs.serializers import (
+    PartnerProgramFieldSerializer,
+    PartnerProgramFieldValueSerializer,
+)
 from projects.models import Achievement, Collaborator, Project, ProjectNews
 from projects.validators import validate_project
 from vacancy.serializers import ProjectVacancyListSerializer
@@ -64,6 +76,39 @@ class ProjectCollaboratorSerializer(serializers.ModelSerializer):
         fields = ["collaborators"]
 
 
+class PartnerProgramProjectSerializer(serializers.ModelSerializer):
+    program_link_id = serializers.IntegerField(source="pk", read_only=True)
+    program_id = serializers.IntegerField(source="partner_program.id", read_only=True)
+    is_submitted = serializers.BooleanField(source="submitted", read_only=True)
+    can_submit = serializers.SerializerMethodField()
+    program_fields = serializers.SerializerMethodField()
+    program_field_values = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PartnerProgramProject
+        fields = [
+            "program_link_id",
+            "program_id",
+            "is_submitted",
+            "can_submit",
+            "program_fields",
+            "program_field_values",
+        ]
+
+    def get_can_submit(self, obj):
+        return obj.partner_program.is_competitive and not obj.submitted
+
+    def get_program_fields(self, obj):
+        fields_qs = obj.partner_program.fields.all()
+        return PartnerProgramFieldSerializer(fields_qs, many=True).data
+
+    def get_program_field_values(self, obj):
+        values_qs = PartnerProgramFieldValue.objects.filter(
+            program_project=obj
+        ).select_related("field")
+        return PartnerProgramFieldValueSerializer(values_qs, many=True).data
+
+
 class ProjectDetailSerializer(serializers.ModelSerializer):
     achievements = AchievementListSerializer(many=True, read_only=True)
     cover = UserFileSerializer(required=False)
@@ -75,15 +120,23 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     industry_id = serializers.IntegerField(required=False)
     views_count = serializers.SerializerMethodField(method_name="count_views")
     links = serializers.SerializerMethodField()
-    partner_programs_tags = serializers.SerializerMethodField()
+    partner_program = serializers.SerializerMethodField()
+    partner_program_tags = serializers.SerializerMethodField()
     track = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     direction = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     actuality = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     goal = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     problem = serializers.CharField(required=False, allow_null=True, allow_blank=True)
 
+    def get_partner_program(self, project):
+        try:
+            link = project.program_links.select_related("partner_program").get()
+            return PartnerProgramProjectSerializer(link).data
+        except PartnerProgramProject.DoesNotExist:
+            return None
+
     @classmethod
-    def get_partner_programs_tags(cls, project):
+    def get_partner_program_tags(cls, project):
         profiles_qs = project.partner_program_profiles.select_related(
             "partner_program"
         ).only("partner_program__tag")
@@ -134,12 +187,13 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "views_count",
             "cover",
             "cover_image_address",
-            "partner_programs_tags",
             "track",
             "direction",
             "actuality",
             "goal",
             "problem",
+            "partner_program_tags",
+            "partner_program",
         ]
         read_only_fields = [
             "leader",
@@ -314,3 +368,169 @@ class ProjectSubscribersListSerializer(serializers.ModelSerializer):
             "avatar",
             "is_online",
         ]
+
+
+class ProjectDuplicateRequestSerializer(serializers.Serializer):
+    project_id = serializers.IntegerField()
+    partner_program_id = serializers.IntegerField()
+
+    def validate(self, data):
+        project_id = data["project_id"]
+        partner_program_id = data["partner_program_id"]
+        request = self.context["request"]
+
+        try:
+            project = Project.objects.get(pk=project_id)
+        except Project.DoesNotExist:
+            raise serializers.ValidationError("Проект с указанным ID не найден.")
+
+        if project.leader != request.user:
+            raise serializers.ValidationError(
+                "Только лидер проекта может дублировать его в программу."
+            )
+
+        try:
+            partner_program = PartnerProgram.objects.get(pk=partner_program_id)
+        except PartnerProgram.DoesNotExist:
+            raise serializers.ValidationError(
+                "Партнёрская программа с указанным ID не найдена."
+            )
+
+        exists = PartnerProgramProject.objects.filter(
+            project__name=project.name, partner_program=partner_program
+        ).exists()
+
+        if exists:
+            raise serializers.ValidationError(
+                f"Проект с именем '{project.name}' уже привязан к партнёрской программе '{partner_program.name}'."
+            )
+
+        return data
+
+
+class PartnerProgramFieldValueUpdateSerializer(serializers.Serializer):
+    field_id = serializers.PrimaryKeyRelatedField(
+        queryset=PartnerProgramField.objects.all(),
+        source="field",
+    )
+    value_text = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+        help_text="Укажите значение для поля.",
+    )
+
+    def validate(self, attrs):
+        field = attrs.get("field")
+        value_text = attrs.get("value_text")
+
+        validator = self._get_validator(field)
+        validator(field, value_text, attrs)
+
+        return attrs
+
+    def _get_validator(self, field):
+        validators = {
+            "text": self._validate_text,
+            "textarea": self._validate_text,
+            "checkbox": self._validate_checkbox,
+            "select": self._validate_select,
+            "radio": self._validate_radio,
+            "file": self._validate_file,
+        }
+        try:
+            return validators[field.field_type]
+        except KeyError:
+            raise serializers.ValidationError(
+                f"Тип поля '{field.field_type}' не поддерживается."
+            )
+
+    def _validate_text(self, field, value, attrs):
+        if field.is_required:
+            if value is None or str(value).strip() == "":
+                raise serializers.ValidationError(
+                    "Поле должно содержать текстовое значение."
+                )
+        else:
+            if value is not None and not isinstance(value, str):
+                raise serializers.ValidationError(
+                    "Ожидается строка для текстового поля."
+                )
+
+    def _validate_checkbox(self, field, value, attrs):
+        if field.is_required and value in (None, ""):
+            raise serializers.ValidationError(
+                "Значение обязательно для поля типа 'checkbox'."
+            )
+
+        if value is not None:
+            if isinstance(value, bool):
+                attrs["value_text"] = "true" if value else "false"
+            elif isinstance(value, str):
+                normalized = value.strip().lower()
+                if normalized not in ("true", "false"):
+                    raise serializers.ValidationError(
+                        "Для поля типа 'checkbox' ожидается 'true' или 'false'."
+                    )
+                attrs["value_text"] = normalized
+            else:
+                raise serializers.ValidationError(
+                    "Неверный тип значения для поля 'checkbox'."
+                )
+
+    def _validate_select(self, field, value, attrs):
+        self._validate_choice_field(field, value, "select")
+
+    def _validate_radio(self, field, value, attrs):
+        self._validate_choice_field(field, value, "radio")
+
+    def _validate_choice_field(self, field, value, field_type):
+        options = field.get_options_list()
+
+        if not options:
+            raise serializers.ValidationError(
+                f"Для поля типа '{field_type}' не заданы допустимые значения."
+            )
+
+        if field.is_required:
+            if value is None or value == "":
+                raise serializers.ValidationError(
+                    f"Значение обязательно для поля типа '{field_type}'."
+                )
+        else:
+            if value is None or value == "":
+                return  # Пустое значение для необязательного поля допустимо
+
+        if value is not None:
+            if not isinstance(value, str):
+                raise serializers.ValidationError(
+                    f"Ожидается строковое значение для поля типа '{field_type}'."
+                )
+            if value not in options:
+                raise serializers.ValidationError(
+                    f"Недопустимое значение для поля типа '{field_type}'. "
+                    f"Ожидается одно из: {options}."
+                )
+
+    def _validate_file(self, field, value, attrs):
+        if field.is_required:
+            if value is None or value == "":
+                raise serializers.ValidationError("Файл обязателен для этого поля.")
+
+        if value is not None:
+            if not isinstance(value, str):
+                raise serializers.ValidationError(
+                    "Ожидается строковое значение для поля 'file'."
+                )
+
+            if not self._is_valid_url(value):
+                raise serializers.ValidationError(
+                    "Ожидается корректная ссылка (URL) на файл."
+                )
+
+    def _is_valid_url(self, url: str) -> bool:
+        try:
+            parsed = urlparse(url)
+            return parsed.scheme in ("http", "https") and bool(parsed.netloc)
+        except Exception:
+            return False

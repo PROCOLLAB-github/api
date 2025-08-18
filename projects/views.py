@@ -3,8 +3,9 @@ from typing import Annotated
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
-from django.shortcuts import get_object_or_404
+from django.db import transaction
 from django.db.models import Q, QuerySet
+from django.shortcuts import get_object_or_404
 from django_filters import rest_framework as filters
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
@@ -17,32 +18,37 @@ from rest_framework.views import APIView
 from core.permissions import IsStaffOrReadOnly
 from core.serializers import SetLikedSerializer
 from core.services import add_view, set_like
-from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
+from partner_programs.models import (
+    PartnerProgram,
+    PartnerProgramProject,
+    PartnerProgramUserProfile,
+)
+from projects.constants import VERBOSE_STEPS
 from projects.exceptions import CollaboratorDoesNotExist
 from projects.filters import ProjectFilter
-from projects.constants import VERBOSE_STEPS
 from projects.helpers import (
-    get_recommended_users,
     check_related_fields_update,
+    get_recommended_users,
     update_partner_program,
 )
-from projects.models import Project, Achievement, ProjectNews, Collaborator
+from projects.models import Achievement, Collaborator, Project, ProjectNews
 from projects.pagination import ProjectNewsPagination, ProjectsPagination
 from projects.permissions import (
-    IsProjectLeaderOrReadOnlyForNonDrafts,
     HasInvolvementInProjectOrReadOnly,
-    IsProjectLeader,
     IsNewsAuthorIsProjectLeaderOrReadOnly,
+    IsProjectLeader,
+    IsProjectLeaderOrReadOnlyForNonDrafts,
     TimingAfterEndsProgramPermission,
 )
 from projects.serializers import (
-    ProjectDetailSerializer,
-    AchievementListSerializer,
-    ProjectListSerializer,
     AchievementDetailSerializer,
+    AchievementListSerializer,
     ProjectCollaboratorSerializer,
-    ProjectNewsListSerializer,
+    ProjectDetailSerializer,
+    ProjectDuplicateRequestSerializer,
+    ProjectListSerializer,
     ProjectNewsDetailSerializer,
+    ProjectNewsListSerializer,
     ProjectSubscribersListSerializer,
 )
 from users.models import LikesOnProject
@@ -82,7 +88,9 @@ class ProjectList(generics.ListCreateAPIView):
 
         try:
             partner_program_id = request.data.get("partner_program_id")
-            update_partner_program(partner_program_id, request.user, serializer.instance)
+            update_partner_program(
+                partner_program_id, request.user, serializer.instance
+            )
         except PartnerProgram.DoesNotExist:
             return Response(
                 {"detail": "Partner program with this id does not exist"},
@@ -95,7 +103,9 @@ class ProjectList(generics.ListCreateAPIView):
             )
 
         headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        return Response(
+            serializer.data, status=status.HTTP_201_CREATED, headers=headers
+        )
 
     def post(self, request, *args, **kwargs):
         """
@@ -130,7 +140,10 @@ class ProjectList(generics.ListCreateAPIView):
 
 class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Project.objects.get_projects_for_detail_view()
-    permission_classes = [HasInvolvementInProjectOrReadOnly, TimingAfterEndsProgramPermission]
+    permission_classes = [
+        HasInvolvementInProjectOrReadOnly,
+        TimingAfterEndsProgramPermission,
+    ]
     serializer_class = ProjectDetailSerializer
 
     def retrieve(self, request, *args, **kwargs):
@@ -227,7 +240,9 @@ class ProjectCountView(generics.GenericAPIView):
             {
                 "all": self.get_queryset().filter(draft=False).count(),
                 "my": self.get_queryset()
-                .filter(Q(leader_id=request.user.id) | Q(collaborator__user=request.user))
+                .filter(
+                    Q(leader_id=request.user.id) | Q(collaborator__user=request.user)
+                )
                 .distinct()
                 .count(),
             },
@@ -297,7 +312,9 @@ class ProjectCollaborators(generics.GenericAPIView):
         return project.id, project.leader.id
 
     @staticmethod
-    def _collabs_queryset(project_id: int, requested_id: int, leader_id: int) -> QuerySet:
+    def _collabs_queryset(
+        project_id: int, requested_id: int, leader_id: int
+    ) -> QuerySet:
         return Collaborator.objects.exclude(
             user__id=leader_id
         ).get(  # чтоб случайно лидер сам себя не удалил
@@ -444,7 +461,8 @@ class ProjectSubscribers(APIView):
     @swagger_auto_schema(
         responses={
             200: openapi.Response(
-                "List of project subscribers", ProjectSubscribersListSerializer(many=True)
+                "List of project subscribers",
+                ProjectSubscribersListSerializer(many=True),
             )
         }
     )
@@ -577,7 +595,9 @@ class DeleteProjectCollaborators(generics.GenericAPIView):
         return project.id, project.leader.id
 
     @staticmethod
-    def _collabs_queryset(project_id: int, requested_id: int, leader_id: int) -> QuerySet:
+    def _collabs_queryset(
+        project_id: int, requested_id: int, leader_id: int
+    ) -> QuerySet:
         return Collaborator.objects.exclude(
             user__id=leader_id
         ).get(  # чтоб случайно лидер сам себя не удалил
@@ -648,3 +668,58 @@ class SwitchLeaderRole(generics.GenericAPIView):
         project.leader = new_leader.user
         project.save()
         return Response(status=204)
+
+
+class DuplicateProjectView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        request_body=ProjectDuplicateRequestSerializer,
+        responses={201: ProjectDuplicateRequestSerializer(), 400: "Validation error"},
+        operation_description="Дублирует проект и привязывает его к указанной партнёрской программе",
+    )
+    def post(self, request):
+        serializer = ProjectDuplicateRequestSerializer(
+            data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        original_project = get_object_or_404(Project, id=data["project_id"])
+        partner_program = get_object_or_404(
+            PartnerProgram, id=data["partner_program_id"]
+        )
+
+        with transaction.atomic():
+            new_project = Project.objects.create(
+                name=original_project.name,
+                description=original_project.description,
+                region=original_project.region,
+                step=original_project.step,
+                hidden_score=original_project.hidden_score,
+                track=original_project.track,
+                direction=original_project.direction,
+                actuality=original_project.actuality,
+                goal=original_project.goal,
+                problem=original_project.problem,
+                industry=original_project.industry,
+                image_address=original_project.image_address,
+                leader=request.user,
+                draft=True,
+                is_company=original_project.is_company,
+                cover_image_address=original_project.cover_image_address,
+                cover=original_project.cover,
+            )
+
+            program_link = PartnerProgramProject.objects.create(
+                partner_program=partner_program, project=new_project
+            )
+
+        return Response(
+            {
+                "new_project_id": new_project.id,
+                "program_link_id": program_link.id,
+                "partner_program": partner_program.name,
+            },
+            status=status.HTTP_201_CREATED,
+        )

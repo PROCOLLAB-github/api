@@ -1,10 +1,10 @@
-from django.db.models import Count
+from django.db.models import Count, Q
 from django_filters import rest_framework as filters
 
-from users.models import Expert
-from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
-from projects.models import Project
+from partner_programs.models import PartnerProgram
 from project_rates.models import ProjectScore
+from projects.models import Project
+from users.models import Expert
 
 
 class ProjectFilter(filters.FilterSet):
@@ -56,32 +56,29 @@ class ProjectFilter(filters.FilterSet):
         return queryset
 
     def filter_by_partner_program(self, queryset, name, value):
-        program_id = value
+        if str(value) == "0":
+            return queryset.filter(
+                partner_program_profiles__isnull=True,
+                program_links__isnull=True,
+            ).distinct()
 
         user = self.request.user
-        try:
-            program = PartnerProgram.objects.get(pk=program_id)
-            program_status = program.projects_availability
-            # If available to all users or request.user is an expert of this program.
-            if (
-                program_status == "all_users"
-                or Expert.objects.filter(user=user, programs=program).exists()
-            ):
-                profiles_qs = (
-                    PartnerProgramUserProfile.objects.filter(
-                        partner_program=program, project__isnull=False
-                    )
-                    .select_related("project")
-                    .only("project")
-                )
-                return queryset.filter(
-                    pk__in=[profile.project.pk for profile in profiles_qs]
-                )
-            else:
-                return Project.objects.none()
 
+        try:
+            program = PartnerProgram.objects.get(pk=value)
         except PartnerProgram.DoesNotExist:
             return Project.objects.none()
+
+        program_status = program.projects_availability
+        user_is_expert = Expert.objects.filter(user=user, programs=program).exists()
+
+        if program_status != "all_users" and not user_is_expert:
+            return Project.objects.none()
+
+        return queryset.filter(
+            Q(partner_program_profiles__partner_program=program)
+            | Q(program_links__partner_program=program)
+        ).distinct()
 
     def filter_by_have_expert_rates(self, queryset, name, value):
         rated_projects_ids = ProjectScore.objects.values_list(
@@ -107,7 +104,9 @@ class ProjectFilter(filters.FilterSet):
     )
 
     # filters by whether there are any vacancies in the project
-    any_vacancies = filters.BooleanFilter(field_name="vacancies", method="vacancy_filter")
+    any_vacancies = filters.BooleanFilter(
+        field_name="vacancies", method="vacancy_filter"
+    )
     collaborator__count__gte = filters.NumberFilter(
         field_name="collaborator", method="filter_collaborator_count_gte"
     )
@@ -120,7 +119,9 @@ class ProjectFilter(filters.FilterSet):
     )
     is_rated_by_expert = filters.BooleanFilter(
         method="filter_by_have_expert_rates",
-        label=("is_rated_by_expert\n`1`/`true` rated projects\n`0`/`false` dosn't rated"),
+        label=(
+            "is_rated_by_expert\n`1`/`true` rated projects\n`0`/`false` dosn't rated"
+        ),
     )
 
     class Meta:

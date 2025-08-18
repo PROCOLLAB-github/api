@@ -1,22 +1,24 @@
 from django.urls import path
 
-from news.views import NewsList, NewsDetail, NewsDetailSetLiked, NewsDetailSetViewed
+from news.views import NewsDetail, NewsDetailSetLiked, NewsDetailSetViewed, NewsList
+from partner_programs.views import PartnerProgramFieldValueBulkUpdateView
 from projects.views import (
-    ProjectDetail,
-    ProjectList,
-    ProjectSteps,
-    AchievementList,
     AchievementDetail,
+    AchievementList,
+    DuplicateProjectView,
+    LeaveProject,
     ProjectCollaborators,
     ProjectCountView,
-    ProjectVacancyResponses,
+    ProjectDetail,
+    ProjectList,
     ProjectRecommendedUsers,
-    SetLikeOnProject,
+    ProjectSteps,
     ProjectSubscribe,
-    ProjectUnsubscribe,
     ProjectSubscribers,
+    ProjectUnsubscribe,
+    ProjectVacancyResponses,
+    SetLikeOnProject,
     SwitchLeaderRole,
-    LeaveProject,
 )
 
 app_name = "projects"
@@ -39,6 +41,14 @@ urlpatterns = [
     ),
     path("<int:pk>/", ProjectDetail.as_view()),
     path("<int:pk>/recommended_users", ProjectRecommendedUsers.as_view()),
+    path(
+        "assign-to-program/", DuplicateProjectView.as_view(), name="duplicate-project"
+    ),
+    path(
+        "<int:project_id>/program-fields/",
+        PartnerProgramFieldValueBulkUpdateView.as_view(),
+        name="update_program_fields",
+    ),
     path("count/", ProjectCountView.as_view()),
     path("steps/", ProjectSteps.as_view()),
     path("achievements/", AchievementList.as_view()),
