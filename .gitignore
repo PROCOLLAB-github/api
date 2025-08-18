@@ -138,3 +138,5 @@ cache
 
 static
 /emails/
+
+.DS_Store
