@@ -703,7 +703,9 @@ class UserListSerializer(
         error_messages={"invalid": "Введите корректный email адрес"},
     )
     avatar = serializers.URLField(
-        error_messages={"invalid": "Введите корректный url адрес"}
+        required=False,
+        allow_null=True,
+        error_messages={"invalid": "Введите корректный url адрес"},
     )
 
     member = MemberSerializer(required=False)
