@@ -1,6 +1,9 @@
+from functools import partial
+
 from django.contrib.auth.models import AbstractUser
 from django.contrib.contenttypes.fields import GenericRelation
 from django.core.exceptions import ValidationError
+from django.core.validators import URLValidator
 from django.db import models
 from django.db.models import QuerySet
 from django.utils import timezone
@@ -60,9 +63,18 @@ class CustomUser(AbstractUser):
     INVESTOR = constants.INVESTOR
 
     username = None
-    email = models.EmailField(unique=True)
-    first_name = models.CharField(max_length=255, validators=[user_name_validator])
-    last_name = models.CharField(max_length=255, validators=[user_name_validator])
+    email = models.EmailField(
+        unique=True,
+        error_messages={
+            "unique": "Пользователь с таким email уже существует",
+        },
+    )
+    first_name = models.CharField(
+        max_length=255, validators=[partial(user_name_validator, field_name="Имя")]
+    )
+    last_name = models.CharField(
+        max_length=255, validators=[partial(user_name_validator, field_name="Фамилия")]
+    )
     password = models.CharField(max_length=255)
     is_active = models.BooleanField(default=False, editable=False)
     user_type = models.PositiveSmallIntegerField(
@@ -74,7 +86,10 @@ class CustomUser(AbstractUser):
         editable=False,
     )
     patronymic = models.CharField(
-        max_length=255, validators=[user_name_validator], null=True, blank=True
+        max_length=255,
+        validators=[partial(user_name_validator, field_name="Отчество")],
+        null=True,
+        blank=True,
     )
     # TODO need to be removed in future `key_skills` -> `skills`.
     key_skills = models.CharField(
@@ -87,7 +102,11 @@ class CustomUser(AbstractUser):
         "core.SkillToObject",
         related_query_name="users",
     )
-    avatar = models.URLField(null=True, blank=True)
+    avatar = models.URLField(
+        null=True,
+        blank=True,
+        validators=[URLValidator(message="Введите корректный URL")],
+    )
     birthday = models.DateField(
         validators=[user_birthday_validator],
     )

@@ -7,6 +7,7 @@ from django.db import transaction
 from django.forms.models import model_to_dict
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
+from rest_framework.validators import UniqueValidator
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from core.models import Skill, SkillToObject, Specialization, SpecializationCategory
@@ -692,6 +693,19 @@ class UserChatSerializer(serializers.ModelSerializer[CustomUser]):
 class UserListSerializer(
     serializers.ModelSerializer[CustomUser], SkillsWriteSerializerMixin
 ):
+    email = serializers.EmailField(
+        validators=[
+            UniqueValidator(
+                queryset=CustomUser.objects.all(),
+                message="Пользователь с таким email уже существует",
+            )
+        ],
+        error_messages={"invalid": "Введите корректный email адрес"},
+    )
+    avatar = serializers.URLField(
+        error_messages={"invalid": "Введите корректный url адрес"}
+    )
+
     member = MemberSerializer(required=False)
     is_online = serializers.SerializerMethodField()
 
