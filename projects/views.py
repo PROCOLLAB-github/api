@@ -23,7 +23,6 @@ from partner_programs.models import (
     PartnerProgramProject,
     PartnerProgramUserProfile,
 )
-from projects.constants import VERBOSE_STEPS
 from projects.exceptions import CollaboratorDoesNotExist
 from projects.filters import ProjectFilter
 from projects.helpers import (
@@ -320,16 +319,6 @@ class ProjectCollaborators(generics.GenericAPIView):
         ).get(  # чтоб случайно лидер сам себя не удалил
             user__id=requested_id, project__id=project_id
         )
-
-
-class ProjectSteps(APIView):
-    permission_classes = [IsStaffOrReadOnly]
-
-    def get(self, request, format=None):
-        """
-        Return a tuple of project steps.
-        """
-        return Response(VERBOSE_STEPS)
 
 
 class AchievementList(generics.ListCreateAPIView):
