@@ -23,7 +23,7 @@ from partner_programs.models import (
     PartnerProgramUserProfile,
 )
 from partner_programs.pagination import PartnerProgramPagination
-from partner_programs.permissions import IsProjectLeader
+from partner_programs.permissions import IsExpertOrManagerOfProgram, IsProjectLeader
 from partner_programs.serializers import (
     PartnerProgramDataSchemaSerializer,
     PartnerProgramFieldSerializer,
@@ -424,3 +424,18 @@ class ProgramProjectFilterAPIView(GenericAPIView):
             projects, many=True, context={"request": request}
         )
         return paginator.get_paginated_response(serializer_out.data)
+
+
+class PartnerProgramProjectsAPIView(generics.ListAPIView):
+    """
+    Список всех проектов участников конкретной партнёрской программы.
+    Доступ разрешён только менеджерам и экспертам программы.
+    """
+
+    serializer_class = ProjectListSerializer
+    permission_classes = [IsAuthenticated, IsExpertOrManagerOfProgram]
+    pagination_class = PartnerProgramPagination
+
+    def get_queryset(self):
+        program = get_object_or_404(PartnerProgram, pk=self.kwargs["pk"])
+        return Project.objects.filter(program_links__partner_program=program).distinct()
