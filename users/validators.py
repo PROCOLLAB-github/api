@@ -1,9 +1,8 @@
+import phonenumbers
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
-from django.core.exceptions import ValidationError as DjangoValidationError
-
-import phonenumbers
 
 from users.constants import NOT_VALID_NUMBER_MESSAGE
 
@@ -18,19 +17,19 @@ def user_birthday_validator(birthday):
     raise ValidationError("Человек младше 12 лет")
 
 
-def user_name_validator(name):
-    """returns true if name is valid"""
-    # TODO: add check for vulgar words
+def user_name_validator(value, field_name="Поле"):
+    """Валидатор для имени, фамилии и отчества"""
+    if not value:
+        return
 
     valid_name_chars = "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ"
-    for letter in name:
+    for letter in value:
         if letter.upper() not in valid_name_chars:
-            raise ValidationError(
-                "Имя содержит недопустимые символы. Могут быть только символы кириллического алфавита."
+            raise DjangoValidationError(
+                f"{field_name} содержит недопустимые символы. Могут быть только символы кириллического алфавита."
             )
-    if len(name) < 2:
-        raise ValidationError("Имя слишком короткое")
-    return True
+    if len(value) < 2:
+        raise DjangoValidationError(f"Поле '{field_name}' слишком короткое")
 
 
 def specialization_exists_validator(pk: int):
@@ -49,7 +48,9 @@ def user_experience_years_range_validator(value: int):
     (2000 - `now.year`)
     """
     if value not in range(2000, timezone.now().year + 1):
-        raise DjangoValidationError(f"Год должен быть в диапазоне 2000 - {timezone.now().year}")
+        raise DjangoValidationError(
+            f"Год должен быть в диапазоне 2000 - {timezone.now().year}"
+        )
 
 
 def user_phone_number_validation(value: str):
