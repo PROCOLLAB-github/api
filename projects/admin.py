@@ -18,8 +18,9 @@ class ProjectAdmin(admin.ModelAdmin):
         "name",
         "draft",
         "is_company",
-        "track",
-        "direction",
+        "trl",
+        "target_audience",
+        "implementation_deadline",
     )
     list_display_links = (
         "id",
@@ -27,13 +28,11 @@ class ProjectAdmin(admin.ModelAdmin):
     )
     search_fields = (
         "name",
-        "track",
     )
     list_filter = (
         "draft",
         "is_company",
-        "track",
-        "direction",
+        "trl",
     )
 
     fieldsets = (
@@ -46,7 +45,6 @@ class ProjectAdmin(admin.ModelAdmin):
                     "leader",
                     "industry",
                     "region",
-                    "step",
                     "draft",
                     "is_company",
                 )
@@ -56,10 +54,7 @@ class ProjectAdmin(admin.ModelAdmin):
             "Для проектов ПД МосПолитеха",
             {
                 "fields": (
-                    "track",
-                    "direction",
                     "actuality",
-                    "goal",
                     "problem",
                 )
             },

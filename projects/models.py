@@ -2,14 +2,17 @@ from typing import Optional
 
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericRelation
-from django.core.validators import MaxLengthValidator
+from django.core.validators import (
+    MaxLengthValidator,
+    MaxValueValidator,
+    MinValueValidator,
+)
 from django.db import models
 from django.db.models import UniqueConstraint
 
 from core.models import Like, View
 from files.models import UserFile
 from industries.models import Industry
-from projects.constants import VERBOSE_STEPS
 from projects.managers import AchievementManager, CollaboratorManager, ProjectManager
 from users.models import CustomUser
 
@@ -60,48 +63,36 @@ class DefaultProjectAvatar(AbstractDefaultProjectImage):
 
 class Project(models.Model):
     """
-    Project model
+    Модель проекта.
 
-     Attributes:
-        name: A CharField name of the project.
-        description: A TextField description of the project.
-        region: A CharField region of the project.
-        step: A PositiveSmallIntegerField which indicates status of the project
-            according to VERBOSE_STEPS.
-        industry: A ForeignKey referring to the Industry model.
-        presentation_address: A URLField presentation URL address.
-        image_address: A URLField image URL address.
-        leader: A ForeignKey referring to the User model.
-        draft: A boolean indicating if Project is a draft.
-        is_company: A boolean indicating if Project is a company.
-        cover_image_address: A URLField cover image URL address.
-        cover: A ForeignKey referring to the UserFile model, which is the image cover of the project.
-        datetime_created: A DateTimeField indicating date of creation.
-        datetime_updated: A DateTimeField indicating date of update.
+    Атрибуты:
+        name (CharField): Название проекта.
+        description (TextField): Подробное описание проекта.
+        region (CharField): Регион, в котором реализуется проект.
+        hidden_score (PositiveSmallIntegerField): Скрытый рейтинг проекта,
+            используется для внутренней сортировки.
+        actuality (TextField): Актуальность проекта (почему он важен).
+        target_audience (CharField): Описание целевой аудитории проекта.
+        implementation_deadline (DateField): Общий срок реализации проекта (дата завершения).
+        problem (TextField): Проблема, которую решает проект.
+        trl (PositiveSmallIntegerField): Уровень технологической готовности (Technology Readiness Level) от 1 до 9.
+        industry (ForeignKey): Ссылка на отрасль (модель Industry).
+        presentation_address (URLField): Ссылка на презентацию проекта.
+        image_address (URLField): Ссылка на изображение (аватар проекта).
+        leader (ForeignKey): Руководитель проекта (пользователь).
+        draft (BooleanField): Флаг, указывающий, является ли проект черновиком.
+        is_company (BooleanField): Признак того, что проект представляет компанию.
+        cover_image_address (URLField): Ссылка на обложку проекта.
+        cover (ForeignKey): Файл-обложка проекта (устаревшее поле).
+        subscribers (ManyToManyField): Подписчики проекта.
+        datetime_created (DateTimeField): Дата создания проекта.
+        datetime_updated (DateTimeField): Дата последнего изменения проекта.
     """
 
     name = models.CharField(max_length=256, null=True, blank=True)
     description = models.TextField(null=True, blank=True)
     region = models.CharField(max_length=256, null=True, blank=True)
-    step = models.PositiveSmallIntegerField(
-        choices=VERBOSE_STEPS, null=True, blank=True
-    )
     hidden_score = models.PositiveSmallIntegerField(default=100)
-
-    track = models.CharField(
-        max_length=256,
-        blank=True,
-        null=True,
-        verbose_name="Трек",
-        help_text="Направление/курс, в рамках которого реализуется проект",
-    )
-    direction = models.CharField(
-        max_length=256,
-        blank=True,
-        null=True,
-        verbose_name="Направление",
-        help_text="Более общее направление деятельности проекта",
-    )
     actuality = models.TextField(
         blank=True,
         null=True,
@@ -109,12 +100,25 @@ class Project(models.Model):
         verbose_name="Актуальность",
         help_text="Почему проект важен (до 1000 симв.)",
     )
-    goal = models.CharField(
+    target_audience = models.CharField(
         max_length=500,
         blank=True,
         null=True,
-        verbose_name="Цель",
-        help_text="Главная цель проекта (до 500 симв.)",
+        verbose_name="Целевая аудитория",
+        help_text="Описание целевой аудитории проекта (до 500 симв.)",
+    )
+    trl = models.PositiveSmallIntegerField(
+        verbose_name="TRL",
+        help_text="Technology Readiness Level (от 1 до 9)",
+        validators=[MinValueValidator(1), MaxValueValidator(9)],
+        null=True,
+        blank=True,
+    )
+    implementation_deadline = models.DateField(
+        verbose_name="Общий срок реализации проекта",
+        help_text="Дата, до которой планируется реализовать проект",
+        null=True,
+        blank=True,
     )
     problem = models.TextField(
         blank=True,

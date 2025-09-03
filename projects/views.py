@@ -23,7 +23,6 @@ from partner_programs.models import (
     PartnerProgramProject,
     PartnerProgramUserProfile,
 )
-from projects.constants import VERBOSE_STEPS
 from projects.exceptions import CollaboratorDoesNotExist
 from projects.filters import ProjectFilter
 from projects.helpers import (
@@ -121,7 +120,6 @@ class ProjectList(generics.ListCreateAPIView):
             [name] - название проекта
             [description] - описание проекта
             [industry] - id отрасли
-            [step] - этап проекта
             [image_address] - адрес изображения
             [presentation_address] - адрес презентации
             [short_description] - краткое описание проекта
@@ -320,16 +318,6 @@ class ProjectCollaborators(generics.GenericAPIView):
         ).get(  # чтоб случайно лидер сам себя не удалил
             user__id=requested_id, project__id=project_id
         )
-
-
-class ProjectSteps(APIView):
-    permission_classes = [IsStaffOrReadOnly]
-
-    def get(self, request, format=None):
-        """
-        Return a tuple of project steps.
-        """
-        return Response(VERBOSE_STEPS)
 
 
 class AchievementList(generics.ListCreateAPIView):
@@ -695,12 +683,11 @@ class DuplicateProjectView(APIView):
                 name=original_project.name,
                 description=original_project.description,
                 region=original_project.region,
-                step=original_project.step,
                 hidden_score=original_project.hidden_score,
-                track=original_project.track,
-                direction=original_project.direction,
                 actuality=original_project.actuality,
-                goal=original_project.goal,
+                target_audience=original_project.target_audience,
+                trl=original_project.trl,
+                implementation_deadline=original_project.implementation_deadline,
                 problem=original_project.problem,
                 industry=original_project.industry,
                 image_address=original_project.image_address,

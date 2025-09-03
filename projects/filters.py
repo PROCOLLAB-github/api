@@ -13,9 +13,9 @@ class ProjectFilter(filters.FilterSet):
     Adds filtering to DRF list retrieve views
 
     Parameters to filter by:
-        industry (int), step (int), region (str), name__contains (str),
+        industry (int), region (str), name__contains (str),
          description__contains (str), collaborator__user__in (List[int]),
-         datetime_created__gt (datetime.datetime), step (int), any_vacancies (bool),
+         datetime_created__gt (datetime.datetime), any_vacancies (bool),
          member_count__gt (int), member_count__lt (int), leader (int), partner_program (int),
          is_company (bool).
 
@@ -25,7 +25,6 @@ class ProjectFilter(filters.FilterSet):
         ?datetime_created__gt=25.10.2022
             equals to .filter(datetime_created__gt=datetime.datetime(...))
         ?collaborator__user__in=1,2 equals to .filter(collaborator__user__in=[1, 2])
-        ?step=1 equals to .filter(step=1)
         ?any_vacancies=true equals to .filter(any_vacancies=True)
         ?collaborator__count__gt=1 equals to .filter(collaborator__count__gt=1)
         ?is_company=0/?is_company=false equals .filter(is_company=False)
@@ -113,7 +112,6 @@ class ProjectFilter(filters.FilterSet):
     collaborator__count__lte = filters.NumberFilter(
         field_name="collaborator", method="filter_collaborator_count_lte"
     )
-    step = filters.NumberFilter(field_name="step")
     partner_program = filters.NumberFilter(
         field_name="partner_program", method="filter_by_partner_program"
     )
@@ -128,10 +126,8 @@ class ProjectFilter(filters.FilterSet):
         model = Project
         fields = (
             "industry",
-            "step",
             "region",
             "leader",
-            "step",
             "partner_program",
             "is_company",
         )
