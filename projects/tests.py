@@ -19,7 +19,6 @@ class ProjectTestCase(TestCase):
             "name": "Test",
             "description": "Test",
             "industry": Industry.objects.create(name="Test").id,
-            "step": 1,
         }
 
     def test_project_creation(self):
@@ -42,7 +41,6 @@ class ProjectTestCase(TestCase):
                 "name": "T" * 257,
                 "description": "Test",
                 "industry": Industry.objects.create(name="Test").id,
-                "step": 1,
             },
         )
         force_authenticate(request, user=user)

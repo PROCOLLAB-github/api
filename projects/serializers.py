@@ -122,11 +122,13 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     links = serializers.SerializerMethodField()
     partner_program = serializers.SerializerMethodField()
     partner_program_tags = serializers.SerializerMethodField()
-    track = serializers.CharField(required=False, allow_null=True, allow_blank=True)
-    direction = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     actuality = serializers.CharField(required=False, allow_null=True, allow_blank=True)
-    goal = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     problem = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    target_audience = serializers.CharField(
+        required=False, allow_blank=True, allow_null=True
+    )
+    implementation_deadline = serializers.DateField(required=False, allow_null=True)
+    trl = serializers.IntegerField(required=False, allow_null=True)
 
     def get_partner_program(self, project):
         try:
@@ -172,7 +174,6 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "achievements",
             "links",
             "region",
-            "step",
             "industry",
             "industry_id",
             "presentation_address",
@@ -187,11 +188,11 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "views_count",
             "cover",
             "cover_image_address",
-            "track",
-            "direction",
             "actuality",
-            "goal",
             "problem",
+            "target_audience",
+            "implementation_deadline",
+            "trl",
             "partner_program_tags",
             "partner_program",
         ]

@@ -120,7 +120,6 @@ class ProjectList(generics.ListCreateAPIView):
             [name] - название проекта
             [description] - описание проекта
             [industry] - id отрасли
-            [step] - этап проекта
             [image_address] - адрес изображения
             [presentation_address] - адрес презентации
             [short_description] - краткое описание проекта
@@ -684,12 +683,11 @@ class DuplicateProjectView(APIView):
                 name=original_project.name,
                 description=original_project.description,
                 region=original_project.region,
-                step=original_project.step,
                 hidden_score=original_project.hidden_score,
-                track=original_project.track,
-                direction=original_project.direction,
                 actuality=original_project.actuality,
-                goal=original_project.goal,
+                target_audience=original_project.target_audience,
+                trl=original_project.trl,
+                implementation_deadline=original_project.implementation_deadline,
                 problem=original_project.problem,
                 industry=original_project.industry,
                 image_address=original_project.image_address,

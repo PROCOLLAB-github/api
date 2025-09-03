@@ -33,7 +33,6 @@ class VacancyTestCase(TestCase):
             name="Test",
             description="Test",
             industry=Industry.objects.create(name="Test"),
-            step=1,
             leader=self.user_project_owner,
         )
         self.vacancy_create_data = {
