@@ -1,7 +1,9 @@
 from typing import Optional
 
+from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericRelation
+from django.core.exceptions import ValidationError
 from django.core.validators import (
     MaxLengthValidator,
     MaxValueValidator,
@@ -309,6 +311,35 @@ class Collaborator(models.Model):
                 name="unique_collaborator",
             )
         ]
+
+    def clean(self):
+        """
+        Если проект привязан к программе, добавлять коллаборатора можно
+        только если пользователь — участник этой программы.
+        (Проект привязан максимум к одной программе.)
+        """
+        link = self.project.program_links.select_related("partner_program").first()
+        if not link:
+            return
+
+        PartnerProgramUserProfile = apps.get_model(
+            "partner_programs",
+            "PartnerProgramUserProfile",
+        )
+
+        is_participant = PartnerProgramUserProfile.objects.filter(
+            user_id=self.user_id,
+            partner_program_id=link.partner_program_id,
+        ).exists()
+
+        if not is_participant:
+            raise ValidationError(
+                "Пользователь не является участником программы, к которой относится проект."
+            )
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
 
 
 class ProjectNews(models.Model):
