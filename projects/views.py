@@ -33,6 +33,7 @@ from projects.helpers import (
 from projects.models import Achievement, Collaborator, Project, ProjectGoal, ProjectNews
 from projects.pagination import ProjectNewsPagination, ProjectsPagination
 from projects.permissions import (
+    CanBindProjectToProgram,
     HasInvolvementInProjectOrReadOnly,
     IsNewsAuthorIsProjectLeaderOrReadOnly,
     IsProjectLeader,
@@ -661,7 +662,7 @@ class SwitchLeaderRole(generics.GenericAPIView):
 
 
 class DuplicateProjectView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanBindProjectToProgram]
 
     @swagger_auto_schema(
         request_body=ProjectDuplicateRequestSerializer,

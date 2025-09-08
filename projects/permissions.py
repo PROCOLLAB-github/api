@@ -1,10 +1,10 @@
 from datetime import datetime, timedelta
 
 from django.utils import timezone
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import SAFE_METHODS, BasePermission
 
-from partner_programs.models import PartnerProgramUserProfile
+from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 from projects.models import Project
 
 
@@ -189,3 +189,24 @@ class IsProjectLeaderOrReadOnly(BasePermission):
             and request.user.is_authenticated
             and obj.project.leader_id == request.user.id
         )
+
+
+class CanBindProjectToProgram(BasePermission):
+    message = "Привязать проект к программе может только её участник (или менеджер)."
+
+    def has_permission(self, request, view):
+        program_id = (request.data or {}).get("partner_program_id")
+        if not program_id:
+            return True
+
+        try:
+            program = PartnerProgram.objects.get(pk=program_id)
+        except PartnerProgram.DoesNotExist:
+            raise ValidationError({"partner_program_id": "Программа не найдена."})
+
+        if program.is_manager(request.user):
+            return True
+
+        return PartnerProgramUserProfile.objects.filter(
+            user=request.user, partner_program=program
+        ).exists()

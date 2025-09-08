@@ -412,7 +412,7 @@ class ProjectDuplicateRequestSerializer(serializers.Serializer):
 
         if project.leader != request.user:
             raise serializers.ValidationError(
-                "Только лидер проекта может дублировать его в программу."
+                {"error": "Только лидер проекта может дублировать его в программу."}
             )
 
         try:
