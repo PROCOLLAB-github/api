@@ -6,9 +6,18 @@ from projects.models import (
     DefaultProjectAvatar,
     DefaultProjectCover,
     Project,
+    ProjectGoal,
     ProjectLink,
     ProjectNews,
 )
+
+
+class ProjectGoalInline(admin.TabularInline):
+    model = ProjectGoal
+    extra = 0
+    fields = ("title", "completion_date", "responsible", "is_done")
+    show_change_link = True
+    autocomplete_fields = ("responsible",)
 
 
 @admin.register(Project)
@@ -76,6 +85,28 @@ class ProjectAdmin(admin.ModelAdmin):
         ),
     )
     readonly_fields = ("datetime_created", "datetime_updated")
+    inlines = [ProjectGoalInline]
+
+
+@admin.register(ProjectGoal)
+class ProjectGoalAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "title",
+        "project",
+        "completion_date",
+        "responsible",
+        "is_done",
+    )
+    list_filter = ("is_done", "completion_date", "project")
+    search_fields = (
+        "title",
+        "project__name",
+        "responsible__username",
+        "responsible__email",
+    )
+    list_select_related = ("project", "responsible")
+    autocomplete_fields = ("project", "responsible")
 
 
 @admin.register(ProjectNews)
