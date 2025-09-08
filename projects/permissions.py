@@ -153,6 +153,44 @@ class IsNewsAuthorIsProjectLeaderOrReadOnly(BasePermission):
         return False
 
 
+class IsProjectLeaderOrReadOnly(BasePermission):
+    """
+    Читать могут все (в т.ч. анонимы).
+    Создавать/изменять/удалять может только лидер проекта.
+    """
+
+    message = "Только лидер проекта может создавать, изменять или удалять цели."
+
+    def has_permission(self, request, view):
+        if request.method in SAFE_METHODS:
+            return True
+
+        if not request.user or not request.user.is_authenticated:
+            return False
+
+        project_pk = view.kwargs.get("project_pk")
+        project_id = project_pk or request.data.get("project")
+        if not project_id:
+            return False
+
+        try:
+            project = Project.objects.only("id", "leader_id").get(pk=project_id)
+        except Project.DoesNotExist:
+            return False
+
+        return project.leader_id == request.user.id
+
+    def has_object_permission(self, request, view, obj):
+        if request.method in SAFE_METHODS:
+            return True
+
+        return (
+            request.user
+            and request.user.is_authenticated
+            and obj.project.leader_id == request.user.id
+        )
+
+
 class CanBindProjectToProgram(BasePermission):
     message = "Привязать проект к программе может только её участник (или менеджер)."
 

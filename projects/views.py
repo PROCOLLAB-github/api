@@ -9,7 +9,7 @@ from django.shortcuts import get_object_or_404
 from django_filters import rest_framework as filters
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
-from rest_framework import generics, permissions, status
+from rest_framework import generics, permissions, status, viewsets
 from rest_framework.exceptions import NotFound
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -30,13 +30,14 @@ from projects.helpers import (
     get_recommended_users,
     update_partner_program,
 )
-from projects.models import Achievement, Collaborator, Project, ProjectNews
+from projects.models import Achievement, Collaborator, Project, ProjectGoal, ProjectNews
 from projects.pagination import ProjectNewsPagination, ProjectsPagination
 from projects.permissions import (
     CanBindProjectToProgram,
     HasInvolvementInProjectOrReadOnly,
     IsNewsAuthorIsProjectLeaderOrReadOnly,
     IsProjectLeader,
+    IsProjectLeaderOrReadOnly,
     IsProjectLeaderOrReadOnlyForNonDrafts,
     TimingAfterEndsProgramPermission,
 )
@@ -46,6 +47,7 @@ from projects.serializers import (
     ProjectCollaboratorSerializer,
     ProjectDetailSerializer,
     ProjectDuplicateRequestSerializer,
+    ProjectGoalSerializer,
     ProjectListSerializer,
     ProjectNewsDetailSerializer,
     ProjectNewsListSerializer,
@@ -711,3 +713,24 @@ class DuplicateProjectView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+class GoalViewSet(viewsets.ModelViewSet):
+    queryset = ProjectGoal.objects.select_related("project", "responsible")
+    serializer_class = ProjectGoalSerializer
+    permission_classes = [IsProjectLeaderOrReadOnly]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        project_pk = self.kwargs.get("project_pk")
+        return qs.filter(project_id=project_pk) if project_pk is not None else qs
+
+    def perform_create(self, serializer):
+        project_pk = self.kwargs.get("project_pk")
+        if project_pk is None:
+            serializer.save()
+        else:
+            serializer.save(project_id=project_pk)
+
+    def perform_update(self, serializer):
+        serializer.save(project=self.get_object().project)

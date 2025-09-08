@@ -6,6 +6,7 @@ from projects.views import (
     AchievementDetail,
     AchievementList,
     DuplicateProjectView,
+    GoalViewSet,
     LeaveProject,
     ProjectCollaborators,
     ProjectCountView,
@@ -21,7 +22,15 @@ from projects.views import (
 )
 
 app_name = "projects"
-
+project_goal_list = GoalViewSet.as_view({"get": "list", "post": "create"})
+project_goal_detail = GoalViewSet.as_view(
+    {
+        "get": "retrieve",
+        "put": "update",
+        "patch": "partial_update",
+        "delete": "destroy",
+    }
+)
 urlpatterns = [
     path("", ProjectList.as_view()),
     path("<int:pk>/like/", SetLikeOnProject.as_view()),
@@ -29,6 +38,12 @@ urlpatterns = [
     path("<int:project_pk>/subscribe/", ProjectSubscribe.as_view()),
     path("<int:project_pk>/unsubscribe/", ProjectUnsubscribe.as_view()),
     path("<int:project_pk>/subscribers/", ProjectSubscribers.as_view()),
+    path("<int:project_pk>/goals/", project_goal_list, name="project-goals"),
+    path(
+        "<int:project_pk>/goals/<int:pk>/",
+        project_goal_detail,
+        name="project-goal-detail",
+    ),
     path("<int:project_pk>/news/<int:pk>/", NewsDetail.as_view()),
     path("<int:project_pk>/news/<int:pk>/set_viewed/", NewsDetailSetViewed.as_view()),
     path("<int:project_pk>/news/<int:pk>/set_liked/", NewsDetailSetLiked.as_view()),

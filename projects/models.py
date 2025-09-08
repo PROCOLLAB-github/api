@@ -383,3 +383,46 @@ class ProjectNews(models.Model):
         verbose_name = "Новость проекта"
         verbose_name_plural = "Новости проекта"
         ordering = ["-datetime_created"]
+
+
+class ProjectGoal(models.Model):
+    """
+    Цель проекта (минимальная версия).
+    """
+
+    project = models.ForeignKey(
+        "Project",
+        on_delete=models.CASCADE,
+        related_name="goals",
+        verbose_name="Проект",
+    )
+
+    title = models.CharField(
+        max_length=255,
+        verbose_name="Название цели",
+    )
+
+    completion_date = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Срок реализации цели",
+    )
+
+    responsible = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="responsible_goals",
+        verbose_name="Ответственный",
+    )
+
+    is_done = models.BooleanField(
+        default=False,
+        verbose_name="Выполнено",
+    )
+
+    def __str__(self) -> str:
+        return f"Проект [{self.project_id}] - {self.title}"
+
+    class Meta:
+        verbose_name = "Цель"
+        verbose_name_plural = "Цели"

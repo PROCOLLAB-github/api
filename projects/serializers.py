@@ -19,7 +19,7 @@ from partner_programs.serializers import (
     PartnerProgramFieldSerializer,
     PartnerProgramFieldValueSerializer,
 )
-from projects.models import Achievement, Collaborator, Project, ProjectNews
+from projects.models import Achievement, Collaborator, Project, ProjectGoal, ProjectNews
 from projects.validators import validate_project
 from vacancy.serializers import ProjectVacancyListSerializer
 
@@ -107,6 +107,31 @@ class PartnerProgramProjectSerializer(serializers.ModelSerializer):
             program_project=obj
         ).select_related("field")
         return PartnerProgramFieldValueSerializer(values_qs, many=True).data
+
+
+class ResponsibleMiniSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ("id", "first_name", "last_name", "avatar")
+
+
+class ProjectGoalSerializer(serializers.ModelSerializer):
+    project = serializers.PrimaryKeyRelatedField(read_only=True)
+    responsible = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    responsible_info = ResponsibleMiniSerializer(source="responsible", read_only=True)
+
+    class Meta:
+        model = ProjectGoal
+        fields = [
+            "id",
+            "project",
+            "title",
+            "completion_date",
+            "responsible",
+            "responsible_info",
+            "is_done",
+        ]
+        read_only_fields = ["id", "project", "responsible_info"]
 
 
 class ProjectDetailSerializer(serializers.ModelSerializer):
