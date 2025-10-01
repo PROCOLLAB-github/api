@@ -22,7 +22,13 @@ from projects.views import (
 )
 
 app_name = "projects"
-project_goal_list = GoalViewSet.as_view({"get": "list", "post": "create"})
+project_goal_list = GoalViewSet.as_view(
+    {
+        "get": "list",
+        "post": "create",
+    }
+)
+
 project_goal_detail = GoalViewSet.as_view(
     {
         "get": "retrieve",
@@ -55,9 +61,7 @@ urlpatterns = [
     ),
     path("<int:pk>/", ProjectDetail.as_view()),
     path("<int:pk>/recommended_users", ProjectRecommendedUsers.as_view()),
-    path(
-        "assign-to-program/", DuplicateProjectView.as_view(), name="duplicate-project"
-    ),
+    path("assign-to-program/", DuplicateProjectView.as_view(), name="duplicate-project"),
     path(
         "<int:project_id>/program-fields/",
         PartnerProgramFieldValueBulkUpdateView.as_view(),

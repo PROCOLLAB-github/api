@@ -26,6 +26,10 @@ from vacancy.serializers import ProjectVacancyListSerializer
 User = get_user_model()
 
 
+class EmptySerializer(serializers.Serializer):
+    pass
+
+
 class AchievementListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Achievement
@@ -115,8 +119,18 @@ class ResponsibleMiniSerializer(serializers.ModelSerializer):
         fields = ("id", "first_name", "last_name", "avatar")
 
 
+class ProjectGoalBulkListSerializer(serializers.ListSerializer):
+    """Bulk_create при POST запросе со списком объектов на /projects/{project_pk}/goals/."""
+
+    def create(self, validated_data):
+        project = self.context["project"]
+        objs = [ProjectGoal(project=project, **item) for item in validated_data]
+        created = ProjectGoal.objects.bulk_create(objs)
+        return created
+
+
 class ProjectGoalSerializer(serializers.ModelSerializer):
-    project = serializers.PrimaryKeyRelatedField(read_only=True)
+    project_id = serializers.IntegerField(read_only=True)
     responsible = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
     responsible_info = ResponsibleMiniSerializer(source="responsible", read_only=True)
 
@@ -124,14 +138,15 @@ class ProjectGoalSerializer(serializers.ModelSerializer):
         model = ProjectGoal
         fields = [
             "id",
-            "project",
+            "project_id",
             "title",
             "completion_date",
             "responsible",
             "responsible_info",
             "is_done",
         ]
-        read_only_fields = ["id", "project", "responsible_info"]
+        read_only_fields = ["id", "project_id", "responsible_info"]
+        list_serializer_class = ProjectGoalBulkListSerializer
 
 
 class ProjectDetailSerializer(serializers.ModelSerializer):
