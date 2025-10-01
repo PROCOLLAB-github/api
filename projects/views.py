@@ -44,6 +44,7 @@ from projects.permissions import (
 from projects.serializers import (
     AchievementDetailSerializer,
     AchievementListSerializer,
+    EmptySerializer,
     ProjectCollaboratorSerializer,
     ProjectDetailSerializer,
     ProjectDuplicateRequestSerializer,
@@ -90,9 +91,7 @@ class ProjectList(generics.ListCreateAPIView):
 
         try:
             partner_program_id = request.data.get("partner_program_id")
-            update_partner_program(
-                partner_program_id, request.user, serializer.instance
-            )
+            update_partner_program(partner_program_id, request.user, serializer.instance)
         except PartnerProgram.DoesNotExist:
             return Response(
                 {"detail": "Partner program with this id does not exist"},
@@ -105,9 +104,7 @@ class ProjectList(generics.ListCreateAPIView):
             )
 
         headers = self.get_success_headers(serializer.data)
-        return Response(
-            serializer.data, status=status.HTTP_201_CREATED, headers=headers
-        )
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def post(self, request, *args, **kwargs):
         """
@@ -241,9 +238,7 @@ class ProjectCountView(generics.GenericAPIView):
             {
                 "all": self.get_queryset().filter(draft=False).count(),
                 "my": self.get_queryset()
-                .filter(
-                    Q(leader_id=request.user.id) | Q(collaborator__user=request.user)
-                )
+                .filter(Q(leader_id=request.user.id) | Q(collaborator__user=request.user))
                 .distinct()
                 .count(),
             },
@@ -313,9 +308,7 @@ class ProjectCollaborators(generics.GenericAPIView):
         return project.id, project.leader.id
 
     @staticmethod
-    def _collabs_queryset(
-        project_id: int, requested_id: int, leader_id: int
-    ) -> QuerySet:
+    def _collabs_queryset(project_id: int, requested_id: int, leader_id: int) -> QuerySet:
         return Collaborator.objects.exclude(
             user__id=leader_id
         ).get(  # чтоб случайно лидер сам себя не удалил
@@ -586,9 +579,7 @@ class DeleteProjectCollaborators(generics.GenericAPIView):
         return project.id, project.leader.id
 
     @staticmethod
-    def _collabs_queryset(
-        project_id: int, requested_id: int, leader_id: int
-    ) -> QuerySet:
+    def _collabs_queryset(project_id: int, requested_id: int, leader_id: int) -> QuerySet:
         return Collaborator.objects.exclude(
             user__id=leader_id
         ).get(  # чтоб случайно лидер сам себя не удалил
@@ -626,6 +617,7 @@ class DeleteProjectCollaborators(generics.GenericAPIView):
 class SwitchLeaderRole(generics.GenericAPIView):
     permission_classes = [IsProjectLeader]
     queryset = Project.objects.all().select_related("leader")
+    serializer_class = EmptySerializer
 
     @staticmethod
     def _get_new_leader(user_id: int, project: Project) -> Collaborator:
@@ -677,9 +669,7 @@ class DuplicateProjectView(APIView):
         data = serializer.validated_data
 
         original_project = get_object_or_404(Project, id=data["project_id"])
-        partner_program = get_object_or_404(
-            PartnerProgram, id=data["partner_program_id"]
-        )
+        partner_program = get_object_or_404(PartnerProgram, id=data["partner_program_id"])
 
         with transaction.atomic():
             new_project = Project.objects.create(
@@ -721,16 +711,46 @@ class GoalViewSet(viewsets.ModelViewSet):
     permission_classes = [IsProjectLeaderOrReadOnly]
 
     def get_queryset(self):
-        qs = super().get_queryset()
         project_pk = self.kwargs.get("project_pk")
+        qs = super().get_queryset()
         return qs.filter(project_id=project_pk) if project_pk is not None else qs
 
-    def perform_create(self, serializer):
+    def get_serializer_context(self):
+        ctx = super().get_serializer_context()
         project_pk = self.kwargs.get("project_pk")
-        if project_pk is None:
-            serializer.save()
-        else:
-            serializer.save(project_id=project_pk)
+        if project_pk and "project" not in ctx:
+            ctx["project"] = get_object_or_404(Project, pk=project_pk)
+        return ctx
+
+    @swagger_auto_schema(
+        request_body=ProjectGoalSerializer(many=True),
+        responses={201: ProjectGoalSerializer(many=True)},
+    )
+    def create(self, request, *args, **kwargs):
+        if not isinstance(request.data, list):
+            return Response(
+                {"detail": "В теле запроса должен быть массив целей."}, status=400
+            )
+        serializer = self.get_serializer(data=request.data, many=True)
+        serializer.is_valid(raise_exception=True)
+        created = serializer.save()
+        out = self.get_serializer(created, many=True)
+        return Response(out.data, status=status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        if isinstance(request.data, list):
+            return Response(
+                {"detail": "Обновление выполняется для одной цели по её ID."}, status=400
+            )
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        if isinstance(request.data, list):
+            return Response(
+                {"detail": "Частичное обновление выполняется для одной цели по её ID."},
+                status=400,
+            )
+        return super().partial_update(request, *args, **kwargs)
 
     def perform_update(self, serializer):
         serializer.save(project=self.get_object().project)
