@@ -159,7 +159,7 @@ class IsProjectLeaderOrReadOnly(BasePermission):
     Создавать/изменять/удалять может только лидер проекта.
     """
 
-    message = "Только лидер проекта может создавать, изменять или удалять цели."
+    message = "Только лидер проекта может создавать, изменять или удалять параметры."
 
     def has_permission(self, request, view):
         if request.method in SAFE_METHODS:
@@ -169,7 +169,7 @@ class IsProjectLeaderOrReadOnly(BasePermission):
             return False
 
         project_pk = view.kwargs.get("project_pk")
-        project_id = project_pk or request.data.get("project")
+        project_id = project_pk or view.kwargs.get("project_id") or request.data.get("project")
         if not project_id:
             return False
 
