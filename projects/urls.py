@@ -9,6 +9,9 @@ from projects.views import (
     GoalViewSet,
     LeaveProject,
     ProjectCollaborators,
+    ProjectCompaniesListView,
+    ProjectCompanyDetailView,
+    ProjectCompanyUpsertView,
     ProjectCountView,
     ProjectDetail,
     ProjectList,
@@ -17,6 +20,7 @@ from projects.views import (
     ProjectSubscribers,
     ProjectUnsubscribe,
     ProjectVacancyResponses,
+    ResourceViewSet,
     SetLikeOnProject,
     SwitchLeaderRole,
 )
@@ -37,6 +41,21 @@ project_goal_detail = GoalViewSet.as_view(
         "delete": "destroy",
     }
 )
+project_resource_list = ResourceViewSet.as_view(
+    {
+        "get": "list",
+        "post": "create",
+    }
+)
+
+project_resource_detail = ResourceViewSet.as_view(
+    {
+        "get": "retrieve",
+        "put": "update",
+        "patch": "partial_update",
+        "delete": "destroy",
+    }
+)
 urlpatterns = [
     path("", ProjectList.as_view()),
     path("<int:pk>/like/", SetLikeOnProject.as_view()),
@@ -45,6 +64,31 @@ urlpatterns = [
     path("<int:project_pk>/unsubscribe/", ProjectUnsubscribe.as_view()),
     path("<int:project_pk>/subscribers/", ProjectSubscribers.as_view()),
     path("<int:project_pk>/goals/", project_goal_list, name="project-goals"),
+    path(
+        "<int:project_pk>/resources/",
+        project_resource_list,
+        name="project-resources",
+    ),
+    path(
+        "<int:project_pk>/resources/<int:pk>/",
+        project_resource_detail,
+        name="project-resource-detail",
+    ),
+    path(
+        "<int:project_id>/companies/",
+        ProjectCompanyUpsertView.as_view(),
+        name="project-company-upsert",
+    ),
+    path(
+        "<int:project_id>/companies/<int:company_id>/",
+        ProjectCompanyDetailView.as_view(),
+        name="project-company-detail",
+    ),
+    path(
+        "<int:project_id>/companies/list/",
+        ProjectCompaniesListView.as_view(),
+        name="project-companies-list",
+    ),
     path(
         "<int:project_pk>/goals/<int:pk>/",
         project_goal_detail,
