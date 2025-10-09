@@ -943,9 +943,7 @@ class ProjectCompanyDetailView(APIView):
             return link_or_resp
         link = link_or_resp
 
-        perm_resp = self._check_permissions(request, project)
-        if perm_resp:
-            return perm_resp
+        self.check_object_permissions(request, link)
 
         serializer = ProjectCompanyUpdateSerializer(
             link, data=request.data, partial=True, context={"request": request}
@@ -988,9 +986,8 @@ class ProjectCompanyDetailView(APIView):
             return link_or_resp
         link = link_or_resp
 
-        perm_resp = self._check_permissions(request, project)
-        if perm_resp:
-            return perm_resp
+        # объектная проверка прав
+        self.check_object_permissions(request, link)
 
         link.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
