@@ -3,12 +3,15 @@ from django.contrib import admin
 from projects.models import (
     Achievement,
     Collaborator,
+    Company,
     DefaultProjectAvatar,
     DefaultProjectCover,
     Project,
+    ProjectCompany,
     ProjectGoal,
     ProjectLink,
     ProjectNews,
+    Resource,
 )
 
 
@@ -18,6 +21,31 @@ class ProjectGoalInline(admin.TabularInline):
     fields = ("title", "completion_date", "responsible", "is_done")
     show_change_link = True
     autocomplete_fields = ("responsible",)
+
+
+class ProjectCompanyInline(admin.TabularInline):
+    model = ProjectCompany
+    extra = 1
+    autocomplete_fields = ("company", "decision_maker")
+    fields = ("company", "contribution", "decision_maker")
+    verbose_name = "Партнёр проекта"
+    verbose_name_plural = "Партнёры проекта"
+
+
+class ResourceInline(admin.StackedInline):
+    model = Resource
+    extra = 0
+    fields = ("type", "description", "partner_company")
+    show_change_link = True
+    verbose_name = "Ресурс"
+    verbose_name_plural = "Ресурсы"
+
+    def get_formset(self, request, obj=None, **kwargs):
+        formset = super().get_formset(request, obj, **kwargs)
+        if obj is not None:
+            qs = obj.companies.all()
+            formset.form.base_fields["partner_company"].queryset = qs
+        return formset
 
 
 @admin.register(Project)
@@ -85,7 +113,28 @@ class ProjectAdmin(admin.ModelAdmin):
         ),
     )
     readonly_fields = ("datetime_created", "datetime_updated")
-    inlines = [ProjectGoalInline]
+    inlines = [ProjectGoalInline, ProjectCompanyInline, ResourceInline]
+
+
+@admin.register(Company)
+class CompanyAdmin(admin.ModelAdmin):
+    list_display = ("id", "name", "inn")
+    list_display_links = ("id", "name")
+    search_fields = ("name", "inn")
+    list_filter = ()
+    ordering = ("name",)
+    readonly_fields = ()
+    fieldsets = (
+        (
+            "Компания",
+            {
+                "fields": (
+                    "name",
+                    "inn",
+                )
+            },
+        ),
+    )
 
 
 @admin.register(ProjectGoal)

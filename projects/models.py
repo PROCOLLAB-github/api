@@ -16,6 +16,7 @@ from core.models import Like, View
 from files.models import UserFile
 from industries.models import Industry
 from projects.managers import AchievementManager, CollaboratorManager, ProjectManager
+from projects.validators import inn_validator
 from users.models import CustomUser
 
 User = get_user_model()
@@ -168,6 +169,12 @@ class Project(models.Model):
 
     subscribers = models.ManyToManyField(
         User, verbose_name="Подписчики", related_name="subscribed_projects"
+    )
+
+    companies = models.ManyToManyField(
+        "Company",
+        through="ProjectCompany",
+        related_name="projects",
     )
 
     datetime_created = models.DateTimeField(
@@ -426,3 +433,114 @@ class ProjectGoal(models.Model):
     class Meta:
         verbose_name = "Цель"
         verbose_name_plural = "Цели"
+
+
+class Company(models.Model):
+    name = models.CharField(max_length=255)
+    inn = models.CharField(max_length=12, unique=True, validators=[inn_validator])
+
+    class Meta:
+        verbose_name = "Компания"
+        verbose_name_plural = "Компании"
+        ordering = ["name"]
+
+    def __str__(self):
+        return f"{self.name} ({self.inn})"
+
+
+class ProjectCompany(models.Model):
+    project = models.ForeignKey(
+        "projects.Project",
+        on_delete=models.CASCADE,
+        related_name="project_companies",
+    )
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.CASCADE,
+        related_name="project_links",
+    )
+    contribution = models.TextField(blank=True)
+    decision_maker = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="partner_decisions",
+    )
+
+    class Meta:
+        verbose_name = "Связь проекта и компании"
+        verbose_name_plural = "Связи проекта и компании"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["project", "company"],
+                name="uq_project_company_unique_pair",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.project} - {self.company}"
+
+
+class Resource(models.Model):
+    class ResourceType(models.TextChoices):
+        INFRASTRUCTURE = "infrastructure", "Инфраструктурный"
+        STAFF = "staff", "Кадровый"
+        FINANCIAL = "financial", "Финансовый"
+        INFORMATION = "information", "Информационный"
+
+    project = models.ForeignKey(
+        "projects.Project",
+        on_delete=models.CASCADE,
+        related_name="resources",
+    )
+    type = models.CharField(
+        max_length=32,
+        choices=ResourceType.choices,
+    )
+    description = models.TextField()
+
+    partner_company = models.ForeignKey(
+        Company,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="resources",
+        help_text="Если не указано — ресурс в поиске партнёра.",
+    )
+
+    class Meta:
+        verbose_name = "Ресурс"
+        verbose_name_plural = "Ресурсы"
+        ordering = ["project", "type", "id"]
+
+    def __str__(self):
+        base = f"{self.get_type_display()} ресурс для {self.project}"
+        return f"{base} — {self.partner_display}"
+
+    @property
+    def partner_display(self):
+        return (
+            self.partner_company.name
+            if self.partner_company
+            else "в поиске партнёра для данного ресурса"
+        )
+
+    def clean(self):
+        """
+        Проверяет, что выбранная partner_company действительно является партнёром проекта.
+        """
+        super().clean()
+        if self.partner_company:
+            exists = ProjectCompany.objects.filter(
+                project=self.project, company=self.partner_company
+            ).exists()
+            if not exists:
+                raise ValidationError(
+                    {
+                        "partner_company": (
+                            "Эта компания не является партнёром данного проекта. "
+                            "Сначала добавьте её в партнёры проекта."
+                        )
+                    }
+                )

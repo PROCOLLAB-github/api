@@ -2,6 +2,7 @@ from urllib.parse import urlparse
 
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
+from django.db import transaction
 from rest_framework import serializers
 
 from core.serializers import SkillToObjectSerializer
@@ -19,7 +20,16 @@ from partner_programs.serializers import (
     PartnerProgramFieldSerializer,
     PartnerProgramFieldValueSerializer,
 )
-from projects.models import Achievement, Collaborator, Project, ProjectGoal, ProjectNews
+from projects.models import (
+    Achievement,
+    Collaborator,
+    Company,
+    Project,
+    ProjectCompany,
+    ProjectGoal,
+    ProjectNews,
+    Resource,
+)
 from projects.validators import validate_project
 from vacancy.serializers import ProjectVacancyListSerializer
 
@@ -494,9 +504,7 @@ class PartnerProgramFieldValueUpdateSerializer(serializers.Serializer):
                 )
         else:
             if value is not None and not isinstance(value, str):
-                raise serializers.ValidationError(
-                    "Ожидается строка для текстового поля."
-                )
+                raise serializers.ValidationError("Ожидается строка для текстового поля.")
 
     def _validate_checkbox(self, field, value, attrs):
         if field.is_required and value in (None, ""):
@@ -575,3 +583,126 @@ class PartnerProgramFieldValueUpdateSerializer(serializers.Serializer):
             return parsed.scheme in ("http", "https") and bool(parsed.netloc)
         except Exception:
             return False
+
+
+class CompanySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Company
+        fields = ("id", "name", "inn")
+        read_only_fields = ("id",)
+
+
+class ProjectCompanySerializer(serializers.ModelSerializer):
+    company = CompanySerializer()
+    project = serializers.PrimaryKeyRelatedField(read_only=True)
+    decision_maker = serializers.PrimaryKeyRelatedField(read_only=True)
+
+    class Meta:
+        model = ProjectCompany
+        fields = ("id", "project", "company", "contribution", "decision_maker")
+
+
+class ResourceSerializer(serializers.ModelSerializer):
+    project_id = serializers.PrimaryKeyRelatedField(
+        source="project", queryset=Project.objects.all(), write_only=True
+    )
+
+    class Meta:
+        model = Resource
+        fields = (
+            "id",
+            "project_id",
+            "project",
+            "type",
+            "description",
+            "partner_company",
+        )
+        read_only_fields = ("id", "project")
+
+    def validate(self, attrs):
+        project = attrs.get("project", getattr(self.instance, "project", None))
+        partner_company = attrs.get(
+            "partner_company", getattr(self.instance, "partner_company", None)
+        )
+        if project and partner_company:
+            exists = ProjectCompany.objects.filter(
+                project=project, company=partner_company
+            ).exists()
+            if not exists:
+                raise serializers.ValidationError(
+                    {
+                        "partner_company": "Эта компания не является партнёром данного проекта."
+                    }
+                )
+        return attrs
+
+    def create(self, validated_data):
+        obj = Resource(**validated_data)
+        obj.full_clean()
+        obj.save()
+        return obj
+
+    def update(self, instance, validated_data):
+        for key, value in validated_data.items():
+            setattr(instance, key, value)
+        instance.full_clean()
+        instance.save()
+        return instance
+
+
+class ProjectCompanyUpsertSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=255)
+    inn = serializers.RegexField(regex=r"^\d{10}(\d{2})?$")
+
+    contribution = serializers.CharField(allow_blank=True, required=False, default="")
+    decision_maker = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(), allow_null=True, required=False, default=None
+    )
+
+    def validate(self, attrs):
+        return attrs
+
+    @transaction.atomic
+    def create(self, validated_data):
+        project = self.context["project"]
+        name = validated_data["name"].strip()
+        inn = validated_data["inn"]
+        contribution = validated_data.get("contribution", "")
+        decision_maker = validated_data.get("decision_maker", None)
+
+        company, _ = Company.objects.get_or_create(
+            inn=inn,
+            defaults={"name": name},
+        )
+
+        link, created = ProjectCompany.objects.get_or_create(
+            project=project,
+            company=company,
+            defaults={"contribution": contribution, "decision_maker": decision_maker},
+        )
+        if not created:
+            updated = False
+            if "contribution" in self.initial_data:
+                link.contribution = contribution
+                updated = True
+            if "decision_maker" in self.initial_data:
+                link.decision_maker = decision_maker
+                updated = True
+            if updated:
+                link.save()
+
+        return link
+
+    def to_representation(self, instance: ProjectCompany):
+        return ProjectCompanySerializer(instance).data
+
+
+class ProjectCompanyUpdateSerializer(serializers.ModelSerializer):
+    contribution = serializers.CharField(allow_blank=True, required=False)
+    decision_maker = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(), allow_null=True, required=False
+    )
+
+    class Meta:
+        model = ProjectCompany
+        fields = ("contribution", "decision_maker")
