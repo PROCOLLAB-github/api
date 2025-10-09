@@ -594,17 +594,20 @@ class CompanySerializer(serializers.ModelSerializer):
 
 class ProjectCompanySerializer(serializers.ModelSerializer):
     company = CompanySerializer()
-    project = serializers.PrimaryKeyRelatedField(read_only=True)
+    project_id = serializers.IntegerField(read_only=True)
     decision_maker = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
         model = ProjectCompany
-        fields = ("id", "project", "company", "contribution", "decision_maker")
+        fields = ("id", "project_id", "company", "contribution", "decision_maker")
 
 
 class ResourceSerializer(serializers.ModelSerializer):
-    project_id = serializers.PrimaryKeyRelatedField(
-        source="project", queryset=Project.objects.all(), write_only=True
+    project_id = serializers.IntegerField(read_only=True)
+    project = serializers.PrimaryKeyRelatedField(
+        queryset=Project.objects.all(),
+        write_only=True,
+        required=False,
     )
 
     class Meta:
