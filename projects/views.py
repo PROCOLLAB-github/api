@@ -986,7 +986,6 @@ class ProjectCompanyDetailView(APIView):
             return link_or_resp
         link = link_or_resp
 
-        # объектная проверка прав
         self.check_object_permissions(request, link)
 
         link.delete()
