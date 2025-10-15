@@ -80,9 +80,7 @@ class PartnerProgramForMemberSerializer(PartnerProgramBaseSerializerMixin):
 
     views_count = serializers.SerializerMethodField(method_name="count_views")
     links = serializers.SerializerMethodField(method_name="get_links")
-    is_user_manager = serializers.SerializerMethodField(
-        method_name="get_is_user_manager"
-    )
+    is_user_manager = serializers.SerializerMethodField(method_name="get_is_user_manager")
 
     def count_views(self, program):
         return get_views_count(program)
