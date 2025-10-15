@@ -13,8 +13,8 @@ services:
       - .env
     environment:
       HOST: 0.0.0.0
-    expose:
-      - 8000
+    ports:
+      - 8000:8000
 
   grafana:
     image: grafana/grafana:latest
@@ -37,13 +37,13 @@ services:
       - prom-data:/prometheus
       - ./prometheus:/etc/prometheus
 
-  nginx:
-    restart: unless-stopped
-    build: ./nginx
-    depends_on:
-      - web
-    ports:
-      - 8000:80
+  #nginx:
+  #  restart: unless-stopped
+  #  build: ./nginx
+  #  depends_on:
+  #    - web
+  #  ports:
+  #    - 8000:80
 
   loki:
     image: grafana/loki:2.9.0
