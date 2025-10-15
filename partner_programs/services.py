@@ -152,12 +152,9 @@ def sanitize_excel_value(value):
         return value
 
     text = str(value)
-    # нормализуем переносы (на всякий случай)
     text = text.replace("\r\n", "\n").replace("\r", "\n")
-    # выкидываем запрещённые символы (в т.ч. \x0B)
     text = ILLEGAL_CHARACTERS_RE.sub(" ", text)
 
-    # Excel не примет строки длиннее 32767
     if len(text) > EXCEL_CELL_MAX:
         text = text[: EXCEL_CELL_MAX - 3] + "..."
 
