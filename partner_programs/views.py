@@ -45,6 +45,7 @@ from partner_programs.services import (
     BASE_COLUMNS,
     build_program_field_columns,
     row_dict_for_link,
+    sanitize_excel_value,
 )
 from partner_programs.utils import filter_program_projects_by_field_name
 from projects.models import Project
@@ -518,7 +519,9 @@ class PartnerProgramExportProjectsAPIView(APIView):
                 extra_field_keys_order=extra_keys_order,
                 row_number=row_number,
             )
-            ws.append([row_dict.get(key, "") for key, _ in header_pairs])
+            raw_values = [row_dict.get(key, "") for key, _ in header_pairs]
+            safe_values = [sanitize_excel_value(v) for v in raw_values]
+            ws.append(safe_values)
 
         bio = io.BytesIO()
         wb.save(bio)
