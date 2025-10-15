@@ -1,4 +1,5 @@
 import logging
+from collections import OrderedDict
 
 from partner_programs.models import PartnerProgramUserProfile
 from project_rates.models import Criteria, ProjectScore
@@ -120,3 +121,88 @@ class ProjectScoreDataPreparer:
                     partner_program__id=self._program_id
                 )
             }
+
+
+BASE_COLUMNS = [
+    ("row_number", "№ п/п"),
+    ("project_name", "Название проекта"),
+    ("project_description", "Описание проекта"),
+    ("project_region", "Регион проекта"),
+    ("project_presentation", "Ссылка на презентацию"),
+    ("team_size", "Количество человек в команде"),
+    ("leader_full_name", "Имя фамилия лидера"),
+]
+
+
+def _leader_full_name(user):
+    if not user:
+        return ""
+    if hasattr(user, "get_full_name") and callable(user.get_full_name):
+        full = user.get_full_name()
+        if full:
+            return full
+    first = getattr(user, "first_name", "") or ""
+    last = getattr(user, "last_name", "") or ""
+    return (first + " " + last).strip() or getattr(user, "username", "") or str(user.pk)
+
+
+def _calc_team_size(project):
+    try:
+        if hasattr(project, "get_collaborators_user_list"):
+            return 1 + len(project.get_collaborators_user_list())
+        if hasattr(project, "collaborator_set"):
+            return 1 + project.collaborator_set.count()
+    except Exception:
+        pass
+    return 1
+
+
+def build_program_field_columns(program) -> list[tuple[str, str]]:
+    program_fields = program.fields.all().order_by("pk")
+    return [
+        (f"name:{program_field.name}", program_field.label)
+        for program_field in program_fields
+    ]
+
+
+def row_dict_for_link(
+    program_project_link,
+    extra_field_keys_order: list[str],
+    row_number: int,
+) -> OrderedDict:
+    """
+    program_project_link: PartnerProgramProject
+    extra_field_keys_order: список псевдоключей "name:<field.name>" в нужном порядке
+    row_number: порядковый номер строки в Excel (начиная с 1)
+    """
+    project = program_project_link.project
+    row = OrderedDict()
+
+    row["row_number"] = row_number
+
+    row["project_name"] = project.name or ""
+    row["project_description"] = project.description or ""
+    row["project_region"] = project.region or ""
+    row["project_presentation"] = project.presentation_address or ""
+    row["team_size"] = _calc_team_size(project)
+    row["leader_full_name"] = _leader_full_name(getattr(project, "leader", None))
+
+    values_map: dict[str, str] = {}
+    prefetched_values = getattr(program_project_link, "_prefetched_field_values", None)
+    field_values_iterable = (
+        prefetched_values
+        if prefetched_values is not None
+        else program_project_link.field_values.all()
+    )
+
+    for field_value in field_values_iterable:
+        if (
+            field_value.field.partner_program_id
+            == program_project_link.partner_program_id
+        ):
+            values_map[f"name:{field_value.field.name}"] = field_value.get_value()
+
+    for field_key in extra_field_keys_order:
+        row[field_key] = values_map.get(field_key, "")
+
+    return row
