@@ -1,10 +1,17 @@
+import io
+import unicodedata
+from datetime import date
+
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
+from django.db.models import Prefetch
+from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.timezone import now
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
+from openpyxl import Workbook
 from rest_framework import generics, permissions, status
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.generics import GenericAPIView
@@ -34,16 +41,19 @@ from partner_programs.serializers import (
     PartnerProgramUserSerializer,
     ProgramProjectFilterRequestSerializer,
 )
+from partner_programs.services import (
+    BASE_COLUMNS,
+    build_program_field_columns,
+    row_dict_for_link,
+    sanitize_excel_value,
+)
 from partner_programs.utils import filter_program_projects_by_field_name
 from projects.models import Project
 from projects.serializers import (
     PartnerProgramFieldValueUpdateSerializer,
     ProjectListSerializer,
 )
-from vacancy.mapping import (
-    MessageTypeEnum,
-    UserProgramRegisterParams,
-)
+from vacancy.mapping import MessageTypeEnum, UserProgramRegisterParams
 from vacancy.tasks import send_email
 
 User = get_user_model()
@@ -255,9 +265,7 @@ class PartnerProgramFieldValueBulkUpdateView(APIView):
         except Project.DoesNotExist:
             raise NotFound("Проект не найден")
 
-    @swagger_auto_schema(
-        request_body=PartnerProgramFieldValueUpdateSerializer(many=True)
-    )
+    @swagger_auto_schema(request_body=PartnerProgramFieldValueUpdateSerializer(many=True))
     def put(self, request, project_id, *args, **kwargs):
         project = self.get_project(project_id)
 
@@ -439,3 +447,94 @@ class PartnerProgramProjectsAPIView(generics.ListAPIView):
     def get_queryset(self):
         program = get_object_or_404(PartnerProgram, pk=self.kwargs["pk"])
         return Project.objects.filter(program_links__partner_program=program).distinct()
+
+
+def _slugify_filename(filename: str) -> str:
+    """
+    Преобразует произвольную строку в безопасное имя файла:
+    - нормализует Unicode;
+    - оставляет только буквы, цифры, дефисы, подчёркивания и пробелы;
+    - заменяет группы пробелов на один дефис.
+    """
+    normalized_name = unicodedata.normalize("NFKD", filename)
+    safe_chars = [
+        char for char in normalized_name if char.isalnum() or char in ("-", "_", " ")
+    ]
+    cleaned_name = "".join(safe_chars)
+    return "-".join(cleaned_name.split())
+
+
+class PartnerProgramExportProjectsAPIView(APIView):
+    """Возвращает Excel-файл со всеми проектами программы."""
+
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request, pk: int):
+        try:
+            program = PartnerProgram.objects.get(pk=pk)
+        except PartnerProgram.DoesNotExist:
+            return Response(
+                {"detail": "Программа не найдена."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        user = request.user
+        if not (
+            getattr(user, "is_staff", False)
+            or getattr(user, "is_superuser", False)
+            or program.is_manager(user)
+        ):
+            return Response(
+                {"detail": "Недостаточно прав."}, status=status.HTTP_403_FORBIDDEN
+            )
+
+        only_submitted = request.query_params.get("only_submitted") in (
+            "1",
+            "true",
+            "True",
+        )
+
+        extra_cols = build_program_field_columns(program)
+        header_pairs = BASE_COLUMNS + extra_cols
+
+        fv_qs = PartnerProgramFieldValue.objects.select_related("field").filter(
+            field__partner_program_id=program.id
+        )
+        links_qs = program.program_projects.select_related(
+            "project", "project__leader"
+        ).prefetch_related(
+            Prefetch("field_values", queryset=fv_qs, to_attr="_prefetched_field_values")
+        )
+        if only_submitted:
+            links_qs = links_qs.filter(submitted=True)
+
+        wb = Workbook(write_only=True)
+        ws = wb.create_sheet(title="Проекты")
+        ws.append([title for _, title in header_pairs])
+
+        extra_keys_order = [key for key, _ in extra_cols]
+
+        for row_number, program_project_link in enumerate(links_qs, start=1):
+            row_dict = row_dict_for_link(
+                program_project_link=program_project_link,
+                extra_field_keys_order=extra_keys_order,
+                row_number=row_number,
+            )
+            raw_values = [row_dict.get(key, "") for key, _ in header_pairs]
+            safe_values = [sanitize_excel_value(v) for v in raw_values]
+            ws.append(safe_values)
+
+        bio = io.BytesIO()
+        wb.save(bio)
+        bio.seek(0)
+
+        fname_base = _slugify_filename(
+            f"{program.name or 'program'}-{program.pk}-projects-{date.today():%Y-%m-%d}"
+        )
+        filename = f"{fname_base}.xlsx"
+
+        return FileResponse(
+            bio,
+            as_attachment=True,
+            filename=filename,
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )

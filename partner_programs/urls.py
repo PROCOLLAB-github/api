@@ -5,6 +5,7 @@ from partner_programs.views import (
     PartnerProgramCreateUserAndRegister,
     PartnerProgramDataSchema,
     PartnerProgramDetail,
+    PartnerProgramExportProjectsAPIView,
     PartnerProgramList,
     PartnerProgramProjectsAPIView,
     PartnerProgramProjectSubmitView,
@@ -49,5 +50,10 @@ urlpatterns = [
         "<int:pk>/projects/",
         PartnerProgramProjectsAPIView.as_view(),
         name="partner-program-projects",
+    ),
+    path(
+        "<int:pk>/export-projects/",
+        PartnerProgramExportProjectsAPIView.as_view(),
+        name="partner-program-export-projects",
     ),
 ]
