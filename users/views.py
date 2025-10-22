@@ -48,11 +48,7 @@ from users.constants import (
     VERIFY_EMAIL_REDIRECT_URL,
     OnboardingStage,
 )
-from users.helpers import (
-    check_related_fields_update,
-    force_verify_user,
-    verify_email,
-)
+from users.helpers import check_related_fields_update, force_verify_user, verify_email
 from users.models import LikesOnProject, UserAchievement, UserSkillConfirmation
 from users.permissions import IsAchievementOwnerOrReadOnly
 from users.serializers import (
@@ -111,9 +107,7 @@ class UserList(ListCreateAPIView):
 
         verify_email(user, request)
 
-        return Response(
-            serializer.data, status=status.HTTP_201_CREATED, headers=headers
-        )
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
 class LikedProjectList(ListAPIView):
@@ -314,9 +308,7 @@ class VerifyEmail(GenericAPIView):
         token = request.GET.get("token")
 
         try:
-            payload = jwt.decode(
-                jwt=token, key=settings.SECRET_KEY, algorithms=["HS256"]
-            )
+            payload = jwt.decode(jwt=token, key=settings.SECRET_KEY, algorithms=["HS256"])
             user = User.objects.get(id=payload["user_id"])
             access_token = RefreshToken.for_user(user).access_token
             refresh_token = RefreshToken.for_user(user)
@@ -346,34 +338,56 @@ class VerifyEmail(GenericAPIView):
 
 
 class AchievementList(ListCreateAPIView):
+    """
+    GET /api/users/achievements/
+    POST /api/users/achievements/
+    """
+
     queryset = UserAchievement.objects.get_achievements_for_list_view()
-    serializer_class = AchievementListSerializer
-    permission_classes = [IsAchievementOwnerOrReadOnly]
+
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [permissions.IsAuthenticated()]
+        return [permissions.AllowAny()]
+
+    def get_serializer_class(self):
+        return (
+            AchievementListSerializer
+            if self.request.method == "GET"
+            else AchievementDetailSerializer
+        )
 
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.validated_data["user"] = request.user
-        # warning for someone who tries to set user variable (the user will always be yourself anyway)
-        if (
-            request.data.get("user") is not None
-            and request.data.get("user") != request.user.id
-        ):
+        if not request.user.is_authenticated:
             return Response(
-                {
-                    "error": "you can't edit USER field for this view since "
-                    "you can't create achievements for other people"
-                },
+                {"detail": "Authentication required."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        serializer = AchievementDetailSerializer(
+            data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+
+        if request.data.get("user") and request.data.get("user") != request.user.id:
+            return Response(
+                {"error": "Нельзя создавать достижения для другого пользователя."},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        return Response(
-            serializer.data, status=status.HTTP_201_CREATED, headers=headers
-        )
+
+        achievement = serializer.save(user=request.user)
+        out = AchievementDetailSerializer(achievement, context={"request": request})
+        headers = self.get_success_headers(out.data)
+        return Response(out.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
 class AchievementDetail(RetrieveUpdateDestroyAPIView):
+    """
+    GET /api/users/achievements/{id}/
+    PATCH/PUT /api/users/achievements/{id}/
+    DELETE /api/users/achievements/{id}/
+    """
+
     queryset = UserAchievement.objects.get_achievements_for_detail_view()
     serializer_class = AchievementDetailSerializer
     permission_classes = [IsAchievementOwnerOrReadOnly]
@@ -506,6 +520,9 @@ class UserSubscribedProjectsList(ListAPIView):
     pagination_class = Pagination
 
     def get_queryset(self):
+        if "pk" not in self.kwargs:
+            return Project.objects.none()
+
         try:
             user = User.objects.get(pk=self.kwargs["pk"])
             return user.subscribed_projects.all()

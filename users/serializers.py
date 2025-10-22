@@ -14,6 +14,7 @@ from core.models import Skill, SkillToObject, Specialization, SpecializationCate
 from core.serializers import SkillToObjectSerializer
 from core.services import get_views_count
 from core.utils import get_user_online_cache_key
+from files.models import UserFile
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 from projects.models import Collaborator, Project
 from projects.validators import validate_project
@@ -25,6 +26,7 @@ from users.models import (
     Member,
     Mentor,
     UserAchievement,
+    UserAchievementFile,
     UserEducation,
     UserLanguages,
     UserSkillConfirmation,
@@ -34,11 +36,62 @@ from users.utils import normalize_user_phone
 from users.validators import specialization_exists_validator
 
 
-class AchievementListSerializer(serializers.ModelSerializer[UserAchievement]):
+class AchievementListSerializer(serializers.ModelSerializer):
+    year = serializers.IntegerField(required=False, allow_null=True)
+    files = serializers.SerializerMethodField()
+
     class Meta:
         model = UserAchievement
-        fields = ["id", "title", "status"]
-        ref_name = "Users"
+        fields = ["id", "title", "status", "year", "files"]
+
+    def get_files(self, obj):
+        uafs = obj.files.all()
+        return [UserFileReadSerializer(uf.file).data for uf in uafs if uf.file]
+
+
+class UserFileReadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserFile
+        fields = ("link", "name", "extension", "mime_type", "size")
+
+
+class AchievementFileReadSerializer(serializers.ModelSerializer):
+    file = UserFileReadSerializer()
+
+    class Meta:
+        model = UserAchievementFile
+        fields = ("file",)
+
+
+class FilesWriteField(serializers.ListField):
+    """
+    Принимает список ссылок (UserFile.link — первичный ключ).
+    Проверяет существование и владельца (user не NULL и совпадает с request.user).
+    """
+
+    child = serializers.URLField()
+
+    def to_internal_value(self, data):
+        values = super().to_internal_value(data)
+        request = self.context.get("request")
+        qs = UserFile.objects.filter(link__in=values)
+        files_by_link = {uf.link: uf for uf in qs}
+
+        missing = [v for v in values if v not in files_by_link]
+        if missing:
+            raise serializers.ValidationError(f"Файлы не найдены: {missing}")
+
+        if request and request.user.is_authenticated:
+            wrong_owner = []
+            for uf in files_by_link.values():
+                if uf.user_id is None or uf.user_id != request.user.id:
+                    wrong_owner.append(uf.link)
+            if wrong_owner:
+                raise serializers.ValidationError(
+                    f"Нельзя привязать файлы: нет владельца или владелец другой ({wrong_owner})"
+                )
+
+        return list(files_by_link.values())
 
 
 class CustomListField(serializers.ListField):
@@ -47,9 +100,7 @@ class CustomListField(serializers.ListField):
         if isinstance(data, list):
             return data
         return [
-            i.replace("'", "")
-            for i in data.strip("][").split(",")
-            if i.replace("'", "")
+            i.replace("'", "") for i in data.strip("][").split(",") if i.replace("'", "")
         ]
 
 
@@ -151,9 +202,7 @@ class UserSkillConfirmationSerializer(serializers.ModelSerializer):
         """Returns correct data about user in `confirmed_by`."""
         data = super().to_representation(instance)
         data.pop("skill_to_object", None)
-        data["confirmed_by"] = UserDataConfirmationSerializer(
-            instance.confirmed_by
-        ).data
+        data["confirmed_by"] = UserDataConfirmationSerializer(instance.confirmed_by).data
         return data
 
 
@@ -528,10 +577,7 @@ class UserDetailSerializer(
             if attr in IMMUTABLE_FIELDS + USER_TYPE_FIELDS + RELATED_FIELDS:
                 continue
             if attr == "user_type":
-                if (
-                    value == instance.user_type
-                    or value not in user_types_to_attr.keys()
-                ):
+                if value == instance.user_type or value not in user_types_to_attr.keys():
                     continue
                 # we can't change user type to Member
                 if value == CustomUser.MEMBER:
@@ -827,16 +873,68 @@ class UserFeedSerializer(serializers.ModelSerializer, SkillsSerializerMixin):
         ]
 
 
-class AchievementDetailSerializer(serializers.ModelSerializer[UserAchievement]):
+class AchievementDetailSerializer(serializers.ModelSerializer):
+    files = AchievementFileReadSerializer(many=True, read_only=True)
+    files_links = FilesWriteField(write_only=True, required=False)
+    user = serializers.PrimaryKeyRelatedField(read_only=True)
+
     class Meta:
         model = UserAchievement
-        fields = [
-            "id",
-            "title",
-            "status",
-            "user",
-        ]
-        ref_name = "Users"
+        fields = ["id", "title", "status", "year", "user", "files", "files_links"]
+
+    def validate_year(self, value):
+        import datetime
+
+        if value is None:
+            return value
+        cur = datetime.date.today().year
+        if value < 1900 or value > cur:
+            raise serializers.ValidationError("Год вне допустимого диапазона.")
+        return value
+
+    @transaction.atomic
+    def _sync_files(self, achievement: UserAchievement, files: list[UserFile]):
+        """
+        Синхронизируем связи через link (PK у UserFile).
+        clean() на UserAchievementFile проверит size/extension и владельца ещё раз.
+        """
+        current_links = set(
+            UserAchievementFile.objects.filter(achievement=achievement).values_list(
+                "file_id", flat=True
+            )
+        )
+        target_links = set(f.link for f in files)
+
+        to_add = target_links - current_links
+        to_remove = current_links - target_links
+
+        if to_remove:
+            UserAchievementFile.objects.filter(
+                achievement=achievement, file_id__in=to_remove
+            ).delete()
+
+        for link in to_add:
+            rel = UserAchievementFile(achievement=achievement, file_id=link)
+            rel.clean()
+            rel.save()
+
+    @transaction.atomic
+    def create(self, validated_data):
+        files = validated_data.pop("files_links", [])
+        achievement = UserAchievement.objects.create(**validated_data)
+        if files:
+            self._sync_files(achievement, files)
+        return achievement
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        files = validated_data.pop("files_links", None)
+        for attr, val in validated_data.items():
+            setattr(instance, attr, val)
+        instance.save()
+        if files is not None:
+            self._sync_files(instance, files)
+        return instance
 
 
 class EmailSerializer(serializers.Serializer):
