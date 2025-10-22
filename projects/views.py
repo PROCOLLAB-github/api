@@ -51,11 +51,11 @@ from projects.permissions import (
     IsProjectLeaderOrReadOnlyForNonDrafts,
     TimingAfterEndsProgramPermission,
 )
+from core.serializers import EmptySerializer
 from projects.serializers import (
     AchievementDetailSerializer,
     AchievementListSerializer,
     CompanySerializer,
-    EmptySerializer,
     ProjectCollaboratorSerializer,
     ProjectCompanySerializer,
     ProjectCompanyUpdateSerializer,

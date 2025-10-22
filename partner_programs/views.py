@@ -19,7 +19,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.serializers import SetLikedSerializer, SetViewedSerializer
+from core.serializers import EmptySerializer, SetLikedSerializer, SetViewedSerializer
 from core.services import add_view, set_like
 from partner_programs.helpers import date_to_iso
 from partner_programs.models import (
@@ -69,6 +69,7 @@ class PartnerProgramList(generics.ListCreateAPIView):
 class PartnerProgramDetail(generics.RetrieveAPIView):
     queryset = PartnerProgram.objects.prefetch_related("materials", "managers").all()
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    serializer_class = PartnerProgramForUnregisteredUserSerializer
 
     def get(self, request, *args, **kwargs):
         program = self.get_object()
@@ -320,7 +321,7 @@ class PartnerProgramFieldValueBulkUpdateView(APIView):
 
 class PartnerProgramProjectSubmitView(GenericAPIView):
     permission_classes = [IsAuthenticated, IsProjectLeader]
-    serializer_class = None
+    serializer_class = EmptySerializer
     queryset = PartnerProgramProject.objects.all()
 
     @swagger_auto_schema(
@@ -375,6 +376,7 @@ class ProgramProjectFilterAPIView(GenericAPIView):
     serializer_class = ProgramProjectFilterRequestSerializer
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = PartnerProgramPagination
+    queryset = PartnerProgram.objects.none()
 
     def post(self, request, pk):
         serializer = self.get_serializer(data=request.data)
@@ -445,6 +447,9 @@ class PartnerProgramProjectsAPIView(generics.ListAPIView):
     pagination_class = PartnerProgramPagination
 
     def get_queryset(self):
+        if "pk" not in self.kwargs:
+            return Project.objects.none()
+
         program = get_object_or_404(PartnerProgram, pk=self.kwargs["pk"])
         return Project.objects.filter(program_links__partner_program=program).distinct()
 

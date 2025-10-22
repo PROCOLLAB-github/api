@@ -8,11 +8,13 @@ from django.contrib.auth.models import Permission
 from django.http import HttpResponse
 from django.shortcuts import redirect
 from django.urls import path
+from django.utils.html import format_html
 from django.utils.timezone import now
 
 from core.admin import SkillToObjectInline
 from core.utils import XlsxFileToExport
 from mailing.views import MailingTemplateRender
+from users.models import UserAchievementFile
 from users.services.users_activity import UserActivityDataPreparer
 
 from .helpers import force_verify_user, send_verification_completed_email
@@ -377,9 +379,30 @@ class CustomUserAdmin(admin.ModelAdmin):
         return response
 
 
+class UserAchievementFileInline(admin.TabularInline):
+    model = UserAchievementFile
+    extra = 0
+    autocomplete_fields = ("file",)
+
+
 @admin.register(UserAchievement)
 class UserAchievementAdmin(admin.ModelAdmin):
-    list_display = ("id", "title", "status", "user")
+    list_display = ("id", "title", "status", "user", "year", "file_link")
+    list_filter = ("year",)
+    search_fields = ("title", "status", "user__email", "user__username")
+    inlines = [UserAchievementFileInline]
+
+    def file_link(self, obj):
+        uf = obj.files.select_related("file").first()
+        if uf and uf.file and uf.file.link:
+            return format_html(
+                "<a href='{}' target='_blank'>открыть</a> ({} файл(ов))",
+                uf.file.link,
+                obj.files.count(),
+            )
+        return "—"
+
+    file_link.short_description = "Файл(ы)"
 
 
 @admin.register(UserLink)
