@@ -291,7 +291,7 @@ class UserAchievement(models.Model):
 
 
 class UserAchievementFile(models.Model):
-    ALLOWED_EXTENSIONS = {"pdf", "doc", "docx", "jpg", "jpeg", "png"}
+    ALLOWED_EXTENSIONS = {"pdf", "doc", "docx", "jpg", "jpeg", "png", "webp"}
     MAX_UPLOAD_SIZE = 50 * 1024 * 1024
     achievement = models.ForeignKey(
         UserAchievement,
