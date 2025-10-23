@@ -38,15 +38,15 @@ from users.validators import specialization_exists_validator
 
 class AchievementListSerializer(serializers.ModelSerializer):
     year = serializers.IntegerField(required=False, allow_null=True)
-    files = serializers.SerializerMethodField()
+    file_link = serializers.SerializerMethodField()
 
     class Meta:
         model = UserAchievement
-        fields = ["id", "title", "status", "year", "files"]
+        fields = ["id", "title", "status", "year", "file_link"]
 
-    def get_files(self, obj):
-        uafs = obj.files.all()
-        return [UserFileReadSerializer(uf.file).data for uf in uafs if uf.file]
+    def get_file_link(self, obj):
+        uaf = obj.files.first()
+        return uaf.file.link if (uaf and uaf.file) else None
 
 
 class UserFileReadSerializer(serializers.ModelSerializer):
@@ -874,13 +874,19 @@ class UserFeedSerializer(serializers.ModelSerializer, SkillsSerializerMixin):
 
 
 class AchievementDetailSerializer(serializers.ModelSerializer):
-    files = AchievementFileReadSerializer(many=True, read_only=True)
-    files_links = FilesWriteField(write_only=True, required=False)
+    file_link = serializers.URLField(required=False, allow_null=True)
     user = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
         model = UserAchievement
-        fields = ["id", "title", "status", "year", "user", "files", "files_links"]
+        fields = ["id", "title", "status", "year", "user", "file_link"]
+        read_only_fields = ["id", "user"]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        rel = instance.files.first()  # UserAchievementFile
+        data["file_link"] = rel.file.link if (rel and rel.file) else None
+        return data
 
     def validate_year(self, value):
         import datetime
@@ -893,47 +899,37 @@ class AchievementDetailSerializer(serializers.ModelSerializer):
         return value
 
     @transaction.atomic
-    def _sync_files(self, achievement: UserAchievement, files: list[UserFile]):
-        """
-        Синхронизируем связи через link (PK у UserFile).
-        clean() на UserAchievementFile проверит size/extension и владельца ещё раз.
-        """
-        current_links = set(
-            UserAchievementFile.objects.filter(achievement=achievement).values_list(
-                "file_id", flat=True
-            )
-        )
-        target_links = set(f.link for f in files)
+    def _set_single_file(self, achievement: UserAchievement, link: str | None):
+        UserAchievementFile.objects.filter(achievement=achievement).delete()
 
-        to_add = target_links - current_links
-        to_remove = current_links - target_links
+        if not link:
+            return
 
-        if to_remove:
-            UserAchievementFile.objects.filter(
-                achievement=achievement, file_id__in=to_remove
-            ).delete()
+        uf, _ = UserFile.objects.get_or_create(link=link)
 
-        for link in to_add:
-            rel = UserAchievementFile(achievement=achievement, file_id=link)
-            rel.clean()
-            rel.save()
+        rel = UserAchievementFile(achievement=achievement, file=uf)
+        rel.clean()
+        rel.save()
 
     @transaction.atomic
     def create(self, validated_data):
-        files = validated_data.pop("files_links", [])
+        link = validated_data.pop("file_link", None)
         achievement = UserAchievement.objects.create(**validated_data)
-        if files:
-            self._sync_files(achievement, files)
+        self._set_single_file(achievement, link)
         return achievement
 
     @transaction.atomic
     def update(self, instance, validated_data):
-        files = validated_data.pop("files_links", None)
+        sentinel = object()
+        link = validated_data.pop("file_link", sentinel)
+
         for attr, val in validated_data.items():
             setattr(instance, attr, val)
         instance.save()
-        if files is not None:
-            self._sync_files(instance, files)
+
+        if link is not sentinel:
+            self._set_single_file(instance, link)
+
         return instance
 
 
