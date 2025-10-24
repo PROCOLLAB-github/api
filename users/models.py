@@ -272,6 +272,14 @@ class UserAchievement(models.Model):
         on_delete=models.CASCADE,
         related_name="achievements",
     )
+    files = models.ManyToManyField(
+        "files.UserFile",
+        through="UserAchievementFile",
+        through_fields=("achievement", "file"),
+        related_name="achievements",
+        related_query_name="achievement",
+        blank=True,
+    )
 
     objects = UserAchievementManager()
 
@@ -293,16 +301,19 @@ class UserAchievement(models.Model):
 class UserAchievementFile(models.Model):
     ALLOWED_EXTENSIONS = {"pdf", "doc", "docx", "jpg", "jpeg", "png", "webp"}
     MAX_UPLOAD_SIZE = 50 * 1024 * 1024
+
     achievement = models.ForeignKey(
         UserAchievement,
         on_delete=models.CASCADE,
-        related_name="files",
+        related_name="file_links",
+        related_query_name="file_link",
         verbose_name="Достижение",
     )
     file = models.ForeignKey(
         "files.UserFile",
         on_delete=models.CASCADE,
         related_name="achievement_links",
+        related_query_name="achievement_link",
         verbose_name="Файл",
     )
 

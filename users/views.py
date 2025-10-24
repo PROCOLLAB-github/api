@@ -343,7 +343,11 @@ class AchievementList(ListCreateAPIView):
     POST /api/users/achievements/
     """
 
-    queryset = UserAchievement.objects.get_achievements_for_list_view()
+    queryset = (
+        UserAchievement.objects.get_achievements_for_list_view()
+        .select_related("user")
+        .prefetch_related("files")
+    )
 
     def get_permissions(self):
         if self.request.method == "POST":
@@ -388,7 +392,11 @@ class AchievementDetail(RetrieveUpdateDestroyAPIView):
     DELETE /api/users/achievements/{id}/
     """
 
-    queryset = UserAchievement.objects.get_achievements_for_detail_view()
+    queryset = (
+        UserAchievement.objects.get_achievements_for_detail_view()
+        .select_related("user")
+        .prefetch_related("files")
+    )
     serializer_class = AchievementDetailSerializer
     permission_classes = [IsAchievementOwnerOrReadOnly]
 

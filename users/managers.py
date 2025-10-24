@@ -1,6 +1,8 @@
+from django.apps import apps
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import UserManager
-from django.db.models import Manager
+from django.db import models
+from django.db.models import Manager, Prefetch
 
 from users.constants import MEMBER
 
@@ -53,19 +55,35 @@ class CustomUserManager(UserManager):
         return user
 
 
-class UserAchievementManager(Manager):
-    def get_achievements_for_list_view(self):
+FILE_FIELDS = (
+    "id",
+    "name",
+    "extension",
+    "mime_type",
+    "size",
+    "link",
+    "user_id",
+    "datetime_uploaded",
+)
+
+
+class UserAchievementManager(models.Manager):
+    def _with_user_and_files(self):
+        UserFile = apps.get_model("files", "UserFile")
         return (
             self.get_queryset()
             .select_related("user")
-            .only("id", "title", "status", "user__id")
+            .prefetch_related(Prefetch("files", queryset=UserFile.objects.all()))
+        )
+
+    def get_achievements_for_list_view(self):
+        return self._with_user_and_files().only(
+            "id", "title", "status", "year", "user_id"
         )
 
     def get_achievements_for_detail_view(self):
-        return (
-            self.get_queryset()
-            .select_related("user")
-            .only("id", "title", "status", "user")
+        return self._with_user_and_files().only(
+            "id", "title", "status", "year", "user_id"
         )
 
 
