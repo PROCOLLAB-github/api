@@ -393,12 +393,14 @@ class UserAchievementAdmin(admin.ModelAdmin):
     inlines = [UserAchievementFileInline]
 
     def file_link(self, obj):
-        uf = obj.files.select_related("file").first()
-        if uf and uf.file and uf.file.link:
+        first_file = obj.files.first()
+        count = obj.files.count()
+
+        if first_file and getattr(first_file, "link", None):
             return format_html(
                 "<a href='{}' target='_blank'>открыть</a> ({} файл(ов))",
-                uf.file.link,
-                obj.files.count(),
+                first_file.link,
+                count,
             )
         return "—"
 

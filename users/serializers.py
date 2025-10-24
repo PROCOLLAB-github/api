@@ -15,6 +15,7 @@ from core.serializers import SkillToObjectSerializer
 from core.services import get_views_count
 from core.utils import get_user_online_cache_key
 from files.models import UserFile
+from files.serializers import UserFileSerializer
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 from projects.models import Collaborator, Project
 from projects.validators import validate_project
@@ -36,23 +37,69 @@ from users.utils import normalize_user_phone
 from users.validators import specialization_exists_validator
 
 
-class AchievementListSerializer(serializers.ModelSerializer):
-    year = serializers.IntegerField(required=False, allow_null=True)
-    file_link = serializers.SerializerMethodField()
-
-    class Meta:
-        model = UserAchievement
-        fields = ["id", "title", "status", "year", "file_link"]
-
-    def get_file_link(self, obj):
-        uaf = obj.files.first()
-        return uaf.file.link if (uaf and uaf.file) else None
-
-
 class UserFileReadSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserFile
         fields = ("link", "name", "extension", "mime_type", "size")
+
+
+class FileLinkField(serializers.SlugRelatedField):
+    """
+    write-only: принимает link, маппит на UserFile текущего пользователя.
+    """
+
+    def get_queryset(self):
+        request = self.context.get("request")
+        qs = UserFile.objects.all()
+        if request and request.user.is_authenticated:
+            return qs.filter(user=request.user)
+        return qs.none()
+
+
+class AchievementListSerializer(serializers.ModelSerializer):
+    year = serializers.IntegerField(required=False, allow_null=True)
+    files = UserFileSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = UserAchievement
+        fields = ["id", "title", "status", "year", "files"]
+
+
+class AchievementDetailSerializer(serializers.ModelSerializer):
+    files = UserFileSerializer(many=True, read_only=True)
+    file_links = FileLinkField(
+        slug_field="link",
+        many=True,
+        write_only=True,
+        required=False,
+    )
+
+    class Meta:
+        model = UserAchievement
+        fields = [
+            "id",
+            "title",
+            "status",
+            "year",
+            "files",
+            "file_links",
+        ]
+
+    @transaction.atomic
+    def create(self, validated_data):
+        file_objs = validated_data.pop("file_links", [])
+        achievement = super().create(validated_data)
+        if file_objs:
+            achievement.files.set(file_objs)
+        return achievement
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        file_objs = validated_data.pop("file_links", None)
+        achievement = super().update(instance, validated_data)
+        if file_objs is not None:
+            achievement.files.set(file_objs)
+        return achievement
 
 
 class AchievementFileReadSerializer(serializers.ModelSerializer):
@@ -871,66 +918,6 @@ class UserFeedSerializer(serializers.ModelSerializer, SkillsSerializerMixin):
             "skills",
             "speciality",
         ]
-
-
-class AchievementDetailSerializer(serializers.ModelSerializer):
-    file_link = serializers.URLField(required=False, allow_null=True)
-    user = serializers.PrimaryKeyRelatedField(read_only=True)
-
-    class Meta:
-        model = UserAchievement
-        fields = ["id", "title", "status", "year", "user", "file_link"]
-        read_only_fields = ["id", "user"]
-
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        rel = instance.files.first()  # UserAchievementFile
-        data["file_link"] = rel.file.link if (rel and rel.file) else None
-        return data
-
-    def validate_year(self, value):
-        import datetime
-
-        if value is None:
-            return value
-        cur = datetime.date.today().year
-        if value < 1900 or value > cur:
-            raise serializers.ValidationError("Год вне допустимого диапазона.")
-        return value
-
-    @transaction.atomic
-    def _set_single_file(self, achievement: UserAchievement, link: str | None):
-        UserAchievementFile.objects.filter(achievement=achievement).delete()
-
-        if not link:
-            return
-
-        uf, _ = UserFile.objects.get_or_create(link=link)
-
-        rel = UserAchievementFile(achievement=achievement, file=uf)
-        rel.clean()
-        rel.save()
-
-    @transaction.atomic
-    def create(self, validated_data):
-        link = validated_data.pop("file_link", None)
-        achievement = UserAchievement.objects.create(**validated_data)
-        self._set_single_file(achievement, link)
-        return achievement
-
-    @transaction.atomic
-    def update(self, instance, validated_data):
-        sentinel = object()
-        link = validated_data.pop("file_link", sentinel)
-
-        for attr, val in validated_data.items():
-            setattr(instance, attr, val)
-        instance.save()
-
-        if link is not sentinel:
-            self._set_single_file(instance, link)
-
-        return instance
 
 
 class EmailSerializer(serializers.Serializer):
