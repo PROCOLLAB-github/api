@@ -307,12 +307,6 @@ class VacancyResponseListSerializer(serializers.ModelSerializer):
         return vacancy_response
 
 
-class VacancyResponseFullFileInfoListSerializer(VacancyResponseListSerializer):
-    """Returns full file info."""
-
-    accompanying_file = UserFileSerializer(read_only=True)
-
-
 class VacancyResponseDetailSerializer(serializers.ModelSerializer[VacancyResponse]):
     user = UserDetailSerializer(many=False, read_only=True)
     vacancy = VacancyListSerializer(many=False, read_only=True)
@@ -340,3 +334,15 @@ class VacancyResponseDetailSerializer(serializers.ModelSerializer[VacancyRespons
 
 class VacancyResponseAcceptSerializer(VacancyResponseDetailSerializer[VacancyResponse]):
     is_approved = serializers.BooleanField(required=True, read_only=False)
+
+
+class VacancyResponseFullFileInfoListSerializer(VacancyResponseListSerializer):
+    """Returns full file info."""
+
+    accompanying_file = UserFileSerializer(read_only=True)
+
+
+class VacancyResponseDetailReadSerializer(VacancyResponseDetailSerializer):
+    """Returns full file info for detail view without breaking writes."""
+
+    accompanying_file = UserFileSerializer(read_only=True)

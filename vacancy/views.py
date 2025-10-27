@@ -22,6 +22,8 @@ from vacancy.serializers import (
     VacancyDetailSerializer,
     VacancyResponseAcceptSerializer,
     VacancyResponseDetailSerializer,
+    VacancyResponseDetailReadSerializer,
+    VacancyResponseFullFileInfoListSerializer,
     VacancyResponseListSerializer,
     ProjectVacancyCreateListSerializer,
 )
@@ -76,6 +78,11 @@ class VacancyResponseList(
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     serializer_class = VacancyResponseListSerializer
 
+    def get_serializer_class(self):
+        if self.request.method == "GET":
+            return VacancyResponseFullFileInfoListSerializer
+        return super().get_serializer_class()
+
     def get(self, request, *args, **kwargs):
         """retrieve all responses for certain vacancy"""
         # note: doesn't raise an error if the vacancy_id passed is non-existent
@@ -126,6 +133,11 @@ class VacancyResponseDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = VacancyResponse.objects.get_vacancy_response_for_detail_view()
     serializer_class = VacancyResponseDetailSerializer
     permission_classes = [IsVacancyResponseOwnerOrReadOnly]
+
+    def get_serializer_class(self):
+        if self.request.method == "GET":
+            return VacancyResponseDetailReadSerializer
+        return super().get_serializer_class()
 
 
 class VacancyResponseAccept(generics.GenericAPIView):
@@ -210,7 +222,7 @@ class VacancyResponseDecline(generics.GenericAPIView):
 
 
 class UserVacancyResponses(ListAPIView):
-    serializer_class = VacancyResponseListSerializer
+    serializer_class = VacancyResponseFullFileInfoListSerializer
     permission_classes = [IsVacancyResponseOwnerOrReadOnly]
     pagination_class = VacancyPagination
 
