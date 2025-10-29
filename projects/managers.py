@@ -29,6 +29,10 @@ class ProjectManager(Manager):
                 "collaborator_set",
                 "vacancies",
                 "links",
+                "goals__responsible",
+                "project_companies__company",
+                "project_companies__decision_maker",
+                "resources__partner_company",
             )
             .all()
         )

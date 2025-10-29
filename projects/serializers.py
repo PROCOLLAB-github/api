@@ -159,6 +159,74 @@ class ProjectGoalSerializer(serializers.ModelSerializer):
         list_serializer_class = ProjectGoalBulkListSerializer
 
 
+class CompanySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Company
+        fields = ("id", "name", "inn")
+        read_only_fields = ("id",)
+
+
+class ProjectCompanySerializer(serializers.ModelSerializer):
+    company = CompanySerializer()
+    project_id = serializers.IntegerField(read_only=True)
+    decision_maker = serializers.PrimaryKeyRelatedField(read_only=True)
+
+    class Meta:
+        model = ProjectCompany
+        fields = ("id", "project_id", "company", "contribution", "decision_maker")
+
+
+class ResourceSerializer(serializers.ModelSerializer):
+    project_id = serializers.IntegerField(read_only=True)
+    project = serializers.PrimaryKeyRelatedField(
+        queryset=Project.objects.all(),
+        write_only=True,
+        required=False,
+    )
+
+    class Meta:
+        model = Resource
+        fields = (
+            "id",
+            "project_id",
+            "project",
+            "type",
+            "description",
+            "partner_company",
+        )
+        read_only_fields = ("id", "project")
+
+    def validate(self, attrs):
+        project = attrs.get("project", getattr(self.instance, "project", None))
+        partner_company = attrs.get(
+            "partner_company", getattr(self.instance, "partner_company", None)
+        )
+        if project and partner_company:
+            exists = ProjectCompany.objects.filter(
+                project=project, company=partner_company
+            ).exists()
+            if not exists:
+                raise serializers.ValidationError(
+                    {
+                        "partner_company": "Эта компания не является партнёром данного проекта."
+                    }
+                )
+        return attrs
+
+    def create(self, validated_data):
+        obj = Resource(**validated_data)
+        obj.full_clean()
+        obj.save()
+        return obj
+
+    def update(self, instance, validated_data):
+        for key, value in validated_data.items():
+            setattr(instance, key, value)
+        instance.full_clean()
+        instance.save()
+        return instance
+
+
 class ProjectDetailSerializer(serializers.ModelSerializer):
     achievements = AchievementListSerializer(many=True, read_only=True)
     cover = UserFileSerializer(required=False)
@@ -166,6 +234,11 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
         source="collaborator_set", many=True, read_only=True
     )
     vacancies = ProjectVacancyListSerializer(many=True, read_only=True)
+    goals = ProjectGoalSerializer(many=True, read_only=True)
+    partners = ProjectCompanySerializer(
+        source="project_companies", many=True, read_only=True
+    )
+    resources = ResourceSerializer(many=True, read_only=True)
     short_description = serializers.SerializerMethodField()
     industry_id = serializers.IntegerField(required=False)
     views_count = serializers.SerializerMethodField(method_name="count_views")
@@ -222,6 +295,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "description",
             "short_description",
             "achievements",
+            "goals",
             "links",
             "region",
             "industry",
@@ -229,10 +303,12 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "presentation_address",
             "image_address",
             "collaborators",
+            "partners",
             "leader",
             "draft",
             "is_company",
             "vacancies",
+            "resources",
             "datetime_created",
             "datetime_updated",
             "views_count",
@@ -583,74 +659,6 @@ class PartnerProgramFieldValueUpdateSerializer(serializers.Serializer):
             return parsed.scheme in ("http", "https") and bool(parsed.netloc)
         except Exception:
             return False
-
-
-class CompanySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Company
-        fields = ("id", "name", "inn")
-        read_only_fields = ("id",)
-
-
-class ProjectCompanySerializer(serializers.ModelSerializer):
-    company = CompanySerializer()
-    project_id = serializers.IntegerField(read_only=True)
-    decision_maker = serializers.PrimaryKeyRelatedField(read_only=True)
-
-    class Meta:
-        model = ProjectCompany
-        fields = ("id", "project_id", "company", "contribution", "decision_maker")
-
-
-class ResourceSerializer(serializers.ModelSerializer):
-    project_id = serializers.IntegerField(read_only=True)
-    project = serializers.PrimaryKeyRelatedField(
-        queryset=Project.objects.all(),
-        write_only=True,
-        required=False,
-    )
-
-    class Meta:
-        model = Resource
-        fields = (
-            "id",
-            "project_id",
-            "project",
-            "type",
-            "description",
-            "partner_company",
-        )
-        read_only_fields = ("id", "project")
-
-    def validate(self, attrs):
-        project = attrs.get("project", getattr(self.instance, "project", None))
-        partner_company = attrs.get(
-            "partner_company", getattr(self.instance, "partner_company", None)
-        )
-        if project and partner_company:
-            exists = ProjectCompany.objects.filter(
-                project=project, company=partner_company
-            ).exists()
-            if not exists:
-                raise serializers.ValidationError(
-                    {
-                        "partner_company": "Эта компания не является партнёром данного проекта."
-                    }
-                )
-        return attrs
-
-    def create(self, validated_data):
-        obj = Resource(**validated_data)
-        obj.full_clean()
-        obj.save()
-        return obj
-
-    def update(self, instance, validated_data):
-        for key, value in validated_data.items():
-            setattr(instance, key, value)
-        instance.full_clean()
-        instance.save()
-        return instance
 
 
 class ProjectCompanyUpsertSerializer(serializers.Serializer):
