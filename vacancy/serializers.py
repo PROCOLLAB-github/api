@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
+from django.utils import timezone
 from rest_framework import serializers
 
 from core.models import Skill, SkillToObject
@@ -72,11 +73,33 @@ class AbstractVacancyReadOnlyFields(serializers.Serializer):
         return obj.vacancy_requests.filter(is_approved=None).count()
 
 
+def _format_datetime_with_seconds(value):
+    if value is None:
+        return None
+    if timezone.is_aware(value):
+        value = timezone.localtime(value)
+    try:
+        return value.isoformat(timespec="seconds")
+    except TypeError:
+        # Fallback for Python versions without timespec support
+        return value.replace(microsecond=0).isoformat()
+
+
+class VacancyCreationDateSerializerMixin(serializers.Serializer):
+    date_create_time = serializers.SerializerMethodField()
+
+    @staticmethod
+    def get_date_create_time(obj: Vacancy):
+        return _format_datetime_with_seconds(getattr(obj, "datetime_created", None))
+
+
 class ProjectVacancyListSerializer(
+    VacancyCreationDateSerializerMixin,
     serializers.ModelSerializer,
     AbstractVacancyReadOnlyFields,
     RequiredSkillsSerializerMixin[Vacancy],
 ):
+
     class Meta:
         model = Vacancy
         fields = [
@@ -89,10 +112,17 @@ class ProjectVacancyListSerializer(
             "is_active",
             "datetime_closed",
             "response_count",
+            "date_create_time",
         ]
 
 
 class ProjectForVacancySerializer(serializers.ModelSerializer[Project]):
+    links = serializers.SerializerMethodField()
+
+    @staticmethod
+    def get_links(project: Project) -> list[str]:
+        return [link.link for link in project.links.all()]
+
     class Meta:
         model = Project
         fields = [
@@ -101,10 +131,13 @@ class ProjectForVacancySerializer(serializers.ModelSerializer[Project]):
             "description",
             "image_address",
             "is_company",
+            "industry",
+            "links",
         ]
 
 
 class VacancyDetailSerializer(
+    VacancyCreationDateSerializerMixin,
     serializers.ModelSerializer,
     AbstractVacancyReadOnlyFields,
     AbstractVacancyEnumFields,
@@ -127,6 +160,7 @@ class VacancyDetailSerializer(
             "datetime_updated",
             "datetime_closed",
             "response_count",
+            "date_create_time",
             "required_experience",
             "work_schedule",
             "work_format",
@@ -136,10 +170,12 @@ class VacancyDetailSerializer(
 
 
 class VacancyListSerializer(
+    VacancyCreationDateSerializerMixin,
     serializers.ModelSerializer,
     RequiredSkillsSerializerMixin[Vacancy],
     AbstractVacancyReadOnlyFields,
 ):
+
     class Meta:
         model = Vacancy
         fields = [
@@ -151,6 +187,7 @@ class VacancyListSerializer(
             "is_active",
             "datetime_closed",
             "response_count",
+            "date_create_time",
         ]
         read_only_fields = [
             "project",
@@ -194,11 +231,13 @@ class ProjectListSerializer_TODO_FIX(serializers.ModelSerializer):
 
 
 class ProjectVacancyCreateListSerializer(
+    VacancyCreationDateSerializerMixin,
     serializers.ModelSerializer,
     AbstractVacancyReadOnlyFields,
     AbstractVacancyEnumFields,
     RequiredSkillsWriteSerializerMixin[Vacancy],
 ):
+
     def create(self, validated_data):
         project = validated_data["project"]
         if project.leader != self.context["request"].user:
@@ -247,6 +286,7 @@ class ProjectVacancyCreateListSerializer(
             "is_active",
             "datetime_closed",
             "response_count",
+            "date_create_time",
             "required_experience",
             "work_schedule",
             "work_format",

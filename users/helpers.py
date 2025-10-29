@@ -2,7 +2,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.sites.shortcuts import get_current_site
 from django.core.cache import cache
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.timezone import now
@@ -140,7 +140,21 @@ def update_achievements(achievements, pk):
         achievement.id: achievement
         for achievement in UserAchievement.objects.filter(user_id=pk)
     }
-    seen_ids: set[int] = set()
+    existing_ids = set(existing_achievements.keys())
+    payload_existing_ids = {
+        achievement.get("id")
+        for achievement in achievements
+        if isinstance(achievement, dict)
+        and achievement.get("id") in existing_achievements
+    }
+    stale_ids = existing_ids - payload_existing_ids
+
+    if stale_ids:
+        UserAchievement.objects.filter(id__in=stale_ids).delete()
+        for stale_id in stale_ids:
+            existing_achievements.pop(stale_id, None)
+
+    seen_pairs: set[tuple[str, int | None]] = set()
 
     for achievement_payload in achievements:
         if not isinstance(achievement_payload, dict):
@@ -164,33 +178,70 @@ def update_achievements(achievements, pk):
 
         if achievement_id and achievement_id in existing_achievements:
             achievement_instance = existing_achievements[achievement_id]
-            title = achievement_payload.get("title")
-            status = achievement_payload.get("status")
+            title = achievement_payload.get("title", achievement_instance.title)
+            status = achievement_payload.get("status", achievement_instance.status)
+            year = (
+                achievement_payload.get("year")
+                if has_year_key
+                else achievement_instance.year
+            )
 
-            if title is not None:
-                achievement_instance.title = title
-            if status is not None:
-                achievement_instance.status = status
+            achievement_instance.title = title
+            achievement_instance.status = status
             if has_year_key:
-                achievement_instance.year = achievement_payload.get("year")
-            achievement_instance.save()
+                achievement_instance.year = year
         else:
-            achievement_instance = UserAchievement.objects.create(
+            achievement_instance = UserAchievement(
                 user_id=pk,
                 title=achievement_payload.get("title"),
                 status=achievement_payload.get("status"),
                 year=achievement_payload.get("year"),
             )
+            title = achievement_instance.title
+            year = achievement_instance.year
 
-        seen_ids.add(achievement_instance.id)
+        duplicate_key = (title, year)
+        if duplicate_key in seen_pairs:
+            raise ValidationError(
+                {
+                    "achievements": [
+                        f"Достижение с названием '{title}' и годом '{year}' указано несколько раз."
+                    ]
+                }
+            )
+
+        existing_conflict = (
+            UserAchievement.objects.filter(
+                user_id=pk, title=title, year=year
+            )
+            .exclude(id=achievement_instance.id)
+            .exists()
+        )
+        if existing_conflict:
+            raise ValidationError(
+                {
+                    "achievements": [
+                        f"Достижение с названием '{title}' за {year} уже существует."
+                    ]
+                }
+            )
+
+        try:
+            achievement_instance.save()
+        except IntegrityError:
+            raise ValidationError(
+                {
+                    "achievements": [
+                        f"Достижение с названием '{title}' за {year} уже существует."
+                    ]
+                }
+            ) from None
+
+        seen_pairs.add(duplicate_key)
 
         if file_links is not None:
             user_files = _resolve_user_files(file_links, pk)
             achievement_instance.files.set(user_files)
-
-    stale_ids = set(existing_achievements.keys()) - seen_ids
-    if stale_ids:
-        UserAchievement.objects.filter(id__in=stale_ids).delete()
 
 
 def update_links(links, pk):
