@@ -446,10 +446,11 @@ class UserLanguagesSerializer(serializers.ModelSerializer):
 
 class UserProgramsSerializer(serializers.ModelSerializer):
     year = serializers.SerializerMethodField()
+    logo = serializers.CharField(source="image_address", read_only=True)
 
     class Meta:
         model = PartnerProgram
-        fields = ["id", "tag", "name", "year"]
+        fields = ["id", "tag", "name", "year", "logo"]
 
     def get_year(self, program: PartnerProgram) -> int | None:
         user_program_profile = PartnerProgramUserProfile.objects.filter(

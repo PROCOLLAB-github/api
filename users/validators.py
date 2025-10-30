@@ -45,11 +45,11 @@ def specialization_exists_validator(pk: int):
 def user_experience_years_range_validator(value: int):
     """
     Check range for choice entry/completion year.
-    (2000 - `now.year`)
+    (1971 - `now.year`)
     """
-    if value not in range(2000, timezone.now().year + 1):
+    if value not in range(1971, timezone.now().year + 1):
         raise DjangoValidationError(
-            f"Год должен быть в диапазоне 2000 - {timezone.now().year}"
+            f"Год должен быть в диапазоне 1971 - {timezone.now().year}"
         )
 
 
