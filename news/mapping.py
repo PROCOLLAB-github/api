@@ -14,7 +14,7 @@ class NewsMapping:
     @classmethod
     def get_name(cls, content_object) -> str:
         if isinstance(content_object, User):
-            f"{content_object.first_name} {content_object.last_name}"
+            return f"{content_object.first_name} {content_object.last_name}"
         if isinstance(content_object, Project) or isinstance(
             content_object, PartnerProgram
         ):
