@@ -16,7 +16,7 @@ class CollaboratorManager(Manager):
 
 class ProjectManager(Manager):
     def get_projects_for_list_view(self):
-        return self.get_queryset().filter(draft=False)
+        return self.get_queryset().filter(draft=False).prefetch_related("program_links")
 
     def get_user_projects_for_list_view(self):
         return self.get_queryset().distinct()

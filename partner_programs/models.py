@@ -73,6 +73,12 @@ class PartnerProgram(models.Model):
         blank=True,
         verbose_name="Ссылка на презентацию",
     )
+    registration_link = models.URLField(
+        null=True,
+        blank=True,
+        verbose_name="Ссылка на регистрацию",
+        help_text="Адрес страницы регистрации (например, на Tilda)",
+    )
     data_schema = models.JSONField(
         verbose_name="Схема данных в формате JSON",
         help_text="Ключи - имена полей, значения - тип поля ввода",

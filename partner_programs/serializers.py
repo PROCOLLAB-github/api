@@ -45,6 +45,7 @@ class PartnerProgramListSerializer(serializers.ModelSerializer):
             "name",
             "image_address",
             "short_description",
+            "registration_link",
             "datetime_registration_ends",
             "datetime_started",
             "datetime_finished",
@@ -110,6 +111,7 @@ class PartnerProgramForMemberSerializer(PartnerProgramBaseSerializerMixin):
             "image_address",
             "cover_image_address",
             "presentation_address",
+            "registration_link",
             "views_count",
             "datetime_registration_ends",
             "is_user_manager",
@@ -131,6 +133,7 @@ class PartnerProgramForUnregisteredUserSerializer(PartnerProgramBaseSerializerMi
             "cover_image_address",
             "advertisement_image_address",
             "presentation_address",
+            "registration_link",
             "datetime_registration_ends",
             "is_user_manager",
         )
