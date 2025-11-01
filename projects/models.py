@@ -1,16 +1,22 @@
 from typing import Optional
 
+from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericRelation
-from django.core.validators import MaxLengthValidator
+from django.core.exceptions import ValidationError
+from django.core.validators import (
+    MaxLengthValidator,
+    MaxValueValidator,
+    MinValueValidator,
+)
 from django.db import models
 from django.db.models import UniqueConstraint
 
 from core.models import Like, View
 from files.models import UserFile
 from industries.models import Industry
-from projects.constants import VERBOSE_STEPS
 from projects.managers import AchievementManager, CollaboratorManager, ProjectManager
+from projects.validators import inn_validator
 from users.models import CustomUser
 
 User = get_user_model()
@@ -60,48 +66,36 @@ class DefaultProjectAvatar(AbstractDefaultProjectImage):
 
 class Project(models.Model):
     """
-    Project model
+    Модель проекта.
 
-     Attributes:
-        name: A CharField name of the project.
-        description: A TextField description of the project.
-        region: A CharField region of the project.
-        step: A PositiveSmallIntegerField which indicates status of the project
-            according to VERBOSE_STEPS.
-        industry: A ForeignKey referring to the Industry model.
-        presentation_address: A URLField presentation URL address.
-        image_address: A URLField image URL address.
-        leader: A ForeignKey referring to the User model.
-        draft: A boolean indicating if Project is a draft.
-        is_company: A boolean indicating if Project is a company.
-        cover_image_address: A URLField cover image URL address.
-        cover: A ForeignKey referring to the UserFile model, which is the image cover of the project.
-        datetime_created: A DateTimeField indicating date of creation.
-        datetime_updated: A DateTimeField indicating date of update.
+    Атрибуты:
+        name (CharField): Название проекта.
+        description (TextField): Подробное описание проекта.
+        region (CharField): Регион, в котором реализуется проект.
+        hidden_score (PositiveSmallIntegerField): Скрытый рейтинг проекта,
+            используется для внутренней сортировки.
+        actuality (TextField): Актуальность проекта (почему он важен).
+        target_audience (CharField): Описание целевой аудитории проекта.
+        implementation_deadline (DateField): Общий срок реализации проекта (дата завершения).
+        problem (TextField): Проблема, которую решает проект.
+        trl (PositiveSmallIntegerField): Уровень технологической готовности (Technology Readiness Level) от 1 до 9.
+        industry (ForeignKey): Ссылка на отрасль (модель Industry).
+        presentation_address (URLField): Ссылка на презентацию проекта.
+        image_address (URLField): Ссылка на изображение (аватар проекта).
+        leader (ForeignKey): Руководитель проекта (пользователь).
+        draft (BooleanField): Флаг, указывающий, является ли проект черновиком.
+        is_company (BooleanField): Признак того, что проект представляет компанию.
+        cover_image_address (URLField): Ссылка на обложку проекта.
+        cover (ForeignKey): Файл-обложка проекта (устаревшее поле).
+        subscribers (ManyToManyField): Подписчики проекта.
+        datetime_created (DateTimeField): Дата создания проекта.
+        datetime_updated (DateTimeField): Дата последнего изменения проекта.
     """
 
     name = models.CharField(max_length=256, null=True, blank=True)
     description = models.TextField(null=True, blank=True)
     region = models.CharField(max_length=256, null=True, blank=True)
-    step = models.PositiveSmallIntegerField(
-        choices=VERBOSE_STEPS, null=True, blank=True
-    )
     hidden_score = models.PositiveSmallIntegerField(default=100)
-
-    track = models.CharField(
-        max_length=256,
-        blank=True,
-        null=True,
-        verbose_name="Трек",
-        help_text="Направление/курс, в рамках которого реализуется проект",
-    )
-    direction = models.CharField(
-        max_length=256,
-        blank=True,
-        null=True,
-        verbose_name="Направление",
-        help_text="Более общее направление деятельности проекта",
-    )
     actuality = models.TextField(
         blank=True,
         null=True,
@@ -109,12 +103,25 @@ class Project(models.Model):
         verbose_name="Актуальность",
         help_text="Почему проект важен (до 1000 симв.)",
     )
-    goal = models.CharField(
+    target_audience = models.CharField(
         max_length=500,
         blank=True,
         null=True,
-        verbose_name="Цель",
-        help_text="Главная цель проекта (до 500 симв.)",
+        verbose_name="Целевая аудитория",
+        help_text="Описание целевой аудитории проекта (до 500 симв.)",
+    )
+    trl = models.PositiveSmallIntegerField(
+        verbose_name="TRL",
+        help_text="Technology Readiness Level (от 1 до 9)",
+        validators=[MinValueValidator(1), MaxValueValidator(9)],
+        null=True,
+        blank=True,
+    )
+    implementation_deadline = models.DateField(
+        verbose_name="Общий срок реализации проекта",
+        help_text="Дата, до которой планируется реализовать проект",
+        null=True,
+        blank=True,
     )
     problem = models.TextField(
         blank=True,
@@ -162,6 +169,12 @@ class Project(models.Model):
 
     subscribers = models.ManyToManyField(
         User, verbose_name="Подписчики", related_name="subscribed_projects"
+    )
+
+    companies = models.ManyToManyField(
+        "Company",
+        through="ProjectCompany",
+        related_name="projects",
     )
 
     datetime_created = models.DateTimeField(
@@ -306,6 +319,35 @@ class Collaborator(models.Model):
             )
         ]
 
+    def clean(self):
+        """
+        Если проект привязан к программе, добавлять коллаборатора можно
+        только если пользователь — участник этой программы.
+        (Проект привязан максимум к одной программе.)
+        """
+        link = self.project.program_links.select_related("partner_program").first()
+        if not link:
+            return
+
+        PartnerProgramUserProfile = apps.get_model(
+            "partner_programs",
+            "PartnerProgramUserProfile",
+        )
+
+        is_participant = PartnerProgramUserProfile.objects.filter(
+            user_id=self.user_id,
+            partner_program_id=link.partner_program_id,
+        ).exists()
+
+        if not is_participant:
+            raise ValidationError(
+                "Пользователь не является участником программы, к которой относится проект."
+            )
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
 
 class ProjectNews(models.Model):
     """
@@ -348,3 +390,157 @@ class ProjectNews(models.Model):
         verbose_name = "Новость проекта"
         verbose_name_plural = "Новости проекта"
         ordering = ["-datetime_created"]
+
+
+class ProjectGoal(models.Model):
+    """
+    Цель проекта (минимальная версия).
+    """
+
+    project = models.ForeignKey(
+        "Project",
+        on_delete=models.CASCADE,
+        related_name="goals",
+        verbose_name="Проект",
+    )
+
+    title = models.CharField(
+        max_length=255,
+        verbose_name="Название цели",
+    )
+
+    completion_date = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Срок реализации цели",
+    )
+
+    responsible = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="responsible_goals",
+        verbose_name="Ответственный",
+    )
+
+    is_done = models.BooleanField(
+        default=False,
+        verbose_name="Выполнено",
+    )
+
+    def __str__(self) -> str:
+        return f"Проект [{self.project_id}] - {self.title}"
+
+    class Meta:
+        verbose_name = "Цель"
+        verbose_name_plural = "Цели"
+
+
+class Company(models.Model):
+    name = models.CharField(max_length=255)
+    inn = models.CharField(max_length=12, unique=True, validators=[inn_validator])
+
+    class Meta:
+        verbose_name = "Компания"
+        verbose_name_plural = "Компании"
+        ordering = ["name"]
+
+    def __str__(self):
+        return f"{self.name} ({self.inn})"
+
+
+class ProjectCompany(models.Model):
+    project = models.ForeignKey(
+        "projects.Project",
+        on_delete=models.CASCADE,
+        related_name="project_companies",
+    )
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.CASCADE,
+        related_name="project_links",
+    )
+    contribution = models.TextField(blank=True)
+    decision_maker = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="partner_decisions",
+    )
+
+    class Meta:
+        verbose_name = "Связь проекта и компании"
+        verbose_name_plural = "Связи проекта и компании"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["project", "company"],
+                name="uq_project_company_unique_pair",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.project} - {self.company}"
+
+
+class Resource(models.Model):
+    class ResourceType(models.TextChoices):
+        INFRASTRUCTURE = "infrastructure", "Инфраструктурный"
+        STAFF = "staff", "Кадровый"
+        FINANCIAL = "financial", "Финансовый"
+        INFORMATION = "information", "Информационный"
+
+    project = models.ForeignKey(
+        "projects.Project",
+        on_delete=models.CASCADE,
+        related_name="resources",
+    )
+    type = models.CharField(
+        max_length=32,
+        choices=ResourceType.choices,
+    )
+    description = models.TextField()
+
+    partner_company = models.ForeignKey(
+        Company,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="resources",
+        help_text="Если не указано — ресурс в поиске партнёра.",
+    )
+
+    class Meta:
+        verbose_name = "Ресурс"
+        verbose_name_plural = "Ресурсы"
+        ordering = ["project", "type", "id"]
+
+    def __str__(self):
+        base = f"{self.get_type_display()} ресурс для {self.project}"
+        return f"{base} — {self.partner_display}"
+
+    @property
+    def partner_display(self):
+        return (
+            self.partner_company.name
+            if self.partner_company
+            else "в поиске партнёра для данного ресурса"
+        )
+
+    def clean(self):
+        """
+        Проверяет, что выбранная partner_company действительно является партнёром проекта.
+        """
+        super().clean()
+        if self.partner_company:
+            exists = ProjectCompany.objects.filter(
+                project=self.project, company=self.partner_company
+            ).exists()
+            if not exists:
+                raise ValidationError(
+                    {
+                        "partner_company": (
+                            "Эта компания не является партнёром данного проекта. "
+                            "Сначала добавьте её в партнёры проекта."
+                        )
+                    }
+                )

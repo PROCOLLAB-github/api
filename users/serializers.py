@@ -14,6 +14,8 @@ from core.models import Skill, SkillToObject, Specialization, SpecializationCate
 from core.serializers import SkillToObjectSerializer
 from core.services import get_views_count
 from core.utils import get_user_online_cache_key
+from files.models import UserFile
+from files.serializers import UserFileSerializer
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 from projects.models import Collaborator, Project
 from projects.validators import validate_project
@@ -25,6 +27,7 @@ from users.models import (
     Member,
     Mentor,
     UserAchievement,
+    UserAchievementFile,
     UserEducation,
     UserLanguages,
     UserSkillConfirmation,
@@ -34,11 +37,108 @@ from users.utils import normalize_user_phone
 from users.validators import specialization_exists_validator
 
 
-class AchievementListSerializer(serializers.ModelSerializer[UserAchievement]):
+class UserFileReadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserFile
+        fields = ("link", "name", "extension", "mime_type", "size")
+
+
+class FileLinkField(serializers.SlugRelatedField):
+    """
+    write-only: принимает link, маппит на UserFile текущего пользователя.
+    """
+
+    def get_queryset(self):
+        request = self.context.get("request")
+        qs = UserFile.objects.all()
+        if request and request.user.is_authenticated:
+            return qs.filter(user=request.user)
+        return qs.none()
+
+
+class AchievementListSerializer(serializers.ModelSerializer):
+    year = serializers.IntegerField(required=False, allow_null=True)
+    files = UserFileSerializer(many=True, read_only=True)
+
     class Meta:
         model = UserAchievement
-        fields = ["id", "title", "status"]
-        ref_name = "Users"
+        fields = ["id", "title", "status", "year", "files"]
+
+
+class AchievementDetailSerializer(serializers.ModelSerializer):
+    files = UserFileSerializer(many=True, read_only=True)
+    file_links = FileLinkField(
+        slug_field="link",
+        many=True,
+        write_only=True,
+        required=False,
+    )
+
+    class Meta:
+        model = UserAchievement
+        fields = [
+            "id",
+            "title",
+            "status",
+            "year",
+            "files",
+            "file_links",
+        ]
+
+    @transaction.atomic
+    def create(self, validated_data):
+        file_objs = validated_data.pop("file_links", [])
+        achievement = super().create(validated_data)
+        if file_objs:
+            achievement.files.set(file_objs)
+        return achievement
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        file_objs = validated_data.pop("file_links", None)
+        achievement = super().update(instance, validated_data)
+        if file_objs is not None:
+            achievement.files.set(file_objs)
+        return achievement
+
+
+class AchievementFileReadSerializer(serializers.ModelSerializer):
+    file = UserFileReadSerializer()
+
+    class Meta:
+        model = UserAchievementFile
+        fields = ("file",)
+
+
+class FilesWriteField(serializers.ListField):
+    """
+    Принимает список ссылок (UserFile.link — первичный ключ).
+    Проверяет существование и владельца (user не NULL и совпадает с request.user).
+    """
+
+    child = serializers.URLField()
+
+    def to_internal_value(self, data):
+        values = super().to_internal_value(data)
+        request = self.context.get("request")
+        qs = UserFile.objects.filter(link__in=values)
+        files_by_link = {uf.link: uf for uf in qs}
+
+        missing = [v for v in values if v not in files_by_link]
+        if missing:
+            raise serializers.ValidationError(f"Файлы не найдены: {missing}")
+
+        if request and request.user.is_authenticated:
+            wrong_owner = []
+            for uf in files_by_link.values():
+                if uf.user_id is None or uf.user_id != request.user.id:
+                    wrong_owner.append(uf.link)
+            if wrong_owner:
+                raise serializers.ValidationError(
+                    f"Нельзя привязать файлы: нет владельца или владелец другой ({wrong_owner})"
+                )
+
+        return list(files_by_link.values())
 
 
 class CustomListField(serializers.ListField):
@@ -47,9 +147,7 @@ class CustomListField(serializers.ListField):
         if isinstance(data, list):
             return data
         return [
-            i.replace("'", "")
-            for i in data.strip("][").split(",")
-            if i.replace("'", "")
+            i.replace("'", "") for i in data.strip("][").split(",") if i.replace("'", "")
         ]
 
 
@@ -151,9 +249,7 @@ class UserSkillConfirmationSerializer(serializers.ModelSerializer):
         """Returns correct data about user in `confirmed_by`."""
         data = super().to_representation(instance)
         data.pop("skill_to_object", None)
-        data["confirmed_by"] = UserDataConfirmationSerializer(
-            instance.confirmed_by
-        ).data
+        data["confirmed_by"] = UserDataConfirmationSerializer(instance.confirmed_by).data
         return data
 
 
@@ -350,10 +446,11 @@ class UserLanguagesSerializer(serializers.ModelSerializer):
 
 class UserProgramsSerializer(serializers.ModelSerializer):
     year = serializers.SerializerMethodField()
+    logo = serializers.CharField(source="image_address", read_only=True)
 
     class Meta:
         model = PartnerProgram
-        fields = ["id", "tag", "name", "year"]
+        fields = ["id", "tag", "name", "year", "logo"]
 
     def get_year(self, program: PartnerProgram) -> int | None:
         user_program_profile = PartnerProgramUserProfile.objects.filter(
@@ -528,10 +625,7 @@ class UserDetailSerializer(
             if attr in IMMUTABLE_FIELDS + USER_TYPE_FIELDS + RELATED_FIELDS:
                 continue
             if attr == "user_type":
-                if (
-                    value == instance.user_type
-                    or value not in user_types_to_attr.keys()
-                ):
+                if value == instance.user_type or value not in user_types_to_attr.keys():
                     continue
                 # we can't change user type to Member
                 if value == CustomUser.MEMBER:
@@ -825,18 +919,6 @@ class UserFeedSerializer(serializers.ModelSerializer, SkillsSerializerMixin):
             "skills",
             "speciality",
         ]
-
-
-class AchievementDetailSerializer(serializers.ModelSerializer[UserAchievement]):
-    class Meta:
-        model = UserAchievement
-        fields = [
-            "id",
-            "title",
-            "status",
-            "user",
-        ]
-        ref_name = "Users"
 
 
 class EmailSerializer(serializers.Serializer):

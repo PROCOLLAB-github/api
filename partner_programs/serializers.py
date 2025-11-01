@@ -45,6 +45,7 @@ class PartnerProgramListSerializer(serializers.ModelSerializer):
             "name",
             "image_address",
             "short_description",
+            "registration_link",
             "datetime_registration_ends",
             "datetime_started",
             "datetime_finished",
@@ -80,9 +81,7 @@ class PartnerProgramForMemberSerializer(PartnerProgramBaseSerializerMixin):
 
     views_count = serializers.SerializerMethodField(method_name="count_views")
     links = serializers.SerializerMethodField(method_name="get_links")
-    is_user_manager = serializers.SerializerMethodField(
-        method_name="get_is_user_manager"
-    )
+    is_user_manager = serializers.SerializerMethodField(method_name="get_is_user_manager")
 
     def count_views(self, program):
         return get_views_count(program)
@@ -112,6 +111,7 @@ class PartnerProgramForMemberSerializer(PartnerProgramBaseSerializerMixin):
             "image_address",
             "cover_image_address",
             "presentation_address",
+            "registration_link",
             "views_count",
             "datetime_registration_ends",
             "is_user_manager",
@@ -133,6 +133,7 @@ class PartnerProgramForUnregisteredUserSerializer(PartnerProgramBaseSerializerMi
             "cover_image_address",
             "advertisement_image_address",
             "presentation_address",
+            "registration_link",
             "datetime_registration_ends",
             "is_user_manager",
         )

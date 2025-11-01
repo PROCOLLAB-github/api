@@ -9,8 +9,9 @@ from django.shortcuts import get_object_or_404
 from django_filters import rest_framework as filters
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
-from rest_framework import generics, permissions, status
+from rest_framework import generics, permissions, status, viewsets
 from rest_framework.exceptions import NotFound
+from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -23,7 +24,6 @@ from partner_programs.models import (
     PartnerProgramProject,
     PartnerProgramUserProfile,
 )
-from projects.constants import VERBOSE_STEPS
 from projects.exceptions import CollaboratorDoesNotExist
 from projects.filters import ProjectFilter
 from projects.helpers import (
@@ -31,25 +31,43 @@ from projects.helpers import (
     get_recommended_users,
     update_partner_program,
 )
-from projects.models import Achievement, Collaborator, Project, ProjectNews
+from projects.models import (
+    Achievement,
+    Collaborator,
+    Company,
+    Project,
+    ProjectCompany,
+    ProjectGoal,
+    ProjectNews,
+    Resource,
+)
 from projects.pagination import ProjectNewsPagination, ProjectsPagination
 from projects.permissions import (
+    CanBindProjectToProgram,
     HasInvolvementInProjectOrReadOnly,
     IsNewsAuthorIsProjectLeaderOrReadOnly,
     IsProjectLeader,
+    IsProjectLeaderOrReadOnly,
     IsProjectLeaderOrReadOnlyForNonDrafts,
     TimingAfterEndsProgramPermission,
 )
+from core.serializers import EmptySerializer
 from projects.serializers import (
     AchievementDetailSerializer,
     AchievementListSerializer,
+    CompanySerializer,
     ProjectCollaboratorSerializer,
+    ProjectCompanySerializer,
+    ProjectCompanyUpdateSerializer,
+    ProjectCompanyUpsertSerializer,
     ProjectDetailSerializer,
     ProjectDuplicateRequestSerializer,
+    ProjectGoalSerializer,
     ProjectListSerializer,
     ProjectNewsDetailSerializer,
     ProjectNewsListSerializer,
     ProjectSubscribersListSerializer,
+    ResourceSerializer,
 )
 from users.models import LikesOnProject
 from users.serializers import UserListSerializer
@@ -88,9 +106,7 @@ class ProjectList(generics.ListCreateAPIView):
 
         try:
             partner_program_id = request.data.get("partner_program_id")
-            update_partner_program(
-                partner_program_id, request.user, serializer.instance
-            )
+            update_partner_program(partner_program_id, request.user, serializer.instance)
         except PartnerProgram.DoesNotExist:
             return Response(
                 {"detail": "Partner program with this id does not exist"},
@@ -103,9 +119,7 @@ class ProjectList(generics.ListCreateAPIView):
             )
 
         headers = self.get_success_headers(serializer.data)
-        return Response(
-            serializer.data, status=status.HTTP_201_CREATED, headers=headers
-        )
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def post(self, request, *args, **kwargs):
         """
@@ -121,7 +135,6 @@ class ProjectList(generics.ListCreateAPIView):
             [name] - название проекта
             [description] - описание проекта
             [industry] - id отрасли
-            [step] - этап проекта
             [image_address] - адрес изображения
             [presentation_address] - адрес презентации
             [short_description] - краткое описание проекта
@@ -240,9 +253,7 @@ class ProjectCountView(generics.GenericAPIView):
             {
                 "all": self.get_queryset().filter(draft=False).count(),
                 "my": self.get_queryset()
-                .filter(
-                    Q(leader_id=request.user.id) | Q(collaborator__user=request.user)
-                )
+                .filter(Q(leader_id=request.user.id) | Q(collaborator__user=request.user))
                 .distinct()
                 .count(),
             },
@@ -312,24 +323,12 @@ class ProjectCollaborators(generics.GenericAPIView):
         return project.id, project.leader.id
 
     @staticmethod
-    def _collabs_queryset(
-        project_id: int, requested_id: int, leader_id: int
-    ) -> QuerySet:
+    def _collabs_queryset(project_id: int, requested_id: int, leader_id: int) -> QuerySet:
         return Collaborator.objects.exclude(
             user__id=leader_id
         ).get(  # чтоб случайно лидер сам себя не удалил
             user__id=requested_id, project__id=project_id
         )
-
-
-class ProjectSteps(APIView):
-    permission_classes = [IsStaffOrReadOnly]
-
-    def get(self, request, format=None):
-        """
-        Return a tuple of project steps.
-        """
-        return Response(VERBOSE_STEPS)
 
 
 class AchievementList(generics.ListCreateAPIView):
@@ -595,9 +594,7 @@ class DeleteProjectCollaborators(generics.GenericAPIView):
         return project.id, project.leader.id
 
     @staticmethod
-    def _collabs_queryset(
-        project_id: int, requested_id: int, leader_id: int
-    ) -> QuerySet:
+    def _collabs_queryset(project_id: int, requested_id: int, leader_id: int) -> QuerySet:
         return Collaborator.objects.exclude(
             user__id=leader_id
         ).get(  # чтоб случайно лидер сам себя не удалил
@@ -635,6 +632,7 @@ class DeleteProjectCollaborators(generics.GenericAPIView):
 class SwitchLeaderRole(generics.GenericAPIView):
     permission_classes = [IsProjectLeader]
     queryset = Project.objects.all().select_related("leader")
+    serializer_class = EmptySerializer
 
     @staticmethod
     def _get_new_leader(user_id: int, project: Project) -> Collaborator:
@@ -671,7 +669,7 @@ class SwitchLeaderRole(generics.GenericAPIView):
 
 
 class DuplicateProjectView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanBindProjectToProgram]
 
     @swagger_auto_schema(
         request_body=ProjectDuplicateRequestSerializer,
@@ -686,21 +684,18 @@ class DuplicateProjectView(APIView):
         data = serializer.validated_data
 
         original_project = get_object_or_404(Project, id=data["project_id"])
-        partner_program = get_object_or_404(
-            PartnerProgram, id=data["partner_program_id"]
-        )
+        partner_program = get_object_or_404(PartnerProgram, id=data["partner_program_id"])
 
         with transaction.atomic():
             new_project = Project.objects.create(
                 name=original_project.name,
                 description=original_project.description,
                 region=original_project.region,
-                step=original_project.step,
                 hidden_score=original_project.hidden_score,
-                track=original_project.track,
-                direction=original_project.direction,
                 actuality=original_project.actuality,
-                goal=original_project.goal,
+                target_audience=original_project.target_audience,
+                trl=original_project.trl,
+                implementation_deadline=original_project.implementation_deadline,
                 problem=original_project.problem,
                 industry=original_project.industry,
                 image_address=original_project.image_address,
@@ -723,3 +718,275 @@ class DuplicateProjectView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+class GoalViewSet(viewsets.ModelViewSet):
+    queryset = ProjectGoal.objects.select_related("project", "responsible")
+    serializer_class = ProjectGoalSerializer
+    permission_classes = [IsProjectLeaderOrReadOnly]
+
+    def get_queryset(self):
+        project_pk = self.kwargs.get("project_pk")
+        qs = super().get_queryset()
+        return qs.filter(project_id=project_pk) if project_pk is not None else qs
+
+    def get_serializer_context(self):
+        ctx = super().get_serializer_context()
+        project_pk = self.kwargs.get("project_pk")
+        if project_pk and "project" not in ctx:
+            ctx["project"] = get_object_or_404(Project, pk=project_pk)
+        return ctx
+
+    @swagger_auto_schema(
+        request_body=ProjectGoalSerializer(many=True),
+        responses={201: ProjectGoalSerializer(many=True)},
+    )
+    def create(self, request, *args, **kwargs):
+        if not isinstance(request.data, list):
+            return Response(
+                {"detail": "В теле запроса должен быть массив целей."}, status=400
+            )
+        serializer = self.get_serializer(data=request.data, many=True)
+        serializer.is_valid(raise_exception=True)
+        created = serializer.save()
+        out = self.get_serializer(created, many=True)
+        return Response(out.data, status=status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        if isinstance(request.data, list):
+            return Response(
+                {"detail": "Обновление выполняется для одной цели по её ID."}, status=400
+            )
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        if isinstance(request.data, list):
+            return Response(
+                {"detail": "Частичное обновление выполняется для одной цели по её ID."},
+                status=400,
+            )
+        return super().partial_update(request, *args, **kwargs)
+
+    def perform_update(self, serializer):
+        serializer.save(project=self.get_object().project)
+
+
+class CompanyViewSet(viewsets.ModelViewSet):
+    queryset = Company.objects.all().order_by("name")
+    serializer_class = CompanySerializer
+    permission_classes = (IsProjectLeaderOrReadOnly,)
+    filterset_fields = ("inn",)
+    search_fields = ("name", "inn")
+
+
+class ResourceViewSet(viewsets.ModelViewSet):
+    queryset = Resource.objects.select_related("project", "partner_company").all()
+    serializer_class = ResourceSerializer
+    permission_classes = (IsProjectLeaderOrReadOnly,)
+    filterset_fields = ("type", "project", "partner_company")
+    search_fields = ("description", "project__name", "partner_company__name")
+
+    def get_queryset(self):
+        project_pk = self.kwargs.get("project_pk")
+        queryset = super().get_queryset()
+        if project_pk is not None:
+            queryset = queryset.filter(project_id=project_pk)
+        return queryset
+
+    def perform_create(self, serializer):
+        project_pk = self.kwargs.get("project_pk")
+        serializer.save(project_id=project_pk)
+
+
+class ProjectCompanyUpsertView(APIView):
+    """
+    POST /projects/<project_id>/companies/
+    Тело: { name, inn, contribution?, decision_maker? }
+
+    Логика:
+      - если компания с таким inn существует — связываем с проектом (create/get);
+      - если нет — создаём компанию и тут же связываем.
+    """
+
+    permission_classes = (IsProjectLeaderOrReadOnly,)
+
+    @swagger_auto_schema(
+        request_body=ProjectCompanyUpsertSerializer,
+        responses={201: ProjectCompanySerializer},
+        operation_summary="Создать или привязать компанию к проекту (upsert)",
+        operation_description="Если компания с таким ИНН уже есть — создаёт/обновляет связь. Если нет — создаёт.",
+        tags=["Projects • Companies"],
+    )
+    def post(self, request, project_id: int):
+        try:
+            project = Project.objects.get(pk=project_id)
+        except Project.DoesNotExist:
+            return Response(
+                {"detail": "Проект не найден."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = ProjectCompanyUpsertSerializer(
+            data=request.data,
+            context={"project": project, "request": request},
+        )
+        serializer.is_valid(raise_exception=True)
+        link = serializer.save()
+        return Response(
+            serializer.to_representation(link), status=status.HTTP_201_CREATED
+        )
+
+
+class ProjectCompaniesListView(ListAPIView):
+    """
+    GET /projects/<project_id>/companies/
+    Возвращает список связей (партнёров) проекта с данными компании.
+    """
+
+    serializer_class = ProjectCompanySerializer
+    permission_classes = (IsProjectLeaderOrReadOnly,)
+
+    @swagger_auto_schema(
+        operation_summary="Список партнёров проекта",
+        operation_description="Возвращает связи ProjectCompany с вложенными данными компании для указанного проекта.",
+        responses={200: ProjectCompanySerializer(many=True)},
+        tags=["Projects • Companies"],
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    def get_queryset(self):
+        project_id = self.kwargs["project_id"]
+        return (
+            ProjectCompany.objects.select_related("company", "project")
+            .filter(project_id=project_id)
+            .order_by("company__name")
+        )
+
+
+class ProjectCompanyDetailView(APIView):
+    """
+    PATCH - частично обновляет вклад/ответственного в связи ProjectCompany
+    DELETE - удаляет только связь; Company остаётся в БД
+    """
+
+    permission_classes = (IsProjectLeaderOrReadOnly,)
+    project_id_param = openapi.Parameter(
+        "project_id",
+        openapi.IN_PATH,
+        description="ID проекта",
+        type=openapi.TYPE_INTEGER,
+        required=True,
+    )
+    company_id_param = openapi.Parameter(
+        "company_id",
+        openapi.IN_PATH,
+        description="ID компании",
+        type=openapi.TYPE_INTEGER,
+        required=True,
+    )
+
+    def _get_link_or_404(self, project_id: int, company_id: int):
+        try:
+            project = Project.objects.get(pk=project_id)
+        except Project.DoesNotExist:
+            return (
+                None,
+                None,
+                Response(
+                    {"detail": "Проект не найден."}, status=status.HTTP_404_NOT_FOUND
+                ),
+            )
+
+        try:
+            company = Company.objects.get(pk=company_id)
+        except Company.DoesNotExist:
+            return (
+                project,
+                None,
+                Response(
+                    {"detail": "Компания не найдена."}, status=status.HTTP_404_NOT_FOUND
+                ),
+            )
+
+        try:
+            link = ProjectCompany.objects.get(project=project, company=company)
+        except ProjectCompany.DoesNotExist:
+            return (
+                project,
+                company,
+                Response(
+                    {"detail": "Связь проект↔компания не найдена."},
+                    status=status.HTTP_404_NOT_FOUND,
+                ),
+            )
+
+        return project, company, link
+
+    @swagger_auto_schema(
+        operation_summary="Обновить вклад и/или ответственного компании в проекте",
+        operation_description=(
+            "Позволяет изменить поля связи `ProjectCompany`, такие как `contribution` "
+            "и `decision_maker`. Компания остаётся без изменений."
+        ),
+        manual_parameters=[project_id_param, company_id_param],
+        request_body=ProjectCompanyUpdateSerializer,
+        responses={
+            200: ProjectCompanySerializer,
+            403: "Недостаточно прав",
+            404: "Проект, компания или связь не найдены",
+        },
+        tags=["Projects • Companies"],
+    )
+    def patch(self, request, project_id: int, company_id: int):
+        project, company, link_or_resp = self._get_link_or_404(project_id, company_id)
+        if isinstance(link_or_resp, Response):
+            return link_or_resp
+        link = link_or_resp
+
+        self.check_object_permissions(request, link)
+
+        serializer = ProjectCompanyUpdateSerializer(
+            link, data=request.data, partial=True, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(
+            {
+                "id": link.id,
+                "project": link.project_id,
+                "company": {
+                    "id": link.company_id,
+                    "name": link.company.name,
+                    "inn": link.company.inn,
+                },
+                "contribution": link.contribution,
+                "decision_maker": link.decision_maker_id,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @swagger_auto_schema(
+        operation_summary="Удалить связь проекта с компанией",
+        operation_description=(
+            "Удаляет запись `ProjectCompany`, связывающую проект и компанию. "
+            "Сама компания при этом остаётся в базе данных."
+        ),
+        manual_parameters=[project_id_param, company_id_param],
+        responses={
+            204: "Связь успешно удалена",
+            403: "Недостаточно прав",
+            404: "Проект, компания или связь не найдены",
+        },
+        tags=["Projects • Companies"],
+    )
+    def delete(self, request, project_id: int, company_id: int):
+        project, company, link_or_resp = self._get_link_or_404(project_id, company_id)
+        if isinstance(link_or_resp, Response):
+            return link_or_resp
+        link = link_or_resp
+
+        self.check_object_permissions(request, link)
+
+        link.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

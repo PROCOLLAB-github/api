@@ -1,12 +1,11 @@
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta
 
 from django.utils import timezone
+from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.permissions import SAFE_METHODS, BasePermission
 
-from rest_framework.permissions import BasePermission, SAFE_METHODS
-from rest_framework.exceptions import PermissionDenied
-
+from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 from projects.models import Project
-from partner_programs.models import PartnerProgramUserProfile
 
 
 class IsProjectLeaderOrReadOnlyForNonDrafts(BasePermission):
@@ -79,6 +78,7 @@ class TimingAfterEndsProgramPermission(BasePermission):
     for `_SECONDS_AFTER_CANT_EDIT` seconds -> days from the end of the program.
     If the project is not in program or the request in `SAFE_METHODS` -> allowed.
     """
+
     _SECONDS_AFTER_CANT_EDIT: int = 60 * 60 * 24 * 30  # Now 30 days.
 
     def has_object_permission(self, request, view, obj) -> bool:
@@ -86,22 +86,29 @@ class TimingAfterEndsProgramPermission(BasePermission):
             return True
 
         program_profile = (
-            PartnerProgramUserProfile.objects
-            .filter(user=request.user, project=obj)
+            PartnerProgramUserProfile.objects.filter(user=request.user, project=obj)
             .select_related("partner_program")
             .first()
         )
         moscow_time: datetime = timezone.localtime(timezone.now())
 
         if program_profile:
-            date_from_end_program: timedelta = (moscow_time - program_profile.partner_program.datetime_finished)
+            date_from_end_program: timedelta = (
+                moscow_time - program_profile.partner_program.datetime_finished
+            )
             days_from_end_program: int = date_from_end_program.days
             seconds_from_end_program: int = date_from_end_program.total_seconds()
             if 0 <= seconds_from_end_program <= self._SECONDS_AFTER_CANT_EDIT:
-                raise PermissionDenied(detail=self._prepare_exception_detail(days_from_end_program, program_profile))
+                raise PermissionDenied(
+                    detail=self._prepare_exception_detail(
+                        days_from_end_program, program_profile
+                    )
+                )
         return True
 
-    def _prepare_exception_detail(self, days_from_end_program: int, program_profile: PartnerProgramUserProfile):
+    def _prepare_exception_detail(
+        self, days_from_end_program: int, program_profile: PartnerProgramUserProfile
+    ):
         """
         Prepare response body when `PermissionDenied` exception raised:
             program_name: str -> Program title
@@ -112,7 +119,11 @@ class TimingAfterEndsProgramPermission(BasePermission):
         when_can_edit: datetime = timezone.localtime(
             datetime_finished + timedelta(seconds=self._SECONDS_AFTER_CANT_EDIT)
         )
-        days_until_resolution: int = int(self._SECONDS_AFTER_CANT_EDIT / 60 / 60 / 24) - days_from_end_program - 1
+        days_until_resolution: int = (
+            int(self._SECONDS_AFTER_CANT_EDIT / 60 / 60 / 24)
+            - days_from_end_program
+            - 1
+        )
         return {
             "program_name": program_profile.partner_program.name,
             "when_can_edit": when_can_edit,
@@ -140,3 +151,62 @@ class IsNewsAuthorIsProjectLeaderOrReadOnly(BasePermission):
         ) or obj.project.leader == request.user:
             return True
         return False
+
+
+class IsProjectLeaderOrReadOnly(BasePermission):
+    """
+    Читать могут все (в т.ч. анонимы).
+    Создавать/изменять/удалять может только лидер проекта.
+    """
+
+    message = "Только лидер проекта может создавать, изменять или удалять параметры."
+
+    def has_permission(self, request, view):
+        if request.method in SAFE_METHODS:
+            return True
+
+        if not request.user or not request.user.is_authenticated:
+            return False
+
+        project_pk = view.kwargs.get("project_pk")
+        project_id = project_pk or view.kwargs.get("project_id") or request.data.get("project")
+        if not project_id:
+            return False
+
+        try:
+            project = Project.objects.only("id", "leader_id").get(pk=project_id)
+        except Project.DoesNotExist:
+            return False
+
+        return project.leader_id == request.user.id
+
+    def has_object_permission(self, request, view, obj):
+        if request.method in SAFE_METHODS:
+            return True
+
+        return (
+            request.user
+            and request.user.is_authenticated
+            and obj.project.leader_id == request.user.id
+        )
+
+
+class CanBindProjectToProgram(BasePermission):
+    message = "Привязать проект к программе может только её участник (или менеджер)."
+
+    def has_permission(self, request, view):
+        program_id = (request.data or {}).get("partner_program_id")
+        if not program_id:
+            return True
+
+        try:
+            program = PartnerProgram.objects.get(pk=program_id)
+        except PartnerProgram.DoesNotExist:
+            raise ValidationError({"partner_program_id": "Программа не найдена."})
+
+        if program.is_manager(request.user):
+            return True
+
+        return PartnerProgramUserProfile.objects.filter(
+            user=request.user, partner_program=program
+        ).exists()

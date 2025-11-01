@@ -2,6 +2,7 @@ from urllib.parse import urlparse
 
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
+from django.db import transaction
 from rest_framework import serializers
 
 from core.serializers import SkillToObjectSerializer
@@ -19,11 +20,24 @@ from partner_programs.serializers import (
     PartnerProgramFieldSerializer,
     PartnerProgramFieldValueSerializer,
 )
-from projects.models import Achievement, Collaborator, Project, ProjectNews
+from projects.models import (
+    Achievement,
+    Collaborator,
+    Company,
+    Project,
+    ProjectCompany,
+    ProjectGoal,
+    ProjectNews,
+    Resource,
+)
 from projects.validators import validate_project
 from vacancy.serializers import ProjectVacancyListSerializer
 
 User = get_user_model()
+
+
+class EmptySerializer(serializers.Serializer):
+    pass
 
 
 class AchievementListSerializer(serializers.ModelSerializer):
@@ -109,6 +123,110 @@ class PartnerProgramProjectSerializer(serializers.ModelSerializer):
         return PartnerProgramFieldValueSerializer(values_qs, many=True).data
 
 
+class ResponsibleMiniSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ("id", "first_name", "last_name", "avatar")
+
+
+class ProjectGoalBulkListSerializer(serializers.ListSerializer):
+    """Bulk_create при POST запросе со списком объектов на /projects/{project_pk}/goals/."""
+
+    def create(self, validated_data):
+        project = self.context["project"]
+        objs = [ProjectGoal(project=project, **item) for item in validated_data]
+        created = ProjectGoal.objects.bulk_create(objs)
+        return created
+
+
+class ProjectGoalSerializer(serializers.ModelSerializer):
+    project_id = serializers.IntegerField(read_only=True)
+    responsible = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    responsible_info = ResponsibleMiniSerializer(source="responsible", read_only=True)
+
+    class Meta:
+        model = ProjectGoal
+        fields = [
+            "id",
+            "project_id",
+            "title",
+            "completion_date",
+            "responsible",
+            "responsible_info",
+            "is_done",
+        ]
+        read_only_fields = ["id", "project_id", "responsible_info"]
+        list_serializer_class = ProjectGoalBulkListSerializer
+
+
+class CompanySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Company
+        fields = ("id", "name", "inn")
+        read_only_fields = ("id",)
+
+
+class ProjectCompanySerializer(serializers.ModelSerializer):
+    company = CompanySerializer()
+    project_id = serializers.IntegerField(read_only=True)
+    decision_maker = serializers.PrimaryKeyRelatedField(read_only=True)
+
+    class Meta:
+        model = ProjectCompany
+        fields = ("id", "project_id", "company", "contribution", "decision_maker")
+
+
+class ResourceSerializer(serializers.ModelSerializer):
+    project_id = serializers.IntegerField(read_only=True)
+    project = serializers.PrimaryKeyRelatedField(
+        queryset=Project.objects.all(),
+        write_only=True,
+        required=False,
+    )
+
+    class Meta:
+        model = Resource
+        fields = (
+            "id",
+            "project_id",
+            "project",
+            "type",
+            "description",
+            "partner_company",
+        )
+        read_only_fields = ("id", "project")
+
+    def validate(self, attrs):
+        project = attrs.get("project", getattr(self.instance, "project", None))
+        partner_company = attrs.get(
+            "partner_company", getattr(self.instance, "partner_company", None)
+        )
+        if project and partner_company:
+            exists = ProjectCompany.objects.filter(
+                project=project, company=partner_company
+            ).exists()
+            if not exists:
+                raise serializers.ValidationError(
+                    {
+                        "partner_company": "Эта компания не является партнёром данного проекта."
+                    }
+                )
+        return attrs
+
+    def create(self, validated_data):
+        obj = Resource(**validated_data)
+        obj.full_clean()
+        obj.save()
+        return obj
+
+    def update(self, instance, validated_data):
+        for key, value in validated_data.items():
+            setattr(instance, key, value)
+        instance.full_clean()
+        instance.save()
+        return instance
+
+
 class ProjectDetailSerializer(serializers.ModelSerializer):
     achievements = AchievementListSerializer(many=True, read_only=True)
     cover = UserFileSerializer(required=False)
@@ -116,17 +234,24 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
         source="collaborator_set", many=True, read_only=True
     )
     vacancies = ProjectVacancyListSerializer(many=True, read_only=True)
+    goals = ProjectGoalSerializer(many=True, read_only=True)
+    partners = ProjectCompanySerializer(
+        source="project_companies", many=True, read_only=True
+    )
+    resources = ResourceSerializer(many=True, read_only=True)
     short_description = serializers.SerializerMethodField()
     industry_id = serializers.IntegerField(required=False)
     views_count = serializers.SerializerMethodField(method_name="count_views")
     links = serializers.SerializerMethodField()
     partner_program = serializers.SerializerMethodField()
     partner_program_tags = serializers.SerializerMethodField()
-    track = serializers.CharField(required=False, allow_null=True, allow_blank=True)
-    direction = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     actuality = serializers.CharField(required=False, allow_null=True, allow_blank=True)
-    goal = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     problem = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    target_audience = serializers.CharField(
+        required=False, allow_blank=True, allow_null=True
+    )
+    implementation_deadline = serializers.DateField(required=False, allow_null=True)
+    trl = serializers.IntegerField(required=False, allow_null=True)
 
     def get_partner_program(self, project):
         try:
@@ -170,28 +295,30 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "description",
             "short_description",
             "achievements",
+            "goals",
             "links",
             "region",
-            "step",
             "industry",
             "industry_id",
             "presentation_address",
             "image_address",
             "collaborators",
+            "partners",
             "leader",
             "draft",
             "is_company",
             "vacancies",
+            "resources",
             "datetime_created",
             "datetime_updated",
             "views_count",
             "cover",
             "cover_image_address",
-            "track",
-            "direction",
             "actuality",
-            "goal",
             "problem",
+            "target_audience",
+            "implementation_deadline",
+            "trl",
             "partner_program_tags",
             "partner_program",
         ]
@@ -207,6 +334,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
 class ProjectListSerializer(serializers.ModelSerializer):
     views_count = serializers.SerializerMethodField(method_name="count_views")
     short_description = serializers.SerializerMethodField()
+    partner_program_id = serializers.SerializerMethodField()
 
     @classmethod
     def count_views(cls, project):
@@ -215,6 +343,14 @@ class ProjectListSerializer(serializers.ModelSerializer):
     @classmethod
     def get_short_description(cls, project):
         return project.get_short_description()
+
+    @staticmethod
+    def get_partner_program_id(project):
+        links_cache = getattr(project, "_prefetched_objects_cache", {}).get(
+            "program_links"
+        )
+        link = links_cache[0] if links_cache else project.program_links.first()
+        return link.partner_program_id if link else None
 
     class Meta:
         model = Project
@@ -227,9 +363,10 @@ class ProjectListSerializer(serializers.ModelSerializer):
             "industry",
             "views_count",
             "is_company",
+            "partner_program_id",
         ]
 
-        read_only_fields = ["leader", "views_count", "is_company"]
+        read_only_fields = ["leader", "views_count", "is_company", "partner_program_id"]
 
     def is_valid(self, *, raise_exception=False):
         return super().is_valid(raise_exception=raise_exception)
@@ -386,7 +523,7 @@ class ProjectDuplicateRequestSerializer(serializers.Serializer):
 
         if project.leader != request.user:
             raise serializers.ValidationError(
-                "Только лидер проекта может дублировать его в программу."
+                {"error": "Только лидер проекта может дублировать его в программу."}
             )
 
         try:
@@ -453,9 +590,7 @@ class PartnerProgramFieldValueUpdateSerializer(serializers.Serializer):
                 )
         else:
             if value is not None and not isinstance(value, str):
-                raise serializers.ValidationError(
-                    "Ожидается строка для текстового поля."
-                )
+                raise serializers.ValidationError("Ожидается строка для текстового поля.")
 
     def _validate_checkbox(self, field, value, attrs):
         if field.is_required and value in (None, ""):
@@ -534,3 +669,61 @@ class PartnerProgramFieldValueUpdateSerializer(serializers.Serializer):
             return parsed.scheme in ("http", "https") and bool(parsed.netloc)
         except Exception:
             return False
+
+
+class ProjectCompanyUpsertSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=255)
+    inn = serializers.RegexField(regex=r"^\d{10}(\d{2})?$")
+
+    contribution = serializers.CharField(allow_blank=True, required=False, default="")
+    decision_maker = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(), allow_null=True, required=False, default=None
+    )
+
+    def validate(self, attrs):
+        return attrs
+
+    @transaction.atomic
+    def create(self, validated_data):
+        project = self.context["project"]
+        name = validated_data["name"].strip()
+        inn = validated_data["inn"]
+        contribution = validated_data.get("contribution", "")
+        decision_maker = validated_data.get("decision_maker", None)
+
+        company, _ = Company.objects.get_or_create(
+            inn=inn,
+            defaults={"name": name},
+        )
+
+        link, created = ProjectCompany.objects.get_or_create(
+            project=project,
+            company=company,
+            defaults={"contribution": contribution, "decision_maker": decision_maker},
+        )
+        if not created:
+            updated = False
+            if "contribution" in self.initial_data:
+                link.contribution = contribution
+                updated = True
+            if "decision_maker" in self.initial_data:
+                link.decision_maker = decision_maker
+                updated = True
+            if updated:
+                link.save()
+
+        return link
+
+    def to_representation(self, instance: ProjectCompany):
+        return ProjectCompanySerializer(instance).data
+
+
+class ProjectCompanyUpdateSerializer(serializers.ModelSerializer):
+    contribution = serializers.CharField(allow_blank=True, required=False)
+    decision_maker = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(), allow_null=True, required=False
+    )
+
+    class Meta:
+        model = ProjectCompany
+        fields = ("contribution", "decision_maker")

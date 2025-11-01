@@ -36,7 +36,6 @@ class InvitesTestCase(TestCase):
             "name": "Test",
             "description": "Test",
             "industry": Industry.objects.create(name="Test").id,
-            "step": 1,
             "draft": False,
         }
 

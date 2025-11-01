@@ -3,6 +3,10 @@ from rest_framework import serializers
 from .models import SkillToObject, SkillCategory, Skill
 
 
+class EmptySerializer(serializers.Serializer):
+    pass
+
+
 class SetLikedSerializer(serializers.Serializer):
     is_liked = serializers.BooleanField()
 

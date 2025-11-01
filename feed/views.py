@@ -1,17 +1,18 @@
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import QuerySet, Q
+from django.db.models import Q, QuerySet
 from rest_framework.generics import CreateAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.serializers import EmptySerializer
 from feed.pagination import FeedPagination
 from feed.services import get_liked_news
-
 from news.models import News
-from .serializers import NewsFeedListSerializer
-from projects.models import Project
 from partner_programs.models import PartnerProgramUserProfile
+from projects.models import Project
 from vacancy.models import Vacancy
+
+from .serializers import NewsFeedListSerializer
 
 
 class NewSimpleFeed(APIView):
@@ -29,11 +30,9 @@ class NewSimpleFeed(APIView):
 
     def _get_excluded_projects_ids(self) -> list[int]:
         """IDs for exclude projects which in Partner Program."""
-        excluded_projects = (
-            PartnerProgramUserProfile.objects
-            .values_list("project_id", flat=True)
-            .exclude(project_id__isnull=True)
-        )
+        excluded_projects = PartnerProgramUserProfile.objects.values_list(
+            "project_id", flat=True
+        ).exclude(project_id__isnull=True)
         return excluded_projects
 
     def get_queryset(self) -> QuerySet[News]:
@@ -80,6 +79,8 @@ class NewSimpleFeed(APIView):
 
 
 class DevScript(CreateAPIView):
+    serializer_class = EmptySerializer
+
     def create(self, request):
         content_type_project = ContentType.objects.filter(model="project").first()
         for project in Project.objects.filter(draft=False):

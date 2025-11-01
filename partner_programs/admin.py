@@ -2,6 +2,7 @@ import re
 import urllib.parse
 
 import tablib
+from django import forms
 from django.contrib import admin
 from django.db.models import QuerySet
 from django.http import HttpRequest, HttpResponse
@@ -37,7 +38,19 @@ class PartnerProgramFieldInline(admin.TabularInline):
 
 @admin.register(PartnerProgram)
 class PartnerProgramAdmin(admin.ModelAdmin):
+    class PartnerProgramAdminForm(forms.ModelForm):
+        class Meta:
+            model = PartnerProgram
+            fields = "__all__"
+            widgets = {
+                "name": forms.TextInput(attrs={"size": 80}),
+                "tag": forms.TextInput(attrs={"size": 80}),
+                "description": forms.Textarea(attrs={"rows": 4, "cols": 82}),
+                "city": forms.TextInput(attrs={"size": 80}),
+            }
+
     inlines = [PartnerProgramMaterialInline, PartnerProgramFieldInline]
+    form = PartnerProgramAdminForm
     list_display = ("id", "name", "tag", "city", "datetime_created")
     list_display_links = (
         "id",
@@ -53,8 +66,39 @@ class PartnerProgramAdmin(admin.ModelAdmin):
     )
     list_filter = ("city",)
 
-    filter_horizontal = ("users", "managers")
+    filter_horizontal = ("managers",)
     date_hierarchy = "datetime_started"
+    readonly_fields = ("datetime_created", "datetime_updated")
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": (
+                    "name",
+                    "tag",
+                    "description",
+                    "city",
+                    "is_competitive",
+                    "projects_availability",
+                    "draft",
+                    (
+                        "datetime_started",
+                        "datetime_registration_ends",
+                        "datetime_finished",
+                    ),
+                    (
+                        "image_address",
+                        "cover_image_address",
+                        "advertisement_image_address",
+                    ),
+                    ("presentation_address", "registration_link"),
+                    "data_schema",
+                )
+            },
+        ),
+        ("Менеджеры программы", {"fields": ("managers",)}),
+        ("Служебная информация", {"fields": ("datetime_created", "datetime_updated")}),
+    )
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[PartnerProgram]:
         qs = super().get_queryset(request)

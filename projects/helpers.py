@@ -7,7 +7,6 @@ from django.contrib.auth import get_user_model
 from rest_framework.exceptions import ValidationError
 
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
-from projects.constants import RECOMMENDATIONS_COUNT
 from projects.models import Project, ProjectLink, Achievement
 from users.models import CustomUser
 
@@ -18,7 +17,7 @@ def get_recommended_users(project: Project) -> list[User]:
     """
     Searches for users by matching their skills and vacancies required_skills
     """
-
+    RECOMMENDATIONS_COUNT = 5
     all_needed_skills = set()
     for vacancy in project.vacancies.all():
         all_needed_skills.update(set(vacancy.get_required_skills()))

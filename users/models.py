@@ -1,9 +1,10 @@
+import datetime
 from functools import partial
 
 from django.contrib.auth.models import AbstractUser
 from django.contrib.contenttypes.fields import GenericRelation
 from django.core.exceptions import ValidationError
-from django.core.validators import URLValidator
+from django.core.validators import MaxValueValidator, MinValueValidator, URLValidator
 from django.db import models
 from django.db.models import QuerySet
 from django.utils import timezone
@@ -211,9 +212,7 @@ class CustomUser(AbstractUser):
     def get_project_chats(self) -> QuerySet:
         from chats.models import ProjectChat
 
-        user_project_ids = self.collaborations.all().values_list(
-            "project_id", flat=True
-        )
+        user_project_ids = self.collaborations.all().values_list("project_id", flat=True)
         return ProjectChat.objects.filter(project__in=user_project_ids)
 
     def get_full_name(self) -> str:
@@ -258,11 +257,28 @@ class UserAchievement(models.Model):
 
     title = models.CharField(max_length=256)
     status = models.CharField(max_length=256)
-
+    year = models.PositiveSmallIntegerField(
+        "Год достижения",
+        null=True,
+        blank=True,
+        db_index=True,
+        validators=[
+            MinValueValidator(1900),
+            MaxValueValidator(datetime.date.today().year),
+        ],
+    )
     user = models.ForeignKey(
         CustomUser,
         on_delete=models.CASCADE,
         related_name="achievements",
+    )
+    files = models.ManyToManyField(
+        "files.UserFile",
+        through="UserAchievementFile",
+        through_fields=("achievement", "file"),
+        related_name="achievements",
+        related_query_name="achievement",
+        blank=True,
     )
 
     objects = UserAchievementManager()
@@ -273,6 +289,57 @@ class UserAchievement(models.Model):
     class Meta(TypedModelMeta):
         verbose_name = "Достижение"
         verbose_name_plural = "Достижения"
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "title", "year"],
+                name="uniq_user_achievement_title_year",
+            ),
+        ]
+
+
+class UserAchievementFile(models.Model):
+    ALLOWED_EXTENSIONS = {"pdf", "doc", "docx", "jpg", "jpeg", "png", "webp"}
+    MAX_UPLOAD_SIZE = 50 * 1024 * 1024
+
+    achievement = models.ForeignKey(
+        UserAchievement,
+        on_delete=models.CASCADE,
+        related_name="file_links",
+        related_query_name="file_link",
+        verbose_name="Достижение",
+    )
+    file = models.ForeignKey(
+        "files.UserFile",
+        on_delete=models.CASCADE,
+        related_name="achievement_links",
+        related_query_name="achievement_link",
+        verbose_name="Файл",
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["achievement", "file"], name="uniq_achievement_file_link"
+            )
+        ]
+        verbose_name = "Файл достижения"
+        verbose_name_plural = "Файлы достижения"
+
+    def clean(self):
+        super().clean()
+        if not self.file or not self.achievement:
+            return
+
+        if self.file.user_id is None or self.file.user_id != self.achievement.user_id:
+            raise ValidationError("Файл должен принадлежать тому же пользователю.")
+
+        if self.file.size and self.file.size > self.MAX_UPLOAD_SIZE:
+            raise ValidationError("Размер файла превышает 50 МБ.")
+
+        ext = (self.file.extension or "").lower()
+        if ext and ext not in self.ALLOWED_EXTENSIONS:
+            raise ValidationError("Недопустимое расширение файла.")
 
 
 class AbstractUserWithRole(models.Model):
@@ -556,6 +623,12 @@ class UserEducation(AbstractUserExperience):
         null=True,
         verbose_name="Статус по обучению",
     )
+    description = models.TextField(
+        max_length=1000,
+        null=True,
+        blank=True,
+        verbose_name="Направление обучения",
+    )
 
     class Meta:
         verbose_name = "Образование пользователя"
@@ -582,6 +655,12 @@ class UserWorkExperience(AbstractUserExperience):
         on_delete=models.CASCADE,
         related_name="work_experience",
         verbose_name="Пользователь",
+    )
+    description = models.TextField(
+        max_length=1000,
+        null=True,
+        blank=True,
+        verbose_name="Краткое описание деятельности",
     )
     job_position = models.CharField(
         max_length=256,

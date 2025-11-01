@@ -16,18 +16,26 @@ class VacancyManager(Manager):
                 "description",
                 "project__id",
                 "is_active",
+                "datetime_created",
             )
         )
 
     def get_vacancy_for_detail_view(self):
         return (
             self.get_queryset()
-            .select_related("project")
+            .select_related("project", "project__industry")
+            .prefetch_related("project__links")
             .only(
                 "role",
                 "required_skills",
                 "description",
                 "project",
+                "project__name",
+                "project__description",
+                "project__image_address",
+                "project__is_company",
+                "project__industry",
+                "project__links__link",
                 "is_active",
                 "datetime_created",
                 "datetime_updated",
