@@ -48,6 +48,17 @@ class NewSimpleFeed(APIView):
             )
             .order_by("-datetime_created")
         )
+
+        existing_object_filters = {
+            "project": Project.objects.values_list("id", flat=True),
+            "vacancy": Vacancy.objects.values_list("id", flat=True),
+        }
+        for model_name, ids_queryset in existing_object_filters.items():
+            queryset = queryset.exclude(
+                Q(content_type__model=model_name)
+                & ~Q(object_id__in=ids_queryset)
+            )
+
         return queryset
 
     def get(self, *args, **kwargs):
