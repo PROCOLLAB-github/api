@@ -940,6 +940,7 @@ class ResendVerifyEmailSerializer(serializers.Serializer):
 class UserProjectListSerializer(serializers.ModelSerializer[Project]):
     views_count = serializers.SerializerMethodField(method_name="count_views")
     short_description = serializers.SerializerMethodField()
+    partner_program = serializers.SerializerMethodField()
 
     @classmethod
     def count_views(cls, project):
@@ -948,6 +949,21 @@ class UserProjectListSerializer(serializers.ModelSerializer[Project]):
     @classmethod
     def get_short_description(cls, project):
         return project.get_short_description()
+
+    @staticmethod
+    def get_partner_program(project):
+        links_cache = getattr(project, "_prefetched_objects_cache", {}).get(
+            "program_links"
+        )
+        link = links_cache[0] if links_cache else project.program_links.select_related(
+            "partner_program"
+        ).first()
+        if link and link.partner_program:
+            return {
+                "id": link.partner_program_id,
+                "name": link.partner_program.name,
+            }
+        return None
 
     class Meta:
         model = Project
@@ -961,9 +977,10 @@ class UserProjectListSerializer(serializers.ModelSerializer[Project]):
             "views_count",
             "draft",
             "is_company",
+            "partner_program",
         ]
 
-        read_only_fields = ["leader", "views_count", "is_company"]
+        read_only_fields = ["leader", "views_count", "is_company", "partner_program"]
 
     def is_valid(self, *, raise_exception=False):
         return super().is_valid(raise_exception=raise_exception)

@@ -16,10 +16,18 @@ class CollaboratorManager(Manager):
 
 class ProjectManager(Manager):
     def get_projects_for_list_view(self):
-        return self.get_queryset().filter(draft=False).prefetch_related("program_links")
+        return (
+            self.get_queryset()
+            .filter(draft=False)
+            .prefetch_related("program_links__partner_program")
+        )
 
     def get_user_projects_for_list_view(self):
-        return self.get_queryset().distinct()
+        return (
+            self.get_queryset()
+            .prefetch_related("program_links__partner_program")
+            .distinct()
+        )
 
     def get_projects_for_detail_view(self):
         return (
