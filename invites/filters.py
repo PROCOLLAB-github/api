@@ -22,10 +22,12 @@ class InviteFilter(filters.FilterSet):
         super().__init__(*args, **kwargs)
         self.data = dict(self.data)
         request = kwargs.get("request")
-        self.data["user"] = request.user.id if request and request.user.is_authenticated else None
+        if request and request.user.is_authenticated:
+            self.data["user"] = request.user.id
 
     project = filters.Filter(method=project_id_filter)
+    user = filters.NumberFilter(field_name="user_id")
 
     class Meta:
         model = Invite
-        fields = ("project",)
+        fields = ("project", "user")
