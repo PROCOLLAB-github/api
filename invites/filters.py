@@ -19,19 +19,13 @@ class InviteFilter(filters.FilterSet):
     """
 
     def __init__(self, *args, **kwargs):
-        """if user filter is not passed, default to request.user"""
         super().__init__(*args, **kwargs)
-        if self.data.get("user") is None:
-            # default filtering by current user
-            self.data = dict(self.data)
-            self.data["user"] = kwargs.get("request").user.id
-        # if user == "any", remove the filter
-        if self.data.get("user") == "any":
-            self.data = dict(self.data)
-            self.data.pop("user")
+        self.data = dict(self.data)
+        request = kwargs.get("request")
+        self.data["user"] = request.user.id if request and request.user.is_authenticated else None
 
     project = filters.Filter(method=project_id_filter)
 
     class Meta:
         model = Invite
-        fields = ("project", "user")
+        fields = ("project",)
