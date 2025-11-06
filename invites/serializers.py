@@ -19,6 +19,7 @@ class InviteListSerializer(serializers.ModelSerializer[Invite]):
             "specialization",
             "is_accepted",
         ]
+        read_only_fields = ["is_accepted"]
 
     def validate(self, attrs):
         project = attrs["project"]
