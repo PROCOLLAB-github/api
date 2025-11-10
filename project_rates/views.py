@@ -1,5 +1,5 @@
 from django.contrib.auth import get_user_model
-from django.db.models import QuerySet, Count
+from django.db.models import QuerySet, Count, OuterRef, Subquery, IntegerField
 
 from rest_framework import generics, status
 from rest_framework.response import Response
@@ -98,6 +98,13 @@ class ProjectListForRate(generics.ListAPIView):
             project__isnull=False, partner_program__id=self.kwargs.get("program_id")
         ).values_list("project__id", flat=True)
         # `Count` the easiest way to check for rate exist (0 -> does not exist).
+        scored_expert_subquery = ProjectScore.objects.filter(
+            project=OuterRef("pk")
+        ).values("user__expert__id")[:1]
+
         return Project.objects.filter(draft=False, id__in=projects_ids).annotate(
-            scored=Count("scores")
+            scored=Count("scores"),
+            scored_expert_id=Subquery(
+                scored_expert_subquery, output_field=IntegerField()
+            ),
         )
