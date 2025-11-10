@@ -61,6 +61,7 @@ class ProjectListForRateSerializer(serializers.ModelSerializer):
     views_count = serializers.SerializerMethodField()
     criterias = serializers.SerializerMethodField()
     scored = serializers.SerializerMethodField()
+    scored_expert_id = serializers.IntegerField(read_only=True, allow_null=True)
 
     class Meta:
         model = Project
@@ -75,6 +76,7 @@ class ProjectListForRateSerializer(serializers.ModelSerializer):
             "region",
             "views_count",
             "scored",
+            "scored_expert_id",
             "criterias",
         ]
 
