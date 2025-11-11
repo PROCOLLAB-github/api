@@ -29,7 +29,6 @@ class InvitesTestCase(TestCase):
             "user": None,
             "motivational_letter": "hello",
             "role": "Developer",
-            "is_accepted": False,
         }
 
         self.project_create_data = {
@@ -59,7 +58,7 @@ class InvitesTestCase(TestCase):
         )
         self.assertEqual(response.data["project"]["id"], create_user["project"])
         self.assertEqual(response.data["role"], create_user["role"])
-        self.assertEqual(response.data["is_accepted"], create_user["is_accepted"])
+        self.assertIsNone(response.data["is_accepted"])
 
     def test_invites_creation_with_empty_text(self):
         user_main = self._user_create("example@gmail.com")

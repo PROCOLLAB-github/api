@@ -65,6 +65,24 @@ class PartnerProgramList(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     pagination_class = PartnerProgramPagination
 
+    def get_queryset(self):
+        base_qs = super().get_queryset()
+        participating_flag = self.request.query_params.get("participating")
+        if not participating_flag:
+            return base_qs
+
+        if not self.request.user.is_authenticated:
+            return PartnerProgram.objects.none()
+
+        now = timezone.now()
+        return (
+            base_qs.filter(
+                partner_program_profiles__user=self.request.user,
+                datetime_finished__gte=now,
+            )
+            .distinct()
+        )
+
 
 class PartnerProgramDetail(generics.RetrieveAPIView):
     queryset = PartnerProgram.objects.prefetch_related("materials", "managers").all()

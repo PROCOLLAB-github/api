@@ -334,7 +334,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
 class ProjectListSerializer(serializers.ModelSerializer):
     views_count = serializers.SerializerMethodField(method_name="count_views")
     short_description = serializers.SerializerMethodField()
-    partner_program_id = serializers.SerializerMethodField()
+    partner_program = serializers.SerializerMethodField()
 
     @classmethod
     def count_views(cls, project):
@@ -345,12 +345,23 @@ class ProjectListSerializer(serializers.ModelSerializer):
         return project.get_short_description()
 
     @staticmethod
-    def get_partner_program_id(project):
+    def _get_program_link(project):
         links_cache = getattr(project, "_prefetched_objects_cache", {}).get(
             "program_links"
         )
-        link = links_cache[0] if links_cache else project.program_links.first()
-        return link.partner_program_id if link else None
+        if links_cache:
+            return links_cache[0]
+        return project.program_links.select_related("partner_program").first()
+
+    @classmethod
+    def get_partner_program(cls, project):
+        link = cls._get_program_link(project)
+        if link and link.partner_program:
+            return {
+                "id": link.partner_program_id,
+                "name": link.partner_program.name,
+            }
+        return None
 
     class Meta:
         model = Project
@@ -363,10 +374,15 @@ class ProjectListSerializer(serializers.ModelSerializer):
             "industry",
             "views_count",
             "is_company",
-            "partner_program_id",
+            "partner_program",
         ]
 
-        read_only_fields = ["leader", "views_count", "is_company", "partner_program_id"]
+        read_only_fields = [
+            "leader",
+            "views_count",
+            "is_company",
+            "partner_program",
+        ]
 
     def is_valid(self, *, raise_exception=False):
         return super().is_valid(raise_exception=raise_exception)

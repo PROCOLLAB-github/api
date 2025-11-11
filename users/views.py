@@ -407,8 +407,13 @@ class UserProjectsList(GenericAPIView):
     serializer_class = UserProjectListSerializer
 
     def get(self, request):
-        self.queryset = Project.objects.get_user_projects_for_list_view().filter(
-            Q(leader_id=self.request.user.id) | Q(collaborator__user=self.request.user)
+        self.queryset = (
+            Project.objects.filter(
+                Q(leader_id=self.request.user.id)
+                | Q(collaborator__user=self.request.user)
+            )
+            .prefetch_related("program_links__partner_program")
+            .distinct()
         )
 
         page = self.paginate_queryset(self.queryset)

@@ -9,7 +9,7 @@ from projects.models import Collaborator
 
 
 class InviteList(generics.ListCreateAPIView):
-    queryset = Invite.objects.get_invite_for_list_view()
+    queryset = Invite.objects.get_invite_for_list_view().filter(is_accepted__isnull=True)
     serializer_class = InviteDetailSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     filter_backends = (filters.DjangoFilterBackend,)
@@ -47,13 +47,30 @@ class InviteAccept(generics.GenericAPIView):
         invite = self.get_object()  # type: Invite
         if invite.user != request.user:
             return Response(status=status.HTTP_403_FORBIDDEN)
+        if invite.is_accepted is True:
+            return Response(
+                {"detail": "Invite has already been accepted."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        if invite.is_accepted is False:
+            return Response(
+                {"detail": "Invite has already been declined."},
+                status=status.HTTP_409_CONFLICT,
+            )
         # add user to project collaborators
-        Collaborator.objects.create(
+        collaborator, created = Collaborator.objects.get_or_create(
             user=invite.user,
             project=invite.project,
-            role=invite.role,
-            specialization=invite.specialization,
+            defaults={
+                "role": invite.role,
+                "specialization": invite.specialization,
+            },
         )
+        if not created:
+            return Response(
+                {"detail": "User is already a collaborator of this project."},
+                status=status.HTTP_409_CONFLICT,
+            )
         invite.is_accepted = True
         invite.save()
         return Response(status=status.HTTP_200_OK)
