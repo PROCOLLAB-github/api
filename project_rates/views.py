@@ -100,7 +100,7 @@ class ProjectListForRate(generics.ListAPIView):
         # `Count` the easiest way to check for rate exist (0 -> does not exist).
         scored_expert_subquery = ProjectScore.objects.filter(
             project=OuterRef("pk")
-        ).values("user__expert__id")[:1]
+        ).values("user_id")[:1]
 
         return Project.objects.filter(draft=False, id__in=projects_ids).annotate(
             scored=Count("scores"),
