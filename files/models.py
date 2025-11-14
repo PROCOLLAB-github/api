@@ -1,9 +1,7 @@
 import reprlib
 
-from django.contrib.auth import get_user_model
+from django.conf import settings
 from django.db import models
-
-User = get_user_model()
 
 
 class UserFile(models.Model):
@@ -20,7 +18,11 @@ class UserFile(models.Model):
     """
 
     link = models.URLField(primary_key=True, null=False)
-    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+    )
     datetime_uploaded = models.DateTimeField(auto_now_add=True)
     name = models.TextField(blank=False, default="file")
     extension = models.TextField(blank=True, default="")
