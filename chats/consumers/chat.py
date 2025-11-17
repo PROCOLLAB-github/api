@@ -77,7 +77,15 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         await self.channel_layer.group_add(
             EventGroupType.GENERAL_EVENTS, self.channel_name
         )
-        await self.accept()
+        # Confirm selected subprotocol so browser clients finish handshake.
+        subprotocol = None
+        if (
+            self.scope.get("subprotocols")
+            and len(self.scope["subprotocols"]) >= 1
+        ):
+            subprotocol = self.scope["subprotocols"][0]
+
+        await self.accept(subprotocol=subprotocol)
 
     async def disconnect(self, close_code):
         """User disconnected from websocket"""
