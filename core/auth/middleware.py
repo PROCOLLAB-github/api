@@ -1,5 +1,3 @@
-from urllib.parse import parse_qs
-
 import jwt
 from channels.db import database_sync_to_async
 from django.conf import settings
@@ -97,33 +95,37 @@ def get_user(scope):
 
 class TokenAuthMiddleware:
     """
-    Custom middleware that takes a token from the query string and authenticates via Django Rest Framework authtoken.
+    Custom middleware that takes a token from WebSocket subprotocols and authenticates via JWT.
     """
+
+    SUBPROTOCOL_KEYWORD = "Bearer"
 
     def __init__(self, app):
         # Store the ASGI application we were passed
         self.app = app
 
     async def __call__(self, scope, receive, send):
-        # Look up user from query string
+        # Extract token from Sec-WebSocket-Protocol header.
+        token = self._extract_token_from_subprotocol(scope.get("subprotocols", []))
 
-        # TODO: (you should also do things like
-        #  checking if it is a valid user ID, or if scope["user" ] is already
-        #  populated).
-
-        query_string = scope["query_string"].decode()
-        query_dict = parse_qs(query_string)
-        try:
-            token = query_dict["token"][0]
-            if token is None:
-                raise ValueError("Token is missing from headers")
-
+        if token:
             scope["token"] = token
             scope["user"] = await get_user(scope)
-        except (ValueError, KeyError, IndexError):
-            # Token is missing from query string
+        else:
             from django.contrib.auth.models import AnonymousUser
 
             scope["user"] = AnonymousUser()
 
         return await self.app(scope, receive, send)
+
+    def _extract_token_from_subprotocol(self, subprotocols: list[str]) -> str | None:
+        """
+        Expect subprotocols in the form ["Bearer", "<JWT>"].
+        """
+        if not subprotocols:
+            return None
+
+        if len(subprotocols) >= 2 and subprotocols[0] == self.SUBPROTOCOL_KEYWORD:
+            return subprotocols[1]
+
+        return None
