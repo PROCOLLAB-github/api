@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from projects.models import Collaborator, Project
 from vacancy.filters import VacancyFilter
 from vacancy.mapping import CeleryEmailParams, MessageTypeEnum
+from vacancy.metrics import VACANCIES_RESPONSE_COUNTER
 from vacancy.models import Vacancy, VacancyResponse
 from vacancy.pagination import VacancyPagination
 from vacancy.permissions import (
@@ -125,7 +126,7 @@ class VacancyResponseList(
                 schema_id=2,
             )
         )
-
+        VACANCIES_RESPONSE_COUNTER.inc()
         return vacancy_response
 
 
