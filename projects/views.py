@@ -671,6 +671,43 @@ class SwitchLeaderRole(generics.GenericAPIView):
 class DuplicateProjectView(APIView):
     permission_classes = [IsAuthenticated, CanBindProjectToProgram]
 
+    @staticmethod
+    def _copy_collaborators(original_project: Project, new_project: Project) -> None:
+        """
+        Copy all collaborators from the source project to the duplicated one.
+        Keep the leader collaborator (auto-created by signal) in sync with the original.
+        """
+        leader_id = new_project.leader_id
+        collaborators_to_create: list[Collaborator] = []
+        leader_collaborator = None
+
+        for collaborator in original_project.collaborator_set.select_related("user").all():
+            if collaborator.user_id == leader_id:
+                leader_collaborator = collaborator
+                continue
+
+            collaborators_to_create.append(
+                Collaborator(
+                    user=collaborator.user,
+                    project=new_project,
+                    role=collaborator.role,
+                    specialization=collaborator.specialization,
+                )
+            )
+
+        if collaborators_to_create:
+            Collaborator.objects.bulk_create(collaborators_to_create)
+
+        if leader_collaborator:
+            Collaborator.objects.update_or_create(
+                user_id=leader_id,
+                project=new_project,
+                defaults={
+                    "role": leader_collaborator.role,
+                    "specialization": leader_collaborator.specialization,
+                },
+            )
+
     @swagger_auto_schema(
         request_body=ProjectDuplicateRequestSerializer,
         responses={201: ProjectDuplicateRequestSerializer(), 400: "Validation error"},
@@ -705,6 +742,8 @@ class DuplicateProjectView(APIView):
                 cover_image_address=original_project.cover_image_address,
                 cover=original_project.cover,
             )
+
+            self._copy_collaborators(original_project, new_project)
 
             program_link = PartnerProgramProject.objects.create(
                 partner_program=partner_program, project=new_project
