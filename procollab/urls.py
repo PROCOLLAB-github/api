@@ -50,6 +50,7 @@ urlpatterns = [
     path("programs/", include("partner_programs.urls", namespace="partner_programs")),
     path("rate-project/", include(("project_rates.urls", "rate_projects"))),
     path("feed/", include("feed.urls", namespace="feed")),
+    path("kanban/", include("kanban.urls", namespace="kanban")),
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/token/verify/", TokenVerifyView.as_view(), name="token_verify"),
