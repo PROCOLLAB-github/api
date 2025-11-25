@@ -48,37 +48,30 @@ class BoardSerializer(serializers.ModelSerializer):
 
 
 class BoardColumnSerializer(serializers.ModelSerializer):
-    board = serializers.PrimaryKeyRelatedField(queryset=Board.objects.all())
+    board = serializers.PrimaryKeyRelatedField(
+        queryset=Board.objects.all(), write_only=True
+    )
+    board_id = serializers.IntegerField(source="board.id", read_only=True)
     tasks_count = serializers.IntegerField(read_only=True)
+    order = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = BoardColumn
         fields = (
             "id",
             "board",
+            "board_id",
             "name",
             "order",
             "tasks_count",
             "created_at",
             "updated_at",
         )
-        read_only_fields = ("id", "tasks_count", "created_at", "updated_at")
-
-    def validate_board(self, board: Board):
-        request = self.context.get("request")
-        user = getattr(request, "user", None)
-        if not user or not user.is_authenticated:
-            raise serializers.ValidationError("Требуется аутентификация")
-
-        if board.project.leader_id == user.id:
-            return board
-
-        is_member = Collaborator.objects.filter(
-            project_id=board.project_id,
-            user_id=user.id,
-        ).exists()
-        if not is_member:
-            raise serializers.ValidationError(
-                "Пользователь не является участником проекта"
-            )
-        return board
+        read_only_fields = (
+            "id",
+            "tasks_count",
+            "order",
+            "created_at",
+            "updated_at",
+            "board_id",
+        )

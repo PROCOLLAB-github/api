@@ -19,15 +19,16 @@ class ColumnAPITests(BaseKanbanTestCase):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertGreaterEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]["board"], self.board.id)
+        self.assertEqual(response.data[0]["board_id"], self.board.id)
 
     def test_create_column(self):
-        payload = {"board": self.board.id, "name": "In Progress", "order": 5}
+        payload = {"board": self.board.id, "name": "In Progress"}
         response = self.client.post(self.url, payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         column_id = response.data["id"]
         column = BoardColumn.objects.get(id=column_id)
         self.assertEqual(column.name, "In Progress")
+        self.assertEqual(column.order, self.board.columns.count())
 
     def test_cannot_create_column_in_foreign_project(self):
         foreign_leader = CustomUser.objects.create(
@@ -41,7 +42,7 @@ class ColumnAPITests(BaseKanbanTestCase):
         foreign_board = Board.objects.create(
             project=foreign_project, name="Foreign Board"
         )
-        payload = {"board": foreign_board.id, "name": "Forbidden", "order": 1}
+        payload = {"board": foreign_board.id, "name": "Forbidden"}
         response = self.client.post(self.url, payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
