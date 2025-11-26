@@ -48,7 +48,7 @@ from partner_programs.services import (
     sanitize_excel_value,
 )
 from partner_programs.utils import filter_program_projects_by_field_name
-from projects.models import Project
+from projects.models import Collaborator, Project
 from projects.serializers import (
     PartnerProgramFieldValueUpdateSerializer,
     ProjectListSerializer,
@@ -525,7 +525,12 @@ class PartnerProgramExportProjectsAPIView(APIView):
         links_qs = program.program_projects.select_related(
             "project", "project__leader"
         ).prefetch_related(
-            Prefetch("field_values", queryset=fv_qs, to_attr="_prefetched_field_values")
+            Prefetch("field_values", queryset=fv_qs, to_attr="_prefetched_field_values"),
+            Prefetch(
+                "project__collaborator_set",
+                queryset=Collaborator.objects.select_related("user"),
+                to_attr="_prefetched_collaborators",
+            ),
         )
         if only_submitted:
             links_qs = links_qs.filter(submitted=True)
