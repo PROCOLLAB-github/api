@@ -132,6 +132,7 @@ BASE_COLUMNS = [
     ("project_region", "Регион проекта"),
     ("project_presentation", "Ссылка на презентацию"),
     ("team_size", "Количество человек в команде"),
+    ("team_members", "Состав команды"),
     ("leader_full_name", "Имя фамилия лидера"),
 ]
 EXCEL_CELL_MAX = 32767  # лимит символов в ячейке Excel
@@ -174,6 +175,10 @@ def _leader_full_name(user):
 
 
 def _calc_team_size(project):
+    prefetched_collaborators = getattr(project, "_prefetched_collaborators", None)
+    if prefetched_collaborators is not None:
+        return 1 + len(prefetched_collaborators)
+
     try:
         if hasattr(project, "get_collaborators_user_list"):
             return 1 + len(project.get_collaborators_user_list())
@@ -182,6 +187,41 @@ def _calc_team_size(project):
     except Exception:
         pass
     return 1
+
+
+def _team_members(project) -> str:
+    members: list[str] = []
+    seen_ids: set[int | None] = set()
+
+    leader = getattr(project, "leader", None)
+    if leader:
+        leader_name = _leader_full_name(leader)
+        if leader_name:
+            members.append(leader_name)
+        seen_ids.add(getattr(leader, "id", None))
+
+    collaborators = getattr(project, "_prefetched_collaborators", None)
+    if collaborators is None:
+        collaborators = (
+            project.collaborator_set.select_related("user").all()
+            if hasattr(project, "collaborator_set")
+            else []
+        )
+
+    for collaborator in collaborators:
+        user = getattr(collaborator, "user", None)
+        if not user:
+            continue
+        user_id = getattr(user, "id", None)
+        if user_id in seen_ids:
+            continue
+        name = _leader_full_name(user)
+        if not name:
+            continue
+        members.append(name)
+        seen_ids.add(user_id)
+
+    return "\n".join(members)
 
 
 def build_program_field_columns(program) -> list[tuple[str, str]]:
@@ -212,6 +252,7 @@ def row_dict_for_link(
     row["project_region"] = project.region or ""
     row["project_presentation"] = project.presentation_address or ""
     row["team_size"] = _calc_team_size(project)
+    row["team_members"] = _team_members(project)
     row["leader_full_name"] = _leader_full_name(getattr(project, "leader", None))
 
     values_map: dict[str, str] = {}
