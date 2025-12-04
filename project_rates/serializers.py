@@ -97,19 +97,26 @@ class ProjectListForRateSerializer(serializers.ModelSerializer):
             project=obj, criteria__partner_program_id=program_id
         ).select_related("criteria", "user")
 
+    def _get_user_scores(self, obj):
+        scores = self._get_program_scores(obj)
+        request = self.context.get("request")
+        if request and getattr(request.user, "is_authenticated", False):
+            return [score for score in scores if score.user_id == request.user.id]
+        return []
+
     def get_criterias(self, obj) -> CriteriasResponse | ProjectScoresResponse:
+        user_scores = self._get_user_scores(obj)
+        if user_scores:
+            serializer = ProjectScoreSerializer(user_scores, many=True)
+            return serializer.data
         program_id = self.context["view"].kwargs.get("program_id")
-        program_scores = self._get_program_scores(obj)
-        if program_scores:
-            serializer = ProjectScoreSerializer(program_scores, many=True)
-        else:
-            cirterias = Criteria.objects.filter(partner_program__id=program_id)
-            serializer = CriteriaSerializer(cirterias, many=True)
+        criterias = Criteria.objects.filter(partner_program__id=program_id)
+        serializer = CriteriaSerializer(criterias, many=True)
         return serializer.data
 
     def get_scored(self, obj) -> bool:
-        program_scores = self._get_program_scores(obj)
-        return bool(program_scores)
+        user_scores = self._get_user_scores(obj)
+        return bool(user_scores)
 
     def get_rated_experts(self, obj) -> list[int]:
         program_scores = self._get_program_scores(obj)
