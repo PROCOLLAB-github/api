@@ -61,7 +61,9 @@ class ProjectListForRateSerializer(serializers.ModelSerializer):
     views_count = serializers.SerializerMethodField()
     criterias = serializers.SerializerMethodField()
     scored = serializers.SerializerMethodField()
-    scored_expert_id = serializers.IntegerField(read_only=True, allow_null=True)
+    rated_experts = serializers.SerializerMethodField()
+    rated_count = serializers.SerializerMethodField()
+    max_rates = serializers.SerializerMethodField()
 
     class Meta:
         model = Project
@@ -76,22 +78,47 @@ class ProjectListForRateSerializer(serializers.ModelSerializer):
             "region",
             "views_count",
             "scored",
-            "scored_expert_id",
+            "rated_experts",
+            "rated_count",
+            "max_rates",
             "criterias",
         ]
 
     def get_views_count(self, obj) -> int:
         return get_views_count(obj)
 
+    def _get_program_scores(self, obj):
+        if hasattr(obj, "_program_scores"):
+            return obj._program_scores
+        program_id = self.context["view"].kwargs.get("program_id")
+        return ProjectScore.objects.filter(
+            project=obj, criteria__partner_program_id=program_id
+        ).select_related("criteria", "user")
+
     def get_criterias(self, obj) -> CriteriasResponse | ProjectScoresResponse:
         program_id = self.context["view"].kwargs.get("program_id")
-        if obj.scored:
-            scores = ProjectScore.objects.filter(project=obj).select_related("criteria")
-            serializer = ProjectScoreSerializer(scores, many=True)
+        program_scores = self._get_program_scores(obj)
+        if program_scores:
+            serializer = ProjectScoreSerializer(program_scores, many=True)
         else:
             cirterias = Criteria.objects.filter(partner_program__id=program_id)
             serializer = CriteriaSerializer(cirterias, many=True)
         return serializer.data
 
     def get_scored(self, obj) -> bool:
-        return bool(obj.scored)
+        program_scores = self._get_program_scores(obj)
+        return bool(program_scores)
+
+    def get_rated_experts(self, obj) -> list[int]:
+        program_scores = self._get_program_scores(obj)
+        return list({score.user_id for score in program_scores})
+
+    def get_rated_count(self, obj) -> int:
+        rated_attr = getattr(obj, "rated_count", None)
+        if rated_attr is not None:
+            return rated_attr
+        program_scores = self._get_program_scores(obj)
+        return len({score.user_id for score in program_scores})
+
+    def get_max_rates(self, obj):
+        return self.context.get("program_max_rates")

@@ -79,6 +79,13 @@ class PartnerProgram(models.Model):
         verbose_name="Ссылка на регистрацию",
         help_text="Адрес страницы регистрации (например, на Tilda)",
     )
+    max_project_rates = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        default=1,
+        verbose_name="Максимальное количество оценок проектов",
+        help_text="Ограничение на число экспертов, которые могут оценить один проект в программе",
+    )
     data_schema = models.JSONField(
         verbose_name="Схема данных в формате JSON",
         help_text="Ключи - имена полей, значения - тип поля ввода",

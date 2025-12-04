@@ -22,6 +22,8 @@ class IsExpert(BasePermission):
 
     def has_permission(self, request, view):
         user = request.user
+        if not getattr(user, "is_authenticated", False):
+            raise PermissionDenied("Authentication credentials were not provided.")
         program_id = view.kwargs.get("program_id")
 
         if not user.user_type == 3:
@@ -37,7 +39,12 @@ class IsExpertPost(BasePermission):
     """
 
     def has_permission(self, request, view):
-        return True if request.user.user_type == 3 else False
+        user = request.user
+        if not getattr(user, "is_authenticated", False):
+            raise PermissionDenied("Authentication credentials were not provided.")
+        if getattr(user, "user_type", None) != 3:
+            raise PermissionDenied("User is not an expert")
+        return True
 
 
 class CustomIsAuthenticated(BasePermission):
