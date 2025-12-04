@@ -133,6 +133,10 @@ class ProjectListForRate(generics.ListAPIView):
     filterset_class = ProjectFilter
     pagination_class = RateProjectsPagination
 
+    def post(self, request, *args, **kwargs):
+        """Allow POST with filters in JSON body."""
+        return self.list(request, *args, **kwargs)
+
     def _get_program(self) -> PartnerProgram:
         return PartnerProgram.objects.get(pk=self.kwargs.get("program_id"))
 
@@ -141,10 +145,10 @@ class ProjectListForRate(generics.ListAPIView):
         Accept filters from JSON body to mirror /partner_programs/<id>/projects/filter/:
         {"filters": {"case": ["Кейс 1"]}}
         """
+        if self.request.method != "POST":
+            return {}
         data = getattr(self.request, "data", None)
-        body_filters = (
-            data.get("filters") if isinstance(data, dict) and data.get("filters") else {}
-        )
+        body_filters = data.get("filters") if isinstance(data, dict) else {}
         return body_filters if isinstance(body_filters, dict) else {}
 
     def get_queryset(self) -> QuerySet[Project]:
