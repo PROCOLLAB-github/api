@@ -42,11 +42,13 @@ class CriteriaSerializer(serializers.ModelSerializer):
 
 class ProjectScoreSerializer(serializers.ModelSerializer):
     criteria = CriteriaSerializer()
+    expert_id = serializers.IntegerField(source="user_id", read_only=True)
 
     class Meta:
         model = ProjectScore
         fields = [
             "criteria",
+            "expert_id",
             "value",
         ]
 
