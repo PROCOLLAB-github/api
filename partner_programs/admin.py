@@ -80,6 +80,7 @@ class PartnerProgramAdmin(admin.ModelAdmin):
                     "city",
                     "is_competitive",
                     "projects_availability",
+                    "max_project_rates",
                     "draft",
                     (
                         "datetime_started",
