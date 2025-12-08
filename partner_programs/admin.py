@@ -285,7 +285,17 @@ class PartnerProgramAdmin(admin.ModelAdmin):
             scores_dict.setdefault(score.project_id, []).append(score)
 
         if not scores_dict:
-            return []
+            empty_row: dict[str, str] = {
+                "Название проекта": "",
+                "Фамилия эксперта": "",
+            }
+            for field in program_fields:
+                empty_row[field.label] = ""
+            for criteria in criterias_without_comment:
+                empty_row[criteria.name] = ""
+            if comment_criteria:
+                empty_row["Комментарий"] = ""
+            return [empty_row]
 
         project_ids = list(scores_dict.keys())
 
