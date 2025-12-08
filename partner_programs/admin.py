@@ -27,6 +27,7 @@ class PartnerProgramMaterialInline(admin.StackedInline):
     extra = 1
     fields = ("title", "url", "file")
     readonly_fields = ("datetime_created", "datetime_updated")
+    autocomplete_fields = ("file",)
 
 
 class PartnerProgramFieldInline(admin.TabularInline):
@@ -64,7 +65,7 @@ class PartnerProgramAdmin(admin.ModelAdmin):
     )
     list_filter = ("city",)
 
-    filter_horizontal = ("managers",)
+    autocomplete_fields = ("managers",)
     date_hierarchy = "datetime_started"
     readonly_fields = ("datetime_created", "datetime_updated")
     fieldsets = (
@@ -100,7 +101,9 @@ class PartnerProgramAdmin(admin.ModelAdmin):
     )
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[PartnerProgram]:
-        qs = super().get_queryset(request)
+        qs = super().get_queryset(request).prefetch_related(
+            "managers", "materials", "fields"
+        )
         if "Руководитель программы" in request.user.groups.all().values_list(
             "name", flat=True
         ):
