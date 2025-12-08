@@ -4,7 +4,7 @@ import urllib.parse
 import tablib
 from django import forms
 from django.contrib import admin
-from django.db.models import QuerySet
+from django.db.models import Prefetch, QuerySet
 from django.http import HttpRequest, HttpResponse
 from django.urls import path
 from django.utils import timezone
@@ -19,9 +19,7 @@ from partner_programs.models import (
     PartnerProgramProject,
     PartnerProgramUserProfile,
 )
-from partner_programs.services import ProjectScoreDataPreparer
 from project_rates.models import Criteria, ProjectScore
-from projects.models import Project
 
 
 class PartnerProgramMaterialInline(admin.StackedInline):
@@ -247,46 +245,112 @@ class PartnerProgramAdmin(admin.ModelAdmin):
 
     def _get_prepared_rates_data_for_export(self, program_id: int) -> list[dict]:
         """
-        Prepares info (list if dicts) for export about prjects_rates by experts.
-        Columns example:
-            ФИО|Email|Регион_РФ|Учебное_заведение|Название_учебного_заведения|Класс_курс|Фамилия эксперта|**criteria
+        Готовит данные для выгрузки оценок проектов.
+        Порядок колонок: название проекта → фамилия эксперта → доп. поля программы →
+        критерии → комментарий.
+        Если у проекта несколько экспертов, на каждый проект-эксперт создаётся отдельная строка.
         """
-        criterias = Criteria.objects.filter(
-            partner_program__id=program_id
-        ).select_related("partner_program")
+        criterias = list(
+            Criteria.objects.filter(partner_program__id=program_id)
+            .select_related("partner_program")
+            .order_by("id")
+        )
+        if not criterias:
+            return []
+
+        comment_criteria = next(
+            (criteria for criteria in criterias if criteria.name == "Комментарий"),
+            None,
+        )
+        criterias_without_comment = [
+            criteria for criteria in criterias if criteria != comment_criteria
+        ]
+
+        program_fields = list(
+            PartnerProgramField.objects.filter(partner_program_id=program_id).order_by(
+                "id"
+            )
+        )
+
         scores = (
             ProjectScore.objects.filter(criteria__in=criterias)
             .select_related("user", "criteria", "project")
-            .order_by("project", "criteria")
+            .order_by("project_id", "criteria_id", "id")
         )
-        user_programm_profiles = PartnerProgramUserProfile.objects.filter(
-            partner_program__id=program_id
-        ).select_related("user")
-        projects = (
-            Project.objects.filter(scores__in=scores)
-            .select_related("leader")
-            .distinct()
-        )
-
-        # To reduce the number of DB requests.
-        user_profiles_dict: dict[int, PartnerProgramUserProfile] = {
-            profile.project_id: profile for profile in user_programm_profiles
-        }
         scores_dict: dict[int, list[ProjectScore]] = {}
         for score in scores:
             scores_dict.setdefault(score.project_id, []).append(score)
 
-        prepared_projects_rates_data: list[dict] = []
-        for project in projects:
-            project_data_preparer = ProjectScoreDataPreparer(
-                user_profiles_dict, scores_dict, project.id, program_id
+        if not scores_dict:
+            return []
+
+        project_ids = list(scores_dict.keys())
+
+        field_values_prefetch = Prefetch(
+            "field_values",
+            queryset=PartnerProgramFieldValue.objects.select_related("field").filter(
+                program_project__partner_program_id=program_id,
+                program_project__project_id__in=project_ids,
+            ),
+            to_attr="_prefetched_field_values",
+        )
+        program_projects = (
+            PartnerProgramProject.objects.filter(
+                partner_program_id=program_id, project_id__in=project_ids
             )
-            full_project_rates_data: dict = {
-                **project_data_preparer.get_project_user_info(),
-                **project_data_preparer.get_project_expert_info(),
-                **project_data_preparer.get_project_scores_info(),
-            }
-            prepared_projects_rates_data.append(full_project_rates_data)
+            .select_related("project")
+            .prefetch_related(field_values_prefetch)
+        )
+        program_project_by_project_id: dict[int, PartnerProgramProject] = {
+            link.project_id: link for link in program_projects
+        }
+
+        prepared_projects_rates_data: list[dict] = []
+        for project_id, project_scores in scores_dict.items():
+            project_link = program_project_by_project_id.get(project_id)
+            project = (
+                project_link.project
+                if project_link
+                else (project_scores[0].project if project_scores else None)
+            )
+
+            field_values_map: dict[int, str] = {}
+            field_values = (
+                getattr(project_link, "_prefetched_field_values", None)
+                if project_link
+                else None
+            )
+            if field_values:
+                for field_value in field_values:
+                    field_values_map[field_value.field_id] = field_value.get_value()
+
+            scores_by_expert: dict[int, list[ProjectScore]] = {}
+            for score in project_scores:
+                scores_by_expert.setdefault(score.user_id, []).append(score)
+
+            for _, expert_scores in scores_by_expert.items():
+                row_data: dict[str, str] = {}
+                row_data["Название проекта"] = (
+                    getattr(project, "name", "") if project else ""
+                )
+                row_data["Фамилия эксперта"] = (
+                    expert_scores[0].user.last_name if expert_scores else ""
+                )
+
+                for field in program_fields:
+                    row_data[field.label] = field_values_map.get(field.id, "")
+
+                scores_map: dict[int, str] = {
+                    score.criteria_id: score.value for score in expert_scores
+                }
+
+                for criteria in criterias_without_comment:
+                    row_data[criteria.name] = scores_map.get(criteria.id, "")
+
+                if comment_criteria:
+                    row_data["Комментарий"] = scores_map.get(comment_criteria.id, "")
+
+                prepared_projects_rates_data.append(row_data)
 
         return prepared_projects_rates_data
 
