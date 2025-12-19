@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils import timezone
 
 from files.models import UserFile
 from partner_programs.constants import get_default_data_schema
@@ -115,6 +116,17 @@ class PartnerProgram(models.Model):
     datetime_registration_ends = models.DateTimeField(
         verbose_name="Дата окончания регистрации",
     )
+    datetime_project_submission_ends = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Дата окончания подачи проектов",
+        help_text="Если не указано, используется дата окончания регистрации",
+    )
+    datetime_evaluation_ends = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Дата окончания оценки проектов",
+    )
     datetime_started = models.DateTimeField(
         verbose_name="Дата начала",
     )
@@ -142,6 +154,14 @@ class PartnerProgram(models.Model):
 
     def __str__(self):
         return f"PartnerProgram<{self.pk}> - {self.name}"
+
+    def get_project_submission_deadline(self):
+        """Возвращает дедлайн подачи проектов: отдельное поле или дата окончания регистрации."""
+        return self.datetime_project_submission_ends or self.datetime_registration_ends
+
+    def is_project_submission_open(self) -> bool:
+        deadline = self.get_project_submission_deadline()
+        return deadline is None or deadline >= timezone.now()
 
 
 class PartnerProgramUserProfile(models.Model):

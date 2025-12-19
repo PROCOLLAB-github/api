@@ -204,6 +204,10 @@ class CanBindProjectToProgram(BasePermission):
         except PartnerProgram.DoesNotExist:
             raise ValidationError({"partner_program_id": "Программа не найдена."})
 
+        submission_deadline = program.get_project_submission_deadline()
+        if submission_deadline and submission_deadline < timezone.now():
+            raise ValidationError({"partner_program_id": "Срок подачи проектов в программу завершён."})
+
         if program.is_manager(request.user):
             return True
 

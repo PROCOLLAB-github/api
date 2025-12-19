@@ -84,6 +84,8 @@ class PartnerProgramAdmin(admin.ModelAdmin):
                     (
                         "datetime_started",
                         "datetime_registration_ends",
+                        "datetime_project_submission_ends",
+                        "datetime_evaluation_ends",
                         "datetime_finished",
                     ),
                     (

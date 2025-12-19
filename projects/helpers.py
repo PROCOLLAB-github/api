@@ -109,7 +109,20 @@ def update_partner_program(
             clear_project_existing_from_profile(user, instance)
         else:
             partner_program = PartnerProgram.objects.get(pk=program_id)
-            existing_program_id: int | None = clear_project_existing_from_profile(user, instance)
+            existing_program_profile = (
+                PartnerProgramUserProfile.objects.select_related("partner_program")
+                .filter(user=user, project=instance)
+                .first()
+            )
+            existing_program_id: int | None = (
+                existing_program_profile.partner_program_id
+                if existing_program_profile
+                else None
+            )
+
+            submission_deadline = partner_program.get_project_submission_deadline()
+            if submission_deadline and submission_deadline < timezone.now():
+                raise ValidationError({"error": "Срок подачи проектов в программу завершён."})
 
             if (
                 partner_program.datetime_finished < timezone.now()
@@ -117,6 +130,7 @@ def update_partner_program(
             ):
                 raise ValidationError({"error": "Cannot select a completed program."})
 
+            clear_project_existing_from_profile(user, instance)
             partner_program_profile = PartnerProgramUserProfile.objects.get(
                 user=user,
                 partner_program=partner_program,

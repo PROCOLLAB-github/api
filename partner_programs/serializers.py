@@ -49,6 +49,8 @@ class PartnerProgramListSerializer(serializers.ModelSerializer):
             "short_description",
             "registration_link",
             "datetime_registration_ends",
+            "datetime_project_submission_ends",
+            "datetime_evaluation_ends",
             "datetime_started",
             "datetime_finished",
             "views_count",
@@ -116,6 +118,8 @@ class PartnerProgramForMemberSerializer(PartnerProgramBaseSerializerMixin):
             "registration_link",
             "views_count",
             "datetime_registration_ends",
+            "datetime_project_submission_ends",
+            "datetime_evaluation_ends",
             "is_user_manager",
         )
 
@@ -137,6 +141,8 @@ class PartnerProgramForUnregisteredUserSerializer(PartnerProgramBaseSerializerMi
             "presentation_address",
             "registration_link",
             "datetime_registration_ends",
+            "datetime_project_submission_ends",
+            "datetime_evaluation_ends",
             "is_user_manager",
         )
 
