@@ -79,11 +79,14 @@ class PartnerProgramAdmin(admin.ModelAdmin):
                     "city",
                     "is_competitive",
                     "projects_availability",
+                    "publish_projects_after_finish",
                     "max_project_rates",
                     "draft",
                     (
                         "datetime_started",
                         "datetime_registration_ends",
+                        "datetime_project_submission_ends",
+                        "datetime_evaluation_ends",
                         "datetime_finished",
                     ),
                     (

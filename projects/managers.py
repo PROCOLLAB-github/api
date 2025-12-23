@@ -18,7 +18,7 @@ class ProjectManager(Manager):
     def get_projects_for_list_view(self):
         return (
             self.get_queryset()
-            .filter(draft=False)
+            .filter(draft=False, is_public=True)
             .prefetch_related("program_links__partner_program")
         )
 

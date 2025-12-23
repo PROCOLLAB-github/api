@@ -8,7 +8,6 @@ from core.serializers import EmptySerializer
 from feed.pagination import FeedPagination
 from feed.services import get_liked_news
 from news.models import News
-from partner_programs.models import PartnerProgramUserProfile
 from projects.models import Project
 from vacancy.models import Vacancy
 
@@ -28,29 +27,20 @@ class NewSimpleFeed(APIView):
             news_types.append("customuser")
         return news_types
 
-    def _get_excluded_projects_ids(self) -> list[int]:
-        """IDs for exclude projects which in Partner Program."""
-        excluded_projects = PartnerProgramUserProfile.objects.values_list(
-            "project_id", flat=True
-        ).exclude(project_id__isnull=True)
-        return excluded_projects
-
     def get_queryset(self) -> QuerySet[News]:
         filters = self._get_filter_data()
-        excluded_project_ids: list[int] = self._get_excluded_projects_ids()
 
         queryset = (
             News.objects.select_related("content_type")
             .prefetch_related("content_object", "files")
             .filter(content_type__model__in=filters)
-            .exclude(
-                Q(content_type__model="project") & Q(object_id__in=excluded_project_ids)
-            )
             .order_by("-datetime_created")
         )
 
         existing_object_filters = {
-            "project": Project.objects.values_list("id", flat=True),
+            "project": Project.objects.filter(draft=False, is_public=True).values_list(
+                "id", flat=True
+            ),
             "vacancy": Vacancy.objects.values_list("id", flat=True),
         }
         for model_name, ids_queryset in existing_object_filters.items():

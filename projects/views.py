@@ -49,6 +49,7 @@ from projects.permissions import (
     IsProjectLeader,
     IsProjectLeaderOrReadOnly,
     IsProjectLeaderOrReadOnlyForNonDrafts,
+    ProjectVisibilityPermission,
     TimingAfterEndsProgramPermission,
 )
 from core.serializers import EmptySerializer
@@ -81,19 +82,17 @@ User = get_user_model()
 
 class ProjectList(generics.ListCreateAPIView):
     serializer_class = ProjectListSerializer
-    permission_classes = [IsAuthenticated, permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [
+        IsAuthenticated,
+        permissions.IsAuthenticatedOrReadOnly,
+        CanBindProjectToProgram,
+    ]
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = ProjectFilter
     pagination_class = ProjectsPagination
 
     def get_queryset(self) -> QuerySet[Project]:
         queryset = Project.objects.get_projects_for_list_view()
-        is_program_needed = self.request.query_params.get("partner_program", None)
-        if not is_program_needed:
-            queryset_without_projects_linked_to_programs = queryset.filter(
-                partner_program_profiles__isnull=True
-            )
-            return queryset_without_projects_linked_to_programs
         return queryset
 
     def create(self, request, *args, **kwargs):
@@ -154,6 +153,7 @@ class ProjectList(generics.ListCreateAPIView):
 class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Project.objects.get_projects_for_detail_view()
     permission_classes = [
+        ProjectVisibilityPermission,
         HasInvolvementInProjectOrReadOnly,
         TimingAfterEndsProgramPermission,
     ]
@@ -219,7 +219,7 @@ class ProjectRecommendedUsers(generics.RetrieveAPIView):
 
 
 class SetLikeOnProject(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, ProjectVisibilityPermission]
 
     def post(self, request, pk):
         """
@@ -251,7 +251,7 @@ class ProjectCountView(generics.GenericAPIView):
     def get(self, request):
         return Response(
             {
-                "all": self.get_queryset().filter(draft=False).count(),
+                "all": self.get_queryset().filter(draft=False, is_public=True).count(),
                 "my": self.get_queryset()
                 .filter(Q(leader_id=request.user.id) | Q(collaborator__user=request.user))
                 .distinct()
@@ -266,7 +266,7 @@ class ProjectCollaborators(generics.GenericAPIView):
     Project collaborator retrieve/add/delete view
     """
 
-    permission_classes = [IsProjectLeaderOrReadOnlyForNonDrafts]
+    permission_classes = [ProjectVisibilityPermission, IsProjectLeaderOrReadOnlyForNonDrafts]
     queryset = Project.objects.all()
     serializer_class = ProjectCollaboratorSerializer
 
@@ -345,7 +345,7 @@ class AchievementDetail(generics.RetrieveUpdateDestroyAPIView):
 
 class ProjectVacancyResponses(generics.GenericAPIView):
     serializer_class = VacancyResponseFullFileInfoListSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, ProjectVisibilityPermission]
 
     def get_queryset(self):
         return VacancyResponse.objects.filter(vacancy__project_id=self.kwargs["id"])
@@ -358,7 +358,7 @@ class ProjectVacancyResponses(generics.GenericAPIView):
 
 class ProjectNewsList(generics.ListCreateAPIView):
     serializer_class = ProjectNewsListSerializer
-    permission_classes = [IsNewsAuthorIsProjectLeaderOrReadOnly]
+    permission_classes = [ProjectVisibilityPermission, IsNewsAuthorIsProjectLeaderOrReadOnly]
     pagination_class = ProjectNewsPagination
 
     def perform_create(self, serializer):
@@ -379,7 +379,7 @@ class ProjectNewsList(generics.ListCreateAPIView):
 class ProjectNewsDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = ProjectNews.objects.all()
     serializer_class = ProjectNewsDetailSerializer
-    permission_classes = [IsNewsAuthorIsProjectLeaderOrReadOnly]
+    permission_classes = [ProjectVisibilityPermission, IsNewsAuthorIsProjectLeaderOrReadOnly]
 
     def get_queryset(self):
         try:
@@ -414,7 +414,7 @@ class ProjectNewsDetailSetViewed(generics.CreateAPIView):
     queryset = ProjectNews.objects.all()
     # fixme
     # serializer_class = SetViewedSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, ProjectVisibilityPermission]
 
     def get_queryset(self):
         try:
@@ -435,7 +435,7 @@ class ProjectNewsDetailSetViewed(generics.CreateAPIView):
 
 class ProjectNewsDetailSetLiked(generics.CreateAPIView):
     serializer_class = SetLikedSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, ProjectVisibilityPermission]
 
     def get_queryset(self):
         try:
@@ -455,7 +455,7 @@ class ProjectNewsDetailSetLiked(generics.CreateAPIView):
 
 
 class ProjectSubscribers(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, ProjectVisibilityPermission]
 
     @swagger_auto_schema(
         responses={
@@ -477,7 +477,7 @@ class ProjectSubscribers(APIView):
 
 
 class ProjectSubscribe(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, ProjectVisibilityPermission]
 
     def post(self, request, project_pk):
         try:
@@ -502,7 +502,7 @@ class ProjectSubscribe(APIView):
 
 
 class ProjectUnsubscribe(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, ProjectVisibilityPermission]
 
     def post(self, request, project_pk):
         try:
@@ -738,6 +738,7 @@ class DuplicateProjectView(APIView):
                 image_address=original_project.image_address,
                 leader=request.user,
                 draft=True,
+                is_public=False,
                 is_company=original_project.is_company,
                 cover_image_address=original_project.cover_image_address,
                 cover=original_project.cover,
@@ -762,7 +763,7 @@ class DuplicateProjectView(APIView):
 class GoalViewSet(viewsets.ModelViewSet):
     queryset = ProjectGoal.objects.select_related("project", "responsible")
     serializer_class = ProjectGoalSerializer
-    permission_classes = [IsProjectLeaderOrReadOnly]
+    permission_classes = [ProjectVisibilityPermission, IsProjectLeaderOrReadOnly]
 
     def get_queryset(self):
         project_pk = self.kwargs.get("project_pk")
@@ -813,7 +814,7 @@ class GoalViewSet(viewsets.ModelViewSet):
 class CompanyViewSet(viewsets.ModelViewSet):
     queryset = Company.objects.all().order_by("name")
     serializer_class = CompanySerializer
-    permission_classes = (IsProjectLeaderOrReadOnly,)
+    permission_classes = (ProjectVisibilityPermission, IsProjectLeaderOrReadOnly)
     filterset_fields = ("inn",)
     search_fields = ("name", "inn")
 
@@ -821,7 +822,7 @@ class CompanyViewSet(viewsets.ModelViewSet):
 class ResourceViewSet(viewsets.ModelViewSet):
     queryset = Resource.objects.select_related("project", "partner_company").all()
     serializer_class = ResourceSerializer
-    permission_classes = (IsProjectLeaderOrReadOnly,)
+    permission_classes = (ProjectVisibilityPermission, IsProjectLeaderOrReadOnly)
     filterset_fields = ("type", "project", "partner_company")
     search_fields = ("description", "project__name", "partner_company__name")
 
@@ -847,7 +848,7 @@ class ProjectCompanyUpsertView(APIView):
       - если нет — создаём компанию и тут же связываем.
     """
 
-    permission_classes = (IsProjectLeaderOrReadOnly,)
+    permission_classes = (ProjectVisibilityPermission, IsProjectLeaderOrReadOnly)
 
     @swagger_auto_schema(
         request_body=ProjectCompanyUpsertSerializer,
@@ -882,7 +883,7 @@ class ProjectCompaniesListView(ListAPIView):
     """
 
     serializer_class = ProjectCompanySerializer
-    permission_classes = (IsProjectLeaderOrReadOnly,)
+    permission_classes = (ProjectVisibilityPermission, IsProjectLeaderOrReadOnly)
 
     @swagger_auto_schema(
         operation_summary="Список партнёров проекта",
@@ -908,7 +909,7 @@ class ProjectCompanyDetailView(APIView):
     DELETE - удаляет только связь; Company остаётся в БД
     """
 
-    permission_classes = (IsProjectLeaderOrReadOnly,)
+    permission_classes = (ProjectVisibilityPermission, IsProjectLeaderOrReadOnly)
     project_id_param = openapi.Parameter(
         "project_id",
         openapi.IN_PATH,
