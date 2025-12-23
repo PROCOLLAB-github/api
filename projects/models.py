@@ -183,6 +183,12 @@ class Project(models.Model):
     datetime_updated = models.DateTimeField(
         verbose_name="Дата изменения", null=False, auto_now=True
     )
+    is_public = models.BooleanField(
+        default=True,
+        db_index=True,
+        verbose_name="Публичный",
+        help_text="Если выключено — проект скрыт из общего каталога и ленты.",
+    )
 
     objects = ProjectManager()
 

@@ -2,12 +2,15 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from core.services import get_likes_count, get_links, get_views_count, is_fan
+from .fields import PartnerProgramFieldValueUpdateSerializer
 from partner_programs.models import (
     PartnerProgram,
     PartnerProgramField,
     PartnerProgramFieldValue,
     PartnerProgramMaterial,
 )
+from projects.models import Project
+from projects.validators import validate_project
 
 User = get_user_model()
 
@@ -51,6 +54,7 @@ class PartnerProgramListSerializer(serializers.ModelSerializer):
             "datetime_registration_ends",
             "datetime_project_submission_ends",
             "datetime_evaluation_ends",
+            "publish_projects_after_finish",
             "datetime_started",
             "datetime_finished",
             "views_count",
@@ -120,6 +124,7 @@ class PartnerProgramForMemberSerializer(PartnerProgramBaseSerializerMixin):
             "datetime_registration_ends",
             "datetime_project_submission_ends",
             "datetime_evaluation_ends",
+            "publish_projects_after_finish",
             "is_user_manager",
         )
 
@@ -143,6 +148,7 @@ class PartnerProgramForUnregisteredUserSerializer(PartnerProgramBaseSerializerMi
             "datetime_registration_ends",
             "datetime_project_submission_ends",
             "datetime_evaluation_ends",
+            "publish_projects_after_finish",
             "is_user_manager",
         )
 
@@ -270,3 +276,34 @@ class ProgramProjectFilterRequestSerializer(serializers.Serializer):
             cleaned[key.strip()] = normalized_values
 
         return cleaned
+
+
+class ProgramProjectCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Project
+        fields = [
+            "name",
+            "description",
+            "region",
+            "industry",
+            "presentation_address",
+            "image_address",
+            "cover_image_address",
+            "actuality",
+            "problem",
+            "target_audience",
+            "implementation_deadline",
+            "trl",
+            "is_company",
+        ]
+
+    def validate(self, data):
+        validate_project({**data, "draft": True})
+        return data
+
+
+class PartnerProgramProjectApplySerializer(serializers.Serializer):
+    project = ProgramProjectCreateSerializer()
+    program_field_values = PartnerProgramFieldValueUpdateSerializer(
+        many=True, required=False
+    )

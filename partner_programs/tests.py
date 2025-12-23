@@ -2,7 +2,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from partner_programs.models import PartnerProgram, PartnerProgramField
-from projects.serializers import PartnerProgramFieldValueUpdateSerializer
+from partner_programs.serializers import PartnerProgramFieldValueUpdateSerializer
 
 
 class PartnerProgramFieldValueUpdateSerializerInvalidTests(TestCase):

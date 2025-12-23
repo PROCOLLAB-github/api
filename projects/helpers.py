@@ -6,7 +6,11 @@ from django.contrib.auth import get_user_model
 
 from rest_framework.exceptions import ValidationError
 
-from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
+from partner_programs.models import (
+    PartnerProgram,
+    PartnerProgramProject,
+    PartnerProgramUserProfile,
+)
 from projects.models import Project, ProjectLink, Achievement
 from users.models import CustomUser
 
@@ -107,6 +111,7 @@ def update_partner_program(
         # If the user removes the tag, frontend sends `int -> 0` (id == 0 cannot exist).
         if program_id == 0:
             clear_project_existing_from_profile(user, instance)
+            PartnerProgramProject.objects.filter(project=instance).delete()
         else:
             partner_program = PartnerProgram.objects.get(pk=program_id)
             existing_program_profile = (
@@ -131,12 +136,23 @@ def update_partner_program(
                 raise ValidationError({"error": "Cannot select a completed program."})
 
             clear_project_existing_from_profile(user, instance)
-            partner_program_profile = PartnerProgramUserProfile.objects.get(
+            instance.is_public = False
+            instance.save(update_fields=["is_public"])
+
+            PartnerProgramProject.objects.filter(project=instance).exclude(
+                partner_program_id=partner_program.id
+            ).delete()
+            PartnerProgramProject.objects.get_or_create(
+                partner_program=partner_program, project=instance
+            )
+
+            partner_program_profile = PartnerProgramUserProfile.objects.filter(
                 user=user,
                 partner_program=partner_program,
-            )
-            partner_program_profile.project = instance
-            partner_program_profile.save()
+            ).first()
+            if partner_program_profile:
+                partner_program_profile.project = instance
+                partner_program_profile.save(update_fields=["project"])
 
 
 def clear_project_existing_from_profile(user, instance) -> None | int:

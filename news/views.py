@@ -18,13 +18,14 @@ from news.serializers import (
 )
 from partner_programs.models import PartnerProgram
 from projects.models import Project
+from projects.permissions import ProjectVisibilityPermission
 
 User = get_user_model()
 
 
 class NewsList(NewsQuerysetMixin, generics.ListCreateAPIView):
     serializer_class = NewsListSerializer
-    permission_classes = [IsNewsCreatorOrReadOnly]
+    permission_classes = [ProjectVisibilityPermission, IsNewsCreatorOrReadOnly]
     pagination_class = NewsPagination
 
     def post(self, request: Request, *args, **kwargs) -> Response:
@@ -62,7 +63,7 @@ class NewsList(NewsQuerysetMixin, generics.ListCreateAPIView):
 
 class NewsDetail(NewsQuerysetMixin, generics.RetrieveUpdateDestroyAPIView):
     serializer_class = NewsDetailSerializer
-    permission_classes = [IsNewsCreatorOrReadOnly]
+    permission_classes = [ProjectVisibilityPermission, IsNewsCreatorOrReadOnly]
 
     def get(self, request: Request, *args, **kwargs) -> Response:
         try:
@@ -87,7 +88,7 @@ class NewsDetail(NewsQuerysetMixin, generics.RetrieveUpdateDestroyAPIView):
 
 class NewsDetailSetViewed(NewsQuerysetMixin, generics.CreateAPIView):
     serializer_class = SetViewedSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, ProjectVisibilityPermission]
 
     def post(self, request: Request, *args, **kwargs) -> Response:
         try:
@@ -100,7 +101,7 @@ class NewsDetailSetViewed(NewsQuerysetMixin, generics.CreateAPIView):
 
 class NewsDetailSetLiked(NewsQuerysetMixin, generics.CreateAPIView):
     serializer_class = SetLikedSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, ProjectVisibilityPermission]
 
     def post(self, request: Request, *args, **kwargs) -> Response:
         try:
