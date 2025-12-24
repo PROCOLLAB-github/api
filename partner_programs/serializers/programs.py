@@ -24,6 +24,16 @@ class PartnerProgramListSerializer(serializers.ModelSerializer):
         method_name="get_short_description"
     )
     is_user_liked = serializers.SerializerMethodField(method_name="get_is_user_liked")
+    is_user_member = serializers.SerializerMethodField(method_name="get_is_user_member")
+
+    def _get_user(self):
+        user = self.context.get("user")
+        if user:
+            return user
+        request = self.context.get("request")
+        if request:
+            return request.user
+        return None
 
     def count_likes(self, program):
         return get_likes_count(program)
@@ -38,10 +48,18 @@ class PartnerProgramListSerializer(serializers.ModelSerializer):
 
     def get_is_user_liked(self, obj):
         # fixme: copy-paste in every serializer...
-        user = self.context.get("user")
-        if user:
+        user = self._get_user()
+        if user and user.is_authenticated:
             return is_fan(obj, user)
         return False
+
+    def get_is_user_member(self, program):
+        if hasattr(program, "is_user_member"):
+            return bool(program.is_user_member)
+        user = self._get_user()
+        if not user or not user.is_authenticated:
+            return False
+        return program.users.filter(pk=user.pk).exists()
 
     class Meta:
         model = PartnerProgram
@@ -60,6 +78,7 @@ class PartnerProgramListSerializer(serializers.ModelSerializer):
             "views_count",
             "likes_count",
             "is_user_liked",
+            "is_user_member",
         )
 
 

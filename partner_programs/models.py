@@ -116,7 +116,7 @@ class PartnerProgram(models.Model):
     publish_projects_after_finish = models.BooleanField(
         default=False,
         verbose_name="Публиковать проекты после окончания программы",
-        help_text="Если включено, проекты участников могут стать публичными после завершения программы",
+        help_text="Если включено, проекты участников станут публичными после завершения программы",
     )
     datetime_registration_ends = models.DateTimeField(
         verbose_name="Дата окончания регистрации",

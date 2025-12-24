@@ -15,7 +15,7 @@ class Migration(migrations.Migration):
             name="publish_projects_after_finish",
             field=models.BooleanField(
                 default=False,
-                help_text="Если включено, проекты участников могут стать публичными после завершения программы",
+                help_text="Если включено, проекты участников станут публичными после завершения программы",
                 verbose_name="Публиковать проекты после окончания программы",
             ),
         ),
