@@ -4,7 +4,7 @@ from datetime import date
 
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
-from django.db.models import Prefetch
+from django.db.models import Exists, OuterRef, Prefetch
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -68,19 +68,28 @@ class PartnerProgramList(generics.ListCreateAPIView):
         base_qs = super().get_queryset()
         participating_flag = self.request.query_params.get("participating")
         if not participating_flag:
-            return base_qs
-
-        if not self.request.user.is_authenticated:
-            return PartnerProgram.objects.none()
-
-        now = timezone.now()
-        return (
-            base_qs.filter(
-                partner_program_profiles__user=self.request.user,
-                datetime_finished__gte=now,
+            qs = base_qs
+        elif not self.request.user.is_authenticated:
+            qs = PartnerProgram.objects.none()
+        else:
+            now = timezone.now()
+            qs = (
+                base_qs.filter(
+                    partner_program_profiles__user=self.request.user,
+                    datetime_finished__gte=now,
+                )
+                .distinct()
             )
-            .distinct()
+
+        user = self.request.user
+        if not user.is_authenticated:
+            return qs
+
+        member_qs = PartnerProgramUserProfile.objects.filter(
+            partner_program=OuterRef("pk"),
+            user=user,
         )
+        return qs.annotate(is_user_member=Exists(member_qs))
 
 
 class PartnerProgramDetail(generics.RetrieveAPIView):
@@ -108,8 +117,8 @@ class PartnerProgramDetail(generics.RetrieveAPIView):
 
 class PartnerProgramProjectApplyView(GenericAPIView):
     """
-    Создание проекта сразу в рамках программы (подать проект).
-    Проект создаётся как черновик и строго непубличный.
+    Создание проекта в рамках программы (подать проект).
+    Проект создаётся как непубличный черновик.
     """
 
     permission_classes = [IsAuthenticated]
