@@ -6,7 +6,11 @@ from django.contrib.auth import get_user_model
 
 from rest_framework.exceptions import ValidationError
 
-from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
+from partner_programs.models import (
+    PartnerProgram,
+    PartnerProgramProject,
+    PartnerProgramUserProfile,
+)
 from projects.models import Project, ProjectLink, Achievement
 from users.models import CustomUser
 
@@ -107,9 +111,23 @@ def update_partner_program(
         # If the user removes the tag, frontend sends `int -> 0` (id == 0 cannot exist).
         if program_id == 0:
             clear_project_existing_from_profile(user, instance)
+            PartnerProgramProject.objects.filter(project=instance).delete()
         else:
             partner_program = PartnerProgram.objects.get(pk=program_id)
-            existing_program_id: int | None = clear_project_existing_from_profile(user, instance)
+            existing_program_profile = (
+                PartnerProgramUserProfile.objects.select_related("partner_program")
+                .filter(user=user, project=instance)
+                .first()
+            )
+            existing_program_id: int | None = (
+                existing_program_profile.partner_program_id
+                if existing_program_profile
+                else None
+            )
+
+            submission_deadline = partner_program.get_project_submission_deadline()
+            if submission_deadline and submission_deadline < timezone.now():
+                raise ValidationError({"error": "Срок подачи проектов в программу завершён."})
 
             if (
                 partner_program.datetime_finished < timezone.now()
@@ -117,12 +135,24 @@ def update_partner_program(
             ):
                 raise ValidationError({"error": "Cannot select a completed program."})
 
-            partner_program_profile = PartnerProgramUserProfile.objects.get(
+            clear_project_existing_from_profile(user, instance)
+            instance.is_public = False
+            instance.save(update_fields=["is_public"])
+
+            PartnerProgramProject.objects.filter(project=instance).exclude(
+                partner_program_id=partner_program.id
+            ).delete()
+            PartnerProgramProject.objects.get_or_create(
+                partner_program=partner_program, project=instance
+            )
+
+            partner_program_profile = PartnerProgramUserProfile.objects.filter(
                 user=user,
                 partner_program=partner_program,
-            )
-            partner_program_profile.project = instance
-            partner_program_profile.save()
+            ).first()
+            if partner_program_profile:
+                partner_program_profile.project = instance
+                partner_program_profile.save(update_fields=["project"])
 
 
 def clear_project_existing_from_profile(user, instance) -> None | int:

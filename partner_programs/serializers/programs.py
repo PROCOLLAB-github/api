@@ -2,12 +2,15 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from core.services import get_likes_count, get_links, get_views_count, is_fan
+from .fields import PartnerProgramFieldValueUpdateSerializer
 from partner_programs.models import (
     PartnerProgram,
     PartnerProgramField,
     PartnerProgramFieldValue,
     PartnerProgramMaterial,
 )
+from projects.models import Project
+from projects.validators import validate_project
 
 User = get_user_model()
 
@@ -21,6 +24,16 @@ class PartnerProgramListSerializer(serializers.ModelSerializer):
         method_name="get_short_description"
     )
     is_user_liked = serializers.SerializerMethodField(method_name="get_is_user_liked")
+    is_user_member = serializers.SerializerMethodField(method_name="get_is_user_member")
+
+    def _get_user(self):
+        user = self.context.get("user")
+        if user:
+            return user
+        request = self.context.get("request")
+        if request:
+            return request.user
+        return None
 
     def count_likes(self, program):
         return get_likes_count(program)
@@ -35,10 +48,18 @@ class PartnerProgramListSerializer(serializers.ModelSerializer):
 
     def get_is_user_liked(self, obj):
         # fixme: copy-paste in every serializer...
-        user = self.context.get("user")
-        if user:
+        user = self._get_user()
+        if user and user.is_authenticated:
             return is_fan(obj, user)
         return False
+
+    def get_is_user_member(self, program):
+        if hasattr(program, "is_user_member"):
+            return bool(program.is_user_member)
+        user = self._get_user()
+        if not user or not user.is_authenticated:
+            return False
+        return program.users.filter(pk=user.pk).exists()
 
     class Meta:
         model = PartnerProgram
@@ -49,11 +70,15 @@ class PartnerProgramListSerializer(serializers.ModelSerializer):
             "short_description",
             "registration_link",
             "datetime_registration_ends",
+            "datetime_project_submission_ends",
+            "datetime_evaluation_ends",
+            "publish_projects_after_finish",
             "datetime_started",
             "datetime_finished",
             "views_count",
             "likes_count",
             "is_user_liked",
+            "is_user_member",
         )
 
 
@@ -116,6 +141,9 @@ class PartnerProgramForMemberSerializer(PartnerProgramBaseSerializerMixin):
             "registration_link",
             "views_count",
             "datetime_registration_ends",
+            "datetime_project_submission_ends",
+            "datetime_evaluation_ends",
+            "publish_projects_after_finish",
             "is_user_manager",
         )
 
@@ -137,6 +165,9 @@ class PartnerProgramForUnregisteredUserSerializer(PartnerProgramBaseSerializerMi
             "presentation_address",
             "registration_link",
             "datetime_registration_ends",
+            "datetime_project_submission_ends",
+            "datetime_evaluation_ends",
+            "publish_projects_after_finish",
             "is_user_manager",
         )
 
@@ -264,3 +295,34 @@ class ProgramProjectFilterRequestSerializer(serializers.Serializer):
             cleaned[key.strip()] = normalized_values
 
         return cleaned
+
+
+class ProgramProjectCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Project
+        fields = [
+            "name",
+            "description",
+            "region",
+            "industry",
+            "presentation_address",
+            "image_address",
+            "cover_image_address",
+            "actuality",
+            "problem",
+            "target_audience",
+            "implementation_deadline",
+            "trl",
+            "is_company",
+        ]
+
+    def validate(self, data):
+        validate_project({**data, "draft": True})
+        return data
+
+
+class PartnerProgramProjectApplySerializer(serializers.Serializer):
+    project = ProgramProjectCreateSerializer()
+    program_field_values = PartnerProgramFieldValueUpdateSerializer(
+        many=True, required=False
+    )

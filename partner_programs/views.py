@@ -4,7 +4,7 @@ from datetime import date
 
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
-from django.db.models import Prefetch
+from django.db.models import Exists, OuterRef, Prefetch
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -38,6 +38,7 @@ from partner_programs.serializers import (
     PartnerProgramForUnregisteredUserSerializer,
     PartnerProgramListSerializer,
     PartnerProgramNewUserSerializer,
+    PartnerProgramProjectApplySerializer,
     PartnerProgramUserSerializer,
     ProgramProjectFilterRequestSerializer,
 )
@@ -49,10 +50,8 @@ from partner_programs.services import (
 )
 from partner_programs.utils import filter_program_projects_by_field_name
 from projects.models import Collaborator, Project
-from projects.serializers import (
-    PartnerProgramFieldValueUpdateSerializer,
-    ProjectListSerializer,
-)
+from partner_programs.serializers import PartnerProgramFieldValueUpdateSerializer
+from projects.serializers import ProjectListSerializer
 from vacancy.mapping import MessageTypeEnum, UserProgramRegisterParams
 from vacancy.tasks import send_email
 
@@ -69,19 +68,28 @@ class PartnerProgramList(generics.ListCreateAPIView):
         base_qs = super().get_queryset()
         participating_flag = self.request.query_params.get("participating")
         if not participating_flag:
-            return base_qs
-
-        if not self.request.user.is_authenticated:
-            return PartnerProgram.objects.none()
-
-        now = timezone.now()
-        return (
-            base_qs.filter(
-                partner_program_profiles__user=self.request.user,
-                datetime_finished__gte=now,
+            qs = base_qs
+        elif not self.request.user.is_authenticated:
+            qs = PartnerProgram.objects.none()
+        else:
+            now = timezone.now()
+            qs = (
+                base_qs.filter(
+                    partner_program_profiles__user=self.request.user,
+                    datetime_finished__gte=now,
+                )
+                .distinct()
             )
-            .distinct()
+
+        user = self.request.user
+        if not user.is_authenticated:
+            return qs
+
+        member_qs = PartnerProgramUserProfile.objects.filter(
+            partner_program=OuterRef("pk"),
+            user=user,
         )
+        return qs.annotate(is_user_member=Exists(member_qs))
 
 
 class PartnerProgramDetail(generics.RetrieveAPIView):
@@ -105,6 +113,140 @@ class PartnerProgramDetail(generics.RetrieveAPIView):
         if request.user.is_authenticated:
             add_view(program, request.user)
         return Response(data, status=status.HTTP_200_OK)
+
+
+class PartnerProgramProjectApplyView(GenericAPIView):
+    """
+    Создание проекта в рамках программы (подать проект).
+    Проект создаётся как непубличный черновик.
+    """
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = PartnerProgramProjectApplySerializer
+    queryset = PartnerProgram.objects.all()
+
+    def _require_can_apply(self, program: PartnerProgram, user: User):
+        if not program.is_project_submission_open():
+            raise ValidationError("Срок подачи проектов в программу завершён.")
+
+        if program.is_manager(user):
+            return
+
+        if not PartnerProgramUserProfile.objects.filter(
+            user=user, partner_program=program
+        ).exists():
+            raise PermissionDenied("Подача проекта доступна только участникам программы.")
+
+    def get(self, request, pk, *args, **kwargs):
+        program = self.get_object()
+        self._require_can_apply(program, request.user)
+
+        fields_qs = program.fields.all()
+        return Response(
+            {
+                "program_id": program.id,
+                "can_submit": program.is_project_submission_open(),
+                "submission_deadline": program.get_project_submission_deadline(),
+                "program_fields": PartnerProgramFieldSerializer(fields_qs, many=True).data,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    def post(self, request, pk, *args, **kwargs):
+        program = self.get_object()
+        self._require_can_apply(program, request.user)
+
+        existing_link = (
+            PartnerProgramProject.objects.select_related("project")
+            .filter(partner_program=program, project__leader=request.user)
+            .first()
+        )
+        if existing_link:
+            return Response(
+                {
+                    "detail": "Проект уже подан в эту программу.",
+                    "project_id": existing_link.project_id,
+                    "program_link_id": existing_link.id,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        project_data = data["project"]
+        values_data = data.get("program_field_values") or []
+
+        seen_field_ids: set[int] = set()
+        duplicate_ids: set[int] = set()
+        for item in values_data:
+            field_id = item["field"].id
+            if field_id in seen_field_ids:
+                duplicate_ids.add(field_id)
+            seen_field_ids.add(field_id)
+        if duplicate_ids:
+            raise ValidationError(
+                {"program_field_values": f"Есть повторяющиеся field_id: {sorted(duplicate_ids)}"}
+            )
+
+        required_fields = list(
+            program.fields.filter(is_required=True).values("id", "label")
+        )
+        provided_field_ids = {item["field"].id for item in values_data}
+        missing_required = [
+            f["label"] for f in required_fields if f["id"] not in provided_field_ids
+        ]
+        if missing_required:
+            raise ValidationError(
+                {"program_field_values": f"Не заполнены обязательные поля: {missing_required}"}
+            )
+
+        with transaction.atomic():
+            project = Project.objects.create(
+                leader=request.user,
+                draft=True,
+                is_public=False,
+                **project_data,
+            )
+            program_link = PartnerProgramProject.objects.create(
+                partner_program=program, project=project
+            )
+
+            profile = PartnerProgramUserProfile.objects.filter(
+                user=request.user, partner_program=program
+            ).first()
+            if profile:
+                profile.project = project
+                profile.save(update_fields=["project"])
+
+            value_objs: list[PartnerProgramFieldValue] = []
+            for item in values_data:
+                field = item["field"]
+                if field.partner_program_id != program.id:
+                    raise ValidationError(
+                        {
+                            "program_field_values": f"Поле id={field.id} не относится к этой программе."
+                        }
+                    )
+                value_objs.append(
+                    PartnerProgramFieldValue(
+                        program_project=program_link,
+                        field=field,
+                        value_text=item.get("value_text") or "",
+                    )
+                )
+
+            if value_objs:
+                PartnerProgramFieldValue.objects.bulk_create(value_objs)
+
+        return Response(
+            {
+                "project_id": project.id,
+                "program_link_id": program_link.id,
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):

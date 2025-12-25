@@ -1,5 +1,6 @@
 import os
 import mimetypes
+import sys
 from datetime import timedelta
 from pathlib import Path
 
@@ -183,6 +184,8 @@ REST_FRAMEWORK = {
 
 ASGI_APPLICATION = "procollab.asgi.application"
 
+RUNNING_TESTS = "test" in sys.argv
+
 if DEBUG:
     DATABASES = {
         "default": {
@@ -202,12 +205,24 @@ if DEBUG:
     #     }
     # }
 
-    CACHES = {
-        "default": {
-            "BACKEND": "django_prometheus.cache.backends.filebased.FileBasedCache",
-            "LOCATION": "/var/tmp/django_cache",
+    if RUNNING_TESTS:
+        CACHES = {
+            "default": {
+                "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+                "LOCATION": "test-cache",
+            }
         }
-    }
+    else:
+        CACHES = {
+            "default": {
+                "BACKEND": "django_prometheus.cache.backends.filebased.FileBasedCache",
+                "LOCATION": config(
+                    "DJANGO_FILE_CACHE_DIR",
+                    default=str(BASE_DIR / ".cache" / "django_cache"),
+                    cast=str,
+                ),
+            }
+        }
 
     CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
 else:

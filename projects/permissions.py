@@ -1,11 +1,86 @@
 from datetime import datetime, timedelta
 
 from django.utils import timezone
+from django.db.models import Q
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import SAFE_METHODS, BasePermission
 
-from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
+from partner_programs.models import (
+    PartnerProgram,
+    PartnerProgramProject,
+    PartnerProgramUserProfile,
+)
 from projects.models import Project
+
+
+class ProjectVisibilityPermission(BasePermission):
+    """
+    Ограничивает доступ к непубличным проектам.
+
+    Непубличные проекты доступны:
+      - лидеру проекта;
+      - администраторам (staff/superuser);
+      - участникам команды (collaborators/invites);
+      - если проект в программе: менеджерам и экспертам этой программы.
+    """
+
+    message = "У вас нет доступа к этому проекту."
+
+    def has_permission(self, request, view):
+        project_id = view.kwargs.get("project_pk") or view.kwargs.get("project_id")
+        if not project_id and view.__module__.startswith("projects."):
+            project_id = view.kwargs.get("id") or view.kwargs.get("pk")
+
+        if not project_id and getattr(getattr(view, "queryset", None), "model", None) is Project:
+            project_id = view.kwargs.get("pk")
+
+        if not project_id:
+            return True
+
+        try:
+            project = Project.objects.only("id", "leader_id", "is_public").get(
+                pk=project_id
+            )
+        except Project.DoesNotExist:
+            return True
+
+        return self._can_view_project(request, project)
+
+    def has_object_permission(self, request, view, obj):
+        if isinstance(obj, Project):
+            project = obj
+        else:
+            project = getattr(obj, "project", None)
+            if project is None:
+                return True
+        return self._can_view_project(request, project)
+
+    def _can_view_project(self, request, project: Project) -> bool:
+        if project.is_public:
+            return True
+
+        user = getattr(request, "user", None)
+        if not user or not user.is_authenticated:
+            return False
+
+        if user.is_superuser or user.is_staff:
+            return True
+
+        if project.leader_id == user.id:
+            return True
+
+        if project.collaborator_set.filter(user_id=user.id).exists():
+            return True
+
+        if project.invite_set.filter(user_id=user.id).exists():
+            return True
+
+        return PartnerProgramProject.objects.filter(
+            project_id=project.id,
+        ).filter(
+            Q(partner_program__managers__id=user.id)
+            | Q(partner_program__experts__user_id=user.id)
+        ).exists()
 
 
 class IsProjectLeaderOrReadOnlyForNonDrafts(BasePermission):
@@ -203,6 +278,13 @@ class CanBindProjectToProgram(BasePermission):
             program = PartnerProgram.objects.get(pk=program_id)
         except PartnerProgram.DoesNotExist:
             raise ValidationError({"partner_program_id": "Программа не найдена."})
+
+        submission_deadline = program.get_project_submission_deadline()
+        if submission_deadline and submission_deadline < timezone.now():
+            raise ValidationError({"partner_program_id": "Срок подачи проектов в программу завершён."})
+
+        if program.datetime_finished < timezone.now():
+            raise ValidationError({"partner_program_id": "Нельзя выбрать завершённую программу."})
 
         if program.is_manager(request.user):
             return True
