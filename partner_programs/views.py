@@ -1,11 +1,10 @@
 import io
-import unicodedata
-from datetime import date
+import urllib.parse
 
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
 from django.db.models import Exists, OuterRef, Prefetch
-from django.http import FileResponse
+from django.http import FileResponse, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.timezone import now
@@ -21,6 +20,7 @@ from rest_framework.views import APIView
 
 from core.serializers import EmptySerializer, SetLikedSerializer, SetViewedSerializer
 from core.services import add_view, set_like
+from core.utils import XlsxFileToExport, ascii_filename, sanitize_filename
 from partner_programs.helpers import date_to_iso
 from partner_programs.models import (
     PartnerProgram,
@@ -30,7 +30,10 @@ from partner_programs.models import (
     PartnerProgramUserProfile,
 )
 from partner_programs.pagination import PartnerProgramPagination
-from partner_programs.permissions import IsExpertOrManagerOfProgram, IsProjectLeader
+from partner_programs.permissions import (
+    IsAdminOrManagerOfProgram,
+    IsProjectLeader,
+)
 from partner_programs.serializers import (
     PartnerProgramDataSchemaSerializer,
     PartnerProgramFieldSerializer,
@@ -45,6 +48,7 @@ from partner_programs.serializers import (
 from partner_programs.services import (
     BASE_COLUMNS,
     build_program_field_columns,
+    prepare_project_scores_export_data,
     row_dict_for_link,
     sanitize_excel_value,
 )
@@ -521,7 +525,7 @@ class PartnerProgramProjectSubmitView(GenericAPIView):
 
 
 class ProgramFiltersAPIView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminOrManagerOfProgram]
 
     def get(self, request, pk):
         program = get_object_or_404(PartnerProgram, pk=pk)
@@ -534,7 +538,7 @@ class ProgramFiltersAPIView(APIView):
 
 class ProgramProjectFilterAPIView(GenericAPIView):
     serializer_class = ProgramProjectFilterRequestSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminOrManagerOfProgram]
     pagination_class = PartnerProgramPagination
     queryset = PartnerProgram.objects.none()
 
@@ -599,11 +603,11 @@ class ProgramProjectFilterAPIView(GenericAPIView):
 class PartnerProgramProjectsAPIView(generics.ListAPIView):
     """
     Список всех проектов участников конкретной партнёрской программы.
-    Доступ разрешён только менеджерам и экспертам программы.
+    Доступ разрешён только менеджерам и администраторам программы.
     """
 
     serializer_class = ProjectListSerializer
-    permission_classes = [IsAuthenticated, IsExpertOrManagerOfProgram]
+    permission_classes = [IsAuthenticated, IsAdminOrManagerOfProgram]
     pagination_class = PartnerProgramPagination
 
     def get_queryset(self):
@@ -614,25 +618,10 @@ class PartnerProgramProjectsAPIView(generics.ListAPIView):
         return Project.objects.filter(program_links__partner_program=program).distinct()
 
 
-def _slugify_filename(filename: str) -> str:
-    """
-    Преобразует произвольную строку в безопасное имя файла:
-    - нормализует Unicode;
-    - оставляет только буквы, цифры, дефисы, подчёркивания и пробелы;
-    - заменяет группы пробелов на один дефис.
-    """
-    normalized_name = unicodedata.normalize("NFKD", filename)
-    safe_chars = [
-        char for char in normalized_name if char.isalnum() or char in ("-", "_", " ")
-    ]
-    cleaned_name = "".join(safe_chars)
-    return "-".join(cleaned_name.split())
+class PartnerProgramExportRatesAPIView(APIView):
+    """Возвращает Excel-файл с оценками проектов программы."""
 
-
-class PartnerProgramExportProjectsAPIView(APIView):
-    """Возвращает Excel-файл со всеми проектами программы."""
-
-    permission_classes = [permissions.IsAdminUser]
+    permission_classes = [IsAdminOrManagerOfProgram]
 
     def get(self, request, pk: int):
         try:
@@ -652,12 +641,49 @@ class PartnerProgramExportProjectsAPIView(APIView):
                 {"detail": "Недостаточно прав."}, status=status.HTTP_403_FORBIDDEN
             )
 
-        only_submitted = request.query_params.get("only_submitted") in (
-            "1",
-            "true",
-            "True",
+        rates_data_to_write = prepare_project_scores_export_data(program.id)
+        xlsx_file_writer = XlsxFileToExport()
+        xlsx_file_writer.write_data_to_xlsx(rates_data_to_write)
+        binary_data_to_export: bytes = xlsx_file_writer.get_binary_data_from_self_file()
+        xlsx_file_writer.clear_buffer()
+
+        date_suffix = timezone.now().strftime("%d.%m.%y")
+        base_name = f"scores - {program.name or 'program'} - {date_suffix}"
+        safe_name = sanitize_filename(base_name)
+        filename = f"{safe_name}.xlsx"
+        encoded_file_name: str = urllib.parse.quote(filename)
+        fallback_filename = f"{ascii_filename(base_name)}.xlsx"
+        response = HttpResponse(
+            binary_data_to_export,
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        response["Content-Disposition"] = (
+            "attachment; "
+            f"filename=\"{fallback_filename}\"; "
+            f"filename*=UTF-8''{encoded_file_name}"
+        )
+        return response
+
+
+class PartnerProgramExportProjectsAPIView(APIView):
+    """Возвращает Excel-файл со всеми проектами программы."""
+
+    permission_classes = [IsAdminOrManagerOfProgram]
+
+    def _get_program(self, pk: int) -> PartnerProgram | None:
+        try:
+            return PartnerProgram.objects.get(pk=pk)
+        except PartnerProgram.DoesNotExist:
+            return None
+
+    def _has_access(self, user, program: PartnerProgram) -> bool:
+        return bool(
+            getattr(user, "is_staff", False)
+            or getattr(user, "is_superuser", False)
+            or program.is_manager(user)
         )
 
+    def _export(self, program: PartnerProgram, only_submitted: bool):
         extra_cols = build_program_field_columns(program)
         header_pairs = BASE_COLUMNS + extra_cols
 
@@ -697,14 +723,42 @@ class PartnerProgramExportProjectsAPIView(APIView):
         wb.save(bio)
         bio.seek(0)
 
-        fname_base = _slugify_filename(
-            f"{program.name or 'program'}-{program.pk}-projects-{date.today():%Y-%m-%d}"
-        )
+        label = "projects_review" if only_submitted else "projects"
+        date_suffix = timezone.now().strftime("%d.%m.%y")
+        base_name = f"{label} - {program.name or 'program'} - {date_suffix}"
+        fname_base = sanitize_filename(base_name)
         filename = f"{fname_base}.xlsx"
+        encoded_file_name: str = urllib.parse.quote(filename)
+        fallback_filename = f"{ascii_filename(base_name)}.xlsx"
 
-        return FileResponse(
+        response = FileResponse(
             bio,
             as_attachment=True,
             filename=filename,
             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
+        response["Content-Disposition"] = (
+            "attachment; "
+            f"filename=\"{fallback_filename}\"; "
+            f"filename*=UTF-8''{encoded_file_name}"
+        )
+        return response
+
+    def get(self, request, pk: int):
+        program = self._get_program(pk)
+        if not program:
+            return Response(
+                {"detail": "Программа не найдена."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        if not self._has_access(request.user, program):
+            return Response(
+                {"detail": "Недостаточно прав."}, status=status.HTTP_403_FORBIDDEN
+            )
+
+        only_submitted = request.query_params.get("only_submitted") in (
+            "1",
+            "true",
+            "True",
+        )
+        return self._export(program=program, only_submitted=only_submitted)

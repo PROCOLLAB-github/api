@@ -268,7 +268,7 @@ class CustomUserAdmin(admin.ModelAdmin):
         xlsx_file_writer = XlsxFileToExport("активность_пользователей.xlsx")
         xlsx_file_writer.write_data_to_xlsx(activity_prepare.get_users_prepared_data())
         binary_data_to_export: bytes = xlsx_file_writer.get_binary_data_from_self_file()
-        xlsx_file_writer.delete_self_xlsx_file_from_local_machine()
+        xlsx_file_writer.clear_buffer()
 
         encoded_file_name: str = urllib.parse.quote("активность_пользователей.xlsx")
         response = HttpResponse(
