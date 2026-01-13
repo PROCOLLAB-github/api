@@ -1,5 +1,6 @@
-import os
 import logging
+import io
+import unicodedata
 import pandas as pd
 
 from django.core.mail import EmailMultiAlternatives
@@ -35,32 +36,55 @@ def get_users_online_cache_key() -> str:
 
 class XlsxFileToExport:
     """
-    Writing data to `xlsx` file.
-    `filename` must contain `.xlsx` format prefix.
-    All data on 1 page.
+    Формирует XLSX в памяти.
+    `filename` сохранён для совместимости, но не используется для записи на диск.
+    Все данные пишутся на один лист.
     """
 
     def __init__(self, filename="output.xlsx"):
         self.filename = filename
+        self._buffer = None
 
     def write_data_to_xlsx(self, data: list[dict], sheet_name: str = "scores") -> None:
         try:
             data_frames = pd.DataFrame(data)
-            with pd.ExcelWriter(self.filename) as writer:
+            buffer = io.BytesIO()
+            with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
                 data_frames.to_excel(writer, sheet_name=sheet_name, index=False)
+            buffer.seek(0)
+            self._buffer = buffer
         except Exception as e:
             logger.error(f"Write export rates data error: {str(e)}", exc_info=True)
             raise
 
     def get_binary_data_from_self_file(self) -> bytes:
         try:
-            with open(self.filename, "rb") as f:
-                binary_data = f.read()
-            return binary_data
+            if not self._buffer:
+                raise ValueError("XLSX buffer is empty")
+            return self._buffer.getvalue()
         except Exception as e:
             logger.error(f"Read export rates data error: {str(e)}", exc_info=True)
             raise
 
-    def delete_self_xlsx_file_from_local_machine(self) -> None:
-        if os.path.isfile(self.filename) and self.filename.endswith(".xlsx"):
-            os.remove(self.filename)
+    def clear_buffer(self) -> None:
+        if self._buffer:
+            self._buffer.close()
+            self._buffer = None
+
+
+def sanitize_filename(filename: str) -> str:
+    normalized_name = unicodedata.normalize("NFKD", filename)
+    safe_chars = [
+        char
+        for char in normalized_name
+        if char.isalnum() or char in ("-", "_", " ", ".")
+    ]
+    cleaned_name = "".join(safe_chars)
+    return " ".join(cleaned_name.split())
+
+
+def ascii_filename(filename: str) -> str:
+    safe_name = sanitize_filename(filename)
+    ascii_name = "".join(char if char.isascii() else "_" for char in safe_name)
+    ascii_name = " ".join(ascii_name.split())
+    return ascii_name or "export"
