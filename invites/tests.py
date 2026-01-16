@@ -1,7 +1,11 @@
+from datetime import timedelta
+
 from django.test import TestCase
+from django.utils import timezone
 from rest_framework.test import APIRequestFactory, force_authenticate
 
-from projects.models import Project
+from partner_programs.models import PartnerProgram, PartnerProgramProject
+from projects.models import Collaborator, Project
 from tests.constants import USER_CREATE_DATA
 
 from users.views import UserList
@@ -111,6 +115,51 @@ class InvitesTestCase(TestCase):
         response = self.invite_list_view(request)
 
         self.assertEqual(response.status_code, 400)
+
+    def test_invites_creation_for_existing_collaborator(self):
+        sender = self._user_create("sender@example.com")
+        recipient = self._user_create("recipient@example.com")
+        project = self._project_create(sender)
+        Collaborator.objects.create(user=recipient, project=project, role="Developer")
+
+        create_user = self.invite_create_data.copy()
+        create_user["user"] = recipient.id
+        create_user["project"] = project.id
+        request = self.factory.post("invites/", create_user, format="json")
+        force_authenticate(request, user=sender)
+
+        response = self.invite_list_view(request)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("user", response.data)
+
+    def test_invites_creation_for_non_program_member(self):
+        sender = self._user_create("sender@example.com")
+        recipient = self._user_create("recipient@example.com")
+        project = self._project_create(sender)
+        now = timezone.now()
+        program = PartnerProgram.objects.create(
+            name="Test program",
+            tag="test",
+            city="Moscow",
+            datetime_registration_ends=now + timedelta(days=1),
+            datetime_started=now,
+            datetime_finished=now + timedelta(days=30),
+        )
+        PartnerProgramProject.objects.create(
+            partner_program=program, project=project
+        )
+
+        create_user = self.invite_create_data.copy()
+        create_user["user"] = recipient.id
+        create_user["project"] = project.id
+        request = self.factory.post("invites/", create_user, format="json")
+        force_authenticate(request, user=sender)
+
+        response = self.invite_list_view(request)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("user", response.data)
 
     def test_accept_invite_by_intended_user(self):
         sender = self._user_create("sender@example.com")
