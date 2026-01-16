@@ -54,6 +54,7 @@ class ProjectAdmin(admin.ModelAdmin):
         "id",
         "name",
         "draft",
+        "is_public",
         "is_company",
         "trl",
         "target_audience",
@@ -61,7 +62,7 @@ class ProjectAdmin(admin.ModelAdmin):
     )
     list_display_links = ("id", "name")
     search_fields = ("name",)
-    list_filter = ("draft", "is_company", "trl")
+    list_filter = ("draft", "is_public", "is_company", "trl")
 
     fieldsets = (
         (
@@ -74,6 +75,7 @@ class ProjectAdmin(admin.ModelAdmin):
                     "industry",
                     "region",
                     "draft",
+                    "is_public",
                     "is_company",
                 )
             },

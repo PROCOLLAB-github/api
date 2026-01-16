@@ -426,6 +426,28 @@ class UserProjectsList(GenericAPIView):
         )
 
 
+class UserLeaderProjectsList(GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    pagination_class = ProjectsPagination
+    serializer_class = UserProjectListSerializer
+
+    def get(self, request):
+        queryset = (
+            Project.objects.filter(leader_id=self.request.user.id)
+            .prefetch_related("program_links__partner_program")
+            .distinct()
+        )
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        return Response(
+            {"detail": "Unable to return paginated list"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
 
