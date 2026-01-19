@@ -17,7 +17,11 @@ app.conf.beat_schedule = {
         "task": "vacancy.tasks.email_notificate_vacancy_outdated",
         # "schedule": crontab(minute=0, hour=0),
         "schedule": crontab(minute="*"),
-    }
+    },
+    "publish_finished_program_projects": {
+        "task": "partner_programs.tasks.publish_finished_program_projects_task",
+        "schedule": crontab(minute=0, hour=6),
+    },
 }
 
 if __name__ == "__main__":
