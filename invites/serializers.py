@@ -4,7 +4,20 @@ from rest_framework import serializers
 from invites.models import Invite
 from projects.models import Collaborator
 from projects.serializers import ProjectListSerializer
+from users.models import CustomUser
 from users.serializers import UserDetailSerializer
+
+
+class InviteSenderSerializer(serializers.ModelSerializer[CustomUser]):
+    class Meta:
+        model = CustomUser
+        fields = [
+            "id",
+            "first_name",
+            "last_name",
+            "patronymic",
+            "avatar",
+        ]
 
 
 class InviteListSerializer(serializers.ModelSerializer[Invite]):
@@ -67,6 +80,7 @@ class InviteListSerializer(serializers.ModelSerializer[Invite]):
 class InviteDetailSerializer(serializers.ModelSerializer[Invite]):
     user = UserDetailSerializer(many=False, read_only=True)
     project = ProjectListSerializer(many=False, read_only=True)
+    sender = InviteSenderSerializer(source="project.leader", read_only=True)
     specialization = serializers.CharField(
         required=False, allow_null=True, allow_blank=True
     )
@@ -77,6 +91,7 @@ class InviteDetailSerializer(serializers.ModelSerializer[Invite]):
             "id",
             "project",
             "user",
+            "sender",
             "motivational_letter",
             "role",
             "specialization",
