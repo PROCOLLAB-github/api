@@ -107,7 +107,11 @@ class PartnerProgramProjectSerializer(serializers.ModelSerializer):
         ]
 
     def get_can_submit(self, obj):
-        return obj.partner_program.is_competitive and not obj.submitted
+        return (
+            obj.partner_program.is_competitive
+            and not obj.submitted
+            and obj.partner_program.is_project_submission_open()
+        )
 
     def get_program_fields(self, obj):
         fields_qs = obj.partner_program.fields.all()

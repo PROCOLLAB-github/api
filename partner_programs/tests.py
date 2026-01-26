@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.utils import timezone
+from rest_framework.test import APIRequestFactory, force_authenticate
 
 from partner_programs.models import (
     PartnerProgram,
@@ -10,6 +11,7 @@ from partner_programs.models import (
 )
 from partner_programs.serializers import PartnerProgramFieldValueUpdateSerializer
 from partner_programs.services import publish_finished_program_projects
+from partner_programs.views import PartnerProgramProjectSubmitView
 from projects.models import Project
 
 
@@ -235,6 +237,86 @@ class PublishFinishedProgramProjectsTests(TestCase):
         publish_finished_program_projects()
         project.refresh_from_db()
         self.assertTrue(project.is_public)
+
+
+class PartnerProgramProjectSubmitViewTests(TestCase):
+    def setUp(self):
+        self.factory = APIRequestFactory()
+        self.view = PartnerProgramProjectSubmitView.as_view()
+        self.now = timezone.now()
+        self.user = get_user_model().objects.create_user(
+            email="leader@example.com",
+            password="pass",
+            first_name="Leader",
+            last_name="User",
+            birthday="1990-01-01",
+        )
+
+    def create_program(self, **overrides):
+        defaults = {
+            "name": "Program",
+            "tag": "program_tag",
+            "description": "Program description",
+            "city": "Moscow",
+            "data_schema": {},
+            "draft": False,
+            "projects_availability": "all_users",
+            "datetime_registration_ends": self.now + timezone.timedelta(days=10),
+            "datetime_started": self.now - timezone.timedelta(days=1),
+            "datetime_finished": self.now + timezone.timedelta(days=30),
+            "is_competitive": True,
+        }
+        defaults.update(overrides)
+        return PartnerProgram.objects.create(**defaults)
+
+    def create_project_link(self, program):
+        project = Project.objects.create(
+            leader=self.user,
+            draft=False,
+            is_public=False,
+            name="Project",
+        )
+        return PartnerProgramProject.objects.create(
+            partner_program=program,
+            project=project,
+        )
+
+    def test_submit_blocked_after_deadline(self):
+        program = self.create_program(
+            datetime_project_submission_ends=self.now - timezone.timedelta(days=1)
+        )
+        link = self.create_project_link(program)
+
+        request = self.factory.post(
+            f"partner-program-projects/{link.pk}/submit/"
+        )
+        force_authenticate(request, user=self.user)
+        response = self.view(request, pk=link.pk)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.data.get("detail"),
+            "Срок подачи проектов в программу завершён.",
+        )
+        link.refresh_from_db()
+        self.assertFalse(link.submitted)
+
+    def test_submit_allowed_before_deadline(self):
+        program = self.create_program(
+            datetime_project_submission_ends=self.now + timezone.timedelta(days=1)
+        )
+        link = self.create_project_link(program)
+
+        request = self.factory.post(
+            f"partner-program-projects/{link.pk}/submit/"
+        )
+        force_authenticate(request, user=self.user)
+        response = self.view(request, pk=link.pk)
+
+        self.assertEqual(response.status_code, 200)
+        link.refresh_from_db()
+        self.assertTrue(link.submitted)
+        self.assertIsNotNone(link.datetime_submitted)
 
 
 class PartnerProgramFieldValueUpdateSerializerValidTests(TestCase):
