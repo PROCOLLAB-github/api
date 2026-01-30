@@ -11,6 +11,7 @@ from django.contrib.auth import get_user_model
 from django.core import mail
 from django.core.mail import EmailMultiAlternatives
 from django.template import Context, Template
+from django.template.loader import get_template
 
 from .typing import MailDataDict, EmailDataToPrepare
 
@@ -113,6 +114,47 @@ def send_mass_mail(
         template_context["user"] = user
         html_msg = template.render(Context(template_context))
         plain_msg = template.render(Context(template_context))
+        msg = EmailMultiAlternatives(
+            subject, plain_msg, settings.EMAIL_USER, [user.email]
+        )
+        msg.attach_alternative(html_msg, "text/html")
+        messages.append(msg)
+
+    grouped_messages = create_message_groups(messages)
+    num_sent: int = 0
+    for group in grouped_messages:
+        num_sent += send_group_messages(group)
+    return num_sent
+
+
+def send_mass_mail_from_template(
+    users: django.db.models.QuerySet | List[User],
+    subject: str,
+    template_name: str,
+    template_context: Union[
+        MailDataDict,
+        list,
+        dict,
+    ] = None,
+    context_builder=None,
+    connection=None,
+) -> Annotated[int, "Количество отосланных сообщений"]:
+    """
+    Send emails using a template file from Django template loaders.
+    Allows optional per-user context via context_builder(user) -> dict.
+    """
+    if template_context is None:
+        template_context = {}
+
+    template = get_template(template_name)
+    messages = []
+    for user in users:
+        context = dict(template_context)
+        if context_builder is not None:
+            context.update(context_builder(user))
+        context["user"] = user
+        html_msg = template.render(context)
+        plain_msg = template.render(context)
         msg = EmailMultiAlternatives(
             subject, plain_msg, settings.EMAIL_USER, [user.email]
         )
