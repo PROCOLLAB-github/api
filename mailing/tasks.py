@@ -59,6 +59,14 @@ def _send_scenario_for_program(scenario, program, scheduled_for):
     if not user_ids:
         return 0
 
+    logger.info(
+        "Scenario %s program=%s scheduled_for=%s recipients=%s",
+        scenario.code,
+        program.id,
+        scheduled_for,
+        len(user_ids),
+    )
+
     MailingScenarioLog.objects.filter(
         scenario_code=scenario.code,
         program=program,
@@ -84,26 +92,88 @@ def _send_scenario_for_program(scenario, program, scheduled_for):
     def context_builder(user):
         return scenario.context_builder(program, user, deadline_date)
 
+    sent_count = 0
+    failed_count = 0
+
+    def _normalize_status(status_value):
+        if status_value is None:
+            return set()
+        if isinstance(status_value, dict):
+            return {str(key) for key in status_value.keys()}
+        if isinstance(status_value, (set, list, tuple)):
+            return {str(item) for item in status_value}
+        return {str(status_value)}
+
     def status_callback(user, msg):
+        nonlocal sent_count, failed_count
         status = getattr(msg, "anymail_status", None)
         message_id = getattr(status, "message_id", None) if status else None
-        if message_id:
-            logger.info(
-                "Scenario %s user=%s anymail_id=%s status=%s",
-                scenario.code,
-                user.id,
-                message_id,
-                getattr(status, "status", None),
+        status_set = _normalize_status(getattr(status, "status", None))
+        status_str = ",".join(sorted(status_set)) if status_set else "unknown"
+        is_failed = bool(status_set & {"rejected", "failed", "invalid", "bounced"})
+
+        if not message_id:
+            failed_count += 1
+            MailingScenarioLog.objects.filter(
+                scenario_code=scenario.code,
+                program=program,
+                scheduled_for=scheduled_for,
+                status=MailingScenarioLog.Status.PENDING,
+                user_id=user.id,
+            ).update(
+                status=MailingScenarioLog.Status.FAILED,
+                error="anymail_status missing",
             )
-        else:
-            logger.info(
+            logger.warning(
                 "Scenario %s user=%s anymail_status missing",
                 scenario.code,
                 user.id,
             )
+            return
+
+        if is_failed:
+            failed_count += 1
+            MailingScenarioLog.objects.filter(
+                scenario_code=scenario.code,
+                program=program,
+                scheduled_for=scheduled_for,
+                status=MailingScenarioLog.Status.PENDING,
+                user_id=user.id,
+            ).update(
+                status=MailingScenarioLog.Status.FAILED,
+                error=f"anymail_status={status_str} anymail_id={message_id}",
+            )
+            logger.error(
+                "Scenario %s user=%s anymail_id=%s status=%s",
+                scenario.code,
+                user.id,
+                message_id,
+                status_str,
+            )
+            return
+
+        sent_count += 1
+        MailingScenarioLog.objects.filter(
+            scenario_code=scenario.code,
+            program=program,
+            scheduled_for=scheduled_for,
+            status=MailingScenarioLog.Status.PENDING,
+            user_id=user.id,
+        ).update(
+            status=MailingScenarioLog.Status.SENT,
+            sent_at=timezone.now(),
+            error="",
+        )
+        logger.info(
+            "Scenario %s user=%s anymail_id=%s status=%s",
+            scenario.code,
+            user.id,
+            message_id,
+            status_str,
+        )
 
     try:
-        send_mass_mail_from_template(
+        num_sent = send_mass_mail_from_template(
             recipients_to_send,
             scenario.subject,
             scenario.template_name,
@@ -123,16 +193,36 @@ def _send_scenario_for_program(scenario, program, scheduled_for):
         )
         return 0
 
-    MailingScenarioLog.objects.filter(
+    pending_qs = MailingScenarioLog.objects.filter(
         scenario_code=scenario.code,
         program=program,
         scheduled_for=scheduled_for,
         status=MailingScenarioLog.Status.PENDING,
         user_id__in=user_ids,
-    ).update(
-        status=MailingScenarioLog.Status.SENT, sent_at=timezone.now(), error=""
     )
-    return len(user_ids)
+    pending_count = pending_qs.count()
+    if pending_count:
+        pending_qs.update(
+            status=MailingScenarioLog.Status.FAILED,
+            error="anymail_status missing",
+        )
+        failed_count += pending_count
+        logger.warning(
+            "Scenario %s program=%s pending left after send: %s",
+            scenario.code,
+            program.id,
+            pending_count,
+        )
+
+    logger.info(
+        "Scenario %s program=%s send_messages=%s sent=%s failed=%s",
+        scenario.code,
+        program.id,
+        num_sent,
+        sent_count,
+        failed_count,
+    )
+    return sent_count
 
 
 @app.task
