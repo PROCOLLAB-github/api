@@ -1,5 +1,5 @@
 from functools import singledispatch
-from typing import Dict, List, Union, Annotated
+from typing import Dict, List, Union, Annotated, Callable
 
 from procollab import settings
 from .constants import MAILING_USERS_BATCH_SIZE
@@ -137,6 +137,7 @@ def send_mass_mail_from_template(
         dict,
     ] = None,
     context_builder=None,
+    status_callback: Callable[[User, EmailMultiAlternatives], None] | None = None,
     connection=None,
 ) -> Annotated[int, "Количество отосланных сообщений"]:
     """
@@ -147,7 +148,7 @@ def send_mass_mail_from_template(
         template_context = {}
 
     template = get_template(template_name)
-    messages = []
+    message_pairs: list[tuple[User, EmailMultiAlternatives]] = []
     for user in users:
         context = dict(template_context)
         if context_builder is not None:
@@ -159,10 +160,14 @@ def send_mass_mail_from_template(
             subject, plain_msg, settings.EMAIL_USER, [user.email]
         )
         msg.attach_alternative(html_msg, "text/html")
-        messages.append(msg)
+        message_pairs.append((user, msg))
 
-    grouped_messages = create_message_groups(messages)
+    grouped_messages = create_message_groups(message_pairs)
     num_sent: int = 0
     for group in grouped_messages:
-        num_sent += send_group_messages(group)
+        messages = [msg for _, msg in group]
+        num_sent += send_group_messages(messages)
+        if status_callback is not None:
+            for user, msg in group:
+                status_callback(user, msg)
     return num_sent

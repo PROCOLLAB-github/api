@@ -84,12 +84,31 @@ def _send_scenario_for_program(scenario, program, scheduled_for):
     def context_builder(user):
         return scenario.context_builder(program, user, deadline_date)
 
+    def status_callback(user, msg):
+        status = getattr(msg, "anymail_status", None)
+        message_id = getattr(status, "message_id", None) if status else None
+        if message_id:
+            logger.info(
+                "Scenario %s user=%s anymail_id=%s status=%s",
+                scenario.code,
+                user.id,
+                message_id,
+                getattr(status, "status", None),
+            )
+        else:
+            logger.info(
+                "Scenario %s user=%s anymail_status missing",
+                scenario.code,
+                user.id,
+            )
+
     try:
         send_mass_mail_from_template(
             recipients_to_send,
             scenario.subject,
             scenario.template_name,
             context_builder=context_builder,
+            status_callback=status_callback,
         )
     except Exception as exc:
         MailingScenarioLog.objects.filter(
