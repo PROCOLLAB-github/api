@@ -3,6 +3,7 @@ from datetime import timedelta
 
 from django.utils import timezone
 
+from mailing.constants import FAILED_ANYMAIL_STATUSES
 from mailing.models import MailingScenarioLog
 from mailing.scenarios import RecipientRule, SCENARIOS, TriggerType
 from mailing.utils import send_mass_mail_from_template
@@ -54,8 +55,8 @@ def _send_scenario_for_program(scenario, program, scheduled_for):
         ],
     ).values_list("user_id", flat=True)
 
-    recipients_to_send = recipients.exclude(id__in=pending_or_sent_ids)
-    user_ids = list(recipients_to_send.values_list("id", flat=True))
+    recipients_to_send = list(recipients.exclude(id__in=pending_or_sent_ids))
+    user_ids = [user.id for user in recipients_to_send]
     if not user_ids:
         return 0
 
@@ -99,10 +100,16 @@ def _send_scenario_for_program(scenario, program, scheduled_for):
         if status_value is None:
             return set()
         if isinstance(status_value, dict):
-            return {str(key) for key in status_value.keys()}
+            statuses = set()
+            for value in status_value.values():
+                if isinstance(value, (set, list, tuple)):
+                    statuses.update(str(item) for item in value)
+                else:
+                    statuses.add(str(value))
+            return {status.lower() for status in statuses}
         if isinstance(status_value, (set, list, tuple)):
-            return {str(item) for item in status_value}
-        return {str(status_value)}
+            return {str(item).lower() for item in status_value}
+        return {str(status_value).lower()}
 
     def status_callback(user, msg):
         nonlocal sent_count, failed_count
@@ -110,7 +117,7 @@ def _send_scenario_for_program(scenario, program, scheduled_for):
         message_id = getattr(status, "message_id", None) if status else None
         status_set = _normalize_status(getattr(status, "status", None))
         status_str = ",".join(sorted(status_set)) if status_set else "unknown"
-        is_failed = bool(status_set & {"rejected", "failed", "invalid", "bounced"})
+        is_failed = not status_set or bool(status_set & FAILED_ANYMAIL_STATUSES)
 
         if not message_id:
             failed_count += 1
