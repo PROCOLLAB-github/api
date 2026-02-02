@@ -10,3 +10,7 @@ def get_default_mailing_schema() -> dict[str, dict[str, str]]:
 
 
 MAILING_USERS_BATCH_SIZE = 100
+
+FAILED_ANYMAIL_STATUSES = frozenset(
+    {"rejected", "failed", "invalid", "bounced", "unknown"}
+)
