@@ -261,7 +261,7 @@
                   
       <div
          style="font-family:sans-serif;font-size:20px;font-weight:400;line-height:150%;text-align:left;color:#8c888a;"
-      >{{ text }}</div>
+      >{{ text|linebreaksbr }}</div>
     
                 </td>
               </tr>
@@ -316,6 +316,7 @@
       >
         <tbody>
           
+              {% if button_text and button_link %}
               <tr>
                 <td
                    align="center" vertical-align="middle" style="font-size:0px;padding:0;word-break:break-word;"
@@ -341,6 +342,7 @@
     
                 </td>
               </tr>
+              {% endif %}
             
         </tbody>
       </table>
