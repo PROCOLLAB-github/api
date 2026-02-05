@@ -20,7 +20,7 @@ app.conf.beat_schedule = {
     },
     "program_scenarios_mailings": {
         "task": "mailing.tasks.run_program_mailings",
-        "schedule": crontab(minute=0, hour=12),
+        "schedule": crontab(minute=0, hour=10),
     },
     "publish_finished_program_projects": {
         "task": "partner_programs.tasks.publish_finished_program_projects_task",

@@ -9,7 +9,10 @@ from mailing.scenarios import RecipientRule, SCENARIOS, TriggerType
 from mailing.utils import send_mass_mail_from_template
 from partner_programs.selectors import (
     program_participants,
+    program_participants_with_unsubmitted_project,
+    program_participants_without_project_registered_on,
     program_participants_without_project,
+    programs_with_registrations_on,
     programs_with_submission_deadline_on,
 )
 from procollab.celery import app
@@ -21,16 +24,24 @@ def _get_programs_for_scenario(scenario, target_date):
     match scenario.trigger:
         case TriggerType.PROGRAM_SUBMISSION_DEADLINE:
             return programs_with_submission_deadline_on(target_date)
+        case TriggerType.PROGRAM_REGISTRATION_DATE:
+            return programs_with_registrations_on(target_date)
         case _:
             raise ValueError(f"Unsupported trigger: {scenario.trigger}")
 
 
-def _get_recipients(scenario, program_id: int):
+def _get_recipients(scenario, program_id: int, target_date):
     match scenario.recipient_rule:
         case RecipientRule.ALL_PARTICIPANTS:
             return program_participants(program_id)
         case RecipientRule.NO_PROJECT_IN_PROGRAM:
             return program_participants_without_project(program_id)
+        case RecipientRule.NO_PROJECT_IN_PROGRAM_REGISTERED_ON_DATE:
+            return program_participants_without_project_registered_on(
+                program_id, target_date
+            )
+        case RecipientRule.PROJECT_NOT_SUBMITTED:
+            return program_participants_with_unsubmitted_project(program_id)
         case _:
             raise ValueError(f"Unsupported recipient rule: {scenario.recipient_rule}")
 
@@ -40,8 +51,8 @@ def _deadline_date(program):
     return timezone.localtime(deadline).date()
 
 
-def _send_scenario_for_program(scenario, program, scheduled_for):
-    recipients = _get_recipients(scenario, program.id)
+def _send_scenario_for_program(scenario, program, scheduled_for, target_date):
+    recipients = _get_recipients(scenario, program.id, target_date)
     if not recipients.exists():
         return 0
 
@@ -88,10 +99,14 @@ def _send_scenario_for_program(scenario, program, scheduled_for):
     ]
     MailingScenarioLog.objects.bulk_create(logs, ignore_conflicts=True)
 
-    deadline_date = _deadline_date(program)
+    reference_date = (
+        _deadline_date(program)
+        if scenario.trigger == TriggerType.PROGRAM_SUBMISSION_DEADLINE
+        else target_date
+    )
 
     def context_builder(user):
-        return scenario.context_builder(program, user, deadline_date)
+        return scenario.context_builder(program, user, reference_date)
 
     sent_count = 0
     failed_count = 0
@@ -237,9 +252,14 @@ def run_program_mailings() -> int:
     today = timezone.localdate()
     total_sent = 0
     for scenario in SCENARIOS:
-        target_date = today + timedelta(days=scenario.offset_days)
+        if scenario.trigger == TriggerType.PROGRAM_SUBMISSION_DEADLINE:
+            target_date = today + timedelta(days=scenario.offset_days)
+        else:
+            target_date = today - timedelta(days=scenario.offset_days)
         programs = _get_programs_for_scenario(scenario, target_date)
         for program in programs:
-            total_sent += _send_scenario_for_program(scenario, program, today)
+            total_sent += _send_scenario_for_program(
+                scenario, program, today, target_date
+            )
     logger.info("Program mailings sent: %s", total_sent)
     return total_sent
