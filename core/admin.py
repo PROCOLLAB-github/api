@@ -15,7 +15,8 @@ from core.models import (
 
 class SkillToObjectInline(GenericStackedInline):
     model = SkillToObject
-    extra = 1
+    extra = 0
+    autocomplete_fields = ("skill",)
     verbose_name = "Навык"
     verbose_name_plural = "Навыки"
 
@@ -48,6 +49,10 @@ class SkillAdmin(admin.ModelAdmin):
     list_display_links = (
         "id",
         "name",
+    )
+    search_fields = (
+        "name",
+        "category__name",
     )
 
 
