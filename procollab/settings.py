@@ -171,7 +171,7 @@ REST_FRAMEWORK = {
         "users.permissions.CustomIsAuthenticated",
     ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "users.authentication.ActivityTrackingJWTAuthentication",
         "rest_framework.authentication.BasicAuthentication",
         # "rest_framework.authentication.SessionAuthentication",S
     ],
@@ -330,6 +330,8 @@ default_user_authentication_rule",
     "SLIDING_TOKEN_REFRESH_LIFETIME": timedelta(days=1),
     "TOKEN_OBTAIN_SERIALIZER": "users.serializers.CustomObtainPairSerializer",
 }
+
+JWT_LAST_ACTIVITY_THROTTLE_SECONDS = 15 * 60
 
 if DEBUG:
     SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"] = timedelta(weeks=2)
