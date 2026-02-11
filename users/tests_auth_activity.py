@@ -1,4 +1,5 @@
 from datetime import timedelta
+from unittest.mock import MagicMock, patch
 
 from django.core.cache import cache
 from django.urls import reverse
@@ -74,3 +75,33 @@ class JwtActivityTrackingTests(APITestCase):
         self.assertEqual(third_response.status_code, 200)
         self.user.refresh_from_db()
         self.assertGreater(self.user.last_activity, old_activity)
+
+    @patch("users.authentication.cache.add", side_effect=Exception("cache is down"))
+    def test_last_activity_cache_failure_does_not_break_auth(self, _cache_add_mock):
+        CustomUser.objects.filter(id=self.user.id).update(last_activity=None)
+        access = self._obtain_access_token()
+
+        api_client = APIClient()
+        api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+
+        response = api_client.get("/auth/specialists/")
+        self.assertEqual(response.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertIsNotNone(self.user.last_activity)
+
+    @patch("users.authentication.get_user_model")
+    def test_last_activity_db_failure_does_not_break_auth(self, get_user_model_mock):
+        fake_qs = MagicMock()
+        fake_qs.update.side_effect = Exception("db is down")
+        fake_model = MagicMock()
+        fake_model.objects.filter.return_value = fake_qs
+        get_user_model_mock.return_value = fake_model
+
+        access = self._obtain_access_token()
+        api_client = APIClient()
+        api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+
+        response = api_client.get("/auth/specialists/")
+        self.assertEqual(response.status_code, 200)
+        fake_model.objects.filter.assert_called_once_with(id=self.user.id)
+        fake_qs.update.assert_called_once()

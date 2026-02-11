@@ -1,3 +1,5 @@
+import logging
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
@@ -6,6 +8,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 
 DEFAULT_LAST_ACTIVITY_THROTTLE_SECONDS = 15 * 60
 LAST_ACTIVITY_CACHE_KEY = "users:last_activity:update:{user_id}"
+logger = logging.getLogger(__name__)
 
 
 def get_last_activity_cache_key(user_id: int) -> str:
@@ -45,10 +48,25 @@ class ActivityTrackingJWTAuthentication(JWTAuthentication):
         should_update = True
         if throttle_seconds > 0:
             cache_key = get_last_activity_cache_key(user_id)
-            should_update = cache.add(cache_key, "1", timeout=throttle_seconds)
+            try:
+                should_update = cache.add(cache_key, "1", timeout=throttle_seconds)
+            except Exception:
+                logger.warning(
+                    "Failed to update activity throttle cache for user_id=%s",
+                    user_id,
+                    exc_info=True,
+                )
+                should_update = True
 
         if not should_update:
             return
 
         user_model = get_user_model()
-        user_model.objects.filter(id=user_id).update(last_activity=timezone.now())
+        try:
+            user_model.objects.filter(id=user_id).update(last_activity=timezone.now())
+        except Exception:
+            logger.warning(
+                "Failed to update last_activity for user_id=%s",
+                user_id,
+                exc_info=True,
+            )
