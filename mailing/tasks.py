@@ -9,9 +9,12 @@ from mailing.scenarios import RecipientRule, SCENARIOS, TriggerType
 from mailing.utils import send_mass_mail_from_template
 from partner_programs.selectors import (
     program_participants,
+    program_participants_with_inactive_account,
+    program_participants_with_inactive_account_registered_on,
     program_participants_with_unsubmitted_project,
     program_participants_without_project_registered_on,
     program_participants_without_project,
+    programs_with_registration_end_on,
     programs_with_registrations_on,
     programs_with_submission_deadline_on,
 )
@@ -26,6 +29,8 @@ def _get_programs_for_scenario(scenario, target_date):
             return programs_with_submission_deadline_on(target_date)
         case TriggerType.PROGRAM_REGISTRATION_DATE:
             return programs_with_registrations_on(target_date)
+        case TriggerType.PROGRAM_REGISTRATION_END:
+            return programs_with_registration_end_on(target_date)
         case _:
             raise ValueError(f"Unsupported trigger: {scenario.trigger}")
 
@@ -42,6 +47,12 @@ def _get_recipients(scenario, program_id: int, target_date):
             )
         case RecipientRule.PROJECT_NOT_SUBMITTED:
             return program_participants_with_unsubmitted_project(program_id)
+        case RecipientRule.INACTIVE_ACCOUNT_IN_PROGRAM:
+            return program_participants_with_inactive_account(program_id)
+        case RecipientRule.INACTIVE_ACCOUNT_IN_PROGRAM_REGISTERED_ON_DATE:
+            return program_participants_with_inactive_account_registered_on(
+                program_id, target_date
+            )
         case _:
             raise ValueError(f"Unsupported recipient rule: {scenario.recipient_rule}")
 

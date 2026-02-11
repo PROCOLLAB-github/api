@@ -12,6 +12,7 @@ FRONTEND_BASE_URL = "https://app.procollab.ru"
 class TriggerType(Enum):
     PROGRAM_SUBMISSION_DEADLINE = "program_submission_deadline"
     PROGRAM_REGISTRATION_DATE = "program_registration_date"
+    PROGRAM_REGISTRATION_END = "program_registration_end"
 
 
 class RecipientRule(Enum):
@@ -19,6 +20,10 @@ class RecipientRule(Enum):
     NO_PROJECT_IN_PROGRAM = "no_project_in_program"
     NO_PROJECT_IN_PROGRAM_REGISTERED_ON_DATE = "no_project_in_program_registered_on_date"
     PROJECT_NOT_SUBMITTED = "project_not_submitted"
+    INACTIVE_ACCOUNT_IN_PROGRAM = "inactive_account_in_program"
+    INACTIVE_ACCOUNT_IN_PROGRAM_REGISTERED_ON_DATE = (
+        "inactive_account_in_program_registered_on_date"
+    )
 
 
 ContextBuilder = Callable[[PartnerProgram, CustomUser, date], dict]
@@ -79,6 +84,42 @@ def _build_project_not_submitted_context(title: str, text: str) -> ContextBuilde
     return _builder
 
 
+def _build_registration_plus_3_inactive_context() -> ContextBuilder:
+    def _builder(program: PartnerProgram, user: CustomUser, _ref_date: date) -> dict:
+        return {
+            "preview_text": "Поздравляем!",
+            "title": "Поздравляем!",
+            "text": (
+                f"Вы зарегистрировались на кейс-чемпионат {program.name}. "
+                "Заходите на платформу, чтобы оформить свой профиль участника "
+                "и вступить в закрытую группу программы.\n\n"
+                "Увидимся на платформе ⚡"
+            ),
+            "button_text": "Оформить профиль",
+            "button_link": f"{FRONTEND_BASE_URL}/office/profile/{user.id}/",
+        }
+
+    return _builder
+
+
+def _build_registration_end_plus_3_inactive_context() -> ContextBuilder:
+    def _builder(program: PartnerProgram, user: CustomUser, _ref_date: date) -> dict:
+        return {
+            "preview_text": "Без вас совсем не то",
+            "title": "Без вас совсем не то",
+            "text": (
+                "Мы так обрадовались, увидев вашу регистрацию, но, кажется, "
+                "вы еще не заходили на платформу.\n\n"
+                "Скорее заходите на procollab, чтобы стать активным участником "
+                "всероссийского кейс-чемпионата и забрать максимум полезного для себя ⚡"
+            ),
+            "button_text": "Зайти на платформу",
+            "button_link": f"{FRONTEND_BASE_URL}/office/profile/{user.id}/",
+        }
+
+    return _builder
+
+
 SCENARIOS: tuple[Scenario, ...] = (
     Scenario(
         code="program_submission_deadline_minus_10_no_project",
@@ -97,6 +138,24 @@ SCENARIOS: tuple[Scenario, ...] = (
         subject="Сделать первый шаг",
         recipient_rule=RecipientRule.NO_PROJECT_IN_PROGRAM_REGISTERED_ON_DATE,
         context_builder=_build_registration_plus_5_context(),
+    ),
+    Scenario(
+        code="program_registration_plus_3_inactive_account",
+        trigger=TriggerType.PROGRAM_REGISTRATION_DATE,
+        offset_days=3,
+        template_name="email/generic-template-0.html",
+        subject="Поздравляем!",
+        recipient_rule=RecipientRule.INACTIVE_ACCOUNT_IN_PROGRAM_REGISTERED_ON_DATE,
+        context_builder=_build_registration_plus_3_inactive_context(),
+    ),
+    Scenario(
+        code="program_registration_end_plus_3_inactive_account",
+        trigger=TriggerType.PROGRAM_REGISTRATION_END,
+        offset_days=3,
+        template_name="email/generic-template-0.html",
+        subject="Без вас совсем не то",
+        recipient_rule=RecipientRule.INACTIVE_ACCOUNT_IN_PROGRAM,
+        context_builder=_build_registration_end_plus_3_inactive_context(),
     ),
     Scenario(
         code="program_submission_deadline_minus_9_project_not_submitted",
