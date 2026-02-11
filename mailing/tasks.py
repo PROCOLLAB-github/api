@@ -35,23 +35,27 @@ def _get_programs_for_scenario(scenario, target_date):
             raise ValueError(f"Unsupported trigger: {scenario.trigger}")
 
 
-def _get_recipients(scenario, program_id: int, target_date):
+def _get_recipients(scenario, program, target_date):
     match scenario.recipient_rule:
         case RecipientRule.ALL_PARTICIPANTS:
-            return program_participants(program_id)
+            return program_participants(program.id)
         case RecipientRule.NO_PROJECT_IN_PROGRAM:
-            return program_participants_without_project(program_id)
+            return program_participants_without_project(program.id)
         case RecipientRule.NO_PROJECT_IN_PROGRAM_REGISTERED_ON_DATE:
             return program_participants_without_project_registered_on(
-                program_id, target_date
+                program.id, target_date
             )
         case RecipientRule.PROJECT_NOT_SUBMITTED:
-            return program_participants_with_unsubmitted_project(program_id)
+            return program_participants_with_unsubmitted_project(program.id)
         case RecipientRule.INACTIVE_ACCOUNT_IN_PROGRAM:
-            return program_participants_with_inactive_account(program_id)
+            return program_participants_with_inactive_account(
+                program.id, program.datetime_started
+            )
         case RecipientRule.INACTIVE_ACCOUNT_IN_PROGRAM_REGISTERED_ON_DATE:
             return program_participants_with_inactive_account_registered_on(
-                program_id, target_date
+                program.id,
+                target_date,
+                program.datetime_started,
             )
         case _:
             raise ValueError(f"Unsupported recipient rule: {scenario.recipient_rule}")
@@ -63,7 +67,7 @@ def _deadline_date(program):
 
 
 def _send_scenario_for_program(scenario, program, scheduled_for, target_date):
-    recipients = _get_recipients(scenario, program.id, target_date)
+    recipients = _get_recipients(scenario, program, target_date)
     if not recipients.exists():
         return 0
 

@@ -96,7 +96,9 @@ class ProgramInactiveAccountSelectorsTests(TestCase):
             last_activity=self._dt(self.today - timedelta(days=1))
         )
 
-        recipients = program_participants_with_inactive_account(program.id)
+        recipients = program_participants_with_inactive_account(
+            program.id, program.datetime_started
+        )
         recipient_ids = set(recipients.values_list("id", flat=True))
 
         self.assertIn(inactive_no_activity.id, recipient_ids)
@@ -114,7 +116,7 @@ class ProgramInactiveAccountSelectorsTests(TestCase):
         self._register_user(registered_other_day, program, self.today - timedelta(days=2))
 
         recipients = program_participants_with_inactive_account_registered_on(
-            program.id, target_date
+            program.id, target_date, program.datetime_started
         )
         recipient_ids = set(recipients.values_list("id", flat=True))
 
@@ -152,8 +154,11 @@ class ProgramInactiveAccountScenariosTests(TestCase):
             datetime_created=self._dt(registered_on)
         )
 
-    @patch("mailing.tasks.send_mass_mail_from_template", _fake_send_mass_mail_from_template)
-    def test_registration_plus_3_inactive_account_scenario(self):
+    @patch(
+        "mailing.tasks.send_mass_mail_from_template",
+        side_effect=_fake_send_mass_mail_from_template,
+    )
+    def test_registration_plus_3_inactive_account_scenario(self, send_mail_mock):
         target_registration_date = self.today - timedelta(days=3)
 
         program = PartnerProgram.objects.create(
@@ -192,9 +197,28 @@ class ProgramInactiveAccountScenariosTests(TestCase):
         )
         self.assertEqual(sent_logs.count(), 1)
         self.assertEqual(sent_logs.first().user_id, inactive_user.id)
+        self.assertEqual(send_mail_mock.call_count, 1)
 
-    @patch("mailing.tasks.send_mass_mail_from_template", _fake_send_mass_mail_from_template)
-    def test_registration_end_plus_3_inactive_account_scenario(self):
+        second_run_sent_count = run_program_mailings()
+        self.assertEqual(second_run_sent_count, 0)
+        self.assertEqual(send_mail_mock.call_count, 1)
+
+        all_logs = MailingScenarioLog.objects.filter(
+            scenario_code="program_registration_plus_3_inactive_account",
+            program=program,
+            scheduled_for=self.today,
+        )
+        self.assertEqual(all_logs.count(), 1)
+        self.assertEqual(
+            all_logs.first().status,
+            MailingScenarioLog.Status.SENT,
+        )
+
+    @patch(
+        "mailing.tasks.send_mass_mail_from_template",
+        side_effect=_fake_send_mass_mail_from_template,
+    )
+    def test_registration_end_plus_3_inactive_account_scenario(self, send_mail_mock):
         target_registration_end_date = self.today - timedelta(days=3)
 
         program = PartnerProgram.objects.create(
@@ -227,3 +251,19 @@ class ProgramInactiveAccountScenariosTests(TestCase):
         )
         self.assertEqual(sent_logs.count(), 1)
         self.assertEqual(sent_logs.first().user_id, inactive_user.id)
+        self.assertEqual(send_mail_mock.call_count, 1)
+
+        second_run_sent_count = run_program_mailings()
+        self.assertEqual(second_run_sent_count, 0)
+        self.assertEqual(send_mail_mock.call_count, 1)
+
+        all_logs = MailingScenarioLog.objects.filter(
+            scenario_code="program_registration_end_plus_3_inactive_account",
+            program=program,
+            scheduled_for=self.today,
+        )
+        self.assertEqual(all_logs.count(), 1)
+        self.assertEqual(
+            all_logs.first().status,
+            MailingScenarioLog.Status.SENT,
+        )

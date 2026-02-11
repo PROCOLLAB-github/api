@@ -41,12 +41,6 @@ def _participant_profiles(program_id: int):
     )
 
 
-def _program_start_datetime(program_id: int):
-    return PartnerProgram.objects.only("datetime_started").get(
-        id=program_id
-    ).datetime_started
-
-
 def _inactive_program_users(user_ids, program_started_at):
     effective_last_seen = Greatest(
         Coalesce(
@@ -133,17 +127,15 @@ def program_participants_with_unsubmitted_project(program_id: int):
     ).distinct()
 
 
-def program_participants_with_inactive_account(program_id: int):
+def program_participants_with_inactive_account(program_id: int, program_started_at):
     participant_ids = _participant_profiles(program_id).values_list("user_id", flat=True)
-    program_started_at = _program_start_datetime(program_id)
     return _inactive_program_users(participant_ids, program_started_at)
 
 
 def program_participants_with_inactive_account_registered_on(
-    program_id: int, target_date
+    program_id: int, target_date, program_started_at
 ):
     participant_ids = _participant_profiles(program_id).filter(
         datetime_created__date=target_date
     ).values_list("user_id", flat=True)
-    program_started_at = _program_start_datetime(program_id)
     return _inactive_program_users(participant_ids, program_started_at)
