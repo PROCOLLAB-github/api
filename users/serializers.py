@@ -5,6 +5,7 @@ from django.core.cache import cache
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from django.forms.models import model_to_dict
+from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.validators import UniqueValidator
@@ -997,6 +998,11 @@ class UserCloneDataSerializer(serializers.ModelSerializer):
 
 
 class CustomObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        CustomUser.objects.filter(id=self.user.id).update(last_login=timezone.now())
+        return data
+
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)

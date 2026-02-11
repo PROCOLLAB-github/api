@@ -149,6 +149,12 @@ class CustomUser(AbstractUser):
         blank=True,
         verbose_name="Дата верификации",
     )
+    last_activity = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        verbose_name="Последняя активность",
+    )
     datetime_updated = models.DateTimeField(auto_now=True)
     datetime_created = models.DateTimeField(auto_now_add=True)
     # TODO need to be removed in future.
