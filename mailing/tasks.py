@@ -23,6 +23,10 @@ from procollab.celery import app
 logger = logging.getLogger(__name__)
 
 
+def _build_subject(scenario, program) -> str:
+    return scenario.subject.replace("{program_name}", program.name)
+
+
 def _get_programs_for_scenario(scenario, target_date):
     match scenario.trigger:
         case TriggerType.PROGRAM_SUBMISSION_DEADLINE:
@@ -212,7 +216,7 @@ def _send_scenario_for_program(scenario, program, scheduled_for, target_date):
     try:
         num_sent = send_mass_mail_from_template(
             recipients_to_send,
-            scenario.subject,
+            _build_subject(scenario, program),
             scenario.template_name,
             context_builder=context_builder,
             status_callback=status_callback,
