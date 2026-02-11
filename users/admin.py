@@ -32,6 +32,7 @@ from .models import (
     UserWorkExperience,
 )
 
+
 @admin.register(Permission)
 class PermissionAdmin(admin.ModelAdmin):
     list_display = ("id", "content_type", "codename", "name")
