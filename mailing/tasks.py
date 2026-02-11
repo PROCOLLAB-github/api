@@ -5,6 +5,7 @@ from django.utils import timezone
 
 from mailing.constants import FAILED_ANYMAIL_STATUSES
 from mailing.models import MailingScenarioLog
+from mailing.rendering import render_subject
 from mailing.scenarios import RecipientRule, SCENARIOS, TriggerType
 from mailing.utils import send_mass_mail_from_template
 from partner_programs.selectors import (
@@ -21,10 +22,6 @@ from partner_programs.selectors import (
 from procollab.celery import app
 
 logger = logging.getLogger(__name__)
-
-
-def _build_subject(scenario, program) -> str:
-    return scenario.subject.replace("{program_name}", program.name)
 
 
 def _get_programs_for_scenario(scenario, target_date):
@@ -216,7 +213,7 @@ def _send_scenario_for_program(scenario, program, scheduled_for, target_date):
     try:
         num_sent = send_mass_mail_from_template(
             recipients_to_send,
-            _build_subject(scenario, program),
+            render_subject(scenario.subject, program),
             scenario.template_name,
             context_builder=context_builder,
             status_callback=status_callback,

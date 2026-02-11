@@ -3,6 +3,7 @@ from datetime import date
 from enum import Enum
 from typing import Callable
 
+from mailing.rendering import render_template_value
 from partner_programs.models import PartnerProgram
 from users.models import CustomUser
 
@@ -40,14 +41,6 @@ class Scenario:
     context_builder: ContextBuilder
 
 
-def _render_context_value(value: str, program: PartnerProgram, user: CustomUser) -> str:
-    return (
-        value.replace("{program_name}", program.name)
-        .replace("{program_id}", str(program.id))
-        .replace("{user_id}", str(user.id))
-    )
-
-
 def _build_context(
     *,
     preview_text: str,
@@ -58,14 +51,14 @@ def _build_context(
 ) -> ContextBuilder:
     def _builder(program: PartnerProgram, user: CustomUser, _ref_date: date) -> dict:
         context = {
-            "preview_text": _render_context_value(preview_text, program, user),
-            "title": _render_context_value(title, program, user),
-            "text": _render_context_value(text, program, user),
+            "preview_text": render_template_value(preview_text, program, user),
+            "title": render_template_value(title, program, user),
+            "text": render_template_value(text, program, user),
         }
         if button_text is not None:
-            context["button_text"] = _render_context_value(button_text, program, user)
+            context["button_text"] = render_template_value(button_text, program, user)
         if button_link is not None:
-            context["button_link"] = _render_context_value(button_link, program, user)
+            context["button_link"] = render_template_value(button_link, program, user)
         return context
 
     return _builder
