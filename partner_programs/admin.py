@@ -81,6 +81,7 @@ class PartnerProgramAdmin(admin.ModelAdmin):
                     "projects_availability",
                     "publish_projects_after_finish",
                     "max_project_rates",
+                    "is_distributed_evaluation",
                     "draft",
                     (
                         "datetime_started",

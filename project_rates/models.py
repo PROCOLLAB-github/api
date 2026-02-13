@@ -1,8 +1,9 @@
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.db import models
 from .constants import VERBOSE_TYPES
 
-from partner_programs.models import PartnerProgram
+from partner_programs.models import PartnerProgram, PartnerProgramProject
 from projects.models import Project
 from .validators import ProjectScoreValidator
 
@@ -93,3 +94,88 @@ class ProjectScore(models.Model):
         verbose_name = "Оценка проекта"
         verbose_name_plural = "Оценки проектов"
         unique_together = ("criteria", "user", "project")
+
+
+class ProjectExpertAssignment(models.Model):
+    partner_program = models.ForeignKey(
+        PartnerProgram,
+        on_delete=models.CASCADE,
+        related_name="project_expert_assignments",
+    )
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name="expert_assignments",
+    )
+    expert = models.ForeignKey(
+        "users.Expert",
+        on_delete=models.CASCADE,
+        related_name="project_assignments",
+    )
+    datetime_created = models.DateTimeField(auto_now_add=True)
+    datetime_updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Назначение проекта эксперту"
+        verbose_name_plural = "Назначения проектов экспертам"
+        unique_together = ("partner_program", "project", "expert")
+        indexes = [
+            models.Index(fields=["partner_program", "project"]),
+            models.Index(fields=["partner_program", "expert"]),
+        ]
+
+    def __str__(self):
+        return (
+            f"Assignment<{self.id}> program={self.partner_program_id} "
+            f"project={self.project_id} expert={self.expert_id}"
+        )
+
+    def has_scores(self) -> bool:
+        return ProjectScore.objects.filter(
+            project_id=self.project_id,
+            user_id=self.expert.user_id,
+            criteria__partner_program_id=self.partner_program_id,
+        ).exists()
+
+    def clean(self):
+        errors = {}
+
+        if self.expert_id and self.partner_program_id and not self.expert.programs.filter(
+            id=self.partner_program_id
+        ).exists():
+            errors["expert"] = "Эксперт не состоит в указанной программе."
+
+        if self.project_id and self.partner_program_id and not PartnerProgramProject.objects.filter(
+            partner_program_id=self.partner_program_id,
+            project_id=self.project_id,
+        ).exists():
+            errors["project"] = "Проект не привязан к указанной программе."
+
+        if self.partner_program_id and self.project_id:
+            max_rates = self.partner_program.max_project_rates
+            if max_rates:
+                assignments_qs = ProjectExpertAssignment.objects.filter(
+                    partner_program_id=self.partner_program_id,
+                    project_id=self.project_id,
+                )
+                if self.pk:
+                    assignments_qs = assignments_qs.exclude(pk=self.pk)
+                if assignments_qs.count() >= max_rates:
+                    errors["partner_program"] = (
+                        "Достигнуто максимальное количество назначенных экспертов "
+                        "для этого проекта в программе."
+                    )
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        if self.has_scores():
+            raise ValidationError(
+                "Нельзя удалить назначение: эксперт уже оценил этот проект."
+            )
+        return super().delete(*args, **kwargs)
