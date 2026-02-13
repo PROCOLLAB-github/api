@@ -87,6 +87,13 @@ class PartnerProgram(models.Model):
         verbose_name="Максимальное количество оценок проектов",
         help_text="Ограничение на число экспертов, которые могут оценить один проект в программе",
     )
+    is_distributed_evaluation = models.BooleanField(
+        default=False,
+        verbose_name="Распределенное оценивание",
+        help_text=(
+            "Если включено, проекты для оценки доступны только назначенным экспертам"
+        ),
+    )
     data_schema = models.JSONField(
         verbose_name="Схема данных в формате JSON",
         help_text="Ключи - имена полей, значения - тип поля ввода",
