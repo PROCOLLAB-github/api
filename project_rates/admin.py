@@ -164,6 +164,7 @@ class ProjectExpertAssignmentAdmin(admin.ModelAdmin):
         "expert__user__last_name",
         "expert__user__email",
     )
+
     def get_form(self, request, obj=None, **kwargs):
         if obj is None:
             kwargs["form"] = ProjectExpertAssignmentBulkAddForm
