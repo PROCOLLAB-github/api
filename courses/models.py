@@ -20,6 +20,11 @@ class CourseContentStatus(models.TextChoices):
     COMPLETED = "completed", "Завершен"
 
 
+class CourseModuleContentStatus(models.TextChoices):
+    DRAFT = "draft", "Черновик"
+    PUBLISHED = "published", "Опубликован"
+
+
 class Course(models.Model):
     title = models.CharField(
         max_length=45,
@@ -184,3 +189,63 @@ class Course(models.Model):
                 self.completed_at = timezone.now()
 
         super().save(*args, **kwargs)
+
+
+class CourseModule(models.Model):
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.CASCADE,
+        related_name="modules",
+        verbose_name="Курс",
+    )
+    title = models.CharField(
+        max_length=40,
+        verbose_name="Название модуля",
+    )
+    avatar_file = models.ForeignKey(
+        UserFile,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="course_module_avatars",
+        verbose_name="Аватар модуля",
+    )
+    start_date = models.DateField(
+        verbose_name="Дата старта модуля",
+    )
+    status = models.CharField(
+        max_length=16,
+        choices=CourseModuleContentStatus.choices,
+        default=CourseModuleContentStatus.DRAFT,
+        verbose_name="Статус модуля",
+    )
+    order = models.PositiveIntegerField(
+        default=1,
+        verbose_name="Порядковый номер",
+    )
+    datetime_created = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Дата создания",
+    )
+    datetime_updated = models.DateTimeField(
+        auto_now=True,
+        verbose_name="Дата обновления",
+    )
+
+    class Meta:
+        verbose_name = "Модуль курса"
+        verbose_name_plural = "Модули курса"
+        ordering = ("course_id", "order", "id")
+        constraints = [
+            models.UniqueConstraint(
+                fields=("course", "order"),
+                name="courses_module_unique_course_order",
+            ),
+            models.CheckConstraint(
+                check=Q(order__gte=1),
+                name="courses_module_order_gte_1",
+            ),
+        ]
+
+    def __str__(self):
+        return f"CourseModule<{self.id}> - {self.title}"
