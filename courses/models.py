@@ -25,6 +25,11 @@ class CourseModuleContentStatus(models.TextChoices):
     PUBLISHED = "published", "Опубликован"
 
 
+class CourseLessonContentStatus(models.TextChoices):
+    DRAFT = "draft", "Черновик"
+    PUBLISHED = "published", "Опубликован"
+
+
 class Course(models.Model):
     title = models.CharField(
         max_length=45,
@@ -249,3 +254,52 @@ class CourseModule(models.Model):
 
     def __str__(self):
         return f"CourseModule<{self.id}> - {self.title}"
+
+
+class CourseLesson(models.Model):
+    module = models.ForeignKey(
+        CourseModule,
+        on_delete=models.CASCADE,
+        related_name="lessons",
+        verbose_name="Модуль курса",
+    )
+    title = models.CharField(
+        max_length=45,
+        verbose_name="Название урока",
+    )
+    status = models.CharField(
+        max_length=16,
+        choices=CourseLessonContentStatus.choices,
+        default=CourseLessonContentStatus.DRAFT,
+        verbose_name="Статус урока",
+    )
+    order = models.PositiveIntegerField(
+        default=1,
+        verbose_name="Порядковый номер",
+    )
+    datetime_created = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Дата создания",
+    )
+    datetime_updated = models.DateTimeField(
+        auto_now=True,
+        verbose_name="Дата обновления",
+    )
+
+    class Meta:
+        verbose_name = "Урок курса"
+        verbose_name_plural = "Уроки курса"
+        ordering = ("module_id", "order", "id")
+        constraints = [
+            models.UniqueConstraint(
+                fields=("module", "order"),
+                name="courses_lesson_unique_module_order",
+            ),
+            models.CheckConstraint(
+                check=Q(order__gte=1),
+                name="courses_lesson_order_gte_1",
+            ),
+        ]
+
+    def __str__(self):
+        return f"CourseLesson<{self.id}> - {self.title}"
