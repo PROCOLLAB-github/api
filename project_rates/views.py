@@ -13,7 +13,7 @@ from partner_programs.serializers import ProgramProjectFilterRequestSerializer
 from partner_programs.utils import filter_program_projects_by_field_name
 from projects.models import Project
 from projects.filters import ProjectFilter
-from project_rates.models import Criteria, ProjectScore
+from project_rates.models import Criteria, ProjectExpertAssignment, ProjectScore
 from project_rates.pagination import RateProjectsPagination
 from project_rates.serializers import (
     ProjectScoreCreateSerializer,
@@ -63,6 +63,13 @@ class RateProject(generics.CreateAPIView):
             partner_program=program, project_id=project_id
         ).exists():
             raise ValueError("Project is not linked to the program")
+
+        if program.is_distributed_evaluation and not ProjectExpertAssignment.objects.filter(
+            partner_program=program,
+            project_id=project_id,
+            expert__user_id=user_id,
+        ).exists():
+            raise ValueError("you are not assigned to rate this project")
 
         return data, criteria_to_get, program
 
@@ -177,8 +184,15 @@ class ProjectListForRate(generics.ListAPIView):
             to_attr="_program_scores",
         )
 
+        projects_qs = Project.objects.filter(draft=False, id__in=project_ids)
+        if program.is_distributed_evaluation:
+            projects_qs = projects_qs.filter(
+                expert_assignments__partner_program=program,
+                expert_assignments__expert__user=self.request.user,
+            )
+
         return (
-            Project.objects.filter(draft=False, id__in=project_ids)
+            projects_qs
             .annotate(
                 rated_count=Count(
                     "scores__user",
@@ -187,6 +201,7 @@ class ProjectListForRate(generics.ListAPIView):
                 )
             )
             .prefetch_related(scores_prefetch)
+            .distinct()
         )
 
     def get_serializer_context(self):

@@ -32,7 +32,19 @@ from .models import (
     UserWorkExperience,
 )
 
-admin.site.register(Permission)
+
+@admin.register(Permission)
+class PermissionAdmin(admin.ModelAdmin):
+    list_display = ("id", "content_type", "codename", "name")
+    list_display_links = ("id", "name")
+    search_fields = (
+        "=id",
+        "name",
+        "codename",
+        "content_type__app_label",
+        "content_type__model",
+    )
+    ordering = ("content_type__app_label", "content_type__model", "codename")
 
 
 class UserEducationInline(admin.TabularInline):
@@ -124,7 +136,7 @@ class CustomUserAdmin(admin.ModelAdmin):
         ),
         (
             "Важные даты",
-            {"fields": ("last_login", "date_joined")},
+            {"fields": ("last_login", "last_activity", "date_joined")},
         ),
         (
             "Студенты мосполитеха",
@@ -141,6 +153,7 @@ class CustomUserAdmin(admin.ModelAdmin):
         "is_active",
         "dataset_migration_applied",
         "v2_speciality",
+        "last_activity",
         "datetime_created",
     )
     list_display_links = (
@@ -162,6 +175,10 @@ class CustomUserAdmin(admin.ModelAdmin):
         "city",
         "v2_speciality__name",
     )
+    raw_id_fields = (
+        "groups",
+        "user_permissions",
+    )
 
     inlines = [
         SkillToObjectInline,
@@ -174,6 +191,15 @@ class CustomUserAdmin(admin.ModelAdmin):
     readonly_fields = ("ordering_score",)
     change_form_template = "users/admin/users_change_form.html"
     change_list_template = "users/admin/users_change_list.html"
+
+    def formfield_for_manytomany(self, db_field, request, **kwargs):
+        if db_field.name == "user_permissions":
+            kwargs["queryset"] = Permission.objects.select_related("content_type").order_by(
+                "content_type__app_label",
+                "content_type__model",
+                "codename",
+            )
+        return super().formfield_for_manytomany(db_field, request, **kwargs)
 
     def save_model(self, request, obj, form, change):
         # if user_type changed, then delete all related fields

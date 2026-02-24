@@ -514,6 +514,12 @@ class PartnerProgramProjectSubmitView(GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        if not program_project.partner_program.is_project_submission_open():
+            return Response(
+                {"detail": "Срок подачи проектов в программу завершён."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         program_project.submitted = True
         program_project.datetime_submitted = now()
         program_project.save()
