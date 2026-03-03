@@ -68,3 +68,10 @@ class UserTaskAnswerStatus(models.TextChoices):
     PENDING_REVIEW = "pending_review", "Ожидает проверки"
     ACCEPTED = "accepted", "Принято"
     REJECTED = "rejected", "Отклонено"
+
+
+class ProgressStatus(models.TextChoices):
+    NOT_STARTED = "not_started", "Не начато"
+    IN_PROGRESS = "in_progress", "В процессе"
+    COMPLETED = "completed", "Завершено"
+    BLOCKED = "blocked", "Заблокировано"

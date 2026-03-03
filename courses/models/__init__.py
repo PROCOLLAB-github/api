@@ -10,11 +10,13 @@ from .choices import (
     CourseTaskInformationalType,
     CourseTaskKind,
     CourseTaskQuestionType,
+    ProgressStatus,
     UserTaskAnswerStatus,
 )
 from .constants import DEFAULT_MAX_FILES_PER_ANSWER
 from .content import CourseLesson, CourseModule, CourseTask, CourseTaskOption
 from .course import Course
+from .progress import UserCourseProgress, UserLessonProgress, UserModuleProgress
 
 __all__ = [
     "Course",
@@ -22,6 +24,9 @@ __all__ = [
     "CourseLesson",
     "CourseTask",
     "CourseTaskOption",
+    "UserCourseProgress",
+    "UserModuleProgress",
+    "UserLessonProgress",
     "UserTaskAnswer",
     "UserTaskAnswerOption",
     "UserTaskAnswerFile",
@@ -35,6 +40,7 @@ __all__ = [
     "CourseTaskInformationalType",
     "CourseTaskQuestionType",
     "CourseTaskAnswerType",
+    "ProgressStatus",
     "UserTaskAnswerStatus",
     "DEFAULT_MAX_FILES_PER_ANSWER",
 ]
