@@ -179,4 +179,7 @@ class Course(models.Model):
             if not self.completed_at:
                 self.completed_at = timezone.now()
 
+        if self.status != CourseContentStatus.COMPLETED:
+            self.completed_at = None
+
         super().save(*args, **kwargs)

@@ -336,9 +336,12 @@ class CourseTask(models.Model):
                 CourseTaskAnswerType.SINGLE_CHOICE,
                 CourseTaskAnswerType.MULTIPLE_CHOICE,
             )
-            and self.pk
         ):
-            correct_count = self.options.filter(is_correct=True).count()
+            correct_count = (
+                self.options.filter(is_correct=True).count()
+                if self.pk
+                else 0
+            )
             if correct_count == 0:
                 errors["status"] = (
                     "Нельзя опубликовать тестовое задание без правильного варианта."
