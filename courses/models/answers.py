@@ -136,7 +136,9 @@ class UserTaskAnswer(models.Model):
             raise ValidationError(errors)
 
     def save(self, *args, **kwargs):
-        self.full_clean()
+        validate = kwargs.pop("validate", True)
+        if validate:
+            self.full_clean()
         super().save(*args, **kwargs)
 
 

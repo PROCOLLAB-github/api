@@ -84,6 +84,7 @@ class BaseUserProgress(models.Model):
             raise ValidationError(errors)
 
     def save(self, *args, **kwargs):
+        validate = kwargs.pop("validate", True)
         if self.status in (ProgressStatus.IN_PROGRESS, ProgressStatus.COMPLETED) and not self.started_at:
             self.started_at = timezone.now()
 
@@ -93,7 +94,8 @@ class BaseUserProgress(models.Model):
         if self.status != ProgressStatus.COMPLETED:
             self.completed_at = None
 
-        self.full_clean()
+        if validate:
+            self.full_clean()
         super().save(*args, **kwargs)
 
 
