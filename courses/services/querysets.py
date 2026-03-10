@@ -1,10 +1,11 @@
-from django.db.models import Prefetch
+from django.db.models import Count, Prefetch, Q
 
 from courses.models import (
     Course,
     CourseContentStatus,
     CourseLesson,
     CourseLessonContentStatus,
+    CourseTaskContentStatus,
 )
 
 
@@ -17,5 +18,12 @@ def published_lessons_prefetch():
         "lessons",
         queryset=CourseLesson.objects.filter(
             status=CourseLessonContentStatus.PUBLISHED
-        ).order_by("order", "id"),
+        )
+        .annotate(
+            task_count=Count(
+                "tasks",
+                filter=Q(tasks__status=CourseTaskContentStatus.PUBLISHED),
+            )
+        )
+        .order_by("order", "id"),
     )

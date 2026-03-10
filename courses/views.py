@@ -156,6 +156,7 @@ class CourseStructureAPIView(AuthenticatedCourseAPIView):
                     queryset=CourseModule.objects.filter(
                         status=CourseModuleContentStatus.PUBLISHED
                     )
+                    .select_related("avatar_file")
                     .order_by("order", "id")
                     .prefetch_related(published_lessons_prefetch()),
                 ),
@@ -222,6 +223,7 @@ class CourseStructureAPIView(AuthenticatedCourseAPIView):
                         "module_id": module.id,
                         "title": lesson.title,
                         "order": lesson.order,
+                        "task_count": lesson.task_count,
                         "status": lesson.status,
                         "is_available": lesson_available,
                         "progress_status": lesson_status,
@@ -239,6 +241,7 @@ class CourseStructureAPIView(AuthenticatedCourseAPIView):
                     "course_id": course.id,
                     "title": module.title,
                     "order": module.order,
+                    "avatar_url": module.avatar_file_id,
                     "start_date": module.start_date,
                     "status": module.status,
                     "is_available": module_available,
