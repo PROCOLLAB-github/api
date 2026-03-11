@@ -16,6 +16,25 @@ from .choices import (
 )
 from .course import Course
 
+ALLOWED_IMAGE_EXTENSIONS = {
+    "bmp",
+    "gif",
+    "jpg",
+    "jpeg",
+    "png",
+    "svg",
+    "webp",
+}
+
+
+def looks_like_image_file(*, mime_type: str | None = None, extension: str | None = None) -> bool:
+    normalized_mime_type = (mime_type or "").strip().lower()
+    if normalized_mime_type.startswith("image/"):
+        return True
+
+    normalized_extension = (extension or "").strip().lower().lstrip(".")
+    return normalized_extension in ALLOWED_IMAGE_EXTENSIONS
+
 
 class CourseModule(models.Model):
     course = models.ForeignKey(
@@ -273,10 +292,35 @@ class CourseTask(models.Model):
     def _require_non_blank(value: str | None) -> bool:
         return bool(value and value.strip())
 
+    def _has_image_source(self) -> bool:
+        return self.image_file_id is not None or getattr(
+            self,
+            "_has_pending_image_upload",
+            False,
+        )
+
+    def _has_attachment_source(self) -> bool:
+        return self.attachment_file_id is not None or getattr(
+            self,
+            "_has_pending_attachment_upload",
+            False,
+        )
+
+    def _has_valid_image_file(self) -> bool:
+        if self.image_file_id is None:
+            return False
+        return looks_like_image_file(
+            mime_type=self.image_file.mime_type,
+            extension=self.image_file.extension,
+        )
+
     def clean(self):
         super().clean()
 
         errors = {}
+
+        if self.image_file_id is not None and not self._has_valid_image_file():
+            errors["image_file"] = "В поле изображения можно выбрать только файл изображения."
 
         if self.task_kind == CourseTaskKind.INFORMATIONAL:
             if self.informational_type == CourseTaskInformationalType.VIDEO_TEXT:
@@ -292,7 +336,7 @@ class CourseTask(models.Model):
                     errors["body_text"] = (
                         "Поле обязательно для типа 'Текст и изображение'."
                     )
-                if self.image_file_id is None:
+                if not self._has_image_source():
                     errors["image_file"] = (
                         "Поле обязательно для типа 'Текст и изображение'."
                     )
@@ -303,7 +347,7 @@ class CourseTask(models.Model):
                     errors["body_text"] = (
                         "Поле обязательно для типа вопроса 'Изображение и текст'."
                     )
-                if self.image_file_id is None:
+                if not self._has_image_source():
                     errors["image_file"] = (
                         "Поле обязательно для типа вопроса 'Изображение и текст'."
                     )
@@ -311,7 +355,7 @@ class CourseTask(models.Model):
                 if not self._require_non_blank(self.video_url):
                     errors["video_url"] = "Поле обязательно для типа вопроса 'Видео'."
             elif self.question_type == CourseTaskQuestionType.IMAGE:
-                if self.image_file_id is None:
+                if not self._has_image_source():
                     errors["image_file"] = (
                         "Поле обязательно для типа вопроса 'Изображение'."
                     )
@@ -320,7 +364,7 @@ class CourseTask(models.Model):
                     errors["body_text"] = (
                         "Поле обязательно для типа вопроса 'Текст с файлом'."
                     )
-                if self.attachment_file_id is None:
+                if not self._has_attachment_source():
                     errors["attachment_file"] = (
                         "Поле обязательно для типа вопроса 'Текст с файлом'."
                     )

@@ -27,6 +27,7 @@ class CourseAnalyticsStubSerializer(serializers.Serializer):
 
 class CourseCardSerializer(serializers.Serializer):
     id = serializers.IntegerField()
+    partner_program_id = serializers.IntegerField(allow_null=True)
     title = serializers.CharField()
     access_type = serializers.ChoiceField(choices=CourseAccessType.choices)
     status = serializers.ChoiceField(choices=CourseContentStatus.choices)
@@ -45,6 +46,7 @@ class CourseCardSerializer(serializers.Serializer):
 
 class CourseDetailSerializer(serializers.Serializer):
     id = serializers.IntegerField()
+    partner_program_id = serializers.IntegerField(allow_null=True)
     title = serializers.CharField()
     description = serializers.CharField(allow_blank=True)
     access_type = serializers.ChoiceField(choices=CourseAccessType.choices)
@@ -127,6 +129,7 @@ class CourseModuleStructureSerializer(serializers.Serializer):
 
 class CourseStructureSerializer(serializers.Serializer):
     course_id = serializers.IntegerField()
+    partner_program_id = serializers.IntegerField(allow_null=True)
     progress_status = serializers.ChoiceField(choices=ProgressStatus.choices)
     percent = serializers.IntegerField(min_value=0, max_value=100)
     modules = CourseModuleStructureSerializer(many=True)

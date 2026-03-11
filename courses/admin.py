@@ -19,6 +19,7 @@ from .models import (
     UserTaskAnswerFile,
     UserTaskAnswerOption,
 )
+from .models.content import looks_like_image_file
 
 # Admin-only captions for sections in app index
 CourseModule._meta.verbose_name = "Модуль"
@@ -147,6 +148,25 @@ class CourseTaskAdminForm(forms.ModelForm):
     class Meta:
         model = CourseTask
         fields = "__all__"
+
+    def clean(self):
+        cleaned_data = super().clean()
+        image_upload = cleaned_data.get("image_upload")
+        attachment_upload = cleaned_data.get("attachment_upload")
+        if image_upload and not looks_like_image_file(
+            mime_type=getattr(image_upload, "content_type", ""),
+            extension=getattr(image_upload, "name", "").rsplit(".", 1)[-1],
+        ):
+            self.add_error(
+                "image_upload",
+                "В поле изображения можно загрузить только файл изображения.",
+            )
+
+        # Preserve the fact that a file was provided so model validation
+        # doesn't add a second "required image" error for the same field.
+        self.instance._has_pending_image_upload = bool(image_upload)
+        self.instance._has_pending_attachment_upload = bool(attachment_upload)
+        return cleaned_data
 
 
 class CourseModuleAdminForm(forms.ModelForm):
