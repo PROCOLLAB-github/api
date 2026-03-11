@@ -82,6 +82,7 @@ class CourseListAPIView(AuthenticatedCourseAPIView):
             data.append(
                 {
                     "id": course.id,
+                    "partner_program_id": course.partner_program_id,
                     "title": course.title,
                     "access_type": course.access_type,
                     "status": course.status,
@@ -122,6 +123,7 @@ class CourseDetailAPIView(AuthenticatedCourseAPIView):
         serializer = CourseDetailSerializer(
             data={
                 "id": course.id,
+                "partner_program_id": course.partner_program_id,
                 "title": course.title,
                 "description": course.description,
                 "access_type": course.access_type,
@@ -255,6 +257,7 @@ class CourseStructureAPIView(AuthenticatedCourseAPIView):
         serializer = CourseStructureSerializer(
             data={
                 "course_id": course.id,
+                "partner_program_id": course.partner_program_id,
                 "progress_status": course_progress_payload["status"],
                 "percent": course_progress_payload["percent"],
                 "modules": modules_payload,
