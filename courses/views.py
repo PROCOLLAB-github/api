@@ -2,6 +2,7 @@ from django.db import transaction
 from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404
 from rest_framework import status
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -15,7 +16,6 @@ from courses.models import (
     CourseTask,
     CourseTaskAnswerType,
     CourseTaskContentStatus,
-    CourseTaskKind,
     CourseTaskOption,
     ProgressStatus,
     UserCourseProgress,
@@ -369,7 +369,6 @@ class CourseTaskAnswerSubmitAPIView(AuthenticatedCourseAPIView):
         task = get_object_or_404(
             CourseTask.objects.filter(
                 status=CourseTaskContentStatus.PUBLISHED,
-                task_kind=CourseTaskKind.QUESTION,
                 lesson__status=CourseLessonContentStatus.PUBLISHED,
                 lesson__module__status=CourseModuleContentStatus.PUBLISHED,
                 lesson__module__course__status__in=(
@@ -402,6 +401,9 @@ class CourseVisitAPIView(AuthenticatedCourseAPIView):
         serializer = CourseVisitSerializer(data=request.data or {})
         serializer.is_valid(raise_exception=True)
         course = get_object_or_404(published_course_queryset(), pk=pk)
+        availability = resolve_course_availability(course, request.user)
+        if not availability.is_available:
+            raise PermissionDenied("Курс пока недоступен.")
         progress = touch_course_visit(request.user, course)
         result_serializer = CourseVisitResultSerializer(
             {"last_visit_at": progress.last_visit_at}

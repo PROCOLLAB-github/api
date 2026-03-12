@@ -19,7 +19,7 @@ from .models import (
     UserTaskAnswerFile,
     UserTaskAnswerOption,
 )
-from .models.content import looks_like_image_file
+from .models.file_validation import looks_like_image_file
 
 # Admin-only captions for sections in app index
 CourseModule._meta.verbose_name = "Модуль"
@@ -75,6 +75,15 @@ if not getattr(admin.site, "_courses_order_patched", False):
     admin.site._courses_original_get_app_list = admin.site.get_app_list
     admin.site.get_app_list = MethodType(_courses_get_app_list, admin.site)
     admin.site._courses_order_patched = True
+
+
+def _validate_image_upload(form: forms.ModelForm, field_name: str, error_message: str) -> None:
+    uploaded_file = form.cleaned_data.get(field_name)
+    if uploaded_file and not looks_like_image_file(
+        mime_type=getattr(uploaded_file, "content_type", ""),
+        extension=getattr(uploaded_file, "name", "").rsplit(".", 1)[-1],
+    ):
+        form.add_error(field_name, error_message)
 
 
 class OrderUniqueInlineFormSet(BaseInlineFormSet):
@@ -134,6 +143,25 @@ class CourseAdminForm(forms.ModelForm):
         model = Course
         fields = "__all__"
 
+    def clean(self):
+        cleaned_data = super().clean()
+        _validate_image_upload(
+            self,
+            "avatar_upload",
+            "В поле аватара можно загрузить только файл изображения.",
+        )
+        _validate_image_upload(
+            self,
+            "card_cover_upload",
+            "В поле обложки карточки можно загрузить только файл изображения.",
+        )
+        _validate_image_upload(
+            self,
+            "header_cover_upload",
+            "В поле обложки шапки можно загрузить только файл изображения.",
+        )
+        return cleaned_data
+
 
 class CourseTaskAdminForm(forms.ModelForm):
     image_upload = forms.FileField(
@@ -153,14 +181,11 @@ class CourseTaskAdminForm(forms.ModelForm):
         cleaned_data = super().clean()
         image_upload = cleaned_data.get("image_upload")
         attachment_upload = cleaned_data.get("attachment_upload")
-        if image_upload and not looks_like_image_file(
-            mime_type=getattr(image_upload, "content_type", ""),
-            extension=getattr(image_upload, "name", "").rsplit(".", 1)[-1],
-        ):
-            self.add_error(
-                "image_upload",
-                "В поле изображения можно загрузить только файл изображения.",
-            )
+        _validate_image_upload(
+            self,
+            "image_upload",
+            "В поле изображения можно загрузить только файл изображения.",
+        )
 
         # Preserve the fact that a file was provided so model validation
         # doesn't add a second "required image" error for the same field.
@@ -178,6 +203,15 @@ class CourseModuleAdminForm(forms.ModelForm):
     class Meta:
         model = CourseModule
         fields = "__all__"
+
+    def clean(self):
+        cleaned_data = super().clean()
+        _validate_image_upload(
+            self,
+            "avatar_upload",
+            "В поле аватара можно загрузить только файл изображения.",
+        )
+        return cleaned_data
 
 
 class CourseModuleInline(admin.TabularInline):

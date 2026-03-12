@@ -193,9 +193,51 @@ def submit_user_task_answer(
             {"task": "Отправка ответа доступна только для опубликованных заданий."}
         )
 
-    if task.task_kind != CourseTaskKind.QUESTION:
-        raise ValidationError(
-            {"task": "Отправка ответа доступна только для вопросных заданий."}
+    submitted_at = timezone.now()
+    manager = UserTaskAnswer.objects
+    if transaction.get_connection().in_atomic_block:
+        manager = manager.select_for_update()
+    answer = manager.filter(user=user, task=task).first()
+    if answer is None:
+        answer = UserTaskAnswer(user=user, task=task)
+
+    if task.task_kind == CourseTaskKind.INFORMATIONAL:
+        answer.answer_text = ""
+        answer.submitted_at = submitted_at
+        answer.review_comment = ""
+        answer.reviewed_by = None
+        answer.reviewed_at = None
+        answer.status = UserTaskAnswerStatus.SUBMITTED
+        answer.is_correct = True
+
+        try:
+            answer.save(validate=False)
+        except DjangoValidationError as exc:
+            if hasattr(exc, "message_dict"):
+                raise ValidationError(exc.message_dict) from exc
+            raise ValidationError({"detail": exc.messages}) from exc
+        except IntegrityError:
+            retry_manager = UserTaskAnswer.objects
+            if transaction.get_connection().in_atomic_block:
+                retry_manager = retry_manager.select_for_update()
+            answer = retry_manager.get(user=user, task=task)
+            answer.answer_text = ""
+            answer.submitted_at = submitted_at
+            answer.review_comment = ""
+            answer.reviewed_by = None
+            answer.reviewed_at = None
+            answer.status = UserTaskAnswerStatus.SUBMITTED
+            answer.is_correct = True
+            answer.save(validate=False)
+
+        answer.selected_options.all().delete()
+        answer.files.all().delete()
+        next_task = get_next_published_task(task)
+        return SubmitAnswerResult(
+            answer=answer,
+            is_correct=True,
+            can_continue=True,
+            next_task_id=next_task.id if next_task else None,
         )
 
     if not task.answer_type:
@@ -213,13 +255,6 @@ def submit_user_task_answer(
     )
 
     normalized_text = (payload.answer_text or "").strip()
-    submitted_at = timezone.now()
-    manager = UserTaskAnswer.objects
-    if transaction.get_connection().in_atomic_block:
-        manager = manager.select_for_update()
-    answer = manager.filter(user=user, task=task).first()
-    if answer is None:
-        answer = UserTaskAnswer(user=user, task=task)
 
     answer.answer_text = normalized_text
     answer.submitted_at = submitted_at

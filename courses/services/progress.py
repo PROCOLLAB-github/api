@@ -31,6 +31,20 @@ def percent_from_counts(completed_count: int, total_count: int) -> int:
     return int((completed_count * 100) / total_count)
 
 
+def percent_from_total_percent(total_percent: int, total_count: int) -> int:
+    if total_count <= 0:
+        return 0
+    if total_percent <= 0:
+        return 0
+
+    normalized_percent = int(total_percent / total_count)
+    if normalized_percent <= 0:
+        return 0
+    if normalized_percent >= 100:
+        return 100
+    return normalized_percent
+
+
 def status_from_percent(
     percent: int,
     *,
@@ -58,16 +72,30 @@ def build_progress_snapshot(
     return ProgressSnapshot(status=status, percent=percent)
 
 
+def build_progress_snapshot_from_percent(
+    percent: int,
+    *,
+    allow_blocked: bool = False,
+    blocked: bool = False,
+) -> ProgressSnapshot:
+    normalized_percent = max(0, min(100, int(percent)))
+    status = status_from_percent(
+        normalized_percent,
+        allow_blocked=allow_blocked,
+        blocked=blocked,
+    )
+    return ProgressSnapshot(status=status, percent=normalized_percent)
+
+
 def upsert_course_progress(
     user,
     course: Course,
     *,
-    completed_lessons: int,
-    total_lessons: int,
+    percent: int,
     touch_visit: bool = False,
     visited_at: datetime | None = None,
 ) -> UserCourseProgress:
-    snapshot = build_progress_snapshot(completed_lessons, total_lessons)
+    snapshot = build_progress_snapshot_from_percent(percent)
     manager = UserCourseProgress.objects
     if transaction.get_connection().in_atomic_block:
         manager = manager.select_for_update()
@@ -99,10 +127,9 @@ def upsert_module_progress(
     user,
     module: CourseModule,
     *,
-    completed_lessons: int,
-    total_lessons: int,
+    percent: int,
 ) -> UserModuleProgress:
-    snapshot = build_progress_snapshot(completed_lessons, total_lessons)
+    snapshot = build_progress_snapshot_from_percent(percent)
     manager = UserModuleProgress.objects
     if transaction.get_connection().in_atomic_block:
         manager = manager.select_for_update()

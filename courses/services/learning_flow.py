@@ -1,4 +1,5 @@
 from rest_framework.exceptions import PermissionDenied
+from django.db.models import Sum
 
 from courses.models import (
     CourseLesson,
@@ -20,6 +21,7 @@ from courses.services.access import (
     resolve_course_availability,
 )
 from courses.services.progress import (
+    percent_from_total_percent,
     upsert_course_progress,
     upsert_lesson_progress,
     upsert_module_progress,
@@ -41,7 +43,7 @@ def progress_payload(progress) -> dict:
 
 def is_answer_completed(task: CourseTask, answer: UserTaskAnswer | None) -> bool:
     if task.task_kind == CourseTaskKind.INFORMATIONAL:
-        return True
+        return answer is not None
     if answer is None:
         return False
     if task.check_type == CourseTaskCheckType.WITH_REVIEW:
@@ -201,39 +203,41 @@ def recalculate_user_progresses_for_lesson(user, lesson: CourseLesson) -> None:
         current_task=current_task,
     )
 
-    # Module progress depends on completed lesson progresses inside this module.
+    # Module progress aggregates percents of all published lessons in this module.
     module_total_lessons = module.lessons.filter(
         status=CourseLessonContentStatus.PUBLISHED
     ).count()
-    module_completed_lessons = UserLessonProgress.objects.filter(
-        user=user,
-        lesson__module=module,
-        lesson__status=CourseLessonContentStatus.PUBLISHED,
-        status=ProgressStatus.COMPLETED,
-    ).count()
+    module_percent_total = (
+        UserLessonProgress.objects.filter(
+            user=user,
+            lesson__module=module,
+            lesson__status=CourseLessonContentStatus.PUBLISHED,
+        ).aggregate(total=Sum("percent"))["total"]
+        or 0
+    )
     upsert_module_progress(
-        user,
-        module,
-        completed_lessons=module_completed_lessons,
-        total_lessons=module_total_lessons,
+        user=user,
+        module=module,
+        percent=percent_from_total_percent(module_percent_total, module_total_lessons),
     )
 
-    # Course progress depends on completed lesson progresses across published modules.
+    # Course progress aggregates percents of all published lessons across the course.
     course_total_lessons = CourseLesson.objects.filter(
         module__course=course,
         module__status=CourseModuleContentStatus.PUBLISHED,
         status=CourseLessonContentStatus.PUBLISHED,
     ).count()
-    course_completed_lessons = UserLessonProgress.objects.filter(
-        user=user,
-        lesson__module__course=course,
-        lesson__module__status=CourseModuleContentStatus.PUBLISHED,
-        lesson__status=CourseLessonContentStatus.PUBLISHED,
-        status=ProgressStatus.COMPLETED,
-    ).count()
+    course_percent_total = (
+        UserLessonProgress.objects.filter(
+            user=user,
+            lesson__module__course=course,
+            lesson__module__status=CourseModuleContentStatus.PUBLISHED,
+            lesson__status=CourseLessonContentStatus.PUBLISHED,
+        ).aggregate(total=Sum("percent"))["total"]
+        or 0
+    )
     upsert_course_progress(
-        user,
-        course,
-        completed_lessons=course_completed_lessons,
-        total_lessons=course_total_lessons,
+        user=user,
+        course=course,
+        percent=percent_from_total_percent(course_percent_total, course_total_lessons),
     )

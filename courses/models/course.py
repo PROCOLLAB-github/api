@@ -8,6 +8,7 @@ from files.models import UserFile
 from partner_programs.models import PartnerProgram
 
 from .choices import CourseAccessType, CourseContentStatus
+from .file_validation import looks_like_image_file
 
 
 class Course(models.Model):
@@ -136,6 +137,38 @@ class Course(models.Model):
 
     def clean(self):
         super().clean()
+
+        if self.avatar_file_id is not None and not looks_like_image_file(
+            mime_type=self.avatar_file.mime_type,
+            extension=self.avatar_file.extension,
+        ):
+            raise ValidationError(
+                {"avatar_file": "В поле аватара можно выбрать только файл изображения."}
+            )
+
+        if self.card_cover_file_id is not None and not looks_like_image_file(
+            mime_type=self.card_cover_file.mime_type,
+            extension=self.card_cover_file.extension,
+        ):
+            raise ValidationError(
+                {
+                    "card_cover_file": (
+                        "В поле обложки карточки можно выбрать только файл изображения."
+                    )
+                }
+            )
+
+        if self.header_cover_file_id is not None and not looks_like_image_file(
+            mime_type=self.header_cover_file.mime_type,
+            extension=self.header_cover_file.extension,
+        ):
+            raise ValidationError(
+                {
+                    "header_cover_file": (
+                        "В поле обложки шапки можно выбрать только файл изображения."
+                    )
+                }
+            )
 
         if (
             self.access_type == CourseAccessType.PROGRAM_MEMBERS
