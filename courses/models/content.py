@@ -15,25 +15,7 @@ from .choices import (
     CourseTaskQuestionType,
 )
 from .course import Course
-
-ALLOWED_IMAGE_EXTENSIONS = {
-    "bmp",
-    "gif",
-    "jpg",
-    "jpeg",
-    "png",
-    "svg",
-    "webp",
-}
-
-
-def looks_like_image_file(*, mime_type: str | None = None, extension: str | None = None) -> bool:
-    normalized_mime_type = (mime_type or "").strip().lower()
-    if normalized_mime_type.startswith("image/"):
-        return True
-
-    normalized_extension = (extension or "").strip().lower().lstrip(".")
-    return normalized_extension in ALLOWED_IMAGE_EXTENSIONS
+from .file_validation import looks_like_image_file
 
 
 class CourseModule(models.Model):
@@ -94,6 +76,17 @@ class CourseModule(models.Model):
 
     def __str__(self):
         return f"CourseModule<{self.id}> - {self.title}"
+
+    def clean(self):
+        super().clean()
+
+        if self.avatar_file_id is not None and not looks_like_image_file(
+            mime_type=self.avatar_file.mime_type,
+            extension=self.avatar_file.extension,
+        ):
+            raise ValidationError(
+                {"avatar_file": "В поле аватара можно выбрать только файл изображения."}
+            )
 
     def save(self, *args, **kwargs):
         self.full_clean()

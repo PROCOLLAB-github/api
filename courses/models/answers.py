@@ -96,23 +96,45 @@ class UserTaskAnswer(models.Model):
         if self.task_id is None:
             return
 
-        if self.task.task_kind != CourseTaskKind.QUESTION:
-            errors["task"] = "Ответ можно отправлять только на вопросное задание."
+        if self.task.task_kind == CourseTaskKind.INFORMATIONAL:
+            if CourseTask._require_non_blank(self.answer_text):
+                errors["answer_text"] = (
+                    "Для информационного задания текст ответа не требуется."
+                )
+            if self.status != UserTaskAnswerStatus.SUBMITTED:
+                errors["status"] = (
+                    "Для информационного задания допустим только статус submitted."
+                )
+            if CourseTask._require_non_blank(self.review_comment):
+                errors["review_comment"] = (
+                    "Для информационного задания комментарий проверки не используется."
+                )
+            if self.reviewed_by_id or self.reviewed_at:
+                errors["reviewed_by"] = (
+                    "Для информационного задания поля reviewed_by и reviewed_at не используются."
+                )
+                errors["reviewed_at"] = (
+                    "Для информационного задания поля reviewed_by и reviewed_at не используются."
+                )
+        else:
+            answer_type = self.task.answer_type
+            is_text_filled = CourseTask._require_non_blank(self.answer_text)
+            if answer_type in (
+                CourseTaskAnswerType.TEXT,
+                CourseTaskAnswerType.TEXT_AND_FILES,
+            ) and not is_text_filled:
+                errors["answer_text"] = (
+                    "Для выбранного типа ответа требуется заполнить текст."
+                )
 
-        answer_type = self.task.answer_type
-        is_text_filled = CourseTask._require_non_blank(self.answer_text)
-        if answer_type in (
-            CourseTaskAnswerType.TEXT,
-            CourseTaskAnswerType.TEXT_AND_FILES,
-        ) and not is_text_filled:
-            errors["answer_text"] = "Для выбранного типа ответа требуется заполнить текст."
-
-        if answer_type in (
-            CourseTaskAnswerType.SINGLE_CHOICE,
-            CourseTaskAnswerType.MULTIPLE_CHOICE,
-            CourseTaskAnswerType.FILES,
-        ) and is_text_filled:
-            errors["answer_text"] = "Для выбранного типа ответа текст не используется."
+            if answer_type in (
+                CourseTaskAnswerType.SINGLE_CHOICE,
+                CourseTaskAnswerType.MULTIPLE_CHOICE,
+                CourseTaskAnswerType.FILES,
+            ) and is_text_filled:
+                errors["answer_text"] = (
+                    "Для выбранного типа ответа текст не используется."
+                )
 
         if (
             self.task.check_type == CourseTaskCheckType.WITHOUT_REVIEW
