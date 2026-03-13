@@ -8,6 +8,7 @@ from .common import LessonTaskSerializer
 class LessonDetailSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     module_id = serializers.IntegerField()
+    module_order = serializers.IntegerField(min_value=1)
     course_id = serializers.IntegerField()
     title = serializers.CharField()
     progress_status = serializers.ChoiceField(choices=ProgressStatus.choices)

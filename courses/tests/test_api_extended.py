@@ -184,6 +184,10 @@ class CoursesExtendedAPITests(TestCase):
             title="Explain risks",
             order=2,
         )
+        files_task.answer_title = "Загрузите файл с расчётами"
+        files_task.save(update_fields=["answer_title"])
+        text_and_files_task.answer_title = "Добавьте комментарий и приложите материалы"
+        text_and_files_task.save(update_fields=["answer_title"])
 
         invalid_file_response = self.client.post(
             f"/courses/tasks/{files_task.id}/answer/",
@@ -208,6 +212,7 @@ class CoursesExtendedAPITests(TestCase):
             },
             format="json",
         )
+        lesson_detail = self.client.get(f"/courses/lessons/{lesson.id}/").json()
         course_detail = self.client.get(f"/courses/{course.id}/").json()
 
         self.assertEqual(invalid_file_response.status_code, 400)
@@ -215,5 +220,14 @@ class CoursesExtendedAPITests(TestCase):
         self.assertTrue(files_response.json()["can_continue"])
         self.assertEqual(invalid_text_and_files_response.status_code, 400)
         self.assertEqual(valid_text_and_files_response.status_code, 200)
+        self.assertEqual(lesson_detail["module_order"], 1)
+        self.assertEqual(
+            lesson_detail["tasks"][0]["answer_title"],
+            "Загрузите файл с расчётами",
+        )
+        self.assertEqual(
+            lesson_detail["tasks"][1]["answer_title"],
+            "Добавьте комментарий и приложите материалы",
+        )
         self.assertEqual(course_detail["progress_status"], "completed")
         self.assertEqual(course_detail["percent"], 100)
