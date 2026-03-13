@@ -183,131 +183,55 @@ def get_next_published_task(task: CourseTask) -> CourseTask | None:
     )
 
 
-def submit_user_task_answer(
-    user,
-    task: CourseTask,
-    payload: TaskAnswerSubmitPayload,
-) -> SubmitAnswerResult:
-    if task.status != CourseTaskContentStatus.PUBLISHED:
-        raise ValidationError(
-            {"task": "Отправка ответа доступна только для опубликованных заданий."}
-        )
-
-    submitted_at = timezone.now()
+def _locked_answer_manager():
     manager = UserTaskAnswer.objects
     if transaction.get_connection().in_atomic_block:
         manager = manager.select_for_update()
-    answer = manager.filter(user=user, task=task).first()
-    if answer is None:
-        answer = UserTaskAnswer(user=user, task=task)
+    return manager
 
-    if task.task_kind == CourseTaskKind.INFORMATIONAL:
-        answer.answer_text = ""
-        answer.submitted_at = submitted_at
-        answer.review_comment = ""
-        answer.reviewed_by = None
-        answer.reviewed_at = None
-        answer.status = UserTaskAnswerStatus.SUBMITTED
-        answer.is_correct = True
 
-        try:
-            answer.save(validate=False)
-        except DjangoValidationError as exc:
-            if hasattr(exc, "message_dict"):
-                raise ValidationError(exc.message_dict) from exc
-            raise ValidationError({"detail": exc.messages}) from exc
-        except IntegrityError:
-            retry_manager = UserTaskAnswer.objects
-            if transaction.get_connection().in_atomic_block:
-                retry_manager = retry_manager.select_for_update()
-            answer = retry_manager.get(user=user, task=task)
-            answer.answer_text = ""
-            answer.submitted_at = submitted_at
-            answer.review_comment = ""
-            answer.reviewed_by = None
-            answer.reviewed_at = None
-            answer.status = UserTaskAnswerStatus.SUBMITTED
-            answer.is_correct = True
-            answer.save(validate=False)
+def _get_or_build_answer(user, task: CourseTask) -> UserTaskAnswer:
+    answer = _locked_answer_manager().filter(user=user, task=task).first()
+    if answer is not None:
+        return answer
+    return UserTaskAnswer(user=user, task=task)
 
-        answer.selected_options.all().delete()
-        answer.files.all().delete()
-        next_task = get_next_published_task(task)
-        return SubmitAnswerResult(
-            answer=answer,
-            is_correct=True,
-            can_continue=True,
-            next_task_id=next_task.id if next_task else None,
-        )
 
-    if not task.answer_type:
-        raise ValidationError({"task": "У задания не задан тип ответа."})
-    if not task.check_type:
-        raise ValidationError({"task": "У задания не задан тип проверки."})
-
-    selected_options = _resolve_task_options(task, payload.option_ids)
-    selected_files = _resolve_user_files(payload.file_ids)
-    _validate_payload_by_answer_type(
-        task,
-        payload,
-        options=selected_options,
-        files=selected_files,
-    )
-
-    normalized_text = (payload.answer_text or "").strip()
-
-    answer.answer_text = normalized_text
+def _apply_common_answer_fields(
+    answer: UserTaskAnswer,
+    *,
+    answer_text: str,
+    submitted_at,
+) -> None:
+    answer.answer_text = answer_text
     answer.submitted_at = submitted_at
     answer.review_comment = ""
     answer.reviewed_by = None
     answer.reviewed_at = None
 
-    if task.check_type == CourseTaskCheckType.WITH_REVIEW:
-        answer.status = UserTaskAnswerStatus.PENDING_REVIEW
-        answer.is_correct = None
-        can_continue = False
-    else:
-        answer.status = UserTaskAnswerStatus.SUBMITTED
-        answer.is_correct = _evaluate_answer(
-            task,
-            normalized_text=normalized_text,
-            options=selected_options,
-            files=selected_files,
-        )
-        can_continue = bool(answer.is_correct)
 
+def _save_answer_with_retry(answer: UserTaskAnswer, configure_answer) -> UserTaskAnswer:
+    configure_answer(answer)
     try:
         answer.save(validate=False)
+        return answer
     except DjangoValidationError as exc:
         if hasattr(exc, "message_dict"):
             raise ValidationError(exc.message_dict) from exc
         raise ValidationError({"detail": exc.messages}) from exc
     except IntegrityError:
-        retry_manager = UserTaskAnswer.objects
-        if transaction.get_connection().in_atomic_block:
-            retry_manager = retry_manager.select_for_update()
-        answer = retry_manager.get(user=user, task=task)
-        answer.answer_text = normalized_text
-        answer.submitted_at = submitted_at
-        answer.review_comment = ""
-        answer.reviewed_by = None
-        answer.reviewed_at = None
+        retry_answer = _locked_answer_manager().get(user=answer.user, task=answer.task)
+        configure_answer(retry_answer)
+        retry_answer.save(validate=False)
+        return retry_answer
 
-        if task.check_type == CourseTaskCheckType.WITH_REVIEW:
-            answer.status = UserTaskAnswerStatus.PENDING_REVIEW
-            answer.is_correct = None
-            can_continue = False
-        else:
-            answer.status = UserTaskAnswerStatus.SUBMITTED
-            answer.is_correct = _evaluate_answer(
-                task,
-                normalized_text=normalized_text,
-                options=selected_options,
-                files=selected_files,
-            )
-            can_continue = bool(answer.is_correct)
-        answer.save(validate=False)
 
+def _replace_answer_relations(
+    answer: UserTaskAnswer,
+    *,
+    selected_options: list[CourseTaskOption],
+    selected_files: list[UserFile],
+) -> None:
     answer.selected_options.all().delete()
     answer.files.all().delete()
 
@@ -332,10 +256,147 @@ def submit_user_task_answer(
             ]
         )
 
-    next_task = get_next_published_task(task) if can_continue else None
+
+def _build_submit_result(
+    answer: UserTaskAnswer,
+    *,
+    can_continue: bool,
+) -> SubmitAnswerResult:
+    next_task = get_next_published_task(answer.task) if can_continue else None
     return SubmitAnswerResult(
         answer=answer,
         is_correct=answer.is_correct,
         can_continue=can_continue,
         next_task_id=next_task.id if next_task else None,
+    )
+
+
+def _submit_informational_answer(
+    user,
+    task: CourseTask,
+    *,
+    submitted_at,
+) -> SubmitAnswerResult:
+    answer = _get_or_build_answer(user, task)
+
+    def configure_answer(current_answer: UserTaskAnswer) -> None:
+        _apply_common_answer_fields(
+            current_answer,
+            answer_text="",
+            submitted_at=submitted_at,
+        )
+        current_answer.status = UserTaskAnswerStatus.SUBMITTED
+        current_answer.is_correct = True
+
+    answer = _save_answer_with_retry(answer, configure_answer)
+    _replace_answer_relations(
+        answer,
+        selected_options=[],
+        selected_files=[],
+    )
+    return _build_submit_result(answer, can_continue=True)
+
+
+def _validate_question_task(task: CourseTask) -> None:
+    if not task.answer_type:
+        raise ValidationError({"task": "У задания не задан тип ответа."})
+    if not task.check_type:
+        raise ValidationError({"task": "У задания не задан тип проверки."})
+
+
+def _resolve_question_payload(
+    task: CourseTask,
+    payload: TaskAnswerSubmitPayload,
+) -> tuple[str, list[CourseTaskOption], list[UserFile]]:
+    selected_options = _resolve_task_options(task, payload.option_ids)
+    selected_files = _resolve_user_files(payload.file_ids)
+    _validate_payload_by_answer_type(
+        task,
+        payload,
+        options=selected_options,
+        files=selected_files,
+    )
+    normalized_text = (payload.answer_text or "").strip()
+    return normalized_text, selected_options, selected_files
+
+
+def _evaluate_question_submission(
+    task: CourseTask,
+    *,
+    normalized_text: str,
+    selected_options: list[CourseTaskOption],
+    selected_files: list[UserFile],
+) -> tuple[str, bool | None, bool]:
+    if task.check_type == CourseTaskCheckType.WITH_REVIEW:
+        return UserTaskAnswerStatus.PENDING_REVIEW, None, False
+
+    is_correct = _evaluate_answer(
+        task,
+        normalized_text=normalized_text,
+        options=selected_options,
+        files=selected_files,
+    )
+    return UserTaskAnswerStatus.SUBMITTED, is_correct, bool(is_correct)
+
+
+def _submit_question_answer(
+    user,
+    task: CourseTask,
+    payload: TaskAnswerSubmitPayload,
+    *,
+    submitted_at,
+) -> SubmitAnswerResult:
+    _validate_question_task(task)
+    normalized_text, selected_options, selected_files = _resolve_question_payload(
+        task,
+        payload,
+    )
+    status_value, is_correct, can_continue = _evaluate_question_submission(
+        task,
+        normalized_text=normalized_text,
+        selected_options=selected_options,
+        selected_files=selected_files,
+    )
+    answer = _get_or_build_answer(user, task)
+
+    def configure_answer(current_answer: UserTaskAnswer) -> None:
+        _apply_common_answer_fields(
+            current_answer,
+            answer_text=normalized_text,
+            submitted_at=submitted_at,
+        )
+        current_answer.status = status_value
+        current_answer.is_correct = is_correct
+
+    answer = _save_answer_with_retry(answer, configure_answer)
+    _replace_answer_relations(
+        answer,
+        selected_options=selected_options,
+        selected_files=selected_files,
+    )
+    return _build_submit_result(answer, can_continue=can_continue)
+
+
+def submit_user_task_answer(
+    user,
+    task: CourseTask,
+    payload: TaskAnswerSubmitPayload,
+) -> SubmitAnswerResult:
+    if task.status != CourseTaskContentStatus.PUBLISHED:
+        raise ValidationError(
+            {"task": "Отправка ответа доступна только для опубликованных заданий."}
+        )
+
+    submitted_at = timezone.now()
+    if task.task_kind == CourseTaskKind.INFORMATIONAL:
+        return _submit_informational_answer(
+            user,
+            task,
+            submitted_at=submitted_at,
+        )
+    return _submit_question_answer(
+        user,
+        task,
+        payload,
+        submitted_at=submitted_at,
     )

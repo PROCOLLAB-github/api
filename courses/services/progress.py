@@ -2,12 +2,16 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from django.db import IntegrityError, transaction
+from django.db.models import Sum
 from django.utils import timezone
 
 from courses.models import (
     Course,
     CourseLesson,
+    CourseLessonContentStatus,
     CourseModule,
+    CourseModuleContentStatus,
+    CourseTaskContentStatus,
     ProgressStatus,
     UserCourseProgress,
     UserLessonProgress,
@@ -19,6 +23,19 @@ from courses.models import (
 class ProgressSnapshot:
     status: str
     percent: int
+
+
+def not_started_progress_payload() -> dict:
+    return {"status": ProgressStatus.NOT_STARTED, "percent": 0}
+
+
+def progress_payload(progress) -> dict:
+    if progress is None:
+        return not_started_progress_payload()
+    return {
+        "status": progress.status,
+        "percent": progress.percent,
+    }
 
 
 def percent_from_counts(completed_count: int, total_count: int) -> int:
@@ -215,3 +232,75 @@ def touch_course_visit(
         progress.last_visit_at = visited_at or timezone.now()
         progress.save(validate=False)
     return progress
+
+
+def recalculate_user_progresses_for_lesson(user, lesson: CourseLesson) -> None:
+    from courses.services.learning_flow import (
+        answers_by_task,
+        first_unfinished_task,
+        task_completion_map_from_answers,
+    )
+
+    module = lesson.module
+    course = module.course
+
+    lesson_tasks = list(
+        lesson.tasks.filter(status=CourseTaskContentStatus.PUBLISHED).order_by(
+            "order",
+            "id",
+        )
+    )
+    lesson_answer_map = answers_by_task(user, lesson_tasks)
+    lesson_completion_map = task_completion_map_from_answers(
+        lesson_tasks,
+        lesson_answer_map,
+    )
+    lesson_total_tasks = len(lesson_tasks)
+    lesson_completed_tasks = sum(
+        1 for task in lesson_tasks if lesson_completion_map.get(task.id, False)
+    )
+    current_task = first_unfinished_task(lesson_tasks, lesson_completion_map)
+    upsert_lesson_progress(
+        user,
+        lesson,
+        completed_tasks=lesson_completed_tasks,
+        total_tasks=lesson_total_tasks,
+        current_task=current_task,
+    )
+
+    module_total_lessons = module.lessons.filter(
+        status=CourseLessonContentStatus.PUBLISHED
+    ).count()
+    module_percent_total = (
+        UserLessonProgress.objects.filter(
+            user=user,
+            lesson__module=module,
+            lesson__status=CourseLessonContentStatus.PUBLISHED,
+        ).aggregate(total=Sum("percent"))["total"]
+        or 0
+    )
+    upsert_module_progress(
+        user=user,
+        module=module,
+        percent=percent_from_total_percent(module_percent_total, module_total_lessons),
+    )
+
+    course_total_lessons = CourseLesson.objects.filter(
+        module__course=course,
+        module__status=CourseModuleContentStatus.PUBLISHED,
+        status=CourseLessonContentStatus.PUBLISHED,
+    ).count()
+    course_percent_total = (
+        UserLessonProgress.objects.filter(
+            user=user,
+            lesson__module__course=course,
+            lesson__module__status=CourseModuleContentStatus.PUBLISHED,
+            lesson__status=CourseLessonContentStatus.PUBLISHED,
+        ).aggregate(total=Sum("percent"))["total"]
+        or 0
+    )
+    upsert_course_progress(
+        user=user,
+        course=course,
+        percent=percent_from_total_percent(course_percent_total, course_total_lessons),
+    )

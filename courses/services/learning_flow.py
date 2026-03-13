@@ -1,5 +1,4 @@
 from rest_framework.exceptions import PermissionDenied
-from django.db.models import Sum
 
 from courses.models import (
     CourseLesson,
@@ -20,25 +19,6 @@ from courses.services.access import (
     is_module_available,
     resolve_course_availability,
 )
-from courses.services.progress import (
-    percent_from_total_percent,
-    upsert_course_progress,
-    upsert_lesson_progress,
-    upsert_module_progress,
-)
-
-
-def not_started_progress_payload() -> dict:
-    return {"status": ProgressStatus.NOT_STARTED, "percent": 0}
-
-
-def progress_payload(progress) -> dict:
-    if progress is None:
-        return not_started_progress_payload()
-    return {
-        "status": progress.status,
-        "percent": progress.percent,
-    }
 
 
 def is_answer_completed(task: CourseTask, answer: UserTaskAnswer | None) -> bool:
@@ -172,72 +152,3 @@ def ensure_task_submission_access(user, task: CourseTask) -> None:
         raise PermissionDenied(
             "Задание недоступно для отправки: необходимо соблюдать порядок."
         )
-
-
-def recalculate_user_progresses_for_lesson(user, lesson: CourseLesson) -> None:
-    module = lesson.module
-    course = module.course
-
-    # Recalculate only the touched lesson from its published tasks.
-    lesson_tasks = list(
-        lesson.tasks.filter(status=CourseTaskContentStatus.PUBLISHED).order_by(
-            "order",
-            "id",
-        )
-    )
-    lesson_answer_map = answers_by_task(user, lesson_tasks)
-    lesson_completion_map = task_completion_map_from_answers(
-        lesson_tasks,
-        lesson_answer_map,
-    )
-    lesson_total_tasks = len(lesson_tasks)
-    lesson_completed_tasks = sum(
-        1 for task in lesson_tasks if lesson_completion_map.get(task.id, False)
-    )
-    current_task = first_unfinished_task(lesson_tasks, lesson_completion_map)
-    upsert_lesson_progress(
-        user,
-        lesson,
-        completed_tasks=lesson_completed_tasks,
-        total_tasks=lesson_total_tasks,
-        current_task=current_task,
-    )
-
-    # Module progress aggregates percents of all published lessons in this module.
-    module_total_lessons = module.lessons.filter(
-        status=CourseLessonContentStatus.PUBLISHED
-    ).count()
-    module_percent_total = (
-        UserLessonProgress.objects.filter(
-            user=user,
-            lesson__module=module,
-            lesson__status=CourseLessonContentStatus.PUBLISHED,
-        ).aggregate(total=Sum("percent"))["total"]
-        or 0
-    )
-    upsert_module_progress(
-        user=user,
-        module=module,
-        percent=percent_from_total_percent(module_percent_total, module_total_lessons),
-    )
-
-    # Course progress aggregates percents of all published lessons across the course.
-    course_total_lessons = CourseLesson.objects.filter(
-        module__course=course,
-        module__status=CourseModuleContentStatus.PUBLISHED,
-        status=CourseLessonContentStatus.PUBLISHED,
-    ).count()
-    course_percent_total = (
-        UserLessonProgress.objects.filter(
-            user=user,
-            lesson__module__course=course,
-            lesson__module__status=CourseModuleContentStatus.PUBLISHED,
-            lesson__status=CourseLessonContentStatus.PUBLISHED,
-        ).aggregate(total=Sum("percent"))["total"]
-        or 0
-    )
-    upsert_course_progress(
-        user=user,
-        course=course,
-        percent=percent_from_total_percent(course_percent_total, course_total_lessons),
-    )
