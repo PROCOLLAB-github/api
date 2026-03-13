@@ -81,6 +81,7 @@ def build_lesson_detail_payload(user, pk: int) -> dict:
                 "id": task.id,
                 "order": task.order,
                 "title": task.title,
+                "answer_title": task.answer_title,
                 "status": task.status,
                 "task_kind": task.task_kind,
                 "check_type": task.check_type,
@@ -100,6 +101,7 @@ def build_lesson_detail_payload(user, pk: int) -> dict:
     return {
         "id": lesson.id,
         "module_id": lesson.module_id,
+        "module_order": lesson.module.order,
         "course_id": lesson.module.course_id,
         "title": lesson.title,
         "progress_status": snapshot.status,

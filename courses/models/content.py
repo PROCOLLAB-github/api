@@ -162,6 +162,12 @@ class CourseTask(models.Model):
         default="",
         verbose_name="Текст",
     )
+    answer_title = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name="Заголовок блока ответа",
+    )
     status = models.CharField(
         max_length=16,
         choices=CourseTaskContentStatus.choices,

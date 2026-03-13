@@ -195,7 +195,15 @@ class CourseTaskAdmin(UserFileUploadAdminMixin, admin.ModelAdmin):
     fieldsets = (
         (
             None,
-            {"fields": ("lesson", "title", "status", "task_kind", "order")},
+            {
+                "fields": (
+                    "lesson",
+                    "title",
+                    "status",
+                    "task_kind",
+                    "order",
+                )
+            },
         ),
         (
             "Типы задания",
@@ -213,6 +221,7 @@ class CourseTaskAdmin(UserFileUploadAdminMixin, admin.ModelAdmin):
             {
                 "fields": (
                     "body_text",
+                    "answer_title",
                     "video_url",
                     "image_file",
                     "image_upload",

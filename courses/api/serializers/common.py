@@ -27,6 +27,7 @@ class LessonTaskSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     order = serializers.IntegerField(min_value=1)
     title = serializers.CharField()
+    answer_title = serializers.CharField(allow_blank=True)
     status = serializers.ChoiceField(choices=CourseTaskContentStatus.choices)
     task_kind = serializers.ChoiceField(choices=CourseTaskKind.choices)
     check_type = serializers.ChoiceField(
