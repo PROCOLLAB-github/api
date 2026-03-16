@@ -1,0 +1,31 @@
+from courses.api.serializers import (
+    CourseAnalyticsStubSerializer,
+    CourseCardSerializer,
+    CourseDetailSerializer,
+    CourseLessonStructureSerializer,
+    CourseModuleStructureSerializer,
+    CourseStructureSerializer,
+    CourseTaskOptionSerializer,
+    CourseVisitResultSerializer,
+    CourseVisitSerializer,
+    LessonDetailSerializer,
+    LessonTaskSerializer,
+    TaskAnswerSubmitResultSerializer,
+    TaskAnswerSubmitSerializer,
+)
+
+__all__ = [
+    "CourseAnalyticsStubSerializer",
+    "CourseCardSerializer",
+    "CourseDetailSerializer",
+    "CourseLessonStructureSerializer",
+    "CourseModuleStructureSerializer",
+    "CourseStructureSerializer",
+    "CourseTaskOptionSerializer",
+    "LessonTaskSerializer",
+    "LessonDetailSerializer",
+    "TaskAnswerSubmitSerializer",
+    "TaskAnswerSubmitResultSerializer",
+    "CourseVisitSerializer",
+    "CourseVisitResultSerializer",
+]
