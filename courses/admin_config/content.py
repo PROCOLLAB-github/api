@@ -28,7 +28,12 @@ class CourseAdmin(UserFileUploadAdminMixin, admin.ModelAdmin):
     list_display_links = ("id", "title")
     list_filter = ("access_type", "status", "is_completed")
     search_fields = ("id", "title", "partner_program__name")
-    raw_id_fields = ("partner_program",)
+    raw_id_fields = (
+        "partner_program",
+        "avatar_file",
+        "card_cover_file",
+        "header_cover_file",
+    )
     readonly_fields = ("completed_at", "datetime_created", "datetime_updated")
     list_select_related = ("partner_program",)
     inlines = [CourseModuleInline]
@@ -100,7 +105,7 @@ class CourseModuleAdmin(UserFileUploadAdminMixin, admin.ModelAdmin):
     list_display_links = ("id", "title")
     list_filter = ("status", "course")
     search_fields = ("id", "title", "course__title")
-    raw_id_fields = ("course",)
+    raw_id_fields = ("course", "avatar_file")
     readonly_fields = ("datetime_created", "datetime_updated")
     list_select_related = ("course",)
     inlines = [CourseLessonInline]
@@ -188,7 +193,7 @@ class CourseTaskAdmin(UserFileUploadAdminMixin, admin.ModelAdmin):
         "lesson__module__title",
         "lesson__module__course__title",
     )
-    raw_id_fields = ("lesson",)
+    raw_id_fields = ("lesson", "image_file", "attachment_file")
     readonly_fields = ("datetime_created", "datetime_updated")
     list_select_related = ("lesson", "lesson__module", "lesson__module__course")
     inlines = [CourseTaskOptionInline]
