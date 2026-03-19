@@ -4,7 +4,6 @@ from collections import OrderedDict
 from django.db.models import Prefetch
 from django.utils import timezone
 
-from core.utils import sanitize_excel_value
 from partner_programs.models import (
     PartnerProgram,
     PartnerProgramField,
@@ -171,6 +170,8 @@ BASE_COLUMNS = [
     ("team_members", "Состав команды"),
     ("leader_full_name", "Имя фамилия лидера"),
 ]
+
+
 def _leader_full_name(user):
     if not user:
         return ""
