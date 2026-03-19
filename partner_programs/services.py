@@ -1,10 +1,10 @@
 import logging
 from collections import OrderedDict
 
-from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from django.db.models import Prefetch
 from django.utils import timezone
 
+from core.utils import sanitize_excel_value
 from partner_programs.models import (
     PartnerProgram,
     PartnerProgramField,
@@ -171,33 +171,6 @@ BASE_COLUMNS = [
     ("team_members", "Состав команды"),
     ("leader_full_name", "Имя фамилия лидера"),
 ]
-EXCEL_CELL_MAX = 32767  # лимит символов в ячейке Excel
-
-
-def sanitize_excel_value(value):
-    """
-    Приводит значение к безопасному для openpyxl виду:
-    - None -> ""
-    - для строк: вычищает запрещённые символы, нормализует переносы строк,
-      и обрезает до лимита Excel (32767).
-    - для чисел/булевых оставляет как есть.
-    """
-    if value is None:
-        return ""
-
-    if isinstance(value, (int, float, bool)):
-        return value
-
-    text = str(value)
-    text = text.replace("\r\n", "\n").replace("\r", "\n")
-    text = ILLEGAL_CHARACTERS_RE.sub(" ", text)
-
-    if len(text) > EXCEL_CELL_MAX:
-        text = text[: EXCEL_CELL_MAX - 3] + "..."
-
-    return text
-
-
 def _leader_full_name(user):
     if not user:
         return ""

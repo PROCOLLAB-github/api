@@ -1,15 +1,12 @@
 import io
-import urllib.parse
 from collections import defaultdict
 from zoneinfo import ZoneInfo
 
-from django.http import HttpResponse
 from django.utils import timezone
 from django.db.models import Prefetch
 from openpyxl import Workbook
-from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 
-from core.utils import ascii_filename, sanitize_filename
+from core.utils import build_xlsx_download_response, sanitize_excel_value
 from courses.models import (
     Course,
     CourseLessonContentStatus,
@@ -27,7 +24,6 @@ from courses.models import (
 
 
 MSK_TZ = ZoneInfo("Europe/Moscow")
-EXCEL_CELL_MAX = 32767
 BASE_HEADERS = (
     "Имя и Фамилия",
     "Email",
@@ -36,19 +32,6 @@ BASE_HEADERS = (
     "Название курса",
     "Текущий этап",
 )
-
-
-def sanitize_excel_value(value):
-    if value is None:
-        return ""
-    if isinstance(value, (int, float, bool)):
-        return value
-
-    text = str(value).replace("\r\n", "\n").replace("\r", "\n")
-    text = ILLEGAL_CHARACTERS_RE.sub(" ", text)
-    if len(text) > EXCEL_CELL_MAX:
-        text = text[: EXCEL_CELL_MAX - 3] + "..."
-    return text
 
 
 def _format_msk_datetime(value) -> str:
@@ -256,22 +239,9 @@ def build_course_results_workbook_bytes(course: Course) -> bytes:
     return buffer.getvalue()
 
 
-def build_course_results_export_response(course: Course) -> HttpResponse:
+def build_course_results_export_response(course: Course):
     binary_data = build_course_results_workbook_bytes(course)
 
     date_suffix = timezone.now().astimezone(MSK_TZ).strftime("%d.%m.%Y")
     base_name = f"course-results - {course.title} - {date_suffix}"
-    safe_name = sanitize_filename(base_name)
-    encoded_file_name = urllib.parse.quote(f"{safe_name}.xlsx")
-    fallback_filename = f"{ascii_filename(base_name)}.xlsx"
-
-    response = HttpResponse(
-        binary_data,
-        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
-    response["Content-Disposition"] = (
-        "attachment; "
-        f"filename=\"{fallback_filename}\"; "
-        f"filename*=UTF-8''{encoded_file_name}"
-    )
-    return response
+    return build_xlsx_download_response(binary_data, base_name=base_name)

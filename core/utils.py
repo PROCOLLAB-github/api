@@ -1,12 +1,16 @@
 import logging
 import io
+import urllib.parse
 import unicodedata
 import pandas as pd
 
 from django.core.mail import EmailMultiAlternatives
+from django.http import HttpResponse
+from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 
 
 logger = logging.getLogger()
+EXCEL_CELL_MAX = 32767
 
 
 class Email:
@@ -88,3 +92,33 @@ def ascii_filename(filename: str) -> str:
     ascii_name = "".join(char if char.isascii() else "_" for char in safe_name)
     ascii_name = " ".join(ascii_name.split())
     return ascii_name or "export"
+
+
+def sanitize_excel_value(value):
+    if value is None:
+        return ""
+    if isinstance(value, (int, float, bool)):
+        return value
+
+    text = str(value).replace("\r\n", "\n").replace("\r", "\n")
+    text = ILLEGAL_CHARACTERS_RE.sub(" ", text)
+    if len(text) > EXCEL_CELL_MAX:
+        text = text[: EXCEL_CELL_MAX - 3] + "..."
+    return text
+
+
+def build_xlsx_download_response(binary_data: bytes, *, base_name: str) -> HttpResponse:
+    safe_name = sanitize_filename(base_name)
+    encoded_file_name = urllib.parse.quote(f"{safe_name}.xlsx")
+    fallback_filename = f"{ascii_filename(base_name)}.xlsx"
+
+    response = HttpResponse(
+        binary_data,
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    response["Content-Disposition"] = (
+        "attachment; "
+        f"filename=\"{fallback_filename}\"; "
+        f"filename*=UTF-8''{encoded_file_name}"
+    )
+    return response
