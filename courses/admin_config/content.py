@@ -1,6 +1,9 @@
 from django.contrib import admin
+from django.http import Http404
+from django.urls import path
 
 from courses.models import Course, CourseLesson, CourseModule, CourseTask, CourseTaskOption
+from courses.services.export_course_results import build_course_results_export_response
 
 from .forms import CourseAdminForm, CourseModuleAdminForm, CourseTaskAdminForm
 from .helpers import UserFileUploadAdminMixin
@@ -13,6 +16,7 @@ from .inlines import (
 
 @admin.register(Course)
 class CourseAdmin(UserFileUploadAdminMixin, admin.ModelAdmin):
+    change_form_template = "courses/admin/course_change_form.html"
     form = CourseAdminForm
     list_display = (
         "id",
@@ -73,6 +77,34 @@ class CourseAdmin(UserFileUploadAdminMixin, admin.ModelAdmin):
             {"fields": ("datetime_created", "datetime_updated")},
         ),
     )
+
+    def get_urls(self):
+        default_urls = super().get_urls()
+        custom_urls = [
+            path(
+                "<int:object_id>/export-results/",
+                self.admin_site.admin_view(self.export_results_view),
+                name="courses_export_results",
+            ),
+        ]
+        return custom_urls + default_urls
+
+    def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
+        extra_context = extra_context or {}
+        if object_id is not None:
+            extra_context["object_id"] = int(object_id)
+        return super().changeform_view(
+            request,
+            object_id=object_id,
+            form_url=form_url,
+            extra_context=extra_context,
+        )
+
+    def export_results_view(self, request, object_id):
+        course = self.get_object(request, object_id)
+        if course is None:
+            raise Http404("Курс не найден.")
+        return build_course_results_export_response(course)
 
     def save_model(self, request, obj, form, change):
         avatar_upload = form.cleaned_data.get("avatar_upload")

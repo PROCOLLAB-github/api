@@ -41,6 +41,16 @@ def create_user(*, prefix: str = "courses-test") -> CustomUser:
     )
 
 
+def create_staff_user(*, prefix: str = "courses-admin") -> CustomUser:
+    suffix = unique_suffix()
+    return CustomUser.objects.create_superuser(
+        email=f"{prefix}-{suffix}@example.com",
+        password="testpass123",
+        first_name="Admin",
+        last_name="User",
+    )
+
+
 def create_partner_program(*, name: str = "Program") -> PartnerProgram:
     suffix = unique_suffix()
     now = timezone.now()
