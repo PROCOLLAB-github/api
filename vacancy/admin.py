@@ -1,9 +1,9 @@
 import tablib
 from django.contrib import admin
-from django.http import HttpResponse
 from django.urls import path
 
 from core.admin import SkillToObjectInline
+from core.utils import build_xlsx_download_response
 from vacancy.models import Vacancy, VacancyResponse
 
 
@@ -64,13 +64,10 @@ class VacancyAdmin(admin.ModelAdmin):
             response_data.append(row_to_add)
 
         binary_data = response_data.export("xlsx")
-        file_name = "email_of_leaders_with_users"
-        response = HttpResponse(
-            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": f'attachment; filename="{file_name}.xlsx"'},
+        return build_xlsx_download_response(
+            binary_data,
+            base_name="email_of_leaders_with_users",
         )
-        response.write(binary_data)
-        return response
 
 
 @admin.register(VacancyResponse)

@@ -1,4 +1,3 @@
-import urllib.parse
 from datetime import date
 
 import tablib
@@ -12,7 +11,7 @@ from django.utils.html import format_html
 from django.utils.timezone import now
 
 from core.admin import SkillToObjectInline
-from core.utils import XlsxFileToExport
+from core.utils import XlsxFileToExport, build_xlsx_download_response
 from mailing.views import MailingTemplateRender
 from users.models import UserAchievementFile
 from users.services.users_activity import UserActivityDataPreparer
@@ -296,16 +295,10 @@ class CustomUserAdmin(admin.ModelAdmin):
         binary_data_to_export: bytes = xlsx_file_writer.get_binary_data_from_self_file()
         xlsx_file_writer.clear_buffer()
 
-        encoded_file_name: str = urllib.parse.quote("активность_пользователей.xlsx")
-        response = HttpResponse(
+        return build_xlsx_download_response(
             binary_data_to_export,
-            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            base_name="активность_пользователей",
         )
-        response["Content-Disposition"] = (
-            f"attachment; filename*=UTF-8''{encoded_file_name}"
-        )
-
-        return response
 
     def get_export_users_emails(self, users):
         response_data = tablib.Dataset(
@@ -396,13 +389,7 @@ class CustomUserAdmin(admin.ModelAdmin):
         #     response_data.append([user.first_name + " " + user.last_name, user.email])
 
         binary_data = response_data.export("xlsx")
-        file_name = "users"
-        response = HttpResponse(
-            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": f'attachment; filename="{file_name}.xlsx"'},
-        )
-        response.write(binary_data)
-        return response
+        return build_xlsx_download_response(binary_data, base_name="users")
 
 
 class UserAchievementFileInline(admin.TabularInline):
