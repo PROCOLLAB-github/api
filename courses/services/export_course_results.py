@@ -9,6 +9,7 @@ from openpyxl import Workbook
 from core.utils import build_xlsx_download_response, sanitize_excel_value
 from courses.models import (
     Course,
+    CourseLesson,
     CourseLessonContentStatus,
     CourseModuleContentStatus,
     CourseTask,
@@ -105,6 +106,24 @@ def _lesson_progresses_by_user(user_ids: list[int], course: Course) -> dict[int,
     return progress_map
 
 
+def _published_lessons_with_tasks(course: Course) -> list[CourseLesson]:
+    published_tasks_qs = CourseTask.objects.filter(
+        status=CourseTaskContentStatus.PUBLISHED,
+    ).order_by("order", "id")
+    return list(
+        CourseLesson.objects.filter(
+            module__course=course,
+            module__status=CourseModuleContentStatus.PUBLISHED,
+            status=CourseLessonContentStatus.PUBLISHED,
+        )
+        .select_related("module")
+        .prefetch_related(
+            Prefetch("tasks", queryset=published_tasks_qs, to_attr="_published_tasks")
+        )
+        .order_by("module__order", "module__id", "order", "id")
+    )
+
+
 def _answers_by_user_and_task(
     user_ids: list[int],
     task_ids: list[int],
@@ -143,34 +162,55 @@ def _task_header(task: CourseTask) -> str:
     )
 
 
+def _lesson_stage_header(lesson: CourseLesson) -> str:
+    return (
+        f"Модуль {lesson.module.order}: {lesson.module.title} / "
+        f"Урок {lesson.order}: {lesson.title}"
+    )
+
+
 def _format_stage(
     course_progress: UserCourseProgress,
     lesson_progresses: list[UserLessonProgress],
+    published_lessons: list[CourseLesson],
 ) -> str:
     if course_progress.status == ProgressStatus.COMPLETED:
         return "Курс завершён"
 
+    lesson_progress_by_lesson_id = {
+        progress.lesson_id: progress for progress in lesson_progresses
+    }
+
     current_progress = next(
-        (progress for progress in lesson_progresses if progress.current_task_id),
+        (
+            progress
+            for progress in lesson_progresses
+            if progress.current_task_id
+            and progress.current_task is not None
+            and progress.current_task.status == CourseTaskContentStatus.PUBLISHED
+        ),
         None,
     )
     if current_progress is not None:
         current_task = current_progress.current_task
-        return (
-            f"Модуль {current_progress.lesson.module.order}: {current_progress.lesson.module.title} / "
-            f"Урок {current_progress.lesson.order}: {current_progress.lesson.title} / "
-            f"Задание {current_task.order}: {current_task.title}"
-        )
+        return _task_header(current_task)
 
     in_progress_lesson = next(
         (progress for progress in lesson_progresses if progress.status == ProgressStatus.IN_PROGRESS),
         None,
     )
     if in_progress_lesson is not None:
-        return (
-            f"Модуль {in_progress_lesson.lesson.module.order}: {in_progress_lesson.lesson.module.title} / "
-            f"Урок {in_progress_lesson.lesson.order}: {in_progress_lesson.lesson.title}"
-        )
+        return _lesson_stage_header(in_progress_lesson.lesson)
+
+    for lesson in published_lessons:
+        lesson_progress = lesson_progress_by_lesson_id.get(lesson.id)
+        if lesson_progress and lesson_progress.status == ProgressStatus.COMPLETED:
+            continue
+
+        published_tasks = getattr(lesson, "_published_tasks", [])
+        if published_tasks:
+            return _task_header(published_tasks[0])
+        return _lesson_stage_header(lesson)
 
     return "Этап не определён"
 
@@ -204,6 +244,7 @@ def _build_headers(tasks: list[CourseTask]) -> list[str]:
 
 def build_course_results_workbook_bytes(course: Course) -> bytes:
     tasks = _export_tasks(course)
+    published_lessons = _published_lessons_with_tasks(course)
     course_progresses = _started_course_progresses(course)
     user_ids = [progress.user_id for progress in course_progresses]
     task_ids = [task.id for task in tasks]
@@ -223,7 +264,7 @@ def build_course_results_workbook_bytes(course: Course) -> bytes:
             course_progress.percent,
             _format_msk_datetime(course_progress.started_at),
             course.title,
-            _format_stage(course_progress, lesson_progresses),
+            _format_stage(course_progress, lesson_progresses, published_lessons),
         ]
         for task in tasks:
             row.append(
