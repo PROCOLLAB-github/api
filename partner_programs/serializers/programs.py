@@ -2,7 +2,8 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from core.services import get_likes_count, get_links, get_views_count, is_fan
-from .fields import PartnerProgramFieldValueUpdateSerializer
+from courses.models import CourseContentStatus
+from courses.services.access import resolve_course_availability
 from partner_programs.models import (
     PartnerProgram,
     PartnerProgramField,
@@ -11,6 +12,8 @@ from partner_programs.models import (
 )
 from projects.models import Project
 from projects.validators import validate_project
+
+from .fields import PartnerProgramFieldValueUpdateSerializer
 
 User = get_user_model()
 
@@ -90,6 +93,7 @@ class PartnerProgramBaseSerializerMixin(serializers.ModelSerializer):
 
     materials = serializers.SerializerMethodField()
     is_user_manager = serializers.SerializerMethodField()
+    courses = serializers.SerializerMethodField()
 
     def get_materials(self, program: PartnerProgram):
         materials = program.materials.all()
@@ -98,6 +102,36 @@ class PartnerProgramBaseSerializerMixin(serializers.ModelSerializer):
     def get_is_user_manager(self, program: PartnerProgram) -> bool:
         user = self.context.get("user")
         return bool(user and program.is_manager(user))
+
+    def get_courses(self, program: PartnerProgram) -> list[dict]:
+        user = self.context.get("user")
+        prefetched_courses = (
+            getattr(program, "_prefetched_objects_cache", {}).get("courses")
+            if hasattr(program, "_prefetched_objects_cache")
+            else None
+        )
+        if prefetched_courses is None:
+            related_courses = program.courses.exclude(
+                status=CourseContentStatus.DRAFT
+            ).order_by("id")
+        else:
+            related_courses = sorted(
+                (
+                    course
+                    for course in prefetched_courses
+                    if course.status != CourseContentStatus.DRAFT
+                ),
+                key=lambda course: course.id,
+            )
+
+        return [
+            {
+                "id": course.id,
+                "title": course.title,
+                "is_available": resolve_course_availability(course, user).is_available,
+            }
+            for course in related_courses
+        ]
 
     class Meta:
         abstract = True
@@ -145,6 +179,7 @@ class PartnerProgramForMemberSerializer(PartnerProgramBaseSerializerMixin):
             "datetime_evaluation_ends",
             "publish_projects_after_finish",
             "is_user_manager",
+            "courses",
         )
 
 
@@ -169,6 +204,7 @@ class PartnerProgramForUnregisteredUserSerializer(PartnerProgramBaseSerializerMi
             "datetime_evaluation_ends",
             "publish_projects_after_finish",
             "is_user_manager",
+            "courses",
         )
 
 

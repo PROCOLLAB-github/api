@@ -3,6 +3,7 @@ from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIRequestFactory, force_authenticate
 
+from courses.models import Course, CourseAccessType, CourseContentStatus
 from partner_programs.models import (
     PartnerProgram,
     PartnerProgramField,
@@ -11,7 +12,7 @@ from partner_programs.models import (
 )
 from partner_programs.serializers import PartnerProgramFieldValueUpdateSerializer
 from partner_programs.services import publish_finished_program_projects
-from partner_programs.views import PartnerProgramProjectSubmitView
+from partner_programs.views import PartnerProgramDetail, PartnerProgramProjectSubmitView
 from projects.models import Project
 
 
@@ -412,3 +413,138 @@ class PartnerProgramFieldValueUpdateSerializerValidTests(TestCase):
         data = {"field_id": field.id, "value_text": "https://example.com/file.pdf"}
         serializer = PartnerProgramFieldValueUpdateSerializer(data=data)
         self.assertTrue(serializer.is_valid())
+
+
+class PartnerProgramDetailCoursesTests(TestCase):
+    def setUp(self):
+        self.factory = APIRequestFactory()
+        self.view = PartnerProgramDetail.as_view()
+        self.now = timezone.now()
+
+    def create_program(self, **overrides):
+        defaults = {
+            "name": "Program with courses",
+            "tag": "program_with_courses",
+            "description": "Program description",
+            "city": "Moscow",
+            "data_schema": {},
+            "draft": False,
+            "projects_availability": "all_users",
+            "datetime_registration_ends": self.now + timezone.timedelta(days=10),
+            "datetime_started": self.now - timezone.timedelta(days=1),
+            "datetime_finished": self.now + timezone.timedelta(days=30),
+        }
+        defaults.update(overrides)
+        return PartnerProgram.objects.create(**defaults)
+
+    def create_user(self, email: str):
+        return get_user_model().objects.create_user(
+            email=email,
+            password="pass",
+            first_name="Test",
+            last_name="User",
+            birthday="1990-01-01",
+        )
+
+    def create_course(self, program: PartnerProgram, **overrides):
+        defaults = {
+            "title": "Program course",
+            "partner_program": program,
+            "access_type": CourseAccessType.ALL_USERS,
+            "status": CourseContentStatus.PUBLISHED,
+        }
+        defaults.update(overrides)
+        return Course.objects.create(**defaults)
+
+    def test_detail_includes_related_courses_with_availability_for_member(self):
+        program = self.create_program()
+        member = self.create_user("member-program@example.com")
+        PartnerProgramUserProfile.objects.create(
+            user=member,
+            partner_program=program,
+            project=None,
+            partner_program_data={},
+        )
+        all_users_course = self.create_course(
+            program,
+            title="Open course",
+            access_type=CourseAccessType.ALL_USERS,
+        )
+        member_course = self.create_course(
+            program,
+            title="Members course",
+            access_type=CourseAccessType.PROGRAM_MEMBERS,
+        )
+        self.create_course(
+            program,
+            title="Draft course",
+            access_type=CourseAccessType.ALL_USERS,
+            status=CourseContentStatus.DRAFT,
+        )
+
+        request = self.factory.get(f"/programs/{program.id}/")
+        force_authenticate(request, user=member)
+        response = self.view(request, pk=program.id)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.data["courses"],
+            [
+                {
+                    "id": all_users_course.id,
+                    "title": "Open course",
+                    "is_available": True,
+                },
+                {
+                    "id": member_course.id,
+                    "title": "Members course",
+                    "is_available": True,
+                },
+            ],
+        )
+
+    def test_detail_includes_empty_courses_list_when_program_has_no_related_courses(self):
+        program = self.create_program()
+        user = self.create_user("plain-user@example.com")
+
+        request = self.factory.get(f"/programs/{program.id}/")
+        force_authenticate(request, user=user)
+        response = self.view(request, pk=program.id)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["courses"], [])
+
+    def test_detail_marks_program_only_courses_as_unavailable_for_non_member(self):
+        program = self.create_program()
+        outsider = self.create_user("outsider-program@example.com")
+        open_course = self.create_course(
+            program,
+            title="Open course",
+            access_type=CourseAccessType.ALL_USERS,
+        )
+        member_course = self.create_course(
+            program,
+            title="Members course",
+            access_type=CourseAccessType.PROGRAM_MEMBERS,
+        )
+
+        request = self.factory.get(f"/programs/{program.id}/")
+        force_authenticate(request, user=outsider)
+        response = self.view(request, pk=program.id)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.data["courses"],
+            [
+                {
+                    "id": open_course.id,
+                    "title": "Open course",
+                    "is_available": True,
+                },
+                {
+                    "id": member_course.id,
+                    "title": "Members course",
+                    "is_available": False,
+                },
+            ],
+        )
