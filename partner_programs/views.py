@@ -301,7 +301,7 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
                 "birthday": date_to_iso(data.get("birthday", "01-01-1900")),
                 "is_active": True,  # bypass email verification
                 "onboarding_stage": None,  # bypass onboarding
-                "verification_date": timezone.now(),  # bypass ClickUp verification
+                "verification_date": timezone.now(),  # bypass manual verification
                 **{field_name: data.get(field_name, "") for field_name in user_fields},
             },
         )
