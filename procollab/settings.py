@@ -113,11 +113,9 @@ INSTALLED_APPS = [
     "drf_yasg",
     "channels",
     "taggit",
-    "django_prometheus",
 ]
 
 MIDDLEWARE = [
-    "django_prometheus.middleware.PrometheusBeforeMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -128,7 +126,6 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "debug_toolbar.middleware.DebugToolbarMiddleware",
-    "django_prometheus.middleware.PrometheusAfterMiddleware",
     "core.log.middleware.CustomLoguruMiddleware",
 ]
 
@@ -189,7 +186,7 @@ RUNNING_TESTS = "test" in sys.argv
 if DEBUG:
     DATABASES = {
         "default": {
-            "ENGINE": "django_prometheus.db.backends.sqlite3",
+            "ENGINE": "django.db.backends.sqlite3",
             "NAME": "db.sqlite3",
         }
     }
@@ -215,7 +212,7 @@ if DEBUG:
     else:
         CACHES = {
             "default": {
-                "BACKEND": "django_prometheus.cache.backends.filebased.FileBasedCache",
+                "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
                 "LOCATION": config(
                     "DJANGO_FILE_CACHE_DIR",
                     default=str(BASE_DIR / ".cache" / "django_cache"),
@@ -251,7 +248,7 @@ else:
 
     DATABASES = {
         "default": {
-            "ENGINE": "django_prometheus.db.backends.postgresql",
+            "ENGINE": "django.db.backends.postgresql",
             "NAME": config("DATABASE_NAME", default="postgres", cast=str),
             "USER": config("DATABASE_USER", default="postgres", cast=str),
             "PASSWORD": config("DATABASE_PASSWORD", default="postgres", cast=str),
