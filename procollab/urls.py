@@ -4,12 +4,13 @@ from django.contrib import admin
 from django.urls import include, path, re_path
 from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
+from rest_framework import authentication, permissions
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
     TokenVerifyView,
 )
-from core.permissions import IsStaffOrReadOnly
+from users.authentication import ActivityTrackingJWTAuthentication
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -17,8 +18,13 @@ schema_view = get_schema_view(
         default_version="v1",
         description="API for ProCollab",
     ),
-    public=True,
-    permission_classes=[IsStaffOrReadOnly],
+    public=False,
+    authentication_classes=[
+        authentication.SessionAuthentication,
+        authentication.BasicAuthentication,
+        ActivityTrackingJWTAuthentication,
+    ],
+    permission_classes=[permissions.IsAdminUser],
 )
 
 urlpatterns = [

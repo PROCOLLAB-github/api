@@ -1,6 +1,7 @@
 server {
     listen 80;
     server_name dev.procollab.ru;
+    server_tokens off;
 
     location ^~ /.well-known/acme-challenge/ {
         root /var/www/certbot;
@@ -16,6 +17,7 @@ server {
 server {
     listen 443 ssl;
     server_name dev.procollab.ru;
+    server_tokens off;
 
     ssl_certificate     /etc/letsencrypt/live/dev.procollab.ru-0001/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/dev.procollab.ru-0001/privkey.pem;
