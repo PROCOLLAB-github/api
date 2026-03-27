@@ -114,12 +114,12 @@ jobs:
               echo "DATABASE_HOST=${{ secrets.DATABASE_HOST }}" >> .env &&
               echo "DATABASE_PORT=${{ secrets.DATABASE_PORT }}" >> .env &&
               
-              echo "EMAIL_USER=${{ secrets.EMAIL_USER }}" >> .env &&
               echo "SELECTEL_ACCOUNT_ID=${{ secrets.SELECTEL_ACCOUNT_ID }}" >> .env &&
               echo "SELECTEL_CONTAINER_NAME=${{ secrets.SELECTEL_CONTAINER_NAME }}" >> .env &&
               echo "SELECTEL_CONTAINER_PASSWORD=${{ secrets.SELECTEL_CONTAINER_PASSWORD }}" >> .env &&
               echo "SELECTEL_CONTAINER_USERNAME=${{ secrets.SELECTEL_CONTAINER_USERNAME }}" >> .env &&
 
+              echo "EMAIL_USER=${{ secrets.EMAIL_USER }}" >> .env &&
               echo "UNISENDER_GO_API_KEY=${{ secrets.UNISENDER_GO_API_KEY }}" >> .env &&
               
               docker compose -f docker-compose.prod-ci.yml -p prod up -d
