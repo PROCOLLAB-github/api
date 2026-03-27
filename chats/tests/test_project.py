@@ -1,27 +1,27 @@
-from django.test import TestCase
 from channels.testing import WebsocketCommunicator
-from chats.tests.constants import TEST_USER1, TEST_USER2, TEST_USER3
 from django.contrib.auth import get_user_model
+from django.test import TransactionTestCase
+
 from chats.consumers import ChatConsumer
-from asgiref.sync import sync_to_async
+from chats.models import ProjectChat, ProjectChatMessage
+from chats.tests.constants import TEST_USER1, TEST_USER2, TEST_USER3
+from chats.websockets_settings import EventType
 
 # from chats.tests.helpres import chat_connect -
 from projects.models import Project, Collaborator
-from chats.models import ProjectChat, ProjectChatMessage
-from chats.websockets_settings import EventType
 
 
-class DirectTests(TestCase):
-    @classmethod
-    def setUpTestData(cls):
-        cls.leader = get_user_model().objects.create(**TEST_USER1)
-        cls.user = get_user_model().objects.create(**TEST_USER2)
-        cls.project = Project.objects.create(leader=cls.leader)
-        cls.chat = ProjectChat.objects.create(id=1, project=cls.project)
-        cls.other_user = get_user_model().objects.create(**TEST_USER3)
-        Collaborator.objects.create(user=cls.user, project=cls.project, role="User")
+class DirectTests(TransactionTestCase):
+    reset_sequences = True
 
     def setUp(self):
+        super().setUp()
+        self.leader = get_user_model().objects.create(**TEST_USER1)
+        self.user = get_user_model().objects.create(**TEST_USER2)
+        self.project = Project.objects.create(leader=self.leader)
+        self.chat = ProjectChat.objects.create(id=1, project=self.project)
+        self.other_user = get_user_model().objects.create(**TEST_USER3)
+        Collaborator.objects.create(user=self.user, project=self.project, role="User")
         self.data = {
             "type": EventType.NEW_MESSAGE,
             "content": {
@@ -36,7 +36,7 @@ class DirectTests(TestCase):
     async def connect(self, user):
         communicator = WebsocketCommunicator(ChatConsumer.as_asgi(), "/ws/chat/")
         communicator.scope["user"] = user
-        connected, subprotocol = await communicator.connect()
+        connected, subprotocol = await communicator.connect(timeout=5)
         self.assertTrue(connected)
         self.communicator = communicator
 
@@ -72,7 +72,7 @@ class DirectTests(TestCase):
         self.data["content"]["message_id"] = response["content"]["message"]["id"]
         await self.communicator.send_json_to(self.data)
         response = await self.communicator.receive_json_from()
-        project_message = await sync_to_async(ProjectChatMessage.objects.get)(pk=1)
+        project_message = ProjectChatMessage.objects.get(pk=1)
         self.assertTrue(project_message.is_read)
 
     async def test_read_message_in_other_project_other_message(self):
@@ -86,7 +86,7 @@ class DirectTests(TestCase):
         self.data["content"]["message_id"] = response["content"]["message"]["id"]
         await self.communicator.send_json_to(self.data)
         response = await self.communicator.receive_json_from()
-        project_message = await sync_to_async(ProjectChatMessage.objects.get)(pk=1)
+        project_message = ProjectChatMessage.objects.get(pk=1)
         self.assertFalse(project_message.is_read)
 
     async def test_delete_message_in_my_project_my_message(self):
@@ -97,7 +97,7 @@ class DirectTests(TestCase):
         self.data["content"]["message_id"] = response["content"]["message"]["id"]
         await self.communicator.send_json_to(self.data)
         response = await self.communicator.receive_json_from()
-        project_message = await sync_to_async(ProjectChatMessage.objects.get)(pk=1)
+        project_message = ProjectChatMessage.objects.get(pk=1)
         self.assertTrue(project_message.is_deleted)
 
     async def test_delete_message_in_my_project_other_message(self):
@@ -111,7 +111,7 @@ class DirectTests(TestCase):
         self.data["content"]["message_id"] = response["content"]["message"]["id"]
         await self.communicator.send_json_to(self.data)
         response = await self.communicator.receive_json_from()
-        project_message = await sync_to_async(ProjectChatMessage.objects.get)(pk=1)
+        project_message = ProjectChatMessage.objects.get(pk=1)
         self.assertFalse(project_message.is_deleted)
 
     async def test_delete_message_in_other_project_other_message(self):
@@ -125,7 +125,7 @@ class DirectTests(TestCase):
         self.data["content"]["message_id"] = response["content"]["message"]["id"]
         await self.communicator.send_json_to(self.data)
         response = await self.communicator.receive_json_from()
-        project_message = await sync_to_async(ProjectChatMessage.objects.get)(pk=1)
+        project_message = ProjectChatMessage.objects.get(pk=1)
         self.assertFalse(project_message.is_deleted)
 
     async def test_edit_message_in_my_project_my_message(self):
@@ -136,7 +136,7 @@ class DirectTests(TestCase):
         self.data["content"]["message_id"] = response["content"]["message"]["id"]
         await self.communicator.send_json_to(self.data)
         response = await self.communicator.receive_json_from()
-        project_message = await sync_to_async(ProjectChatMessage.objects.get)(pk=1)
+        project_message = ProjectChatMessage.objects.get(pk=1)
         self.assertTrue(project_message.is_edited)
 
     async def test_edit_message_in_my_project_other_message(self):
@@ -150,7 +150,7 @@ class DirectTests(TestCase):
         self.data["content"]["message_id"] = response["content"]["message"]["id"]
         await self.communicator.send_json_to(self.data)
         response = await self.communicator.receive_json_from()
-        project_message = await sync_to_async(ProjectChatMessage.objects.get)(pk=1)
+        project_message = ProjectChatMessage.objects.get(pk=1)
         self.assertFalse(project_message.is_edited)
 
     async def test_edit_message_other_my_project_other_message(self):
@@ -164,5 +164,5 @@ class DirectTests(TestCase):
         self.data["content"]["message_id"] = response["content"]["message"]["id"]
         await self.communicator.send_json_to(self.data)
         response = await self.communicator.receive_json_from()
-        project_message = await sync_to_async(ProjectChatMessage.objects.get)(pk=1)
+        project_message = ProjectChatMessage.objects.get(pk=1)
         self.assertFalse(project_message.is_edited)

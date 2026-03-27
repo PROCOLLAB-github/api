@@ -168,6 +168,9 @@ ASGI_APPLICATION = "procollab.asgi.application"
 
 RUNNING_TESTS = "test" in sys.argv
 
+if RUNNING_TESTS:
+    os.environ.setdefault("DJANGO_ALLOW_ASYNC_UNSAFE", "true")
+
 if DEBUG:
     INSTALLED_APPS.append("debug_toolbar")
     MIDDLEWARE.insert(-1, "debug_toolbar.middleware.DebugToolbarMiddleware")
@@ -177,6 +180,10 @@ if DEBUG:
             "NAME": "db.sqlite3",
         }
     }
+    if RUNNING_TESTS:
+        DATABASES["default"]["TEST"] = {
+            "NAME": str(BASE_DIR / "test_db.sqlite3"),
+        }
 
     if RUNNING_TESTS:
         CACHES = {

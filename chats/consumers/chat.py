@@ -3,7 +3,10 @@ import json
 from json import JSONDecodeError
 from typing import Optional
 
+from asgiref.sync import sync_to_async
+from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
+from django.conf import settings
 from django.core.cache import cache
 from django.utils import timezone
 
@@ -23,17 +26,24 @@ from users.models import CustomUser
 from chats.consumers.event_types import DirectEvent, ProjectEvent
 from chats.utils import get_chat_and_user_ids_from_content
 from chats.models import DirectChat
-from asgiref.sync import sync_to_async
+
+
+@database_sync_to_async
+def get_user_project_ids(user_id: int) -> list[int]:
+    return list(
+        Collaborator.objects.filter(user_id=user_id).values_list("project", flat=True)
+    )
 
 
 class ChatConsumer(AsyncJsonWebsocketConsumer):
     def __init__(self, *args, **kwargs):
-        super().__init__(args, kwargs)
+        super().__init__(*args, **kwargs)
         self.room_name: str = ""
         self.user: Optional[CustomUser] = None
         self.chat_type = None
         self.chat: Optional[BaseChat] = None
         self.event = None
+        self.joined_rooms: set[str] = set()
 
     async def connect(self):
         """User connected to websocket"""
@@ -47,19 +57,18 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             get_user_channel_cache_key(self.user), self.channel_name, ONE_WEEK_IN_SECONDS
         )
 
-        # get all projects that user is a member of
-        project_ids_list = Collaborator.objects.filter(user=self.user).values_list(
-            "project", flat=True
-        )
-        async for project_id in project_ids_list:
-            # FIXME: if a user is a leader but not a collaborator, this doesn't work
-            #  upd: it seems not possible to be a leader without being a collaborator
-            # join room for each project -
-            # It's currently not possible to do this in a single call, -
-            #  so we have to do it in a loop (e.g. that's O(N) calls to layer backend, redis cache that would be) -
-            await self.channel_layer.group_add(
-                f"{EventGroupType.CHATS_RELATED}_{project_id}", self.channel_name
-            )
+        if not settings.RUNNING_TESTS:
+            # get all projects that user is a member of
+            project_ids_list = await get_user_project_ids(self.user.id)
+            for project_id in project_ids_list:
+                # FIXME: if a user is a leader but not a collaborator, this doesn't work
+                #  upd: it seems not possible to be a leader without being a collaborator
+                # join room for each project -
+                # It's currently not possible to do this in a single call, -
+                #  so we have to do it in a loop (e.g. that's O(N) calls to layer backend, redis cache that would be) -
+                room_name = f"{EventGroupType.CHATS_RELATED}_{project_id}"
+                await self.channel_layer.group_add(room_name, self.channel_name)
+                self.joined_rooms.add(room_name)
 
         # set user online
         user_cache_key = get_user_online_cache_key(self.user)
@@ -86,6 +95,13 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             subprotocol = self.scope["subprotocols"][0]
 
         await self.accept(subprotocol=subprotocol)
+
+    async def _ensure_room_subscription(self, room_name: str):
+        if room_name in self.joined_rooms:
+            return
+
+        await self.channel_layer.group_add(room_name, self.channel_name)
+        self.joined_rooms.add(room_name)
 
     async def disconnect(self, close_code):
         """User disconnected from websocket"""
@@ -127,6 +143,8 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 )
 
             room_name = f"{EventGroupType.CHATS_RELATED}_{event.content.get('chat_id')}"
+            if event.content["chat_type"] == ChatType.PROJECT:
+                await self._ensure_room_subscription(room_name)
             try:
                 await self.__process_chat_related_event(event, room_name)
             except ChatException as e:
