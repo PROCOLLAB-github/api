@@ -46,7 +46,6 @@ from users.constants import (
     VERBOSE_ROLE_TYPES,
     VERBOSE_USER_TYPES,
     VERIFY_EMAIL_REDIRECT_URL,
-    OnboardingStage,
 )
 from users.helpers import check_related_fields_update, force_verify_user, verify_email
 from users.models import LikesOnProject, UserAchievement, UserSkillConfirmation
@@ -76,7 +75,6 @@ from .helpers import check_chache_for_cv
 from .pagination import UsersPagination
 from .schema import SKILL_PK_PARAM, USER_PK_PARAM
 from .services.cv_data_prepare import UserCVDataPreparerV2
-from .services.verification import VerificationTasks
 from .tasks import send_mail_cv
 
 User = get_user_model()
@@ -493,13 +491,6 @@ class SetUserOnboardingStage(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                     data={"error": "Wrong onboarding stage number!"},
                 )
-            # if the user was on the last stage and passed it
-            if (
-                request.user.onboarding_stage == OnboardingStage.account_type.value
-                and new_stage == OnboardingStage.completed.value
-            ):
-                VerificationTasks.create(request.user)
-
             request.user.onboarding_stage = new_stage
             request.user.save()
 
