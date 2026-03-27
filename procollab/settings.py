@@ -4,9 +4,7 @@ import sys
 from datetime import timedelta
 from pathlib import Path
 
-import sentry_sdk
 from decouple import config
-from sentry_sdk.integrations.django import DjangoIntegration
 
 mimetypes.add_type("application/javascript", ".js", True)
 mimetypes.add_type("text/css", ".css", True)
@@ -17,8 +15,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config("DJANGO_SECRET_KEY", default="django-default-secret-key", cast=str)
 
 DEBUG = config("DEBUG", default=False, cast=bool)
-
-SENTRY_DSN = config("SENTRY_DSN", default="", cast=str)
 
 AUTOPOSTING_ON = config("AUTOPOSTING_ON", default=False, cast=bool)
 
@@ -36,7 +32,6 @@ CSRF_TRUSTED_ORIGINS = [
     "https://www.procollab.ru",
     "https://app.procollab.ru",
     "https://dev.procollab.ru",
-    "https://www.procollab.ru",
 ]
 
 ALLOWED_HOSTS = [
@@ -48,7 +43,6 @@ ALLOWED_HOSTS = [
     "app.procollab.ru",
     "dev.procollab.ru",
     "procollab.ru",
-    "dev.procollab.ru",
     "web",  # From Docker
 ]
 
@@ -61,16 +55,6 @@ PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.ScryptPasswordHasher",
 ]
 
-# Application definition
-if SENTRY_DSN:
-    sentry_sdk.init(
-        dsn=SENTRY_DSN,
-        integrations=[DjangoIntegration()],
-        release="dev" if DEBUG else "prod",
-        traces_sample_rate=1.0,
-        send_default_pii=True,
-    )
-
 INSTALLED_APPS = [
     # daphne is required for channels, should be installed before django.contrib.static
     "daphne",
@@ -81,7 +65,6 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "debug_toolbar",
     # My apps
     "core.apps.CoreConfig",
     "industries.apps.IndustriesConfig",
@@ -114,11 +97,9 @@ INSTALLED_APPS = [
     "drf_yasg",
     "channels",
     "taggit",
-    "django_prometheus",
 ]
 
 MIDDLEWARE = [
-    "django_prometheus.middleware.PrometheusBeforeMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -128,8 +109,6 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "debug_toolbar.middleware.DebugToolbarMiddleware",
-    "django_prometheus.middleware.PrometheusAfterMiddleware",
     "core.log.middleware.CustomLoguruMiddleware",
 ]
 
@@ -148,6 +127,9 @@ INTERNAL_IPS = [
 ]
 
 ROOT_URLCONF = "procollab.urls"
+
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_SSL_REDIRECT = not DEBUG
 
 TEMPLATES = [
     {
@@ -187,24 +169,22 @@ ASGI_APPLICATION = "procollab.asgi.application"
 
 RUNNING_TESTS = "test" in sys.argv
 
+if RUNNING_TESTS:
+    os.environ.setdefault("DJANGO_ALLOW_ASYNC_UNSAFE", "true")
+
 if DEBUG:
+    INSTALLED_APPS.append("debug_toolbar")
+    MIDDLEWARE.insert(-1, "debug_toolbar.middleware.DebugToolbarMiddleware")
     DATABASES = {
         "default": {
-            "ENGINE": "django_prometheus.db.backends.sqlite3",
+            "ENGINE": "django.db.backends.sqlite3",
             "NAME": "db.sqlite3",
         }
     }
-
-    # DATABASES = {
-    #     "default": {
-    #         "ENGINE": "django.db.backends.postgresql",
-    #         "NAME": config("DATABASE_NAME", default="postgres", cast=str),
-    #         "USER": config("DATABASE_USER", default="postgres", cast=str),
-    #         "PASSWORD": config("DATABASE_PASSWORD", default="postgres", cast=str),
-    #         "HOST": config("DATABASE_HOST", default="db", cast=str),
-    #         "PORT": config("DATABASE_PORT", default="5432", cast=str),
-    #     }
-    # }
+    if RUNNING_TESTS:
+        DATABASES["default"]["TEST"] = {
+            "NAME": str(BASE_DIR / "test_db.sqlite3"),
+        }
 
     if RUNNING_TESTS:
         CACHES = {
@@ -216,7 +196,7 @@ if DEBUG:
     else:
         CACHES = {
             "default": {
-                "BACKEND": "django_prometheus.cache.backends.filebased.FileBasedCache",
+                "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
                 "LOCATION": config(
                     "DJANGO_FILE_CACHE_DIR",
                     default=str(BASE_DIR / ".cache" / "django_cache"),
@@ -248,11 +228,9 @@ else:
         "rest_framework.renderers.JSONRenderer",
     ]
 
-    DB_SERVICE = config("DB_SERVICE", default="postgres", cast=str)
-
     DATABASES = {
         "default": {
-            "ENGINE": "django_prometheus.db.backends.postgresql",
+            "ENGINE": "django.db.backends.postgresql",
             "NAME": config("DATABASE_NAME", default="postgres", cast=str),
             "USER": config("DATABASE_USER", default="postgres", cast=str),
             "PASSWORD": config("DATABASE_PASSWORD", default="postgres", cast=str),
@@ -337,7 +315,8 @@ JWT_LAST_ACTIVITY_THROTTLE_SECONDS = 15 * 60
 if DEBUG:
     SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"] = timedelta(weeks=2)
 
-SESSION_COOKIE_SECURE = False
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
 
 EMAIL_BACKEND = "anymail.backends.unisender_go.EmailBackend"
 
@@ -352,18 +331,7 @@ ANYMAIL = {
     },
 }
 
-EMAIL_USE_TLS = True
-
-EMAIL_PORT = config("EMAIL_PORT", default=587, cast=int)
 EMAIL_USER = config("EMAIL_USER", cast=str, default="example@mail.ru")
-
-# EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-# EMAIL_USE_TLS = True
-# EMAIL_HOST = config("EMAIL_HOST", default="smtp.gmail.com", cast=str)
-# EMAIL_PORT = config("EMAIL_PORT", default=587, cast=int)
-# EMAIL_HOST_USER = config("EMAIL_USER", cast=str, default="example@mail.ru")
-# EMAIL_USER = EMAIL_HOST_USER
-# EMAIL_HOST_PASSWORD = config("EMAIL_PASSWORD", cast=str, default="password")
 
 SELECTEL_ACCOUNT_ID = config("SELECTEL_ACCOUNT_ID", cast=str, default="123456")
 SELECTEL_CONTAINER_NAME = config(
@@ -390,26 +358,6 @@ LOGURU_LOGGING = {
 
 if DEBUG:
     SELECTEL_SWIFT_URL += "debug/"
-
-PROMETHEUS_LATENCY_BUCKETS = (
-    0.01,
-    0.025,
-    0.05,
-    0.075,
-    0.1,
-    0.25,
-    0.5,
-    0.75,
-    1.0,
-    2.5,
-    5.0,
-    7.5,
-    10.0,
-    25.0,
-    50.0,
-    75.0,
-    float("inf"),
-)
 
 DATA_UPLOAD_MAX_NUMBER_FIELDS = None  # for mailing
 

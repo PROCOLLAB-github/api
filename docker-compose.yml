@@ -17,26 +17,6 @@ services:
     expose:
       - 8000
 
-  grafana:
-    image: grafana/grafana-enterprise
-    container_name: grafana
-    restart: unless-stopped
-    ports:
-      - '3000:3000'
-    volumes:
-      - grafana-storage:/var/lib/grafana
-
-
-  prometheus:
-    container_name: prometheus
-    image: prom/prometheus:v2.36.0
-    ports:
-      - '9090:9090'
-    volumes:
-      - prom-data:/prometheus
-      - ./prometheus:/etc/prometheus
-
-
   nginx:
     container_name: nginx
     build: ./nginx
@@ -44,20 +24,6 @@ services:
       - web
     ports:
       - "8000:80"
-# todo: настроим позже
-#  loki:
-#    image: grafana/loki:2.9.0
-#    ports:
-#      - "3100:3100"
-#    command: -config.file=/etc/loki/local-config.yaml
-#
-#  promtail:
-#    image: grafana/promtail:2.9.0
-#    volumes:
-#      - /var/log:/var/log
-#      - ./promtail:/etc/promtail
-#      - ./log:/procollab/log
-#    command: -config.file=/etc/promtail/config.yml
 
   redis:
     container_name: redis
@@ -83,11 +49,5 @@ services:
       - .:/procollab
 
 volumes:
-  grafana-data:
-  grafana-configs:
-  prom-data:
-  prom-configs:
   log:
-  promtail:
   redis-data:
-  grafana-storage: {}
