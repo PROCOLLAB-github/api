@@ -98,7 +98,11 @@ class PartnerProgramList(generics.ListCreateAPIView):
 
 
 class PartnerProgramDetail(generics.RetrieveAPIView):
-    queryset = PartnerProgram.objects.prefetch_related("materials", "managers").all()
+    queryset = PartnerProgram.objects.prefetch_related(
+        "materials",
+        "managers",
+        "courses",
+    ).all()
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     serializer_class = PartnerProgramForUnregisteredUserSerializer
 
