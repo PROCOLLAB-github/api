@@ -4,7 +4,8 @@ from tests.constants import USER_CREATE_DATA
 
 from projects.models import Collaborator, Project
 from users.models import CustomUser
-from users.views import UserLeaderProjectsList, UserList, UserDetail
+from users.serializers import UserDetailSerializer
+from users.views import CurrentUser, UserLeaderProjectsList, UserList, UserDetail
 
 
 class UserTestCase(TestCase):
@@ -13,6 +14,7 @@ class UserTestCase(TestCase):
         self.user_list_view = UserList.as_view()
         self.user_detail_view = UserDetail.as_view()
         self.user_leader_projects_view = UserLeaderProjectsList.as_view()
+        self.current_user_view = CurrentUser.as_view()
 
     def test_user_creation(self):
         request = self.factory.post("auth/users/", USER_CREATE_DATA)
@@ -82,6 +84,22 @@ class UserTestCase(TestCase):
         self.assertSetEqual(
             returned_ids, {leader_project.id, second_leader_project.id}
         )
+
+    def test_current_user_returns_authenticated_user_profile(self):
+        user = self._user_create("current@example.com")
+
+        request = self.factory.get("auth/users/current/")
+        force_authenticate(request, user=user)
+        response = self.current_user_view(request)
+        expected_data = UserDetailSerializer(user, context={"request": request}).data
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, expected_data)
+
+    def test_removed_legacy_routes_return_404(self):
+        self.assertEqual(self.client.get("/auth/users/clone-data").status_code, 404)
+        self.assertEqual(self.client.get("/auth/subscription/").status_code, 404)
+        self.assertEqual(self.client.post("/auth/subscription/buy/").status_code, 404)
 
     def _user_create(self, email):
         tmp_create_data = USER_CREATE_DATA.copy()

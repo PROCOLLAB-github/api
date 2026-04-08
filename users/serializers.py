@@ -378,22 +378,6 @@ class UserSubscribedProjectsSerializer(serializers.ModelSerializer[Project]):
         ]
         read_only_fields = ["leader", "collaborator", "is_company"]
 
-
-class SubscriptionSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    name = serializers.CharField()
-    price = serializers.IntegerField()
-    features_list = serializers.ListField(child=serializers.CharField())
-
-
-class UserSubscriptionDataSerializer(serializers.Serializer):
-    is_subscribed = serializers.BooleanField()
-    last_subscription_date = serializers.CharField()
-    subscription_date_over = serializers.CharField()
-    last_subscription_type = SubscriptionSerializer()
-    is_autopay_allowed = serializers.BooleanField()
-
-
 class UserExperienceMixin:
     """Mixin for Education and WorkExperience with same logic."""
 
@@ -991,12 +975,6 @@ class UserProjectListSerializer(serializers.ModelSerializer[Project]):
         return validate_project(data)
 
 
-class UserCloneDataSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CustomUser
-        fields = "__all__"
-
-
 class CustomObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
@@ -1008,8 +986,3 @@ class CustomObtainPairSerializer(TokenObtainPairSerializer):
         token = super().get_token(user)
         token["email"] = user.email
         return token
-
-
-class RemoteBuySubSerializer(serializers.Serializer):
-    subscription_id = serializers.IntegerField()
-    redirect_url = serializers.CharField(required=False)

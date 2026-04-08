@@ -26,9 +26,6 @@ from users.views import (
     UserSpecializationsNestedView,
     UserSpecializationsInlineView,
     UserSkillsApproveDeclineView,
-    SingleUserDataView,
-    RemoteViewSubscriptions,
-    RemoteCreatePayment,
     UserCVDownload,
     UserCVMailing,
 )
@@ -86,9 +83,4 @@ urlpatterns = [
         "reset_password/",
         include("django_rest_passwordreset.urls", namespace="password_reset"),
     ),
-    # for skills
-    path("users/clone-data", SingleUserDataView.as_view()),
-    # copy from skills
-    path("subscription/", RemoteViewSubscriptions.as_view()),
-    path("subscription/buy/", RemoteCreatePayment.as_view()),
 ]
