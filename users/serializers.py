@@ -378,6 +378,7 @@ class UserSubscribedProjectsSerializer(serializers.ModelSerializer[Project]):
         ]
         read_only_fields = ["leader", "collaborator", "is_company"]
 
+
 class UserExperienceMixin:
     """Mixin for Education and WorkExperience with same logic."""
 
