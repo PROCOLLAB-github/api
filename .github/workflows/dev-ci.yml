@@ -18,30 +18,38 @@ jobs:
             username: ${{ secrets.DEV_SERVER_USER }}
             password: ${{ secrets.DEV_SERVER_PASSWORD }}
             command: |
-              cd /root/api &&
-              git checkout dev &&
-              git pull &&
-              
-              rm -f .env &&
-              touch .env &&
-              
-              echo "DJANGO_SECRET_KEY=${{ secrets.DEV_DJANGO_SECRET_KEY }}" >> .env &&
-              
-              echo "DATABASE_NAME=${{ secrets.DEV_DATABASE_NAME }}" >> .env &&
-              echo "DATABASE_PASSWORD=${{ secrets.DEV_DATABASE_PASSWORD }}" >> .env &&
-              echo "DATABASE_USER=${{ secrets.DEV_DATABASE_USER }}" >> .env &&
-              echo "DATABASE_HOST=${{ secrets.DEV_DATABASE_HOST }}" >> .env &&
-              echo "DATABASE_PORT=${{ secrets.DEV_DATABASE_PORT }}" >> .env &&
-              
+              set -eu
 
-              echo "SELECTEL_ACCOUNT_ID=${{ secrets.SELECTEL_ACCOUNT_ID }}" >> .env &&
-              echo "SELECTEL_CONTAINER_NAME=${{ secrets.SELECTEL_CONTAINER_NAME }}" >> .env &&
-              echo "SELECTEL_CONTAINER_PASSWORD=${{ secrets.SELECTEL_CONTAINER_PASSWORD }}" >> .env &&
-              echo "SELECTEL_CONTAINER_USERNAME=${{ secrets.SELECTEL_CONTAINER_USERNAME }}" >> .env &&
-              
-              echo "EMAIL_USER=${{ secrets.EMAIL_USER }}" >> .env &&
-              echo "UNISENDER_GO_API_KEY=${{ secrets.UNISENDER_GO_API_KEY }}" >> .env &&
-              
+              cd /root/api
+              git fetch --all --tags --prune
+              git branch -r --contains "${{ github.sha }}" | grep -q 'origin/dev'
+              git checkout --detach "${{ github.sha }}"
+              git rev-parse HEAD
+
+              export IMAGE_TAG="${{ github.sha }}"
+
+              rm -f .env
+              touch .env
+
+              echo "DJANGO_SECRET_KEY=${{ secrets.DEV_DJANGO_SECRET_KEY }}" >> .env
+
+              echo "DATABASE_NAME=${{ secrets.DEV_DATABASE_NAME }}" >> .env
+              echo "DATABASE_PASSWORD=${{ secrets.DEV_DATABASE_PASSWORD }}" >> .env
+              echo "DATABASE_USER=${{ secrets.DEV_DATABASE_USER }}" >> .env
+              echo "DATABASE_HOST=${{ secrets.DEV_DATABASE_HOST }}" >> .env
+              echo "DATABASE_PORT=${{ secrets.DEV_DATABASE_PORT }}" >> .env
+
+              echo "SELECTEL_ACCOUNT_ID=${{ secrets.SELECTEL_ACCOUNT_ID }}" >> .env
+              echo "SELECTEL_CONTAINER_NAME=${{ secrets.SELECTEL_CONTAINER_NAME }}" >> .env
+              echo "SELECTEL_CONTAINER_PASSWORD=${{ secrets.SELECTEL_CONTAINER_PASSWORD }}" >> .env
+              echo "SELECTEL_CONTAINER_USERNAME=${{ secrets.SELECTEL_CONTAINER_USERNAME }}" >> .env
+
+              echo "EMAIL_USER=${{ secrets.EMAIL_USER }}" >> .env
+              echo "UNISENDER_GO_API_KEY=${{ secrets.UNISENDER_GO_API_KEY }}" >> .env
+
+              chmod 600 .env
+
+              docker compose -f docker-compose.dev-ci.yml config >/dev/null
               docker compose -f docker-compose.dev-ci.yml up -d --build --force-recreate --remove-orphans &&
 
               install -d /etc/nginx/procollab/includes &&

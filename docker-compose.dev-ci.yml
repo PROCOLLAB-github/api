@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile
-    image: ghcr.io/procollab-github/api:latest
+    image: procollab-dev-api:${IMAGE_TAG:-dev}
     restart: unless-stopped
     volumes:
       - ./log:/procollab/log
@@ -28,9 +28,7 @@ services:
   celerys:
     container_name: api_celery
     restart: always
-    build:
-      context: .
-      dockerfile: ./Dockerfile
+    image: procollab-dev-api:${IMAGE_TAG:-dev}
     env_file:
       - .env
     command: bash ./scripts/celery.sh
@@ -39,6 +37,6 @@ services:
       #      - db
       - web
     volumes:
-      - .:/procollab
+      - ./log:/procollab/log
 volumes:
   redis-data:

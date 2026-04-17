@@ -4,6 +4,15 @@ on:
   release:
     types: [ published ]
   workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Docker image tag to build and deploy
+        required: true
+        type: string
+      deploy_ref:
+        description: Git ref or tag to checkout on the server
+        required: true
+        type: string
 
 jobs:
   test:
@@ -49,9 +58,38 @@ jobs:
     name: Build Image
     runs-on: ubuntu-latest
     needs: [ test ]
+    outputs:
+      image_tag: ${{ steps.vars.outputs.image_tag }}
+      deploy_ref: ${{ steps.vars.outputs.deploy_ref }}
     steps:
       - name: "Checkout repository"
         uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || github.event.inputs.deploy_ref }}
+
+      - name: Resolve image tag
+        id: vars
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            image_tag='${{ github.event.release.tag_name }}'
+            deploy_ref='${{ github.event.release.tag_name }}'
+          else
+            image_tag='${{ github.event.inputs.image_tag }}'
+            deploy_ref='${{ github.event.inputs.deploy_ref }}'
+          fi
+
+          if [ -z "$image_tag" ]; then
+            echo "IMAGE_TAG is empty" >&2
+            exit 1
+          fi
+
+          if [ -z "$deploy_ref" ]; then
+            echo "DEPLOY_REF is empty" >&2
+            exit 1
+          fi
+
+          echo "image_tag=$image_tag" >> "$GITHUB_OUTPUT"
+          echo "deploy_ref=$deploy_ref" >> "$GITHUB_OUTPUT"
 
       - name: "Set up QEMU"
         uses: docker/setup-qemu-action@v3
@@ -71,11 +109,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/procollab-github/api
-          flavor: latest=true
           tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
+            type=raw,value=${{ steps.vars.outputs.image_tag }}
       - name: Build and push container
         uses: docker/build-push-action@v5
         with:
@@ -98,28 +133,69 @@ jobs:
             username: ${{ secrets.SERVER_USER }}
             password: ${{ secrets.SERVER_PASSWORD }}
             command: |
-              cd /home/app/procollab-backend &&
-              docker container prune -f &&
-              docker image prune -a -f &&
-              docker compose -f docker-compose.prod-ci.yml -p prod pull &&
-              
-              rm -f .env &&
-              touch .env &&
-              
-              echo "DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" >> .env &&
-              
-              echo "DATABASE_NAME=${{ secrets.DATABASE_NAME }}" >> .env &&
-              echo "DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}" >> .env &&
-              echo "DATABASE_USER=${{ secrets.DATABASE_USER }}" >> .env &&
-              echo "DATABASE_HOST=${{ secrets.DATABASE_HOST }}" >> .env &&
-              echo "DATABASE_PORT=${{ secrets.DATABASE_PORT }}" >> .env &&
-              
-              echo "SELECTEL_ACCOUNT_ID=${{ secrets.SELECTEL_ACCOUNT_ID }}" >> .env &&
-              echo "SELECTEL_CONTAINER_NAME=${{ secrets.SELECTEL_CONTAINER_NAME }}" >> .env &&
-              echo "SELECTEL_CONTAINER_PASSWORD=${{ secrets.SELECTEL_CONTAINER_PASSWORD }}" >> .env &&
-              echo "SELECTEL_CONTAINER_USERNAME=${{ secrets.SELECTEL_CONTAINER_USERNAME }}" >> .env &&
+              set -eu
 
-              echo "EMAIL_USER=${{ secrets.EMAIL_USER }}" >> .env &&
-              echo "UNISENDER_GO_API_KEY=${{ secrets.UNISENDER_GO_API_KEY }}" >> .env &&
-              
-              docker compose -f docker-compose.prod-ci.yml -p prod up -d
+              export IMAGE_TAG="${{ needs.build.outputs.image_tag }}"
+              export DEPLOY_REF="${{ needs.build.outputs.deploy_ref }}"
+              echo "Deploying IMAGE_TAG=${IMAGE_TAG} from DEPLOY_REF=${DEPLOY_REF}"
+
+              if [ "$(id -un)" = "app" ]; then
+                git -C /home/app/procollab-backend fetch --all --tags --prune
+                git -C /home/app/procollab-backend checkout --detach "${DEPLOY_REF}"
+                git -C /home/app/procollab-backend rev-parse HEAD
+              else
+                sudo -u app git -C /home/app/procollab-backend fetch --all --tags --prune
+                sudo -u app git -C /home/app/procollab-backend checkout --detach "${DEPLOY_REF}"
+                sudo -u app git -C /home/app/procollab-backend rev-parse HEAD
+              fi
+
+              cd /home/app/procollab-backend
+              docker container prune -f
+              docker image prune -a -f
+              docker compose -f docker-compose.prod-ci.yml -p prod pull
+
+              rm -f .env
+              touch .env
+
+              echo "DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" >> .env
+
+              echo "DATABASE_NAME=${{ secrets.DATABASE_NAME }}" >> .env
+              echo "DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}" >> .env
+              echo "DATABASE_USER=${{ secrets.DATABASE_USER }}" >> .env
+              echo "DATABASE_HOST=${{ secrets.DATABASE_HOST }}" >> .env
+              echo "DATABASE_PORT=${{ secrets.DATABASE_PORT }}" >> .env
+
+              echo "SELECTEL_ACCOUNT_ID=${{ secrets.SELECTEL_ACCOUNT_ID }}" >> .env
+              echo "SELECTEL_CONTAINER_NAME=${{ secrets.SELECTEL_CONTAINER_NAME }}" >> .env
+              echo "SELECTEL_CONTAINER_PASSWORD=${{ secrets.SELECTEL_CONTAINER_PASSWORD }}" >> .env
+              echo "SELECTEL_CONTAINER_USERNAME=${{ secrets.SELECTEL_CONTAINER_USERNAME }}" >> .env
+
+              echo "EMAIL_USER=${{ secrets.EMAIL_USER }}" >> .env
+              echo "UNISENDER_GO_API_KEY=${{ secrets.UNISENDER_GO_API_KEY }}" >> .env
+
+              chmod 600 .env
+              docker compose -f docker-compose.prod-ci.yml -p prod config >/dev/null
+
+              docker compose -f docker-compose.prod-ci.yml -p prod up -d --remove-orphans
+              if [ "$(id -u)" -eq 0 ]; then
+                nginx -t
+                systemctl reload nginx
+              else
+                sudo nginx -t
+                sudo systemctl reload nginx
+              fi
+
+              for attempt in $(seq 1 24); do
+                root_status="$(curl -k -s -o /dev/null -w '%{http_code}' https://api.procollab.ru/ || true)"
+                admin_status="$(curl -k -s -o /dev/null -w '%{http_code}' https://api.procollab.ru/admin/login/ || true)"
+
+                if [ "$root_status" = "401" ] && [ "$admin_status" = "200" ]; then
+                  echo "Smoke check passed on attempt ${attempt}"
+                  exit 0
+                fi
+
+                sleep 5
+              done
+
+              echo "Smoke check failed: /=${root_status} /admin/login/=${admin_status}"
+              exit 1
