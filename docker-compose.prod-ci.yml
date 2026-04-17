@@ -2,10 +2,7 @@ version: '3.9'
 
 services:
   web:
-    build:
-      context: .
-      dockerfile: ./Dockerfile
-    image: ghcr.io/procollab-github/api:latest
+    image: ghcr.io/procollab-github/api:${IMAGE_TAG:?IMAGE_TAG is required}
     restart: unless-stopped
     volumes:
       - ./log:/procollab/log
@@ -13,60 +10,8 @@ services:
       - .env
     environment:
       HOST: 0.0.0.0
-    expose:
-      - 8000
-      
-  # web:
-  #   image: ghcr.io/procollab-github/api:latest
-  #   restart: unless-stopped
-  #   volumes:
-  #     - log:/procollab/log
-  #   env_file:
-  #     - .env
-  #   environment:
-  #     HOST: 0.0.0.0
-  #   expose:
-  #     - 8000
-  grafana:
-    image: grafana/grafana:latest
-    restart: unless-stopped
-    expose:
-      - 3000
-    volumes:
-      - grafana-data:/var/lib/grafana
-      - grafana-configs:/etc/grafana
-    environment:
-      - GF_SERVER_ROOT_URL=%(protocol)s://%(domain)s:%(http_port)s/grafana
-      - GF_SERVER_SERVE_FROM_SUB_PATH=true
-  prometheus:
-    image: prom/prometheus:v2.36.0
-    restart: unless-stopped
-    expose:
-      - 9090
-    volumes:
-      - prom-data:/prometheus
-      - prom-configs:/etc/prometheus
-  node-exporter:
-    image: prom/node-exporter:v1.3.1
-    restart: unless-stopped
-    expose:
-      - 9100
-    volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /:/rootfs:ro
-    command:
-      - '--path.procfs=/host/proc'
-      - '--path.sysfs=/host/sys'
-      - '--collector.filesystem.mount-points-exclude'
-      - '^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)'
-  nginx:
-    build: ./nginx
-    restart: unless-stopped
-    depends_on:
-      - web
     ports:
-      - 8000:80
+      - "127.0.0.1:8000:8000"
   redis:
     image: redis:latest
     restart: unless-stopped
@@ -79,9 +24,7 @@ services:
   celerys:
     container_name: api_celery
     restart: always
-    build:
-      context: .
-      dockerfile: ./Dockerfile
+    image: ghcr.io/procollab-github/api:${IMAGE_TAG:?IMAGE_TAG is required}
     env_file:
       - .env
     command: bash ./scripts/celery.sh
@@ -90,12 +33,7 @@ services:
 #      - db
       - web
     volumes:
-      - .:/procollab
+      - ./log:/procollab/log
 
 volumes:
-  grafana-data:
-  grafana-configs:
-  prom-data:
-  prom-configs:
-  log:
   redis-data:
