@@ -78,6 +78,7 @@ INSTALLED_APPS = [
     "files.apps.FilesConfig",
     "events.apps.EventsConfig",
     "partner_programs.apps.PartnerProgramsConfig",
+    "courses.apps.CoursesConfig",
     "mailing.apps.MailingConfig",
     "feed.apps.FeedConfig",
     "project_rates.apps.ProjectRatesConfig",

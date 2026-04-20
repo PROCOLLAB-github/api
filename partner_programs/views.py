@@ -1,10 +1,8 @@
 import io
-import urllib.parse
 
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
 from django.db.models import Exists, OuterRef, Prefetch
-from django.http import FileResponse, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.timezone import now
@@ -20,7 +18,11 @@ from rest_framework.views import APIView
 
 from core.serializers import EmptySerializer, SetLikedSerializer, SetViewedSerializer
 from core.services import add_view, set_like
-from core.utils import XlsxFileToExport, ascii_filename, sanitize_filename
+from core.utils import (
+    XlsxFileToExport,
+    build_xlsx_download_response,
+    sanitize_excel_value,
+)
 from partner_programs.helpers import date_to_iso
 from partner_programs.models import (
     PartnerProgram,
@@ -50,7 +52,6 @@ from partner_programs.services import (
     build_program_field_columns,
     prepare_project_scores_export_data,
     row_dict_for_link,
-    sanitize_excel_value,
 )
 from partner_programs.utils import filter_program_projects_by_field_name
 from projects.models import Collaborator, Project
@@ -97,7 +98,11 @@ class PartnerProgramList(generics.ListCreateAPIView):
 
 
 class PartnerProgramDetail(generics.RetrieveAPIView):
-    queryset = PartnerProgram.objects.prefetch_related("materials", "managers").all()
+    queryset = PartnerProgram.objects.prefetch_related(
+        "materials",
+        "managers",
+        "courses",
+    ).all()
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     serializer_class = PartnerProgramForUnregisteredUserSerializer
 
@@ -655,20 +660,7 @@ class PartnerProgramExportRatesAPIView(APIView):
 
         date_suffix = timezone.now().strftime("%d.%m.%y")
         base_name = f"scores - {program.name or 'program'} - {date_suffix}"
-        safe_name = sanitize_filename(base_name)
-        filename = f"{safe_name}.xlsx"
-        encoded_file_name: str = urllib.parse.quote(filename)
-        fallback_filename = f"{ascii_filename(base_name)}.xlsx"
-        response = HttpResponse(
-            binary_data_to_export,
-            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
-        response["Content-Disposition"] = (
-            "attachment; "
-            f"filename=\"{fallback_filename}\"; "
-            f"filename*=UTF-8''{encoded_file_name}"
-        )
-        return response
+        return build_xlsx_download_response(binary_data_to_export, base_name=base_name)
 
 
 class PartnerProgramExportProjectsAPIView(APIView):
@@ -732,23 +724,7 @@ class PartnerProgramExportProjectsAPIView(APIView):
         label = "projects_review" if only_submitted else "projects"
         date_suffix = timezone.now().strftime("%d.%m.%y")
         base_name = f"{label} - {program.name or 'program'} - {date_suffix}"
-        fname_base = sanitize_filename(base_name)
-        filename = f"{fname_base}.xlsx"
-        encoded_file_name: str = urllib.parse.quote(filename)
-        fallback_filename = f"{ascii_filename(base_name)}.xlsx"
-
-        response = FileResponse(
-            bio,
-            as_attachment=True,
-            filename=filename,
-            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
-        response["Content-Disposition"] = (
-            "attachment; "
-            f"filename=\"{fallback_filename}\"; "
-            f"filename*=UTF-8''{encoded_file_name}"
-        )
-        return response
+        return build_xlsx_download_response(bio.getvalue(), base_name=base_name)
 
     def get(self, request, pk: int):
         program = self._get_program(pk)

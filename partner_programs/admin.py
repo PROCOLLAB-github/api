@@ -1,15 +1,14 @@
 import re
-import urllib.parse
 
 import tablib
 from django import forms
 from django.contrib import admin
 from django.db.models import QuerySet
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest
 from django.urls import path
 from django.utils import timezone
 
-from core.utils import XlsxFileToExport, ascii_filename, sanitize_filename
+from core.utils import XlsxFileToExport, build_xlsx_download_response
 from mailing.views import MailingTemplateRender
 from partner_programs.models import (
     PartnerProgram,
@@ -220,12 +219,7 @@ class PartnerProgramAdmin(admin.ModelAdmin):
         file_name = (
             f"{partner_program.name} {timezone.now().strftime('%d-%m-%Y %H:%M:%S')}"
         )
-        response = HttpResponse(
-            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": f'attachment; filename="{file_name}.xlsx"'},
-        )
-        response.write(binary_data)
-        return response
+        return build_xlsx_download_response(binary_data, base_name=file_name)
 
     def get_export_rates_view(self, request, object_id):
         rates_data_to_write: list[dict] = self._get_prepared_rates_data_for_export(
@@ -240,19 +234,7 @@ class PartnerProgramAdmin(admin.ModelAdmin):
         program_name = PartnerProgram.objects.get(pk=object_id).name
         date_suffix = timezone.now().strftime("%d.%m.%y")
         base_name = f"scores - {program_name or 'program'} - {date_suffix}"
-        safe_name = sanitize_filename(base_name)
-        encoded_file_name: str = urllib.parse.quote(f"{safe_name}.xlsx")
-        fallback_filename = f"{ascii_filename(base_name)}.xlsx"
-        response = HttpResponse(
-            binary_data_to_export,
-            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
-        response["Content-Disposition"] = (
-            "attachment; "
-            f"filename=\"{fallback_filename}\"; "
-            f"filename*=UTF-8''{encoded_file_name}"
-        )
-        return response
+        return build_xlsx_download_response(binary_data_to_export, base_name=base_name)
 
     def _get_prepared_rates_data_for_export(self, program_id: int) -> list[dict]:
         """
