@@ -50,11 +50,17 @@ jobs:
               chmod 600 .env
 
               docker compose -f docker-compose.dev-ci.yml config >/dev/null
-              docker compose -f docker-compose.dev-ci.yml up -d --build --force-recreate --remove-orphans &&
+              docker compose -f docker-compose.dev-ci.yml build web &&
+              docker compose -f docker-compose.dev-ci.yml up -d --force-recreate --remove-orphans &&
 
               install -d /etc/nginx/procollab/includes &&
               install -m 644 deploy/nginx/host/includes/proxy_app.inc /etc/nginx/procollab/includes/proxy_app.inc &&
               install -m 644 deploy/nginx/host/dev/dev.procollab.ru /etc/nginx/sites-available/dev.procollab.ru &&
               ln -sfn /etc/nginx/sites-available/dev.procollab.ru /etc/nginx/sites-enabled/dev.procollab.ru &&
-              nginx -t &&
-              systemctl reload nginx
+              if [ "$(id -u)" -eq 0 ]; then
+                nginx -t &&
+                systemctl reload nginx
+              else
+                sudo nginx -t &&
+                sudo systemctl reload nginx
+              fi
