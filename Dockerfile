@@ -27,5 +27,12 @@ RUN mkdir /procollab/static
 
 COPY . /procollab/
 
-CMD ["bash", "./scripts/startup.sh"]
+RUN DJANGO_SECRET_KEY=build-time-secret \
+    DATABASE_NAME=postgres \
+    DATABASE_USER=postgres \
+    DATABASE_PASSWORD=postgres \
+    DATABASE_HOST=localhost \
+    DATABASE_PORT=5432 \
+    python manage.py collectstatic --no-input
 
+CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "procollab.asgi:application"]
