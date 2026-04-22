@@ -215,7 +215,7 @@ jobs:
               for attempt in $(seq 1 24); do
                 celery_status="$(docker inspect -f '{{.State.Status}}' api_celery 2>/dev/null || true)"
                 if [ "$celery_status" = "running" ]; then
-                  celery_ping="$(docker compose -f docker-compose.prod-ci.yml -p prod exec -T celerys sh -lc 'celery -A procollab inspect ping -d \"celery@$(hostname)\"' 2>&1 || true)"
+                  celery_ping="$(docker compose -f docker-compose.prod-ci.yml -p prod exec -T celerys sh -lc 'celery -A procollab inspect ping --timeout=10' 2>&1 || true)"
                   printf '%s\n' "$celery_ping"
                   if printf '%s\n' "$celery_ping" | grep -q 'pong'; then
                     echo "Celery check passed on attempt ${attempt}"
