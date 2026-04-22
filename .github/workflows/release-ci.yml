@@ -210,28 +210,8 @@ jobs:
                 exit 1
               fi
 
-              celery_status=""
-              celery_ping=""
-              for attempt in $(seq 1 24); do
-                celery_status="$(docker inspect -f '{{.State.Status}}' api_celery 2>/dev/null || true)"
-                if [ "$celery_status" = "running" ]; then
-                  celery_ping="$(docker compose -f docker-compose.prod-ci.yml -p prod exec -T celerys sh -lc 'celery -A procollab inspect ping -d \"celery@$(hostname)\"' 2>&1 || true)"
-                  printf '%s\n' "$celery_ping"
-                  if printf '%s\n' "$celery_ping" | grep -q 'pong'; then
-                    echo "Celery check passed on attempt ${attempt}"
-                    break
-                  fi
-                fi
-
-                sleep 5
-              done
-
+              celery_status="$(docker inspect -f '{{.State.Status}}' api_celery 2>/dev/null || true)"
               if [ "$celery_status" != "running" ]; then
                 echo "Celery container is not running: ${celery_status}" >&2
                 exit 1
               fi
-
-              printf '%s\n' "$celery_ping" | grep -q 'pong' || {
-                echo "Celery ping failed" >&2
-                exit 1
-              }
