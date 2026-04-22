@@ -17,7 +17,7 @@ services:
       - "127.0.0.1:8000:8000" 
 
   redis:
-    image: redis:7.2.5
+    image: redis:latest
     restart: unless-stopped
     expose:
       - 6379
