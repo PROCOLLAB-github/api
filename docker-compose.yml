@@ -1,13 +1,17 @@
+# LEGACY compose path.
+# Do not use this file for prod or CI/CD deployments.
+# Intentional manual use requires: docker compose --profile legacy ...
 version: '3.9'
 
 services:
   web:
+    profiles: ["legacy"]
     container_name: web
     build:
       context: .
       dockerfile: ./Dockerfile
     restart: always
-    command: bash ./scripts/startup.sh
+    command: ["daphne", "-b", "0.0.0.0", "-p", "8000", "procollab.asgi:application"]
     volumes:
       - ./log:/procollab/log
     env_file:
@@ -18,6 +22,7 @@ services:
       - 8000
 
   nginx:
+    profiles: ["legacy"]
     container_name: nginx
     build: ./nginx
     depends_on:
@@ -26,6 +31,7 @@ services:
       - "8000:80"
 
   redis:
+    profiles: ["legacy"]
     container_name: redis
     image: redis:latest
     expose:
@@ -34,6 +40,7 @@ services:
       - redis-data:/data
 
   celerys:
+    profiles: ["legacy"]
     container_name: api_celery
     restart: always
     build:

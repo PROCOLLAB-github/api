@@ -15,11 +15,45 @@ on:
         type: string
 
 jobs:
+  prepare:
+    name: Resolve Release Ref
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.vars.outputs.image_tag }}
+      deploy_ref: ${{ steps.vars.outputs.deploy_ref }}
+    steps:
+      - name: Resolve image tag and deploy ref
+        id: vars
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            image_tag='${{ github.event.release.tag_name }}'
+            deploy_ref='${{ github.event.release.tag_name }}'
+          else
+            image_tag='${{ github.event.inputs.image_tag }}'
+            deploy_ref='${{ github.event.inputs.deploy_ref }}'
+          fi
+
+          if [ -z "$image_tag" ]; then
+            echo "IMAGE_TAG is empty" >&2
+            exit 1
+          fi
+
+          if [ -z "$deploy_ref" ]; then
+            echo "DEPLOY_REF is empty" >&2
+            exit 1
+          fi
+
+          echo "image_tag=$image_tag" >> "$GITHUB_OUTPUT"
+          echo "deploy_ref=$deploy_ref" >> "$GITHUB_OUTPUT"
+
   test:
     name: Tests
     runs-on: ubuntu-latest
+    needs: [ prepare ]
     steps:
       - uses: actions/checkout@v3
+        with:
+          ref: ${{ needs.prepare.outputs.deploy_ref }}
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v4
@@ -57,39 +91,15 @@ jobs:
   build:
     name: Build Image
     runs-on: ubuntu-latest
-    needs: [ test ]
+    needs: [ prepare, test ]
     outputs:
-      image_tag: ${{ steps.vars.outputs.image_tag }}
-      deploy_ref: ${{ steps.vars.outputs.deploy_ref }}
+      image_tag: ${{ needs.prepare.outputs.image_tag }}
+      deploy_ref: ${{ needs.prepare.outputs.deploy_ref }}
     steps:
       - name: "Checkout repository"
         uses: actions/checkout@v3
         with:
-          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || github.event.inputs.deploy_ref }}
-
-      - name: Resolve image tag
-        id: vars
-        run: |
-          if [ "${{ github.event_name }}" = "release" ]; then
-            image_tag='${{ github.event.release.tag_name }}'
-            deploy_ref='${{ github.event.release.tag_name }}'
-          else
-            image_tag='${{ github.event.inputs.image_tag }}'
-            deploy_ref='${{ github.event.inputs.deploy_ref }}'
-          fi
-
-          if [ -z "$image_tag" ]; then
-            echo "IMAGE_TAG is empty" >&2
-            exit 1
-          fi
-
-          if [ -z "$deploy_ref" ]; then
-            echo "DEPLOY_REF is empty" >&2
-            exit 1
-          fi
-
-          echo "image_tag=$image_tag" >> "$GITHUB_OUTPUT"
-          echo "deploy_ref=$deploy_ref" >> "$GITHUB_OUTPUT"
+          ref: ${{ needs.prepare.outputs.deploy_ref }}
 
       - name: "Set up QEMU"
         uses: docker/setup-qemu-action@v3
@@ -110,7 +120,7 @@ jobs:
         with:
           images: ghcr.io/procollab-github/api
           tags: |
-            type=raw,value=${{ steps.vars.outputs.image_tag }}
+            type=raw,value=${{ needs.prepare.outputs.image_tag }}
       - name: Build and push container
         uses: docker/build-push-action@v5
         with:
@@ -124,7 +134,7 @@ jobs:
   deploy:
       name: Deploy
       runs-on: ubuntu-latest
-      needs: [ build ]
+      needs: [ prepare, build ]
       steps:
         - name: Deploy to server
           uses: garygrossgarten/github-action-ssh@release
@@ -135,8 +145,8 @@ jobs:
             command: |
               set -eu
 
-              export IMAGE_TAG="${{ needs.build.outputs.image_tag }}"
-              export DEPLOY_REF="${{ needs.build.outputs.deploy_ref }}"
+              export IMAGE_TAG="${{ needs.prepare.outputs.image_tag }}"
+              export DEPLOY_REF="${{ needs.prepare.outputs.deploy_ref }}"
               echo "Deploying IMAGE_TAG=${IMAGE_TAG} from DEPLOY_REF=${DEPLOY_REF}"
 
               if [ "$(id -un)" = "app" ]; then
@@ -150,10 +160,6 @@ jobs:
               fi
 
               cd /home/app/procollab-backend
-              docker container prune -f
-              docker image prune -a -f
-              docker compose -f docker-compose.prod-ci.yml -p prod pull
-
               rm -f .env
               touch .env
 
@@ -175,7 +181,9 @@ jobs:
 
               chmod 600 .env
               docker compose -f docker-compose.prod-ci.yml -p prod config >/dev/null
+              docker compose -f docker-compose.prod-ci.yml -p prod pull
 
+              docker compose -f docker-compose.prod-ci.yml -p prod run --rm web python manage.py migrate
               docker compose -f docker-compose.prod-ci.yml -p prod up -d --remove-orphans
               if [ "$(id -u)" -eq 0 ]; then
                 nginx -t
@@ -186,16 +194,44 @@ jobs:
               fi
 
               for attempt in $(seq 1 24); do
-                root_status="$(curl -k -s -o /dev/null -w '%{http_code}' https://api.procollab.ru/ || true)"
-                admin_status="$(curl -k -s -o /dev/null -w '%{http_code}' https://api.procollab.ru/admin/login/ || true)"
+                root_status="$(curl -s -o /dev/null -w '%{http_code}' https://api.procollab.ru/ || true)"
+                admin_status="$(curl -s -o /dev/null -w '%{http_code}' https://api.procollab.ru/admin/login/ || true)"
 
                 if [ "$root_status" = "401" ] && [ "$admin_status" = "200" ]; then
                   echo "Smoke check passed on attempt ${attempt}"
-                  exit 0
+                  break
                 fi
 
                 sleep 5
               done
 
-              echo "Smoke check failed: /=${root_status} /admin/login/=${admin_status}"
-              exit 1
+              if [ "$root_status" != "401" ] || [ "$admin_status" != "200" ]; then
+                echo "Smoke check failed: /=${root_status} /admin/login/=${admin_status}" >&2
+                exit 1
+              fi
+
+              celery_status=""
+              celery_ping=""
+              for attempt in $(seq 1 24); do
+                celery_status="$(docker inspect -f '{{.State.Status}}' api_celery 2>/dev/null || true)"
+                if [ "$celery_status" = "running" ]; then
+                  celery_ping="$(docker compose -f docker-compose.prod-ci.yml -p prod exec -T celerys sh -lc 'celery -A procollab inspect ping -d \"celery@$(hostname)\"' 2>&1 || true)"
+                  printf '%s\n' "$celery_ping"
+                  if printf '%s\n' "$celery_ping" | grep -q 'pong'; then
+                    echo "Celery check passed on attempt ${attempt}"
+                    break
+                  fi
+                fi
+
+                sleep 5
+              done
+
+              if [ "$celery_status" != "running" ]; then
+                echo "Celery container is not running: ${celery_status}" >&2
+                exit 1
+              fi
+
+              printf '%s\n' "$celery_ping" | grep -q 'pong' || {
+                echo "Celery ping failed" >&2
+                exit 1
+              }
