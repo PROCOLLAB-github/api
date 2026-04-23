@@ -1,7 +1,6 @@
 import urllib.parse
 
 import jwt
-import requests
 from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -46,7 +45,6 @@ from users.constants import (
     VERBOSE_ROLE_TYPES,
     VERBOSE_USER_TYPES,
     VERIFY_EMAIL_REDIRECT_URL,
-    OnboardingStage,
 )
 from users.helpers import check_related_fields_update, force_verify_user, verify_email
 from users.models import LikesOnProject, UserAchievement, UserSkillConfirmation
@@ -55,18 +53,15 @@ from users.serializers import (
     AchievementDetailSerializer,
     AchievementListSerializer,
     PublicUserSerializer,
-    RemoteBuySubSerializer,
     ResendVerifyEmailSerializer,
     SpecializationSerializer,
     SpecializationsSerializer,
     UserApproveSkillResponse,
-    UserCloneDataSerializer,
     UserDetailSerializer,
     UserListSerializer,
     UserProjectListSerializer,
     UserSkillConfirmationSerializer,
     UserSubscribedProjectsSerializer,
-    UserSubscriptionDataSerializer,
     VerifyEmailSerializer,
 )
 from users.typing import UserCVDataV2
@@ -76,7 +71,6 @@ from .helpers import check_chache_for_cv
 from .pagination import UsersPagination
 from .schema import SKILL_PK_PARAM, USER_PK_PARAM
 from .services.cv_data_prepare import UserCVDataPreparerV2
-from .services.verification import VerificationTasks
 from .tasks import send_mail_cv
 
 User = get_user_model()
@@ -263,31 +257,7 @@ class CurrentUser(GenericAPIView):
     def get(self, request):
         user = request.user
         serializer = self.get_serializer(user)
-
-        if settings.DEBUG:
-            skills_url_name = (
-                "https://skills.dev.procollab.ru/progress/subscription-data/"
-            )
-        else:
-            skills_url_name = (
-                "https://api.skills.procollab.ru/progress/subscription-data/"
-            )
-        try:
-            subscription_data = requests.get(
-                skills_url_name,
-                headers={
-                    "accept": "application/json",
-                    "Authorization": request.META.get("HTTP_AUTHORIZATION"),
-                },
-            )
-            subscription_serializer = UserSubscriptionDataSerializer(
-                subscription_data.json()
-            )
-            subs_data = subscription_serializer.data
-        except Exception:
-            subs_data = {}
-
-        return Response(serializer.data | subs_data, status=status.HTTP_200_OK)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class UserTypesView(APIView):
@@ -493,13 +463,6 @@ class SetUserOnboardingStage(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                     data={"error": "Wrong onboarding stage number!"},
                 )
-            # if the user was on the last stage and passed it
-            if (
-                request.user.onboarding_stage == OnboardingStage.account_type.value
-                and new_stage == OnboardingStage.completed.value
-            ):
-                VerificationTasks.create(request.user)
-
             request.user.onboarding_stage = new_stage
             request.user.save()
 
@@ -582,82 +545,6 @@ class UserSpecializationsInlineView(ListAPIView):
 
     def get_queryset(self):
         return Specialization.objects.all()
-
-
-class SingleUserDataView(ListAPIView):
-    serializer_class = UserCloneDataSerializer
-    permissions = [AllowAny]
-    authentication_off = True
-
-    def get_queryset(self) -> User:
-        return [get_object_or_404(User, email=self.request.data["email"])]
-
-
-class RemoteViewSubscriptions(APIView):
-    permission_classes = [AllowAny]
-
-    def get(self, request, *args, **kwargs):
-        try:
-            subscriptions = self._get_response_from_remote_api()
-            return Response(subscriptions, status=status.HTTP_200_OK)
-        except requests.RequestException as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-    def _get_link_to_remote_api(self) -> str:
-        # TODO something to reuse this code
-        if settings.DEBUG:
-            subscriptions_url = "https://skills.dev.procollab.ru/subscription/"
-        else:
-            subscriptions_url = "https://api.skills.procollab.ru/subscription/"
-        return subscriptions_url
-
-    def _get_response_from_remote_api(self):
-        subscriptions_url = self._get_link_to_remote_api()
-        response = requests.get(
-            subscriptions_url,
-            headers={
-                "accept": "application/json",
-                "Authorization": self.request.META.get("HTTP_AUTHORIZATION"),
-            },
-        )
-        response.raise_for_status()
-        return response.json()
-
-
-class RemoteCreatePayment(GenericAPIView):
-    serializer_class = RemoteBuySubSerializer
-    permission_classes = [AllowAny]
-
-    def post(self, request, *args, **kwargs):
-        try:
-            subscriptions_buy_url = self._get_link_to_remote_api()
-            data, headers = self._get_data_to_request_remote_api()
-            response = requests.post(subscriptions_buy_url, json=data, headers=headers)
-            response.raise_for_status()
-            return Response(response.json(), status=status.HTTP_200_OK)
-        except requests.RequestException as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-    def _get_link_to_remote_api(self) -> str:
-        # TODO something to reuse this code
-        if settings.DEBUG:
-            subscriptions_buy_url = "https://skills.dev.procollab.ru/subscription/buy/"
-        else:
-            subscriptions_buy_url = "https://api.skills.procollab.ru/subscription/buy/"
-        return subscriptions_buy_url
-
-    def _get_data_to_request_remote_api(self) -> tuple[dict, dict]:
-        serializer = self.serializer_class(data=self.request.data)
-        if serializer.is_valid():
-            data = serializer.validated_data
-            headers = {
-                "accept": "application/json",
-                "Authorization": self.request.META.get("HTTP_AUTHORIZATION"),
-            }
-            return data, headers
-
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserCVDownload(APIView):

@@ -1,13 +1,17 @@
+# LEGACY compose path.
+# Do not use this file for prod or CI/CD deployments.
+# Intentional manual use requires: docker compose --profile legacy ...
 version: '3.9'
 
 services:
   web:
+    profiles: ["legacy"]
     container_name: web
     build:
       context: .
       dockerfile: ./Dockerfile
     restart: always
-    command: bash ./scripts/startup.sh
+    command: ["daphne", "-b", "0.0.0.0", "-p", "8000", "procollab.asgi:application"]
     volumes:
       - ./log:/procollab/log
     env_file:
@@ -17,49 +21,17 @@ services:
     expose:
       - 8000
 
-  grafana:
-    image: grafana/grafana-enterprise
-    container_name: grafana
-    restart: unless-stopped
-    ports:
-      - '3000:3000'
-    volumes:
-      - grafana-storage:/var/lib/grafana
-
-
-  prometheus:
-    container_name: prometheus
-    image: prom/prometheus:v2.36.0
-    ports:
-      - '9090:9090'
-    volumes:
-      - prom-data:/prometheus
-      - ./prometheus:/etc/prometheus
-
-
   nginx:
+    profiles: ["legacy"]
     container_name: nginx
     build: ./nginx
     depends_on:
       - web
     ports:
       - "8000:80"
-# todo: настроим позже
-#  loki:
-#    image: grafana/loki:2.9.0
-#    ports:
-#      - "3100:3100"
-#    command: -config.file=/etc/loki/local-config.yaml
-#
-#  promtail:
-#    image: grafana/promtail:2.9.0
-#    volumes:
-#      - /var/log:/var/log
-#      - ./promtail:/etc/promtail
-#      - ./log:/procollab/log
-#    command: -config.file=/etc/promtail/config.yml
 
   redis:
+    profiles: ["legacy"]
     container_name: redis
     image: redis:latest
     expose:
@@ -68,6 +40,7 @@ services:
       - redis-data:/data
 
   celerys:
+    profiles: ["legacy"]
     container_name: api_celery
     restart: always
     build:
@@ -83,11 +56,5 @@ services:
       - .:/procollab
 
 volumes:
-  grafana-data:
-  grafana-configs:
-  prom-data:
-  prom-configs:
   log:
-  promtail:
   redis-data:
-  grafana-storage: {}

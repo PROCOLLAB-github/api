@@ -1,4 +1,4 @@
-name: 'Deploy dev server'
+name: Deploy Dev
 
 on:
   push:
@@ -8,44 +8,103 @@ on:
 
 jobs:
   deploy:
+      name: Deploy
       runs-on: ubuntu-latest
       steps:
-        - name: run on server
+        - name: Deploy to server
           uses: garygrossgarten/github-action-ssh@release
           with:
             host: ${{ secrets.DEV_SERVER_HOST }}
             username: ${{ secrets.DEV_SERVER_USER }}
             password: ${{ secrets.DEV_SERVER_PASSWORD }}
             command: |
-              cd /root/api &&
-              git checkout dev &&
-              git pull &&
-              
-              rm -f .env &&
-              touch .env &&
-              
-              echo "DJANGO_SECRET_KEY=${{ secrets.DEV_DJANGO_SECRET_KEY }}" >> .env &&
-              
-              echo "DATABASE_NAME=${{ secrets.DEV_DATABASE_NAME }}" >> .env &&
-              echo "DATABASE_PASSWORD=${{ secrets.DEV_DATABASE_PASSWORD }}" >> .env &&
-              echo "DATABASE_USER=${{ secrets.DEV_DATABASE_USER }}" >> .env &&
-              echo "DATABASE_HOST=${{ secrets.DEV_DATABASE_HOST }}" >> .env &&
-              echo "DATABASE_PORT=${{ secrets.DEV_DATABASE_PORT }}" >> .env &&
-              
-              echo "EMAIL_USER=${{ secrets.EMAIL_USER }}" >> .env &&
-              echo "EMAIL_PASSWORD=${{ secrets.EMAIL_PASSWORD }}" >> .env &&
-              echo "EMAIL_HOST=${{ secrets.EMAIL_HOST }}" >> .env &&
-              echo "EMAIL_PORT=${{ secrets.EMAIL_PORT }}" >> .env &&
-              echo "SELECTEL_ACCOUNT_ID=${{ secrets.SELECTEL_ACCOUNT_ID }}" >> .env &&
-              echo "SELECTEL_CONTAINER_NAME=${{ secrets.SELECTEL_CONTAINER_NAME }}" >> .env &&
-              echo "SELECTEL_CONTAINER_PASSWORD=${{ secrets.SELECTEL_CONTAINER_PASSWORD }}" >> .env &&
-              echo "SELECTEL_CONTAINER_USERNAME=${{ secrets.SELECTEL_CONTAINER_USERNAME }}" >> .env &&
-              
-              echo "CLICKUP_API_TOKEN=${{ secrets.CLICKUP_API_TOKEN }}" >> .env &&
-              echo "CLICKUP_SPACE_ID=${{ secrets.CLICKUP_SPACE_ID }}" >> .env &&
-              
-              echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" >> .env &&
+              set -eu
 
-              echo "UNISENDER_GO_API_KEY=${{ secrets.UNISENDER_GO_API_KEY }}" >> .env &&
-              
-              docker compose -f docker-compose.dev-ci.yml up -d --build --force-recreate
+              cd /root/api
+              git fetch --all --tags --prune
+              git branch -r --contains "${{ github.sha }}" | grep -q 'origin/dev'
+              git checkout --detach "${{ github.sha }}"
+              git rev-parse HEAD
+
+              export IMAGE_TAG="${{ github.sha }}"
+
+              rm -f .env
+              touch .env
+
+              echo "DJANGO_SECRET_KEY=${{ secrets.DEV_DJANGO_SECRET_KEY }}" >> .env
+
+              echo "DATABASE_NAME=${{ secrets.DEV_DATABASE_NAME }}" >> .env
+              echo "DATABASE_PASSWORD=${{ secrets.DEV_DATABASE_PASSWORD }}" >> .env
+              echo "DATABASE_USER=${{ secrets.DEV_DATABASE_USER }}" >> .env
+              echo "DATABASE_HOST=${{ secrets.DEV_DATABASE_HOST }}" >> .env
+              echo "DATABASE_PORT=${{ secrets.DEV_DATABASE_PORT }}" >> .env
+
+              echo "SELECTEL_ACCOUNT_ID=${{ secrets.SELECTEL_ACCOUNT_ID }}" >> .env
+              echo "SELECTEL_CONTAINER_NAME=${{ secrets.SELECTEL_CONTAINER_NAME }}" >> .env
+              echo "SELECTEL_CONTAINER_PASSWORD=${{ secrets.SELECTEL_CONTAINER_PASSWORD }}" >> .env
+              echo "SELECTEL_CONTAINER_USERNAME=${{ secrets.SELECTEL_CONTAINER_USERNAME }}" >> .env
+
+              echo "EMAIL_USER=${{ secrets.EMAIL_USER }}" >> .env
+              echo "UNISENDER_GO_API_KEY=${{ secrets.UNISENDER_GO_API_KEY }}" >> .env
+
+              chmod 600 .env
+
+              docker compose -f docker-compose.dev-ci.yml config >/dev/null
+              docker compose -f docker-compose.dev-ci.yml build web &&
+              docker compose -f docker-compose.dev-ci.yml run --rm web python manage.py migrate &&
+              docker compose -f docker-compose.dev-ci.yml up -d --force-recreate --remove-orphans &&
+
+              install -d /etc/nginx/procollab/includes &&
+              install -m 644 deploy/nginx/host/includes/proxy_app.inc /etc/nginx/procollab/includes/proxy_app.inc &&
+              install -m 644 deploy/nginx/host/dev/dev.procollab.ru /etc/nginx/sites-available/dev.procollab.ru &&
+              ln -sfn /etc/nginx/sites-available/dev.procollab.ru /etc/nginx/sites-enabled/dev.procollab.ru &&
+              if [ "$(id -u)" -eq 0 ]; then
+                nginx -t &&
+                systemctl reload nginx
+              else
+                sudo nginx -t &&
+                sudo systemctl reload nginx
+              fi &&
+
+              for attempt in $(seq 1 24); do
+                root_status="$(curl -s -o /dev/null -w '%{http_code}' https://dev.procollab.ru/ || true)" &&
+                admin_status="$(curl -s -o /dev/null -w '%{http_code}' https://dev.procollab.ru/admin/login/ || true)" &&
+
+                if [ "$root_status" = "401" ] && [ "$admin_status" = "200" ]; then
+                  echo "Smoke check passed on attempt ${attempt}" &&
+                  break
+                fi
+
+                sleep 5
+              done &&
+
+              if [ "$root_status" != "401" ] || [ "$admin_status" != "200" ]; then
+                echo "Smoke check failed: /=${root_status} /admin/login/=${admin_status}" >&2 &&
+                exit 1
+              fi &&
+
+              celery_status="" &&
+              celery_ping="" &&
+              for attempt in $(seq 1 24); do
+                celery_status="$(docker inspect -f '{{.State.Status}}' api_celery 2>/dev/null || true)" &&
+                if [ "$celery_status" = "running" ]; then
+                  celery_ping="$(docker compose -f docker-compose.dev-ci.yml exec -T celerys sh -lc 'celery -A procollab inspect ping --timeout=10' 2>&1 || true)" &&
+                  printf '%s\n' "$celery_ping" &&
+                  if printf '%s\n' "$celery_ping" | grep -q 'pong'; then
+                    echo "Celery check passed on attempt ${attempt}" &&
+                    break
+                  fi
+                fi &&
+
+                sleep 5
+              done &&
+
+              if [ "$celery_status" != "running" ]; then
+                echo "Celery container is not running: ${celery_status}" >&2 &&
+                exit 1
+              fi &&
+
+              printf '%s\n' "$celery_ping" | grep -q 'pong' || {
+                echo "Celery ping failed" >&2
+                exit 1
+              }

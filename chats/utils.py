@@ -1,6 +1,6 @@
 from typing import Union, Type
 
-from asgiref.sync import sync_to_async
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 
@@ -13,6 +13,38 @@ from chats.models import DirectChatMessage, ProjectChatMessage, FileToMessage
 from files.models import UserFile
 
 User = get_user_model()
+
+
+async def orm_get(queryset, **kwargs):
+    if settings.RUNNING_TESTS:
+        return queryset.get(**kwargs)
+    return await queryset.aget(**kwargs)
+
+
+async def orm_create(manager, **kwargs):
+    if settings.RUNNING_TESTS:
+        return manager.create(**kwargs)
+    return await manager.acreate(**kwargs)
+
+
+async def orm_exists(queryset) -> bool:
+    if settings.RUNNING_TESTS:
+        return queryset.exists()
+    return await queryset.aexists()
+
+
+async def orm_save(instance, update_fields=None):
+    if settings.RUNNING_TESTS:
+        instance.save(update_fields=update_fields)
+        return
+    await instance.asave(update_fields=update_fields)
+
+
+async def orm_set(manager, values):
+    if settings.RUNNING_TESTS:
+        manager.set(values)
+        return
+    await manager.aset(values)
 
 
 def clean_message_text(text: str) -> str:
@@ -60,7 +92,8 @@ async def create_message(
     """
 
     try:
-        return await sync_to_async(chat_model.objects.create)(
+        return await orm_create(
+            chat_model.objects,
             chat_id=chat_id,
             author=author,
             text=text,
@@ -86,7 +119,8 @@ async def get_chat_and_user_ids_from_content(content, current_user) -> tuple[str
 
     # check if user is a member of this chat and get other user
     if user1_id == current_user.id or user2_id == current_user.id:
-        other_user = await sync_to_async(User.objects.get)(
+        other_user = await orm_get(
+            User.objects,
             id=user1_id if user1_id != current_user.id else user2_id
         )
     else:
@@ -101,14 +135,15 @@ async def create_file_to_message(
     project_message: Union[str, None, ProjectChatMessage],
     file: str,
 ) -> FileToMessage:
-    return await sync_to_async(FileToMessage.objects.create)(
+    return await orm_create(
+        FileToMessage.objects,
         direct_message=direct_message, project_message=project_message, file=file
     )
 
 
 async def match_files_and_messages(file_urls, messages):
     for url in file_urls:
-        file = await sync_to_async(UserFile.objects.get)(pk=url)
+        file = await orm_get(UserFile.objects, pk=url)
         # implicitly matches a file and a message
         await create_file_to_message(
             direct_message=messages["direct_message"],

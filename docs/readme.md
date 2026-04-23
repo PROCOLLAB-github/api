@@ -5,4 +5,3 @@
 - [redoc](https://api.procollab.ru/redoc)
 
 ## [WebSockets для чатов](/docs/chats.md)
-

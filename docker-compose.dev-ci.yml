@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile
-    image: ghcr.io/procollab-github/api:latest
+    image: procollab-dev-api:${IMAGE_TAG:-dev}
     restart: unless-stopped
     volumes:
       - ./log:/procollab/log
@@ -15,51 +15,6 @@ services:
       HOST: 0.0.0.0
     ports:
       - "127.0.0.1:8000:8000" 
-
-  grafana:
-    image: grafana/grafana:latest
-    restart: unless-stopped
-    expose:
-      - 3000
-    volumes:
-      - grafana-data:/var/lib/grafana
-      - grafana-configs:/etc/grafana
-    environment:
-      - GF_SERVER_ROOT_URL=%(protocol)s://%(domain)s:%(http_port)s/grafana
-      - GF_SERVER_SERVE_FROM_SUB_PATH=true
-
-  prometheus:
-    image: prom/prometheus:v2.36.0
-    restart: unless-stopped
-    expose:
-      - 9090
-    volumes:
-      - prom-data:/prometheus
-      - ./prometheus:/etc/prometheus
-
-  #nginx:
-  #  restart: unless-stopped
-  #  build: ./nginx
-  #  depends_on:
-  #    - web
-  #  ports:
-  #    - 8000:80
-
-  loki:
-    image: grafana/loki:2.9.0
-    restart: unless-stopped
-    ports:
-      - "3100:3100"
-    command: -config.file=/etc/loki/local-config.yaml
-
-  promtail:
-    image: grafana/promtail:2.9.0
-    restart: unless-stopped
-    volumes:
-      - /var/log:/var/log
-      - ./promtail:/etc/promtail
-      - ./log:/procollab/log
-    command: -config.file=/etc/promtail/config.yml
 
   redis:
     image: redis:latest
@@ -73,9 +28,7 @@ services:
   celerys:
     container_name: api_celery
     restart: always
-    build:
-      context: .
-      dockerfile: ./Dockerfile
+    image: procollab-dev-api:${IMAGE_TAG:-dev}
     env_file:
       - .env
     command: bash ./scripts/celery.sh
@@ -84,13 +37,6 @@ services:
       #      - db
       - web
     volumes:
-      - .:/procollab
-
+      - ./log:/procollab/log
 volumes:
-  grafana-data:
-  grafana-configs:
-  prom-data:
-  prom-configs:
-  log:
-  promtail:
   redis-data:

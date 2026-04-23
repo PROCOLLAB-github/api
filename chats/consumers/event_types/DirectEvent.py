@@ -1,6 +1,5 @@
 from chats.models import DirectChatMessage, DirectChat
 from chats.websockets_settings import Event, EventType
-from asgiref.sync import sync_to_async
 from chats.exceptions import (
     WrongChatIdException,
     UserNotMessageAuthorException,
@@ -12,6 +11,11 @@ from chats.utils import (
     create_message,
     get_chat_and_user_ids_from_content,
     match_files_and_messages,
+    orm_create,
+    orm_exists,
+    orm_get,
+    orm_save,
+    orm_set,
 )
 from chats.serializers import DirectChatMessageListSerializer
 
@@ -31,18 +35,19 @@ class DirectEvent:
         chat_id = DirectChat.get_chat_id_from_users(self.user, other_user)
 
         # check if chat exists
-        try:
-            await sync_to_async(DirectChat.objects.get)(pk=chat_id)
-        except DirectChat.DoesNotExist:
+        if not await orm_exists(DirectChat.objects.filter(pk=chat_id)):
             # if not, create such chat
-            await sync_to_async(DirectChat.create_from_two_users)(self.user, other_user)
+            chat = await orm_create(DirectChat.objects, pk=chat_id)
+            await orm_set(chat.users, [self.user, other_user])
 
-        try:
-            reply_to_message = await sync_to_async(DirectChatMessage.objects.get)(
-                pk=event.content["reply_to"]
-            )
-        except DirectChatMessage.DoesNotExist:
-            reply_to_message = None
+        reply_to_message = None
+        if event.content["reply_to"] is not None:
+            try:
+                reply_to_message = await orm_get(
+                    DirectChatMessage.objects, pk=event.content["reply_to"]
+                )
+            except DirectChatMessage.DoesNotExist:
+                reply_to_message = None
 
         msg = await create_message(
             chat_id=chat_id,
@@ -58,9 +63,13 @@ class DirectEvent:
         }
         await match_files_and_messages(event.content["file_urls"], messages)
 
-        message_data = await sync_to_async(
-            lambda: (DirectChatMessageListSerializer(msg)).data
-        )()
+        serialized_message = await orm_get(
+            DirectChatMessage.objects.select_related("author", "reply_to__author").prefetch_related(
+                "file_to_message__file"
+            ),
+            pk=msg.pk,
+        )
+        message_data = DirectChatMessageListSerializer(serialized_message).data
 
         content = {
             "chat_id": chat_id,
@@ -81,15 +90,13 @@ class DirectEvent:
         chat_id, other_user = await get_chat_and_user_ids_from_content(
             event.content, self.user
         )
-        msg = await sync_to_async(DirectChatMessage.objects.get)(
-            pk=event.content["message_id"]
-        )
+        msg = await orm_get(DirectChatMessage.objects, pk=event.content["message_id"])
         if msg.chat_id != chat_id or msg.author_id != other_user.id:
             raise WrongChatIdException(
                 "Some of chat/message ids are wrong, you can't access this message"
             )
         msg.is_read = True
-        await sync_to_async(msg.save)()
+        await orm_save(msg, update_fields=["is_read"])
         # send 2 events to user's channel
         other_user_channel = cache.get(get_user_channel_cache_key(other_user), None)
         json_thingy = {
@@ -109,13 +116,13 @@ class DirectEvent:
     async def process_delete_message_event(self, event: Event, room_name: str):
         message_id = event.content["message_id"]
 
-        message = await sync_to_async(DirectChatMessage.objects.get)(pk=message_id)
+        message = await orm_get(DirectChatMessage.objects, pk=message_id)
 
         if self.user.id != message.author_id:
             raise UserIsNotAuthor(f"User {self.user.id} is not author {message.text}")
 
         message.is_deleted = True
-        await sync_to_async(message.save)()
+        await orm_save(message, update_fields=["is_deleted"])
 
         chat_id, other_user = await get_chat_and_user_ids_from_content(
             event.content, self.user
@@ -144,24 +151,25 @@ class DirectEvent:
         chat_id = DirectChat.get_chat_id_from_users(self.user, other_user)
 
         # check if chat exists ( this raises exception if not )
-        await sync_to_async(DirectChat.objects.get)(pk=chat_id)
+        await orm_get(DirectChat.objects, pk=chat_id)
 
-        msg = await sync_to_async(DirectChatMessage.objects.get)(
-            pk=event.content["message_id"]
-        )
+        msg = await orm_get(DirectChatMessage.objects, pk=event.content["message_id"])
 
-        message_author = await sync_to_async(lambda: msg.author)()
-        if message_author != self.user:
+        if msg.author_id != self.user.id:
             raise UserNotMessageAuthorException(
                 f"User {self.user.id} is not author of message {msg.id}"
             )
         msg.text = event.content["text"]
         msg.is_edited = True
-        await sync_to_async(msg.save)()
+        await orm_save(msg, update_fields=["text", "is_edited"])
 
-        message_data = await sync_to_async(
-            lambda: (DirectChatMessageListSerializer(msg)).data
-        )()
+        serialized_message = await orm_get(
+            DirectChatMessage.objects.select_related("author", "reply_to__author").prefetch_related(
+                "file_to_message__file"
+            ),
+            pk=msg.pk,
+        )
+        message_data = DirectChatMessageListSerializer(serialized_message).data
         content = {
             "chat_id": chat_id,
             "message": message_data,

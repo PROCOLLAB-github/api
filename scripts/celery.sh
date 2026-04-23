@@ -1,3 +1,4 @@
 #!/bin/bash
-cd apps
-celery -A procollab worker --beat --loglevel=debug
+set -eu
+
+exec celery -A procollab worker --beat --loglevel=debug
