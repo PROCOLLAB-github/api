@@ -181,10 +181,10 @@ jobs:
 
               chmod 600 .env
               docker compose -f docker-compose.prod-ci.yml -p prod config >/dev/null
-              docker compose -f docker-compose.prod-ci.yml -p prod pull
+              docker compose -f docker-compose.prod-ci.yml -p prod pull web celerys
 
               docker compose -f docker-compose.prod-ci.yml -p prod run --rm web python manage.py migrate
-              docker compose -f docker-compose.prod-ci.yml -p prod up -d --remove-orphans
+              docker compose -f docker-compose.prod-ci.yml -p prod up -d
               if [ "$(id -u)" -eq 0 ]; then
                 nginx -t
                 systemctl reload nginx
