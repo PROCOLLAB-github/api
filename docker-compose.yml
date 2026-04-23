@@ -33,7 +33,7 @@ services:
   redis:
     profiles: ["legacy"]
     container_name: redis
-    image: redis:latest
+    image: redis:8.6.2
     expose:
       - 6379
     volumes:
