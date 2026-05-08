@@ -1,3 +1,4 @@
+# Chats
 # Документация по вебсокетам чатов
 
 ## Общая инфа
@@ -86,10 +87,10 @@ class EventType(str, Enum):
 
 ```json
 {
-	"type": "set_offline",
-	"content": {
-		
-	}
+    "type": "set_offline",
+    "content": {
+        
+    }
 }
 ```
 
@@ -99,27 +100,27 @@ class EventType(str, Enum):
 
 ```json
 {
-	"type": "new_message",
-	"content": {
-		"chat_type": {{"direct" | "project"}},
-		"chat_id": {{"id1"_"id2"}}, // например: 1_2
-		"message": {{string}},
-		"reply_to": number | null
-	}
+    "type": "new_message",
+    "content": {
+        "chat_type": {{"direct" | "project"}},
+        "chat_id": {{"id1"_"id2"}}, // например: 1_2
+        "message": {{string}},
+        "reply_to": number | null
+    }
 }
 ```
 
-![New message event](img/event_new_message.png "New message event")
+![New message event](../img/event_new_message.png "New message event")
 
 ##### EventType.TYPING
 
 ```json
 {
-	"type": "typing",
-	"content": {
-		"chat_type": {{"direct" | "project"}},
-		"chat_id": {{"id1"_"id2"}}, // например: 1_2
-	}
+    "type": "typing",
+    "content": {
+        "chat_type": {{"direct" | "project"}},
+        "chat_id": {{"id1"_"id2"}}, // например: 1_2
+    }
 }
 ```
 
@@ -127,12 +128,12 @@ class EventType(str, Enum):
 
 ```json
 {
-	"type": "typing",
-	"content": {
-		"chat_type": {{"direct" | "project"}},
-		"chat_id": {{"id1"_"id2"}}, // например: 1_2
-		"message_id": {{number}}
-	}
+    "type": "typing",
+    "content": {
+        "chat_type": {{"direct" | "project"}},
+        "chat_id": {{"id1"_"id2"}}, // например: 1_2
+        "message_id": {{number}}
+    }
 }
 ```
 
@@ -140,12 +141,12 @@ class EventType(str, Enum):
 
 ```json
 {
-	"type": "typing",
-	"content": {
-		"chat_type": {{"direct" | "project"}},
-		"chat_id": {{"id1"_"id2"}}, // например: 1_2
-		"message_id": {{number}}
-	}
+    "type": "typing",
+    "content": {
+        "chat_type": {{"direct" | "project"}},
+        "chat_id": {{"id1"_"id2"}}, // например: 1_2
+        "message_id": {{number}}
+    }
 }
 ```
 
@@ -153,12 +154,12 @@ class EventType(str, Enum):
 
 ```json
 {
-	"type": "edit_message",
-	"content": {
-		"chat_type": {{"direct" | "project"}},
-		"chat_id": {{"id1"_"id2"}}, // например: 1_2
-		"message_id": {{number}},
-		"message": {{string}}
-	}
+    "type": "edit_message",
+    "content": {
+        "chat_type": {{"direct" | "project"}},
+        "chat_id": {{"id1"_"id2"}}, // например: 1_2
+        "message_id": {{number}},
+        "message": {{string}}
+    }
 }
 ```
