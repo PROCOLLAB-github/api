@@ -1,5 +1,11 @@
-from django.test import TestCase
+from types import SimpleNamespace
 
+from django.contrib import admin
+from django.test import TestCase
+from django.test import RequestFactory
+from django.utils import timezone
+
+from courses.admin_config.answers import UserTaskAnswerAdmin
 from courses.models import UserTaskAnswer, UserTaskAnswerStatus
 from courses.services.answers import TaskAnswerSubmitPayload, submit_user_task_answer
 
@@ -68,3 +74,40 @@ class SubmitUserTaskAnswerTests(TestCase):
         self.assertIsNone(answer.is_correct)
         self.assertFalse(result.can_continue)
         self.assertIsNone(result.next_task_id)
+
+    def test_admin_review_recalculates_progress_after_accept(self):
+        reviewer = create_user(prefix="reviewer")
+        question_task = create_text_question_task(
+            self.lesson,
+            order=1,
+            check_type="with_review",
+        )
+        submit_user_task_answer(
+            self.user,
+            question_task,
+            TaskAnswerSubmitPayload(answer_text="ok"),
+        )
+        answer = UserTaskAnswer.objects.get(user=self.user, task=question_task)
+        request = RequestFactory().post("/")
+        request.user = reviewer
+        form = SimpleNamespace(
+            changed_data=["status", "is_correct", "reviewed_by", "reviewed_at"]
+        )
+
+        answer.status = UserTaskAnswerStatus.ACCEPTED
+        answer.is_correct = True
+        answer.reviewed_by = reviewer
+        answer.reviewed_at = timezone.now()
+        UserTaskAnswerAdmin(UserTaskAnswer, admin.site).save_model(
+            request,
+            answer,
+            form,
+            change=True,
+        )
+
+        lesson_progress = self.lesson.user_progresses.get(user=self.user)
+        module_progress = self.module.user_progresses.get(user=self.user)
+        course_progress = self.course.user_progresses.get(user=self.user)
+        self.assertEqual(lesson_progress.percent, 100)
+        self.assertEqual(module_progress.percent, 100)
+        self.assertEqual(course_progress.percent, 100)
