@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import date, timedelta
 from uuid import uuid4
 
@@ -23,6 +24,14 @@ from courses.models import (
 from files.models import UserFile
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 from users.models import CustomUser
+
+
+@dataclass(frozen=True)
+class CourseTestContext:
+    user: CustomUser
+    course: Course
+    module: CourseModule
+    lesson: CourseLesson
 
 
 def unique_suffix() -> str:
@@ -119,6 +128,25 @@ def create_lesson(
         title=title,
         status=status,
         order=order,
+    )
+
+
+def create_course_context(
+    *,
+    user_prefix: str = "courses-test",
+    course_title: str = "Course",
+    module_title: str = "Module",
+    lesson_title: str = "Lesson",
+) -> CourseTestContext:
+    user = create_user(prefix=user_prefix)
+    course = create_course(title=course_title)
+    module = create_module(course, title=module_title)
+    lesson = create_lesson(module, title=lesson_title)
+    return CourseTestContext(
+        user=user,
+        course=course,
+        module=module,
+        lesson=lesson,
     )
 
 

@@ -1,8 +1,23 @@
 from django.contrib import admin
 
-from courses.models import UserTaskAnswer, UserTaskAnswerFile, UserTaskAnswerOption
+from courses.models import (
+    CourseTaskCheckType,
+    UserTaskAnswer,
+    UserTaskAnswerFile,
+    UserTaskAnswerOption,
+)
+from courses.services.progress import recalculate_user_progresses_for_lesson
 
 from .inlines import UserTaskAnswerFileInline, UserTaskAnswerOptionInline
+
+
+REVIEW_PROGRESS_FIELDS = {
+    "status",
+    "is_correct",
+    "review_comment",
+    "reviewed_by",
+    "reviewed_at",
+}
 
 
 @admin.register(UserTaskAnswer)
@@ -43,6 +58,16 @@ class UserTaskAnswerAdmin(admin.ModelAdmin):
         "task__lesson__module__course",
     )
     inlines = [UserTaskAnswerOptionInline, UserTaskAnswerFileInline]
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+
+        changed_fields = set(getattr(form, "changed_data", []) or [])
+        if (
+            obj.task.check_type == CourseTaskCheckType.WITH_REVIEW
+            and changed_fields & REVIEW_PROGRESS_FIELDS
+        ):
+            recalculate_user_progresses_for_lesson(obj.user, obj.task.lesson)
 
 
 @admin.register(UserTaskAnswerOption)

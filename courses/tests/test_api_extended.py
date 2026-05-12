@@ -172,6 +172,16 @@ class CoursesExtendedAPITests(TestCase):
                 "vnd.openxmlformats-officedocument.presentationml.presentation"
             ),
         )
+        other_user = create_user(prefix="other-file-owner")
+        other_user_file = create_user_file(
+            other_user,
+            name="foreign-model",
+            extension="xlsx",
+            mime_type=(
+                "application/"
+                "vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            ),
+        )
 
         files_task = create_files_question_task(
             lesson,
@@ -192,6 +202,11 @@ class CoursesExtendedAPITests(TestCase):
         invalid_file_response = self.client.post(
             f"/courses/tasks/{files_task.id}/answer/",
             {"file_ids": ["https://cdn.example.com/missing/file.pdf"]},
+            format="json",
+        )
+        foreign_file_response = self.client.post(
+            f"/courses/tasks/{files_task.id}/answer/",
+            {"file_ids": [other_user_file.pk]},
             format="json",
         )
         files_response = self.client.post(
@@ -216,6 +231,7 @@ class CoursesExtendedAPITests(TestCase):
         course_detail = self.client.get(f"/courses/{course.id}/").json()
 
         self.assertEqual(invalid_file_response.status_code, 400)
+        self.assertEqual(foreign_file_response.status_code, 400)
         self.assertEqual(files_response.status_code, 200)
         self.assertTrue(files_response.json()["can_continue"])
         self.assertEqual(invalid_text_and_files_response.status_code, 400)
