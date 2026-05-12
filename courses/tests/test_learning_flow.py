@@ -8,21 +8,19 @@ from courses.services.learning_flow import (
 from courses.services.progress import recalculate_user_progresses_for_lesson
 
 from .helpers import (
-    create_course,
+    create_course_context,
     create_informational_task,
-    create_lesson,
-    create_module,
     create_text_question_task,
-    create_user,
 )
 
 
 class LearningFlowTests(TestCase):
     def setUp(self):
-        self.user = create_user()
-        self.course = create_course()
-        self.module = create_module(self.course)
-        self.lesson = create_lesson(self.module)
+        context = create_course_context()
+        self.user = context.user
+        self.course = context.course
+        self.module = context.module
+        self.lesson = context.lesson
 
     def test_informational_task_not_completed_before_explicit_submit(self):
         info_task = create_informational_task(self.lesson, order=1)
