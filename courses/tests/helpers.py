@@ -26,6 +26,9 @@ from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 from users.models import CustomUser
 
 
+DEFAULT_MODULE_START_DATE = date(2026, 1, 1)
+
+
 @dataclass(frozen=True)
 class CourseTestContext:
     user: CustomUser
@@ -110,7 +113,7 @@ def create_module(
     return CourseModule.objects.create(
         course=course,
         title=title,
-        start_date=start_date_value or date.today(),
+        start_date=start_date_value or DEFAULT_MODULE_START_DATE,
         status=status,
         order=order,
     )
