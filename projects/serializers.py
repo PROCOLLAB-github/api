@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from rest_framework import serializers
 
@@ -216,14 +217,20 @@ class ResourceSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         obj = Resource(**validated_data)
-        obj.full_clean()
+        try:
+            obj.full_clean()
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(exc.message_dict)
         obj.save()
         return obj
 
     def update(self, instance, validated_data):
         for key, value in validated_data.items():
             setattr(instance, key, value)
-        instance.full_clean()
+        try:
+            instance.full_clean()
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(exc.message_dict)
         instance.save()
         return instance
 
@@ -375,6 +382,7 @@ class ProjectListSerializer(serializers.ModelSerializer):
             "short_description",
             "image_address",
             "industry",
+            "draft",
             "views_count",
             "is_company",
             "partner_program",
