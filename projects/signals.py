@@ -25,16 +25,13 @@ def create_project(sender, instance, created, **kwargs):
 @receiver(post_save, sender=Project)
 def update_vacancy(sender, instance, created, **kwargs):
     vacancies = Vacancy.objects.filter(project=instance)
-    old_values = vacancies.values_list("is_active", flat=True)
+    old_values_by_id = dict(vacancies.values_list("id", "is_active"))
     vacancies.update(is_active=False if instance.draft else True)
-    new_values = vacancies.values_list("is_active", flat=True)
 
-    vacancies_list = list(vacancies)
-
-    for i in range(len(new_values)):
-        old = old_values[i]
-        new = new_values[i]
+    for vacancy in vacancies:
+        old = old_values_by_id[vacancy.id]
+        new = vacancy.is_active
         if old != new and new is False:
-            delete_news_for_model(vacancies_list[i])
+            delete_news_for_model(vacancy)
         elif old != new and new is True:
-            create_news_for_model(vacancies_list[i])
+            create_news_for_model(vacancy)
