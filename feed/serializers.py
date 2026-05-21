@@ -5,11 +5,12 @@ from feed.mapping import CONTENT_OBJECT_MAPPING, CONTENT_OBJECT_SERIALIZER_MAPPI
 from files.serializers import UserFileSerializer
 from news.mapping import NewsMapping
 from news.models import News
+from news.services import is_content_news
 from projects.models import Project
 from users.models import CustomUser
 
 
-class NewsFeedListSerializer(serializers.ModelSerializer):
+class FeedNewsResponseSerializer(serializers.ModelSerializer):
     name = serializers.SerializerMethodField()
     image_address = serializers.SerializerMethodField()
     is_user_liked = serializers.SerializerMethodField()
@@ -21,13 +22,13 @@ class NewsFeedListSerializer(serializers.ModelSerializer):
 
     def get_type_model(self, obj) -> str:
         model_type = CONTENT_OBJECT_MAPPING[obj.content_type.model]
-        if obj.text != "" and model_type == "project":
+        if is_content_news(obj) and model_type == "project":
             return "news"
         return model_type
 
     def get_content_object(self, obj) -> dict:
         type_model = obj.content_type.model
-        if obj.text != "" and self.get_type_model(obj) == "project":
+        if is_content_news(obj) and self.get_type_model(obj) == "project":
             type_model = "news"
         serializer = CONTENT_OBJECT_SERIALIZER_MAPPING[type_model](obj.content_object)
         return serializer.data
@@ -41,7 +42,7 @@ class NewsFeedListSerializer(serializers.ModelSerializer):
     def get_name(self, obj):
         if obj.content_type.model == CustomUser.__name__.lower():
             return f"{obj.content_object.first_name} {obj.content_object.last_name}"
-        elif obj.text != "" and obj.content_type.model == Project.__name__.lower():
+        elif is_content_news(obj) and obj.content_type.model == Project.__name__.lower():
             return f"{obj.content_object.name}"
 
     def get_image_address(self, obj):

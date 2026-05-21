@@ -5,7 +5,7 @@ from django.db import transaction
 from rest_framework import serializers
 
 from core.serializers import SkillToObjectSerializer
-from core.services import get_likes_count, get_views_count, is_fan
+from core.services import get_views_count
 from core.utils import get_user_online_cache_key
 from files.serializers import UserFileSerializer
 from industries.models import Industry
@@ -25,7 +25,6 @@ from projects.models import (
     Project,
     ProjectCompany,
     ProjectGoal,
-    ProjectNews,
     Resource,
 )
 from projects.validators import validate_project
@@ -427,88 +426,6 @@ class AchievementDetailSerializer(serializers.ModelSerializer):
             "projects",
         ]
         ref_name = "Projects"
-
-
-class ProjectNewsListSerializer(serializers.ModelSerializer):
-    views_count = serializers.SerializerMethodField()
-    likes_count = serializers.SerializerMethodField()
-    project_name = serializers.SerializerMethodField()
-    project_image_address = serializers.SerializerMethodField()
-    is_user_liked = serializers.SerializerMethodField()
-
-    def get_project_name(self, obj):
-        return obj.project.name
-
-    def get_project_image_address(self, obj):
-        return obj.project.image_address
-
-    def get_views_count(self, obj):
-        return get_views_count(obj)
-
-    def get_likes_count(self, obj):
-        return get_likes_count(obj)
-
-    def get_is_user_liked(self, obj):
-        # fixme: move this method to helpers somewhere
-        user = self.context.get("user")
-        if user:
-            return is_fan(obj, user)
-        return False
-
-    class Meta:
-        model = ProjectNews
-        fields = [
-            "id",
-            "project_name",
-            "project_image_address",
-            "text",
-            "datetime_created",
-            "views_count",
-            "likes_count",
-            "is_user_liked",
-            "files",
-        ]
-
-
-class ProjectNewsDetailSerializer(serializers.ModelSerializer):
-    views_count = serializers.SerializerMethodField()
-    likes_count = serializers.SerializerMethodField()
-    project_name = serializers.SerializerMethodField()
-    project_image_address = serializers.SerializerMethodField()
-    is_user_liked = serializers.SerializerMethodField()
-
-    def get_project_name(self, obj):
-        return obj.project.name
-
-    def get_project_image_address(self, obj):
-        return obj.project.image_address
-
-    def get_views_count(self, obj):
-        return get_views_count(obj)
-
-    def get_likes_count(self, obj):
-        return get_likes_count(obj)
-
-    def get_is_user_liked(self, obj):
-        user = self.context.get("user")
-        if user:
-            return is_fan(obj, user)
-        return False
-
-    class Meta:
-        model = ProjectNews
-        fields = [
-            "id",
-            "project_name",
-            "project_image_address",
-            "text",
-            "datetime_created",
-            "datetime_updated",
-            "views_count",
-            "likes_count",
-            "is_user_liked",
-            "files",
-        ]
 
 
 class ProjectSubscribersListSerializer(serializers.ModelSerializer):
