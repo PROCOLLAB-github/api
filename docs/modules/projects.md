@@ -42,7 +42,7 @@ Projects отвечают за проектную часть Procollab: созд
 ## Архитектура
 
 - `projects/models.py` - модели проекта, участников, целей, компаний,
-  ресурсов, ссылок, достижений и остаточной старой модели `ProjectNews`.
+  ресурсов, ссылок и достижений.
 - `projects/views.py` - HTTP endpoints и значительная часть orchestration
   logic.
 - `projects/serializers.py` - request/response contracts, часть validation и
@@ -69,8 +69,6 @@ Projects отвечают за проектную часть Procollab: созд
 - `Resource` - ресурс проекта.
 - проектные новости - новости внутри проекта; актуальный API реализован через
   `news.News` с привязкой к `Project` через `content_type/object_id`.
-- `ProjectNews` - старая модель проектных новостей, оставшаяся после переноса
-  данных в `news.News`.
 - `DefaultProjectCover` - дефолтная обложка проекта.
 - `DefaultProjectAvatar` - дефолтный аватар проекта.
 
@@ -208,9 +206,6 @@ Projects отвечают за проектную часть Procollab: созд
 `news`: запись хранится в `news.News`, а связь с проектом задается через
 `content_type = Project` и `object_id = project.id`.
 
-Старые `ProjectNews`, `ProjectNews*Serializer` и `ProjectNews*View` остаются в
-коде, но текущие routes проекта подключены к `news.views`.
-
 ## Ограничения и правила
 
 - Публичный каталог показывает только `draft = False` и `is_public = True`.
@@ -222,7 +217,7 @@ Projects отвечают за проектную часть Procollab: созд
 - Компания может быть связана с проектом только один раз.
 - Ресурс может ссылаться только на компанию, уже привязанную к проекту.
 - Проектные новости являются живым frontend-сценарием, но текущие routes
-  используют общий модуль `news`, а не старую модель `ProjectNews`.
+  используют общий модуль `news`.
 
 ## Тесты
 

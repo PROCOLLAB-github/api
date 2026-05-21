@@ -10,7 +10,6 @@ from projects.models import (
     ProjectCompany,
     ProjectGoal,
     ProjectLink,
-    ProjectNews,
     Resource,
 )
 
@@ -158,22 +157,6 @@ class ProjectGoalAdmin(admin.ModelAdmin):
     )
     list_select_related = ("project", "responsible")
     autocomplete_fields = ("project", "responsible")
-
-
-@admin.register(ProjectNews)
-class ProjectNewsAdmin(admin.ModelAdmin):
-    list_display = (
-        "id",
-        "project",
-        "datetime_created",
-    )
-    list_display_links = (
-        "id",
-        "project",
-        "datetime_created",
-    )
-    # todo: set up admin panel for files
-    filter_horizontal = ("files",)
 
 
 @admin.register(Achievement)

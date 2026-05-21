@@ -45,6 +45,11 @@ class UserNewsAPITests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["results"][0]["id"], news.id)
 
+    def test_missing_user_context_returns_not_found(self):
+        response = self.client.get("/auth/users/999999/news/")
+
+        self.assertEqual(response.status_code, 404)
+
 
 class PartnerProgramNewsAPITests(TestCase):
     def setUp(self):
@@ -91,3 +96,8 @@ class PartnerProgramNewsAPITests(TestCase):
         self.assertEqual(response.status_code, 200)
         news_ids = [item["id"] for item in response.data["results"]]
         self.assertEqual(news_ids, [pinned_news.id, regular_news.id])
+
+    def test_missing_program_context_returns_not_found(self):
+        response = self.client.get("/programs/999999/news/")
+
+        self.assertEqual(response.status_code, 404)

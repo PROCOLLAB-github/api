@@ -1,13 +1,13 @@
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from .helpers import create_news_for, create_project, create_user
+from news.tests.helpers import create_news_for, create_project, create_user
 
 
-class NewsFeedTests(TestCase):
+class FeedAPITests(TestCase):
     def setUp(self):
         self.client = APIClient()
-        self.user = create_user(prefix="news-feed-user")
+        self.user = create_user(prefix="feed-user")
         self.client.force_authenticate(self.user)
 
     def test_feed_returns_user_news_when_news_filter_requested(self):

@@ -12,7 +12,7 @@ generic relation:
 - партнерскими программами;
 - объектами ленты, например вакансиями.
 
-Одна и та же модель используется для двух близких, но разных сценариев:
+Одна и та же модель используется для двух сценариев:
 
 - обычная новость с текстом и файлами;
 - служебная запись ленты для существующего объекта, где `text = ""`.
@@ -23,7 +23,7 @@ generic relation:
 аккуратного рефакторинга. Сейчас он обслуживает проектные новости, новости
 пользователей, новости программ и часть общей ленты.
 
-Первый слой regression-тестов добавлен для живых сценариев API и feed.
+Первый слой regression-тестов добавлен для живых сценариев API.
 
 ## Основные возможности
 
@@ -41,14 +41,16 @@ generic relation:
 
 - `news/models.py` - модель `News` с `content_type/object_id`, файлами, лайками,
   просмотрами и флагом `pin`.
-- `news/managers.py` - `get_news(obj)` и `add_news(obj, **kwargs)` для работы с
-  generic relation.
-- `news/mixins.py` - выбор queryset по контексту URL: project, user или partner
-  program.
+- `news/managers.py` - низкоуровневые `get_news(obj)` и `add_news(obj,
+  **kwargs)` для работы с generic relation.
+- `news/services.py` - явное создание project/user/program news и helpers для
+  различения обычной новости и feed-записи.
+- `news/querysets.py` - явные queryset helpers по контексту URL: project, user
+  или partner program.
 - `news/views.py` - общий API для list/create/detail/update/delete, set_viewed и
   set_liked.
-- `news/serializers.py` - request/response serializers для списка, detail и feed
-  представления.
+- `news/serializers.py` - request/response serializers для создания, списка и
+  detail.
 - `news/permissions.py` - права на создание и изменение новости в зависимости от
   связанного объекта.
 - `news/admin.py` - админка `News`.
@@ -63,45 +65,29 @@ generic relation:
 - `views` - generic views через `core.View`.
 - `pin` - закрепление новости, сейчас используется для новостей программ.
 
+Feed-запись определяется через helper `is_feed_record(news)`, а обычная новость
+через `is_content_news(news)`. Сейчас оба helper'а используют текущий признак
+`text`, но вызывающий код не должен напрямую проверять `text == ""`.
+
 ## API
 
-Контекстные endpoints:
+Контекстные endpoints работают для трех базовых URL:
 
-- `GET /projects/<project_id>/news/` - список новостей проекта.
-- `POST /projects/<project_id>/news/` - создание новости проекта.
-- `GET /projects/<project_id>/news/<news_id>/` - детальная новость проекта.
-- `PATCH /projects/<project_id>/news/<news_id>/` - редактирование новости
-  проекта.
-- `DELETE /projects/<project_id>/news/<news_id>/` - удаление новости проекта.
-- `POST /projects/<project_id>/news/<news_id>/set_viewed/` - просмотр новости
-  проекта.
-- `POST /projects/<project_id>/news/<news_id>/set_liked/` - лайк новости
-  проекта.
+- `/projects/<project_id>/news/` - новости проекта;
+- `/auth/users/<user_id>/news/` - новости пользователя;
+- `/programs/<program_id>/news/` - новости партнерской программы.
 
-- `GET /auth/users/<user_id>/news/` - список новостей пользователя.
-- `POST /auth/users/<user_id>/news/` - создание новости пользователя.
-- `GET /auth/users/<user_id>/news/<news_id>/` - детальная новость пользователя.
-- `PATCH /auth/users/<user_id>/news/<news_id>/` - редактирование новости
-  пользователя.
-- `DELETE /auth/users/<user_id>/news/<news_id>/` - удаление новости
-  пользователя.
-- `POST /auth/users/<user_id>/news/<news_id>/set_viewed/` - просмотр новости
-  пользователя.
-- `POST /auth/users/<user_id>/news/<news_id>/set_liked/` - лайк новости
-  пользователя.
+Для каждого контекста доступны:
 
-- `GET /programs/<program_id>/news/` - список новостей программы.
-- `POST /programs/<program_id>/news/` - создание новости программы.
-- `GET /programs/<program_id>/news/<news_id>/` - детальная новость программы.
-- `PATCH /programs/<program_id>/news/<news_id>/` - редактирование новости
-  программы.
-- `DELETE /programs/<program_id>/news/<news_id>/` - удаление новости программы.
-- `POST /programs/<program_id>/news/<news_id>/set_viewed/` - просмотр новости
-  программы.
-- `POST /programs/<program_id>/news/<news_id>/set_liked/` - лайк новости
-  программы.
+- `GET <base>` - список новостей;
+- `POST <base>` - создание новости;
+- `GET <base><news_id>/` - детальная новость;
+- `PATCH <base><news_id>/` - редактирование новости;
+- `DELETE <base><news_id>/` - удаление новости;
+- `POST <base><news_id>/set_viewed/` - просмотр новости;
+- `POST <base><news_id>/set_liked/` - лайк новости.
 
-Общие endpoints:
+Связанные endpoints:
 
 - `GET /news/` - подключен напрямую, но без контекста возвращает пустой список.
 - `GET /news/<news_id>/` - подключен напрямую, но без контекста не является
@@ -117,9 +103,8 @@ generic relation:
 Новость сохраняется в `news.News`, а связь с проектом задается через
 `content_type = Project` и `object_id = project.id`.
 
-Новости проекта с непустым `text` отображаются как новости внутри проекта.
-Служебные feed-записи проекта с `text = ""` из списка проектных новостей
-исключаются.
+Новости проекта с текстом отображаются внутри проекта. Служебные feed-записи
+из списка проектных новостей исключаются.
 
 ### 2. Новость пользователя
 
@@ -148,8 +133,8 @@ generic relation:
 Для проектных записей важно различать:
 
 - `text = ""` - служебная запись ленты о проекте;
-- `text != ""` - полноценная новость проекта, которая в ленте возвращается как
-  `type_model = "news"`.
+- новость с текстом - полноценная новость проекта, которая в ленте возвращается
+  как `type_model = "news"`.
 
 Лента исключает новости, связанные с непубличными или черновыми проектами.
 
@@ -160,23 +145,16 @@ generic relation:
 - Новость программы может создавать и изменять только менеджер программы.
 - Прямой `/news/` без project/user/program context не является основным
   пользовательским API.
-- Старые `ProjectNews*` в `projects` не являются текущей реализацией проектных
-  новостей; живые routes используют `news.News`.
+- Несуществующий project/user/program context возвращает `404`.
+- Проектные новости реализованы через `news.News`.
 
 ## Тесты
 
 Текущие regression-тесты проверяют:
 
-- `NewsManager.add_news()` привязывает новость к content object и файлам;
-- `NewsManager.get_news()` возвращает новости нужного объекта;
-- лидер проекта может создавать, редактировать и удалять новости проекта;
-- пользователь без роли лидера не может создавать новость проекта;
-- список новостей проекта исключает служебные feed-записи с `text = ""`;
-- новости проекта можно отметить просмотренными и лайкнуть;
-- пользователь может создавать новости только в своем профиле;
-- менеджер программы может создавать новости программы;
-- пользователь без роли менеджера не может создавать новости программы;
-- закрепленные новости программы идут выше обычных;
-- `/feed/?type=news` возвращает новости пользователя;
-- `/feed/?type=project` возвращает проектные новости как `type_model = "news"`;
-- feed исключает новости непубличных проектов.
+- manager, service и query helpers;
+- project/user/program API;
+- права на создание и изменение новостей;
+- лайки и просмотры;
+- исключение служебных feed-записей из списка новостей проекта;
+- сортировку закрепленных новостей программы.

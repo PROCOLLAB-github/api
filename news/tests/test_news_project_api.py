@@ -8,7 +8,7 @@ from news.models import News
 from .helpers import create_news_for, create_project, create_user
 
 
-class ProjectNewsAPITests(TestCase):
+class ProjectScopedNewsAPITests(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.leader = create_user(prefix="project-news-leader")
@@ -52,6 +52,11 @@ class ProjectNewsAPITests(TestCase):
         news_ids = {item["id"] for item in response.data["results"]}
         self.assertEqual(news_ids, {visible_news.id})
 
+    def test_missing_project_context_returns_not_found(self):
+        response = self.client.get("/projects/999999/news/")
+
+        self.assertEqual(response.status_code, 404)
+
     def test_project_news_detail_can_be_updated_and_deleted_by_leader(self):
         self.client.force_authenticate(self.leader)
         news = create_news_for(self.project, text="Initial text")
@@ -66,7 +71,9 @@ class ProjectNewsAPITests(TestCase):
         news.refresh_from_db()
         self.assertEqual(news.text, "Updated text")
 
-        delete_response = self.client.delete(f"/projects/{self.project.id}/news/{news.id}/")
+        delete_response = self.client.delete(
+            f"/projects/{self.project.id}/news/{news.id}/"
+        )
 
         self.assertEqual(delete_response.status_code, 204)
         self.assertFalse(News.objects.filter(pk=news.id).exists())

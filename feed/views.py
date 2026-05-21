@@ -11,11 +11,11 @@ from news.models import News
 from projects.models import Project
 from vacancy.models import Vacancy
 
-from .serializers import NewsFeedListSerializer
+from .serializers import FeedNewsResponseSerializer
 
 
 class NewSimpleFeed(APIView):
-    serializator_class = NewsFeedListSerializer
+    serializator_class = FeedNewsResponseSerializer
     pagination_class = FeedPagination
 
     def _get_filter_data(self) -> list[str]:
@@ -54,7 +54,7 @@ class NewSimpleFeed(APIView):
     def get(self, *args, **kwargs):
         paginator = self.pagination_class()
         paginated_data = paginator.paginate_queryset(self.get_queryset(), self.request)
-        serializer = NewsFeedListSerializer(
+        serializer = FeedNewsResponseSerializer(
             paginated_data,
             context={
                 "user": self.request.user,

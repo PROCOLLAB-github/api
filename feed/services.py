@@ -3,6 +3,7 @@ from django.contrib.contenttypes.models import ContentType
 from core.models import Like
 from feed.constants import SIGNALS_MODELS
 from news.models import News
+from news.services import FEED_RECORD_TEXT
 from users.models import CustomUser
 
 
@@ -18,7 +19,9 @@ def get_liked_news(user: CustomUser, queryset: list[News]) -> list[int]:
 def delete_news_for_model(instance: SIGNALS_MODELS):
     content_type = ContentType.objects.get_for_model(instance)
     obj = News.objects.filter(
-        text="", content_type=content_type, object_id=instance.id
+        text=FEED_RECORD_TEXT,
+        content_type=content_type,
+        object_id=instance.id,
     ).first()
     if obj:
         obj.delete()
@@ -26,4 +29,8 @@ def delete_news_for_model(instance: SIGNALS_MODELS):
 
 def create_news_for_model(instance: SIGNALS_MODELS):
     content_type = ContentType.objects.get_for_model(instance)
-    News.objects.get_or_create(text="", content_type=content_type, object_id=instance.id)
+    News.objects.get_or_create(
+        text=FEED_RECORD_TEXT,
+        content_type=content_type,
+        object_id=instance.id,
+    )

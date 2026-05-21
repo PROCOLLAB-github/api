@@ -17,8 +17,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.permissions import IsStaffOrReadOnly
-from core.serializers import SetLikedSerializer
-from core.services import add_view, set_like
+from core.services import add_view
 from partner_programs.models import (
     PartnerProgram,
     PartnerProgramProject,
@@ -38,14 +37,12 @@ from projects.models import (
     Project,
     ProjectCompany,
     ProjectGoal,
-    ProjectNews,
     Resource,
 )
-from projects.pagination import ProjectNewsPagination, ProjectsPagination
+from projects.pagination import ProjectsPagination
 from projects.permissions import (
     CanBindProjectToProgram,
     HasInvolvementInProjectOrReadOnly,
-    IsNewsAuthorIsProjectLeaderOrReadOnly,
     IsProjectLeader,
     IsProjectLeaderOrReadOnly,
     IsProjectLeaderOrReadOnlyForNonDrafts,
@@ -65,8 +62,6 @@ from projects.serializers import (
     ProjectDuplicateRequestSerializer,
     ProjectGoalSerializer,
     ProjectListSerializer,
-    ProjectNewsDetailSerializer,
-    ProjectNewsListSerializer,
     ProjectSubscribersListSerializer,
     ResourceSerializer,
 )
@@ -354,104 +349,6 @@ class ProjectVacancyResponses(generics.GenericAPIView):
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
-
-
-class ProjectNewsList(generics.ListCreateAPIView):
-    serializer_class = ProjectNewsListSerializer
-    permission_classes = [ProjectVisibilityPermission, IsNewsAuthorIsProjectLeaderOrReadOnly]
-    pagination_class = ProjectNewsPagination
-
-    def perform_create(self, serializer):
-        project = Project.objects.get(pk=self.kwargs.get("project_pk"))
-        serializer.save(project=project)
-
-    def get_queryset(self):
-        project = Project.objects.get(pk=self.kwargs.get("project_pk"))
-        return ProjectNews.objects.filter(project=project)
-
-    def get(self, request, *args, **kwargs):
-        news = self.paginate_queryset(self.get_queryset())
-        context = {"user": request.user}
-        serializer = ProjectNewsListSerializer(news, context=context, many=True)
-        return self.get_paginated_response(serializer.data)
-
-
-class ProjectNewsDetail(generics.RetrieveUpdateDestroyAPIView):
-    queryset = ProjectNews.objects.all()
-    serializer_class = ProjectNewsDetailSerializer
-    permission_classes = [ProjectVisibilityPermission, IsNewsAuthorIsProjectLeaderOrReadOnly]
-
-    def get_queryset(self):
-        try:
-            project = Project.objects.get(pk=self.kwargs.get("project_pk"))
-            return ProjectNews.objects.filter(project=project).all()
-        except Project.DoesNotExist:
-            return []
-
-    def get(self, request, *args, **kwargs):
-        try:
-            news = self.get_queryset().get(pk=self.kwargs["pk"])
-            context = {"user": request.user}
-            return Response(ProjectNewsDetailSerializer(news, context=context).data)
-        except ProjectNews.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-
-    def update(self, request, *args, **kwargs):
-        try:
-            news = self.get_queryset().get(pk=self.kwargs["pk"])
-            context = {"user": request.user}
-            serializer = ProjectNewsDetailSerializer(
-                news, data=request.data, context=context
-            )
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
-            return Response(serializer.data)
-        except ProjectNews.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-
-
-class ProjectNewsDetailSetViewed(generics.CreateAPIView):
-    queryset = ProjectNews.objects.all()
-    # fixme
-    # serializer_class = SetViewedSerializer
-    permission_classes = [IsAuthenticated, ProjectVisibilityPermission]
-
-    def get_queryset(self):
-        try:
-            project = Project.objects.get(pk=self.kwargs.get("project_pk"))
-            return ProjectNews.objects.filter(project=project).all()
-        except Project.DoesNotExist:
-            return []
-
-    def post(self, request, *args, **kwargs):
-        try:
-            news = self.get_queryset().get(pk=self.kwargs["pk"])
-            add_view(news, request.user)
-
-            return Response(status=status.HTTP_200_OK)
-        except ProjectNews.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-
-
-class ProjectNewsDetailSetLiked(generics.CreateAPIView):
-    serializer_class = SetLikedSerializer
-    permission_classes = [IsAuthenticated, ProjectVisibilityPermission]
-
-    def get_queryset(self):
-        try:
-            project = Project.objects.get(pk=self.kwargs["project_pk"])
-            return ProjectNews.objects.filter(project=project).all()
-        except Project.DoesNotExist:
-            return []
-
-    def post(self, request, *args, **kwargs):
-        try:
-            news = self.get_queryset().get(pk=self.kwargs["pk"])
-            set_like(news, request.user, request.data.get("is_liked"))
-
-            return Response(status=status.HTTP_200_OK)
-        except ProjectNews.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND)
 
 
 class ProjectSubscribers(APIView):
