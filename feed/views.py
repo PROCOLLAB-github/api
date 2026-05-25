@@ -37,7 +37,11 @@ class NewSimpleFeed(APIView):
             "project": Project.objects.filter(draft=False, is_public=True).values_list(
                 "id", flat=True
             ),
-            "vacancy": Vacancy.objects.values_list("id", flat=True),
+            "vacancy": Vacancy.objects.filter(
+                is_active=True,
+                project__draft=False,
+                project__is_public=True,
+            ).values_list("id", flat=True),
         }
         for model_name, ids_queryset in existing_object_filters.items():
             queryset = queryset.exclude(

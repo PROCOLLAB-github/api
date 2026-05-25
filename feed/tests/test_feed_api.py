@@ -58,6 +58,36 @@ class FeedAPITests(TestCase):
         self.assertEqual(item["content"]["id"], vacancy.id)
         self.assertEqual(item["content"]["role"], "Backend developer")
 
+    def test_feed_excludes_feed_record_for_inactive_vacancy(self):
+        vacancy = create_vacancy(role="Inactive vacancy", is_active=False)
+        create_news_for_model(vacancy)
+
+        response = self.client.get("/feed/?type=vacancy")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["results"], [])
+
+    def test_feed_excludes_vacancy_feed_record_for_draft_project(self):
+        draft_project = create_project(name="Draft vacancy project", draft=True)
+        create_vacancy(project=draft_project, role="Draft project vacancy")
+
+        response = self.client.get("/feed/?type=vacancy")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["results"], [])
+
+    def test_feed_excludes_vacancy_feed_record_for_private_project(self):
+        private_project = create_project(
+            name="Private vacancy project",
+            is_public=False,
+        )
+        create_vacancy(project=private_project, role="Private project vacancy")
+
+        response = self.client.get("/feed/?type=vacancy")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["results"], [])
+
     def test_feed_marks_news_liked_by_current_user(self):
         news = create_news_for(self.user, text="Liked user feed news")
         set_like(news, self.user, True)
