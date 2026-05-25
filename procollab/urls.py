@@ -45,7 +45,6 @@ urlpatterns = [
     ),
     path("files/", include("files.urls", namespace="files")),
     path("industries/", include("industries.urls", namespace="industries")),
-    path("news/", include("news.urls", namespace="news")),
     path("projects/", include("projects.urls", namespace="projects")),
     path("vacancies/", include("vacancy.urls", namespace="vacancies")),
     path("core/", include("core.urls", namespace="core")),

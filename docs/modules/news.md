@@ -47,10 +47,10 @@ generic relation:
   различения обычной новости и feed-записи.
 - `news/querysets.py` - явные queryset helpers по контексту URL: project, user
   или partner program.
-- `news/views.py` - общий API для list/create/detail/update/delete, set_viewed и
-  set_liked.
-- `news/serializers.py` - request/response serializers для создания, списка и
-  detail.
+- `news/views.py` - контекстный API для list/create/detail/update/delete,
+  set_viewed и set_liked.
+- `news/serializers.py` - request serializers и response serializers,
+  разделенные по контекстам project/user/program.
 - `news/permissions.py` - права на создание и изменение новости в зависимости от
   связанного объекта.
 - `news/admin.py` - админка `News`.
@@ -89,9 +89,6 @@ Feed-запись определяется через helper `is_feed_record(new
 
 Связанные endpoints:
 
-- `GET /news/` - подключен напрямую, но без контекста возвращает пустой список.
-- `GET /news/<news_id>/` - подключен напрямую, но без контекста не является
-  основным пользовательским сценарием.
 - `GET /feed/?type=...` - общая лента, которая читает данные из `News`.
 
 ## Основные сценарии
@@ -143,8 +140,7 @@ Feed-запись определяется через helper `is_feed_record(new
 - Новость проекта может создавать и изменять только лидер проекта.
 - Новость пользователя может создавать и изменять только сам пользователь.
 - Новость программы может создавать и изменять только менеджер программы.
-- Прямой `/news/` без project/user/program context не является основным
-  пользовательским API.
+- Вложения новости должны ссылаться только на `UserFile` текущего пользователя.
 - Несуществующий project/user/program context возвращает `404`.
 - Проектные новости реализованы через `news.News`.
 
