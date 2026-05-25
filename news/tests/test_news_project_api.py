@@ -5,7 +5,7 @@ from rest_framework.test import APIClient
 from core.models import Like, View
 from news.models import News
 
-from .helpers import create_news_for, create_project, create_user
+from .helpers import create_news_for, create_project, create_user, create_user_file
 
 
 class ProjectScopedNewsAPITests(TestCase):
@@ -27,6 +27,27 @@ class ProjectScopedNewsAPITests(TestCase):
         news = News.objects.get(pk=response.data["id"])
         self.assertEqual(news.content_object, self.project)
         self.assertEqual(news.text, "Project news")
+
+    def test_project_news_create_rejects_file_of_another_user(self):
+        self.client.force_authenticate(self.leader)
+        another_user = create_user(prefix="project-news-file-owner")
+        another_user_file = create_user_file(another_user)
+
+        response = self.client.post(
+            f"/projects/{self.project.id}/news/",
+            {
+                "text": "Project news with forbidden file",
+                "files": [another_user_file.link],
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(
+            News.objects.get_news(self.project)
+            .filter(text="Project news with forbidden file")
+            .exists()
+        )
 
     def test_non_leader_cannot_create_project_news(self):
         self.client.force_authenticate(create_user(prefix="project-news-outsider"))
@@ -77,6 +98,26 @@ class ProjectScopedNewsAPITests(TestCase):
 
         self.assertEqual(delete_response.status_code, 204)
         self.assertFalse(News.objects.filter(pk=news.id).exists())
+
+    def test_project_news_update_rejects_file_of_another_user(self):
+        self.client.force_authenticate(self.leader)
+        leader_file = create_user_file(self.leader, name="leader-file")
+        another_user = create_user(prefix="project-news-update-file-owner")
+        another_user_file = create_user_file(another_user, name="foreign-file")
+        news = create_news_for(
+            self.project,
+            text="Initial text",
+            files=[leader_file],
+        )
+
+        response = self.client.patch(
+            f"/projects/{self.project.id}/news/{news.id}/",
+            {"files": [another_user_file.link]},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(list(news.files.all()), [leader_file])
 
     def test_project_news_can_be_marked_viewed_and_liked(self):
         user = create_user(prefix="project-news-reader")

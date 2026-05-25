@@ -1,10 +1,6 @@
-from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q, QuerySet
-from rest_framework.generics import CreateAPIView
-from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.serializers import EmptySerializer
 from feed.pagination import FeedPagination
 from feed.services import get_liked_news
 from news.models import News
@@ -41,7 +37,11 @@ class NewSimpleFeed(APIView):
             "project": Project.objects.filter(draft=False, is_public=True).values_list(
                 "id", flat=True
             ),
-            "vacancy": Vacancy.objects.values_list("id", flat=True),
+            "vacancy": Vacancy.objects.filter(
+                is_active=True,
+                project__draft=False,
+                project__is_public=True,
+            ).values_list("id", flat=True),
         }
         for model_name, ids_queryset in existing_object_filters.items():
             queryset = queryset.exclude(
@@ -67,52 +67,13 @@ class NewSimpleFeed(APIView):
         # временная подстройка данных под фронт
         for data in serializer.data:
             if data["type_model"] in ["project", "vacancy", None]:
-                fomated_data = {
+                formatted_data = {
                     "type_model": data["type_model"],
                     "content": data["content_object"],
                 }
             elif data["type_model"] == "news":
                 del data["type_model"]
-                fomated_data = {"type_model": "news", "content": data}
-            new_data.append(fomated_data)
+                formatted_data = {"type_model": "news", "content": data}
+            new_data.append(formatted_data)
 
         return paginator.get_paginated_response(new_data)
-
-
-class DevScript(CreateAPIView):
-    serializer_class = EmptySerializer
-
-    def create(self, request):
-        content_type_project = ContentType.objects.filter(model="project").first()
-        for project in Project.objects.filter(draft=False):
-            if not News.objects.filter(
-                content_type=content_type_project, object_id=project.id
-            ).exists():
-                News.objects.create(
-                    content_type=content_type_project,
-                    object_id=project.id,
-                    datetime_created=project.datetime_created,
-                )
-
-        content_type_vacancy = ContentType.objects.filter(model="vacancy").first()
-        for vacancy in Vacancy.objects.filter(is_active=True):
-            if not News.objects.filter(
-                content_type=content_type_vacancy, object_id=vacancy.id
-            ).exists():
-                News.objects.create(
-                    content_type=content_type_vacancy,
-                    object_id=vacancy.id,
-                    datetime_created=vacancy.datetime_created,
-                )
-
-        news_to_delete = list(
-            News.objects.filter(
-                content_type__in=[content_type_vacancy, content_type_project]
-            )
-        )
-
-        for news in news_to_delete:
-            if not news.content_object:
-                news.delete()
-
-        return Response({"status": "success"}, status=201)

@@ -28,8 +28,6 @@ class FeedNewsResponseSerializer(serializers.ModelSerializer):
 
     def get_content_object(self, obj) -> dict:
         type_model = obj.content_type.model
-        if is_content_news(obj) and self.get_type_model(obj) == "project":
-            type_model = "news"
         serializer = CONTENT_OBJECT_SERIALIZER_MAPPING[type_model](obj.content_object)
         return serializer.data
 
