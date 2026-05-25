@@ -1,6 +1,9 @@
 from django.test import TestCase
 from rest_framework.test import APIClient
 
+from core.services import set_like
+from feed.services import create_news_for_model
+from feed.tests.helpers import create_vacancy
 from news.tests.helpers import create_news_for, create_project, create_user
 
 
@@ -33,9 +36,51 @@ class FeedAPITests(TestCase):
         self.assertEqual(item["content"]["id"], news.id)
         self.assertEqual(item["content"]["text"], "Project feed news")
 
+    def test_feed_returns_project_feed_record_as_project_content(self):
+        project = create_project(name="Feed record project")
+        create_news_for_model(project)
+
+        response = self.client.get("/feed/?type=project")
+
+        self.assertEqual(response.status_code, 200)
+        item = response.data["results"][0]
+        self.assertEqual(item["type_model"], "project")
+        self.assertEqual(item["content"]["id"], project.id)
+
+    def test_feed_returns_vacancy_feed_record_as_vacancy_content(self):
+        vacancy = create_vacancy(role="Backend developer")
+
+        response = self.client.get("/feed/?type=vacancy")
+
+        self.assertEqual(response.status_code, 200)
+        item = response.data["results"][0]
+        self.assertEqual(item["type_model"], "vacancy")
+        self.assertEqual(item["content"]["id"], vacancy.id)
+        self.assertEqual(item["content"]["role"], "Backend developer")
+
+    def test_feed_marks_news_liked_by_current_user(self):
+        news = create_news_for(self.user, text="Liked user feed news")
+        set_like(news, self.user, True)
+
+        response = self.client.get("/feed/?type=news")
+
+        self.assertEqual(response.status_code, 200)
+        item = response.data["results"][0]
+        self.assertEqual(item["type_model"], "news")
+        self.assertTrue(item["content"]["is_user_liked"])
+
     def test_feed_excludes_news_for_private_project(self):
         private_project = create_project(name="Private project", is_public=False)
         create_news_for(private_project, text="Private project news")
+
+        response = self.client.get("/feed/?type=project")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["results"], [])
+
+    def test_feed_excludes_news_for_draft_project(self):
+        draft_project = create_project(name="Draft project", draft=True)
+        create_news_for(draft_project, text="Draft project news")
 
         response = self.client.get("/feed/?type=project")
 
