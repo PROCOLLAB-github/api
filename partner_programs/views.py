@@ -1,8 +1,9 @@
 import io
+from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
-from django.db.models import Exists, OuterRef, Prefetch, Q
+from django.db.models import Count, Exists, OuterRef, Prefetch, Q
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.utils.timezone import now
@@ -50,6 +51,7 @@ from partner_programs.permissions import (
 from partner_programs.serializers import (
     CompanyBriefSerializer,
     LegalDocumentSerializer,
+    PartnerProgramCreateSerializer,
     PartnerProgramDataSchemaSerializer,
     PartnerProgramFieldSerializer,
     PartnerProgramForMemberSerializer,
@@ -60,6 +62,7 @@ from partner_programs.serializers import (
     PartnerProgramListSerializer,
     PartnerProgramNewUserSerializer,
     PartnerProgramProjectApplySerializer,
+    PartnerProgramUpdateSerializer,
     PartnerProgramUserSerializer,
     PartnerProgramVerificationStatusSerializer,
     PartnerProgramVerificationSubmitSerializer,
@@ -139,6 +142,8 @@ def user_can_access_private_program(user, program: PartnerProgram) -> bool:
         user=user,
     ).exists():
         return True
+    if program.experts.filter(user=user).exists():
+        return True
     return False
 
 
@@ -151,11 +156,34 @@ class PartnerProgramList(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     pagination_class = PartnerProgramPagination
 
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return PartnerProgramCreateSerializer
+        return self.serializer_class
+
     def get_queryset(self):
-        base_qs = super().get_queryset()
+        user = self.request.user
+        my_flag = self.request.query_params.get("my", "").lower() in {
+            "1",
+            "true",
+            "yes",
+        }
+        if my_flag:
+            if not user.is_authenticated:
+                return PartnerProgram.objects.none()
+            manager_qs = PartnerProgram.objects.filter(managers=user)
+            member_qs = PartnerProgram.objects.filter(partner_program_profiles__user=user)
+            expert_qs = PartnerProgram.objects.filter(experts__user=user)
+            base_qs = (
+                (manager_qs | member_qs | expert_qs)
+                .select_related("company")
+                .exclude(status=PartnerProgram.STATUS_ARCHIVED)
+                .distinct()
+            )
+        else:
+            base_qs = super().get_queryset()
         participating_flag = self.request.query_params.get("participating")
         if not participating_flag:
-            user = self.request.user
             if not user.is_authenticated:
                 qs = base_qs.filter(is_private=False)
             elif getattr(user, "is_staff", False) or getattr(user, "is_superuser", False):
@@ -199,7 +227,7 @@ class PartnerProgramList(generics.ListCreateAPIView):
         return qs.annotate(is_user_member=Exists(member_qs))
 
 
-class PartnerProgramDetail(generics.RetrieveAPIView):
+class PartnerProgramDetail(generics.RetrieveUpdateAPIView):
     queryset = (
         PartnerProgram.objects.select_related("company")
         .prefetch_related(
@@ -212,6 +240,11 @@ class PartnerProgramDetail(generics.RetrieveAPIView):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     serializer_class = PartnerProgramForUnregisteredUserSerializer
 
+    def get_serializer_class(self):
+        if self.request.method in ("PATCH", "PUT"):
+            return PartnerProgramUpdateSerializer
+        return self.serializer_class
+
     def get(self, request, *args, **kwargs):
         program = self.get_object()
         if program.is_private and not user_can_access_private_program(
@@ -219,9 +252,10 @@ class PartnerProgramDetail(generics.RetrieveAPIView):
         ):
             raise NotFound("Чемпионат доступен только по приглашению.")
         is_user_member = program.users.filter(pk=request.user.pk).exists()
+        can_manage = self._has_edit_access(request.user, program)
         serializer_class = (
             PartnerProgramForMemberSerializer
-            if is_user_member
+            if is_user_member or can_manage
             else PartnerProgramForUnregisteredUserSerializer
         )
         serializer = serializer_class(
@@ -229,12 +263,191 @@ class PartnerProgramDetail(generics.RetrieveAPIView):
         )
         data = serializer.data
         data["is_user_member"] = is_user_member
+        data["is_user_expert"] = (
+            program.experts.filter(user=request.user).exists()
+            if request.user.is_authenticated
+            else False
+        )
         data["status"] = program.status
         data["frozen_at"] = program.frozen_at
         data["is_frozen"] = program.status == PartnerProgram.STATUS_FROZEN
         if request.user.is_authenticated:
             add_view(program, request.user)
         return Response(data, status=status.HTTP_200_OK)
+
+    def patch(self, request, *args, **kwargs):
+        program = self.get_object()
+        if not self._has_edit_access(request.user, program):
+            return Response(
+                {"detail": "Not enough rights to edit this championship."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if program.status in (
+            PartnerProgram.STATUS_PENDING_MODERATION,
+            PartnerProgram.STATUS_FROZEN,
+            PartnerProgram.STATUS_ARCHIVED,
+        ):
+            return Response(
+                {"detail": "Championship is read-only in the current status."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        if program.status == PartnerProgram.STATUS_PUBLISHED:
+            conflict = self._published_edit_conflict(program, request.data)
+            if conflict:
+                return Response({"detail": conflict}, status=status.HTTP_409_CONFLICT)
+
+        old_schema = program.data_schema if "data_schema" in request.data else None
+        response = self.partial_update(request, *args, **kwargs)
+        if old_schema is not None and response.status_code < 400:
+            program.refresh_from_db(fields=["data_schema"])
+            self._log_registration_schema_changes(
+                request.user,
+                program,
+                old_schema,
+                program.data_schema,
+                request,
+            )
+        return response
+
+    def put(self, request, *args, **kwargs):
+        return self.patch(request, *args, **kwargs)
+
+    def _has_edit_access(self, user, program: PartnerProgram) -> bool:
+        return bool(
+            user
+            and user.is_authenticated
+            and (
+                getattr(user, "is_staff", False)
+                or getattr(user, "is_superuser", False)
+                or program.is_manager(user)
+            )
+        )
+
+    def _log_registration_schema_changes(self, actor, program, old_schema, new_schema, request):
+        old_keys = set(old_schema.keys()) if isinstance(old_schema, dict) else set()
+        new_keys = set(new_schema.keys()) if isinstance(new_schema, dict) else set()
+        changes = [
+            ("registration_form_field_created", sorted(new_keys - old_keys)),
+            ("registration_form_field_deleted", sorted(old_keys - new_keys)),
+            ("registration_form_field_updated", sorted(old_keys & new_keys)),
+        ]
+        for action, field_names in changes:
+            if not field_names:
+                continue
+            log_personal_data_access(
+                actor=actor,
+                program=program,
+                action=action,
+                object_type="registration_form",
+                object_id=program.id,
+                metadata={
+                    "field_names": field_names,
+                    "request_path": request.path,
+                },
+            )
+
+    def _published_edit_conflict(self, program: PartnerProgram, data) -> str | None:
+        requested_fields = set(data.keys())
+        public_fields = {
+            "name",
+            "description",
+            "city",
+            "cover_image_address",
+            "mobile_cover_image_address",
+            "image_address",
+            "advertisement_image_address",
+        }
+        registration_fields = {"data_schema", "registration_link", "is_private"}
+        participation_fields = {
+            "participation_format",
+            "project_team_min_size",
+            "project_team_max_size",
+        }
+
+        if requested_fields & public_fields:
+            return "Public fields may require a new moderation cycle after publication."
+
+        has_participants = program.partner_program_profiles.exists()
+        has_projects = program.program_projects.exists()
+        has_submitted_projects = program.program_projects.filter(submitted=True).exists()
+
+        if has_participants and requested_fields & registration_fields:
+            return "Registration settings cannot be changed after participants joined."
+
+        if (has_participants or has_projects) and requested_fields & participation_fields:
+            return "Team participation rules cannot be changed after activity starts."
+
+        if (
+            has_submitted_projects
+            and "is_competitive" in requested_fields
+            and data.get("is_competitive") is False
+        ):
+            return "Competitive mode cannot be disabled after submitted projects exist."
+
+        return None
+
+
+class PartnerProgramStatsAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get(self, request, pk: int):
+        program = get_object_or_404(PartnerProgram, pk=pk)
+        if program.is_private and not user_can_access_private_program(
+            request.user, program
+        ):
+            raise NotFound("Р§РµРјРїРёРѕРЅР°С‚ РґРѕСЃС‚СѓРїРµРЅ С‚РѕР»СЊРєРѕ РїРѕ РїСЂРёРіР»Р°С€РµРЅРёСЋ.")
+
+        week_ago = timezone.now() - timedelta(days=7)
+        participant_stats = PartnerProgramUserProfile.objects.filter(
+            partner_program=program
+        ).aggregate(
+            participants_count=Count("id"),
+            participants_delta_week=Count(
+                "id",
+                filter=Q(datetime_created__gte=week_ago),
+            ),
+        )
+        project_stats = PartnerProgramProject.objects.filter(
+            partner_program=program
+        ).aggregate(
+            projects_count=Count("id"),
+            active_projects_count=Count("id", filter=Q(submitted=True)),
+        )
+
+        return Response(
+            {
+                **participant_stats,
+                **project_stats,
+                "experts_count": program.experts.count(),
+                "experts_remaining_count": 0,
+                "current_period": self._current_period(program),
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    def _current_period(self, program: PartnerProgram) -> str:
+        current_time = timezone.now()
+        submission_deadline = program.get_project_submission_deadline()
+
+        if program.datetime_started and current_time < program.datetime_started:
+            return "not_started"
+        if (
+            program.datetime_registration_ends
+            and current_time <= program.datetime_registration_ends
+        ):
+            return "registration"
+        if submission_deadline and current_time <= submission_deadline:
+            return "project_submission"
+        if (
+            program.datetime_evaluation_ends
+            and current_time <= program.datetime_evaluation_ends
+        ):
+            return "evaluation"
+        if program.datetime_finished and current_time <= program.datetime_finished:
+            return "running"
+        return "finished"
 
 
 class PartnerProgramVerificationStatusView(APIView):

@@ -25,6 +25,7 @@ from partner_programs.views import (
     PartnerProgramRegister,
     PartnerProgramSetLiked,
     PartnerProgramSetViewed,
+    PartnerProgramStatsAPIView,
     PartnerProgramSubmitToModerationView,
     PartnerProgramVerificationStatusView,
     PartnerProgramVerificationSubmitView,
@@ -53,6 +54,11 @@ urlpatterns = [
         "<int:pk>/readiness/",
         PartnerProgramReadinessView.as_view(),
         name="partner-program-readiness",
+    ),
+    path(
+        "<int:pk>/stats/",
+        PartnerProgramStatsAPIView.as_view(),
+        name="partner-program-stats",
     ),
     path(
         "<int:pk>/legal-settings/",

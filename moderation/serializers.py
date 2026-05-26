@@ -107,6 +107,7 @@ class ModerationProgramListSerializer(serializers.ModelSerializer):
             "city",
             "image_address",
             "cover_image_address",
+            "mobile_cover_image_address",
             "advertisement_image_address",
             "datetime_started",
             "datetime_finished",

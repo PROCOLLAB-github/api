@@ -178,11 +178,13 @@ class PartnerProgramAdmin(admin.ModelAdmin):
                     (
                         "image_address",
                         "cover_image_address",
+                        "mobile_cover_image_address",
                         "advertisement_image_address",
                     ),
                     ("presentation_address", "registration_link"),
                     "data_schema",
                     "readiness",
+                    "sent_reminders",
                 )
             },
         ),

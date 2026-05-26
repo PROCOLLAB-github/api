@@ -135,6 +135,15 @@ class PartnerProgram(models.Model):
         blank=True,
         verbose_name="Ссылка на обложку",
     )
+    mobile_cover_image_address = models.URLField(
+        null=True,
+        blank=True,
+        verbose_name="Mobile cover image URL",
+        help_text=(
+            "Optional mobile-optimized cover image. Falls back to "
+            "cover_image_address when empty."
+        ),
+    )
     advertisement_image_address = models.URLField(
         null=True,
         blank=True,
@@ -206,6 +215,11 @@ class PartnerProgram(models.Model):
         default=dict,
         blank=True,
         verbose_name="Readiness checklist",
+    )
+    sent_reminders = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name="Sent readiness reminders",
     )
     company = models.ForeignKey(
         "projects.Company",
