@@ -6,11 +6,12 @@ from files.serializers import UserFileSerializer
 from news.mapping import NewsMapping
 from news.models import News
 from news.services import is_content_news
+from partner_programs.models import PartnerProgram
 from projects.models import Project
 from users.models import CustomUser
 
 
-class FeedNewsResponseSerializer(serializers.ModelSerializer):
+class FeedNewsContentSerializer(serializers.ModelSerializer):
     name = serializers.SerializerMethodField()
     image_address = serializers.SerializerMethodField()
     is_user_liked = serializers.SerializerMethodField()
@@ -20,11 +21,18 @@ class FeedNewsResponseSerializer(serializers.ModelSerializer):
     content_object = serializers.SerializerMethodField()
     type_model = serializers.SerializerMethodField()
 
-    def get_type_model(self, obj) -> str:
-        model_type = CONTENT_OBJECT_MAPPING[obj.content_type.model]
-        if is_content_news(obj) and model_type == "project":
+    def get_type_model(self, obj) -> str | None:
+        content_model = obj.content_type.model
+
+        if content_model == PartnerProgram.__name__.lower():
+            # Новости программ сейчас отображаются как обычные новости.
+            # Отдельная служебная карточка программы в ленте пока не согласована.
+            return "news" if is_content_news(obj) else None
+
+        if is_content_news(obj) and content_model == Project.__name__.lower():
             return "news"
-        return model_type
+
+        return CONTENT_OBJECT_MAPPING[content_model]
 
     def get_content_object(self, obj) -> dict:
         type_model = obj.content_type.model
@@ -65,3 +73,20 @@ class FeedNewsResponseSerializer(serializers.ModelSerializer):
             "type_model",
         ]
         read_only_fields = ["views_count", "likes_count", "type_model"]
+
+
+class FeedItemResponseSerializer(serializers.Serializer):
+    def to_representation(self, instance):
+        data = FeedNewsContentSerializer(instance, context=self.context).data
+        type_model = data["type_model"]
+
+        if type_model == "news":
+            content = dict(data)
+            del content["type_model"]
+        else:
+            content = data["content_object"]
+
+        return {
+            "type_model": type_model,
+            "content": content,
+        }
