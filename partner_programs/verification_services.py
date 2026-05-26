@@ -278,6 +278,37 @@ def latest_approved_verification_request(program: PartnerProgram, user=None):
     )
 
 
+def latest_verification_request_for_user(user):
+    if not user or not getattr(user, "is_authenticated", False):
+        return None
+
+    return (
+        PartnerProgramVerificationRequest.objects.select_related(
+            "program",
+            "company",
+            "initiator",
+            "decided_by",
+        )
+        .prefetch_related("documents")
+        .filter(initiator=user)
+        .order_by("-submitted_at", "-id")
+        .first()
+    )
+
+
+def apply_profile_verification_to_program(program: PartnerProgram, user) -> bool:
+    latest_request = latest_verification_request_for_user(user)
+    if not latest_request:
+        return False
+
+    program.verification_status = REQUEST_STATUS_TO_PROGRAM_STATUS.get(
+        latest_request.status,
+        PartnerProgram.VERIFICATION_STATUS_NOT_REQUESTED,
+    )
+    program.company = latest_request.company
+    return True
+
+
 def verification_requests_for_program(program: PartnerProgram, user=None):
     filters = Q(program=program)
 

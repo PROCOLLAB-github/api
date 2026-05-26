@@ -1,6 +1,9 @@
 from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.models import ContentType
+from django.utils.text import slugify
 from rest_framework import serializers
 
+from core.models import Link
 from core.services import get_likes_count, get_links, get_views_count, is_fan
 from courses.models import CourseContentStatus
 from courses.services.access import resolve_course_availability
@@ -19,12 +22,15 @@ from partner_programs.privacy import (
     active_legal_documents_by_type,
     can_view_participant_contacts,
 )
+from partner_programs.verification_services import apply_profile_verification_to_program
 from projects.models import Project
 from projects.validators import validate_project
 
 from .fields import PartnerProgramFieldValueUpdateSerializer
 
 User = get_user_model()
+PROGRAM_DESCRIPTION_MIN_LENGTH = 180
+PROGRAM_DESCRIPTION_MAX_LENGTH = 1000
 
 
 class LegalDocumentSerializer(serializers.ModelSerializer):
@@ -249,6 +255,8 @@ class PartnerProgramListSerializer(serializers.ModelSerializer):
             "name",
             "city",
             "image_address",
+            "cover_image_address",
+            "mobile_cover_image_address",
             "short_description",
             "company",
             "company_name",
@@ -541,6 +549,7 @@ class PartnerProgramForMemberSerializer(PartnerProgramBaseSerializerMixin):
             "materials",
             "image_address",
             "cover_image_address",
+            "mobile_cover_image_address",
             "presentation_address",
             "registration_link",
             "is_private",
@@ -589,6 +598,7 @@ class PartnerProgramForUnregisteredUserSerializer(PartnerProgramBaseSerializerMi
             "materials",
             "image_address",
             "cover_image_address",
+            "mobile_cover_image_address",
             "advertisement_image_address",
             "presentation_address",
             "registration_link",
@@ -647,9 +657,310 @@ class UserProgramsSerializer(serializers.ModelSerializer):
 
 
 class PartnerProgramMaterialSerializer(serializers.ModelSerializer):
+    type = serializers.SerializerMethodField()
+    size = serializers.SerializerMethodField()
+
     class Meta:
         model = PartnerProgramMaterial
-        fields = ("title", "url")
+        fields = ("id", "title", "url", "type", "size", "datetime_created")
+        read_only_fields = ("id", "type", "size", "datetime_created")
+
+    def get_type(self, material):
+        return "file" if material.file_id else "link"
+
+    def get_size(self, material):
+        return material.file.size if material.file_id and material.file else None
+
+
+class PartnerProgramCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PartnerProgram
+        fields = (
+            "id",
+            "status",
+            "name",
+            "description",
+            "city",
+            "image_address",
+            "cover_image_address",
+            "mobile_cover_image_address",
+            "advertisement_image_address",
+            "presentation_address",
+            "registration_link",
+            "is_private",
+            "data_schema",
+            "datetime_started",
+            "datetime_registration_ends",
+            "datetime_project_submission_ends",
+            "datetime_evaluation_ends",
+            "datetime_finished",
+            "is_competitive",
+            "is_distributed_evaluation",
+            "max_project_rates",
+            "projects_availability",
+            "publish_projects_after_finish",
+            "participation_format",
+            "project_team_min_size",
+            "project_team_max_size",
+        )
+        read_only_fields = ("id", "status")
+        extra_kwargs = {
+            "name": {"min_length": 5, "max_length": 200},
+            "description": {
+                "required": True,
+                "allow_blank": False,
+                "min_length": PROGRAM_DESCRIPTION_MIN_LENGTH,
+                "max_length": PROGRAM_DESCRIPTION_MAX_LENGTH,
+            },
+            "city": {"required": True, "allow_blank": False},
+            "datetime_project_submission_ends": {"required": True, "allow_null": False},
+        }
+
+    def validate(self, attrs):
+        self._validate_schedule(attrs)
+        self._validate_participation(attrs)
+        return attrs
+
+    def _validate_schedule(self, attrs):
+        started = attrs.get("datetime_started")
+        registration_ends = attrs.get("datetime_registration_ends")
+        project_submission_ends = attrs.get("datetime_project_submission_ends")
+        evaluation_ends = attrs.get("datetime_evaluation_ends")
+        finished = attrs.get("datetime_finished")
+        errors = {}
+
+        if started and finished and started > finished:
+            errors["datetime_started"] = "Start date cannot be later than finish date."
+        if registration_ends and project_submission_ends and registration_ends > project_submission_ends:
+            errors["datetime_registration_ends"] = (
+                "Registration deadline cannot be later than project submission deadline."
+            )
+        if project_submission_ends and finished and project_submission_ends > finished:
+            errors["datetime_project_submission_ends"] = (
+                "Project submission deadline cannot be later than finish date."
+            )
+        if project_submission_ends and evaluation_ends and project_submission_ends > evaluation_ends:
+            errors["datetime_evaluation_ends"] = (
+                "Evaluation deadline cannot be earlier than project submission deadline."
+            )
+        if evaluation_ends and finished and evaluation_ends > finished:
+            errors["datetime_evaluation_ends"] = (
+                "Evaluation deadline cannot be later than finish date."
+            )
+        if errors:
+            raise serializers.ValidationError(errors)
+
+    def _validate_participation(self, attrs):
+        participation_format = attrs.get(
+            "participation_format", PartnerProgram.PARTICIPATION_FORMAT_TEAM
+        )
+        min_size = attrs.get("project_team_min_size")
+        max_size = attrs.get("project_team_max_size")
+        errors = {}
+
+        if min_size is not None and min_size < 1:
+            errors["project_team_min_size"] = "Minimum project team size must be at least 1."
+        if (
+            participation_format == PartnerProgram.PARTICIPATION_FORMAT_TEAM
+            and max_size is not None
+            and min_size is not None
+            and max_size < min_size
+        ):
+            errors["project_team_max_size"] = (
+                "Maximum project team size cannot be smaller than minimum size."
+            )
+        if errors:
+            raise serializers.ValidationError(errors)
+
+    def create(self, validated_data):
+        validated_data["tag"] = self.build_tag(validated_data.get("name", ""))
+        validated_data["status"] = PartnerProgram.STATUS_DRAFT
+        validated_data["draft"] = True
+        validated_data.setdefault("is_competitive", True)
+        validated_data.setdefault("is_distributed_evaluation", False)
+        validated_data.setdefault("max_project_rates", 1)
+        validated_data.setdefault("projects_availability", "all_users")
+        validated_data.setdefault("publish_projects_after_finish", False)
+        validated_data.setdefault(
+            "participation_format", PartnerProgram.PARTICIPATION_FORMAT_TEAM
+        )
+        validated_data.setdefault("project_team_min_size", 1)
+
+        program = PartnerProgram.objects.create(**validated_data)
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if user and user.is_authenticated:
+            program.managers.add(user)
+            apply_profile_verification_to_program(program, user)
+
+        program.readiness = program.calculate_readiness()
+        program.save(
+            update_fields=[
+                "readiness",
+                "verification_status",
+                "company",
+                "datetime_updated",
+            ]
+        )
+        return program
+
+    def build_tag(self, name: str) -> str:
+        base = slugify(name, allow_unicode=True).replace("-", "_")
+        return base[:80] or "case_championship"
+
+
+class PartnerProgramUpdateSerializer(serializers.ModelSerializer):
+    materials = PartnerProgramMaterialSerializer(many=True, required=False)
+    links = serializers.ListField(
+        child=serializers.URLField(),
+        required=False,
+        allow_empty=True,
+        write_only=True,
+    )
+
+    class Meta:
+        model = PartnerProgram
+        fields = (
+            "id",
+            "status",
+            "name",
+            "tag",
+            "description",
+            "city",
+            "image_address",
+            "cover_image_address",
+            "mobile_cover_image_address",
+            "advertisement_image_address",
+            "presentation_address",
+            "links",
+            "registration_link",
+            "is_private",
+            "data_schema",
+            "datetime_started",
+            "datetime_registration_ends",
+            "datetime_project_submission_ends",
+            "datetime_evaluation_ends",
+            "datetime_finished",
+            "is_competitive",
+            "is_distributed_evaluation",
+            "max_project_rates",
+            "projects_availability",
+            "publish_projects_after_finish",
+            "participation_format",
+            "project_team_min_size",
+            "project_team_max_size",
+            "materials",
+        )
+        read_only_fields = ("id", "status")
+        extra_kwargs = {
+            "description": {"min_length": PROGRAM_DESCRIPTION_MIN_LENGTH},
+        }
+
+    def validate(self, attrs):
+        self._validate_schedule(attrs)
+        self._validate_participation(attrs)
+        return attrs
+
+    def _validate_schedule(self, attrs):
+        instance = self.instance
+        started = attrs.get("datetime_started", instance.datetime_started)
+        registration_ends = attrs.get(
+            "datetime_registration_ends", instance.datetime_registration_ends
+        )
+        project_submission_ends = attrs.get(
+            "datetime_project_submission_ends",
+            instance.datetime_project_submission_ends,
+        )
+        if project_submission_ends is None and registration_ends is not None:
+            project_submission_ends = registration_ends
+        evaluation_ends = attrs.get("datetime_evaluation_ends", instance.datetime_evaluation_ends)
+        finished = attrs.get("datetime_finished", instance.datetime_finished)
+        errors = {}
+
+        if started and finished and started > finished:
+            errors["datetime_started"] = "Start date cannot be later than finish date."
+        if registration_ends and project_submission_ends and registration_ends > project_submission_ends:
+            errors["datetime_registration_ends"] = (
+                "Registration deadline cannot be later than project submission deadline."
+            )
+        if project_submission_ends and evaluation_ends and project_submission_ends > evaluation_ends:
+            errors["datetime_evaluation_ends"] = (
+                "Evaluation deadline cannot be earlier than project submission deadline."
+            )
+        if evaluation_ends and finished and evaluation_ends > finished:
+            errors["datetime_evaluation_ends"] = (
+                "Evaluation deadline cannot be later than finish date."
+            )
+        if project_submission_ends and finished and project_submission_ends > finished:
+            errors["datetime_project_submission_ends"] = (
+                "Project submission deadline cannot be later than finish date."
+            )
+        if errors:
+            raise serializers.ValidationError(errors)
+
+    def _validate_participation(self, attrs):
+        instance = self.instance
+        min_size = attrs.get("project_team_min_size", instance.project_team_min_size)
+        max_size = attrs.get("project_team_max_size", instance.project_team_max_size)
+        errors = {}
+
+        if min_size is not None and min_size < 1:
+            errors["project_team_min_size"] = "Minimum project team size must be at least 1."
+        if max_size is not None and min_size is not None and max_size < min_size:
+            errors["project_team_max_size"] = (
+                "Maximum project team size cannot be smaller than minimum size."
+            )
+        if errors:
+            raise serializers.ValidationError(errors)
+
+    def update(self, instance, validated_data):
+        materials_data = validated_data.pop("materials", None)
+        links_data = validated_data.pop("links", None)
+
+        for field, value in validated_data.items():
+            setattr(instance, field, value)
+
+        if "is_competitive" in validated_data and not validated_data["is_competitive"]:
+            instance.is_distributed_evaluation = False
+            instance.max_project_rates = 1
+
+        instance.readiness = instance.calculate_readiness()
+        instance.save()
+
+        if materials_data is not None:
+            instance.materials.all().delete()
+            for material in materials_data:
+                PartnerProgramMaterial.objects.create(
+                    program=instance,
+                    title=material["title"],
+                    url=material["url"],
+                )
+
+        if links_data is not None:
+            content_type = ContentType.objects.get_for_model(instance)
+            Link.objects.filter(content_type=content_type, object_id=instance.id).delete()
+            seen_links = set()
+            for link in links_data:
+                link = (link or "").strip()
+                if not link or link in seen_links:
+                    continue
+                seen_links.add(link)
+                Link.objects.create(
+                    content_type=content_type,
+                    object_id=instance.id,
+                    link=link,
+                )
+
+        if materials_data is not None or links_data is not None:
+            instance.readiness = instance.calculate_readiness()
+            instance.save(update_fields=["readiness", "datetime_updated"])
+
+        return instance
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data["links"] = [link.link for link in get_links(instance)]
+        return data
 
 
 class PartnerProgramFieldValueSerializer(serializers.ModelSerializer):

@@ -1,6 +1,11 @@
+import os
 import random
+from decimal import Decimal
 from datetime import date, timedelta
+from pathlib import Path
+from urllib.parse import urljoin
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.core.management.base import BaseCommand, CommandError
@@ -8,19 +13,38 @@ from django.db import transaction
 from django.db.models.signals import post_save
 from django.utils import timezone
 
+from certificates.models import (
+    CertificateGenerationRun,
+    IssuedCertificate,
+    ProgramCertificateTemplate,
+)
 from core.models import Like, Skill, SkillCategory, SkillToObject, View
 from core.models import Specialization, SpecializationCategory
+from files.models import UserFile
 from industries.models import Industry
+from moderation.models import ModerationLog
 from news.models import News
+from notifications.models import Notification, NotificationDelivery
 from partner_programs.models import (
+    LegalDocument,
     PartnerProgram,
     PartnerProgramField,
     PartnerProgramFieldValue,
+    PartnerProgramInvite,
+    PartnerProgramLegalSettings,
+    PartnerProgramParticipantConsent,
     PartnerProgramMaterial,
     PartnerProgramProject,
     PartnerProgramUserProfile,
+    PartnerProgramVerificationRequest,
 )
-from project_rates.models import Criteria, ProjectExpertAssignment, ProjectScore
+from project_rates.models import (
+    Criteria,
+    ProjectEvaluation,
+    ProjectEvaluationScore,
+    ProjectExpertAssignment,
+    ProjectScore,
+)
 from projects.models import (
     Achievement,
     Collaborator,
@@ -51,6 +75,46 @@ User = get_user_model()
 
 DEFAULT_PASSWORD = "DemoPassword123"
 EMAIL_DOMAIN = "demo.procollab.local"
+
+DEMO_ACCOUNT_SPECS = [
+    {
+        "key": "admin",
+        "email": f"demo.admin@{EMAIL_DOMAIN}",
+        "first_name": "Demo",
+        "last_name": "Admin",
+        "user_type": User.MEMBER,
+        "is_staff": True,
+        "is_superuser": True,
+    },
+    {
+        "key": "organizer_verified",
+        "email": f"demo.organizer.verified@{EMAIL_DOMAIN}",
+        "first_name": "Verified",
+        "last_name": "Organizer",
+        "user_type": User.MEMBER,
+    },
+    {
+        "key": "organizer_pending",
+        "email": f"demo.organizer.pending@{EMAIL_DOMAIN}",
+        "first_name": "Pending",
+        "last_name": "Organizer",
+        "user_type": User.MEMBER,
+    },
+    {
+        "key": "expert",
+        "email": f"demo.expert@{EMAIL_DOMAIN}",
+        "first_name": "Demo",
+        "last_name": "Expert",
+        "user_type": User.EXPERT,
+    },
+    {
+        "key": "participant",
+        "email": f"demo.participant@{EMAIL_DOMAIN}",
+        "first_name": "Demo",
+        "last_name": "Participant",
+        "user_type": User.MEMBER,
+    },
+]
 
 FIRST_NAMES = [
     "Алексей",
@@ -368,7 +432,10 @@ PROJECT_ROLES = [
 
 
 class Command(BaseCommand):
-    help = "Create demo users, projects, and user/project news."
+    help = (
+        "Create idempotent demo data for the Selectel pre-prod stand. "
+        "Usage: DEMO_PASSWORD=... python manage.py seed_demo_data"
+    )
 
     def add_arguments(self, parser):
         parser.add_argument("--users", type=int, default=30)
@@ -377,7 +444,10 @@ class Command(BaseCommand):
         parser.add_argument("--news-per-user", type=int, default=2)
         parser.add_argument("--news-per-project", type=int, default=3)
         parser.add_argument("--seed", type=int, default=20260501)
-        parser.add_argument("--password", default=DEFAULT_PASSWORD)
+        parser.add_argument(
+            "--password",
+            default=os.environ.get("DEMO_PASSWORD", DEFAULT_PASSWORD),
+        )
 
     @transaction.atomic
     def handle(self, *args, **options):
@@ -407,11 +477,17 @@ class Command(BaseCommand):
         industries = self._ensure_industries()
         specializations = self._ensure_specializations()
         skills = self._ensure_skills()
+        demo_accounts = self._ensure_demo_accounts(
+            password=options["password"],
+            skills=skills,
+            rnd=rnd,
+        )
 
-        users = [
+        generated_users = [
             self._create_user(index, rnd, specializations, skills, options["password"])
             for index in range(1, users_count + 1)
         ]
+        users = self._merge_unique_users(demo_accounts.values(), generated_users)
         projects = [
             self._create_project(index, rnd, users, industries, skills)
             for index in range(1, projects_count + 1)
@@ -435,6 +511,14 @@ class Command(BaseCommand):
         user_news_created = self._create_user_news(users, news_per_user, rnd)
         project_news_created = self._create_project_news(projects, news_per_project, rnd)
         program_news_created = self._create_program_news(programs, rnd)
+        domain_records = self._ensure_demo_domain_records(
+            programs=programs,
+            users=users,
+            projects=projects,
+            demo_accounts=demo_accounts,
+            rnd=rnd,
+        )
+        demo_record_count = self._demo_record_count()
 
         self.stdout.write(
             self.style.SUCCESS(
@@ -443,12 +527,18 @@ class Command(BaseCommand):
                 f"programs={len(programs)}, "
                 f"user_news={user_news_created}, "
                 f"project_news={project_news_created}, "
-                f"program_news={program_news_created}."
+                f"program_news={program_news_created}, "
+                f"domain_records={domain_records}, "
+                f"non_cross_table_records={demo_record_count}."
             )
         )
         self.stdout.write(
             f"Demo users use emails demo.user.001@{EMAIL_DOMAIN} ... "
             f"and password: {options['password']}"
+        )
+        self.stdout.write(
+            "Named demo accounts: "
+            + ", ".join(spec["email"] for spec in DEMO_ACCOUNT_SPECS)
         )
 
     def _ensure_industries(self):
@@ -475,6 +565,73 @@ class Command(BaseCommand):
             for name in names:
                 skills.append(self._get_or_create(Skill, category=category, name=name))
         return skills
+
+    def _ensure_demo_accounts(self, password, skills, rnd):
+        accounts = {}
+        for index, spec in enumerate(DEMO_ACCOUNT_SPECS, start=1):
+            user = self._ensure_named_user(
+                email=spec["email"],
+                password=password,
+                first_name=spec["first_name"],
+                last_name=spec["last_name"],
+                user_type=spec["user_type"],
+                is_staff=spec.get("is_staff", False),
+                is_superuser=spec.get("is_superuser", False),
+            )
+            self._ensure_role_profile(user, rnd)
+            self._ensure_user_details(user, 900 + index, rnd, skills)
+            accounts[spec["key"]] = user
+        return accounts
+
+    def _ensure_named_user(
+        self,
+        *,
+        email,
+        password,
+        first_name,
+        last_name,
+        user_type,
+        is_staff=False,
+        is_superuser=False,
+    ):
+        defaults = {
+            "first_name": first_name,
+            "last_name": last_name,
+            "patronymic": "",
+            "user_type": user_type,
+            "is_staff": is_staff,
+            "is_superuser": is_superuser,
+            "is_active": True,
+            "birthday": date(1995, 1, 1),
+            "about_me": "Demo account for the Selectel pre-prod stand.",
+            "status": "Demo",
+            "region": "Moscow",
+            "city": "Moscow",
+            "phone_number": "+79990000000",
+            "onboarding_stage": user_constants.OnboardingStage.completed.value,
+            "verification_date": timezone.localdate(),
+            "last_activity": timezone.now(),
+            "is_mospolytech_student": False,
+        }
+        user = User.objects.filter(email=email).first()
+        if user is None:
+            user = User.objects.create_user(email=email, password=password, **defaults)
+        else:
+            for field, value in defaults.items():
+                setattr(user, field, value)
+            user.set_password(password)
+            user.save()
+        return user
+
+    def _merge_unique_users(self, primary_users, secondary_users):
+        users = []
+        seen_ids = set()
+        for user in [*primary_users, *secondary_users]:
+            if user.id in seen_ids:
+                continue
+            users.append(user)
+            seen_ids.add(user.id)
+        return users
 
     def _create_user(self, index, rnd, specializations, skills, password):
         first_name = FIRST_NAMES[(index - 1) % len(FIRST_NAMES)]
@@ -891,6 +1048,7 @@ class Command(BaseCommand):
                 if fill_level == "full"
                 else None
             ),
+            "is_private": index % 4 == 0,
             "max_project_rates": 2,
             "is_distributed_evaluation": index % 2 == 1,
             "draft": status == "draft",
@@ -904,6 +1062,7 @@ class Command(BaseCommand):
             "readiness": {},
             "sent_reminders": [],
         }
+        self._validate_model_fields(PartnerProgram, defaults.keys())
 
         program = PartnerProgram.objects.filter(tag=tag).first()
         if program is None:
@@ -995,6 +1154,15 @@ class Command(BaseCommand):
             f"{index:03d}/{sizes[image_type]}"
         )
 
+    def _validate_model_fields(self, model, field_names):
+        valid_fields = {field.name for field in model._meta.get_fields()}
+        unknown_fields = sorted(set(field_names) - valid_fields)
+        if unknown_fields:
+            raise CommandError(
+                f"{model.__name__} seed contains unknown fields: "
+                + ", ".join(unknown_fields)
+            )
+
     def _ensure_program_details(self, program, index, rnd, users, projects, fill_level):
         managers = [users[(index - 1) % len(users)]]
         managers.extend(users[index : index + 2])
@@ -1016,10 +1184,16 @@ class Command(BaseCommand):
             program.experts.clear()
             ProjectExpertAssignment.objects.filter(partner_program=program).delete()
             ProjectScore.objects.filter(criteria__partner_program=program).delete()
+            ProjectEvaluation.objects.filter(
+                program_project__partner_program=program,
+            ).delete()
 
         if not program.is_competitive:
             ProjectExpertAssignment.objects.filter(partner_program=program).delete()
             ProjectScore.objects.filter(criteria__partner_program=program).delete()
+            ProjectEvaluation.objects.filter(
+                program_project__partner_program=program,
+            ).delete()
 
         participant_count = {
             "minimal": 2,
@@ -1043,6 +1217,10 @@ class Command(BaseCommand):
             ProjectScore.objects.filter(
                 criteria__partner_program=program,
                 project_id__in=stale_project_ids,
+            ).delete()
+            ProjectEvaluation.objects.filter(
+                program_project__partner_program=program,
+                program_project__project_id__in=stale_project_ids,
             ).delete()
             ProjectExpertAssignment.objects.filter(
                 partner_program=program,
@@ -1073,7 +1251,7 @@ class Command(BaseCommand):
             link.save(update_fields=["submitted", "datetime_submitted"])
             self._ensure_program_project_scores(
                 program,
-                project,
+                link,
                 selected_experts[:2],
                 rnd,
             )
@@ -1274,10 +1452,11 @@ class Command(BaseCommand):
                 field_value.value_text = value
                 field_value.save()
 
-    def _ensure_program_project_scores(self, program, project, experts, rnd):
+    def _ensure_program_project_scores(self, program, program_project, experts, rnd):
         if not program.is_competitive or not experts:
             return
 
+        project = program_project.project
         criteria = list(Criteria.objects.filter(partner_program=program).order_by("id"))
         for expert in experts:
             if (
@@ -1293,6 +1472,20 @@ class Command(BaseCommand):
                     expert=expert,
                 )
 
+            evaluation, _ = ProjectEvaluation.objects.get_or_create(
+                program_project=program_project,
+                user=expert.user,
+                defaults={
+                    "status": (
+                        ProjectEvaluation.STATUS_SUBMITTED
+                        if program_project.submitted
+                        else ProjectEvaluation.STATUS_DRAFT
+                    ),
+                    "submitted_at": (
+                        timezone.now() if program_project.submitted else None
+                    ),
+                },
+            )
             for criterion in criteria:
                 if criterion.type == "str":
                     value = rnd.choice(
@@ -1304,12 +1497,446 @@ class Command(BaseCommand):
                     )
                 else:
                     value = str(rnd.randint(6, 10))
+                value = value[:50]
                 ProjectScore.objects.update_or_create(
                     criteria=criterion,
                     user=expert.user,
                     project=project,
                     defaults={"value": value},
                 )
+                ProjectEvaluationScore.objects.update_or_create(
+                    evaluation=evaluation,
+                    criterion=criterion,
+                    defaults={"value": value},
+                )
+
+            evaluation.total_score = evaluation.calculate_total_score()
+            evaluation.comment = "Demo expert evaluation."
+            if program_project.submitted:
+                evaluation.status = ProjectEvaluation.STATUS_SUBMITTED
+                evaluation.submitted_at = evaluation.submitted_at or timezone.now()
+            else:
+                evaluation.status = ProjectEvaluation.STATUS_DRAFT
+                evaluation.submitted_at = None
+            evaluation.save()
+
+    def _ensure_demo_domain_records(self, *, programs, users, projects, demo_accounts, rnd):
+        if not programs:
+            return 0
+
+        created_or_updated = 0
+        self._ensure_legal_documents()
+
+        admin = demo_accounts["admin"]
+        organizer_verified = demo_accounts["organizer_verified"]
+        organizer_pending = demo_accounts["organizer_pending"]
+        expert_user = demo_accounts["expert"]
+        participant = demo_accounts["participant"]
+
+        primary_program = programs[0]
+        primary_program.managers.add(organizer_verified)
+        if hasattr(expert_user, "expert"):
+            primary_program.experts.add(expert_user.expert)
+        if primary_program.company_id is None:
+            primary_program.company = self._ensure_company(300)
+            primary_program.save(update_fields=["company"])
+
+        if len(programs) > 1:
+            programs[1].managers.add(organizer_pending)
+        private_program = next((program for program in programs if program.is_private), None)
+        if private_program is None:
+            private_program = primary_program
+            private_program.is_private = True
+            private_program.save(update_fields=["is_private"])
+
+        created_or_updated += self._ensure_program_file_material(
+            primary_program,
+            organizer_verified,
+        )
+        created_or_updated += self._ensure_verification_records(
+            programs,
+            admin,
+            organizer_verified,
+            organizer_pending,
+        )
+        created_or_updated += self._ensure_invite_records(private_program, organizer_verified)
+        created_or_updated += self._ensure_moderation_logs(programs, admin, organizer_verified)
+        created_or_updated += self._ensure_notifications(
+            programs,
+            organizer_verified,
+            expert_user,
+            participant,
+        )
+        created_or_updated += self._ensure_participant_consent(primary_program, participant)
+        created_or_updated += self._ensure_certificate_records(primary_program)
+        return created_or_updated
+
+    def _ensure_legal_documents(self):
+        for doc_type, title in (
+            (LegalDocument.TYPE_PRIVACY_POLICY, "Demo privacy policy"),
+            (LegalDocument.TYPE_PARTICIPANT_CONSENT, "Demo participant consent"),
+            (LegalDocument.TYPE_PARTICIPATION_TERMS, "Demo participation terms"),
+            (LegalDocument.TYPE_ORGANIZER_TERMS, "Demo organizer terms"),
+        ):
+            LegalDocument.objects.update_or_create(
+                type=doc_type,
+                version="demo-2026",
+                defaults={
+                    "title": title,
+                    "content_html": f"<p>{title}</p>",
+                    "is_active": True,
+                },
+            )
+
+    def _ensure_program_file_material(self, program, owner):
+        user_file = self._ensure_demo_file(
+            owner,
+            f"program-{program.id}-brief.pdf",
+            b"PROCOLLAB demo championship material\n",
+            "application/pdf",
+        )
+        material = PartnerProgramMaterial.objects.filter(
+            program=program,
+            title="Demo brief PDF",
+        ).first()
+        if material is None:
+            PartnerProgramMaterial.objects.create(
+                program=program,
+                title="Demo brief PDF",
+                file=user_file,
+            )
+            return 1
+
+        material.file = user_file
+        material.url = None
+        material.save()
+        return 1
+
+    def _ensure_demo_file(self, user, filename, content, mime_type):
+        relative_path = Path("uploads") / "demo" / filename
+        file_path = Path(settings.MEDIA_ROOT) / relative_path
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        file_path.write_bytes(content)
+
+        base_url = getattr(settings, "LOCAL_MEDIA_BASE_URL", "http://localhost:8000")
+        link = urljoin(
+            base_url.rstrip("/") + "/",
+            f"{settings.MEDIA_URL.lstrip('/')}{relative_path.as_posix()}",
+        )
+        user_file, _ = UserFile.objects.update_or_create(
+            link=link,
+            defaults={
+                "user": user,
+                "name": Path(filename).stem,
+                "extension": Path(filename).suffix.lstrip("."),
+                "mime_type": mime_type,
+                "size": len(content),
+            },
+        )
+        return user_file
+
+    def _ensure_verification_records(
+        self,
+        programs,
+        admin,
+        organizer_verified,
+        organizer_pending,
+    ):
+        count = 0
+        for index, program in enumerate(programs[:3], start=1):
+            company = program.company or self._ensure_company(400 + index)
+            status = (
+                PartnerProgramVerificationRequest.STATUS_APPROVED
+                if index == 1
+                else PartnerProgramVerificationRequest.STATUS_PENDING
+                if index == 2
+                else PartnerProgramVerificationRequest.STATUS_REJECTED
+            )
+            request = PartnerProgramVerificationRequest.objects.filter(
+                program=program,
+            ).first()
+            defaults = {
+                "company": company,
+                "company_name": company.name,
+                "inn": company.inn,
+                "legal_name": f"{company.name} LLC",
+                "ogrn": f"1027700000{index:03d}",
+                "website": "https://demo.procollab.local",
+                "region": "Moscow",
+                "initiator": organizer_verified if index != 2 else organizer_pending,
+                "contact_full_name": "Demo Organizer",
+                "contact_position": "Program manager",
+                "contact_email": f"organizer.{index}@{EMAIL_DOMAIN}",
+                "contact_phone": "+79990000000",
+                "company_role_description": "Demo organizer verification request.",
+                "status": status,
+                "decided_by": admin if status != "pending" else None,
+                "decided_at": timezone.now() if status != "pending" else None,
+                "admin_comment": "Demo verification record.",
+                "rejection_reason": (
+                    PartnerProgramVerificationRequest.REJECTION_OTHER
+                    if status == PartnerProgramVerificationRequest.STATUS_REJECTED
+                    else ""
+                ),
+            }
+            if request is None:
+                PartnerProgramVerificationRequest.objects.create(
+                    program=program,
+                    **defaults,
+                )
+            else:
+                for field, value in defaults.items():
+                    setattr(request, field, value)
+                request.save()
+            program.company = company
+            program.verification_status = (
+                PartnerProgram.VERIFICATION_STATUS_VERIFIED
+                if status == PartnerProgramVerificationRequest.STATUS_APPROVED
+                else PartnerProgram.VERIFICATION_STATUS_PENDING
+                if status == PartnerProgramVerificationRequest.STATUS_PENDING
+                else PartnerProgram.VERIFICATION_STATUS_REJECTED
+            )
+            program.save(update_fields=["company", "verification_status"])
+            count += 1
+        return count
+
+    def _ensure_invite_records(self, program, created_by):
+        count = 0
+        program.is_private = True
+        program.save(update_fields=["is_private"])
+        for index in range(1, 4):
+            invite, _ = PartnerProgramInvite.objects.update_or_create(
+                program=program,
+                email=f"invited.{index}@{EMAIL_DOMAIN}",
+                defaults={
+                    "created_by": created_by,
+                    "status": PartnerProgramInvite.STATUS_PENDING,
+                    "expires_at": timezone.now() + timedelta(days=30 + index),
+                },
+            )
+            count += int(invite is not None)
+        return count
+
+    def _ensure_moderation_logs(self, programs, admin, organizer):
+        count = 0
+        for program in programs[:4]:
+            for action, author in (
+                (ModerationLog.ACTION_SUBMITTED, organizer),
+                (ModerationLog.ACTION_APPROVED, admin),
+            ):
+                log = ModerationLog.objects.filter(
+                    program=program,
+                    action=action,
+                ).first()
+                defaults = {
+                    "author": author,
+                    "status_before": PartnerProgram.STATUS_DRAFT,
+                    "status_after": program.status,
+                    "comment": "Demo moderation history.",
+                }
+                if log is None:
+                    ModerationLog.objects.create(
+                        program=program,
+                        action=action,
+                        **defaults,
+                    )
+                else:
+                    for field, value in defaults.items():
+                        setattr(log, field, value)
+                    log.save()
+                count += 1
+        return count
+
+    def _ensure_notifications(self, programs, organizer, expert, participant):
+        count = 0
+        notification_specs = [
+            (
+                organizer,
+                Notification.Type.PROGRAM_MODERATION_APPROVED,
+                "Program approved",
+                programs[0],
+            ),
+            (
+                expert,
+                Notification.Type.EXPERT_PROJECTS_ASSIGNED,
+                "Expert projects assigned",
+                programs[0],
+            ),
+            (
+                participant,
+                Notification.Type.PROGRAM_SUBMITTED_TO_MODERATION,
+                "Project submitted",
+                programs[0],
+            ),
+        ]
+        for recipient, notification_type, title, program in notification_specs:
+            notification, _ = Notification.objects.update_or_create(
+                recipient=recipient,
+                type=notification_type,
+                dedupe_key=f"demo:{notification_type}:{program.id}",
+                defaults={
+                    "title": title,
+                    "message": "Demo notification for championship workflow.",
+                    "object_type": "partner_program",
+                    "object_id": program.id,
+                    "url": f"/office/program/{program.id}",
+                    "is_read": False,
+                },
+            )
+            NotificationDelivery.objects.update_or_create(
+                notification=notification,
+                channel=NotificationDelivery.Channel.IN_APP,
+                defaults={
+                    "status": NotificationDelivery.Status.SENT,
+                    "sent_at": timezone.now(),
+                },
+            )
+            count += 2
+        return count
+
+    def _ensure_participant_consent(self, program, participant):
+        profile = PartnerProgramUserProfile.objects.filter(
+            partner_program=program,
+            user=participant,
+        ).first()
+        if profile is None:
+            PartnerProgramUserProfile.objects.create(
+                partner_program=program,
+                user=participant,
+                partner_program_data={"demo": True},
+            )
+        consent = PartnerProgramParticipantConsent.objects.filter(
+            program=program,
+            user=participant,
+        ).first()
+        defaults = {
+            "consent_document_version": "demo-2026",
+            "privacy_policy_version": "demo-2026",
+            "participation_terms_version": "demo-2026",
+            "consent_text_snapshot": "Demo participant consent.",
+            "ip_address": "127.0.0.1",
+            "user_agent": "seed_demo_data",
+        }
+        if consent is None:
+            PartnerProgramParticipantConsent.objects.create(
+                program=program,
+                user=participant,
+                **defaults,
+            )
+        else:
+            for field, value in defaults.items():
+                setattr(consent, field, value)
+            consent.save()
+        return 1
+
+    def _ensure_certificate_records(self, program):
+        template, _ = ProgramCertificateTemplate.objects.update_or_create(
+            program=program,
+            defaults={
+                "is_enabled": True,
+                "template_name": "Demo certificate template",
+                "signer_name": "Demo Platform Admin",
+                "show_project_title": True,
+                "show_team_members": True,
+                "show_rank": True,
+            },
+        )
+
+        submitted_links = list(
+            program.program_projects.filter(submitted=True).select_related(
+                "project",
+                "project__leader",
+            )[:3]
+        )
+        run = CertificateGenerationRun.objects.filter(
+            program=program,
+            status=CertificateGenerationRun.STATUS_COMPLETED,
+        ).first()
+        defaults = {
+            "total_expected": len(submitted_links),
+            "enqueued_count": len(submitted_links),
+            "issued_count": len(submitted_links),
+            "error_count": 0,
+            "error_message": "",
+            "completed_at": timezone.now(),
+        }
+        if run is None:
+            CertificateGenerationRun.objects.create(
+                program=program,
+                status=CertificateGenerationRun.STATUS_COMPLETED,
+                **defaults,
+            )
+        else:
+            for field, value in defaults.items():
+                setattr(run, field, value)
+            run.save()
+
+        count = 2
+        for position, program_project in enumerate(submitted_links, start=1):
+            IssuedCertificate.objects.update_or_create(
+                program=program,
+                user=program_project.project.leader,
+                program_project=program_project,
+                defaults={
+                    "certificate_id": (
+                        f"DEMO-{program.id}-{program_project.project.leader_id}"
+                    ),
+                    "team_name": program_project.project.name,
+                    "final_score": Decimal("8.50"),
+                    "rating_position": position,
+                    "status": IssuedCertificate.STATUS_GENERATED,
+                    "generated_at": timezone.now(),
+                },
+            )
+            count += 1
+        return count
+
+    def _demo_record_count(self):
+        demo_models = (
+            User,
+            Industry,
+            SkillCategory,
+            Skill,
+            SpecializationCategory,
+            Specialization,
+            Project,
+            ProjectGoal,
+            ProjectLink,
+            Resource,
+            Achievement,
+            ProjectNews,
+            News,
+            PartnerProgram,
+            PartnerProgramField,
+            PartnerProgramFieldValue,
+            PartnerProgramMaterial,
+            PartnerProgramProject,
+            PartnerProgramUserProfile,
+            Criteria,
+            ProjectScore,
+            ProjectEvaluation,
+            ProjectEvaluationScore,
+            ProjectExpertAssignment,
+            PartnerProgramVerificationRequest,
+            PartnerProgramInvite,
+            ModerationLog,
+            Notification,
+            NotificationDelivery,
+            ProgramCertificateTemplate,
+            CertificateGenerationRun,
+            IssuedCertificate,
+            LegalDocument,
+            PartnerProgramLegalSettings,
+            PartnerProgramParticipantConsent,
+            UserFile,
+            UserEducation,
+            UserWorkExperience,
+            UserLanguages,
+            UserAchievement,
+            UserLink,
+            UserNotificationPreferences,
+        )
+        return sum(model.objects.count() for model in demo_models)
 
     def _create_user_news(self, users, news_per_user, rnd):
         created_count = 0

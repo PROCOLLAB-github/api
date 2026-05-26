@@ -16,6 +16,7 @@ from partner_programs.models import (
 )
 from partner_programs.serializers import PartnerProgramFieldValueUpdateSerializer
 from partner_programs.services import publish_finished_program_projects
+from partner_programs.tasks import send_readiness_reminders
 from partner_programs.views import (
     ActiveLegalDocumentsView,
     PartnerProgramDetail,
@@ -25,6 +26,7 @@ from partner_programs.views import (
     PartnerProgramProjectSubmitView,
 )
 from projects.models import Company, Project
+from users.models import UserNotificationPreferences
 
 
 class PartnerProgramPrivacyLegalTests(TestCase):
@@ -442,6 +444,56 @@ class PublishFinishedProgramProjectsTests(TestCase):
         self.assertTrue(project.is_public)
 
 
+class SendReadinessRemindersTests(TestCase):
+    def setUp(self):
+        self.now = timezone.now()
+        self.manager = get_user_model().objects.create_user(
+            email="manager-reminders@example.com",
+            password="pass",
+            first_name="Manager",
+            last_name="Reminder",
+            birthday="1990-01-01",
+        )
+        UserNotificationPreferences.objects.update_or_create(
+            user=self.manager,
+            defaults={"email_reminders_enabled": True},
+        )
+
+    def create_program(self, **overrides):
+        defaults = {
+            "name": "Reminder Program",
+            "tag": "reminder_program",
+            "description": "Program description " * 14,
+            "city": "Moscow",
+            "data_schema": {"fio": {"type": "text", "label": "FIO"}},
+            "draft": False,
+            "status": PartnerProgram.STATUS_PUBLISHED,
+            "projects_availability": "all_users",
+            "datetime_started": self.now + timezone.timedelta(days=7),
+            "datetime_registration_ends": self.now + timezone.timedelta(days=3),
+            "datetime_project_submission_ends": self.now + timezone.timedelta(days=5),
+            "datetime_finished": self.now + timezone.timedelta(days=30),
+            "sent_reminders": [],
+        }
+        defaults.update(overrides)
+        program = PartnerProgram.objects.create(**defaults)
+        program.managers.add(self.manager)
+        return program
+
+    @patch("partner_programs.tasks.send_mail", return_value=1)
+    def test_readiness_reminder_is_idempotent(self, send_mail_mock):
+        program = self.create_program()
+
+        first_result = send_readiness_reminders()
+        second_result = send_readiness_reminders()
+
+        self.assertEqual(first_result, "Readiness reminders sent: 1")
+        self.assertEqual(second_result, "Readiness reminders sent: 0")
+        send_mail_mock.assert_called_once()
+        program.refresh_from_db()
+        self.assertEqual(program.sent_reminders, ["days_7"])
+
+
 class PartnerProgramCoreListTests(TestCase):
     def setUp(self):
         self.factory = APIRequestFactory()
@@ -495,6 +547,157 @@ class PartnerProgramCoreListTests(TestCase):
             program_data["company"],
             {"id": company.id, "name": "Organizer", "inn": "1234567890"},
         )
+
+
+class PartnerProgramCreateUpdateAPITests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.now = timezone.now()
+        self.manager = get_user_model().objects.create_user(
+            email="manager-create-update@example.com",
+            password="pass",
+            first_name="Manager",
+            last_name="User",
+            birthday="1990-01-01",
+        )
+        self.outsider = get_user_model().objects.create_user(
+            email="outsider-create-update@example.com",
+            password="pass",
+            first_name="Outsider",
+            last_name="User",
+            birthday="1990-01-01",
+        )
+
+    def create_program(self, **overrides):
+        defaults = {
+            "name": "Editable Case Championship",
+            "tag": "editable_case_championship",
+            "description": "Program description " * 14,
+            "city": "Moscow",
+            "data_schema": {"fio": {"type": "text", "label": "FIO"}},
+            "draft": True,
+            "status": PartnerProgram.STATUS_DRAFT,
+            "projects_availability": "all_users",
+            "datetime_started": self.now + timezone.timedelta(days=1),
+            "datetime_registration_ends": self.now + timezone.timedelta(days=3),
+            "datetime_project_submission_ends": self.now + timezone.timedelta(days=5),
+            "datetime_finished": self.now + timezone.timedelta(days=10),
+        }
+        defaults.update(overrides)
+        program = PartnerProgram.objects.create(**defaults)
+        program.managers.add(self.manager)
+        return program
+
+    def payload(self, **overrides):
+        data = {
+            "name": "New Case Championship",
+            "description": "Detailed program description " * 12,
+            "city": "Moscow",
+            "mobile_cover_image_address": "https://example.com/mobile-cover.png",
+            "datetime_started": (
+                self.now + timezone.timedelta(days=1)
+            ).isoformat(),
+            "datetime_registration_ends": (
+                self.now + timezone.timedelta(days=3)
+            ).isoformat(),
+            "datetime_project_submission_ends": (
+                self.now + timezone.timedelta(days=5)
+            ).isoformat(),
+            "datetime_evaluation_ends": (
+                self.now + timezone.timedelta(days=7)
+            ).isoformat(),
+            "datetime_finished": (
+                self.now + timezone.timedelta(days=10)
+            ).isoformat(),
+            "is_competitive": True,
+            "participation_format": PartnerProgram.PARTICIPATION_FORMAT_TEAM,
+            "project_team_min_size": 1,
+            "project_team_max_size": 4,
+        }
+        data.update(overrides)
+        return data
+
+    def test_manager_can_create_draft_program_with_mobile_cover(self):
+        self.client.force_authenticate(self.manager)
+
+        response = self.client.post("/programs/", self.payload(), format="json")
+
+        self.assertEqual(response.status_code, 201)
+        program = PartnerProgram.objects.get(id=response.data["id"])
+        self.assertEqual(program.status, PartnerProgram.STATUS_DRAFT)
+        self.assertTrue(program.managers.filter(id=self.manager.id).exists())
+        self.assertEqual(
+            program.mobile_cover_image_address,
+            "https://example.com/mobile-cover.png",
+        )
+        self.assertIsInstance(program.readiness, dict)
+
+    def test_manager_can_update_draft_program(self):
+        program = self.create_program()
+        self.client.force_authenticate(self.manager)
+
+        response = self.client.patch(
+            f"/programs/{program.id}/",
+            {
+                "city": "Saint Petersburg",
+                "mobile_cover_image_address": "https://example.com/new-mobile.png",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        program.refresh_from_db()
+        self.assertEqual(program.city, "Saint Petersburg")
+        self.assertEqual(
+            program.mobile_cover_image_address,
+            "https://example.com/new-mobile.png",
+        )
+
+    def test_outsider_cannot_update_program(self):
+        program = self.create_program()
+        self.client.force_authenticate(self.outsider)
+
+        response = self.client.patch(
+            f"/programs/{program.id}/",
+            {"city": "Kazan"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_stats_endpoint_returns_program_counts(self):
+        program = self.create_program(status=PartnerProgram.STATUS_PUBLISHED)
+        user = get_user_model().objects.create_user(
+            email="participant-stats@example.com",
+            password="pass",
+            first_name="Participant",
+            last_name="Stats",
+            birthday="1990-01-01",
+        )
+        PartnerProgramUserProfile.objects.create(
+            partner_program=program,
+            user=user,
+            partner_program_data={},
+        )
+        project = Project.objects.create(
+            leader=user,
+            name="Stats Project",
+            draft=False,
+            is_public=False,
+        )
+        PartnerProgramProject.objects.create(
+            partner_program=program,
+            project=project,
+            submitted=True,
+            datetime_submitted=self.now,
+        )
+
+        response = self.client.get(f"/programs/{program.id}/stats/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["participants_count"], 1)
+        self.assertEqual(response.data["projects_count"], 1)
+        self.assertEqual(response.data["active_projects_count"], 1)
 
 
 class PartnerProgramProjectApplyViewTests(TestCase):

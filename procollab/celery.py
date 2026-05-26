@@ -30,6 +30,10 @@ app.conf.beat_schedule = {
         "task": "moderation.tasks.freeze_stale_programs",
         "schedule": crontab(minute=0, hour=6),
     },
+    "send_readiness_reminders": {
+        "task": "partner_programs.tasks.send_readiness_reminders",
+        "schedule": crontab(minute=0, hour=9),
+    },
     "complete_finished_programs": {
         "task": "certificates.tasks.complete_finished_programs",
         "schedule": crontab(minute=30, hour=6),
