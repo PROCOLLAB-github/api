@@ -6,6 +6,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
+from django.core.exceptions import ImproperlyConfigured
 from django.db import transaction
 from django.db.models import Prefetch, Q
 from django.http import HttpResponse
@@ -40,6 +41,7 @@ from partner_programs.serializers import (
     PartnerProgramListSerializer,
     UserProgramsSerializer,
 )
+from notifications.telegram import create_telegram_link, disconnect_telegram_account
 from projects.pagination import ProjectsPagination
 from projects.serializers import ProjectListSerializer
 from users.constants import (
@@ -277,6 +279,30 @@ class UserNotificationPreferencesView(RetrieveUpdateAPIView):
             user=self.request.user
         )
         return preferences
+
+
+class UserTelegramLinkView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            link = create_telegram_link(request.user)
+        except ImproperlyConfigured as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        return Response(
+            {
+                "link": link.url,
+                "expires_at": link.expires_at,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    def delete(self, request):
+        disconnect_telegram_account(request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class UserTypesView(APIView):

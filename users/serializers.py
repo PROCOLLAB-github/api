@@ -20,6 +20,7 @@ from files.serializers import UserFileSerializer
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 from projects.models import Collaborator, Project
 from projects.validators import validate_project
+from notifications.telegram import get_telegram_preferences, update_telegram_preferences
 from users import constants
 from users.models import (
     CustomUser,
@@ -432,6 +433,15 @@ class UserLanguagesSerializer(serializers.ModelSerializer):
 
 
 class UserNotificationPreferencesSerializer(serializers.ModelSerializer):
+    telegram_connected = serializers.SerializerMethodField()
+    telegram_username = serializers.SerializerMethodField()
+    telegram_preferences = serializers.DictField(
+        child=serializers.BooleanField(),
+        required=False,
+        write_only=True,
+    )
+    telegram_preferences_state = serializers.SerializerMethodField()
+
     class Meta:
         model = UserNotificationPreferences
         fields = [
@@ -441,7 +451,38 @@ class UserNotificationPreferencesSerializer(serializers.ModelSerializer):
             "email_certificate_ready",
             "email_deadline_warnings",
             "inapp_notifications_enabled",
+            "telegram_connected",
+            "telegram_username",
+            "telegram_preferences",
+            "telegram_preferences_state",
         ]
+        read_only_fields = [
+            "telegram_connected",
+            "telegram_username",
+            "telegram_preferences_state",
+        ]
+
+    def get_telegram_connected(self, preferences):
+        try:
+            return bool(preferences.user.telegram_account.is_active)
+        except Exception:
+            return False
+
+    def get_telegram_username(self, preferences):
+        try:
+            return preferences.user.telegram_account.telegram_username
+        except Exception:
+            return ""
+
+    def get_telegram_preferences_state(self, preferences):
+        return get_telegram_preferences(preferences.user)
+
+    def update(self, instance, validated_data):
+        telegram_preferences = validated_data.pop("telegram_preferences", None)
+        instance = super().update(instance, validated_data)
+        if telegram_preferences is not None:
+            update_telegram_preferences(instance.user, telegram_preferences)
+        return instance
 
 
 class UserProgramsSerializer(serializers.ModelSerializer):

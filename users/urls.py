@@ -13,6 +13,7 @@ from users.views import (
     UserProjectsList,
     UserList,
     UserNotificationPreferencesView,
+    UserTelegramLinkView,
     UserTypesView,
     VerifyEmail,
     LogoutView,
@@ -62,6 +63,11 @@ urlpatterns = [
         "users/me/notification-preferences/",
         UserNotificationPreferencesView.as_view(),
         name="user-notification-preferences",
+    ),
+    path(
+        "users/me/telegram-link/",
+        UserTelegramLinkView.as_view(),
+        name="user-telegram-link",
     ),
     # todo: change password view
     path("users/current/programs/", CurrentUserPrograms.as_view()),

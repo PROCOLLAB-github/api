@@ -14,6 +14,7 @@ from partner_programs.invite_urls import program_invite_patterns, public_invite_
 from partner_programs.views import CompanySearchView
 from partner_programs.views import PublicPartnerProgramInvitePageView
 from users.authentication import ActivityTrackingJWTAuthentication
+from notifications.telegram_views import TelegramWebhookView
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -68,6 +69,7 @@ urlpatterns = [
     path("api/companies/search/", CompanySearchView.as_view(), name="company-search"),
     path("api/admin/moderation/", include("moderation.urls", namespace="moderation")),
     path("notifications/", include("notifications.urls", namespace="notifications")),
+    path("telegram/webhook/", TelegramWebhookView.as_view(), name="telegram-webhook"),
     path("courses/", include("courses.urls", namespace="courses")),
     path("rate-project/", include(("project_rates.urls", "rate_projects"))),
     path("feed/", include("feed.urls", namespace="feed")),

@@ -49,6 +49,14 @@ AUTOPOSTING_ON = config("AUTOPOSTING_ON", default=False, cast=bool)
 
 TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN", default="", cast=str)
 TELEGRAM_CHANNEL = config("TELEGRAM_CHANNEL", default="", cast=str)
+TELEGRAM_BOT_USERNAME = config("TELEGRAM_BOT_USERNAME", default="", cast=str)
+TELEGRAM_WEBHOOK_SECRET = config("TELEGRAM_WEBHOOK_SECRET", default="", cast=str)
+TELEGRAM_NOTIFICATIONS_ENABLED = config(
+    "TELEGRAM_NOTIFICATIONS_ENABLED",
+    default=False,
+    cast=bool,
+)
+TELEGRAM_ADMIN_CHAT_IDS = csv_config("TELEGRAM_ADMIN_CHAT_IDS")
 
 TAGGIT_CASE_INSENSITIVE = True
 
