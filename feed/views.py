@@ -7,11 +7,11 @@ from news.models import News
 from projects.models import Project
 from vacancy.models import Vacancy
 
-from .serializers import FeedNewsResponseSerializer
+from .serializers import FeedItemResponseSerializer
 
 
 class NewSimpleFeed(APIView):
-    serializator_class = FeedNewsResponseSerializer
+    serializer_class = FeedItemResponseSerializer
     pagination_class = FeedPagination
 
     def _get_filter_data(self) -> list[str]:
@@ -54,7 +54,7 @@ class NewSimpleFeed(APIView):
     def get(self, *args, **kwargs):
         paginator = self.pagination_class()
         paginated_data = paginator.paginate_queryset(self.get_queryset(), self.request)
-        serializer = FeedNewsResponseSerializer(
+        serializer = FeedItemResponseSerializer(
             paginated_data,
             context={
                 "user": self.request.user,
@@ -62,18 +62,4 @@ class NewSimpleFeed(APIView):
             },
             many=True,
         )
-
-        new_data = []
-        # временная подстройка данных под фронт
-        for data in serializer.data:
-            if data["type_model"] in ["project", "vacancy", None]:
-                formatted_data = {
-                    "type_model": data["type_model"],
-                    "content": data["content_object"],
-                }
-            elif data["type_model"] == "news":
-                del data["type_model"]
-                formatted_data = {"type_model": "news", "content": data}
-            new_data.append(formatted_data)
-
-        return paginator.get_paginated_response(new_data)
+        return paginator.get_paginated_response(serializer.data)

@@ -1,14 +1,11 @@
-import io
-
 from django.contrib.auth import get_user_model
-from django.db import IntegrityError, transaction
-from django.db.models import Exists, OuterRef, Prefetch
+from django.db import transaction
+from django.db.models import Exists, OuterRef
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.timezone import now
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
-from openpyxl import Workbook
 from rest_framework import generics, permissions, status
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.generics import GenericAPIView
@@ -18,15 +15,9 @@ from rest_framework.views import APIView
 
 from core.serializers import EmptySerializer, SetLikedSerializer, SetViewedSerializer
 from core.services import add_view, set_like
-from core.utils import (
-    XlsxFileToExport,
-    build_xlsx_download_response,
-    sanitize_excel_value,
-)
-from partner_programs.helpers import date_to_iso
+from core.utils import build_xlsx_download_response
 from partner_programs.models import (
     PartnerProgram,
-    PartnerProgramField,
     PartnerProgramFieldValue,
     PartnerProgramProject,
     PartnerProgramUserProfile,
@@ -48,17 +39,21 @@ from partner_programs.serializers import (
     ProgramProjectFilterRequestSerializer,
 )
 from partner_programs.services import (
-    BASE_COLUMNS,
-    build_program_field_columns,
-    prepare_project_scores_export_data,
-    row_dict_for_link,
+    ProgramProjectAlreadyApplied,
+    ProgramProjectFilterError,
+    ProgramRegistrationError,
+    apply_project_to_program,
+    build_program_project_scores_export_file,
+    build_program_projects_export_file,
+    create_user_and_register_to_program,
+    get_filterable_program_fields,
+    get_filtered_program_project_links,
+    register_user_to_program,
+    require_can_apply_project_to_program,
 )
-from partner_programs.utils import filter_program_projects_by_field_name
-from projects.models import Collaborator, Project
 from partner_programs.serializers import PartnerProgramFieldValueUpdateSerializer
+from projects.models import Project
 from projects.serializers import ProjectListSerializer
-from vacancy.mapping import MessageTypeEnum, UserProgramRegisterParams
-from vacancy.tasks import send_email
 
 User = get_user_model()
 
@@ -134,21 +129,9 @@ class PartnerProgramProjectApplyView(GenericAPIView):
     serializer_class = PartnerProgramProjectApplySerializer
     queryset = PartnerProgram.objects.all()
 
-    def _require_can_apply(self, program: PartnerProgram, user: User):
-        if not program.is_project_submission_open():
-            raise ValidationError("Срок подачи проектов в программу завершён.")
-
-        if program.is_manager(user):
-            return
-
-        if not PartnerProgramUserProfile.objects.filter(
-            user=user, partner_program=program
-        ).exists():
-            raise PermissionDenied("Подача проекта доступна только участникам программы.")
-
     def get(self, request, pk, *args, **kwargs):
         program = self.get_object()
-        self._require_can_apply(program, request.user)
+        require_can_apply_project_to_program(program=program, user=request.user)
 
         fields_qs = program.fields.all()
         return Response(
@@ -163,96 +146,27 @@ class PartnerProgramProjectApplyView(GenericAPIView):
 
     def post(self, request, pk, *args, **kwargs):
         program = self.get_object()
-        self._require_can_apply(program, request.user)
-
-        existing_link = (
-            PartnerProgramProject.objects.select_related("project")
-            .filter(partner_program=program, project__leader=request.user)
-            .first()
-        )
-        if existing_link:
+        try:
+            result = apply_project_to_program(
+                program=program,
+                user=request.user,
+                data=request.data,
+                serializer_class=self.get_serializer_class(),
+            )
+        except ProgramProjectAlreadyApplied as exc:
             return Response(
                 {
                     "detail": "Проект уже подан в эту программу.",
-                    "project_id": existing_link.project_id,
-                    "program_link_id": existing_link.id,
+                    "project_id": exc.program_link.project_id,
+                    "program_link_id": exc.program_link.id,
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
-
-        project_data = data["project"]
-        values_data = data.get("program_field_values") or []
-
-        seen_field_ids: set[int] = set()
-        duplicate_ids: set[int] = set()
-        for item in values_data:
-            field_id = item["field"].id
-            if field_id in seen_field_ids:
-                duplicate_ids.add(field_id)
-            seen_field_ids.add(field_id)
-        if duplicate_ids:
-            raise ValidationError(
-                {"program_field_values": f"Есть повторяющиеся field_id: {sorted(duplicate_ids)}"}
-            )
-
-        required_fields = list(
-            program.fields.filter(is_required=True).values("id", "label")
-        )
-        provided_field_ids = {item["field"].id for item in values_data}
-        missing_required = [
-            f["label"] for f in required_fields if f["id"] not in provided_field_ids
-        ]
-        if missing_required:
-            raise ValidationError(
-                {"program_field_values": f"Не заполнены обязательные поля: {missing_required}"}
-            )
-
-        with transaction.atomic():
-            project = Project.objects.create(
-                leader=request.user,
-                draft=True,
-                is_public=False,
-                **project_data,
-            )
-            program_link = PartnerProgramProject.objects.create(
-                partner_program=program, project=project
-            )
-
-            profile = PartnerProgramUserProfile.objects.filter(
-                user=request.user, partner_program=program
-            ).first()
-            if profile:
-                profile.project = project
-                profile.save(update_fields=["project"])
-
-            value_objs: list[PartnerProgramFieldValue] = []
-            for item in values_data:
-                field = item["field"]
-                if field.partner_program_id != program.id:
-                    raise ValidationError(
-                        {
-                            "program_field_values": f"Поле id={field.id} не относится к этой программе."
-                        }
-                    )
-                value_objs.append(
-                    PartnerProgramFieldValue(
-                        program_project=program_link,
-                        field=field,
-                        value_text=item.get("value_text") or "",
-                    )
-                )
-
-            if value_objs:
-                PartnerProgramFieldValue.objects.bulk_create(value_objs)
-
         return Response(
             {
-                "project_id": project.id,
-                "program_link_id": program_link.id,
+                "project_id": result.project.id,
+                "program_link_id": result.program_link.id,
             },
             status=status.HTTP_201_CREATED,
         )
@@ -275,69 +189,18 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
         if data.get("test") == "test":
             return Response(status=status.HTTP_200_OK)
 
+        program = self.get_object()
         try:
-            program = self.get_object()
-        except PartnerProgram.DoesNotExist:
-            return Response({"asd": "asd"}, status=status.HTTP_404_NOT_FOUND)
-
-        # tilda cringe
-        email = data.get("email") if data.get("email") else data.get("email_")
-        if not email:
-            return Response(
-                data={"detail": "You need to pass an email address."},
-                status=status.HTTP_400_BAD_REQUEST,
+            create_user_and_register_to_program(
+                program=program,
+                data=data,
             )
-        password = data.get("password")
-        if not password:
+        except ProgramRegistrationError as exc:
             return Response(
-                data={"detail": "You need to pass a password."},
+                data={"detail": exc.detail},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        user_fields = (
-            "first_name",
-            "last_name",
-            "patronymic",
-            "city",
-        )
-        user, created = User.objects.get_or_create(
-            email=email,
-            defaults={
-                "birthday": date_to_iso(data.get("birthday", "01-01-1900")),
-                "is_active": True,  # bypass email verification
-                "onboarding_stage": None,  # bypass onboarding
-                "verification_date": timezone.now(),  # bypass manual verification
-                **{field_name: data.get(field_name, "") for field_name in user_fields},
-            },
-        )
-        if created:  # Only when registering a new user.
-            user.set_password(password)
-            user.save()
-
-        user_profile_program_data = {
-            k: v for k, v in data.items() if k not in user_fields and k != "password"
-        }
-        try:
-            PartnerProgramUserProfile.objects.create(
-                partner_program_data=user_profile_program_data,
-                user=user,
-                partner_program=program,
-            )
-        except IntegrityError:
-            return Response(
-                data={"detail": "User has already registered in this program."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        send_email.delay(
-            UserProgramRegisterParams(
-                message_type=MessageTypeEnum.REGISTERED_PROGRAM_USER.value,
-                user_id=user.id,
-                program_name=program.name,
-                program_id=program.id,
-                schema_id=2,
-            )
-        )
         return Response(status=status.HTTP_201_CREATED)
 
     def get(self, request, *args, **kwargs):
@@ -354,41 +217,19 @@ class PartnerProgramRegister(generics.GenericAPIView):
     serializer_class = PartnerProgramUserSerializer
 
     def post(self, request, *args, **kwargs):
+        program = self.get_object()
         try:
-            program = self.get_object()
-            if program.datetime_registration_ends < timezone.now():
-                return Response(
-                    data={"detail": "Registration period has ended."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            user_to_add = request.user
-            user_profile_program_data = request.data
-
-            added_user_profile = PartnerProgramUserProfile(
-                partner_program_data=user_profile_program_data,
-                user=user_to_add,
-                partner_program=program,
+            register_user_to_program(
+                program=program,
+                user=request.user,
+                data=request.data,
             )
-            added_user_profile.save()
-
-            send_email.delay(
-                UserProgramRegisterParams(
-                    message_type=MessageTypeEnum.REGISTERED_PROGRAM_USER.value,
-                    user_id=user_to_add.id,
-                    program_name=program.name,
-                    program_id=program.id,
-                    schema_id=2,
-                )
-            )
-
-            return Response(status=status.HTTP_201_CREATED)
-        except PartnerProgram.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        except IntegrityError:
+        except ProgramRegistrationError as exc:
             return Response(
-                data={"detail": "User already registered to this program."},
+                data={"detail": exc.detail},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        return Response(status=status.HTTP_201_CREATED)
 
 
 class PartnerProgramSetViewed(generics.GenericAPIView):
@@ -540,9 +381,7 @@ class ProgramFiltersAPIView(APIView):
 
     def get(self, request, pk):
         program = get_object_or_404(PartnerProgram, pk=pk)
-        fields = PartnerProgramField.objects.filter(
-            partner_program=program, show_filter=True
-        )
+        fields = get_filterable_program_fields(program)
         serializer = PartnerProgramFieldSerializer(fields, many=True)
         return Response(serializer.data)
 
@@ -560,47 +399,10 @@ class ProgramProjectFilterAPIView(GenericAPIView):
 
         program = get_object_or_404(PartnerProgram, pk=pk)
         filters = data.get("filters", {})
-
-        field_names = list(filters.keys())
-        field_qs = PartnerProgramField.objects.filter(
-            partner_program=program, name__in=field_names
-        )
-        field_by_name = {f.name: f for f in field_qs}
-
-        missing = [name for name in field_names if name not in field_by_name]
-        if missing:
-            return Response(
-                {"detail": f"Поля не найденные в программе: {missing}"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        for field_name, values in filters.items():
-            field_obj = field_by_name[field_name]
-            if not field_obj.show_filter:
-                return Response(
-                    {
-                        "detail": f"Поле '{field_name}' недоступно для фильтрации (show_filter=False)."
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            opts = field_obj.get_options_list()
-            if opts:
-                invalid_values = [val for val in values if val not in opts]
-                if invalid_values:
-                    return Response(
-                        {
-                            "detail": f"Неверные значения для поля '{field_name}'.",
-                            "invalid": invalid_values,
-                        },
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
-            else:
-                return Response(
-                    {"detail": f"Поле '{field_name}' не имеет вариантов (options)."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-        qs = filter_program_projects_by_field_name(program, filters)
+        try:
+            qs = get_filtered_program_project_links(program=program, filters=filters)
+        except ProgramProjectFilterError as exc:
+            return Response(exc.detail, status=status.HTTP_400_BAD_REQUEST)
 
         paginator = self.pagination_class()
         page = paginator.paginate_queryset(qs, request, view=self)
@@ -652,15 +454,11 @@ class PartnerProgramExportRatesAPIView(APIView):
                 {"detail": "Недостаточно прав."}, status=status.HTTP_403_FORBIDDEN
             )
 
-        rates_data_to_write = prepare_project_scores_export_data(program.id)
-        xlsx_file_writer = XlsxFileToExport()
-        xlsx_file_writer.write_data_to_xlsx(rates_data_to_write)
-        binary_data_to_export: bytes = xlsx_file_writer.get_binary_data_from_self_file()
-        xlsx_file_writer.clear_buffer()
-
-        date_suffix = timezone.now().strftime("%d.%m.%y")
-        base_name = f"scores - {program.name or 'program'} - {date_suffix}"
-        return build_xlsx_download_response(binary_data_to_export, base_name=base_name)
+        export_file = build_program_project_scores_export_file(program=program)
+        return build_xlsx_download_response(
+            export_file.binary_data,
+            base_name=export_file.base_name,
+        )
 
 
 class PartnerProgramExportProjectsAPIView(APIView):
@@ -681,51 +479,6 @@ class PartnerProgramExportProjectsAPIView(APIView):
             or program.is_manager(user)
         )
 
-    def _export(self, program: PartnerProgram, only_submitted: bool):
-        extra_cols = build_program_field_columns(program)
-        header_pairs = BASE_COLUMNS + extra_cols
-
-        fv_qs = PartnerProgramFieldValue.objects.select_related("field").filter(
-            field__partner_program_id=program.id
-        )
-        links_qs = program.program_projects.select_related(
-            "project", "project__leader"
-        ).prefetch_related(
-            Prefetch("field_values", queryset=fv_qs, to_attr="_prefetched_field_values"),
-            Prefetch(
-                "project__collaborator_set",
-                queryset=Collaborator.objects.select_related("user"),
-                to_attr="_prefetched_collaborators",
-            ),
-        )
-        if only_submitted:
-            links_qs = links_qs.filter(submitted=True)
-
-        wb = Workbook(write_only=True)
-        ws = wb.create_sheet(title="Проекты")
-        ws.append([title for _, title in header_pairs])
-
-        extra_keys_order = [key for key, _ in extra_cols]
-
-        for row_number, program_project_link in enumerate(links_qs, start=1):
-            row_dict = row_dict_for_link(
-                program_project_link=program_project_link,
-                extra_field_keys_order=extra_keys_order,
-                row_number=row_number,
-            )
-            raw_values = [row_dict.get(key, "") for key, _ in header_pairs]
-            safe_values = [sanitize_excel_value(v) for v in raw_values]
-            ws.append(safe_values)
-
-        bio = io.BytesIO()
-        wb.save(bio)
-        bio.seek(0)
-
-        label = "projects_review" if only_submitted else "projects"
-        date_suffix = timezone.now().strftime("%d.%m.%y")
-        base_name = f"{label} - {program.name or 'program'} - {date_suffix}"
-        return build_xlsx_download_response(bio.getvalue(), base_name=base_name)
-
     def get(self, request, pk: int):
         program = self._get_program(pk)
         if not program:
@@ -743,4 +496,11 @@ class PartnerProgramExportProjectsAPIView(APIView):
             "true",
             "True",
         )
-        return self._export(program=program, only_submitted=only_submitted)
+        export_file = build_program_projects_export_file(
+            program=program,
+            only_submitted=only_submitted,
+        )
+        return build_xlsx_download_response(
+            export_file.binary_data,
+            base_name=export_file.base_name,
+        )

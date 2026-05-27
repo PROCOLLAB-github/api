@@ -4,7 +4,12 @@ from rest_framework.test import APIClient
 from core.services import set_like
 from feed.services import create_news_for_model
 from feed.tests.helpers import create_vacancy
-from news.tests.helpers import create_news_for, create_project, create_user
+from news.tests.helpers import (
+    create_news_for,
+    create_partner_program,
+    create_project,
+    create_user,
+)
 
 
 class FeedAPITests(TestCase):
@@ -20,6 +25,7 @@ class FeedAPITests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         item = response.data["results"][0]
+        self.assertEqual(set(item.keys()), {"type_model", "content"})
         self.assertEqual(item["type_model"], "news")
         self.assertEqual(item["content"]["id"], news.id)
         self.assertEqual(item["content"]["text"], "User feed news")
@@ -32,9 +38,23 @@ class FeedAPITests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         item = response.data["results"][0]
+        self.assertEqual(set(item.keys()), {"type_model", "content"})
         self.assertEqual(item["type_model"], "news")
         self.assertEqual(item["content"]["id"], news.id)
         self.assertEqual(item["content"]["text"], "Project feed news")
+
+    def test_feed_returns_program_news_as_news_content(self):
+        program = create_partner_program(name="Feed program")
+        news = create_news_for(program, text="Program feed news")
+
+        response = self.client.get("/feed/?type=partnerprogram")
+
+        self.assertEqual(response.status_code, 200)
+        item = response.data["results"][0]
+        self.assertEqual(set(item.keys()), {"type_model", "content"})
+        self.assertEqual(item["type_model"], "news")
+        self.assertEqual(item["content"]["id"], news.id)
+        self.assertEqual(item["content"]["text"], "Program feed news")
 
     def test_feed_returns_project_feed_record_as_project_content(self):
         project = create_project(name="Feed record project")
@@ -44,6 +64,7 @@ class FeedAPITests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         item = response.data["results"][0]
+        self.assertEqual(set(item.keys()), {"type_model", "content"})
         self.assertEqual(item["type_model"], "project")
         self.assertEqual(item["content"]["id"], project.id)
 
@@ -54,9 +75,58 @@ class FeedAPITests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         item = response.data["results"][0]
+        self.assertEqual(set(item.keys()), {"type_model", "content"})
         self.assertEqual(item["type_model"], "vacancy")
         self.assertEqual(item["content"]["id"], vacancy.id)
         self.assertEqual(item["content"]["role"], "Backend developer")
+
+    def test_feed_combines_all_supported_filters(self):
+        project_news = create_news_for(
+            create_project(name="Combined project news"),
+            text="Combined project news",
+        )
+        program_news = create_news_for(
+            create_partner_program(name="Combined program"),
+            text="Combined program news",
+        )
+        user_news = create_news_for(self.user, text="Combined user news")
+        project = create_project(name="Combined project record")
+        vacancy = create_vacancy(role="Combined vacancy")
+        create_news_for_model(project)
+
+        response = self.client.get(
+            "/feed/?type=project|vacancy|news|partnerprogram"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        items_by_text = {
+            item["content"].get("text"): item
+            for item in response.data["results"]
+            if item["type_model"] == "news"
+        }
+        content_ids_by_type = {
+            type_model: {
+                item["content"]["id"]
+                for item in response.data["results"]
+                if item["type_model"] == type_model
+            }
+            for type_model in ["project", "vacancy"]
+        }
+
+        self.assertEqual(
+            items_by_text[project_news.text]["content"]["id"],
+            project_news.id,
+        )
+        self.assertEqual(
+            items_by_text[program_news.text]["content"]["id"],
+            program_news.id,
+        )
+        self.assertEqual(
+            items_by_text[user_news.text]["content"]["id"],
+            user_news.id,
+        )
+        self.assertIn(project.id, content_ids_by_type["project"])
+        self.assertIn(vacancy.id, content_ids_by_type["vacancy"])
 
     def test_feed_excludes_feed_record_for_inactive_vacancy(self):
         vacancy = create_vacancy(role="Inactive vacancy", is_active=False)

@@ -1,9 +1,13 @@
+import io
 import logging
 from collections import OrderedDict
+from dataclasses import dataclass
 
 from django.db.models import Prefetch
 from django.utils import timezone
+from openpyxl import Workbook
 
+from core.utils import XlsxFileToExport, sanitize_excel_value
 from partner_programs.models import (
     PartnerProgram,
     PartnerProgramField,
@@ -12,36 +16,15 @@ from partner_programs.models import (
     PartnerProgramUserProfile,
 )
 from project_rates.models import Criteria, ProjectScore
-from projects.models import Project
+from projects.models import Collaborator
 
 logger = logging.getLogger()
 
 
-def publish_finished_program_projects(now=None) -> int:
-    if now is None:
-        now = timezone.now()
-
-    program_ids = PartnerProgram.objects.filter(
-        publish_projects_after_finish=True,
-        datetime_finished__lte=now,
-    ).values_list("id", flat=True)
-    if not program_ids.exists():
-        return 0
-
-    link_project_ids = PartnerProgramProject.objects.filter(
-        partner_program_id__in=program_ids
-    ).values_list("project_id", flat=True)
-    profile_project_ids = PartnerProgramUserProfile.objects.filter(
-        partner_program_id__in=program_ids,
-        project_id__isnull=False,
-    ).values_list("project_id", flat=True)
-    project_ids = link_project_ids.union(profile_project_ids)
-
-    return Project.objects.filter(
-        id__in=project_ids,
-        is_public=False,
-        draft=False,
-    ).update(is_public=True)
+@dataclass(frozen=True)
+class ProgramExportFile:
+    binary_data: bytes
+    base_name: str
 
 
 class ProjectScoreDataPreparer:
@@ -284,6 +267,77 @@ def row_dict_for_link(
         row[field_key] = values_map.get(field_key, "")
 
     return row
+
+
+def build_program_projects_export_file(
+    *,
+    program: PartnerProgram,
+    only_submitted: bool,
+) -> ProgramExportFile:
+    extra_cols = build_program_field_columns(program)
+    header_pairs = BASE_COLUMNS + extra_cols
+
+    field_values_qs = PartnerProgramFieldValue.objects.select_related("field").filter(
+        field__partner_program_id=program.id
+    )
+    links_qs = program.program_projects.select_related(
+        "project",
+        "project__leader",
+    ).prefetch_related(
+        Prefetch(
+            "field_values",
+            queryset=field_values_qs,
+            to_attr="_prefetched_field_values",
+        ),
+        Prefetch(
+            "project__collaborator_set",
+            queryset=Collaborator.objects.select_related("user"),
+            to_attr="_prefetched_collaborators",
+        ),
+    )
+    if only_submitted:
+        links_qs = links_qs.filter(submitted=True)
+
+    workbook = Workbook(write_only=True)
+    worksheet = workbook.create_sheet(title="Проекты")
+    worksheet.append([title for _, title in header_pairs])
+
+    extra_keys_order = [key for key, _ in extra_cols]
+    for row_number, program_project_link in enumerate(links_qs, start=1):
+        row_dict = row_dict_for_link(
+            program_project_link=program_project_link,
+            extra_field_keys_order=extra_keys_order,
+            row_number=row_number,
+        )
+        raw_values = [row_dict.get(key, "") for key, _ in header_pairs]
+        worksheet.append([sanitize_excel_value(value) for value in raw_values])
+
+    buffer = io.BytesIO()
+    workbook.save(buffer)
+    buffer.seek(0)
+
+    label = "projects_review" if only_submitted else "projects"
+    date_suffix = timezone.now().strftime("%d.%m.%y")
+    base_name = f"{label} - {program.name or 'program'} - {date_suffix}"
+    return ProgramExportFile(binary_data=buffer.getvalue(), base_name=base_name)
+
+
+def build_program_project_scores_export_file(
+    *,
+    program: PartnerProgram,
+) -> ProgramExportFile:
+    rates_data_to_write = prepare_project_scores_export_data(program.id)
+    xlsx_file_writer = XlsxFileToExport()
+    xlsx_file_writer.write_data_to_xlsx(rates_data_to_write)
+    binary_data_to_export: bytes = xlsx_file_writer.get_binary_data_from_self_file()
+    xlsx_file_writer.clear_buffer()
+
+    date_suffix = timezone.now().strftime("%d.%m.%y")
+    base_name = f"scores - {program.name or 'program'} - {date_suffix}"
+    return ProgramExportFile(
+        binary_data=binary_data_to_export,
+        base_name=base_name,
+    )
 
 
 def prepare_project_scores_export_data(program_id: int) -> list[dict]:
