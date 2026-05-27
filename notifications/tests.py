@@ -408,8 +408,7 @@ class TelegramNotificationTests(TestCase):
         token = parse_qs(urlparse(response.data["link"]).query)["start"][0]
         return token, response
 
-    @patch("notifications.telegram_views.send_telegram_message", return_value="ok")
-    def test_link_token_is_hashed_and_start_binds_account(self, send_message_mock):
+    def test_link_token_is_hashed_and_start_binds_account(self):
         raw_token, response = self._create_link(self.manager)
 
         self.assertIn("https://t.me/procollab_demo_bot", response.data["link"])
@@ -432,15 +431,15 @@ class TelegramNotificationTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["method"], "sendMessage")
+        self.assertEqual(response.data["chat_id"], 9000000001)
         account = self.manager.telegram_account
         self.assertTrue(account.is_active)
         self.assertEqual(account.telegram_chat_id, 9000000001)
         self.assertEqual(account.telegram_username, "manager_tg")
         self.assertIsNotNone(TelegramLinkToken.objects.get().used_at)
-        self.assertEqual(send_message_mock.call_count, 1)
 
-    @patch("notifications.telegram_views.send_telegram_message", return_value="ok")
-    def test_expired_or_reused_token_does_not_bind_account(self, _send_message_mock):
+    def test_expired_or_reused_token_does_not_bind_account(self):
         raw_token, _ = self._create_link(self.manager)
         TelegramLinkToken.objects.filter(token_hash=token_hash(raw_token)).update(
             expires_at=timezone.now() - timezone.timedelta(minutes=1)
@@ -454,10 +453,10 @@ class TelegramNotificationTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["method"], "sendMessage")
         self.assertFalse(hasattr(self.manager, "telegram_account"))
 
-    @patch("notifications.telegram_views.send_telegram_message", return_value="ok")
-    def test_stop_clears_account_and_disables_preferences(self, _send_message_mock):
+    def test_stop_clears_account_and_disables_preferences(self):
         TelegramAccount.objects.create(
             user=self.manager,
             telegram_chat_id=100,
@@ -480,6 +479,7 @@ class TelegramNotificationTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["method"], "sendMessage")
         account = self.manager.telegram_account
         account.refresh_from_db()
         self.assertFalse(account.is_active)

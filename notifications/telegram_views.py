@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import logging
-
 from django.conf import settings
 from rest_framework import status
 from rest_framework.permissions import AllowAny
@@ -11,14 +9,9 @@ from rest_framework.views import APIView
 from notifications.models import TelegramAccount
 from notifications.telegram import (
     TelegramLinkError,
-    TelegramPermanentError,
-    TelegramRetryableError,
     bind_telegram_account,
     disconnect_telegram_account,
-    send_telegram_message,
 )
-
-logger = logging.getLogger(__name__)
 
 
 class TelegramWebhookView(APIView):
@@ -42,22 +35,24 @@ class TelegramWebhookView(APIView):
         command = command.split("@", 1)[0].lower()
 
         if command == "/start":
-            self._handle_start(
+            reply_text = self._handle_start(
                 raw_token=argument.strip(),
                 chat_id=chat_id,
                 username=from_user.get("username") or "",
             )
         elif command == "/status":
-            self._handle_status(chat_id)
+            reply_text = self._handle_status(chat_id)
         elif command == "/stop":
-            self._handle_stop(chat_id)
+            reply_text = self._handle_stop(chat_id)
         else:
-            self._safe_reply(
-                chat_id,
-                "Используйте /status для проверки привязки или /stop для отключения.",
+            reply_text = (
+                "Используйте /status для проверки привязки или /stop для отключения."
             )
 
-        return Response({"ok": True}, status=status.HTTP_200_OK)
+        return Response(
+            self._telegram_reply(chat_id=chat_id, text=reply_text),
+            status=status.HTTP_200_OK,
+        )
 
     def _valid_secret(self, request) -> bool:
         expected_secret = getattr(settings, "TELEGRAM_WEBHOOK_SECRET", "")
@@ -68,13 +63,10 @@ class TelegramWebhookView(APIView):
             == expected_secret
         )
 
-    def _handle_start(self, *, raw_token: str, chat_id: int, username: str) -> None:
+    def _handle_start(self, *, raw_token: str, chat_id: int, username: str) -> str:
         if not raw_token:
-            self._safe_reply(
-                chat_id,
-                "Откройте ссылку привязки из личного кабинета PROCOLLAB.",
-            )
-            return
+            return "Откройте ссылку привязки из личного кабинета PROCOLLAB."
+
         try:
             bind_telegram_account(
                 raw_token=raw_token,
@@ -82,21 +74,20 @@ class TelegramWebhookView(APIView):
                 username=username,
             )
         except TelegramLinkError as exc:
-            self._safe_reply(chat_id, str(exc))
-            return
-        self._safe_reply(chat_id, "Telegram подключен к вашему аккаунту PROCOLLAB.")
+            return str(exc)
 
-    def _handle_status(self, chat_id: int) -> None:
+        return "Telegram подключен к вашему аккаунту PROCOLLAB."
+
+    def _handle_status(self, chat_id: int) -> str:
         connected = TelegramAccount.objects.filter(
             telegram_chat_id=chat_id,
             is_active=True,
         ).exists()
         if connected:
-            self._safe_reply(chat_id, "Telegram подключен к PROCOLLAB.")
-        else:
-            self._safe_reply(chat_id, "Telegram пока не подключен к PROCOLLAB.")
+            return "Telegram подключен к PROCOLLAB."
+        return "Telegram пока не подключен к PROCOLLAB."
 
-    def _handle_stop(self, chat_id: int) -> None:
+    def _handle_stop(self, chat_id: int) -> str:
         account = (
             TelegramAccount.objects.select_related("user")
             .filter(telegram_chat_id=chat_id, is_active=True)
@@ -104,10 +95,12 @@ class TelegramWebhookView(APIView):
         )
         if account:
             disconnect_telegram_account(account.user)
-        self._safe_reply(chat_id, "Telegram-уведомления PROCOLLAB отключены.")
+        return "Telegram-уведомления PROCOLLAB отключены."
 
-    def _safe_reply(self, chat_id: int, text: str) -> None:
-        try:
-            send_telegram_message(chat_id=chat_id, text=text)
-        except (TelegramPermanentError, TelegramRetryableError):
-            logger.exception("Telegram webhook reply failed")
+    def _telegram_reply(self, *, chat_id: int, text: str) -> dict:
+        return {
+            "method": "sendMessage",
+            "chat_id": chat_id,
+            "text": text,
+            "disable_web_page_preview": True,
+        }
