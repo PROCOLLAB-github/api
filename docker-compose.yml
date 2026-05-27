@@ -14,6 +14,7 @@ services:
     command: ["daphne", "-b", "0.0.0.0", "-p", "8000", "procollab.asgi:application"]
     volumes:
       - ./log:/procollab/log
+      - ./media:/procollab/media
     env_file:
       - .env
     environment:
