@@ -44,9 +44,15 @@ class TelegramWebhookView(APIView):
             reply_text = self._handle_status(chat_id)
         elif command == "/stop":
             reply_text = self._handle_stop(chat_id)
-        else:
+        elif command.startswith("/"):
             reply_text = (
                 "Используйте /status для проверки привязки или /stop для отключения."
+            )
+        else:
+            reply_text = self._bind_token(
+                raw_token=text,
+                chat_id=chat_id,
+                username=from_user.get("username") or "",
             )
 
         return Response(
@@ -65,18 +71,31 @@ class TelegramWebhookView(APIView):
 
     def _handle_start(self, *, raw_token: str, chat_id: int, username: str) -> str:
         if not raw_token:
-            return "Откройте ссылку привязки из личного кабинета PROCOLLAB."
+            return (
+                "Пришлите токен подключения из личного кабинета PROCOLLAB "
+                "одним сообщением в этот чат."
+            )
 
+        return self._bind_token(
+            raw_token=raw_token,
+            chat_id=chat_id,
+            username=username,
+        )
+
+    def _bind_token(self, *, raw_token: str, chat_id: int, username: str) -> str:
         try:
             bind_telegram_account(
-                raw_token=raw_token,
+                raw_token=raw_token.strip(),
                 chat_id=chat_id,
                 username=username,
             )
         except TelegramLinkError as exc:
             return str(exc)
 
-        return "Telegram подключен к вашему аккаунту PROCOLLAB."
+        return (
+            "Telegram подключен к вашему аккаунту PROCOLLAB. "
+            "Теперь вам будут приходить уведомления."
+        )
 
     def _handle_status(self, chat_id: int) -> str:
         connected = TelegramAccount.objects.filter(

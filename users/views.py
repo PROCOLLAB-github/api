@@ -295,6 +295,8 @@ class UserTelegramLinkView(APIView):
         return Response(
             {
                 "link": link.url,
+                "token": link.token,
+                "bot_url": link.url.split("?", 1)[0],
                 "expires_at": link.expires_at,
             },
             status=status.HTTP_201_CREATED,

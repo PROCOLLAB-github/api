@@ -405,7 +405,9 @@ class TelegramNotificationTests(TestCase):
         self.client.force_authenticate(user)
         response = self.client.post("/auth/users/me/telegram-link/")
         self.assertEqual(response.status_code, 201)
-        token = parse_qs(urlparse(response.data["link"]).query)["start"][0]
+        token = response.data["token"]
+        self.assertEqual(parse_qs(urlparse(response.data["link"]).query)["start"][0], token)
+        self.assertEqual(response.data["bot_url"], "https://t.me/procollab_demo_bot")
         return token, response
 
     def test_link_token_is_hashed_and_start_binds_account(self):
@@ -437,6 +439,53 @@ class TelegramNotificationTests(TestCase):
         self.assertTrue(account.is_active)
         self.assertEqual(account.telegram_chat_id, 9000000001)
         self.assertEqual(account.telegram_username, "manager_tg")
+        self.assertIsNotNone(TelegramLinkToken.objects.get().used_at)
+
+    def test_start_without_token_prompts_for_manual_token(self):
+        self._create_link(self.manager)
+
+        response = self.client.post(
+            "/telegram/webhook/",
+            {
+                "message": {
+                    "text": "/start",
+                    "chat": {"id": 9000000010},
+                    "from": {"username": "manager_tg"},
+                }
+            },
+            format="json",
+            HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN="webhook-secret",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["method"], "sendMessage")
+        self.assertEqual(response.data["chat_id"], 9000000010)
+        self.assertIn("Пришлите токен подключения", response.data["text"])
+        self.assertFalse(hasattr(self.manager, "telegram_account"))
+
+    def test_plain_token_message_binds_account(self):
+        raw_token, _ = self._create_link(self.manager)
+
+        response = self.client.post(
+            "/telegram/webhook/",
+            {
+                "message": {
+                    "text": raw_token,
+                    "chat": {"id": 9000000011},
+                    "from": {"username": "manager_manual_tg"},
+                }
+            },
+            format="json",
+            HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN="webhook-secret",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["method"], "sendMessage")
+        self.assertIn("Telegram подключен", response.data["text"])
+        account = self.manager.telegram_account
+        self.assertTrue(account.is_active)
+        self.assertEqual(account.telegram_chat_id, 9000000011)
+        self.assertEqual(account.telegram_username, "manager_manual_tg")
         self.assertIsNotNone(TelegramLinkToken.objects.get().used_at)
 
     def test_expired_or_reused_token_does_not_bind_account(self):
