@@ -57,7 +57,7 @@ class PartnerProgramRegisterAPITests(TestCase):
         self.user = create_user(prefix="program-register-user")
         self.program = create_partner_program()
 
-    @patch("partner_programs.services.send_email.delay")
+    @patch("partner_programs.services.registration.send_email.delay")
     def test_authenticated_user_can_register_to_program(self, send_email_delay):
         self.client.force_authenticate(self.user)
 
@@ -75,7 +75,7 @@ class PartnerProgramRegisterAPITests(TestCase):
         self.assertEqual(profile.partner_program_data, {"telegram": "@program_user"})
         send_email_delay.assert_called_once()
 
-    @patch("partner_programs.services.send_email.delay")
+    @patch("partner_programs.services.registration.send_email.delay")
     def test_authenticated_user_cannot_register_twice(self, send_email_delay):
         create_program_member(self.program, user=self.user)
         self.client.force_authenticate(self.user)
@@ -93,7 +93,7 @@ class PartnerProgramRegisterAPITests(TestCase):
         )
         send_email_delay.assert_not_called()
 
-    @patch("partner_programs.services.send_email.delay")
+    @patch("partner_programs.services.registration.send_email.delay")
     def test_registration_is_blocked_after_deadline(self, send_email_delay):
         self.program.datetime_registration_ends = timezone.now() - timezone.timedelta(
             days=1
@@ -111,7 +111,7 @@ class PartnerProgramRegisterAPITests(TestCase):
         self.assertEqual(response.data["detail"], "Registration period has ended.")
         send_email_delay.assert_not_called()
 
-    @patch("partner_programs.services.send_email.delay")
+    @patch("partner_programs.services.registration.send_email.delay")
     def test_external_registration_creates_user_and_program_profile(
         self,
         send_email_delay,
@@ -138,7 +138,7 @@ class PartnerProgramRegisterAPITests(TestCase):
         self.assertEqual(profile.partner_program_data["telegram"], "@external")
         send_email_delay.assert_called_once()
 
-    @patch("partner_programs.services.send_email.delay")
+    @patch("partner_programs.services.registration.send_email.delay")
     def test_external_registration_accepts_email_compatibility_field(
         self,
         send_email_delay,
@@ -168,7 +168,7 @@ class PartnerProgramRegisterAPITests(TestCase):
         )
         send_email_delay.assert_called_once()
 
-    @patch("partner_programs.services.send_email.delay")
+    @patch("partner_programs.services.registration.send_email.delay")
     def test_external_registration_test_ping_does_not_create_profile(
         self,
         send_email_delay,
@@ -183,7 +183,7 @@ class PartnerProgramRegisterAPITests(TestCase):
         self.assertFalse(PartnerProgramUserProfile.objects.exists())
         send_email_delay.assert_not_called()
 
-    @patch("partner_programs.services.send_email.delay")
+    @patch("partner_programs.services.registration.send_email.delay")
     def test_external_registration_requires_email(self, send_email_delay):
         response = self.client.post(
             f"/programs/{self.program.id}/register_new/",
@@ -200,7 +200,7 @@ class PartnerProgramRegisterAPITests(TestCase):
         self.assertFalse(PartnerProgramUserProfile.objects.exists())
         send_email_delay.assert_not_called()
 
-    @patch("partner_programs.services.send_email.delay")
+    @patch("partner_programs.services.registration.send_email.delay")
     def test_external_registration_requires_password(self, send_email_delay):
         response = self.client.post(
             f"/programs/{self.program.id}/register_new/",
@@ -217,7 +217,7 @@ class PartnerProgramRegisterAPITests(TestCase):
         self.assertFalse(PartnerProgramUserProfile.objects.exists())
         send_email_delay.assert_not_called()
 
-    @patch("partner_programs.services.send_email.delay")
+    @patch("partner_programs.services.registration.send_email.delay")
     def test_external_registration_rejects_duplicate_program_profile(
         self,
         send_email_delay,
