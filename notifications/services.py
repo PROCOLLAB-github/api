@@ -10,7 +10,8 @@ from django.db import transaction
 from django.utils import timezone
 
 from notifications.models import Notification, NotificationDelivery
-from notifications.tasks import send_notification_email
+from notifications.tasks import send_notification_email, send_telegram_notification
+from notifications.telegram import telegram_enabled_for_notification
 
 
 EMAIL_TEMPLATES = {
@@ -303,6 +304,8 @@ def create_event_notifications(
         )
         if _email_enabled(recipient, notification_type):
             _create_email_delivery(notification, notification_type, email_context)
+        if telegram_enabled_for_notification(notification):
+            _create_telegram_delivery(notification)
 
     return created_count
 
@@ -331,6 +334,20 @@ def _create_email_delivery(
         )
 
     transaction.on_commit(enqueue_email)
+    return delivery
+
+
+def _create_telegram_delivery(notification: Notification) -> NotificationDelivery:
+    delivery = NotificationDelivery.objects.create(
+        notification=notification,
+        channel=NotificationDelivery.Channel.TELEGRAM,
+        status=NotificationDelivery.Status.PENDING,
+    )
+
+    def enqueue_telegram() -> None:
+        send_telegram_notification.delay(delivery.id)
+
+    transaction.on_commit(enqueue_telegram)
     return delivery
 
 

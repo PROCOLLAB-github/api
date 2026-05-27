@@ -1,4 +1,5 @@
-from unittest.mock import patch
+from urllib.parse import parse_qs, urlparse
+from unittest.mock import Mock, patch
 
 from django.contrib.auth import get_user_model
 from django.core import mail
@@ -6,14 +7,21 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from notifications.models import Notification, NotificationDelivery
+from notifications.models import (
+    Notification,
+    NotificationChannelPreference,
+    NotificationDelivery,
+    TelegramAccount,
+    TelegramLinkToken,
+)
 from notifications.services import (
     notify_expert_projects_assigned,
     notify_verification_approved,
     notify_verification_rejected,
     notify_verification_submitted,
 )
-from notifications.tasks import send_notification_email
+from notifications.tasks import send_notification_email, send_telegram_notification
+from notifications.telegram import TelegramRetryableError, token_hash
 from partner_programs.models import PartnerProgram, PartnerProgramVerificationRequest
 from partner_programs.verification_services import submit_verification_request
 from projects.models import Company
@@ -328,3 +336,337 @@ class NotificationMVPTests(TestCase):
         self.assertEqual(delivery.status, NotificationDelivery.Status.SENT)
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].body, "Plain fallback message")
+
+
+@override_settings(
+    FRONTEND_URL="https://app.test",
+    SITE_URL="https://app.test",
+    TELEGRAM_BOT_TOKEN="telegram-token",
+    TELEGRAM_BOT_USERNAME="procollab_demo_bot",
+    TELEGRAM_WEBHOOK_SECRET="webhook-secret",
+    TELEGRAM_NOTIFICATIONS_ENABLED=True,
+    TELEGRAM_ADMIN_CHAT_IDS=["123456"],
+    DEFAULT_FROM_EMAIL="from@test",
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+)
+class TelegramNotificationTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.now = timezone.now()
+        self.staff = self.create_user("telegram-staff@example.com", is_staff=True)
+        self.manager = self.create_user("telegram-manager@example.com")
+        self.program = PartnerProgram.objects.create(
+            name="Telegram Program",
+            tag="telegram-program",
+            description="Program description",
+            city="Moscow",
+            data_schema={},
+            status=PartnerProgram.STATUS_PUBLISHED,
+            verification_status=PartnerProgram.VERIFICATION_STATUS_NOT_REQUESTED,
+            projects_availability="all_users",
+            datetime_registration_ends=self.now + timezone.timedelta(days=10),
+            datetime_started=self.now + timezone.timedelta(days=20),
+            datetime_evaluation_ends=self.now + timezone.timedelta(days=35),
+            datetime_finished=self.now + timezone.timedelta(days=50),
+        )
+        self.program.managers.add(self.manager)
+        self.company = Company.objects.create(name="Telegram Company", inn="7707083893")
+
+    def create_user(self, email: str, **extra_fields):
+        defaults = {
+            "password": "pass",
+            "first_name": "Test",
+            "last_name": "User",
+            "birthday": "1990-01-01",
+            "is_active": True,
+        }
+        defaults.update(extra_fields)
+        return get_user_model().objects.create_user(email=email, **defaults)
+
+    def verification_request(self):
+        return PartnerProgramVerificationRequest.objects.create(
+            program=self.program,
+            company=self.company,
+            company_name=self.company.name,
+            inn=self.company.inn,
+            legal_name='OOO "Telegram Company"',
+            website="https://official.example.com",
+            region="Moscow",
+            initiator=self.manager,
+            contact_full_name="Ivan Manager",
+            contact_position="Lead",
+            contact_email="lead@example.com",
+            contact_phone="+79990000000",
+            company_role_description="Company organizes the championship.",
+            status=PartnerProgramVerificationRequest.STATUS_PENDING,
+        )
+
+    def _create_link(self, user):
+        self.client.force_authenticate(user)
+        response = self.client.post("/auth/users/me/telegram-link/")
+        self.assertEqual(response.status_code, 201)
+        token = parse_qs(urlparse(response.data["link"]).query)["start"][0]
+        return token, response
+
+    @patch("notifications.telegram_views.send_telegram_message", return_value="ok")
+    def test_link_token_is_hashed_and_start_binds_account(self, send_message_mock):
+        raw_token, response = self._create_link(self.manager)
+
+        self.assertIn("https://t.me/procollab_demo_bot", response.data["link"])
+        self.assertFalse(TelegramLinkToken.objects.filter(token_hash=raw_token).exists())
+        self.assertTrue(
+            TelegramLinkToken.objects.filter(token_hash=token_hash(raw_token)).exists()
+        )
+
+        response = self.client.post(
+            "/telegram/webhook/",
+            {
+                "message": {
+                    "text": f"/start {raw_token}",
+                    "chat": {"id": 9000000001},
+                    "from": {"username": "manager_tg"},
+                }
+            },
+            format="json",
+            HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN="webhook-secret",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        account = self.manager.telegram_account
+        self.assertTrue(account.is_active)
+        self.assertEqual(account.telegram_chat_id, 9000000001)
+        self.assertEqual(account.telegram_username, "manager_tg")
+        self.assertIsNotNone(TelegramLinkToken.objects.get().used_at)
+        self.assertEqual(send_message_mock.call_count, 1)
+
+    @patch("notifications.telegram_views.send_telegram_message", return_value="ok")
+    def test_expired_or_reused_token_does_not_bind_account(self, _send_message_mock):
+        raw_token, _ = self._create_link(self.manager)
+        TelegramLinkToken.objects.filter(token_hash=token_hash(raw_token)).update(
+            expires_at=timezone.now() - timezone.timedelta(minutes=1)
+        )
+
+        response = self.client.post(
+            "/telegram/webhook/",
+            {"message": {"text": f"/start {raw_token}", "chat": {"id": 100}}},
+            format="json",
+            HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN="webhook-secret",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(hasattr(self.manager, "telegram_account"))
+
+    @patch("notifications.telegram_views.send_telegram_message", return_value="ok")
+    def test_stop_clears_account_and_disables_preferences(self, _send_message_mock):
+        TelegramAccount.objects.create(
+            user=self.manager,
+            telegram_chat_id=100,
+            telegram_username="manager_tg",
+            is_active=True,
+            linked_at=timezone.now(),
+        )
+        NotificationChannelPreference.objects.create(
+            user=self.manager,
+            channel=NotificationChannelPreference.Channel.TELEGRAM,
+            event_type=Notification.Type.COMPANY_VERIFICATION_APPROVED,
+            enabled=True,
+        )
+
+        response = self.client.post(
+            "/telegram/webhook/",
+            {"message": {"text": "/stop", "chat": {"id": 100}}},
+            format="json",
+            HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN="webhook-secret",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        account = self.manager.telegram_account
+        account.refresh_from_db()
+        self.assertFalse(account.is_active)
+        self.assertIsNone(account.telegram_chat_id)
+        self.assertEqual(account.telegram_username, "")
+        self.assertFalse(
+            NotificationChannelPreference.objects.filter(
+                user=self.manager,
+                channel=NotificationChannelPreference.Channel.TELEGRAM,
+                enabled=True,
+            ).exists()
+        )
+
+    @patch("notifications.services.send_telegram_notification.delay")
+    @patch("notifications.services.send_notification_email.delay")
+    def test_product_notifications_use_linked_users_not_admin_chat_ids(
+        self,
+        _email_delay,
+        telegram_delay,
+    ):
+        request = self.verification_request()
+
+        with self.captureOnCommitCallbacks(execute=True):
+            notify_verification_submitted(self.program, request)
+
+        notification = Notification.objects.get(recipient=self.staff)
+        self.assertFalse(
+            notification.deliveries.filter(
+                channel=NotificationDelivery.Channel.TELEGRAM
+            ).exists()
+        )
+        telegram_delay.assert_not_called()
+
+        TelegramAccount.objects.create(
+            user=self.staff,
+            telegram_chat_id=9000000002,
+            is_active=True,
+            linked_at=timezone.now(),
+        )
+        second_request = self.verification_request()
+
+        with self.captureOnCommitCallbacks(execute=True):
+            notify_verification_submitted(self.program, second_request)
+
+        self.assertTrue(
+            Notification.objects.get(
+                recipient=self.staff,
+                dedupe_key=f"verification:{second_request.id}:submitted",
+            ).deliveries.filter(channel=NotificationDelivery.Channel.TELEGRAM).exists()
+        )
+
+    @patch("notifications.services.send_telegram_notification.delay")
+    @patch("notifications.services.send_notification_email.delay")
+    def test_disabled_event_preference_skips_telegram_delivery(
+        self,
+        _email_delay,
+        telegram_delay,
+    ):
+        TelegramAccount.objects.create(
+            user=self.manager,
+            telegram_chat_id=9000000003,
+            is_active=True,
+            linked_at=timezone.now(),
+        )
+        NotificationChannelPreference.objects.create(
+            user=self.manager,
+            channel=NotificationChannelPreference.Channel.TELEGRAM,
+            event_type=Notification.Type.COMPANY_VERIFICATION_APPROVED,
+            enabled=False,
+        )
+
+        with self.captureOnCommitCallbacks(execute=True):
+            notify_verification_approved(self.verification_request())
+
+        notification = Notification.objects.get(recipient=self.manager)
+        self.assertFalse(
+            notification.deliveries.filter(
+                channel=NotificationDelivery.Channel.TELEGRAM
+            ).exists()
+        )
+        telegram_delay.assert_not_called()
+
+    @patch("notifications.telegram.requests.post")
+    def test_successful_telegram_task_saves_provider_message_id(self, post_mock):
+        TelegramAccount.objects.create(
+            user=self.manager,
+            telegram_chat_id=9000000004,
+            is_active=True,
+            linked_at=timezone.now(),
+        )
+        notification = Notification.objects.create(
+            recipient=self.manager,
+            type=Notification.Type.PROGRAM_MODERATION_APPROVED,
+            title="Title",
+            message="Sensitive details should not be sent to Telegram",
+            object_type="moderation_log",
+            object_id=1,
+            url="/office/program/1",
+            dedupe_key="telegram-success",
+        )
+        delivery = NotificationDelivery.objects.create(
+            notification=notification,
+            channel=NotificationDelivery.Channel.TELEGRAM,
+        )
+        post_mock.return_value = Mock(
+            status_code=200,
+            json=lambda: {"ok": True, "result": {"message_id": 321}},
+            text='{"ok":true}',
+        )
+
+        result = send_telegram_notification(delivery.id)
+
+        delivery.refresh_from_db()
+        self.assertTrue(result)
+        self.assertEqual(delivery.status, NotificationDelivery.Status.SENT)
+        self.assertEqual(delivery.provider_message_id, "321")
+        self.assertEqual(delivery.attempts, 1)
+        payload = post_mock.call_args.kwargs["json"]
+        self.assertNotIn("Sensitive details", payload["text"])
+
+    @patch("notifications.telegram.requests.post")
+    def test_retryable_telegram_error_keeps_delivery_pending(self, post_mock):
+        TelegramAccount.objects.create(
+            user=self.manager,
+            telegram_chat_id=9000000005,
+            is_active=True,
+            linked_at=timezone.now(),
+        )
+        notification = Notification.objects.create(
+            recipient=self.manager,
+            type=Notification.Type.PROGRAM_MODERATION_APPROVED,
+            title="Title",
+            message="Message",
+            object_type="moderation_log",
+            object_id=1,
+            url="/office/program/1",
+            dedupe_key="telegram-retry",
+        )
+        delivery = NotificationDelivery.objects.create(
+            notification=notification,
+            channel=NotificationDelivery.Channel.TELEGRAM,
+        )
+        post_mock.return_value = Mock(
+            status_code=429,
+            json=lambda: {"parameters": {"retry_after": 1}},
+            text='{"retry_after":1}',
+        )
+
+        with self.assertRaises(TelegramRetryableError):
+            send_telegram_notification(delivery.id)
+
+        delivery.refresh_from_db()
+        self.assertEqual(delivery.status, NotificationDelivery.Status.PENDING)
+        self.assertEqual(delivery.attempts, 1)
+        self.assertIn("rate limit", delivery.last_error.lower())
+
+    @patch("notifications.telegram.requests.post")
+    def test_permanent_telegram_error_fails_without_infinite_retry(self, post_mock):
+        TelegramAccount.objects.create(
+            user=self.manager,
+            telegram_chat_id=9000000006,
+            is_active=True,
+            linked_at=timezone.now(),
+        )
+        notification = Notification.objects.create(
+            recipient=self.manager,
+            type=Notification.Type.PROGRAM_MODERATION_APPROVED,
+            title="Title",
+            message="Message",
+            object_type="moderation_log",
+            object_id=1,
+            url="/office/program/1",
+            dedupe_key="telegram-permanent",
+        )
+        delivery = NotificationDelivery.objects.create(
+            notification=notification,
+            channel=NotificationDelivery.Channel.TELEGRAM,
+        )
+        post_mock.return_value = Mock(
+            status_code=403,
+            json=lambda: {"ok": False},
+            text='{"ok":false}',
+        )
+
+        result = send_telegram_notification(delivery.id)
+
+        delivery.refresh_from_db()
+        self.assertFalse(result)
+        self.assertEqual(delivery.status, NotificationDelivery.Status.FAILED)
+        self.assertEqual(delivery.attempts, 1)
