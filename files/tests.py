@@ -82,3 +82,24 @@ class LocalFileSystemStorageTests(SimpleTestCase):
             self.assertEqual(info.extension, "webp")
             self.assertEqual(info.mime_type, "image/webp")
             self.assertEqual(info.size, 3)
+
+    def test_upload_does_not_duplicate_media_prefix_when_base_url_includes_media(self):
+        with TemporaryDirectory() as media_root:
+            file = SimpleNamespace(
+                name="avatar",
+                extension="webp",
+                content_type="image/webp",
+                size=3,
+                buffer=memoryview(b"abc"),
+            )
+            user = SimpleNamespace(email="user@example.com")
+
+            with override_settings(
+                MEDIA_ROOT=media_root,
+                MEDIA_URL="/media/",
+                LOCAL_MEDIA_BASE_URL="https://procollab.pro/media",
+            ):
+                info = LocalFileSystemStorage().upload(file, user)
+
+            self.assertTrue(info.url.startswith("https://procollab.pro/media/uploads/"))
+            self.assertNotIn("/media/media/", info.url)

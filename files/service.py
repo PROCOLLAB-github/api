@@ -185,10 +185,7 @@ class LocalFileSystemStorage(Storage):
                 destination.write(chunk)
 
         return FileInfo(
-            url=urljoin(
-                settings.LOCAL_MEDIA_BASE_URL.rstrip("/") + "/",
-                f"{settings.MEDIA_URL.lstrip('/')}{relative_path.as_posix()}",
-            ),
+            url=self._build_public_url(relative_path),
             name=file.name,
             extension=file.extension,
             mime_type=file.content_type,
@@ -203,6 +200,19 @@ class LocalFileSystemStorage(Storage):
             f"{f'.{extension}' if extension else ''}"
         )
         return Path("uploads") / str(abs(hash(user.email))) / stored_filename
+
+    def _build_public_url(self, relative_path: Path) -> str:
+        media_url = settings.MEDIA_URL.rstrip("/") + "/"
+        base_url = settings.LOCAL_MEDIA_BASE_URL.rstrip("/")
+        parsed_base = urlparse(base_url)
+
+        if parsed_base.path.rstrip("/") == media_url.rstrip("/"):
+            return urljoin(base_url + "/", relative_path.as_posix())
+
+        return urljoin(
+            base_url + "/",
+            f"{media_url.lstrip('/')}{relative_path.as_posix()}",
+        )
 
 
 def get_default_storage() -> Storage:
