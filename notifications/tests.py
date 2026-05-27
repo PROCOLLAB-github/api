@@ -2,6 +2,7 @@ from urllib.parse import parse_qs, urlparse
 from unittest.mock import Mock, patch
 
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.core import mail
 from django.test import TestCase, override_settings
 from django.utils import timezone
@@ -487,6 +488,44 @@ class TelegramNotificationTests(TestCase):
         self.assertEqual(account.telegram_chat_id, 9000000011)
         self.assertEqual(account.telegram_username, "manager_manual_tg")
         self.assertIsNotNone(TelegramLinkToken.objects.get().used_at)
+
+    @patch("notifications.management.commands.poll_telegram_updates.send_telegram_message")
+    @patch("notifications.management.commands.poll_telegram_updates.telegram_api_post")
+    def test_polling_command_processes_manual_token_message(self, api_post, send_message):
+        raw_token, _ = self._create_link(self.manager)
+        api_post.side_effect = [
+            Mock(
+                status_code=200,
+                json=lambda: {"ok": True, "result": True},
+                text='{"ok":true}',
+            ),
+            Mock(
+                status_code=200,
+                json=lambda: {
+                    "ok": True,
+                    "result": [
+                        {
+                            "update_id": 100,
+                            "message": {
+                                "text": raw_token,
+                                "chat": {"id": 9000000012},
+                                "from": {"username": "manager_poll_tg"},
+                            },
+                        }
+                    ],
+                },
+                text='{"ok":true}',
+            ),
+        ]
+
+        call_command("poll_telegram_updates", "--once")
+
+        account = self.manager.telegram_account
+        self.assertTrue(account.is_active)
+        self.assertEqual(account.telegram_chat_id, 9000000012)
+        self.assertEqual(account.telegram_username, "manager_poll_tg")
+        send_message.assert_called_once()
+        self.assertIn("Telegram подключен", send_message.call_args.kwargs["text"])
 
     def test_expired_or_reused_token_does_not_bind_account(self):
         raw_token, _ = self._create_link(self.manager)

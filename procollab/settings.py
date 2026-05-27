@@ -56,6 +56,7 @@ TELEGRAM_NOTIFICATIONS_ENABLED = config(
     default=False,
     cast=bool,
 )
+TELEGRAM_PROXY_URL = config("TELEGRAM_PROXY_URL", default="", cast=str)
 TELEGRAM_ADMIN_CHAT_IDS = csv_config("TELEGRAM_ADMIN_CHAT_IDS")
 
 TAGGIT_CASE_INSENSITIVE = True

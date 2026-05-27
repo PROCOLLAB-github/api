@@ -230,6 +230,7 @@ def send_telegram_message(*, chat_id: int, text: str, reply_markup=None) -> str:
             f"{TELEGRAM_API_BASE_URL}{token}/sendMessage",
             json=payload,
             timeout=10,
+            proxies=telegram_proxies(),
         )
     except requests.RequestException as exc:
         raise TelegramRetryableError(str(exc)) from exc
@@ -249,6 +250,25 @@ def send_telegram_message(*, chat_id: int, text: str, reply_markup=None) -> str:
         raise TelegramPermanentError(f"Telegram API rejected message: {response.text}")
     message_id = data.get("result", {}).get("message_id")
     return str(message_id or "")
+
+
+def telegram_api_post(method: str, *, payload: dict[str, Any] | None = None, timeout: int = 10):
+    token = getattr(settings, "TELEGRAM_BOT_TOKEN", "")
+    if not token:
+        raise TelegramPermanentError("TELEGRAM_BOT_TOKEN is not configured")
+    return requests.post(
+        f"{TELEGRAM_API_BASE_URL}{token}/{method}",
+        json=payload or {},
+        timeout=timeout,
+        proxies=telegram_proxies(),
+    )
+
+
+def telegram_proxies() -> dict[str, str] | None:
+    proxy_url = getattr(settings, "TELEGRAM_PROXY_URL", "").strip()
+    if not proxy_url:
+        return None
+    return {"http": proxy_url, "https": proxy_url}
 
 
 def _bot_username() -> str:

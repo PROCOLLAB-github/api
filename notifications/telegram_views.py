@@ -22,14 +22,21 @@ class TelegramWebhookView(APIView):
         if not self._valid_secret(request):
             return Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
 
-        message = request.data.get("message") or request.data.get("edited_message") or {}
+        reply = self.build_reply(request.data)
+        if not reply:
+            return Response({"ok": True}, status=status.HTTP_200_OK)
+
+        return Response(reply, status=status.HTTP_200_OK)
+
+    def build_reply(self, update: dict) -> dict | None:
+        message = update.get("message") or update.get("edited_message") or {}
         text = (message.get("text") or "").strip()
         chat = message.get("chat") or {}
         from_user = message.get("from") or {}
         chat_id = chat.get("id")
 
         if not text or chat_id is None:
-            return Response({"ok": True}, status=status.HTTP_200_OK)
+            return None
 
         command, _, argument = text.partition(" ")
         command = command.split("@", 1)[0].lower()
@@ -55,10 +62,7 @@ class TelegramWebhookView(APIView):
                 username=from_user.get("username") or "",
             )
 
-        return Response(
-            self._telegram_reply(chat_id=chat_id, text=reply_text),
-            status=status.HTTP_200_OK,
-        )
+        return self._telegram_reply(chat_id=chat_id, text=reply_text)
 
     def _valid_secret(self, request) -> bool:
         expected_secret = getattr(settings, "TELEGRAM_WEBHOOK_SECRET", "")
