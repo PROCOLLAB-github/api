@@ -7,6 +7,8 @@ from partner_programs.tests.helpers import (
     create_partner_program,
     create_program_field,
     create_program_member,
+    create_program_project,
+    create_project,
     create_user,
     project_apply_payload,
 )
@@ -89,6 +91,48 @@ class PartnerProgramProjectApplyAPITests(TestCase):
         )
         profile.refresh_from_db()
         self.assertEqual(profile.project, program_link.project)
+
+    def test_manager_can_apply_project_without_program_profile(self):
+        manager = create_user(prefix="program-apply-manager")
+        self.program.managers.add(manager)
+        self.client.force_authenticate(manager)
+
+        response = self.client.post(
+            f"/programs/{self.program.id}/projects/apply/",
+            project_apply_payload(project={"name": "Manager project"}),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        program_link = PartnerProgramProject.objects.select_related("project").get(
+            id=response.data["program_link_id"]
+        )
+        self.assertEqual(program_link.project.leader, manager)
+        self.assertEqual(program_link.project.name, "Manager project")
+
+    def test_apply_project_rejects_duplicate_project_for_same_leader(self):
+        create_program_member(self.program, user=self.user)
+        existing_project = create_project(
+            leader=self.user,
+            name="Existing program project",
+        )
+        existing_link = create_program_project(
+            self.program,
+            project=existing_project,
+        )
+        self.client.force_authenticate(self.user)
+
+        response = self.client.post(
+            f"/programs/{self.program.id}/projects/apply/",
+            project_apply_payload(project={"name": "Second project"}),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data["detail"], "Проект уже подан в эту программу.")
+        self.assertEqual(response.data["project_id"], existing_project.id)
+        self.assertEqual(response.data["program_link_id"], existing_link.id)
+        self.assertEqual(PartnerProgramProject.objects.count(), 1)
 
     def test_apply_project_rejects_duplicate_field_values(self):
         create_program_member(self.program, user=self.user)
