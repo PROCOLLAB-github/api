@@ -21,10 +21,10 @@ class LegalDocument(models.Model):
     TYPE_ORGANIZER_TERMS = "organizer_terms"
 
     TYPE_CHOICES = [
-        (TYPE_PRIVACY_POLICY, "Privacy policy"),
-        (TYPE_PARTICIPANT_CONSENT, "Participant personal data consent"),
-        (TYPE_PARTICIPATION_TERMS, "Participation terms"),
-        (TYPE_ORGANIZER_TERMS, "Organizer terms"),
+        (TYPE_PRIVACY_POLICY, "Политика обработки персональных данных"),
+        (TYPE_PARTICIPANT_CONSENT, "Согласие участника на обработку данных"),
+        (TYPE_PARTICIPATION_TERMS, "Правила участия платформы"),
+        (TYPE_ORGANIZER_TERMS, "Условия для организатора"),
     ]
 
     type = models.CharField(max_length=64, choices=TYPE_CHOICES, db_index=True)
@@ -85,26 +85,26 @@ class PartnerProgram(models.Model):
     VERIFICATION_STATUS_REJECTED = "rejected"
     VERIFICATION_STATUS_REVOKED = "revoked"
     STATUS_CHOICES = [
-        (STATUS_DRAFT, "Draft"),
-        (STATUS_PENDING_MODERATION, "Pending moderation"),
-        (STATUS_PUBLISHED, "Published"),
-        (STATUS_REJECTED, "Rejected"),
-        (STATUS_COMPLETED, "Completed"),
-        (STATUS_FROZEN, "Frozen"),
-        (STATUS_ARCHIVED, "Archived"),
+        (STATUS_DRAFT, "Черновик"),
+        (STATUS_PENDING_MODERATION, "На модерации"),
+        (STATUS_PUBLISHED, "Опубликован"),
+        (STATUS_REJECTED, "На доработке"),
+        (STATUS_COMPLETED, "Завершен"),
+        (STATUS_FROZEN, "Заморожен"),
+        (STATUS_ARCHIVED, "Архив"),
     ]
     VERIFICATION_STATUS_CHOICES = [
-        (VERIFICATION_STATUS_NOT_REQUESTED, "Not requested"),
-        (VERIFICATION_STATUS_PENDING, "Pending"),
-        (VERIFICATION_STATUS_VERIFIED, "Verified"),
-        (VERIFICATION_STATUS_REJECTED, "Rejected"),
-        (VERIFICATION_STATUS_REVOKED, "Revoked"),
+        (VERIFICATION_STATUS_NOT_REQUESTED, "Не запрошена"),
+        (VERIFICATION_STATUS_PENDING, "На рассмотрении"),
+        (VERIFICATION_STATUS_VERIFIED, "Подтверждена"),
+        (VERIFICATION_STATUS_REJECTED, "Отклонена"),
+        (VERIFICATION_STATUS_REVOKED, "Отозвана"),
     ]
     PARTICIPATION_FORMAT_INDIVIDUAL = "individual"
     PARTICIPATION_FORMAT_TEAM = "team"
     PARTICIPATION_FORMAT_CHOICES = [
-        (PARTICIPATION_FORMAT_INDIVIDUAL, "Individual"),
-        (PARTICIPATION_FORMAT_TEAM, "Team"),
+        (PARTICIPATION_FORMAT_INDIVIDUAL, "Индивидуально"),
+        (PARTICIPATION_FORMAT_TEAM, "Командно"),
     ]
     MODERATION_REQUIRED_SECTIONS = (
         "basic_info",
@@ -497,9 +497,9 @@ class PartnerProgramVerificationRequest(models.Model):
     STATUS_REJECTED = "rejected"
 
     STATUS_CHOICES = [
-        (STATUS_PENDING, "Pending"),
-        (STATUS_APPROVED, "Approved"),
-        (STATUS_REJECTED, "Rejected"),
+        (STATUS_PENDING, "На рассмотрении"),
+        (STATUS_APPROVED, "Одобрена"),
+        (STATUS_REJECTED, "Отклонена"),
     ]
 
     REJECTION_COMPANY_NOT_CONFIRMED = "company_not_confirmed"
@@ -509,11 +509,11 @@ class PartnerProgramVerificationRequest(models.Model):
     REJECTION_OTHER = "other"
 
     REJECTION_REASON_CHOICES = [
-        (REJECTION_COMPANY_NOT_CONFIRMED, "Company data is not confirmed"),
-        (REJECTION_INSUFFICIENT_DOCUMENTS, "Documents are insufficient"),
-        (REJECTION_INVALID_DOCUMENTS, "Documents are invalid"),
-        (REJECTION_CONTACT_NOT_VERIFIED, "Contact person is not verified"),
-        (REJECTION_OTHER, "Other reason"),
+        (REJECTION_COMPANY_NOT_CONFIRMED, "Данные компании не подтверждены"),
+        (REJECTION_INSUFFICIENT_DOCUMENTS, "Недостаточно документов"),
+        (REJECTION_INVALID_DOCUMENTS, "Некорректные документы"),
+        (REJECTION_CONTACT_NOT_VERIFIED, "Контактное лицо не подтверждено"),
+        (REJECTION_OTHER, "Другая причина"),
     ]
 
     program = models.ForeignKey(

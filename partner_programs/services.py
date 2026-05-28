@@ -45,14 +45,14 @@ MODERATION_REQUIRED_KEYS = PartnerProgram.MODERATION_REQUIRED_SECTIONS
 READINESS_WEIGHTS = PartnerProgram.READINESS_WEIGHTS
 READINESS_ROUTES = {
     "basic_info": "main",
-    "dates": "dates",
+    "dates": "schedule",
     "registration": "registration",
     "legal_terms": "registration",
     "materials": "materials",
     "criteria_experts": "criteria",
-    "visual_assets": "media",
+    "visual_assets": "main",
     "verification": "verification",
-    "certificate_template": "certificates",
+    "certificate_template": "certificate",
 }
 OPERATIONAL_ITEMS = (
     {

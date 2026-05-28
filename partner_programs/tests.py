@@ -73,10 +73,10 @@ class PartnerProgramPrivacyLegalTests(TestCase):
 
     def ensure_legal_documents(self):
         documents = (
-            ("privacy_policy", "Privacy policy"),
-            ("participant_consent", "Participant consent"),
-            ("participation_terms", "Participation terms"),
-            ("organizer_terms", "Organizer terms"),
+            ("privacy_policy", "Политика обработки персональных данных"),
+            ("participant_consent", "Согласие участника на обработку данных"),
+            ("participation_terms", "Правила участия платформы"),
+            ("organizer_terms", "Условия для организатора"),
         )
         for doc_type, title in documents:
             LegalDocument.objects.update_or_create(
@@ -712,10 +712,10 @@ class PartnerProgramReadinessAndModerationTests(TestCase):
 
     def ensure_legal_documents(self):
         for doc_type, title in (
-            ("privacy_policy", "Privacy policy"),
-            ("participant_consent", "Participant consent"),
-            ("participation_terms", "Participation terms"),
-            ("organizer_terms", "Organizer terms"),
+            ("privacy_policy", "Политика обработки персональных данных"),
+            ("participant_consent", "Согласие участника на обработку данных"),
+            ("participation_terms", "Правила участия платформы"),
+            ("organizer_terms", "Условия для организатора"),
         ):
             LegalDocument.objects.update_or_create(
                 type=doc_type,

@@ -161,11 +161,11 @@ def reject_verification_request(
     if verification_request.status != PartnerProgramVerificationRequest.STATUS_PENDING:
         raise VerificationTransitionError(verification_request.status)
     if not comment or not comment.strip():
-        raise ValidationError({"comment": "Comment is required for rejection."})
+        raise ValidationError({"comment": "Комментарий обязателен при отклонении."})
 
     valid_reasons = {reason["code"] for reason in get_verification_rejection_reasons()}
     if rejection_reason not in valid_reasons:
-        raise ValidationError({"rejection_reason": "Invalid rejection reason."})
+        raise ValidationError({"rejection_reason": "Некорректная причина отклонения."})
 
     program = verification_request.program
     status_before = program.verification_status
@@ -218,7 +218,7 @@ def revoke_program_verification(
     if program.verification_status != PartnerProgram.VERIFICATION_STATUS_VERIFIED:
         raise VerificationTransitionError(program.verification_status)
     if not comment or not comment.strip():
-        raise ValidationError({"comment": "Comment is required for revocation."})
+        raise ValidationError({"comment": "Комментарий обязателен при отзыве верификации."})
 
     status_before = program.verification_status
     program.verification_status = PartnerProgram.VERIFICATION_STATUS_REVOKED

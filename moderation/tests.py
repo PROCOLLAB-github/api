@@ -14,6 +14,7 @@ from moderation.views import (
     ModerationProgramFreezeView,
     ModerationProgramListView,
     ModerationProgramRestoreView,
+    RejectionReasonListView,
 )
 from partner_programs.models import PartnerProgram, PartnerProgramMaterial
 from partner_programs.views import PartnerProgramDetail
@@ -29,6 +30,7 @@ class ModerationProgramTests(TestCase):
         self.freeze_view = ModerationProgramFreezeView.as_view()
         self.restore_view = ModerationProgramRestoreView.as_view()
         self.archive_view = ModerationProgramArchiveView.as_view()
+        self.reasons_view = RejectionReasonListView.as_view()
         self.public_detail_view = PartnerProgramDetail.as_view()
         self.now = timezone.now()
 
@@ -95,6 +97,22 @@ class ModerationProgramTests(TestCase):
         response = self.list_view(request)
 
         self.assertEqual(response.status_code, 403)
+
+    def test_staff_gets_russian_rejection_reasons(self):
+        request = self.factory.get("/api/admin/moderation/rejection-reasons/")
+        force_authenticate(request, user=self.admin)
+        response = self.reasons_view(request)
+
+        self.assertEqual(response.status_code, 200)
+        labels_by_code = {reason["code"]: reason["label"] for reason in response.data}
+        self.assertEqual(
+            labels_by_code[ModerationLog.REJECTION_REASON_INSUFFICIENT_DATA],
+            "Недостаточно данных",
+        )
+        self.assertEqual(
+            labels_by_code[ModerationLog.REJECTION_REASON_PLATFORM_RULES],
+            "Нарушение правил платформы",
+        )
 
     def test_staff_can_get_program_detail_with_history(self):
         program = self.create_program()

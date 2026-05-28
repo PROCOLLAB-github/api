@@ -17,8 +17,8 @@ from notifications.services import (
 from partner_programs.models import PartnerProgram
 
 AUTO_FREEZE_COMMENT = (
-    "Program was automatically frozen because required materials were not uploaded "
-    "after the registration opening grace period."
+    "Чемпионат автоматически заморожен: обязательные материалы не были загружены "
+    "после льготного периода от открытия регистрации."
 )
 FREEZE_GRACE_PERIOD_DAYS = 3
 
@@ -117,11 +117,11 @@ def reject_program(
 ) -> ModerationLog:
     _require_pending_moderation(program)
     if not comment or not comment.strip():
-        raise ValidationError({"comment": "Comment is required for rejection."})
+        raise ValidationError({"comment": "Комментарий обязателен при отклонении."})
 
     valid_reasons = {code for code, _ in ModerationLog.REJECTION_REASON_CHOICES}
     if rejection_reason not in valid_reasons:
-        raise ValidationError({"rejection_reason": "Invalid rejection reason."})
+        raise ValidationError({"rejection_reason": "Некорректная причина отклонения."})
 
     status_before = program.status
     program.status = PartnerProgram.STATUS_REJECTED
@@ -216,7 +216,7 @@ def freeze_program_manually(
     if program.status != PartnerProgram.STATUS_PUBLISHED:
         raise ModerationTransitionError(program.status)
     if not comment or not comment.strip():
-        raise ValidationError({"comment": "Comment is required for freeze."})
+        raise ValidationError({"comment": "Комментарий обязателен при заморозке."})
     if now is None:
         now = timezone.now()
 
@@ -282,7 +282,7 @@ def archive_program(
         raise ModerationTransitionError(program.status)
     if program.status == PartnerProgram.STATUS_FROZEN and not comment.strip():
         raise ValidationError(
-            {"comment": "Comment is required when archiving a frozen program."}
+            {"comment": "Комментарий обязателен при архивации замороженного чемпионата."}
         )
 
     status_before = program.status

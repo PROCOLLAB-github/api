@@ -265,7 +265,7 @@ def accept_organizer_terms(*, program, user):
     if not organizer_terms:
         raise ValidationError(
             {
-                "detail": "Organizer terms document is not active.",
+                "detail": "Активный документ с условиями для организатора не найден.",
                 "missing_legal_documents": ["organizer_terms"],
             }
         )

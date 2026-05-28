@@ -313,11 +313,11 @@ class ModerationDecisionSerializer(serializers.Serializer):
         if attrs["decision"] == "reject":
             if not attrs.get("comment", "").strip():
                 raise serializers.ValidationError(
-                    {"comment": "Comment is required for rejection."}
+                    {"comment": "Комментарий обязателен при отклонении."}
                 )
             if not attrs.get("reason_code"):
                 raise serializers.ValidationError(
-                    {"reason_code": "Rejection reason is required."}
+                    {"reason_code": "Выберите причину отклонения."}
                 )
         return attrs
 
@@ -377,11 +377,11 @@ class ModerationVerificationDecisionSerializer(serializers.Serializer):
         if attrs["decision"] == "reject":
             if not attrs.get("comment", "").strip():
                 raise serializers.ValidationError(
-                    {"comment": "Comment is required for rejection."}
+                    {"comment": "Комментарий обязателен при отклонении."}
                 )
             if get_verification_rejection_reasons() and not attrs.get("reason_code"):
                 raise serializers.ValidationError(
-                    {"reason_code": "Rejection reason is required."}
+                    {"reason_code": "Выберите причину отклонения."}
                 )
         return attrs
 
@@ -391,7 +391,7 @@ class ModerationVerificationRevokeSerializer(serializers.Serializer):
 
     def validate_comment(self, value):
         if not value.strip():
-            raise serializers.ValidationError("Comment is required for revocation.")
+            raise serializers.ValidationError("Комментарий обязателен при отзыве верификации.")
         return value
 
 

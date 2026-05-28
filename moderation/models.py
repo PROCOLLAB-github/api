@@ -41,23 +41,23 @@ class ModerationLog(models.Model):
     REJECT_ACTIONS = (ACTION_REJECT, ACTION_REJECTED_LEGACY)
 
     ACTION_CHOICES = [
-        (ACTION_SUBMIT_TO_MODERATION, "Submit to moderation"),
-        (ACTION_SUBMITTED_LEGACY, "Submit to moderation"),
-        (ACTION_APPROVE, "Approve"),
-        (ACTION_APPROVED_LEGACY, "Approve"),
-        (ACTION_REJECT, "Reject"),
-        (ACTION_REJECTED_LEGACY, "Reject"),
-        (ACTION_WITHDRAW, "Withdraw"),
-        (ACTION_WITHDRAWN_LEGACY, "Withdraw"),
-        (ACTION_AUTO_FREEZE, "Automatic freeze"),
-        (ACTION_FREEZE, "Manual freeze"),
-        (ACTION_RESTORE, "Restore"),
-        (ACTION_ARCHIVE, "Archive"),
-        (ACTION_COMPLETE, "Complete"),
-        (ACTION_VERIFICATION_SUBMITTED, "Verification submitted"),
-        (ACTION_VERIFICATION_APPROVE, "Verification approve"),
-        (ACTION_VERIFICATION_REJECT, "Verification reject"),
-        (ACTION_VERIFICATION_REVOKE, "Verification revoke"),
+        (ACTION_SUBMIT_TO_MODERATION, "Отправка на модерацию"),
+        (ACTION_SUBMITTED_LEGACY, "Отправка на модерацию"),
+        (ACTION_APPROVE, "Одобрение"),
+        (ACTION_APPROVED_LEGACY, "Одобрение"),
+        (ACTION_REJECT, "Отклонение"),
+        (ACTION_REJECTED_LEGACY, "Отклонение"),
+        (ACTION_WITHDRAW, "Отзыв с модерации"),
+        (ACTION_WITHDRAWN_LEGACY, "Отзыв с модерации"),
+        (ACTION_AUTO_FREEZE, "Автоматическая заморозка"),
+        (ACTION_FREEZE, "Ручная заморозка"),
+        (ACTION_RESTORE, "Восстановление"),
+        (ACTION_ARCHIVE, "Архивация"),
+        (ACTION_COMPLETE, "Завершение"),
+        (ACTION_VERIFICATION_SUBMITTED, "Заявка на верификацию"),
+        (ACTION_VERIFICATION_APPROVE, "Верификация одобрена"),
+        (ACTION_VERIFICATION_REJECT, "Верификация отклонена"),
+        (ACTION_VERIFICATION_REVOKE, "Верификация отозвана"),
     ]
 
     REJECTION_REASON_INSUFFICIENT_DATA = "insufficient_data"
@@ -68,12 +68,12 @@ class ModerationLog(models.Model):
     REJECTION_REASON_OTHER = "other"
 
     REJECTION_REASON_CHOICES = [
-        (REJECTION_REASON_INSUFFICIENT_DATA, "Insufficient data"),
-        (REJECTION_REASON_PLATFORM_RULES, "Platform rules violation"),
-        (REJECTION_REASON_DUPLICATE, "Duplicate championship"),
-        (REJECTION_REASON_INAPPROPRIATE_CONTENT, "Inappropriate content"),
-        (REJECTION_REASON_SUSPICIOUS_ORGANIZER, "Suspicious organizer"),
-        (REJECTION_REASON_OTHER, "Other reason"),
+        (REJECTION_REASON_INSUFFICIENT_DATA, "Недостаточно данных"),
+        (REJECTION_REASON_PLATFORM_RULES, "Нарушение правил платформы"),
+        (REJECTION_REASON_DUPLICATE, "Дублирующий чемпионат"),
+        (REJECTION_REASON_INAPPROPRIATE_CONTENT, "Некорректное содержание"),
+        (REJECTION_REASON_SUSPICIOUS_ORGANIZER, "Подозрительный организатор"),
+        (REJECTION_REASON_OTHER, "Другая причина"),
     ]
 
     program = models.ForeignKey(

@@ -391,6 +391,11 @@ class PartnerProgramVerificationTests(TestCase):
             reason_codes,
         )
         self.assertTrue(all(reason.get("label") for reason in response.data))
+        labels_by_code = {reason["code"]: reason["label"] for reason in response.data}
+        self.assertEqual(
+            labels_by_code[PartnerProgramVerificationRequest.REJECTION_INSUFFICIENT_DOCUMENTS],
+            "Недостаточно документов",
+        )
 
     def test_admin_can_filter_and_search_verification_requests(self):
         program, verification_request, _ = self.create_pending_request()
