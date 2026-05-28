@@ -1,11 +1,14 @@
+from urllib.parse import urlencode
+
+from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.db import transaction
-from django.conf import settings
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.template.loader import render_to_string
 from django_rest_passwordreset.signals import reset_password_token_created
 
+from core.email import build_frontend_url, get_default_from_email
 from users.models import (
     CustomUser,
     Expert,
@@ -57,9 +60,17 @@ def create_notification_preferences(sender, instance, created, **kwargs):
 
 @receiver(reset_password_token_created)
 def password_reset_token_created(sender, instance, reset_password_token, *args, **kwargs):
-    reset_password_url = (
-        f"https://app.procollab.ru/auth/reset_password/?token={reset_password_token.key}"
-    )
+    configured_url = getattr(settings, "PASSWORD_RESET_FRONTEND_URL", "")
+    if configured_url:
+        separator = "&" if "?" in configured_url else "?"
+        reset_password_url = (
+            f"{configured_url}{separator}{urlencode({'token': reset_password_token.key})}"
+        )
+    else:
+        reset_password_url = build_frontend_url(
+            "auth/reset_password/",
+            {"token": reset_password_token.key},
+        )
     context = {
         "user": reset_password_token.user,
         "email": reset_password_token.user.email,
@@ -70,9 +81,9 @@ def password_reset_token_created(sender, instance, reset_password_token, *args, 
     email_plaintext_message = render_to_string("email/password_reset_email.txt", context)
 
     msg = EmailMultiAlternatives(
-        "Сброс пароля | Procollab",
+        "Сброс пароля | PROCOLLAB",
         email_plaintext_message,
-        settings.EMAIL_USER,
+        get_default_from_email(),
         [reset_password_token.user.email],
     )
     msg.attach_alternative(email_html_message, "text/html")

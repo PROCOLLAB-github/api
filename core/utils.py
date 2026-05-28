@@ -4,10 +4,10 @@ import urllib.parse
 import unicodedata
 import pandas as pd
 
-from django.core.mail import EmailMultiAlternatives
 from django.http import HttpResponse
 from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 
+from core.email import send_html_email
 
 logger = logging.getLogger()
 EXCEL_CELL_MAX = 32767
@@ -20,14 +20,12 @@ class Email:
 
     @staticmethod
     def send_email(data):
-        email = EmailMultiAlternatives(
+        return send_html_email(
             subject=data["email_subject"],
-            body=data["email_body"],
+            text_body=data["email_body"],
+            html_body=data.get("html_content") or data["email_body"],
             to=[data["to_email"]],
         )
-        if data.get("html_content"):
-            email.attach_alternative(data["html_content"], "text/html")
-        email.send()
 
 
 def get_user_online_cache_key(user) -> str:

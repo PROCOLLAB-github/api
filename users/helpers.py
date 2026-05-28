@@ -1,17 +1,16 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.contrib.sites.shortcuts import get_current_site
 from django.core.cache import cache
 from django.db import IntegrityError, transaction
 from django.urls import reverse
+from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.timezone import now
 from rest_framework.exceptions import ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from core.email import build_site_url, send_html_email
 from files.models import UserFile
-from mailing.utils import send_mail
-from users.constants import PROTOCOL
 from users.models import UserAchievement, UserLink
 
 User = get_user_model()
@@ -20,28 +19,30 @@ User = get_user_model()
 def verify_email(user, request):
     token = RefreshToken.for_user(user).access_token
     relative_link = reverse("users:account_email_verification_sent")
-    current_site = get_current_site(request).domain
-    absolute_url = f"{PROTOCOL}://{current_site}{relative_link}?token={token}"
-    template_content = open(
-        settings.BASE_DIR / "templates/email/confirm-email.html", encoding="utf-8"
-    ).read()
-    send_mail(
-        user=user,
-        subject="Procollab | Подтверждение почты",
-        template_string=template_content,
-        template_context={"absolute_url": absolute_url},
+    absolute_url = build_site_url(relative_link, {"token": token})
+    context = {
+        "user": user,
+        "absolute_url": absolute_url,
+        "confirm_url": absolute_url,
+        "site_url": getattr(settings, "SITE_URL", ""),
+        "frontend_url": getattr(settings, "FRONTEND_URL", ""),
+    }
+    send_html_email(
+        subject="PROCOLLAB | Подтверждение почты",
+        to=[user.email],
+        html_body=render_to_string("email/confirm-email.html", context),
+        text_body=render_to_string("email/confirm-email.txt", context),
     )
 
 
 def send_verification_completed_email(user: User):
-    template_content = open(
-        settings.BASE_DIR / "templates/email/verification-succeed.html",
-        encoding="utf-8",
-    ).read()
-    send_mail(
-        user=user,
-        subject="Procollab | Верификация",
-        template_string=template_content,
+    send_html_email(
+        subject="PROCOLLAB | Верификация",
+        to=[user.email],
+        html_body=render_to_string(
+            "email/verification-succeed.html",
+            {"user": user, "frontend_url": getattr(settings, "FRONTEND_URL", "")},
+        ),
     )
 
 

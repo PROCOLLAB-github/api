@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Проверка почты PROCOLLAB</title>
+  </head>
+  <body style="margin:0;padding:0;background:#f6f4fb;color:#2f2d35;font-family:Arial,Helvetica,sans-serif;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f6f4fb;padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #ece7ff;">
+            <tr>
+              <td style="padding:28px 32px 10px;">
+                <div style="font-size:26px;font-weight:700;letter-spacing:.2px;color:#2f2d35;">procollab</div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:18px 32px 8px;">
+                <h1 style="margin:0;font-size:28px;line-height:1.25;color:#2f2d35;">Почта настроена</h1>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:0 32px 30px;">
+                <p style="margin:0;font-size:16px;line-height:1.55;color:#636171;">
+                  Это тестовое письмо PROCOLLAB. Если оно пришло, текущий Django email backend работает.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:18px 32px;background:#faf9ff;border-top:1px solid #ece7ff;">
+                <p style="margin:0;font-size:12px;line-height:1.5;color:#8a8796;">
+                  Backend: {{ email_backend }}. Отправитель: {{ from_email }}.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

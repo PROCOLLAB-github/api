@@ -461,9 +461,14 @@ EMAIL_BACKEND = config(
 )
 
 UNISENDER_GO_API_KEY = config("UNISENDER_GO_API_KEY", default="", cast=str)
+UNISENDER_GO_API_URL = config(
+    "UNISENDER_GO_API_URL",
+    default="https://go1.unisender.ru/ru/transactional/api/v1/",
+    cast=str,
+)
 ANYMAIL = {
     "UNISENDER_GO_API_KEY": UNISENDER_GO_API_KEY,
-    "UNISENDER_GO_API_URL": "https://go1.unisender.ru/ru/transactional/api/v1/",
+    "UNISENDER_GO_API_URL": UNISENDER_GO_API_URL,
     "UNISENDER_GO_SEND_DEFAULTS": {
         "esp_extra": {
             "global_language": "ru",
@@ -479,10 +484,30 @@ FRONTEND_URL = config(
     cast=str,
 )
 SITE_URL = config("SITE_URL", default=FRONTEND_URL, cast=str)
+VERIFY_EMAIL_REDIRECT_URL = config(
+    "VERIFY_EMAIL_REDIRECT_URL",
+    default=(
+        f"{FRONTEND_URL.rstrip('/')}/auth/verification/"
+        if FRONTEND_URL
+        else ""
+    ),
+    cast=str,
+)
+PASSWORD_RESET_FRONTEND_URL = config(
+    "PASSWORD_RESET_FRONTEND_URL",
+    default=(
+        f"{FRONTEND_URL.rstrip('/')}/auth/reset_password/"
+        if FRONTEND_URL
+        else ""
+    ),
+    cast=str,
+)
 
 if not DEBUG:
     require_config(DEFAULT_FROM_EMAIL, "DEFAULT_FROM_EMAIL or EMAIL_USER")
     require_config(FRONTEND_URL, "FRONTEND_URL")
+    if EMAIL_BACKEND == "anymail.backends.unisender_go.EmailBackend":
+        require_config(UNISENDER_GO_API_KEY, "UNISENDER_GO_API_KEY")
 
 FILE_STORAGE = config(
     "FILE_STORAGE",
