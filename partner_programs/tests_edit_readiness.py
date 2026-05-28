@@ -7,6 +7,7 @@ from moderation.models import ModerationLog
 from partner_programs.models import (
     LegalDocument,
     PartnerProgram,
+    PartnerProgramLegalSettings,
     PartnerProgramMaterial,
 )
 from project_rates.models import Criteria
@@ -42,6 +43,7 @@ class ProgramEditReadinessTests(TestCase):
             LegalDocument.TYPE_PRIVACY_POLICY,
             LegalDocument.TYPE_PARTICIPANT_CONSENT,
             LegalDocument.TYPE_PARTICIPATION_TERMS,
+            LegalDocument.TYPE_ORGANIZER_TERMS,
         ):
             LegalDocument.objects.get_or_create(
                 type=doc_type,
@@ -72,6 +74,14 @@ class ProgramEditReadinessTests(TestCase):
         defaults.update(overrides)
         program = PartnerProgram.objects.create(**defaults)
         program.managers.add(self.manager)
+        PartnerProgramLegalSettings.objects.update_or_create(
+            program=program,
+            defaults={
+                "organizer_terms_accepted_by": self.manager,
+                "organizer_terms_accepted_at": self.now,
+                "organizer_terms_version": "test",
+            },
+        )
         return program
 
     def test_non_competitive_program_can_submit_without_operational_materials(self):
