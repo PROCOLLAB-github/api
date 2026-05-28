@@ -3,6 +3,7 @@ import uuid
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.core.validators import URLValidator
 from django.db import models
 from django.utils import timezone
 
@@ -105,6 +106,23 @@ class PartnerProgram(models.Model):
         (PARTICIPATION_FORMAT_INDIVIDUAL, "Individual"),
         (PARTICIPATION_FORMAT_TEAM, "Team"),
     ]
+    MODERATION_REQUIRED_SECTIONS = (
+        "basic_info",
+        "dates",
+        "registration",
+        "legal_terms",
+    )
+    READINESS_WEIGHTS = {
+        "basic_info": 20,
+        "dates": 15,
+        "registration": 15,
+        "legal_terms": 15,
+        "materials": 10,
+        "criteria_experts": 10,
+        "visual_assets": 5,
+        "verification": 5,
+        "certificate_template": 5,
+    }
 
     name = models.TextField(
         verbose_name="Название",
@@ -324,7 +342,7 @@ class PartnerProgram(models.Model):
             return False
         readiness = self.calculate_readiness()
         return all(
-            readiness.get(key) is True for key in ("basic_info", "dates", "registration")
+            readiness.get(key) is True for key in self.MODERATION_REQUIRED_SECTIONS
         )
 
     def _related_exists(self, related_name: str) -> bool:
@@ -333,6 +351,46 @@ class PartnerProgram(models.Model):
         except (AttributeError, ValueError):
             return False
 
+    def _has_valid_registration_link(self) -> bool:
+        link = (self.registration_link or "").strip()
+        if not link:
+            return False
+        try:
+            URLValidator()(link)
+        except ValidationError:
+            return False
+        return True
+
+    def _has_configured_registration_schema(self) -> bool:
+        if self._related_exists("fields"):
+            return True
+
+        if not isinstance(self.data_schema, dict):
+            return False
+        if self.data_schema == get_default_data_schema():
+            return False
+
+        from partner_programs.privacy import iter_data_schema_fields
+
+        allowed_types = {"text", "textarea", "checkbox", "select", "radio", "file"}
+        for field_id, field in iter_data_schema_fields(self.data_schema):
+            field_type = (
+                field.get("type") or field.get("field_type") or field.get("fieldType")
+            )
+            label = field.get("label") or field.get("name") or field_id
+            if (
+                str(field_type or "").strip() in allowed_types
+                and str(label or "").strip()
+            ):
+                return True
+        return False
+
+    def _has_registration_setup(self) -> bool:
+        return (
+            self._has_valid_registration_link()
+            or self._has_configured_registration_schema()
+        )
+
     def calculate_readiness(self) -> dict:
         try:
             certificate_template = getattr(self, "certificate_template", None)
@@ -340,9 +398,13 @@ class PartnerProgram(models.Model):
             certificate_template = None
 
         from project_rates.models import Criteria
+        from partner_programs.privacy import (
+            collect_privacy_blockers,
+            has_privacy_blockers,
+        )
 
         description = (self.description or "").strip()
-        submission_deadline = self.get_project_submission_deadline()
+        submission_deadline = self.datetime_project_submission_ends
         dates_valid = bool(
             self.datetime_started
             and self.datetime_registration_ends
@@ -382,19 +444,28 @@ class PartnerProgram(models.Model):
                 and (self.city or "").strip()
             ),
             "dates": dates_valid,
-            "registration": bool(self.data_schema or self._related_exists("fields")),
+            "registration": self._has_registration_setup(),
+            "legal_terms": not has_privacy_blockers(collect_privacy_blockers(self)),
             "materials": self._related_exists("materials"),
             "criteria_experts": criteria_experts_ready,
-            "visual_assets": bool(self.cover_image_address),
+            "visual_assets": bool(
+                self.cover_image_address
+                or self.mobile_cover_image_address
+                or self.image_address
+                or self.advertisement_image_address
+            ),
             "certificate_template": certificate_template is not None,
             "verification": self.verification_status == self.VERIFICATION_STATUS_VERIFIED,
         }
 
     def get_readiness_percentage(self) -> int:
         readiness = self.calculate_readiness()
-        required_keys = ["basic_info", "dates", "registration"]
-        completed = sum(1 for key in required_keys if readiness.get(key) is True)
-        return round(completed / len(required_keys) * 100)
+        percentage = sum(
+            weight
+            for key, weight in self.READINESS_WEIGHTS.items()
+            if readiness.get(key) is True or readiness.get(key) == "not_applicable"
+        )
+        return max(0, min(100, int(percentage)))
 
     def get_operational_readiness_percentage(self) -> int:
         readiness = self.calculate_readiness()

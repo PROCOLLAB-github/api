@@ -6,10 +6,7 @@ from rest_framework import serializers
 from moderation.models import ModerationLog
 from moderation.services import get_rejection_reasons
 from partner_programs.models import PartnerProgram, PartnerProgramVerificationRequest
-from partner_programs.privacy import (
-    REGISTRATION_REQUIRED_DOCUMENT_TYPES,
-    active_legal_documents_by_type,
-)
+from partner_programs.privacy import collect_privacy_blockers
 from partner_programs.serializers.verification import (
     PartnerProgramVerificationRequestSerializer,
 )
@@ -282,16 +279,7 @@ class ModerationProgramDetailSerializer(ModerationProgramListSerializer):
         return program.get_operational_readiness_percentage()
 
     def get_privacy_warnings(self, program: PartnerProgram) -> dict:
-        active_docs = active_legal_documents_by_type()
-        return {
-            "missing_legal_documents": [
-                doc_type
-                for doc_type in REGISTRATION_REQUIRED_DOCUMENT_TYPES
-                if doc_type not in active_docs
-            ],
-            "organizer_terms_not_accepted": False,
-            "forbidden_registration_fields": [],
-        }
+        return collect_privacy_blockers(program)
 
 
 class ModerationDecisionSerializer(serializers.Serializer):

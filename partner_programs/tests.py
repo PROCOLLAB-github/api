@@ -5,6 +5,7 @@ from rest_framework.test import APIClient, APIRequestFactory, force_authenticate
 from unittest.mock import patch
 
 from courses.models import Course, CourseAccessType, CourseContentStatus
+from partner_programs.constants import get_default_data_schema
 from partner_programs.models import (
     LegalDocument,
     PartnerProgram,
@@ -24,6 +25,8 @@ from partner_programs.views import (
     PartnerProgramProjectApplyView,
     PartnerProgramRegister,
     PartnerProgramProjectSubmitView,
+    PartnerProgramReadinessView,
+    PartnerProgramSubmitToModerationView,
 )
 from projects.models import Company, Project
 from users.models import UserNotificationPreferences
@@ -255,18 +258,14 @@ class PartnerProgramFieldValueUpdateSerializerInvalidTests(TestCase):
         data = {"field_id": field.id, "value_text": ""}
         serializer = PartnerProgramFieldValueUpdateSerializer(data=data)
         self.assertFalse(serializer.is_valid())
-        self.assertIn(
-            "Поле должно содержать текстовое значение.", str(serializer.errors)
-        )
+        self.assertIn("Поле должно содержать текстовое значение.", str(serializer.errors))
 
     def test_required_textarea_field_null(self):
         field = self.make_field("textarea", is_required=True)
         data = {"field_id": field.id, "value_text": None}
         serializer = PartnerProgramFieldValueUpdateSerializer(data=data)
         self.assertFalse(serializer.is_valid())
-        self.assertIn(
-            "Поле должно содержать текстовое значение.", str(serializer.errors)
-        )
+        self.assertIn("Поле должно содержать текстовое значение.", str(serializer.errors))
 
     def test_checkbox_invalid_string(self):
         field = self.make_field("checkbox", is_required=True)
@@ -594,9 +593,7 @@ class PartnerProgramCreateUpdateAPITests(TestCase):
             "description": "Detailed program description " * 12,
             "city": "Moscow",
             "mobile_cover_image_address": "https://example.com/mobile-cover.png",
-            "datetime_started": (
-                self.now + timezone.timedelta(days=1)
-            ).isoformat(),
+            "datetime_started": (self.now + timezone.timedelta(days=1)).isoformat(),
             "datetime_registration_ends": (
                 self.now + timezone.timedelta(days=3)
             ).isoformat(),
@@ -606,9 +603,7 @@ class PartnerProgramCreateUpdateAPITests(TestCase):
             "datetime_evaluation_ends": (
                 self.now + timezone.timedelta(days=7)
             ).isoformat(),
-            "datetime_finished": (
-                self.now + timezone.timedelta(days=10)
-            ).isoformat(),
+            "datetime_finished": (self.now + timezone.timedelta(days=10)).isoformat(),
             "is_competitive": True,
             "participation_format": PartnerProgram.PARTICIPATION_FORMAT_TEAM,
             "project_team_min_size": 1,
@@ -698,6 +693,206 @@ class PartnerProgramCreateUpdateAPITests(TestCase):
         self.assertEqual(response.data["participants_count"], 1)
         self.assertEqual(response.data["projects_count"], 1)
         self.assertEqual(response.data["active_projects_count"], 1)
+
+
+class PartnerProgramReadinessAndModerationTests(TestCase):
+    def setUp(self):
+        self.factory = APIRequestFactory()
+        self.readiness_view = PartnerProgramReadinessView.as_view()
+        self.submit_view = PartnerProgramSubmitToModerationView.as_view()
+        self.now = timezone.now()
+        self.manager = get_user_model().objects.create_user(
+            email="manager-readiness@example.com",
+            password="pass",
+            first_name="Manager",
+            last_name="Readiness",
+            birthday="1990-01-01",
+        )
+        self.ensure_legal_documents()
+
+    def ensure_legal_documents(self):
+        for doc_type, title in (
+            ("privacy_policy", "Privacy policy"),
+            ("participant_consent", "Participant consent"),
+            ("participation_terms", "Participation terms"),
+            ("organizer_terms", "Organizer terms"),
+        ):
+            LegalDocument.objects.update_or_create(
+                type=doc_type,
+                version="readiness-test",
+                defaults={
+                    "title": title,
+                    "content_html": f"{title} text",
+                    "is_active": True,
+                },
+            )
+
+    def accept_legal_terms(self, program):
+        PartnerProgramLegalSettings.objects.update_or_create(
+            program=program,
+            defaults={
+                "organizer_terms_accepted_by": self.manager,
+                "organizer_terms_accepted_at": self.now,
+                "organizer_terms_version": "readiness-test",
+            },
+        )
+
+    def create_program(self, **overrides):
+        defaults = {
+            "name": "Readiness Case Championship",
+            "tag": f"readiness_case_{PartnerProgram.objects.count()}",
+            "description": "Detailed championship description " * 12,
+            "city": "Moscow",
+            "data_schema": {
+                "participant_name": {
+                    "type": "text",
+                    "label": "Participant name",
+                }
+            },
+            "draft": True,
+            "status": PartnerProgram.STATUS_DRAFT,
+            "projects_availability": "all_users",
+            "datetime_started": self.now + timezone.timedelta(days=1),
+            "datetime_registration_ends": self.now + timezone.timedelta(days=3),
+            "datetime_project_submission_ends": self.now + timezone.timedelta(days=5),
+            "datetime_finished": self.now + timezone.timedelta(days=10),
+        }
+        defaults.update(overrides)
+        program = PartnerProgram.objects.create(**defaults)
+        program.managers.add(self.manager)
+        return program
+
+    def readiness(self, program):
+        request = self.factory.get(f"/programs/{program.id}/readiness/")
+        force_authenticate(request, user=self.manager)
+        return self.readiness_view(request, pk=program.id)
+
+    def submit(self, program):
+        request = self.factory.post(
+            f"/programs/{program.id}/submit-to-moderation/",
+            {},
+            format="json",
+        )
+        force_authenticate(request, user=self.manager)
+        return self.submit_view(request, pk=program.id)
+
+    def test_new_draft_does_not_have_full_readiness(self):
+        program = self.create_program(data_schema={})
+
+        response = self.readiness(program)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertLess(response.data["readiness_percent"], 100)
+        self.assertFalse(response.data["can_submit_to_moderation"])
+        self.assertIn("registration", response.data["missing_required_sections"])
+        self.assertIn("legal_terms", response.data["missing_required_sections"])
+        self.assertIn("sections", response.data)
+
+    def test_each_required_section_blocks_submission_when_missing(self):
+        cases = (
+            (
+                "basic_info",
+                {"description": "too short"},
+                True,
+            ),
+            (
+                "dates",
+                {"datetime_project_submission_ends": None},
+                True,
+            ),
+            (
+                "registration",
+                {"data_schema": {}, "registration_link": ""},
+                True,
+            ),
+            (
+                "legal_terms",
+                {},
+                False,
+            ),
+        )
+
+        for section, overrides, accept_terms in cases:
+            with self.subTest(section=section):
+                program = self.create_program(**overrides)
+                if accept_terms:
+                    self.accept_legal_terms(program)
+
+                response = self.readiness(program)
+
+                self.assertFalse(response.data["can_submit_to_moderation"])
+                self.assertIn(section, response.data["missing_required_sections"])
+
+    def test_optional_sections_lower_percent_but_do_not_block_moderation(self):
+        program = self.create_program(is_competitive=True)
+        self.accept_legal_terms(program)
+
+        response = self.readiness(program)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertLess(response.data["readiness_percent"], 100)
+        self.assertTrue(response.data["can_submit_to_moderation"])
+        self.assertNotIn("materials", response.data["missing_required_sections"])
+        self.assertNotIn("criteria_experts", response.data["missing_required_sections"])
+        self.assertNotIn("verification", response.data["missing_required_sections"])
+        self.assertNotIn(
+            "certificate_template",
+            response.data["missing_required_sections"],
+        )
+
+    def test_default_registration_schema_is_not_ready_by_itself(self):
+        program = self.create_program(data_schema=get_default_data_schema())
+        self.accept_legal_terms(program)
+
+        response = self.readiness(program)
+
+        self.assertFalse(response.data["can_submit_to_moderation"])
+        self.assertIn("registration", response.data["missing_required_sections"])
+
+    def test_submit_to_moderation_returns_readiness_payload_when_incomplete(self):
+        program = self.create_program(data_schema={})
+
+        response = self.submit(program)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("missing_required_sections", response.data)
+        self.assertIn("readiness_percent", response.data)
+        self.assertIn("sections", response.data)
+        self.assertIn("registration", response.data["missing_required_sections"])
+        program.refresh_from_db()
+        self.assertEqual(program.status, PartnerProgram.STATUS_DRAFT)
+
+    @patch("moderation.services.notify_program_submitted_to_moderation", return_value=1)
+    def test_submit_to_moderation_updates_status_only_when_required_ready(self, _notify):
+        program = self.create_program()
+        self.accept_legal_terms(program)
+
+        response = self.submit(program)
+
+        self.assertEqual(response.status_code, 200)
+        program.refresh_from_db()
+        self.assertEqual(program.status, PartnerProgram.STATUS_PENDING_MODERATION)
+
+    @patch("moderation.services.notify_program_submitted_to_moderation", return_value=1)
+    def test_rejected_program_can_be_resubmitted_after_fix(self, _notify):
+        program = self.create_program(status=PartnerProgram.STATUS_REJECTED)
+        self.accept_legal_terms(program)
+
+        response = self.submit(program)
+
+        self.assertEqual(response.status_code, 200)
+        program.refresh_from_db()
+        self.assertEqual(program.status, PartnerProgram.STATUS_PENDING_MODERATION)
+
+    def test_non_draft_status_cannot_be_submitted(self):
+        program = self.create_program(status=PartnerProgram.STATUS_PUBLISHED)
+        self.accept_legal_terms(program)
+
+        response = self.submit(program)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data["status"], PartnerProgram.STATUS_PUBLISHED)
+        self.assertFalse(response.data["missing_required_sections"])
 
 
 class PartnerProgramProjectApplyViewTests(TestCase):
@@ -865,9 +1060,7 @@ class PartnerProgramProjectSubmitViewTests(TestCase):
         )
         link = self.create_project_link(program)
 
-        request = self.factory.post(
-            f"partner-program-projects/{link.pk}/submit/"
-        )
+        request = self.factory.post(f"partner-program-projects/{link.pk}/submit/")
         force_authenticate(request, user=self.user)
         response = self.view(request, pk=link.pk)
 
@@ -885,9 +1078,7 @@ class PartnerProgramProjectSubmitViewTests(TestCase):
         )
         link = self.create_project_link(program)
 
-        request = self.factory.post(
-            f"partner-program-projects/{link.pk}/submit/"
-        )
+        request = self.factory.post(f"partner-program-projects/{link.pk}/submit/")
         force_authenticate(request, user=self.user)
         response = self.view(request, pk=link.pk)
 
@@ -904,9 +1095,7 @@ class PartnerProgramProjectSubmitViewTests(TestCase):
         )
         link = self.create_project_link(program)
 
-        request = self.factory.post(
-            f"partner-program-projects/{link.pk}/submit/"
-        )
+        request = self.factory.post(f"partner-program-projects/{link.pk}/submit/")
         force_authenticate(request, user=self.user)
         response = self.view(request, pk=link.pk)
 
@@ -988,9 +1177,7 @@ class PartnerProgramFieldValueUpdateSerializerValidTests(TestCase):
         self.assertTrue(serializer.is_valid())
 
     def test_radio_valid(self):
-        field = self.make_field(
-            "radio", is_required=True, options=["арбуз", "апельсин"]
-        )
+        field = self.make_field("radio", is_required=True, options=["арбуз", "апельсин"])
         data = {"field_id": field.id, "value_text": "апельсин"}
         serializer = PartnerProgramFieldValueUpdateSerializer(data=data)
         self.assertTrue(serializer.is_valid())

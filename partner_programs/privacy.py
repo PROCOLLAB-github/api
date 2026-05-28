@@ -1,4 +1,5 @@
 import re
+import unicodedata
 from typing import Any
 
 from rest_framework.exceptions import ValidationError
@@ -26,6 +27,88 @@ MODERATION_REQUIRED_DOCUMENT_TYPES = (
     "organizer_terms",
 )
 
+SENSITIVE_FIELD_TERMS = (
+    "passport",
+    "snils",
+    "inn",
+    "address",
+    "bank card",
+    "card number",
+    "cvv",
+    "паспорт",
+    "снилс",
+    "инн",
+    "адрес проживания",
+    "банковская карта",
+    "номер карты",
+)
+
+FIELD_KEYS_TO_SCAN = (
+    "label",
+    "name",
+    "placeholder",
+    "helpText",
+    "help_text",
+    "description",
+)
+
+
+def _normalize_privacy_text(value: Any) -> str:
+    text = "" if value is None else str(value)
+    normalized = unicodedata.normalize("NFKC", text).casefold().replace("ё", "е")
+    return re.sub(r"\s+", " ", normalized).strip()
+
+
+NORMALIZED_SENSITIVE_FIELD_TERMS = tuple(
+    _normalize_privacy_text(term) for term in SENSITIVE_FIELD_TERMS
+)
+
+
+def iter_data_schema_fields(data_schema: Any) -> list[tuple[str, dict[str, Any]]]:
+    if not isinstance(data_schema, dict):
+        return []
+
+    fields_value = data_schema.get("fields")
+    if isinstance(fields_value, list):
+        return [
+            (str(field.get("id") or field.get("name") or f"field_{index + 1}"), field)
+            for index, field in enumerate(fields_value)
+            if isinstance(field, dict)
+        ]
+
+    return [
+        (str(key), value) for key, value in data_schema.items() if isinstance(value, dict)
+    ]
+
+
+def find_forbidden_registration_fields(data_schema: Any) -> list[dict[str, str]]:
+    matches = []
+    for field_id, field in iter_data_schema_fields(data_schema):
+        label = str(field.get("label") or field.get("name") or field_id)
+        for source in FIELD_KEYS_TO_SCAN:
+            normalized = _normalize_privacy_text(field.get(source))
+            if not normalized:
+                continue
+            for raw_term, normalized_term in zip(
+                SENSITIVE_FIELD_TERMS,
+                NORMALIZED_SENSITIVE_FIELD_TERMS,
+            ):
+                if normalized_term and normalized_term in normalized:
+                    matches.append(
+                        {
+                            "field_id": str(field_id),
+                            "label": label,
+                            "term": raw_term,
+                            "source": source,
+                        }
+                    )
+    return matches
+
+
+def missing_active_legal_document_types(required_types) -> list[str]:
+    active_docs = active_legal_documents_by_type()
+    return [doc_type for doc_type in required_types if doc_type not in active_docs]
+
 
 def mask_email(email: str | None) -> str:
     if not email:
@@ -50,10 +133,7 @@ def can_view_participant_contacts(actor, program) -> bool:
         return False
     if getattr(actor, "is_staff", False) or getattr(actor, "is_superuser", False):
         return True
-    return bool(
-        program.verification_status == "verified"
-        and program.is_manager(actor)
-    )
+    return bool(program.verification_status == "verified" and program.is_manager(actor))
 
 
 def sanitize_audit_metadata(metadata: dict[str, Any] | None) -> dict[str, Any]:
@@ -147,7 +227,9 @@ def program_legal_settings_snapshot(program) -> dict[str, Any]:
     }
 
 
-def build_participation_terms_snapshot(program, active_docs: dict[str, Any]) -> dict[str, str]:
+def build_participation_terms_snapshot(
+    program, active_docs: dict[str, Any]
+) -> dict[str, str]:
     settings_snapshot = program_legal_settings_snapshot(program)
     if any(
         settings_snapshot.get(key)
@@ -205,6 +287,32 @@ def accept_organizer_terms(*, program, user):
     return settings
 
 
+def collect_privacy_blockers(program) -> dict[str, Any]:
+    missing_docs = missing_active_legal_document_types(MODERATION_REQUIRED_DOCUMENT_TYPES)
+    try:
+        legal_settings = program.legal_settings
+    except Exception:
+        legal_settings = None
+
+    return {
+        "missing_legal_documents": missing_docs,
+        "organizer_terms_not_accepted": not bool(
+            legal_settings and legal_settings.organizer_terms_accepted_at
+        ),
+        "forbidden_registration_fields": find_forbidden_registration_fields(
+            program.data_schema
+        ),
+    }
+
+
+def has_privacy_blockers(blockers: dict[str, Any]) -> bool:
+    return bool(
+        blockers.get("missing_legal_documents")
+        or blockers.get("organizer_terms_not_accepted")
+        or blockers.get("forbidden_registration_fields")
+    )
+
+
 def request_has_registration_consent(data: dict[str, Any]) -> bool:
     return any(
         data.get(key) is True or data.get(key) == "true"
@@ -213,7 +321,9 @@ def request_has_registration_consent(data: dict[str, Any]) -> bool:
 
 
 def strip_registration_consent_keys(data: dict[str, Any]) -> dict[str, Any]:
-    return {key: value for key, value in data.items() if key not in REGISTRATION_CONSENT_KEYS}
+    return {
+        key: value for key, value in data.items() if key not in REGISTRATION_CONSENT_KEYS
+    }
 
 
 def create_participant_consent(*, program, user, request) -> None:

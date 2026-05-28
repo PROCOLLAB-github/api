@@ -325,7 +325,9 @@ class PartnerProgramDetail(generics.RetrieveUpdateAPIView):
             )
         )
 
-    def _log_registration_schema_changes(self, actor, program, old_schema, new_schema, request):
+    def _log_registration_schema_changes(
+        self, actor, program, old_schema, new_schema, request
+    ):
         old_keys = set(old_schema.keys()) if isinstance(old_schema, dict) else set()
         new_keys = set(new_schema.keys()) if isinstance(new_schema, dict) else set()
         changes = [
@@ -397,7 +399,9 @@ class PartnerProgramStatsAPIView(APIView):
         if program.is_private and not user_can_access_private_program(
             request.user, program
         ):
-            raise NotFound("Р§РµРјРїРёРѕРЅР°С‚ РґРѕСЃС‚СѓРїРµРЅ С‚РѕР»СЊРєРѕ РїРѕ РїСЂРёРіР»Р°С€РµРЅРёСЋ.")
+            raise NotFound(
+                "Р§РµРјРїРёРѕРЅР°С‚ РґРѕСЃС‚СѓРїРµРЅ С‚РѕР»СЊРєРѕ РїРѕ РїСЂРёРіР»Р°С€РµРЅРёСЋ."
+            )
 
         week_ago = timezone.now() - timedelta(days=7)
         participant_stats = PartnerProgramUserProfile.objects.filter(
@@ -741,6 +745,23 @@ class PartnerProgramSubmitToModerationView(APIView):
         program = get_object_or_404(PartnerProgram, pk=pk)
         if not self._has_access(request.user, program):
             raise PermissionDenied("Only program managers can submit to moderation.")
+
+        readiness = get_program_readiness_payload(program)
+        if not readiness["can_submit_to_moderation"]:
+            errors = get_moderation_submission_errors(program)
+            return Response(
+                {
+                    "detail": "Championship cannot be submitted to moderation.",
+                    "errors": errors,
+                    "missing_required_sections": readiness["missing_required_sections"],
+                    "readiness_percent": readiness["readiness_percent"],
+                    "sections": readiness["sections"],
+                    "privacy_blockers": readiness["privacy_blockers"],
+                    "current_status": program.status,
+                    "status": program.status,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         if program.status not in (
             PartnerProgram.STATUS_DRAFT,

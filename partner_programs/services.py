@@ -20,8 +20,8 @@ from partner_programs.models import (
     PartnerProgramUserProfile,
 )
 from partner_programs.privacy import (
-    REGISTRATION_REQUIRED_DOCUMENT_TYPES,
-    active_legal_documents_by_type,
+    collect_privacy_blockers,
+    has_privacy_blockers,
 )
 from project_rates.models import Criteria, ProjectScore
 from projects.models import Project
@@ -41,12 +41,19 @@ READINESS_LABELS = {
     "certificate_template": "Сертификат",
     "verification": "Верификация",
 }
-MODERATION_REQUIRED_KEYS = (
-    "basic_info",
-    "dates",
-    "registration",
-    "legal_terms",
-)
+MODERATION_REQUIRED_KEYS = PartnerProgram.MODERATION_REQUIRED_SECTIONS
+READINESS_WEIGHTS = PartnerProgram.READINESS_WEIGHTS
+READINESS_ROUTES = {
+    "basic_info": "main",
+    "dates": "dates",
+    "registration": "registration",
+    "legal_terms": "registration",
+    "materials": "materials",
+    "criteria_experts": "criteria",
+    "visual_assets": "media",
+    "verification": "verification",
+    "certificate_template": "certificates",
+}
 OPERATIONAL_ITEMS = (
     {
         "key": "materials",
@@ -96,14 +103,149 @@ def _readiness_percentage(checklist: dict, required_keys: list[str]) -> int:
     return round(completed / len(required_keys) * 100)
 
 
-def _legal_document_blockers() -> dict:
-    active_docs = active_legal_documents_by_type()
-    missing = [
-        doc_type
-        for doc_type in REGISTRATION_REQUIRED_DOCUMENT_TYPES
-        if doc_type not in active_docs
-    ]
-    return {"missing_legal_documents": missing} if missing else {}
+def _weighted_readiness_percent(checklist: dict) -> int:
+    percentage = sum(
+        weight
+        for key, weight in READINESS_WEIGHTS.items()
+        if checklist.get(key) is True or checklist.get(key) == "not_applicable"
+    )
+    return max(0, min(100, int(percentage)))
+
+
+def _section_is_ready(value) -> bool:
+    return value is True or value == "not_applicable"
+
+
+def _basic_info_missing_fields(program: PartnerProgram) -> list[str]:
+    missing = []
+    description = (program.description or "").strip()
+    if not (program.name or "").strip():
+        missing.append("name")
+    if not description or len(description) < 180:
+        missing.append("description")
+    if not (program.city or "").strip():
+        missing.append("city")
+    return missing
+
+
+def _dates_missing_fields(program: PartnerProgram) -> list[str]:
+    missing = []
+    if not program.datetime_started:
+        missing.append("datetime_started")
+    if not program.datetime_registration_ends:
+        missing.append("datetime_registration_ends")
+    if not program.datetime_project_submission_ends:
+        missing.append("datetime_project_submission_ends")
+    if not program.datetime_finished:
+        missing.append("datetime_finished")
+    if missing:
+        return missing
+
+    if (
+        program.datetime_started > program.datetime_finished
+        or program.datetime_registration_ends > program.datetime_project_submission_ends
+        or program.datetime_project_submission_ends > program.datetime_finished
+        or (
+            program.datetime_evaluation_ends
+            and not (
+                program.datetime_project_submission_ends
+                <= program.datetime_evaluation_ends
+                <= program.datetime_finished
+            )
+        )
+    ):
+        missing.append("date_order")
+    return missing
+
+
+def _legal_terms_missing_fields(privacy_blockers: dict) -> list[str]:
+    missing = []
+    if privacy_blockers.get("missing_legal_documents"):
+        missing.append("active_legal_documents")
+    if privacy_blockers.get("organizer_terms_not_accepted"):
+        missing.append("organizer_terms")
+    if privacy_blockers.get("forbidden_registration_fields"):
+        missing.append("privacy_safe_registration_fields")
+    return missing
+
+
+def _criteria_experts_missing_fields(program: PartnerProgram, value) -> list[str]:
+    if value == "not_applicable":
+        return []
+    missing = []
+    if not program.is_competitive:
+        return missing
+    user_criteria = Criteria.objects.filter(partner_program=program).exclude(
+        name="РљРѕРјРјРµРЅС‚Р°СЂРёР№"
+    )
+    if not user_criteria.exists():
+        missing.append("criteria")
+    elif sum(criteria.weight for criteria in user_criteria) != 100:
+        missing.append("criteria_weight_sum")
+    if not program.experts.exists():
+        missing.append("experts")
+    return missing
+
+
+def _section_missing_fields(
+    program: PartnerProgram,
+    key: str,
+    value,
+    privacy_blockers: dict,
+) -> list[str]:
+    if _section_is_ready(value):
+        return []
+    if key == "basic_info":
+        return _basic_info_missing_fields(program)
+    if key == "dates":
+        return _dates_missing_fields(program)
+    if key == "registration":
+        return ["registration_link", "data_schema"]
+    if key == "legal_terms":
+        return _legal_terms_missing_fields(privacy_blockers)
+    if key == "materials":
+        return ["materials"]
+    if key == "criteria_experts":
+        return _criteria_experts_missing_fields(program, value)
+    if key == "visual_assets":
+        return ["cover_image_address", "image_address"]
+    if key == "verification":
+        return ["verification_status"]
+    if key == "certificate_template":
+        return ["certificate_template"]
+    return [key]
+
+
+def _readiness_sections(
+    program: PartnerProgram,
+    checklist: dict,
+    privacy_blockers: dict,
+) -> list[dict]:
+    sections = []
+    for key, weight in READINESS_WEIGHTS.items():
+        value = checklist.get(key, False)
+        missing_fields = _section_missing_fields(
+            program,
+            key,
+            value,
+            privacy_blockers,
+        )
+        section = {
+            "id": key,
+            "label": READINESS_LABELS.get(key, key),
+            "is_ready": _section_is_ready(value),
+            "weight": weight,
+            "blocking_for_moderation": key in MODERATION_REQUIRED_KEYS,
+            "missing_fields": missing_fields,
+            "route": READINESS_ROUTES.get(key, "main"),
+            "section": READINESS_ROUTES.get(key, "main"),
+        }
+        if value == "not_applicable":
+            section["not_applicable"] = True
+        if missing_fields:
+            section["missing_reason"] = ", ".join(missing_fields)
+        sections.append(section)
+    return sections
 
 
 def _operational_required_keys(program: PartnerProgram) -> list[str]:
@@ -115,30 +257,16 @@ def _operational_required_keys(program: PartnerProgram) -> list[str]:
 
 def get_program_readiness_payload(program: PartnerProgram) -> dict:
     checklist = program.calculate_readiness()
-    legal_blockers = _legal_document_blockers()
-    checklist["legal_terms"] = not bool(legal_blockers)
+    privacy_blockers = collect_privacy_blockers(program)
+    checklist["legal_terms"] = not has_privacy_blockers(privacy_blockers)
 
     moderation_required_keys = list(MODERATION_REQUIRED_KEYS)
-    already_moderated = program.status in (
-        PartnerProgram.STATUS_PENDING_MODERATION,
-        PartnerProgram.STATUS_PUBLISHED,
-        PartnerProgram.STATUS_FROZEN,
-        PartnerProgram.STATUS_COMPLETED,
-        PartnerProgram.STATUS_ARCHIVED,
-    )
     moderation_missing = [
-        key
-        for key in moderation_required_keys
-        if not already_moderated and checklist.get(key) is not True
+        key for key in moderation_required_keys if checklist.get(key) is not True
     ]
-    moderation_percentage = (
-        100
-        if already_moderated
-        else _readiness_percentage(
-            checklist,
-            moderation_required_keys,
-        )
-    )
+    moderation_percentage = _readiness_percentage(checklist, moderation_required_keys)
+    readiness_percent = _weighted_readiness_percent(checklist)
+    sections = _readiness_sections(program, checklist, privacy_blockers)
 
     operational_required_keys = _operational_required_keys(program)
     operational_missing = [
@@ -160,10 +288,7 @@ def get_program_readiness_payload(program: PartnerProgram) -> dict:
 
     readiness_to_moderation = {
         "percentage": moderation_percentage,
-        "checklist": {
-            key: True if already_moderated else checklist.get(key, False)
-            for key in moderation_required_keys
-        },
+        "checklist": {key: checklist.get(key, False) for key in moderation_required_keys},
         "labels": {key: READINESS_LABELS[key] for key in moderation_required_keys},
         "required_keys": moderation_required_keys,
         "missing_required_sections": moderation_missing,
@@ -186,16 +311,20 @@ def get_program_readiness_payload(program: PartnerProgram) -> dict:
     }
 
     return {
-        "percentage": moderation_percentage,
+        "readiness_percent": readiness_percent,
+        "percentage": readiness_percent,
         "checklist": checklist,
         "labels": READINESS_LABELS,
+        "sections": sections,
+        "required_sections": moderation_required_keys,
         "missing_required_sections": moderation_missing,
-        "privacy_blockers": legal_blockers,
+        "privacy_blockers": privacy_blockers,
         "can_submit_to_moderation": (
             program.status
             in (PartnerProgram.STATUS_DRAFT, PartnerProgram.STATUS_REJECTED)
             and not moderation_missing
         ),
+        "status": program.status,
         "readiness_to_moderation": readiness_to_moderation,
         "operational_readiness": operational_readiness,
     }
