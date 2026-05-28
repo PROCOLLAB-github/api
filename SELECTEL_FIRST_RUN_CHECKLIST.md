@@ -133,6 +133,15 @@ EMAIL_BACKEND=anymail.backends.unisender_go.EmailBackend
 DEFAULT_FROM_EMAIL=<verified-sender>
 EMAIL_USER=<verified-sender>
 UNISENDER_GO_API_KEY=<secret>
+UNISENDER_GO_API_URL=https://go1.unisender.ru/ru/transactional/api/v1/
+VERIFY_EMAIL_REDIRECT_URL=https://procollab.pro/auth/verification/
+PASSWORD_RESET_FRONTEND_URL=https://procollab.pro/auth/reset_password/
+```
+
+Use the verified sender from Unisender Go, for example `PROCOLLAB <procollab_info@procollab.ru>`. Do not put the API key into Git. Check delivery before the demo:
+
+```bash
+docker compose --profile legacy exec web python manage.py send_test_email <your-email> --template registration
 ```
 
 ## 8. Frontend runtime config

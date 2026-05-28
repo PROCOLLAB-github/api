@@ -1,0 +1,6 @@
+Почта PROCOLLAB настроена.
+
+Это тестовое письмо. Если оно пришло, текущий Django email backend работает.
+
+Backend: {{ email_backend }}
+Отправитель: {{ from_email }}

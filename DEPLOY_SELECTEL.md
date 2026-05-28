@@ -73,9 +73,18 @@ Email:
 
 ```env
 EMAIL_BACKEND=anymail.backends.unisender_go.EmailBackend
-EMAIL_USER=no-reply@example.com
-DEFAULT_FROM_EMAIL=no-reply@example.com
+EMAIL_USER=procollab_info@procollab.ru
+DEFAULT_FROM_EMAIL=PROCOLLAB <procollab_info@procollab.ru>
 UNISENDER_GO_API_KEY=
+UNISENDER_GO_API_URL=https://go1.unisender.ru/ru/transactional/api/v1/
+VERIFY_EMAIL_REDIRECT_URL=https://procollab.pro/auth/verification/
+PASSWORD_RESET_FRONTEND_URL=https://procollab.pro/auth/reset_password/
+```
+
+`EMAIL_USER` / `DEFAULT_FROM_EMAIL` должен быть подтвержденным отправителем в Unisender Go. Реальный `UNISENDER_GO_API_KEY` хранится только в `.env`. Проверка отправки:
+
+```bash
+python manage.py send_test_email your@email.example --template registration
 ```
 
 Local dev может использовать:

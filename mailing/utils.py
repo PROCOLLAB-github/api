@@ -1,7 +1,6 @@
 from functools import singledispatch
 from typing import Dict, List, Union, Annotated, Callable
 
-from procollab import settings
 from .constants import MAILING_USERS_BATCH_SIZE
 from .models import MailingSchema
 from users.models import CustomUser
@@ -14,6 +13,7 @@ from django.template import Context, Template
 from django.template.loader import get_template
 
 from .typing import MailDataDict, EmailDataToPrepare
+from core.email import get_default_from_email, html_to_plain_text
 
 User = get_user_model()
 
@@ -113,9 +113,9 @@ def send_mass_mail(
     for user in users:
         template_context["user"] = user
         html_msg = template.render(Context(template_context))
-        plain_msg = template.render(Context(template_context))
+        plain_msg = html_to_plain_text(html_msg)
         msg = EmailMultiAlternatives(
-            subject, plain_msg, settings.EMAIL_USER, [user.email]
+            subject, plain_msg, get_default_from_email(), [user.email]
         )
         msg.attach_alternative(html_msg, "text/html")
         messages.append(msg)
@@ -155,9 +155,9 @@ def send_mass_mail_from_template(
             context.update(context_builder(user))
         context["user"] = user
         html_msg = template.render(context)
-        plain_msg = template.render(context)
+        plain_msg = html_to_plain_text(html_msg)
         msg = EmailMultiAlternatives(
-            subject, plain_msg, settings.EMAIL_USER, [user.email]
+            subject, plain_msg, get_default_from_email(), [user.email]
         )
         msg.attach_alternative(html_msg, "text/html")
         message_pairs.append((user, msg))
