@@ -39,7 +39,7 @@ class RateProjectAPITests(TestCase):
     def _payload(self, criteria=None, value: str = "8") -> list[dict]:
         return [{"criterion_id": (criteria or self.criteria).id, "value": value}]
 
-    @patch("project_rates.views.send_email.delay")
+    @patch("project_rates.services.send_email.delay")
     def test_expert_can_rate_project_without_distribution(self, send_email_delay):
         self.client.force_authenticate(self.expert)
 
@@ -61,7 +61,7 @@ class RateProjectAPITests(TestCase):
         )
         send_email_delay.assert_called_once()
 
-    @patch("project_rates.views.send_email.delay")
+    @patch("project_rates.services.send_email.delay")
     def test_expert_can_update_existing_score(self, send_email_delay):
         ProjectScore.objects.create(
             criteria=self.criteria,
@@ -87,7 +87,7 @@ class RateProjectAPITests(TestCase):
         self.assertEqual(scores.get().value, "9")
         send_email_delay.assert_called_once()
 
-    @patch("project_rates.views.send_email.delay")
+    @patch("project_rates.services.send_email.delay")
     def test_rate_project_rejects_expert_without_program_membership(
         self,
         send_email_delay,
@@ -109,7 +109,7 @@ class RateProjectAPITests(TestCase):
         self.assertFalse(ProjectScore.objects.filter(user=outsider).exists())
         send_email_delay.assert_not_called()
 
-    @patch("project_rates.views.send_email.delay")
+    @patch("project_rates.services.send_email.delay")
     def test_rate_project_rejects_project_not_linked_to_program(
         self,
         send_email_delay,
@@ -131,7 +131,7 @@ class RateProjectAPITests(TestCase):
         self.assertFalse(ProjectScore.objects.filter(project=unlinked_project).exists())
         send_email_delay.assert_not_called()
 
-    @patch("project_rates.views.send_email.delay")
+    @patch("project_rates.services.send_email.delay")
     def test_rate_project_rejects_criteria_from_different_programs(
         self,
         send_email_delay,
@@ -157,7 +157,7 @@ class RateProjectAPITests(TestCase):
         self.assertFalse(ProjectScore.objects.filter(project=self.project).exists())
         send_email_delay.assert_not_called()
 
-    @patch("project_rates.views.send_email.delay")
+    @patch("project_rates.services.send_email.delay")
     def test_rate_project_respects_max_project_rates_for_new_expert(
         self,
         send_email_delay,
@@ -189,7 +189,7 @@ class RateProjectAPITests(TestCase):
         self.assertFalse(ProjectScore.objects.filter(user=self.other_expert).exists())
         send_email_delay.assert_not_called()
 
-    @patch("project_rates.views.send_email.delay")
+    @patch("project_rates.services.send_email.delay")
     def test_rate_project_validates_numeric_limits(self, send_email_delay):
         self.client.force_authenticate(self.expert)
 
@@ -204,7 +204,7 @@ class RateProjectAPITests(TestCase):
         self.assertFalse(ProjectScore.objects.filter(project=self.project).exists())
         send_email_delay.assert_not_called()
 
-    @patch("project_rates.views.send_email.delay")
+    @patch("project_rates.services.send_email.delay")
     def test_rate_project_validates_bool_value(self, send_email_delay):
         bool_criteria = create_rate_criteria(self.program, type="bool")
         self.client.force_authenticate(self.expert)

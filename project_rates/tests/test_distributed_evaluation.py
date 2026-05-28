@@ -79,7 +79,7 @@ class DistributedEvaluationAPITests(TestCase):
         returned_ids = [item["id"] for item in response.data["results"]]
         self.assertListEqual(returned_ids, [self.project_1.id])
 
-    @patch("project_rates.views.send_email.delay")
+    @patch("project_rates.services.send_email.delay")
     def test_rate_project_with_distribution_rejects_unassigned_expert(self, _mock_delay):
         self.program.is_distributed_evaluation = True
         self.program.save(update_fields=["is_distributed_evaluation"])
@@ -97,7 +97,7 @@ class DistributedEvaluationAPITests(TestCase):
         )
         self.assertFalse(ProjectScore.objects.filter(project=self.project_1).exists())
 
-    @patch("project_rates.views.send_email.delay")
+    @patch("project_rates.services.send_email.delay")
     def test_rate_project_with_distribution_accepts_assigned_expert(self, mock_delay):
         self.program.is_distributed_evaluation = True
         self.program.save(update_fields=["is_distributed_evaluation"])
