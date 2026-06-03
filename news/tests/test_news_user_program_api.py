@@ -97,6 +97,15 @@ class PartnerProgramNewsAPITests(TestCase):
         news_ids = [item["id"] for item in response.data["results"]]
         self.assertEqual(news_ids, [pinned_news.id, regular_news.id])
 
+    def test_program_news_list_returns_program_news(self):
+        news = create_news_for(self.program, text="Visible program news")
+
+        response = self.client.get(f"/programs/{self.program.id}/news/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["results"][0]["id"], news.id)
+        self.assertEqual(response.data["results"][0]["text"], "Visible program news")
+
     def test_missing_program_context_returns_not_found(self):
         response = self.client.get("/programs/999999/news/")
 

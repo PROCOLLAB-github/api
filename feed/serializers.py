@@ -6,7 +6,6 @@ from files.serializers import UserFileSerializer
 from news.mapping import NewsMapping
 from news.models import News
 from news.services import is_content_news
-from partner_programs.models import PartnerProgram
 from projects.models import Project
 from users.models import CustomUser
 
@@ -23,11 +22,6 @@ class FeedNewsContentSerializer(serializers.ModelSerializer):
 
     def get_type_model(self, obj) -> str | None:
         content_model = obj.content_type.model
-
-        if content_model == PartnerProgram.__name__.lower():
-            # Новости программ сейчас отображаются как обычные новости.
-            # Отдельная служебная карточка программы в ленте пока не согласована.
-            return "news" if is_content_news(obj) else None
 
         if is_content_news(obj) and content_model == Project.__name__.lower():
             return "news"

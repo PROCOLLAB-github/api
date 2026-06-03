@@ -43,18 +43,15 @@ class FeedAPITests(TestCase):
         self.assertEqual(item["content"]["id"], news.id)
         self.assertEqual(item["content"]["text"], "Project feed news")
 
-    def test_feed_returns_program_news_as_news_content(self):
+    def test_feed_ignores_program_news_filter(self):
         program = create_partner_program(name="Feed program")
-        news = create_news_for(program, text="Program feed news")
+        create_news_for(program, text="Program feed news")
+        create_news_for(program, text="")
 
         response = self.client.get("/feed/?type=partnerprogram")
 
         self.assertEqual(response.status_code, 200)
-        item = response.data["results"][0]
-        self.assertEqual(set(item.keys()), {"type_model", "content"})
-        self.assertEqual(item["type_model"], "news")
-        self.assertEqual(item["content"]["id"], news.id)
-        self.assertEqual(item["content"]["text"], "Program feed news")
+        self.assertEqual(response.data["results"], [])
 
     def test_feed_returns_project_feed_record_as_project_content(self):
         project = create_project(name="Feed record project")
@@ -80,7 +77,7 @@ class FeedAPITests(TestCase):
         self.assertEqual(item["content"]["id"], vacancy.id)
         self.assertEqual(item["content"]["role"], "Backend developer")
 
-    def test_feed_combines_all_supported_filters(self):
+    def test_feed_combines_supported_filters_and_ignores_program_news(self):
         project_news = create_news_for(
             create_project(name="Combined project news"),
             text="Combined project news",
@@ -118,13 +115,10 @@ class FeedAPITests(TestCase):
             project_news.id,
         )
         self.assertEqual(
-            items_by_text[program_news.text]["content"]["id"],
-            program_news.id,
-        )
-        self.assertEqual(
             items_by_text[user_news.text]["content"]["id"],
             user_news.id,
         )
+        self.assertNotIn(program_news.text, items_by_text)
         self.assertIn(project.id, content_ids_by_type["project"])
         self.assertIn(vacancy.id, content_ids_by_type["vacancy"])
 
