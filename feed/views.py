@@ -21,7 +21,11 @@ class NewSimpleFeed(APIView):
         news_types: list[str] = filter_queries.split("|")
         if "news" in news_types:
             news_types.append("customuser")
-        return news_types
+        return [
+            news_type
+            for news_type in news_types
+            if news_type != "partnerprogram"
+        ]
 
     def get_queryset(self) -> QuerySet[News]:
         filters = self._get_filter_data()
