@@ -1,5 +1,6 @@
-import datetime
+from datetime import timedelta
 
+from django.utils import timezone
 from mailing.typing import ContextDataDict, EmailDataToPrepare, MailDataDict
 from mailing.utils import prepare_mail_data, send_mass_mail
 from procollab.celery import app
@@ -37,7 +38,7 @@ def send_email(data: EmailParamsType):
 @app.task
 def email_notificate_vacancy_outdated():
     """Уведомление лидера по email о том, что вакансия просрочилась"""
-    expiration_check = datetime.datetime.now() - datetime.timedelta(days=30)
+    expiration_check = timezone.now() - timedelta(days=30)
 
     outdated_active_vacancies = Vacancy.objects.select_related(
         "project", "project__leader"
