@@ -1,3 +1,4 @@
+from django.shortcuts import get_object_or_404
 from django_filters import rest_framework as filters
 from rest_framework import generics
 from rest_framework.permissions import AllowAny
@@ -34,8 +35,8 @@ class EventRegisteredUsersList(generics.ListAPIView):
     permission_classes = [IsStaffOrReadOnly]
 
     def get_queryset(self):
-        users = Event.objects.get(pk=self.kwargs["id"]).registered_users.all()
-        return users
+        event = get_object_or_404(Event, pk=self.kwargs["id"])
+        return event.registered_users.all()
 
 
 class EventTypes(APIView):

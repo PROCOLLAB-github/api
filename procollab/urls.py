@@ -51,7 +51,9 @@ urlpatterns = [
     path("invites/", include("invites.urls", namespace="invites")),
     path("auth/", include(("users.urls", "users"), namespace="users")),
     path("chats/", include("chats.urls", namespace="chats")),
-    path("events/", include("events.urls", namespace="events")),
+    # Модуль мероприятий сейчас отложен, поэтому публичные /events/ endpoints
+    # отключены. Для возврата модуля раскомментировать строку ниже.
+    # path("events/", include("events.urls", namespace="events")),
     path("programs/", include("partner_programs.urls", namespace="partner_programs")),
     path("courses/", include("courses.urls", namespace="courses")),
     path("rate-project/", include(("project_rates.urls", "rate_projects"))),

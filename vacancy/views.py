@@ -187,7 +187,6 @@ class VacancyResponseAccept(generics.GenericAPIView):
         vacancy.is_active = False
         vacancy.save()
         new_collaborator.save()
-        vacancy.project.save()
         vacancy_request.save()
         return Response(status=status.HTTP_200_OK)
 
@@ -210,7 +209,7 @@ class VacancyResponseDecline(generics.GenericAPIView):
         send_email.delay(
             CeleryEmailParams(
                 message_type=MessageTypeEnum.REJECTED.value,
-                user_id=project.leader.id,
+                user_id=vacancy_request.user.id,
                 project_name=project.name,
                 project_id=project.id,
                 vacancy_role=vacancy_request.vacancy.role,
