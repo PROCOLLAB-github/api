@@ -4,16 +4,22 @@ from rest_framework.response import Response
 
 from invites.filters import InviteFilter
 from invites.models import Invite
+from invites.permissions import InviteDecisionPermission, InviteDetailPermission
+from invites.querysets import get_visible_invites_queryset
 from invites.serializers import InviteDetailSerializer, InviteListSerializer
 from projects.models import Collaborator
 
 
 class InviteList(generics.ListCreateAPIView):
-    queryset = Invite.objects.get_invite_for_list_view().filter(is_accepted__isnull=True)
     serializer_class = InviteDetailSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.IsAuthenticated]
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = InviteFilter
+
+    def get_queryset(self):
+        return get_visible_invites_queryset(self.request.user).filter(
+            is_accepted__isnull=True
+        )
 
     def create(self, request, *args, **kwargs):
         serializer = InviteListSerializer(data=request.data)
@@ -33,28 +39,21 @@ class InviteList(generics.ListCreateAPIView):
 
 
 class InviteDetail(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Invite.objects.all()
+    queryset = Invite.objects.get_invite_for_list_view()
     serializer_class = InviteDetailSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [InviteDetailPermission]
 
 
 class InviteAccept(generics.GenericAPIView):
-    queryset = Invite.objects.all()
+    queryset = Invite.objects.get_invite_for_list_view()
     serializer_class = InviteDetailSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [InviteDecisionPermission]
 
     def post(self, request, *args, **kwargs):
         invite = self.get_object()  # type: Invite
-        if invite.user != request.user:
-            return Response(status=status.HTTP_403_FORBIDDEN)
-        if invite.is_accepted is True:
+        if invite.is_accepted is not None:
             return Response(
-                {"detail": "Invite has already been accepted."},
-                status=status.HTTP_409_CONFLICT,
-            )
-        if invite.is_accepted is False:
-            return Response(
-                {"detail": "Invite has already been declined."},
+                {"detail": "Invite has already been processed."},
                 status=status.HTTP_409_CONFLICT,
             )
         # add user to project collaborators
@@ -77,14 +76,17 @@ class InviteAccept(generics.GenericAPIView):
 
 
 class InviteDecline(generics.GenericAPIView):
-    queryset = Invite.objects.all()
+    queryset = Invite.objects.get_invite_for_list_view()
     serializer_class = InviteDetailSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [InviteDecisionPermission]
 
     def post(self, request, *args, **kwargs):
         invite = self.get_object()
-        if invite.user != request.user:
-            return Response(status=status.HTTP_403_FORBIDDEN)
+        if invite.is_accepted is not None:
+            return Response(
+                {"detail": "Invite has already been processed."},
+                status=status.HTTP_409_CONFLICT,
+            )
         invite.is_accepted = False
         invite.save()
         return Response(status=status.HTTP_200_OK)
