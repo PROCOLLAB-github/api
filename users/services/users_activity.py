@@ -92,6 +92,13 @@ class UserActivityDataPreparer(AbcstractUserActivityDataPreparer):
 
     def __get_user_queryset(self) -> QuerySet[CustomUser]:
         user_content_type = ContentType.objects.get_for_model(CustomUser)
+        program_profiles_count_subquery = (
+            PartnerProgramUserProfile.objects
+            .filter(user_id=OuterRef("id"))
+            .values("user_id")
+            .annotate(total=Count("id"))
+            .values("total")
+        )
         projects_in_program_subquery = (
             PartnerProgramUserProfile.objects
             .filter(user_id=OuterRef("id"))
@@ -114,13 +121,6 @@ class UserActivityDataPreparer(AbcstractUserActivityDataPreparer):
             .values("total_likes")
         )
 
-        projects_in_program_subquery = (
-            CustomUser.objects
-            .filter(partner_program_profiles__user_id=OuterRef("id"))
-            .annotate(total_proj=Count("id"))
-            .values("total_proj")
-        )
-
         users: QuerySet[CustomUser] = (
             CustomUser.objects
             .prefetch_related(
@@ -140,7 +140,7 @@ class UserActivityDataPreparer(AbcstractUserActivityDataPreparer):
                     output_field=IntegerField(),
                 ),
                 program_profiles_count=Coalesce(
-                    Subquery(projects_in_program_subquery, output_field=IntegerField()),
+                    Subquery(program_profiles_count_subquery, output_field=IntegerField()),
                     Value(0),
                     output_field=IntegerField(),
                 ),

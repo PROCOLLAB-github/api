@@ -9,11 +9,11 @@ from users.constants import NOT_VALID_NUMBER_MESSAGE
 
 def user_birthday_validator(birthday):
     """returns true if person > 12 years old"""
-    if (timezone.now().date() - birthday).days >= 12 * 365:
-        return True
     # check if person is > 100 years old
     if (timezone.now().date() - birthday).days >= 100 * 365:
         raise ValidationError("Человек старше 100 лет")
+    if (timezone.now().date() - birthday).days >= 12 * 365:
+        return True
     raise ValidationError("Человек младше 12 лет")
 
 

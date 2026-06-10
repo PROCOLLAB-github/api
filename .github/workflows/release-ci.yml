@@ -184,7 +184,24 @@ jobs:
               docker compose -f docker-compose.prod-ci.yml -p prod pull web celerys
 
               docker compose -f docker-compose.prod-ci.yml -p prod run --rm web python manage.py migrate
-              docker compose -f docker-compose.prod-ci.yml -p prod up -d
+              docker compose -f docker-compose.prod-ci.yml -p prod up -d --force-recreate
+              expected_image="ghcr.io/procollab-github/api:${IMAGE_TAG}"
+              for service in web celerys; do
+                container="$(docker compose -f docker-compose.prod-ci.yml -p prod ps -q "$service")"
+                if [ -z "$container" ]; then
+                  echo "Service ${service} has no running container" >&2
+                  docker compose -f docker-compose.prod-ci.yml -p prod ps >&2 || true
+                  exit 1
+                fi
+
+                actual_image="$(docker inspect -f '{{.Config.Image}}' "$container")"
+                echo "Service ${service}: container=${container} image=${actual_image}"
+                if [ "$actual_image" != "$expected_image" ]; then
+                  echo "Service ${service} uses unexpected image: ${actual_image}, expected ${expected_image}" >&2
+                  docker compose -f docker-compose.prod-ci.yml -p prod ps >&2 || true
+                  exit 1
+                fi
+              done
               if [ "$(id -u)" -eq 0 ]; then
                 nginx -t
                 systemctl reload nginx
@@ -210,12 +227,22 @@ jobs:
                 exit 1
               fi
 
+              docker compose -f docker-compose.prod-ci.yml -p prod ps
+
               celery_status=""
               celery_ping=""
-              for attempt in $(seq 1 24); do
-                celery_status="$(docker inspect -f '{{.State.Status}}' api_celery 2>/dev/null || true)"
+              celery_container=""
+              for attempt in $(seq 1 12); do
+                celery_container="$(docker compose -f docker-compose.prod-ci.yml -p prod ps -q celerys 2>/dev/null || true)"
+                if [ -n "$celery_container" ]; then
+                  celery_status="$(docker inspect -f '{{.State.Status}}' "$celery_container" 2>/dev/null || true)"
+                else
+                  celery_status="missing"
+                fi
+
+                echo "Celery check attempt ${attempt}: container=${celery_container:-missing} status=${celery_status}"
                 if [ "$celery_status" = "running" ]; then
-                  celery_ping="$(docker compose -f docker-compose.prod-ci.yml -p prod exec -T celerys sh -lc 'celery -A procollab inspect ping --timeout=10' 2>&1 || true)"
+                  celery_ping="$(docker compose -f docker-compose.prod-ci.yml -p prod exec -T celerys sh -lc 'celery -A procollab inspect ping --timeout=15' 2>&1 || true)"
                   printf '%s\n' "$celery_ping"
                   if printf '%s\n' "$celery_ping" | grep -q 'pong'; then
                     echo "Celery check passed on attempt ${attempt}"
@@ -226,12 +253,11 @@ jobs:
                 sleep 5
               done
 
-              if [ "$celery_status" != "running" ]; then
-                echo "Celery container is not running: ${celery_status}" >&2
+              if [ "$celery_status" != "running" ] || ! printf '%s\n' "$celery_ping" | grep -q 'pong'; then
+                echo "Celery check failed: status=${celery_status}" >&2
+                docker compose -f docker-compose.prod-ci.yml -p prod ps >&2 || true
+                docker compose -f docker-compose.prod-ci.yml -p prod logs --tail=200 celerys >&2 || true
+                docker compose -f docker-compose.prod-ci.yml -p prod logs --tail=100 redis >&2 || true
+                docker compose -f docker-compose.prod-ci.yml -p prod logs --tail=100 web >&2 || true
                 exit 1
               fi
-
-              printf '%s\n' "$celery_ping" | grep -q 'pong' || {
-                echo "Celery ping failed" >&2
-                exit 1
-              }

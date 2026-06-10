@@ -1,7 +1,28 @@
-# Документация
+# Документация Procollab Backend
 
-## REST API
-- [swagger](https://api.procollab.ru/swagger)
-- [redoc](https://api.procollab.ru/redoc)
+## Быстрый вход
 
-## [WebSockets для чатов](/docs/chats.md)
+- [README проекта](../README.md)
+
+## API
+
+- [Описание API](api.md)
+- [Swagger](https://api.procollab.ru/swagger)
+- [Redoc](https://api.procollab.ru/redoc)
+
+## Разработка
+
+- [Инструкция для разработчиков](development.md)
+
+## Архитектура
+
+- [Обзор архитектуры](architecture.md)
+- [Доменные модули](modules/readme.md)
+
+## Инфраструктура и деплой
+
+- [DevOps state](devops-state.md)
+
+## WebSockets
+
+- [Чаты](modules/chats.md)

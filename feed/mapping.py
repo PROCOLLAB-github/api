@@ -6,10 +6,9 @@ from users.serializers import UserFeedSerializer
 from vacancy.models import Vacancy
 from vacancy.serializers import VacancyDetailSerializer
 
-CONTENT_OBJECT_MAPPING: dict[str, str | None] = {
+CONTENT_OBJECT_MAPPING: dict[str, str] = {
     Project.__name__.lower(): "project",
     CustomUser.__name__.lower(): "news",
-    "partnerprogram": None,
     Vacancy.__name__.lower(): "vacancy",
 }
 

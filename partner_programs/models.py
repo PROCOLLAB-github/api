@@ -307,8 +307,8 @@ class PartnerProgramProject(models.Model):
 
     class Meta:
         unique_together = ("partner_program", "project")
-        verbose_name = "Проект участующий в программе"
-        verbose_name_plural = "Проекеты участвующие в программах"
+        verbose_name = "Проект"
+        verbose_name_plural = "Проекты"
 
     def __str__(self):
         return f"{self.project} в программе {self.partner_program}"

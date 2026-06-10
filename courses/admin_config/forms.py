@@ -117,6 +117,8 @@ class CourseTaskAdminForm(forms.ModelForm):
             "image_upload",
             "В поле изображения можно загрузить только файл изображения.",
         )
+        # TODO: убрать временные флаги, когда upload -> UserFile будет вынесен
+        # в явный admin/service слой до запуска model validation.
         self.instance._has_pending_image_upload = bool(image_upload)
         self.instance._has_pending_attachment_upload = bool(attachment_upload)
         return cleaned_data

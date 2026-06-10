@@ -5,6 +5,7 @@ from courses.api.serializers import (
     CourseDetailSerializer,
     CourseStructureSerializer,
 )
+from courses.api.response import serialize_response
 from courses.queries import (
     build_course_detail_payload,
     build_course_list_payload,
@@ -17,29 +18,32 @@ from .base import AuthenticatedCourseAPIView
 class CourseListAPIView(AuthenticatedCourseAPIView):
 
     def get(self, request):
-        serializer = CourseCardSerializer(
-            data=build_course_list_payload(request.user),
-            many=True,
+        return Response(
+            serialize_response(
+                CourseCardSerializer,
+                build_course_list_payload(request.user),
+                many=True,
+            )
         )
-        serializer.is_valid(raise_exception=True)
-        return Response(serializer.data)
 
 
 class CourseDetailAPIView(AuthenticatedCourseAPIView):
 
     def get(self, request, pk: int):
-        serializer = CourseDetailSerializer(
-            data=build_course_detail_payload(request.user, pk)
+        return Response(
+            serialize_response(
+                CourseDetailSerializer,
+                build_course_detail_payload(request.user, pk),
+            )
         )
-        serializer.is_valid(raise_exception=True)
-        return Response(serializer.data)
 
 
 class CourseStructureAPIView(AuthenticatedCourseAPIView):
 
     def get(self, request, pk: int):
-        serializer = CourseStructureSerializer(
-            data=build_course_structure_payload(request.user, pk)
+        return Response(
+            serialize_response(
+                CourseStructureSerializer,
+                build_course_structure_payload(request.user, pk),
+            )
         )
-        serializer.is_valid(raise_exception=True)
-        return Response(serializer.data)

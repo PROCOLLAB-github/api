@@ -206,28 +206,6 @@ class TimingAfterEndsProgramPermission(BasePermission):
         }
 
 
-class IsNewsAuthorIsProjectLeaderOrReadOnly(BasePermission):
-    """
-    Allows access to update project news only to leader.
-    """
-
-    def has_permission(self, request, view) -> bool:
-        try:
-            project = Project.objects.get(pk=view.kwargs["project_pk"])
-            if request.method in SAFE_METHODS or (request.user == project.leader):
-                return True
-        except Project.DoesNotExist:
-            pass
-        return False
-
-    def has_object_permission(self, request, view, obj):
-        if (
-            request.method in SAFE_METHODS and not obj.project.draft
-        ) or obj.project.leader == request.user:
-            return True
-        return False
-
-
 class IsProjectLeaderOrReadOnly(BasePermission):
     """
     Читать могут все (в т.ч. анонимы).

@@ -2,7 +2,6 @@ from typing import Optional
 
 from django.apps import apps
 from django.contrib.auth import get_user_model
-from django.contrib.contenttypes.fields import GenericRelation
 from django.core.exceptions import ValidationError
 from django.core.validators import (
     MaxLengthValidator,
@@ -12,7 +11,6 @@ from django.core.validators import (
 from django.db import models
 from django.db.models import UniqueConstraint
 
-from core.models import Like, View
 from files.models import UserFile
 from industries.models import Industry
 from projects.managers import AchievementManager, CollaboratorManager, ProjectManager
@@ -353,49 +351,6 @@ class Collaborator(models.Model):
     def save(self, *args, **kwargs):
         self.full_clean()
         return super().save(*args, **kwargs)
-
-
-class ProjectNews(models.Model):
-    """
-    Project news model
-    """
-
-    project = models.ForeignKey(
-        Project,
-        on_delete=models.CASCADE,
-        related_name="news",
-    )
-    text = models.TextField(
-        null=False,
-        blank=False,
-    )
-    # todo: remove files unused files
-    files = models.ManyToManyField(UserFile, related_name="projects_news", blank=True)
-
-    views = GenericRelation(
-        View,
-        related_query_name="project_views",
-    )
-    likes = GenericRelation(
-        Like,
-        related_query_name="project_news",
-    )
-
-    datetime_created = models.DateTimeField(
-        verbose_name="Дата создания",
-        null=False,
-        auto_now_add=True,
-    )
-    datetime_updated = models.DateTimeField(
-        verbose_name="Дата изменения",
-        null=False,
-        auto_now=True,
-    )
-
-    class Meta:
-        verbose_name = "Новость проекта"
-        verbose_name_plural = "Новости проекта"
-        ordering = ["-datetime_created"]
 
 
 class ProjectGoal(models.Model):

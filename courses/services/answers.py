@@ -61,7 +61,7 @@ def _resolve_task_options(
     return options
 
 
-def _resolve_user_files(file_ids: list[str]) -> list[UserFile]:
+def _resolve_user_files(user, file_ids: list[str]) -> list[UserFile]:
     if not file_ids:
         return []
 
@@ -69,7 +69,7 @@ def _resolve_user_files(file_ids: list[str]) -> list[UserFile]:
     if len(unique_ids) != len(file_ids):
         raise ValidationError({"file_ids": "Переданы дублирующиеся файлы."})
 
-    files = list(UserFile.objects.filter(pk__in=unique_ids))
+    files = list(UserFile.objects.filter(pk__in=unique_ids, user=user))
     files_by_id = {file.pk: file for file in files}
     missing_ids = [file_id for file_id in unique_ids if file_id not in files_by_id]
     if missing_ids:
@@ -305,11 +305,12 @@ def _validate_question_task(task: CourseTask) -> None:
 
 
 def _resolve_question_payload(
+    user,
     task: CourseTask,
     payload: TaskAnswerSubmitPayload,
 ) -> tuple[str, list[CourseTaskOption], list[UserFile]]:
     selected_options = _resolve_task_options(task, payload.option_ids)
-    selected_files = _resolve_user_files(payload.file_ids)
+    selected_files = _resolve_user_files(user, payload.file_ids)
     _validate_payload_by_answer_type(
         task,
         payload,
@@ -348,6 +349,7 @@ def _submit_question_answer(
 ) -> SubmitAnswerResult:
     _validate_question_task(task)
     normalized_text, selected_options, selected_files = _resolve_question_payload(
+        user,
         task,
         payload,
     )
