@@ -2,6 +2,7 @@ server {
     listen 80;
     server_name dev.procollab.ru;
     server_tokens off;
+    client_max_body_size 100M;
 
     location ^~ /.well-known/acme-challenge/ {
         root /var/www/certbot;
@@ -23,6 +24,8 @@ server {
 
     ssl_certificate     /etc/letsencrypt/live/dev.procollab.ru-0001/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/dev.procollab.ru-0001/privkey.pem;
+
+    client_max_body_size 100M;
 
     location ~ ^/(admin|api-auth|files|industries|news|projects|vacancies|core|invites|auth|chats|events|programs|courses|rate-project|feed|api|anymail|ws)(/|$) {
         include /etc/nginx/procollab/includes/proxy_app.inc;

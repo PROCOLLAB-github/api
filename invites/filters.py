@@ -2,7 +2,6 @@ from django_filters import rest_framework as filters
 from rest_framework.exceptions import PermissionDenied
 
 from invites.models import Invite
-from vacancy.filters import project_id_filter
 
 
 def _first_filter_value(value):
@@ -40,6 +39,12 @@ class InviteFilter(filters.FilterSet):
             if user_value is None and project_value in (None, ""):
                 self.data["user"] = request.user.id
 
+    def filter_project(self, queryset, name, value):
+        value = _first_filter_value(value)
+        if value in (None, ""):
+            return queryset
+        return queryset.filter(project_id=value)
+
     def filter_user(self, queryset, name, value):
         value = _first_filter_value(value)
         if value == "any":
@@ -51,7 +56,7 @@ class InviteFilter(filters.FilterSet):
             return queryset
         return queryset.filter(user_id=value)
 
-    project = filters.Filter(method=project_id_filter)
+    project = filters.Filter(method="filter_project")
     user = filters.Filter(method="filter_user")
 
     class Meta:

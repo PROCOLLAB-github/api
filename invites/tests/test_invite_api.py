@@ -1,7 +1,10 @@
+from types import SimpleNamespace
+
 from django.test import TestCase
 from rest_framework import status
 from rest_framework.test import APIClient
 
+from invites.filters import InviteFilter
 from invites.models import Invite
 from invites.tests.helpers import (
     add_collaborator,
@@ -223,6 +226,40 @@ class InviteListFilterAPITests(TestCase):
             {item["id"] for item in response.data},
             {first_invite.id, second_invite.id},
         )
+
+    def test_project_leader_can_list_invite_after_creating_via_api(self):
+        leader = create_user(prefix="leader")
+        recipient = create_user(prefix="recipient")
+        project = create_project(leader=leader)
+        self.client.force_authenticate(leader)
+
+        create_response = self.client.post(
+            "/invites/",
+            invite_payload(project, recipient),
+            format="json",
+        )
+        list_response = self.client.get("/invites/", {"project": project.id})
+
+        self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            [item["id"] for item in list_response.data],
+            [create_response.data["id"]],
+        )
+
+    def test_project_filter_handles_scalar_multi_digit_project_id(self):
+        leader = create_user(prefix="leader")
+        projects = [create_project(leader=leader) for _ in range(12)]
+        target_project = projects[-1]
+        invite = create_invite(project=target_project)
+
+        filtered = InviteFilter(
+            data={"project": str(target_project.id)},
+            queryset=Invite.objects.all(),
+            request=SimpleNamespace(user=leader),
+        ).qs
+
+        self.assertEqual(list(filtered), [invite])
 
     def test_project_leader_cannot_use_user_any_filter(self):
         leader = create_user(prefix="leader")
