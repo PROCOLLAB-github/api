@@ -318,7 +318,17 @@ if DEBUG:
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
 
-EMAIL_BACKEND = "anymail.backends.unisender_go.EmailBackend"
+EMAIL_BACKEND = config(
+    "EMAIL_BACKEND",
+    default="anymail.backends.unisender_go.EmailBackend",
+    cast=str,
+)
+
+VERIFY_EMAIL_REDIRECT_URL = config(
+    "VERIFY_EMAIL_REDIRECT_URL",
+    default="https://app.procollab.ru/auth/verification/",
+    cast=str,
+)
 
 UNISENDER_GO_API_KEY = config("UNISENDER_GO_API_KEY", default="", cast=str)
 ANYMAIL = {

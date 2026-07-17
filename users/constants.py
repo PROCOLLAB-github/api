@@ -29,7 +29,7 @@ VERBOSE_ROLE_TYPES = (
     (INVESTOR, "Инвестор"),
 )
 
-VERIFY_EMAIL_REDIRECT_URL = "https://app.procollab.ru/auth/verification/"
+VERIFY_EMAIL_REDIRECT_URL = settings.VERIFY_EMAIL_REDIRECT_URL
 
 
 PROTOCOL = "https"

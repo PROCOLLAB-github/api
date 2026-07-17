@@ -41,11 +41,7 @@ from partner_programs.serializers import (
 )
 from projects.pagination import ProjectsPagination
 from projects.serializers import ProjectListSerializer
-from users.constants import (
-    VERBOSE_ROLE_TYPES,
-    VERBOSE_USER_TYPES,
-    VERIFY_EMAIL_REDIRECT_URL,
-)
+from users.constants import VERBOSE_ROLE_TYPES, VERBOSE_USER_TYPES
 from users.helpers import check_related_fields_update, force_verify_user, verify_email
 from users.models import LikesOnProject, UserAchievement, UserSkillConfirmation
 from users.permissions import IsAchievementOwnerOrReadOnly
@@ -276,6 +272,7 @@ class VerifyEmail(GenericAPIView):
 
     def get(self, request):
         token = request.GET.get("token")
+        redirect_url = settings.VERIFY_EMAIL_REDIRECT_URL
 
         try:
             payload = jwt.decode(jwt=token, key=settings.SECRET_KEY, algorithms=["HS256"])
@@ -288,20 +285,20 @@ class VerifyEmail(GenericAPIView):
                 user.save()
 
             return redirect(
-                f"{VERIFY_EMAIL_REDIRECT_URL}?access_token={access_token}&refresh_token={refresh_token}",
+                f"{redirect_url}?access_token={access_token}&refresh_token={refresh_token}",
                 status=status.HTTP_200_OK,
                 message="Succeed",
             )
 
         except jwt.ExpiredSignatureError:
             return redirect(
-                VERIFY_EMAIL_REDIRECT_URL,
+                redirect_url,
                 status=status.HTTP_400_BAD_REQUEST,
                 message="Activate Expired",
             )
         except jwt.DecodeError:
             return redirect(
-                VERIFY_EMAIL_REDIRECT_URL,
+                redirect_url,
                 status=status.HTTP_400_BAD_REQUEST,
                 message="Decode error",
             )
