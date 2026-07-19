@@ -81,6 +81,6 @@ urlpatterns = [
     ),
     path(
         "reset_password/",
-        include("django_rest_passwordreset.urls", namespace="password_reset"),
+        include("users.password_reset_urls", namespace="password_reset"),
     ),
 ]

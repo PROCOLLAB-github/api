@@ -6,11 +6,11 @@ from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 from rest_framework import authentication, permissions
 from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
     TokenRefreshView,
     TokenVerifyView,
 )
 from users.authentication import ActivityTrackingJWTAuthentication
+from users.token_views import ThrottledTokenObtainPairView
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -58,7 +58,11 @@ urlpatterns = [
     path("courses/", include("courses.urls", namespace="courses")),
     path("rate-project/", include(("project_rates.urls", "rate_projects"))),
     path("feed/", include("feed.urls", namespace="feed")),
-    path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path(
+        "api/token/",
+        ThrottledTokenObtainPairView.as_view(),
+        name="token_obtain_pair",
+    ),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/token/verify/", TokenVerifyView.as_view(), name="token_verify"),
     path("", include("metrics.urls", namespace="metrics")),

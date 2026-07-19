@@ -163,6 +163,23 @@ REST_FRAMEWORK = {
         "rest_framework.renderers.BrowsableAPIRenderer",
         "rest_framework.renderers.AdminRenderer",
     ],
+    "DEFAULT_THROTTLE_RATES": {
+        "auth_user_create": config(
+            "DRF_THROTTLE_AUTH_USER_CREATE", default="5/min", cast=str
+        ),
+        "auth_resend_email": config(
+            "DRF_THROTTLE_AUTH_RESEND_EMAIL", default="3/min", cast=str
+        ),
+        "auth_reset_password": config(
+            "DRF_THROTTLE_AUTH_RESET_PASSWORD", default="3/min", cast=str
+        ),
+        "token_obtain": config(
+            "DRF_THROTTLE_TOKEN_OBTAIN", default="10/min", cast=str
+        ),
+        "program_register_new": config(
+            "DRF_THROTTLE_PROGRAM_REGISTER_NEW", default="10/min", cast=str
+        ),
+    },
 }
 
 ASGI_APPLICATION = "procollab.asgi.application"
