@@ -15,6 +15,7 @@ from rest_framework.views import APIView
 
 from core.serializers import EmptySerializer, SetLikedSerializer, SetViewedSerializer
 from core.services import add_view, set_like
+from core.throttling import PostOnlyScopedRateThrottle
 from core.utils import build_xlsx_download_response
 from partner_programs.models import (
     PartnerProgram,
@@ -182,6 +183,8 @@ class PartnerProgramCreateUserAndRegister(generics.GenericAPIView):
     permission_classes = [AllowAny]
     serializer_class = PartnerProgramNewUserSerializer
     queryset = PartnerProgram.objects.all()
+    throttle_classes = [PostOnlyScopedRateThrottle]
+    throttle_scope = "program_register_new"
 
     def post(self, request, *args, **kwargs):
         data = request.data

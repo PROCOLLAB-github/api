@@ -32,6 +32,7 @@ from weasyprint import HTML
 from core.models import SkillToObject, Specialization, SpecializationCategory
 from core.pagination import Pagination
 from core.permissions import IsOwnerOrReadOnly
+from core.throttling import PostOnlyScopedRateThrottle
 from events.models import Event
 from events.serializers import EventsListSerializer
 from partner_programs.models import PartnerProgram
@@ -79,6 +80,8 @@ class UserList(ListCreateAPIView):
     pagination_class = UsersPagination
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = UserFilter
+    throttle_classes = [PostOnlyScopedRateThrottle]
+    throttle_scope = "auth_register"
 
     def get_permissions(self):
         if self.request.method == "POST":
@@ -478,6 +481,8 @@ class SetUserOnboardingStage(APIView):
 class ResendVerifyEmail(GenericAPIView):
     permission_classes = [AllowAny]
     serializer_class = ResendVerifyEmailSerializer
+    throttle_classes = [PostOnlyScopedRateThrottle]
+    throttle_scope = "auth_resend_email"
 
     def post(self, request, *args, **kwargs):
         try:
