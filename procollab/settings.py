@@ -164,8 +164,8 @@ REST_FRAMEWORK = {
         "rest_framework.renderers.AdminRenderer",
     ],
     "DEFAULT_THROTTLE_RATES": {
-        "auth_user_create": config(
-            "DRF_THROTTLE_AUTH_USER_CREATE", default="5/min", cast=str
+        "auth_register": config(
+            "DRF_THROTTLE_AUTH_REGISTER", default="5/min", cast=str
         ),
         "auth_resend_email": config(
             "DRF_THROTTLE_AUTH_RESEND_EMAIL", default="3/min", cast=str

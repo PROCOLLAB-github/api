@@ -12,6 +12,7 @@ Implemented in this PR:
   - `POST /api/token/`
   - `POST /programs/<id>/register_new/`
 - Added env-configurable rates in `REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]` without enabling global `DEFAULT_THROTTLE_CLASSES`.
+- Scoped rate keys are `auth_register`, `auth_resend_email`, `auth_reset_password`, `token_obtain`, and `program_register_new`.
 - Added `.env.example` entries for the new rates.
 - Added targeted tests that override each selected scope to `1/min` and assert the second request is throttled.
 

@@ -81,7 +81,7 @@ class UserList(ListCreateAPIView):
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = UserFilter
     throttle_classes = [PostOnlyScopedRateThrottle]
-    throttle_scope = "auth_user_create"
+    throttle_scope = "auth_register"
 
     def get_permissions(self):
         if self.request.method == "POST":

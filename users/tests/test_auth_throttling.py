@@ -24,7 +24,7 @@ class AuthThrottleTests(TestCase):
         self.client = APIClient()
 
     @override_settings(
-        REST_FRAMEWORK=throttle_settings(auth_user_create="1/min")
+        REST_FRAMEWORK=throttle_settings(auth_register="1/min")
     )
     @patch("users.views.verify_email")
     def test_user_registration_post_is_scoped_throttled(self, verify_email_mock):
