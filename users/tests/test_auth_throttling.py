@@ -3,6 +3,7 @@ from unittest.mock import patch
 from django.conf import settings
 from django.core.cache import cache
 from django.test import TestCase, override_settings
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.test import APIClient, APIRequestFactory
 from rest_framework.views import APIView
@@ -22,6 +23,7 @@ def throttle_settings(**rates):
 
 
 class DummyPostOnlyThrottleView(APIView):
+    permission_classes = [AllowAny]
     throttle_classes = [PostOnlyScopedRateThrottle]
     throttle_scope = "auth_register"
 
