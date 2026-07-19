@@ -176,6 +176,124 @@ class PartnerProgram(models.Model):
         return deadline is None or deadline >= timezone.now()
 
 
+class Application(models.Model):
+    """
+    MVP application model for participation in a partner program.
+
+    Team applications are intentionally deferred until the Team model exists.
+    For now, an application is individual and must have `user`.
+    """
+
+    STATUS_DRAFT = "draft"
+    STATUS_SUBMITTED = "submitted"
+    STATUS_APPROVED = "approved"
+    STATUS_REJECTED = "rejected"
+    STATUS_WITHDRAWN = "withdrawn"
+    STATUS_CANCELLED = "cancelled"
+
+    ACTIVE_STATUSES = (
+        STATUS_DRAFT,
+        STATUS_SUBMITTED,
+        STATUS_APPROVED,
+    )
+
+    STATUS_CHOICES = (
+        (STATUS_DRAFT, "Draft"),
+        (STATUS_SUBMITTED, "Submitted"),
+        (STATUS_APPROVED, "Approved"),
+        (STATUS_REJECTED, "Rejected"),
+        (STATUS_WITHDRAWN, "Withdrawn"),
+        (STATUS_CANCELLED, "Cancelled"),
+    )
+
+    program = models.ForeignKey(
+        PartnerProgram,
+        on_delete=models.CASCADE,
+        related_name="applications",
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        related_name="program_applications",
+        null=True,
+        blank=True,
+    )
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="created_program_applications",
+    )
+    status = models.CharField(
+        max_length=16,
+        choices=STATUS_CHOICES,
+        default=STATUS_DRAFT,
+    )
+    form_data = models.JSONField(default=dict, blank=True)
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.SET_NULL,
+        related_name="applications",
+        null=True,
+        blank=True,
+    )
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    approved_at = models.DateTimeField(null=True, blank=True)
+    rejected_at = models.DateTimeField(null=True, blank=True)
+    withdrawn_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def clean(self):
+        super().clean()
+
+        errors = {}
+
+        if not self.user_id:
+            errors["user"] = (
+                "User is required for MVP applications until Team is implemented."
+            )
+
+        if self.user_id and self.program_id and self.status in self.ACTIVE_STATUSES:
+            duplicate_qs = Application.objects.filter(
+                user_id=self.user_id,
+                program_id=self.program_id,
+                status__in=self.ACTIVE_STATUSES,
+            )
+            if self.pk:
+                duplicate_qs = duplicate_qs.exclude(pk=self.pk)
+            if duplicate_qs.exists():
+                errors["user"] = (
+                    "User already has an active application for this program."
+                )
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+    class Meta:
+        verbose_name = "Application"
+        verbose_name_plural = "Applications"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "program"],
+                condition=models.Q(
+                    user__isnull=False,
+                    status__in=("draft", "submitted", "approved"),
+                ),
+                name="uniq_active_application_user_program",
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            f"Application<{self.pk}> "
+            f"user={self.user_id} program={self.program_id} status={self.status}"
+        )
+
+
 class PartnerProgramUserProfile(models.Model):
     """
     PartnerProgramUserProfile model

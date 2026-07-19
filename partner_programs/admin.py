@@ -11,6 +11,7 @@ from django.utils import timezone
 from core.utils import XlsxFileToExport, build_xlsx_download_response
 from mailing.views import MailingTemplateRender
 from partner_programs.models import (
+    Application,
     PartnerProgram,
     PartnerProgramField,
     PartnerProgramFieldValue,
@@ -19,6 +20,44 @@ from partner_programs.models import (
     PartnerProgramUserProfile,
 )
 from partner_programs.services import prepare_project_scores_export_data
+
+
+@admin.register(Application)
+class ApplicationAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "program",
+        "user",
+        "created_by",
+        "status",
+        "project",
+        "submitted_at",
+        "created_at",
+        "updated_at",
+    )
+    list_filter = (
+        "status",
+        "program",
+        "created_at",
+    )
+    search_fields = (
+        "user__email",
+        "created_by__email",
+        "program__name",
+        "program__tag",
+        "project__name",
+    )
+    raw_id_fields = (
+        "program",
+        "user",
+        "created_by",
+        "project",
+    )
+    readonly_fields = (
+        "created_at",
+        "updated_at",
+    )
+    date_hierarchy = "created_at"
 
 
 class PartnerProgramMaterialInline(admin.StackedInline):
