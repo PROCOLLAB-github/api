@@ -3,8 +3,11 @@ from unittest.mock import patch
 from django.conf import settings
 from django.core.cache import cache
 from django.test import TestCase, override_settings
-from rest_framework.test import APIClient
+from rest_framework.response import Response
+from rest_framework.test import APIClient, APIRequestFactory
+from rest_framework.views import APIView
 
+from core.throttling import PostOnlyScopedRateThrottle
 from tests.constants import USER_CREATE_DATA
 from users.tests.helpers import build_user
 
@@ -18,10 +21,22 @@ def throttle_settings(**rates):
     return rest_framework
 
 
+class DummyPostOnlyThrottleView(APIView):
+    throttle_classes = [PostOnlyScopedRateThrottle]
+    throttle_scope = "auth_register"
+
+    def get(self, _request):
+        return Response({"ok": True})
+
+    def post(self, _request):
+        return Response({"ok": True})
+
+
 class AuthThrottleTests(TestCase):
     def setUp(self):
         cache.clear()
         self.client = APIClient()
+        self.factory = APIRequestFactory()
 
     @override_settings(
         REST_FRAMEWORK=throttle_settings(auth_register="1/min")
@@ -117,4 +132,40 @@ class AuthThrottleTests(TestCase):
         )
 
         self.assertNotEqual(first_response.status_code, 429)
+        self.assertEqual(second_response.status_code, 429)
+
+    @override_settings(
+        REST_FRAMEWORK=throttle_settings(auth_register="1/min")
+    )
+    def test_post_only_throttle_allows_get_and_options(self):
+        view = DummyPostOnlyThrottleView.as_view()
+
+        for method in ("get", "options"):
+            for _ in range(2):
+                response = view(
+                    getattr(self.factory, method)(
+                        "/unused/",
+                        REMOTE_ADDR="203.0.113.14",
+                    )
+                )
+                self.assertNotEqual(response.status_code, 429)
+
+        first_response = view(
+            self.factory.post(
+                "/unused/",
+                {},
+                format="json",
+                REMOTE_ADDR="203.0.113.14",
+            )
+        )
+        second_response = view(
+            self.factory.post(
+                "/unused/",
+                {},
+                format="json",
+                REMOTE_ADDR="203.0.113.14",
+            )
+        )
+
+        self.assertEqual(first_response.status_code, 200)
         self.assertEqual(second_response.status_code, 429)
