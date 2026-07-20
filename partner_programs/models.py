@@ -294,6 +294,138 @@ class Application(models.Model):
         )
 
 
+class Submission(models.Model):
+    """Versioned solution submitted for an application and program stage."""
+
+    STATUS_DRAFT = "draft"
+    STATUS_SUBMITTED = "submitted"
+    STATUS_RETURNED = "returned"
+    STATUS_FINAL = "final"
+    STATUS_CANCELLED = "cancelled"
+
+    STATUS_CHOICES = (
+        (STATUS_DRAFT, "Draft"),
+        (STATUS_SUBMITTED, "Submitted"),
+        (STATUS_RETURNED, "Returned"),
+        (STATUS_FINAL, "Final"),
+        (STATUS_CANCELLED, "Cancelled"),
+    )
+
+    EDITABLE_STATUSES = (
+        STATUS_DRAFT,
+        STATUS_RETURNED,
+    )
+
+    application = models.ForeignKey(
+        Application,
+        on_delete=models.CASCADE,
+        related_name="submissions",
+    )
+    program = models.ForeignKey(
+        PartnerProgram,
+        on_delete=models.CASCADE,
+        related_name="submissions",
+    )
+    submitted_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="program_submissions",
+    )
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    form_data = models.JSONField(default=dict, blank=True)
+    links = models.JSONField(default=list, blank=True)
+    status = models.CharField(
+        max_length=16,
+        choices=STATUS_CHOICES,
+        default=STATUS_DRAFT,
+    )
+    version = models.PositiveIntegerField(default=1)
+    stage_key = models.CharField(max_length=128, default="main")
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def clean(self):
+        super().clean()
+
+        errors = {}
+        if self.application_id:
+            application = self.application
+
+            if self.program_id and self.program_id != application.program_id:
+                errors["program"] = "Program must match the application's program."
+
+            allowed_submitter_ids = {
+                application.user_id,
+                application.created_by_id,
+            }
+            allowed_submitter_ids.discard(None)
+            if (
+                self.submitted_by_id
+                and self.submitted_by_id not in allowed_submitter_ids
+            ):
+                errors["submitted_by"] = (
+                    "Submitted by must match the application user or creator."
+                )
+
+            if self._state.adding and application.status in (
+                Application.STATUS_WITHDRAWN,
+                Application.STATUS_REJECTED,
+                Application.STATUS_CANCELLED,
+            ):
+                errors["application"] = (
+                    "Submissions cannot be created for inactive applications."
+                )
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+    @property
+    def is_draft(self):
+        return self.status == self.STATUS_DRAFT
+
+    @property
+    def is_submitted(self):
+        return self.status == self.STATUS_SUBMITTED
+
+    @property
+    def is_final(self):
+        return self.status == self.STATUS_FINAL
+
+    @property
+    def can_edit(self):
+        return self.status in self.EDITABLE_STATUSES
+
+    @property
+    def can_submit(self):
+        return self.status in self.EDITABLE_STATUSES
+
+    class Meta:
+        verbose_name = "Submission"
+        verbose_name_plural = "Submissions"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["application", "stage_key", "version"],
+                name="uniq_submission_application_stage_version",
+            ),
+            models.CheckConstraint(
+                check=models.Q(version__gte=1),
+                name="submission_version_gte_1",
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            f"Submission<{self.pk}> application={self.application_id} "
+            f"stage={self.stage_key} version={self.version} status={self.status}"
+        )
+
+
 class PartnerProgramUserProfile(models.Model):
     """
     PartnerProgramUserProfile model
