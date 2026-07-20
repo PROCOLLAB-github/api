@@ -364,6 +364,9 @@ class Submission(models.Model):
             if (
                 self.submitted_by_id
                 and self.submitted_by_id not in allowed_submitter_ids
+                and not (
+                    self.submitted_by.is_staff or self.submitted_by.is_superuser
+                )
             ):
                 errors["submitted_by"] = (
                     "Submitted by must match the application user or creator."

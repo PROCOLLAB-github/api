@@ -59,6 +59,10 @@ urlpatterns = [
         "applications/",
         include("partner_programs.application_urls", namespace="applications"),
     ),
+    path(
+        "submissions/",
+        include("partner_programs.submission_urls", namespace="submissions"),
+    ),
     path("courses/", include("courses.urls", namespace="courses")),
     path("rate-project/", include(("project_rates.urls", "rate_projects"))),
     path("feed/", include("feed.urls", namespace="feed")),

@@ -182,6 +182,9 @@ REST_FRAMEWORK = {
         "application_create": config(
             "DRF_THROTTLE_APPLICATION_CREATE", default="10/min", cast=str
         ),
+        "submission_create": config(
+            "DRF_THROTTLE_SUBMISSION_CREATE", default="10/min", cast=str
+        ),
     },
 }
 
