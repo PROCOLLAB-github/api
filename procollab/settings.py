@@ -179,6 +179,9 @@ REST_FRAMEWORK = {
         "program_register_new": config(
             "DRF_THROTTLE_PROGRAM_REGISTER_NEW", default="10/min", cast=str
         ),
+        "application_create": config(
+            "DRF_THROTTLE_APPLICATION_CREATE", default="10/min", cast=str
+        ),
     },
 }
 
