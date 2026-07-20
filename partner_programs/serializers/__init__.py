@@ -16,6 +16,7 @@ from .programs import (
     ProgramProjectFilterRequestSerializer,
     UserProgramsSerializer,
 )
+from .submissions import SubmissionSerializer
 
 __all__ = [
     "ApplicationSerializer",
@@ -33,5 +34,6 @@ __all__ = [
     "PartnerProgramUserSerializer",
     "ProgramProjectCreateSerializer",
     "ProgramProjectFilterRequestSerializer",
+    "SubmissionSerializer",
     "UserProgramsSerializer",
 ]
