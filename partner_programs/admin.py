@@ -18,6 +18,7 @@ from partner_programs.models import (
     PartnerProgramMaterial,
     PartnerProgramProject,
     PartnerProgramUserProfile,
+    Submission,
 )
 from partner_programs.services import prepare_project_scores_export_data
 
@@ -52,6 +53,48 @@ class ApplicationAdmin(admin.ModelAdmin):
         "user",
         "created_by",
         "project",
+    )
+    readonly_fields = (
+        "created_at",
+        "updated_at",
+    )
+    date_hierarchy = "created_at"
+
+
+@admin.register(Submission)
+class SubmissionAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "application",
+        "program",
+        "submitted_by",
+        "title",
+        "status",
+        "stage_key",
+        "version",
+        "submitted_at",
+        "created_at",
+        "updated_at",
+    )
+    list_filter = (
+        "status",
+        "program",
+        "stage_key",
+        "created_at",
+    )
+    search_fields = (
+        "title",
+        "submitted_by__email",
+        "submitted_by__first_name",
+        "submitted_by__last_name",
+        "program__name",
+        "program__tag",
+        "=application__id",
+    )
+    raw_id_fields = (
+        "application",
+        "program",
+        "submitted_by",
     )
     readonly_fields = (
         "created_at",

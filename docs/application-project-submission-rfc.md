@@ -383,13 +383,12 @@ Project не является заявкой. Он может быть:
 - `id`
 - `application`
 - `program`
-- `stage`, nullable
+- `stage_key`, строковый ключ этапа
 - `submitted_by`
 - `title`
 - `description`
 - `form_data`, JSON
 - `links`, JSON/list
-- `files` relation
 - `status`
 - `version`
 - `submitted_at`
@@ -409,10 +408,11 @@ Project не является заявкой. Он может быть:
 - `submitted` - отправлена;
 - `returned` - возвращена на доработку;
 - `final` - финальная версия зафиксирована.
+- `cancelled` - сдача отменена.
 
 Ограничения от дублей:
 
-- выбрать стратегию уникальности: `application + stage + version` или `application + stage + active_status`;
+- уникальность `application + stage_key + version`;
 - повторный POST должен быть идемпотентным или защищенным constraint-ами;
 - нельзя создавать сдачу для отозванной, отклоненной или отмененной заявки, если правила программы это запрещают.
 
@@ -425,6 +425,11 @@ Project не является заявкой. Он может быть:
 - `POST /submissions/<id>/submit/`
 
 Submission не является заявкой и не является проектом. Это событие или версия сдачи решения. Эксперт должен оценивать конкретную сдачу, а не абстрактный проект, который может измениться после дедлайна.
+
+MVP-заметка: отдельная модель `Stage` пока не создается, вместо нее используется
+`stage_key="main"`. Модели `SubmissionFile` и `SubmissionLink` также отложены:
+ссылки временно хранятся в `links` как JSON-массив, а полноценные этапы и файлы
+будут добавлены отдельными PR.
 
 ### SubmissionFile / SubmissionLink
 
