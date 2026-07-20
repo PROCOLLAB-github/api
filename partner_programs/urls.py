@@ -1,6 +1,10 @@
 from django.urls import path
 
 from news.views import NewsDetail, NewsDetailSetLiked, NewsDetailSetViewed, NewsList
+from partner_programs.applications_views import (
+    MyProgramApplicationView,
+    ProgramApplicationCreateView,
+)
 from partner_programs.views import (
     PartnerProgramCreateUserAndRegister,
     PartnerProgramDataSchema,
@@ -22,6 +26,16 @@ app_name = "partner_programs"
 
 urlpatterns = [
     path("", PartnerProgramList.as_view()),
+    path(
+        "<int:program_id>/applications/my/",
+        MyProgramApplicationView.as_view(),
+        name="my-application",
+    ),
+    path(
+        "<int:program_id>/applications/",
+        ProgramApplicationCreateView.as_view(),
+        name="application-create",
+    ),
     path("<int:pk>/", PartnerProgramDetail.as_view()),
     path(
         "partner-program-projects/<int:pk>/submit/",

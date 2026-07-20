@@ -55,6 +55,10 @@ urlpatterns = [
     # отключены. Для возврата модуля раскомментировать строку ниже.
     # path("events/", include("events.urls", namespace="events")),
     path("programs/", include("partner_programs.urls", namespace="partner_programs")),
+    path(
+        "applications/",
+        include("partner_programs.application_urls", namespace="applications"),
+    ),
     path("courses/", include("courses.urls", namespace="courses")),
     path("rate-project/", include(("project_rates.urls", "rate_projects"))),
     path("feed/", include("feed.urls", namespace="feed")),
