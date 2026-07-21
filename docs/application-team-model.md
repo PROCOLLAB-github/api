@@ -8,9 +8,9 @@
 - `Team` — команда, собранная только для этой заявки;
 - `TeamMember` — членство пользователя в команде заявки.
 
-Публичного Team API и атомарного service создания команды пока нет. Модели
-подготавливают структуру данных для следующих PR, не меняя текущий
-индивидуальный API flow.
+Публичного Team API пока нет. Транзакционный Application/Team service создает
+командный draft вместе с Team и accepted-капитаном и проверяет полный invariant
+перед submit. Состав команды через публичный API пока не редактируется.
 
 ## Participation mode
 
@@ -110,28 +110,26 @@ TeamMember, а TeamMember уже требует сохраненную Team.
 
 ## Текущий технический порядок создания
 
-До появления публичного API техническая последовательность выглядит так:
+Domain service выполняет последовательность атомарно:
 
 1. создать или обновить Application с `participation_mode=team`;
 2. создать Team с captain, совпадающим с `Application.user`;
 3. создать accepted TeamMember с `role=captain` и тем же пользователем.
 
-Клиентам нельзя использовать эту последовательность напрямую. Сейчас нет
-публичных serializers/views/URLs и транзакционного service, который откатит
-частично созданную команду.
+Клиенты используют существующий Application create endpoint с
+`participation_mode=team` и необязательным `team_name`. При ошибке service
+откатывает все три шага. Публичных Team serializers/views/URLs и управления
+участниками по-прежнему нет.
 
 ## Вне текущего MVP
 
 Следующие PR должны добавить:
 
-- атомарный creation/invariant service;
-- проверку Registration и одной активной заявки на Program;
 - Team permissions и публичный Team API;
 - блокировку состава по Application status;
 - TeamInvite, accept/decline/revoke/expire;
 - email и внутренние уведомления;
-- program policy по формату и размеру команды;
 - frontend wizard и вкладку команды.
 
-Project, `projects.Collaborator`, legacy `invites.Invite`, Submission и
-существующие Application endpoints этим слоем данных не изменяются.
+Legacy Application withdraw, Project/`projects.Collaborator`,
+`invites.Invite` и Submission flow этим service не изменяются.
