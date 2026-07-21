@@ -177,12 +177,17 @@ class PartnerProgram(models.Model):
 
 
 class Application(models.Model):
-    """
-    MVP application model for participation in a partner program.
+    """Заявка пользователя на участие в партнерской программе."""
 
-    Team applications are intentionally deferred until the Team model exists.
-    For now, an application is individual and must have `user`.
-    """
+    PARTICIPATION_MODE_UNDECIDED = "undecided"
+    PARTICIPATION_MODE_INDIVIDUAL = "individual"
+    PARTICIPATION_MODE_TEAM = "team"
+
+    PARTICIPATION_MODE_CHOICES = (
+        (PARTICIPATION_MODE_UNDECIDED, "Не определен"),
+        (PARTICIPATION_MODE_INDIVIDUAL, "Индивидуально"),
+        (PARTICIPATION_MODE_TEAM, "В команде"),
+    )
 
     STATUS_DRAFT = "draft"
     STATUS_SUBMITTED = "submitted"
@@ -223,6 +228,13 @@ class Application(models.Model):
         on_delete=models.PROTECT,
         related_name="created_program_applications",
     )
+    # Временный default сохраняет совместимость с API и frontend, которые пока
+    # не передают формат участия. `undecided` станет default вместе с wizard.
+    participation_mode = models.CharField(
+        max_length=16,
+        choices=PARTICIPATION_MODE_CHOICES,
+        default=PARTICIPATION_MODE_INDIVIDUAL,
+    )
     status = models.CharField(
         max_length=16,
         choices=STATUS_CHOICES,
@@ -250,7 +262,7 @@ class Application(models.Model):
 
         if not self.user_id:
             errors["user"] = (
-                "User is required for MVP applications until Team is implemented."
+                "User is required as the application owner and team captain in MVP."
             )
 
         if self.user_id and self.program_id and self.status in self.ACTIVE_STATUSES:
@@ -291,6 +303,174 @@ class Application(models.Model):
         return (
             f"Application<{self.pk}> "
             f"user={self.user_id} program={self.program_id} status={self.status}"
+        )
+
+
+class Team(models.Model):
+    """Команда конкретной заявки, независимая от состава связанного Project."""
+
+    application = models.OneToOneField(
+        Application,
+        on_delete=models.CASCADE,
+        related_name="team",
+    )
+    name = models.CharField(max_length=255, blank=True, default="")
+    captain = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="captained_application_teams",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def clean(self):
+        """Проверяет формат заявки и единого владельца командного MVP."""
+        super().clean()
+
+        errors = {}
+        if self.application_id:
+            application = self.application
+            if application.participation_mode != Application.PARTICIPATION_MODE_TEAM:
+                errors["application"] = (
+                    "Команду можно создать только для заявки с командным форматом."
+                )
+            if self.captain_id and self.captain_id != application.user_id:
+                errors["captain"] = (
+                    "Капитан команды должен совпадать с владельцем заявки."
+                )
+
+        # Полный invariant намеренно не требует captain TeamMember: при первом
+        # сохранении Team связанная запись участника еще не может существовать.
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+    class Meta:
+        verbose_name = "Команда заявки"
+        verbose_name_plural = "Команды заявок"
+
+    def __str__(self):
+        return f"Team<{self.pk}> application={self.application_id} name={self.name}"
+
+
+class TeamMember(models.Model):
+    """Членство пользователя в команде конкретной заявки."""
+
+    ROLE_CAPTAIN = "captain"
+    ROLE_MEMBER = "member"
+
+    ROLE_CHOICES = (
+        (ROLE_CAPTAIN, "Капитан"),
+        (ROLE_MEMBER, "Участник"),
+    )
+
+    STATUS_INVITED = "invited"
+    STATUS_ACCEPTED = "accepted"
+    STATUS_DECLINED = "declined"
+    STATUS_REMOVED = "removed"
+    STATUS_LEFT = "left"
+
+    STATUS_CHOICES = (
+        (STATUS_INVITED, "Приглашен"),
+        (STATUS_ACCEPTED, "Принят"),
+        (STATUS_DECLINED, "Отклонил приглашение"),
+        (STATUS_REMOVED, "Исключен"),
+        (STATUS_LEFT, "Покинул команду"),
+    )
+
+    team = models.ForeignKey(
+        Team,
+        on_delete=models.CASCADE,
+        related_name="members",
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="application_team_memberships",
+    )
+    role = models.CharField(
+        max_length=16,
+        choices=ROLE_CHOICES,
+        default=ROLE_MEMBER,
+    )
+    status = models.CharField(
+        max_length=16,
+        choices=STATUS_CHOICES,
+        default=STATUS_INVITED,
+    )
+    invited_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        related_name="invited_application_team_members",
+        null=True,
+        blank=True,
+    )
+    joined_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def clean(self):
+        """Проверяет роль капитана и фиксирует первое принятие в команду."""
+        super().clean()
+
+        errors = {}
+        if self.role == self.ROLE_CAPTAIN:
+            if self.status != self.STATUS_ACCEPTED:
+                errors["status"] = "Капитан должен быть принятым участником команды."
+            if self.team_id and self.user_id != self.team.captain_id:
+                errors["user"] = "Капитан-участник должен совпадать с капитаном команды."
+
+        if self.status == self.STATUS_ACCEPTED and self.joined_at is None:
+            self.joined_at = timezone.now()
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        joined_at_was_missing = self.joined_at is None
+        self.full_clean()
+        if (
+            joined_at_was_missing
+            and self.joined_at is not None
+            and kwargs.get("update_fields") is not None
+        ):
+            kwargs["update_fields"] = set(kwargs["update_fields"]) | {"joined_at"}
+        return super().save(*args, **kwargs)
+
+    class Meta:
+        verbose_name = "Участник команды заявки"
+        verbose_name_plural = "Участники команд заявок"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["team", "user"],
+                name="uniq_team_member_user",
+            ),
+            models.UniqueConstraint(
+                fields=["team"],
+                condition=models.Q(
+                    role="captain",
+                    status="accepted",
+                ),
+                name="uniq_accepted_captain_team",
+            ),
+            models.CheckConstraint(
+                check=(
+                    ~models.Q(role="captain")
+                    | models.Q(status="accepted")
+                ),
+                name="captain_team_member_is_accepted",
+            ),
+        ]
+        # Конфликт участий между командами и индивидуальными заявками проходит
+        # через несколько таблиц и требует отдельного транзакционного service.
+
+    def __str__(self):
+        return (
+            f"TeamMember<{self.pk}> team={self.team_id} "
+            f"user={self.user_id} role={self.role} status={self.status}"
         )
 
 

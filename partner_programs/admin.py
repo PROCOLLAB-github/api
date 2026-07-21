@@ -19,6 +19,8 @@ from partner_programs.models import (
     PartnerProgramProject,
     PartnerProgramUserProfile,
     Submission,
+    Team,
+    TeamMember,
 )
 from partner_programs.services import prepare_project_scores_export_data
 
@@ -30,6 +32,7 @@ class ApplicationAdmin(admin.ModelAdmin):
         "program",
         "user",
         "created_by",
+        "participation_mode",
         "status",
         "project",
         "submitted_at",
@@ -38,6 +41,7 @@ class ApplicationAdmin(admin.ModelAdmin):
     )
     list_filter = (
         "status",
+        "participation_mode",
         "program",
         "created_at",
     )
@@ -59,6 +63,100 @@ class ApplicationAdmin(admin.ModelAdmin):
         "updated_at",
     )
     date_hierarchy = "created_at"
+
+
+@admin.register(Team)
+class TeamAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "application",
+        "get_program",
+        "name",
+        "captain",
+        "created_at",
+        "updated_at",
+    )
+    list_filter = (
+        "application__program",
+        "created_at",
+    )
+    search_fields = (
+        "name",
+        "captain__email",
+        "captain__first_name",
+        "captain__last_name",
+        "application__program__name",
+        "application__program__tag",
+        "=application__id",
+    )
+    raw_id_fields = (
+        "application",
+        "captain",
+    )
+    readonly_fields = (
+        "created_at",
+        "updated_at",
+    )
+    list_select_related = (
+        "application",
+        "application__program",
+        "captain",
+    )
+    date_hierarchy = "created_at"
+
+    @admin.display(description="Программа", ordering="application__program")
+    def get_program(self, obj):
+        return obj.application.program
+
+
+@admin.register(TeamMember)
+class TeamMemberAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "team",
+        "get_program",
+        "user",
+        "role",
+        "status",
+        "invited_by",
+        "joined_at",
+        "created_at",
+    )
+    list_filter = (
+        "role",
+        "status",
+        "team__application__program",
+        "created_at",
+    )
+    search_fields = (
+        "user__email",
+        "user__first_name",
+        "user__last_name",
+        "team__name",
+        "team__application__program__name",
+        "team__application__program__tag",
+    )
+    raw_id_fields = (
+        "team",
+        "user",
+        "invited_by",
+    )
+    readonly_fields = (
+        "created_at",
+        "updated_at",
+    )
+    list_select_related = (
+        "team",
+        "team__application",
+        "team__application__program",
+        "user",
+        "invited_by",
+    )
+    date_hierarchy = "created_at"
+
+    @admin.display(description="Программа", ordering="team__application__program")
+    def get_program(self, obj):
+        return obj.team.application.program
 
 
 @admin.register(Submission)
