@@ -35,6 +35,16 @@ class PartnerProgram(models.Model):
         ("experts_only", "Только экспертам"),
     ]
 
+    PARTICIPATION_FORMAT_INDIVIDUAL_ONLY = "individual_only"
+    PARTICIPATION_FORMAT_TEAM_ONLY = "team_only"
+    PARTICIPATION_FORMAT_INDIVIDUAL_OR_TEAM = "individual_or_team"
+
+    PARTICIPATION_FORMAT_CHOICES = (
+        (PARTICIPATION_FORMAT_INDIVIDUAL_ONLY, "Только индивидуально"),
+        (PARTICIPATION_FORMAT_TEAM_ONLY, "Только в команде"),
+        (PARTICIPATION_FORMAT_INDIVIDUAL_OR_TEAM, "Индивидуально или в команде"),
+    )
+
     name = models.TextField(
         verbose_name="Название",
     )
@@ -125,8 +135,34 @@ class PartnerProgram(models.Model):
         verbose_name="Публиковать проекты после окончания программы",
         help_text="Если включено, проекты участников станут публичными после завершения программы",
     )
+    # До появления выбора формата весь существующий flow остается индивидуальным.
+    participation_format = models.CharField(
+        max_length=24,
+        choices=PARTICIPATION_FORMAT_CHOICES,
+        default=PARTICIPATION_FORMAT_INDIVIDUAL_ONLY,
+        verbose_name="Разрешенный формат участия",
+    )
+    # Будущий service считает accepted-участников вместе с капитаном.
+    team_min_size = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Минимальный размер команды",
+        help_text="Количество принятых участников с учетом капитана",
+    )
+    team_max_size = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Максимальный размер команды",
+        help_text="Количество принятых участников с учетом капитана",
+    )
     datetime_registration_ends = models.DateTimeField(
         verbose_name="Дата окончания регистрации",
+    )
+    datetime_application_ends = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Дата окончания подачи заявок",
+        help_text="Отдельный дедлайн Application; другие дедлайны не используются как fallback",
     )
     datetime_project_submission_ends = models.DateTimeField(
         null=True,
@@ -160,9 +196,122 @@ class PartnerProgram(models.Model):
             return False
         return self.managers.filter(pk=user.pk).exists()
 
+    def clean(self):
+        """Проверяет согласованность формата участия и размеров команды."""
+        super().clean()
+        errors = {}
+
+        if self.participation_format == self.PARTICIPATION_FORMAT_INDIVIDUAL_ONLY:
+            if self.team_min_size is not None:
+                errors["team_min_size"] = (
+                    "Для индивидуального формата минимальный размер команды не задается."
+                )
+            if self.team_max_size is not None:
+                errors["team_max_size"] = (
+                    "Для индивидуального формата максимальный размер команды не задается."
+                )
+        elif self.participation_format in {
+            self.PARTICIPATION_FORMAT_TEAM_ONLY,
+            self.PARTICIPATION_FORMAT_INDIVIDUAL_OR_TEAM,
+        }:
+            if self.team_min_size is None:
+                errors["team_min_size"] = (
+                    "Для командного формата укажите минимальный размер команды."
+                )
+            elif self.team_min_size < 2:
+                errors["team_min_size"] = (
+                    "Минимальный размер команды должен быть не меньше двух."
+                )
+
+            if self.team_max_size is None:
+                errors["team_max_size"] = (
+                    "Для командного формата укажите максимальный размер команды."
+                )
+            elif self.team_max_size < 2:
+                errors["team_max_size"] = (
+                    "Максимальный размер команды должен быть не меньше двух."
+                )
+            elif (
+                self.team_min_size is not None
+                and self.team_max_size < self.team_min_size
+            ):
+                errors["team_max_size"] = (
+                    "Максимальный размер команды не может быть меньше минимального."
+                )
+
+        if errors:
+            raise ValidationError(errors)
+
+    def allows_participation_mode(self, mode: str) -> bool:
+        """Возвращает, разрешен ли выбранный финальный формат заявки."""
+        allowed_modes = {
+            self.PARTICIPATION_FORMAT_INDIVIDUAL_ONLY: {
+                Application.PARTICIPATION_MODE_INDIVIDUAL
+            },
+            self.PARTICIPATION_FORMAT_TEAM_ONLY: {
+                Application.PARTICIPATION_MODE_TEAM
+            },
+            self.PARTICIPATION_FORMAT_INDIVIDUAL_OR_TEAM: {
+                Application.PARTICIPATION_MODE_INDIVIDUAL,
+                Application.PARTICIPATION_MODE_TEAM,
+            },
+        }
+        return mode in allowed_modes.get(self.participation_format, set())
+
+    def is_application_deadline_passed(self, at=None) -> bool:
+        """Проверяет отдельный дедлайн Application без fallback на legacy-поля."""
+        if self.datetime_application_ends is None:
+            return False
+        moment = at if at is not None else timezone.now()
+        return moment > self.datetime_application_ends
+
     class Meta:
         verbose_name = "Программа"
         verbose_name_plural = "Программы"
+        # Constraints защищают policy одной программы. Фактический состав Team
+        # требует проверки связанных строк в будущем транзакционном service.
+        constraints = [
+            models.CheckConstraint(
+                check=(
+                    models.Q(team_min_size__isnull=True)
+                    | models.Q(team_min_size__gte=2)
+                ),
+                name="program_team_min_gte_2_or_null",
+            ),
+            models.CheckConstraint(
+                check=(
+                    models.Q(team_max_size__isnull=True)
+                    | models.Q(team_max_size__gte=2)
+                ),
+                name="program_team_max_gte_2_or_null",
+            ),
+            models.CheckConstraint(
+                check=(
+                    models.Q(team_min_size__isnull=True)
+                    | models.Q(team_max_size__isnull=True)
+                    | models.Q(team_max_size__gte=models.F("team_min_size"))
+                ),
+                name="program_team_max_gte_min",
+            ),
+            models.CheckConstraint(
+                check=(
+                    models.Q(
+                        participation_format="individual_only",
+                        team_min_size__isnull=True,
+                        team_max_size__isnull=True,
+                    )
+                    | models.Q(
+                        participation_format__in=(
+                            "team_only",
+                            "individual_or_team",
+                        ),
+                        team_min_size__isnull=False,
+                        team_max_size__isnull=False,
+                    )
+                ),
+                name="program_team_sizes_match_format",
+            ),
+        ]
 
     def __str__(self):
         return f"PartnerProgram<{self.pk}> - {self.name}"

@@ -48,16 +48,18 @@ Program
 **Связи.** Имеет регистрации, заявки и сдачи; связывается с менеджерами,
 экспертами, курсами, материалами и legacy-проектами.
 
-**Что хранит.** Описание и изображения, даты начала и завершения, дедлайны
-регистрации, legacy-дедлайн подачи проектов и дедлайн оценки, схему
-регистрационных данных, настройки конкурсности и доступности проектов.
+**Что хранит.** Описание и изображения, даты начала и завершения, дедлайн
+регистрации, отдельный дедлайн Application, legacy-дедлайн подачи проектов и
+дедлайн оценки, схему регистрационных данных, настройки конкурсности,
+доступности проектов, формата участия и размера команды.
 
 **Что не должна хранить.** Ответы конкретного участника, состав команды,
 решение или оценку конкретной работы.
 
 **Текущее состояние.** Реализована как `partner_programs.PartnerProgram`.
-Специальных настроек формата участия, минимального/максимального размера
-команды, дедлайна заявки и отдельного дедлайна решения пока нет.
+Формат участия, минимальный/максимальный размер команды и отдельный дедлайн
+Application хранятся в модели и защищены validation/constraints. Enforcement
+в Application/team service и отдельный дедлайн решения пока отсутствуют.
 
 ### Registration
 
@@ -615,6 +617,7 @@ Registration.
 | Область | Уже реализовано | Частично | Отсутствует | Комментарий |
 |---|---|---|---|---|
 | Registration | `PartnerProgramUserProfile`, register endpoints, `participating=1`, deadline и uniqueness | Статус Registration и связь с новым flow | Отдельная модель/явный contract Registration | Application create не требует Registration |
+| Program participation policy | Форматы `individual_only/team_only/individual_or_team`, размеры Team, application deadline, model/DB validation и admin | Helpers пока вызываются только явно | Enforcement в Application/team service и публичный API | Default `individual_only`, размеры и deadline существующих программ остаются `null` |
 | Application model | Program, user, created_by, participation_mode, form_data, nullable Project, timestamps, partial unique constraint | Ownership по-прежнему опирается на Application.user | returned, snapshot, review reason | Default participation_mode временно individual |
 | Application API | create/my/detail/patch/submit/withdraw, idempotency create/submit/withdraw, scoped throttle create | Owner/staff access | review endpoints, manager access, deadline/form/team checks | 404 my application корректно означает отсутствие записи |
 | Application statuses | Шесть статусов и timestamps submit/approve/reject/withdraw | Переходы draft/submit/withdraw | `returned`, return/approve/reject/cancel actions | approved/rejected могут появиться только вне нового API, например через admin |
@@ -628,7 +631,7 @@ Registration.
 | Notification | Email и chat WebSocket infrastructure | Mailing logs не являются inbox | Доменная Notification и пользовательский центр | Не входит в первый Team PR |
 | Evaluation | `Criteria`, `ProjectScore`, `ProjectExpertAssignment` для legacy Project | Эксперты и распределенное оценивание проекта | Evaluation по Submission | Нельзя смешивать с ProjectScore без миграции |
 | Result | Legacy scores и пользовательские достижения существуют отдельно | Нет единого результата заявки | Result/ranking/publication contract | Требует решения об источнике итогов |
-| Deadlines | Registration и legacy project submission/evaluation dates | Поля Program можно переиспользовать только после решения semantics | Проверки в Application/Submission API, отдельные application/solution deadlines | Сейчас новый flow позволяет действия после дедлайнов |
+| Deadlines | Registration, отдельный Application deadline и legacy project submission/evaluation dates | Application helper не подключен к endpoints | Проверки в Application/Submission API и отдельный solution deadline | Application deadline не имеет fallback на legacy-поля |
 | Permissions | Owner/staff для новых API; manager/expert permissions есть для legacy flow | Staff имеет расширенный доступ | Captain/member, manager и expert permissions для новых сущностей | Нужен общий domain permission layer |
 | Constraints | Registration uniqueness; active individual Application; Team one-to-one/member/captain constraints; Submission version; Project collaborators | Captain/member validation есть только внутри одной Team | Cross-team active participation и team size | Cross-table race требует транзакционного service |
 | Admin | PartnerProgram, Registration, Application, Team, TeamMember, Submission, Project, Invite и legacy evaluation зарегистрированы | Admin позволяет ручную диагностику | TeamInvite/Evaluation admin | Admin не заменяет transition services |
@@ -683,12 +686,12 @@ Registration.
 | Team и TeamMember | Модели, admin, constraints и tests реализованы | Добавить транзакционный service и публичный API | P0 | Application/team invariants |
 | Только зарегистрированный создает Application | Не проверяется | Domain service должен проверять PartnerProgramUserProfile | P0 | Application eligibility and lifecycle |
 | Одна активная заявка на пользователя с учетом Team | Constraint покрывает только `Application.user` | Транзакционная проверка индивидуальных и командных участий | P0 | Application/team invariants |
-| Валидация команды перед submit | Есть модель Team, но нет program policy/service | Настройки формата/размера Program и submit validation | P0 | Program participation policy |
+| Валидация команды перед submit | Team и Program policy реализованы | Транзакционная проверка accepted-состава и формата перед submit | P0 | Application/team invariants |
 | Captain-only actions | Captain хранится, endpoints Team не учитывают | Team-aware permissions для Application и Submission | P0 | Team permissions |
 | Team API | Отсутствует | CRUD ограниченного MVP, members, leave/transfer captain | P1 | Team API |
 | Полный lifecycle Application | Нет returned/review actions | Добавить return/approve/reject/cancel с reason/audit | P1 | Application review API |
 | TeamInvite | Есть только Project Invite | Отдельные token/email/user invites и идемпотентный accept | P1 | TeamInvite model and API |
-| Application deadlines | Новый API их не проверяет | Зафиксировать поля Program и проверять create/edit/submit/withdraw | P0 | Application eligibility and lifecycle |
+| Application deadlines | Отдельное поле и helper Program реализованы, API их не проверяет | Проверять create/edit/submit/withdraw без fallback на legacy deadlines | P0 | Application eligibility and lifecycle |
 | Submission deadlines и роли | Новый API не проверяет сроки, manager/expert/team | Добавить policy и единый permission layer | P1 | Submission lifecycle hardening |
 | Return/finalize Submission | Статусы есть, действий нет | Организаторские endpoints и audit fields/reasons | P1 | Submission review API |
 | Semantics версий Submission | Несколько записей и auto-next уже есть | Определить current/final/evaluated version и поведение after return | P1 | Submission version workflow |
@@ -704,8 +707,9 @@ Registration.
 1. **`feature/application-team-model` — реализовано.** Добавлены
    `participation_mode`, Team и TeamMember с миграцией, admin, модельными
    ограничениями и тестами; без API.
-2. **Program participation policy.** Зафиксировать разрешенные форматы,
-   минимальный/максимальный размер команды и реальные дедлайны Application.
+2. **`feature/program-participation-policy` — реализовано.** Добавлены
+   разрешенные форматы, минимальный/максимальный размер команды и отдельный
+   дедлайн Application; enforcement в API намеренно не включен.
 3. **Application/team invariants.** Ввести транзакционный service для проверки
    Registration, конфликтов активного участия, капитана и accepted-состава.
 4. **Team permissions and API.** Добавить owner/captain/member/manager access,

@@ -229,12 +229,20 @@ class PartnerProgramAdmin(admin.ModelAdmin):
 
     inlines = [PartnerProgramMaterialInline, PartnerProgramFieldInline]
     form = PartnerProgramAdminForm
-    list_display = ("id", "name", "tag", "city", "datetime_created")
+    list_display = (
+        "id",
+        "name",
+        "tag",
+        "city",
+        "participation_format",
+        "datetime_created",
+    )
     list_display_links = (
         "id",
         "name",
         "tag",
         "city",
+        "participation_format",
         "datetime_created",
     )
     search_fields = (
@@ -242,7 +250,7 @@ class PartnerProgramAdmin(admin.ModelAdmin):
         "city",
         "tag",
     )
-    list_filter = ("city",)
+    list_filter = ("city", "participation_format")
 
     autocomplete_fields = ("managers",)
     date_hierarchy = "datetime_started"
@@ -276,6 +284,16 @@ class PartnerProgramAdmin(admin.ModelAdmin):
                     ),
                     ("presentation_address", "registration_link"),
                     "data_schema",
+                )
+            },
+        ),
+        (
+            "Участие и заявки",
+            {
+                "fields": (
+                    "participation_format",
+                    ("team_min_size", "team_max_size"),
+                    "datetime_application_ends",
                 )
             },
         ),
