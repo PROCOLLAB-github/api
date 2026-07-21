@@ -1,16 +1,17 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, transaction
-from django.db.models import Max
+from django.db.models import Max, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.throttling import PostOnlyScopedRateThrottle
-from partner_programs.models import Application, Submission
+from partner_programs.models import Application, Submission, TeamMember
+from partner_programs.permissions import can_edit_application, can_edit_submission
 from partner_programs.serializers import SubmissionSerializer
 
 
@@ -18,7 +19,14 @@ def _application_queryset_for(user):
     queryset = Application.objects.select_related("program", "user", "created_by")
     if user.is_staff or user.is_superuser:
         return queryset
-    return queryset.filter(user=user)
+    return queryset.filter(
+        Q(user=user)
+        | Q(
+            team__members__user=user,
+            team__members__status=TeamMember.STATUS_ACCEPTED,
+        )
+        | Q(program__managers=user)
+    ).distinct()
 
 
 def _submission_queryset_for(user):
@@ -31,7 +39,14 @@ def _submission_queryset_for(user):
     )
     if user.is_staff or user.is_superuser:
         return queryset
-    return queryset.filter(application__user=user)
+    return queryset.filter(
+        Q(application__user=user)
+        | Q(
+            application__team__members__user=user,
+            application__team__members__status=TeamMember.STATUS_ACCEPTED,
+        )
+        | Q(program__managers=user)
+    ).distinct()
 
 
 def _submission_response(submission, response_status=status.HTTP_200_OK):
@@ -63,6 +78,10 @@ class ApplicationSubmissionListCreateView(APIView):
 
     def post(self, request, application_id):
         application = self.get_application(request, application_id)
+        if not can_edit_application(request.user, application):
+            raise PermissionDenied(
+                "Only the application owner or staff can create submissions."
+            )
         if application.status not in (
             Application.STATUS_SUBMITTED,
             Application.STATUS_APPROVED,
@@ -88,9 +107,13 @@ class ApplicationSubmissionListCreateView(APIView):
         try:
             with transaction.atomic():
                 locked_application = get_object_or_404(
-                    _application_queryset_for(request.user).select_for_update(),
+                    Application.objects.select_for_update(),
                     pk=application.pk,
                 )
+                if not can_edit_application(request.user, locked_application):
+                    raise PermissionDenied(
+                        "Only the application owner or staff can create submissions."
+                    )
                 if locked_application.status not in (
                     Application.STATUS_SUBMITTED,
                     Application.STATUS_APPROVED,
@@ -153,23 +176,39 @@ class SubmissionDetailView(APIView):
         return _submission_response(self.get_object(request, submission_id))
 
     def patch(self, request, submission_id):
-        submission = self.get_object(request, submission_id)
-        if not submission.can_edit:
-            raise ValidationError(
-                {"status": "Only draft or returned submissions can be updated."}
+        visible_submission = self.get_object(request, submission_id)
+        if not can_edit_submission(request.user, visible_submission):
+            raise PermissionDenied(
+                "Only the application owner or staff can update submissions."
             )
+        with transaction.atomic():
+            application = Application.objects.select_for_update().get(
+                pk=visible_submission.application_id
+            )
+            if not can_edit_application(request.user, application):
+                raise PermissionDenied(
+                    "Only the application owner or staff can update submissions."
+                )
+            submission = Submission.objects.select_for_update().get(
+                pk=visible_submission.pk
+            )
+            submission.application = application
+            if not submission.can_edit:
+                raise ValidationError(
+                    {"status": "Only draft or returned submissions can be updated."}
+                )
 
-        serializer = SubmissionSerializer(
-            submission,
-            data=request.data,
-            partial=True,
-        )
-        serializer.is_valid(raise_exception=True)
-        try:
-            serializer.save()
-        except DjangoValidationError as exc:
-            raise ValidationError(exc.message_dict) from exc
-        return Response(serializer.data)
+            serializer = SubmissionSerializer(
+                submission,
+                data=request.data,
+                partial=True,
+            )
+            serializer.is_valid(raise_exception=True)
+            try:
+                serializer.save()
+            except DjangoValidationError as exc:
+                raise ValidationError(exc.message_dict) from exc
+            return Response(serializer.data)
 
 
 class SubmissionSubmitView(APIView):
@@ -177,10 +216,25 @@ class SubmissionSubmitView(APIView):
 
     def post(self, request, submission_id):
         with transaction.atomic():
-            submission = get_object_or_404(
-                _submission_queryset_for(request.user).select_for_update(),
+            visible_submission = get_object_or_404(
+                _submission_queryset_for(request.user),
                 pk=submission_id,
             )
+            if not can_edit_submission(request.user, visible_submission):
+                raise PermissionDenied(
+                    "Only the application owner or staff can submit submissions."
+                )
+            application = Application.objects.select_for_update().get(
+                pk=visible_submission.application_id
+            )
+            if not can_edit_application(request.user, application):
+                raise PermissionDenied(
+                    "Only the application owner or staff can submit submissions."
+                )
+            submission = Submission.objects.select_for_update().get(
+                pk=visible_submission.pk
+            )
+            submission.application = application
             if submission.status == Submission.STATUS_SUBMITTED:
                 return _submission_response(submission)
             if not submission.can_submit:
@@ -199,10 +253,25 @@ class SubmissionCancelView(APIView):
 
     def post(self, request, submission_id):
         with transaction.atomic():
-            submission = get_object_or_404(
-                _submission_queryset_for(request.user).select_for_update(),
+            visible_submission = get_object_or_404(
+                _submission_queryset_for(request.user),
                 pk=submission_id,
             )
+            if not can_edit_submission(request.user, visible_submission):
+                raise PermissionDenied(
+                    "Only the application owner or staff can cancel submissions."
+                )
+            application = Application.objects.select_for_update().get(
+                pk=visible_submission.application_id
+            )
+            if not can_edit_application(request.user, application):
+                raise PermissionDenied(
+                    "Only the application owner or staff can cancel submissions."
+                )
+            submission = Submission.objects.select_for_update().get(
+                pk=visible_submission.pk
+            )
+            submission.application = application
             if submission.status == Submission.STATUS_CANCELLED:
                 return _submission_response(submission)
             if not submission.can_edit:
