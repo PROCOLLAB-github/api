@@ -6,6 +6,8 @@ from pathlib import Path
 
 from decouple import config
 
+from procollab.settings_helpers import extend_with_env_list
+
 mimetypes.add_type("application/javascript", ".js", True)
 mimetypes.add_type("text/css", ".css", True)
 mimetypes.add_type("text/html", ".html", True)
@@ -23,28 +25,35 @@ TELEGRAM_CHANNEL = config("TELEGRAM_CHANNEL", default="", cast=str)
 
 TAGGIT_CASE_INSENSITIVE = True
 
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:8000",
-    "http://127.0.0.1:8000",
-    "http://0.0.0.0:8000",
-    "https://api.procollab.ru",
-    "https://procollab.ru",
-    "https://www.procollab.ru",
-    "https://app.procollab.ru",
-    "https://dev.procollab.ru",
-]
+# Дополнительные домены позволяют отдельным dev-контурам обходиться без локальных правок settings.py.
+CSRF_TRUSTED_ORIGINS = extend_with_env_list(
+    [
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "http://0.0.0.0:8000",
+        "https://api.procollab.ru",
+        "https://procollab.ru",
+        "https://www.procollab.ru",
+        "https://app.procollab.ru",
+        "https://dev.procollab.ru",
+    ],
+    config("EXTRA_CSRF_TRUSTED_ORIGINS", default="", cast=str),
+)
 
-ALLOWED_HOSTS = [
-    "127.0.0.1:8000",
-    "127.0.0.1",
-    "localhost",
-    "0.0.0.0",
-    "api.procollab.ru",
-    "app.procollab.ru",
-    "dev.procollab.ru",
-    "procollab.ru",
-    "web",  # From Docker
-]
+ALLOWED_HOSTS = extend_with_env_list(
+    [
+        "127.0.0.1:8000",
+        "127.0.0.1",
+        "localhost",
+        "0.0.0.0",
+        "api.procollab.ru",
+        "app.procollab.ru",
+        "dev.procollab.ru",
+        "procollab.ru",
+        "web",  # Имя сервиса в Docker
+    ],
+    config("EXTRA_ALLOWED_HOSTS", default="", cast=str),
+)
 
 PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.BCryptSHA256PasswordHasher",
