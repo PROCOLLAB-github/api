@@ -2,11 +2,12 @@
 
 Статус: целевая доменная модель и аудит текущей реализации backend.
 
-Актуальность аудита: ветка `master`, коммит `ff0ee65` от 21 июля 2026 года.
+Актуальность аудита: после добавления базовых моделей Team и TeamMember,
+21 июля 2026 года.
 
 Документ развивает `docs/application-project-submission-rfc.md` с учетом уже
-реализованных `Application` и `Submission`. Он не является описанием готового
-контракта для еще не существующих сущностей команды, приглашений, оценки и
+реализованных `Application`, `Team`, `TeamMember` и `Submission`. Он не является
+описанием готового контракта для еще не существующих приглашений, оценки и
 результата.
 
 ## 1. Назначение документа
@@ -94,8 +95,9 @@ legacy `Project`.
 проекта.
 
 **Текущее состояние.** Реализована как `partner_programs.Application`.
-Текущий MVP только индивидуальный: `user` обязателен через `clean()`, а
-`participation_mode` и связь с `Team` отсутствуют. `created_by` обязателен.
+`user` и `created_by` обязательны для текущего MVP. Поле `participation_mode`
+поддерживает `undecided/individual/team`, но runtime default временно остается
+`individual`, а существующий API поле не принимает и не валидирует.
 
 ### Team
 
@@ -110,7 +112,9 @@ legacy `Project`.
 collaborators проекта и состояние email-приглашений. `invite_code` допустим
 только как временный MVP-механизм; предпочтительнее отдельная `TeamInvite`.
 
-**Текущее состояние.** Отсутствует. `projects.Collaborator` не является
+**Текущее состояние.** Реализована как `partner_programs.Team` с one-to-one
+Application, названием, капитаном и timestamps. Публичного Team API и
+транзакционного creation service пока нет. `projects.Collaborator` не является
 заменой: он связан с долгоживущим `Project`, а не с заявкой на одну программу.
 
 ### TeamMember
@@ -126,8 +130,10 @@ collaborators проекта и состояние email-приглашений.
 **Что не должна хранить.** Профиль проекта, ответы заявки или независимый
 статус самой заявки.
 
-**Текущее состояние.** Отсутствует. `projects.Collaborator` хранит участников
-проекта, но не роли и lifecycle команды заявки.
+**Текущее состояние.** Реализована как `partner_programs.TeamMember` с ролями,
+пятью статусами, `invited_by` и `joined_at`. `projects.Collaborator` продолжает
+хранить только участников проекта. Механизма приглашений и cross-Application
+проверок участия еще нет.
 
 ### TeamInvite
 
@@ -237,15 +243,16 @@ email-инфраструктура и WebSocket consumer `NotificationConsumer` 
    отдельно, но полноценный `project_snapshot` отсутствует. Потребители не
    должны считать актуальные поля связанного Project частью отправленной
    заявки.
-7. **Команда относится к конкретной заявке.** Это целевое правило; Team еще не
-   реализована.
-8. **Команда проекта и команда заявки могут различаться.** Будущую Team нельзя
-   строить как alias для `Collaborator`.
+7. **Команда относится к конкретной заявке.** Это обеспечено one-to-one связью
+   `Team.application`.
+8. **Команда проекта и команда заявки могут различаться.** Team реализована
+   отдельно от `projects.Collaborator`.
 9. **Пользователь участвует только в одной активной заявке одной программы.**
    Сейчас правило обеспечено только для `Application.user`; будущие члены
    команд этим constraint не покрыты.
-10. **В MVP заявку и решение отправляет только капитан.** Сейчас капитана нет;
-    действия доступны владельцу индивидуальной Application и staff.
+10. **В MVP заявку и решение отправляет только капитан.** Captain уже хранится
+    в Team и совпадает с `Application.user`, но существующие endpoints еще не
+    используют Team-aware permissions.
 11. **Членами команды считаются только принятые участники.** Это правило должно
     опираться на `TeamMember.status = accepted`, а не на наличие TeamInvite.
 12. **Submission относится к конкретной Application.** Уже обеспечено FK и
@@ -333,7 +340,7 @@ Application. Возможность создать после них новую 
 
 ## 6. Формат участия
 
-В `Application` требуется целевое поле `participation_mode`:
+В `Application` реализовано поле `participation_mode`:
 
 | Значение | Смысл |
 |---|---|
@@ -355,8 +362,9 @@ Application. Возможность создать после них новую 
 - переход `individual → team` должен создавать Team явным действием, а не
   побочным эффектом чтения Application.
 
-Сейчас `participation_mode` отсутствует, `Application.user` обязателен, а
-модельный docstring прямо фиксирует индивидуальный MVP.
+Сейчас runtime default равен `individual` для обратной совместимости. Serializer
+и endpoints специально не изменены; выбор `undecided/team` станет частью
+отдельного API/UI PR вместе с submit validation.
 
 ## 7. Команда заявки
 
@@ -411,6 +419,11 @@ Application. Возможность создать после них новую 
 domain service с блокировкой затрагиваемых строк. На уровне БД все равно нужны
 простые ограничения `OneToOne(Team.application)`, uniqueness `team + user`,
 условная уникальность капитана и check `captain → accepted`.
+
+Базовые Team и TeamMember уже реализуют эти простые DB constraints и model
+validation. Полный invariant наличия captain member намеренно не проверяется при
+первом `Team.save()` из-за циклического порядка создания; до публичного API его
+должен обеспечить транзакционный domain service.
 
 ## 8. Приглашения
 
@@ -602,24 +615,24 @@ Registration.
 | Область | Уже реализовано | Частично | Отсутствует | Комментарий |
 |---|---|---|---|---|
 | Registration | `PartnerProgramUserProfile`, register endpoints, `participating=1`, deadline и uniqueness | Статус Registration и связь с новым flow | Отдельная модель/явный contract Registration | Application create не требует Registration |
-| Application model | Program, user, created_by, form_data, nullable Project, timestamps, partial unique constraint | Только индивидуальный ownership | `participation_mode`, Team, returned, snapshot, review reason | Модель и admin существуют |
+| Application model | Program, user, created_by, participation_mode, form_data, nullable Project, timestamps, partial unique constraint | Ownership по-прежнему опирается на Application.user | returned, snapshot, review reason | Default participation_mode временно individual |
 | Application API | create/my/detail/patch/submit/withdraw, idempotency create/submit/withdraw, scoped throttle create | Owner/staff access | review endpoints, manager access, deadline/form/team checks | 404 my application корректно означает отсутствие записи |
 | Application statuses | Шесть статусов и timestamps submit/approve/reject/withdraw | Переходы draft/submit/withdraw | `returned`, return/approve/reject/cancel actions | approved/rejected могут появиться только вне нового API, например через admin |
 | Submission model | Поля MVP, пять целевых статусов, version/stage constraints, model validation | JSON links вместо отдельной модели | Files, Evaluation, Stage | Program согласуется с Application |
 | Submission API | list/create/detail/patch/submit/cancel, owner/staff, version allocation, throttling | Только participant/staff flow | manager/expert/team access, return/finalize, deadlines | Создание только для submitted/approved Application |
 | Project model | Полноценная карточка, лидер, collaborators, links, цели, компании, ресурсы | Lifecycle через `draft/is_public` | Project version/snapshot | Project остается независимым от Application |
 | Application → Project | Nullable FK, reuse, owner validation, immutable после draft | Ручная связь | Prefill mapping и `project_snapshot` | Автоматически Project не создается |
-| Team | Нет | Legacy `Collaborator` только для Project | Team целиком | Legacy сущность нельзя переименовать или переиспользовать неявно |
-| TeamMember | Нет | `Collaborator` хранит project membership | TeamMember целиком | Нет ролей/статусов команды заявки |
+| Team | One-to-one Application, name, captain, timestamps, model validation, admin | Нет domain service и permissions | Публичный Team API | Состояние редактируемости выводится из Application.status |
+| TeamMember | Roles/statuses, invited_by, joined_at, constraints, validation, admin | invited — только модельная заготовка | Team membership API и cross-Application invariants | Не переиспользует Project Collaborator |
 | TeamInvite | Нет | Project-specific `Invite` | TeamInvite token/email/expiry lifecycle | Текущий Invite имеет только `is_accepted` |
 | Notification | Email и chat WebSocket infrastructure | Mailing logs не являются inbox | Доменная Notification и пользовательский центр | Не входит в первый Team PR |
 | Evaluation | `Criteria`, `ProjectScore`, `ProjectExpertAssignment` для legacy Project | Эксперты и распределенное оценивание проекта | Evaluation по Submission | Нельзя смешивать с ProjectScore без миграции |
 | Result | Legacy scores и пользовательские достижения существуют отдельно | Нет единого результата заявки | Result/ranking/publication contract | Требует решения об источнике итогов |
 | Deadlines | Registration и legacy project submission/evaluation dates | Поля Program можно переиспользовать только после решения semantics | Проверки в Application/Submission API, отдельные application/solution deadlines | Сейчас новый flow позволяет действия после дедлайнов |
 | Permissions | Owner/staff для новых API; manager/expert permissions есть для legacy flow | Staff имеет расширенный доступ | Captain/member, manager и expert permissions для новых сущностей | Нужен общий domain permission layer |
-| Constraints | Registration uniqueness; active individual Application; Submission version; Project collaborators | Часть правил в `clean()` и views | Cross-team active participation, captain invariant, team size | Cross-table race требует транзакционного service |
-| Admin | PartnerProgram, Registration, Application, Submission, Project, Invite и legacy evaluation зарегистрированы | Admin позволяет ручную диагностику | Team/TeamMember/TeamInvite/Evaluation admin | Admin не заменяет transition services |
-| Tests | Подробные model/API tests Application и Submission; regression tests регистрации, project apply, deadlines и permissions | Нет интеграционного end-to-end нового flow | Team/invite/evaluation/result tests | Основной individual Application/Submission MVP хорошо покрыт |
+| Constraints | Registration uniqueness; active individual Application; Team one-to-one/member/captain constraints; Submission version; Project collaborators | Captain/member validation есть только внутри одной Team | Cross-team active participation и team size | Cross-table race требует транзакционного service |
+| Admin | PartnerProgram, Registration, Application, Team, TeamMember, Submission, Project, Invite и legacy evaluation зарегистрированы | Admin позволяет ручную диагностику | TeamInvite/Evaluation admin | Admin не заменяет transition services |
+| Tests | Model tests Application/Team/TeamMember и подробные API tests Application/Submission; regression tests legacy flow | Нет интеграционного end-to-end Team flow | Invite/evaluation/result tests нового flow | Базовые DB constraints Team покрыты отдельно |
 
 ### Актуальные domain endpoints
 
@@ -649,6 +662,8 @@ Registration.
 ### Admin и тесты
 
 - `ApplicationAdmin` показывает Program, owner/creator, status, Project и даты;
+- `TeamAdmin` и `TeamMemberAdmin` показывают Program, капитана, роли, статусы и
+  даты командного слоя;
 - `SubmissionAdmin` показывает Application, Program, submitter, status,
   `stage_key`, version и даты;
 - legacy admin продолжает обслуживать Registration, PartnerProgramProject,
@@ -664,12 +679,12 @@ Registration.
 
 | Требование | Текущее состояние | Требуемое изменение | Приоритет | Рекомендуемый PR |
 |---|---|---|---|---|
-| Явный формат участия | Все Application индивидуальные | Добавить `participation_mode` с безопасной миграцией | P0 | `feature/application-team-model` |
-| Team и TeamMember | Отсутствуют | Добавить модели, admin, базовые constraints и tests | P0 | `feature/application-team-model` |
+| Явный формат участия | Поле и безопасный default `individual` реализованы | Подключить API/UI и позднее default `undecided` | P0 | Application participation wizard/API |
+| Team и TeamMember | Модели, admin, constraints и tests реализованы | Добавить транзакционный service и публичный API | P0 | Application/team invariants |
 | Только зарегистрированный создает Application | Не проверяется | Domain service должен проверять PartnerProgramUserProfile | P0 | Application eligibility and lifecycle |
 | Одна активная заявка на пользователя с учетом Team | Constraint покрывает только `Application.user` | Транзакционная проверка индивидуальных и командных участий | P0 | Application/team invariants |
-| Валидация команды перед submit | Нет Team и program policy | Настройки формата/размера Program и submit validation | P0 | Program participation policy |
-| Captain-only actions | Нет капитана | Team-aware permissions для Application и Submission | P0 | Team permissions |
+| Валидация команды перед submit | Есть модель Team, но нет program policy/service | Настройки формата/размера Program и submit validation | P0 | Program participation policy |
+| Captain-only actions | Captain хранится, endpoints Team не учитывают | Team-aware permissions для Application и Submission | P0 | Team permissions |
 | Team API | Отсутствует | CRUD ограниченного MVP, members, leave/transfer captain | P1 | Team API |
 | Полный lifecycle Application | Нет returned/review actions | Добавить return/approve/reject/cancel с reason/audit | P1 | Application review API |
 | TeamInvite | Есть только Project Invite | Отдельные token/email/user invites и идемпотентный accept | P1 | TeamInvite model and API |
@@ -686,8 +701,9 @@ Registration.
 
 ## 15. Рекомендуемый порядок реализации
 
-1. **`feature/application-team-model`.** Добавить `participation_mode`, Team и
-   TeamMember с миграциями, admin, модельными ограничениями и тестами; без API.
+1. **`feature/application-team-model` — реализовано.** Добавлены
+   `participation_mode`, Team и TeamMember с миграцией, admin, модельными
+   ограничениями и тестами; без API.
 2. **Program participation policy.** Зафиксировать разрешенные форматы,
    минимальный/максимальный размер команды и реальные дедлайны Application.
 3. **Application/team invariants.** Ввести транзакционный service для проверки
@@ -721,9 +737,12 @@ Registration.
 Каждый PR должен содержать собственные model/API tests и не менять legacy
 endpoints без отдельной миграционной задачи.
 
-## 16. Первый рекомендуемый coding PR
+## 16. Реализованный базовый coding PR
 
 Ветка: `feature/application-team-model`.
+
+Статус: базовый слой данных реализован; serializers, публичный API и
+транзакционный creation/invariant service намеренно отсутствуют.
 
 ### Точный scope
 
@@ -758,8 +777,9 @@ endpoints без отдельной миграционной задачи.
    будущем domain service и обязательно перед submit Application.
 10. Зарегистрировать Team и TeamMember в Django admin с фильтрами по Program,
     статусу и роли.
-11. Добавить model/migration tests для choices, миграции существующих данных,
-    one-to-one, uniqueness и validation.
+11. Добавлены model tests для choices, one-to-one, uniqueness и validation.
+    Существующие строки получают `individual` непосредственно через default
+    операции `AddField`; отдельного migration-test convention в проекте нет.
 
 ### Намеренно вне scope
 
