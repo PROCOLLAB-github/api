@@ -5,6 +5,12 @@ from projects.models import Project
 
 
 class ApplicationSerializer(serializers.ModelSerializer):
+    team_name = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=255,
+        write_only=True,
+    )
     project = serializers.PrimaryKeyRelatedField(
         queryset=Project.objects.all(),
         allow_null=True,
@@ -42,6 +48,8 @@ class ApplicationSerializer(serializers.ModelSerializer):
             "user",
             "created_by",
             "status",
+            "participation_mode",
+            "team_name",
             "form_data",
             "project",
             "project_id",
@@ -67,7 +75,15 @@ class ApplicationSerializer(serializers.ModelSerializer):
         )
         extra_kwargs = {
             "form_data": {"required": False},
+            "participation_mode": {"required": False},
         }
+
+    def update(self, instance, validated_data):
+        # Формат и Team изменяет только domain service; serializer сохраняет
+        # остальные редактируемые поля в общей транзакции view.
+        validated_data.pop("participation_mode", None)
+        validated_data.pop("team_name", None)
+        return super().update(instance, validated_data)
 
     def validate(self, attrs):
         supplied_immutable_fields = self.immutable_input_fields.intersection(

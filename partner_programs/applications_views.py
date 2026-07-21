@@ -1,5 +1,5 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.db import IntegrityError, transaction
+from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
@@ -11,6 +11,13 @@ from rest_framework.views import APIView
 from core.throttling import PostOnlyScopedRateThrottle
 from partner_programs.models import Application, PartnerProgram
 from partner_programs.serializers import ApplicationSerializer
+from partner_programs.services.application_team import (
+    ApplicationNotEditableError,
+    ApplicationTeamServiceError,
+    change_application_participation_mode,
+    create_or_get_application,
+    submit_application,
+)
 
 
 def _application_queryset_for(user):
@@ -48,6 +55,10 @@ def _application_response(application, request, response_status=status.HTTP_200_
     return Response(serializer.data, status=response_status)
 
 
+def _raise_domain_validation_error(exc: ApplicationTeamServiceError):
+    raise ValidationError({exc.field: exc.detail}, code=exc.code) from exc
+
+
 class ProgramApplicationCreateView(APIView):
     permission_classes = [IsAuthenticated]
     throttle_classes = [PostOnlyScopedRateThrottle]
@@ -60,43 +71,35 @@ class ProgramApplicationCreateView(APIView):
             context={"request": request},
         )
         serializer.is_valid(raise_exception=True)
-
-        existing_application = _active_application(
-            program=program,
-            user=request.user,
+        validated_data = dict(serializer.validated_data)
+        # Старый frontend не передает формат: до появления wizard такой запрос
+        # остается индивидуальным и сохраняет прежний create contract.
+        participation_mode = validated_data.pop(
+            "participation_mode",
+            Application.PARTICIPATION_MODE_INDIVIDUAL,
         )
-        if existing_application:
-            return _application_response(existing_application, request)
-
+        team_name = validated_data.pop("team_name", None)
         try:
-            with transaction.atomic():
-                application = Application.objects.create(
-                    program=program,
-                    user=request.user,
-                    created_by=request.user,
-                    **serializer.validated_data,
-                )
+            result = create_or_get_application(
+                program=program,
+                user=request.user,
+                created_by=request.user,
+                participation_mode=participation_mode,
+                form_data=validated_data.pop("form_data", None),
+                project=validated_data.pop("project", None),
+                team_name=team_name,
+            )
+        except ApplicationTeamServiceError as exc:
+            _raise_domain_validation_error(exc)
         except DjangoValidationError as exc:
-            existing_application = _active_application(
-                program=program,
-                user=request.user,
-            )
-            if existing_application:
-                return _application_response(existing_application, request)
             raise ValidationError(exc.message_dict) from exc
-        except IntegrityError:
-            existing_application = _active_application(
-                program=program,
-                user=request.user,
-            )
-            if existing_application:
-                return _application_response(existing_application, request)
-            raise
 
         return _application_response(
-            application,
+            result.application,
             request,
-            response_status=status.HTTP_201_CREATED,
+            response_status=(
+                status.HTTP_201_CREATED if result.created else status.HTTP_200_OK
+            ),
         )
 
 
@@ -148,8 +151,32 @@ class ApplicationDetailView(APIView):
             context={"request": request},
         )
         serializer.is_valid(raise_exception=True)
+        participation_mode = serializer.validated_data.get("participation_mode")
+        team_name_supplied = "team_name" in serializer.validated_data
+        team_name = serializer.validated_data.get("team_name")
         try:
-            serializer.save()
+            with transaction.atomic():
+                if participation_mode is not None or team_name_supplied:
+                    application = change_application_participation_mode(
+                        application=application,
+                        actor=request.user,
+                        participation_mode=(
+                            participation_mode or application.participation_mode
+                        ),
+                        team_name=team_name if team_name_supplied else None,
+                    )
+                else:
+                    application = Application.objects.select_for_update().get(
+                        pk=application.pk
+                    )
+                    if application.status != Application.STATUS_DRAFT:
+                        raise ApplicationNotEditableError(
+                            "Изменить можно только черновик заявки."
+                        )
+                serializer.instance = application
+                serializer.save()
+        except ApplicationTeamServiceError as exc:
+            _raise_domain_validation_error(exc)
         except DjangoValidationError as exc:
             raise ValidationError(exc.message_dict) from exc
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -159,22 +186,20 @@ class ApplicationSubmitView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, application_id):
-        with transaction.atomic():
-            application = get_object_or_404(
-                _application_queryset_for(request.user).select_for_update(),
-                pk=application_id,
+        application = get_object_or_404(
+            _application_queryset_for(request.user),
+            pk=application_id,
+        )
+        try:
+            application = submit_application(
+                application=application,
+                actor=request.user,
             )
-            if application.status == Application.STATUS_SUBMITTED:
-                return _application_response(application, request)
-            if application.status != Application.STATUS_DRAFT:
-                raise ValidationError(
-                    {"status": "Only draft applications can be submitted."}
-                )
-
-            application.status = Application.STATUS_SUBMITTED
-            application.submitted_at = timezone.now()
-            application.save(update_fields=["status", "submitted_at", "updated_at"])
-            return _application_response(application, request)
+        except ApplicationTeamServiceError as exc:
+            _raise_domain_validation_error(exc)
+        except DjangoValidationError as exc:
+            raise ValidationError(exc.message_dict) from exc
+        return _application_response(application, request)
 
 
 class ApplicationWithdrawView(APIView):

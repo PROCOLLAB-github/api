@@ -6,11 +6,15 @@ from rest_framework.test import APIClient
 
 from partner_programs.models import (
     Application,
+    PartnerProgram,
     PartnerProgramProject,
     PartnerProgramUserProfile,
+    Team,
+    TeamMember,
 )
 from partner_programs.tests.helpers import (
     create_partner_program,
+    create_program_member,
     create_project,
     create_user,
 )
@@ -34,6 +38,7 @@ class ApplicationAPITests(TestCase):
         self.other_user = create_user(prefix="application-api-other")
         self.staff_user = create_user(prefix="application-api-staff", is_staff=True)
         self.program = create_partner_program()
+        self.registration = create_program_member(self.program, user=self.user)
 
     def authenticate(self, user=None):
         self.client.force_authenticate(user=user or self.user)
@@ -80,9 +85,65 @@ class ApplicationAPITests(TestCase):
         self.assertIsNone(application.project)
         self.assertEqual(response.data["id"], application.id)
         self.assertEqual(response.data["project"], None)
-        self.assertFalse(PartnerProgramUserProfile.objects.exists())
+        self.assertEqual(
+            response.data["participation_mode"],
+            Application.PARTICIPATION_MODE_INDIVIDUAL,
+        )
+        self.assertEqual(PartnerProgramUserProfile.objects.count(), 1)
+        self.assertTrue(
+            PartnerProgramUserProfile.objects.filter(pk=self.registration.pk).exists()
+        )
         self.assertFalse(PartnerProgramProject.objects.exists())
         self.assertFalse(Project.objects.exists())
+
+    def test_application_create_requires_program_registration(self):
+        unregistered_user = create_user(prefix="application-api-unregistered")
+        self.authenticate(unregistered_user)
+
+        response = self.client.post(
+            f"/programs/{self.program.id}/applications/",
+            {},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("registration", response.data)
+        self.assertFalse(Application.objects.exists())
+
+    def test_team_application_can_be_created_through_extended_request(self):
+        PartnerProgram.objects.filter(pk=self.program.pk).update(
+            participation_format=(
+                PartnerProgram.PARTICIPATION_FORMAT_INDIVIDUAL_OR_TEAM
+            ),
+            team_min_size=2,
+            team_max_size=5,
+        )
+        self.authenticate()
+
+        response = self.client.post(
+            f"/programs/{self.program.id}/applications/",
+            {
+                "participation_mode": Application.PARTICIPATION_MODE_TEAM,
+                "team_name": "API team",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        application = Application.objects.get()
+        self.assertEqual(
+            response.data["participation_mode"],
+            Application.PARTICIPATION_MODE_TEAM,
+        )
+        self.assertNotIn("team_name", response.data)
+        self.assertEqual(application.team.name, "API team")
+        self.assertTrue(
+            application.team.members.filter(
+                user=self.user,
+                role=TeamMember.ROLE_CAPTAIN,
+                status=TeamMember.STATUS_ACCEPTED,
+            ).exists()
+        )
 
     def test_my_application_returns_current_users_application(self):
         application = self.create_application()
@@ -122,7 +183,7 @@ class ApplicationAPITests(TestCase):
         )
         second_response = self.client.post(
             url,
-            {"form_data": {"version": 2}},
+            {"form_data": {"version": 1}},
             format="json",
         )
 
@@ -145,6 +206,56 @@ class ApplicationAPITests(TestCase):
         self.assertEqual(response.status_code, 200)
         application.refresh_from_db()
         self.assertEqual(application.form_data, {"version": 2})
+
+    def test_patch_participation_mode_uses_team_service(self):
+        PartnerProgram.objects.filter(pk=self.program.pk).update(
+            participation_format=(
+                PartnerProgram.PARTICIPATION_FORMAT_INDIVIDUAL_OR_TEAM
+            ),
+            team_min_size=2,
+            team_max_size=5,
+        )
+        application = self.create_application()
+        self.authenticate()
+
+        response = self.client.patch(
+            f"/applications/{application.id}/",
+            {
+                "participation_mode": Application.PARTICIPATION_MODE_TEAM,
+                "team_name": "Patched team",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        application.refresh_from_db()
+        self.assertEqual(
+            application.participation_mode,
+            Application.PARTICIPATION_MODE_TEAM,
+        )
+        self.assertEqual(Team.objects.get(application=application).name, "Patched team")
+
+    def test_patch_rolls_back_other_fields_when_mode_change_fails(self):
+        application = self.create_application(form_data={"version": 1})
+        self.authenticate()
+
+        response = self.client.patch(
+            f"/applications/{application.id}/",
+            {
+                "participation_mode": Application.PARTICIPATION_MODE_TEAM,
+                "form_data": {"version": 2},
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        application.refresh_from_db()
+        self.assertEqual(
+            application.participation_mode,
+            Application.PARTICIPATION_MODE_INDIVIDUAL,
+        )
+        self.assertEqual(application.form_data, {"version": 1})
+        self.assertFalse(Team.objects.filter(application=application).exists())
 
     def test_patch_rejects_immutable_application_fields(self):
         application = self.create_application(form_data={"version": 1})
