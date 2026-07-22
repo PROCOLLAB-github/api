@@ -99,7 +99,8 @@ legacy `Project`.
 **Текущее состояние.** Реализована как `partner_programs.Application`.
 `user` и `created_by` обязательны для текущего MVP. Поле `participation_mode`
 поддерживает `undecided/individual/team`, но runtime default временно остается
-`individual`, а существующий API поле не принимает и не валидирует.
+`individual`. Application create/PATCH принимают поле и проводят изменение
+через транзакционный domain service.
 
 ### Team
 
@@ -116,8 +117,9 @@ collaborators проекта и состояние email-приглашений.
 
 **Текущее состояние.** Реализована как `partner_programs.Team` с one-to-one
 Application, названием, капитаном и timestamps. Транзакционный service создает
-Team вместе с accepted-капитаном и проверяет invariant перед submit; публичного
-Team API пока нет. `projects.Collaborator` не является заменой: он связан с
+Team вместе с accepted-капитаном и проверяет invariant перед submit. Публичный
+API дает ролевое чтение, rename/leave/remove/transfer без прямого добавления
+участника. `projects.Collaborator` не является заменой: он связан с
 долгоживущим `Project`, а не с заявкой на одну программу.
 
 ### TeamMember
@@ -135,8 +137,8 @@ Team API пока нет. `projects.Collaborator` не является заме
 
 **Текущее состояние.** Реализована как `partner_programs.TeamMember` с ролями,
 пятью статусами, `invited_by` и `joined_at`. `projects.Collaborator` продолжает
-хранить только участников проекта. Механизма приглашений и cross-Application
-проверок участия еще нет.
+хранить только участников проекта. Cross-Application конфликт проверяется при
+create/submit/transfer; публичного механизма приглашений еще нет.
 
 ### TeamInvite
 
@@ -551,7 +553,7 @@ Legacy-связи сохраняются отдельно:
 Текущие ограничения:
 
 - нет проверки дедлайна;
-- нет manager/expert/team permissions;
+- accepted TeamMember и manager имеют read-only доступ; expert permissions нет;
 - нет действий `return` и `finalize`;
 - Application status повторно проверяется при создании, но не при PATCH,
   submit или cancel существующей Submission;
@@ -603,10 +605,10 @@ Registration.
 
 Текущие различия:
 
-- новые Application/Submission endpoints признают владельца по
-  `Application.user` и staff/superuser;
-- `PartnerProgram.managers` не получают доступ к новым сущностям автоматически;
-- участника команды и капитана пока нет;
+- капитан совпадает с `Application.user` и сохраняет owner mutation-права;
+- accepted TeamMember и `PartnerProgram.managers` читают Application, Team и
+  Submission, но не выполняют participant mutations;
+- приглашенные и исторические TeamMember не получают read-доступ;
 - эксперт работает только с legacy Project через `project_rates`;
 - staff может выполнять submit/withdraw Application и создавать/изменять
   Submission, что является административной возможностью текущего MVP, а не
@@ -621,23 +623,23 @@ Registration.
 | Registration | `PartnerProgramUserProfile`, register endpoints, `participating=1`, deadline и uniqueness | Статус Registration и связь с новым flow | Отдельная модель/явный contract Registration | Application create/submit требуют существующий профиль, но не создают его |
 | Program participation policy | Форматы `individual_only/team_only/individual_or_team`, размеры Team, application deadline, model/DB validation, admin и service enforcement | Program API намеренно не расширен | Policy UI | Default `individual_only`, размеры и deadline существующих программ остаются `null` |
 | Application model | Program, user, created_by, participation_mode, form_data, nullable Project, timestamps, partial unique constraint | Ownership по-прежнему опирается на Application.user | returned, snapshot, review reason | Default participation_mode временно individual |
-| Application API | create/my/detail/patch/submit/withdraw, mode/team service, Registration/deadline/policy/conflict checks, idempotency и scoped throttle | Owner/staff; members без API access | review endpoints и manager/member access | Старый create без mode остается individual; 404 my application означает отсутствие записи |
+| Application API | create/my/detail/patch/submit/withdraw, mode/team service, Registration/deadline/policy/conflict checks, idempotency и scoped throttle | Accepted member/manager read-only | review endpoints | Старый create без mode остается individual; my application учитывает accepted TeamMember |
 | Application statuses | Шесть статусов и timestamps submit/approve/reject/withdraw | Переходы draft/submit/withdraw | `returned`, return/approve/reject/cancel actions | approved/rejected могут появиться только вне нового API, например через admin |
 | Submission model | Поля MVP, пять целевых статусов, version/stage constraints, model validation | JSON links вместо отдельной модели | Files, Evaluation, Stage | Program согласуется с Application |
-| Submission API | list/create/detail/patch/submit/cancel, owner/staff, version allocation, throttling | Только participant/staff flow | manager/expert/team access, return/finalize, deadlines | Создание только для submitted/approved Application |
+| Submission API | list/create/detail/patch/submit/cancel, owner/staff mutations, accepted member/manager read-only, version allocation, throttling | Нет expert access | return/finalize, deadlines | Создание только для submitted/approved Application |
 | Project model | Полноценная карточка, лидер, collaborators, links, цели, компании, ресурсы | Lifecycle через `draft/is_public` | Project version/snapshot | Project остается независимым от Application |
 | Application → Project | Nullable FK, reuse, owner validation, immutable после draft | Ручная связь | Prefill mapping и `project_snapshot` | Автоматически Project не создается |
-| Team | One-to-one Application, name, captain, timestamps, model validation/admin и атомарный creation/invariant service | Нет member permissions | Публичный Team API | Состояние редактируемости выводится из Application.status |
-| TeamMember | Roles/statuses, invited_by, joined_at, constraints, validation, admin | invited — только модельная заготовка | Team membership API и cross-Application invariants | Не переиспользует Project Collaborator |
+| Team | One-to-one Application, name, captain, timestamps, validation/admin, creation/invariant/management services и public API | Нет add member | TeamInvite integration | Mutation только draft до application deadline |
+| TeamMember | Roles/statuses, invited_by, joined_at, constraints, validation, admin, read/leave/remove/transfer | invited — только модельная заготовка | Invite accept/decline API | Не переиспользует Project Collaborator |
 | TeamInvite | Нет | Project-specific `Invite` | TeamInvite token/email/expiry lifecycle | Текущий Invite имеет только `is_accepted` |
 | Notification | Email и chat WebSocket infrastructure | Mailing logs не являются inbox | Доменная Notification и пользовательский центр | Не входит в первый Team PR |
 | Evaluation | `Criteria`, `ProjectScore`, `ProjectExpertAssignment` для legacy Project | Эксперты и распределенное оценивание проекта | Evaluation по Submission | Нельзя смешивать с ProjectScore без миграции |
 | Result | Legacy scores и пользовательские достижения существуют отдельно | Нет единого результата заявки | Result/ranking/publication contract | Требует решения об источнике итогов |
 | Deadlines | Registration, отдельный Application deadline с create/mode/submit enforcement и legacy project submission/evaluation dates | Withdraw/form-only PATCH не используют application deadline | Submission checks и отдельный solution deadline | Application deadline не имеет fallback на legacy-поля |
-| Permissions | Owner/staff для новых API; manager/expert permissions есть для legacy flow | Staff имеет расширенный доступ | Captain/member, manager и expert permissions для новых сущностей | Нужен общий domain permission layer |
+| Permissions | Единые owner/captain/accepted member/manager/staff helpers для Application/Team/Submission | Staff имеет расширенный доступ | Expert/review permissions | Историческое membership не дает read-доступ |
 | Constraints | Registration uniqueness; active owner Application; Team/Submission DB constraints; service проверяет cross-table участие, Registration и team size | Прямые model/admin записи обходят service | DB constraint для cross-table участия невозможен | Program row lock сериализует service-операции; SQLite test проверяет последовательный конфликт |
 | Admin | PartnerProgram, Registration, Application, Team, TeamMember, Submission, Project, Invite и legacy evaluation зарегистрированы | Admin позволяет ручную диагностику | TeamInvite/Evaluation admin | Admin не заменяет transition services |
-| Tests | Model tests Application/Team/TeamMember и подробные API tests Application/Submission; regression tests legacy flow | Нет интеграционного end-to-end Team flow | Invite/evaluation/result tests нового flow | Базовые DB constraints Team покрыты отдельно |
+| Tests | Model/service/permission/API tests Application/Team/TeamMember/Submission и regression legacy flow | Нет invite end-to-end flow | Invite/evaluation/result tests нового flow | Team transfer проверяется вместе с rollback и сменой ownership |
 
 ### Актуальные domain endpoints
 
@@ -646,11 +648,15 @@ Registration.
 | Program | `GET /programs/`, `GET /programs/<id>/` | Список и детали активности |
 | Registration | `POST /programs/<id>/register/` | Создать PartnerProgramUserProfile текущего пользователя |
 | Registration legacy | `POST /programs/<id>/register_new/` | Создать/найти пользователя и зарегистрировать из внешней формы |
-| Application | `GET /programs/<id>/applications/my/` | Вернуть активную или последнюю собственную Application; 404, если ее нет |
+| Application | `GET /programs/<id>/applications/my/` | Вернуть собственную либо accepted-командную Application; 404, если ее нет |
 | Application | `POST /programs/<id>/applications/` | Создать draft или вернуть существующую активную Application |
 | Application | `GET/PATCH /applications/<id>/` | Прочитать или изменить draft |
 | Application | `POST /applications/<id>/submit/` | Отправить draft |
 | Application | `POST /applications/<id>/withdraw/` | Отозвать допустимую Application |
+| Team | `GET/PATCH /applications/<id>/team/` | Прочитать Team или изменить ее название |
+| Team | `POST /applications/<id>/team/leave/` | Покинуть draft Team обычному accepted member |
+| Team | `POST /applications/<id>/team/members/<member_id>/remove/` | Исключить обычного member капитаном/staff |
+| Team | `POST /applications/<id>/team/transfer-captain/` | Атомарно передать капитанство и ownership Application |
 | Submission | `GET/POST /applications/<id>/submissions/` | Список версий или новый draft Submission |
 | Submission | `GET/PATCH /submissions/<id>/` | Прочитать или изменить draft/returned |
 | Submission | `POST /submissions/<id>/submit/` | Отправить Submission |
@@ -684,17 +690,17 @@ Registration.
 
 | Требование | Текущее состояние | Требуемое изменение | Приоритет | Рекомендуемый PR |
 |---|---|---|---|---|
-| Явный формат участия | Поле и безопасный default `individual` реализованы | Подключить API/UI и позднее default `undecided` | P0 | Application participation wizard/API |
-| Team и TeamMember | Модели, admin, constraints и транзакционный service реализованы | Добавить permissions и публичный API | P0 | Team permissions/API |
+| Явный формат участия | Поле/API и безопасный default `individual` реализованы | Подключить UI и позднее default `undecided` | P0 | Application participation wizard |
+| Team и TeamMember | Модели, admin, constraints, services, permissions и public API реализованы | Добавить TeamInvite | P1 | TeamInvite model/API |
 | Только зарегистрированный создает Application | Проверяется create/submit service | Поддержать те же правила в будущих organizer actions | P1 | Application review API |
 | Одна активная заявка на пользователя с учетом Team | Service проверяет owner и accepted membership под Program lock | Все будущие Team member actions обязаны использовать проверку | P0 | Team permissions/API |
 | Валидация команды перед submit | Проверяются captain, Registration, accepted-состав и Program size | Добавить form-schema validation | P1 | Application form validation |
-| Captain-only actions | Captain хранится, endpoints Team не учитывают | Team-aware permissions для Application и Submission | P0 | Team permissions |
-| Team API | Отсутствует | CRUD ограниченного MVP, members, leave/transfer captain | P1 | Team API |
+| Captain-only actions | Team-aware permissions и transfer реализованы | Подключить invite/review actions к тем же helpers | P1 | TeamInvite/review API |
+| Team API | Read/rename/leave/remove/transfer реализованы | Добавить invite lifecycle без direct add member | P1 | TeamInvite API |
 | Полный lifecycle Application | Нет returned/review actions | Добавить return/approve/reject/cancel с reason/audit | P1 | Application review API |
 | TeamInvite | Есть только Project Invite | Отдельные token/email/user invites и идемпотентный accept | P1 | TeamInvite model and API |
-| Application deadlines | Отдельное поле и helper Program реализованы, API их не проверяет | Проверять create/edit/submit/withdraw без fallback на legacy deadlines | P0 | Application eligibility and lifecycle |
-| Submission deadlines и роли | Новый API не проверяет сроки, manager/expert/team | Добавить policy и единый permission layer | P1 | Submission lifecycle hardening |
+| Application deadlines | Create/mode/submit и Team mutations проверяют отдельный deadline | Решить policy для form-only PATCH/withdraw | P1 | Application lifecycle hardening |
+| Submission deadlines и роли | Team/manager read-only реализован, deadline/expert отсутствуют | Добавить deadline и expert policy | P1 | Submission lifecycle hardening |
 | Return/finalize Submission | Статусы есть, действий нет | Организаторские endpoints и audit fields/reasons | P1 | Submission review API |
 | Semantics версий Submission | Несколько записей и auto-next уже есть | Определить current/final/evaluated version и поведение after return | P1 | Submission version workflow |
 | Предзаполнение из Project | Только nullable FK | Явный mapping/copy в Application.form_data | P1 | Application project prefill |
@@ -715,9 +721,9 @@ Registration.
 3. **`feature/application-team-service` — реализовано.** Транзакционный service
    проверяет Registration, deadline, Program policy, конфликты активного
    участия, капитана и accepted-состав при create/mode change/submit.
-4. **Team permissions and API.** Добавить owner/captain/member/manager access,
-   чтение команды, изменение названия, управление участниками и передачу
-   капитанства без приглашений по email/ссылке.
+4. **`feature/team-permissions-api` — реализовано.** Добавлены
+   owner/captain/member/manager/staff permissions, чтение Team, rename,
+   leave/remove/transfer и read-only доступ к Application/Submission.
 5. **Application review API.** Добавить `returned`, return, approve, reject и
    cancel с reason и timestamps; не смешивать с admin-редактированием.
 6. **TeamInvite model and API.** Добавить platform/email/link invites,
@@ -749,8 +755,9 @@ endpoints без отдельной миграционной задачи.
 Ветка: `feature/application-team-model`.
 
 Статус исторического PR: базовый слой данных реализован без service. В
-последующем PR транзакционный creation/invariant service подключен к
-Application create/PATCH/submit; отдельный Team API по-прежнему отсутствует.
+последующих PR транзакционный creation/invariant service подключен к
+Application create/PATCH/submit, затем добавлен отдельный Team permissions/API
+без TeamInvite.
 
 ### Точный scope
 
@@ -805,6 +812,6 @@ Application create/PATCH/submit; отдельный Team API по-прежнем
   legacy project submission;
 - deploy, settings, Docker, nginx и workflows.
 
-Такой scope дал самостоятельный мигрируемый слой данных. Последующий domain
-service уже обеспечивает атомарное создание и submit-invariant до появления
-публичного Team API.
+Такой scope дал самостоятельный мигрируемый слой данных. Последующие PR
+добавили атомарное создание/submit-invariant и публичный Team permissions/API,
+не меняя историческую миграцию моделей.

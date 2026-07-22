@@ -1,5 +1,6 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
@@ -9,7 +10,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.throttling import PostOnlyScopedRateThrottle
-from partner_programs.models import Application, PartnerProgram
+from partner_programs.models import Application, PartnerProgram, TeamMember
+from partner_programs.permissions import can_edit_application
 from partner_programs.serializers import ApplicationSerializer
 from partner_programs.services.application_team import (
     ApplicationNotEditableError,
@@ -29,10 +31,17 @@ def _application_queryset_for(user):
     )
     if user.is_staff or user.is_superuser:
         return queryset
-    return queryset.filter(user=user)
+    return queryset.filter(
+        Q(user=user)
+        | Q(
+            team__members__user=user,
+            team__members__status=TeamMember.STATUS_ACCEPTED,
+        )
+        | Q(program__managers=user)
+    ).distinct()
 
 
-def _active_application(*, program, user):
+def _owned_active_application(*, program, user):
     return (
         Application.objects.select_related(
             "program",
@@ -44,6 +53,27 @@ def _active_application(*, program, user):
             program=program,
             user=user,
             status__in=Application.ACTIVE_STATUSES,
+        )
+        .order_by("-created_at")
+        .first()
+    )
+
+
+def _member_active_application(*, program, user):
+    return (
+        Application.objects.select_related(
+            "program",
+            "user",
+            "created_by",
+            "project",
+            "team",
+            "team__captain",
+        )
+        .filter(
+            program=program,
+            status__in=Application.ACTIVE_STATUSES,
+            team__members__user=user,
+            team__members__status=TeamMember.STATUS_ACCEPTED,
         )
         .order_by("-created_at")
         .first()
@@ -108,7 +138,12 @@ class MyProgramApplicationView(APIView):
 
     def get(self, request, program_id):
         program = get_object_or_404(PartnerProgram, pk=program_id)
-        application = _active_application(program=program, user=request.user)
+        application = _owned_active_application(program=program, user=request.user)
+        if application is None:
+            application = _member_active_application(
+                program=program,
+                user=request.user,
+            )
         if application is None:
             application = (
                 Application.objects.select_related(
@@ -116,8 +151,18 @@ class MyProgramApplicationView(APIView):
                     "user",
                     "created_by",
                     "project",
+                    "team",
+                    "team__captain",
                 )
-                .filter(program=program, user=request.user)
+                .filter(program=program)
+                .filter(
+                    Q(user=request.user)
+                    | Q(
+                        team__members__user=request.user,
+                        team__members__status=TeamMember.STATUS_ACCEPTED,
+                    )
+                )
+                .exclude(status__in=Application.ACTIVE_STATUSES)
                 .order_by("-created_at")
                 .first()
             )
@@ -141,8 +186,8 @@ class ApplicationDetailView(APIView):
 
     def patch(self, request, application_id):
         application = self.get_object(request, application_id)
-        if application.user_id != request.user.pk:
-            raise PermissionDenied("Only the application owner can update it.")
+        if not can_edit_application(request.user, application):
+            raise PermissionDenied("Only the application owner or staff can update it.")
 
         serializer = ApplicationSerializer(
             application,
@@ -169,6 +214,10 @@ class ApplicationDetailView(APIView):
                     application = Application.objects.select_for_update().get(
                         pk=application.pk
                     )
+                    if not can_edit_application(request.user, application):
+                        raise PermissionDenied(
+                            "Only the application owner or staff can update it."
+                        )
                     if application.status != Application.STATUS_DRAFT:
                         raise ApplicationNotEditableError(
                             "Изменить можно только черновик заявки."
@@ -190,6 +239,8 @@ class ApplicationSubmitView(APIView):
             _application_queryset_for(request.user),
             pk=application_id,
         )
+        if not can_edit_application(request.user, application):
+            raise PermissionDenied("Only the application owner or staff can submit it.")
         try:
             application = submit_application(
                 application=application,
@@ -214,10 +265,21 @@ class ApplicationWithdrawView(APIView):
 
     def post(self, request, application_id):
         with transaction.atomic():
-            application = get_object_or_404(
-                _application_queryset_for(request.user).select_for_update(),
+            visible_application = get_object_or_404(
+                _application_queryset_for(request.user),
                 pk=application_id,
             )
+            if not can_edit_application(request.user, visible_application):
+                raise PermissionDenied(
+                    "Only the application owner or staff can withdraw it."
+                )
+            application = Application.objects.select_for_update().get(
+                pk=visible_application.pk
+            )
+            if not can_edit_application(request.user, application):
+                raise PermissionDenied(
+                    "Only the application owner or staff can withdraw it."
+                )
             if application.status == Application.STATUS_WITHDRAWN:
                 return _application_response(application, request)
             if application.status not in self.allowed_statuses:

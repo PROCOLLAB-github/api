@@ -1,10 +1,12 @@
 from rest_framework import serializers
 
-from partner_programs.models import Application
+from partner_programs.models import Application, Team
+from partner_programs.serializers.teams import ApplicationTeamSummarySerializer
 from projects.models import Project
 
 
 class ApplicationSerializer(serializers.ModelSerializer):
+    team = serializers.SerializerMethodField()
     team_name = serializers.CharField(
         required=False,
         allow_blank=True,
@@ -31,6 +33,7 @@ class ApplicationSerializer(serializers.ModelSerializer):
             "user",
             "created_by",
             "status",
+            "team",
             "submitted_at",
             "approved_at",
             "rejected_at",
@@ -49,6 +52,7 @@ class ApplicationSerializer(serializers.ModelSerializer):
             "created_by",
             "status",
             "participation_mode",
+            "team",
             "team_name",
             "form_data",
             "project",
@@ -77,6 +81,16 @@ class ApplicationSerializer(serializers.ModelSerializer):
             "form_data": {"required": False},
             "participation_mode": {"required": False},
         }
+
+    def get_team(self, application: Application):
+        try:
+            team = application.team
+        except Team.DoesNotExist:
+            return None
+        return ApplicationTeamSummarySerializer(
+            team,
+            context=self.context,
+        ).data
 
     def update(self, instance, validated_data):
         # Формат и Team изменяет только domain service; serializer сохраняет
@@ -111,7 +125,14 @@ class ApplicationSerializer(serializers.ModelSerializer):
         if project is not serializers.empty and project is not None:
             request = self.context.get("request")
             user = getattr(request, "user", None)
-            if not user or not user.is_authenticated or project.leader_id != user.pk:
+            if (
+                not user
+                or not user.is_authenticated
+                or (
+                    project.leader_id != user.pk
+                    and not (user.is_staff or user.is_superuser)
+                )
+            ):
                 raise serializers.ValidationError(
                     {"project": "You can only use a project that you lead."}
                 )

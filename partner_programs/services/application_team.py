@@ -178,12 +178,17 @@ def _active_application_ids_for_user(
     return set(owned_ids).union(membership_ids)
 
 
-def _require_no_active_conflict(
+def require_no_active_conflict(
     *,
     program: PartnerProgram,
     user: User,
     exclude_application: Application | None = None,
 ) -> None:
+    """Запрещает второе активное участие пользователя в одной программе.
+
+    Вызывающий service должен сначала заблокировать строку Program: простого
+    UniqueConstraint недостаточно для конфликта между Application и TeamMember.
+    """
     conflict_ids = _active_application_ids_for_user(program=program, user=user)
     if exclude_application is not None:
         conflict_ids.discard(exclude_application.pk)
@@ -281,7 +286,7 @@ def create_or_get_application(
             .order_by("-created_at")
             .first()
         )
-        _require_no_active_conflict(
+        require_no_active_conflict(
             program=program,
             user=user,
             exclude_application=existing_application,
@@ -368,7 +373,9 @@ def change_application_participation_mode(
     with transaction.atomic():
         program = _lock_program(application.program)
         application = _lock_application(application)
-        if application.user_id != actor.pk:
+        if application.user_id != actor.pk and not (
+            actor.is_staff or actor.is_superuser
+        ):
             raise ApplicationNotEditableError(
                 "Только владелец может изменить формат заявки."
             )
@@ -382,7 +389,7 @@ def change_application_participation_mode(
             participation_mode=participation_mode,
             allow_undecided=True,
         )
-        _require_no_active_conflict(
+        require_no_active_conflict(
             program=program,
             user=application.user,
             exclude_application=application,
@@ -504,7 +511,7 @@ def _require_no_team_member_conflicts(application: Application) -> None:
         user_ids = [application.user_id]
 
     for user_id in user_ids:
-        _require_no_active_conflict(
+        require_no_active_conflict(
             program=application.program,
             user=User.objects.get(pk=user_id),
             exclude_application=application,
