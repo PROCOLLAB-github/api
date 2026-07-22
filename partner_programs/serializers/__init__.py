@@ -1,6 +1,7 @@
 from .applications import ApplicationSerializer
 from .fields import PartnerProgramFieldValueUpdateSerializer
 from .programs import (
+    PartnerProgramApplicationPolicySerializer,
     PartnerProgramBaseSerializerMixin,
     PartnerProgramDataSchemaSerializer,
     PartnerProgramFieldSerializer,
@@ -35,6 +36,7 @@ from .teams import (
 __all__ = [
     "ApplicationSerializer",
     "ApplicationTeamSummarySerializer",
+    "PartnerProgramApplicationPolicySerializer",
     "PartnerProgramBaseSerializerMixin",
     "PartnerProgramDataSchemaSerializer",
     "PartnerProgramFieldSerializer",
