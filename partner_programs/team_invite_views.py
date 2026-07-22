@@ -11,8 +11,10 @@ from partner_programs.models import Team, TeamInvite
 from partner_programs.permissions import can_manage_team, can_view_team
 from partner_programs.serializers import (
     MyTeamInviteSerializer,
+    TeamInviteCandidateQuerySerializer,
     TeamInviteCreateSerializer,
     TeamInviteSerializer,
+    TeamUserSerializer,
 )
 from partner_programs.services.application_team import ApplicationTeamServiceError
 from partner_programs.services.team_invites import (
@@ -22,9 +24,13 @@ from partner_programs.services.team_invites import (
     accept_team_invite,
     create_team_invite,
     decline_team_invite,
+    get_team_invite_candidates,
     revoke_team_invite,
 )
-from partner_programs.throttling import TeamInviteMutationScopedRateThrottle
+from partner_programs.throttling import (
+    TeamInviteCandidateSearchScopedRateThrottle,
+    TeamInviteMutationScopedRateThrottle,
+)
 
 User = get_user_model()
 
@@ -117,6 +123,37 @@ class TeamInviteListCreateView(APIView):
             self.throttle_scope = "team_invite_create"
             return [TeamInviteMutationScopedRateThrottle()]
         return []
+
+
+class TeamInviteCandidateSearchView(APIView):
+    """Ищет безопасные профили кандидатов только внутри управляемой Team."""
+
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [TeamInviteCandidateSearchScopedRateThrottle]
+    throttle_scope = "team_invite_candidate_search"
+
+    def get(self, request, application_id):
+        team = _get_team(application_id)
+        _require_invite_manager(request.user, team)
+        query_serializer = TeamInviteCandidateQuerySerializer(
+            data=request.query_params
+        )
+        query_serializer.is_valid(raise_exception=True)
+        try:
+            candidates = get_team_invite_candidates(
+                team=team,
+                actor=request.user,
+                query=query_serializer.validated_data["q"],
+            )
+        except ApplicationTeamServiceError as exc:
+            _raise_domain_error(exc)
+        return Response(
+            TeamUserSerializer(
+                candidates,
+                many=True,
+                context={"request": request},
+            ).data
+        )
 
 
 class MyTeamInviteListView(APIView):

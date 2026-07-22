@@ -21,6 +21,23 @@ class TeamInviteCreateSerializer(serializers.Serializer):
         return attrs
 
 
+class TeamInviteCandidateQuerySerializer(serializers.Serializer):
+    """Не допускает пустой или слишком широкий поиск пользователей."""
+
+    q = serializers.CharField(  # noqa: VNE001 — имя закреплено API-контрактом.
+        required=True,
+        trim_whitespace=True,
+        min_length=3,
+        max_length=100,
+        error_messages={
+            "required": "Укажите поисковый запрос.",
+            "blank": "Укажите поисковый запрос.",
+            "min_length": "Введите не менее 3 символов.",
+            "max_length": "Введите не более 100 символов.",
+        },
+    )
+
+
 class TeamInviteSerializer(serializers.ModelSerializer):
     """Безопасное представление приглашения для капитана и staff."""
 

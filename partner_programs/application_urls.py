@@ -6,7 +6,10 @@ from partner_programs.applications_views import (
     ApplicationWithdrawView,
 )
 from partner_programs.submission_views import ApplicationSubmissionListCreateView
-from partner_programs.team_invite_views import TeamInviteListCreateView
+from partner_programs.team_invite_views import (
+    TeamInviteCandidateSearchView,
+    TeamInviteListCreateView,
+)
 from partner_programs.team_views import (
     TeamDetailView,
     TeamLeaveView,
@@ -17,6 +20,11 @@ from partner_programs.team_views import (
 app_name = "applications"
 
 urlpatterns = [
+    path(
+        "<int:application_id>/team/invite-candidates/",
+        TeamInviteCandidateSearchView.as_view(),
+        name="team-invite-candidate-search",
+    ),
     path(
         "<int:application_id>/team/invites/",
         TeamInviteListCreateView.as_view(),
