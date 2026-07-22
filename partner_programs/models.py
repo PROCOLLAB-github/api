@@ -623,6 +623,83 @@ class TeamMember(models.Model):
         )
 
 
+class TeamInvite(models.Model):
+    """Приглашение зарегистрированного пользователя в команду заявки."""
+
+    STATUS_PENDING = "pending"
+    STATUS_ACCEPTED = "accepted"
+    STATUS_DECLINED = "declined"
+    STATUS_REVOKED = "revoked"
+
+    STATUS_CHOICES = (
+        (STATUS_PENDING, "Ожидает ответа"),
+        (STATUS_ACCEPTED, "Принято"),
+        (STATUS_DECLINED, "Отклонено"),
+        (STATUS_REVOKED, "Отозвано"),
+    )
+
+    team = models.ForeignKey(
+        Team,
+        on_delete=models.CASCADE,
+        related_name="invites",
+        verbose_name="Команда",
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="application_team_invites",
+        verbose_name="Приглашенный пользователь",
+    )
+    invited_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="sent_application_team_invites",
+        verbose_name="Кем приглашен",
+    )
+    status = models.CharField(
+        max_length=16,
+        choices=STATUS_CHOICES,
+        default=STATUS_PENDING,
+        verbose_name="Статус",
+    )
+    resolved_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Дата ответа",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Создано")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Обновлено")
+
+    class Meta:
+        verbose_name = "Приглашение в команду заявки"
+        verbose_name_plural = "Приглашения в команды заявок"
+        constraints = [
+            # Завершенные приглашения сохраняются в истории и не мешают
+            # повторно пригласить пользователя в ту же команду.
+            models.UniqueConstraint(
+                fields=["team", "user"],
+                condition=models.Q(status="pending"),
+                name="uniq_pending_invite_team_user",
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=["user", "status", "created_at"],
+                name="team_invite_user_status_idx",
+            ),
+            models.Index(
+                fields=["team", "status", "created_at"],
+                name="team_invite_team_status_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            f"TeamInvite<{self.pk}> team={self.team_id} "
+            f"user={self.user_id} status={self.status}"
+        )
+
+
 class Submission(models.Model):
     """Versioned solution submitted for an application and program stage."""
 

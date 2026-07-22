@@ -6,6 +6,7 @@ from partner_programs.applications_views import (
     ApplicationWithdrawView,
 )
 from partner_programs.submission_views import ApplicationSubmissionListCreateView
+from partner_programs.team_invite_views import TeamInviteListCreateView
 from partner_programs.team_views import (
     TeamDetailView,
     TeamLeaveView,
@@ -16,6 +17,11 @@ from partner_programs.team_views import (
 app_name = "applications"
 
 urlpatterns = [
+    path(
+        "<int:application_id>/team/invites/",
+        TeamInviteListCreateView.as_view(),
+        name="team-invite-list-create",
+    ),
     path(
         "<int:application_id>/team/members/<int:member_id>/remove/",
         TeamMemberRemoveView.as_view(),
