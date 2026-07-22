@@ -138,7 +138,7 @@ API дает ролевое чтение, rename/leave/remove/transfer без п
 **Текущее состояние.** Реализована как `partner_programs.TeamMember` с ролями,
 пятью статусами, `invited_by` и `joined_at`. `projects.Collaborator` продолжает
 хранить только участников проекта. Cross-Application конфликт проверяется при
-create/submit/transfer; публичного механизма приглашений еще нет.
+create/submit/transfer и accept TeamInvite.
 
 ### TeamInvite
 
@@ -154,9 +154,11 @@ nullable, `invited_by` и timestamps.
 **Что не должна хранить.** Членство как факт: только принятое приглашение
 делает пользователя участником команды.
 
-**Текущее состояние.** Отсутствует. Имеющаяся `invites.Invite` предназначена
-исключительно для приглашения в `Project`, хранит tri-state
-`is_accepted` и не имеет token, email, expiry или связи с Application Team.
+**Текущее состояние.** Реализован platform-user MVP: `TeamInvite` связан с
+Team, обязательными `user`/`invited_by`, имеет статусы pending/accepted/
+declined/revoked, историю, admin и create/my/accept/decline/revoke API. Email,
+token, link, expiry и notifications отсутствуют. Имеющаяся `invites.Invite`
+по-прежнему предназначена исключительно для приглашения в `Project`.
 
 ### Project
 
@@ -629,17 +631,17 @@ Registration.
 | Submission API | list/create/detail/patch/submit/cancel, owner/staff mutations, accepted member/manager read-only, version allocation, throttling | Нет expert access | return/finalize, deadlines | Создание только для submitted/approved Application |
 | Project model | Полноценная карточка, лидер, collaborators, links, цели, компании, ресурсы | Lifecycle через `draft/is_public` | Project version/snapshot | Project остается независимым от Application |
 | Application → Project | Nullable FK, reuse, owner validation, immutable после draft | Ручная связь | Prefill mapping и `project_snapshot` | Автоматически Project не создается |
-| Team | One-to-one Application, name, captain, timestamps, validation/admin, creation/invariant/management services и public API | Нет add member | TeamInvite integration | Mutation только draft до application deadline |
-| TeamMember | Roles/statuses, invited_by, joined_at, constraints, validation, admin, read/leave/remove/transfer | invited — только модельная заготовка | Invite accept/decline API | Не переиспользует Project Collaborator |
-| TeamInvite | Нет | Project-specific `Invite` | TeamInvite token/email/expiry lifecycle | Текущий Invite имеет только `is_accepted` |
+| Team | One-to-one Application, name, captain, timestamps, validation/admin, creation/invariant/management services и public API | Add member только через TeamInvite accept | Email/link invite integration | Mutation только draft до application deadline |
+| TeamMember | Roles/statuses, invited_by, joined_at, constraints, validation, admin, read/leave/remove/transfer | invited — только историческая заготовка | Organizer actions | Не переиспользует Project Collaborator |
+| TeamInvite | Platform-user model/admin, history, create/my/accept/decline/revoke API, conflicts/capacity/locking/throttle | Только существующий `user_id` | Token/email/link/expiry/notifications | Pending не дает membership или read-доступ |
 | Notification | Email и chat WebSocket infrastructure | Mailing logs не являются inbox | Доменная Notification и пользовательский центр | Не входит в первый Team PR |
 | Evaluation | `Criteria`, `ProjectScore`, `ProjectExpertAssignment` для legacy Project | Эксперты и распределенное оценивание проекта | Evaluation по Submission | Нельзя смешивать с ProjectScore без миграции |
 | Result | Legacy scores и пользовательские достижения существуют отдельно | Нет единого результата заявки | Result/ranking/publication contract | Требует решения об источнике итогов |
 | Deadlines | Registration, отдельный Application deadline с create/mode/submit enforcement и legacy project submission/evaluation dates | Withdraw/form-only PATCH не используют application deadline | Submission checks и отдельный solution deadline | Application deadline не имеет fallback на legacy-поля |
 | Permissions | Единые owner/captain/accepted member/manager/staff helpers для Application/Team/Submission | Staff имеет расширенный доступ | Expert/review permissions | Историческое membership не дает read-доступ |
 | Constraints | Registration uniqueness; active owner Application; Team/Submission DB constraints; service проверяет cross-table участие, Registration и team size | Прямые model/admin записи обходят service | DB constraint для cross-table участия невозможен | Program row lock сериализует service-операции; SQLite test проверяет последовательный конфликт |
-| Admin | PartnerProgram, Registration, Application, Team, TeamMember, Submission, Project, Invite и legacy evaluation зарегистрированы | Admin позволяет ручную диагностику | TeamInvite/Evaluation admin | Admin не заменяет transition services |
-| Tests | Model/service/permission/API tests Application/Team/TeamMember/Submission и regression legacy flow | Нет invite end-to-end flow | Invite/evaluation/result tests нового flow | Team transfer проверяется вместе с rollback и сменой ownership |
+| Admin | PartnerProgram, Registration, Application, Team, TeamMember, TeamInvite, Submission, Project, Invite и legacy evaluation зарегистрированы | Admin позволяет ручную диагностику | Evaluation admin | Admin не заменяет transition services |
+| Tests | Model/service/permission/API tests Application/Team/TeamMember/TeamInvite/Submission и regression legacy flow | Нет notification flow | Evaluation/result tests нового flow | TeamInvite accept проверяется вместе с rollback и access boundary |
 
 ### Актуальные domain endpoints
 
@@ -657,6 +659,11 @@ Registration.
 | Team | `POST /applications/<id>/team/leave/` | Покинуть draft Team обычному accepted member |
 | Team | `POST /applications/<id>/team/members/<member_id>/remove/` | Исключить обычного member капитаном/staff |
 | Team | `POST /applications/<id>/team/transfer-captain/` | Атомарно передать капитанство и ownership Application |
+| TeamInvite | `GET/POST /applications/<id>/team/invites/` | История и создание platform-user приглашения капитаном/staff |
+| TeamInvite | `GET /team-invites/my/` | Приглашения текущего пользователя, pending первыми |
+| TeamInvite | `POST /team-invites/<id>/accept/` | Принять приглашение и создать/восстановить accepted TeamMember |
+| TeamInvite | `POST /team-invites/<id>/decline/` | Отклонить свое pending-приглашение |
+| TeamInvite | `POST /team-invites/<id>/revoke/` | Отозвать pending-приглашение капитаном/staff |
 | Submission | `GET/POST /applications/<id>/submissions/` | Список версий или новый draft Submission |
 | Submission | `GET/PATCH /submissions/<id>/` | Прочитать или изменить draft/returned |
 | Submission | `POST /submissions/<id>/submit/` | Отправить Submission |
@@ -675,6 +682,8 @@ Registration.
 - `ApplicationAdmin` показывает Program, owner/creator, status, Project и даты;
 - `TeamAdmin` и `TeamMemberAdmin` показывают Program, капитана, роли, статусы и
   даты командного слоя;
+- `TeamInviteAdmin` показывает Team, Program, адресата, отправителя, статус и
+  даты приглашения;
 - `SubmissionAdmin` показывает Application, Program, submitter, status,
   `stage_key`, version и даты;
 - legacy admin продолжает обслуживать Registration, PartnerProgramProject,
@@ -691,14 +700,14 @@ Registration.
 | Требование | Текущее состояние | Требуемое изменение | Приоритет | Рекомендуемый PR |
 |---|---|---|---|---|
 | Явный формат участия | Поле/API и безопасный default `individual` реализованы | Подключить UI и позднее default `undecided` | P0 | Application participation wizard |
-| Team и TeamMember | Модели, admin, constraints, services, permissions и public API реализованы | Добавить TeamInvite | P1 | TeamInvite model/API |
+| Team и TeamMember | Модели, admin, constraints, services, permissions и public API реализованы | Добавить organizer policy | P1 | Application review API |
 | Только зарегистрированный создает Application | Проверяется create/submit service | Поддержать те же правила в будущих organizer actions | P1 | Application review API |
 | Одна активная заявка на пользователя с учетом Team | Service проверяет owner и accepted membership под Program lock | Все будущие Team member actions обязаны использовать проверку | P0 | Team permissions/API |
 | Валидация команды перед submit | Проверяются captain, Registration, accepted-состав и Program size | Добавить form-schema validation | P1 | Application form validation |
-| Captain-only actions | Team-aware permissions и transfer реализованы | Подключить invite/review actions к тем же helpers | P1 | TeamInvite/review API |
-| Team API | Read/rename/leave/remove/transfer реализованы | Добавить invite lifecycle без direct add member | P1 | TeamInvite API |
+| Captain-only actions | Team-aware permissions, transfer и platform-user invites реализованы | Подключить review actions к тем же helpers | P1 | Application review API |
+| Team API | Read/rename/leave/remove/transfer и invite lifecycle реализованы | Добавить notification delivery | P2 | Invite notifications |
 | Полный lifecycle Application | Нет returned/review actions | Добавить return/approve/reject/cancel с reason/audit | P1 | Application review API |
-| TeamInvite | Есть только Project Invite | Отдельные token/email/user invites и идемпотентный accept | P1 | TeamInvite model and API |
+| TeamInvite | Platform-user lifecycle и идемпотентный accept реализованы | Добавить token/email/link/expiry без смешения с Project Invite | P2 | Extended TeamInvite delivery |
 | Application deadlines | Create/mode/submit и Team mutations проверяют отдельный deadline | Решить policy для form-only PATCH/withdraw | P1 | Application lifecycle hardening |
 | Submission deadlines и роли | Team/manager read-only реализован, deadline/expert отсутствуют | Добавить deadline и expert policy | P1 | Submission lifecycle hardening |
 | Return/finalize Submission | Статусы есть, действий нет | Организаторские endpoints и audit fields/reasons | P1 | Submission review API |
@@ -726,9 +735,10 @@ Registration.
    leave/remove/transfer и read-only доступ к Application/Submission.
 5. **Application review API.** Добавить `returned`, return, approve, reject и
    cancel с reason и timestamps; не смешивать с admin-редактированием.
-6. **TeamInvite model and API.** Добавить platform/email/link invites,
-   accept/decline/revoke/expire и защиту от конфликтов участия.
-7. **Invite notifications.** Отдельно подключить email и persistent in-app
+6. **`feature/team-invites-api` — реализовано.** Добавлены platform-user
+   TeamInvite, accept/decline/revoke, блокировки, конфликты и capacity policy.
+7. **Invite notifications.** Отдельно добавить email/token/link/expiry и
+   подключить email и persistent in-app
    notifications с retry/idempotency.
 8. **Frontend participation wizard.** Выбор individual/team/later и создание
    draft только по явному сохранению.

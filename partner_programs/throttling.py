@@ -8,3 +8,12 @@ class TeamMutationScopedRateThrottle(ScopedRateThrottle):
 
     def get_rate(self):
         return self.rate
+
+
+class TeamInviteMutationScopedRateThrottle(ScopedRateThrottle):
+    """Ограничивает mutation приглашений без глобального DRF throttling."""
+
+    rate = "20/min"
+
+    def get_rate(self):
+        return self.rate

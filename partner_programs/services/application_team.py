@@ -9,6 +9,7 @@ from partner_programs.models import (
     PartnerProgram,
     PartnerProgramUserProfile,
     Team,
+    TeamInvite,
     TeamMember,
 )
 from projects.models import Project
@@ -428,6 +429,10 @@ def change_application_participation_mode(
                     user=team.captain,
                 ).exists():
                     raise TeamHasOtherMembersError()
+                if team.invites.filter(status=TeamInvite.STATUS_PENDING).exists():
+                    raise TeamHasOtherMembersError(
+                        "Нельзя сменить формат, пока у команды есть активные приглашения."
+                    )
                 team.delete()
                 team = None
         elif team is not None:
