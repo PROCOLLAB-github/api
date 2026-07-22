@@ -633,7 +633,7 @@ Registration.
 | Application → Project | Nullable FK, reuse, owner validation, immutable после draft | Ручная связь | Prefill mapping и `project_snapshot` | Автоматически Project не создается |
 | Team | One-to-one Application, name, captain, timestamps, validation/admin, creation/invariant/management services и public API | Add member только через TeamInvite accept | Email/link invite integration | Mutation только draft до application deadline |
 | TeamMember | Roles/statuses, invited_by, joined_at, constraints, validation, admin, read/leave/remove/transfer | invited — только историческая заготовка | Organizer actions | Не переиспользует Project Collaborator |
-| TeamInvite | Platform-user model/admin, history, create/my/accept/decline/revoke API, conflicts/capacity/locking/throttle | Только существующий `user_id` | Token/email/link/expiry/notifications | Pending не дает membership или read-доступ |
+| TeamInvite | Platform-user model/admin, scoped candidate search, history, create/my/accept/decline/revoke API, conflicts/capacity/locking/throttle | Только существующий `user_id` | Token/email/link/expiry/notifications | Search не резервирует место; pending не дает membership или read-доступ |
 | Notification | Email и chat WebSocket infrastructure | Mailing logs не являются inbox | Доменная Notification и пользовательский центр | Не входит в первый Team PR |
 | Evaluation | `Criteria`, `ProjectScore`, `ProjectExpertAssignment` для legacy Project | Эксперты и распределенное оценивание проекта | Evaluation по Submission | Нельзя смешивать с ProjectScore без миграции |
 | Result | Legacy scores и пользовательские достижения существуют отдельно | Нет единого результата заявки | Result/ranking/publication contract | Требует решения об источнике итогов |
@@ -659,6 +659,7 @@ Registration.
 | Team | `POST /applications/<id>/team/leave/` | Покинуть draft Team обычному accepted member |
 | Team | `POST /applications/<id>/team/members/<member_id>/remove/` | Исключить обычного member капитаном/staff |
 | Team | `POST /applications/<id>/team/transfer-captain/` | Атомарно передать капитанство и ownership Application |
+| TeamInvite | `GET /applications/<id>/team/invite-candidates/?q=...` | Найти до 20 зарегистрированных и потенциально доступных кандидатов без раскрытия email |
 | TeamInvite | `GET/POST /applications/<id>/team/invites/` | История и создание platform-user приглашения капитаном/staff |
 | TeamInvite | `GET /team-invites/my/` | Приглашения текущего пользователя, pending первыми |
 | TeamInvite | `POST /team-invites/<id>/accept/` | Принять приглашение и создать/восстановить accepted TeamMember |
@@ -693,6 +694,8 @@ Registration.
 - Submission tests покрывают доступ, допустимые статусы Application,
   автозаполнение Program/submitter, версии, immutable fields, переходы и
   throttle;
+- TeamInvite candidate tests покрывают scoped search, eligibility, безопасный
+  response, permission/state boundaries, limit и отдельный throttle;
 - registration и legacy project tests отдельно покрывают их дедлайны и права.
 
 ## 14. Gap analysis

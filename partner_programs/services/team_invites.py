@@ -2,6 +2,8 @@ from dataclasses import dataclass
 
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
+from django.db.models import Exists, OuterRef, Q, Value
+from django.db.models.functions import Concat, Lower
 from django.utils import timezone
 
 from partner_programs.models import (
@@ -22,6 +24,8 @@ from partner_programs.services.application_team import (
 )
 
 User = get_user_model()
+
+TEAM_INVITE_CANDIDATE_LIMIT = 20
 
 
 class TeamInvitePermissionError(ApplicationTeamServiceError):
@@ -169,6 +173,125 @@ def _require_accept_capacity(*, team: Team, program: PartnerProgram) -> None:
     maximum = program.team_max_size
     if maximum is None or _accepted_members_count(team) >= maximum:
         raise TeamInviteCapacityReachedError()
+
+
+def get_team_invite_candidates(
+    *,
+    team: Team,
+    actor: User,
+    query: str,
+):
+    """Возвращает ограниченный queryset потенциальных участников Team.
+
+    Eligibility выражена через Exists-подзапросы: связанные Application,
+    TeamMember и TeamInvite не размножают строки пользователя и не требуют
+    широкого `distinct()`. Selector не резервирует место; create service
+    повторяет проверки под блокировкой Program.
+    """
+    if not can_manage_team(actor, team):
+        raise TeamInvitePermissionError()
+
+    application = team.application
+    program = application.program
+    if application.participation_mode != Application.PARTICIPATION_MODE_TEAM:
+        raise TeamInviteTargetInvalidError(
+            "Поиск кандидатов доступен только для командной заявки.",
+            field="team",
+        )
+    _require_mutable_invites(application=application, program=program)
+
+    accepted_count = TeamMember.objects.filter(
+        team=team,
+        status=TeamMember.STATUS_ACCEPTED,
+    ).count()
+    pending_count = TeamInvite.objects.filter(
+        team=team,
+        status=TeamInvite.STATUS_PENDING,
+    ).count()
+    if (
+        program.team_max_size is None
+        or accepted_count + pending_count >= program.team_max_size
+    ):
+        raise TeamInviteCapacityReachedError()
+
+    registrations = PartnerProgramUserProfile.objects.filter(
+        partner_program=program,
+        user_id=OuterRef("pk"),
+    )
+    pending_current_invites = TeamInvite.objects.filter(
+        team=team,
+        user_id=OuterRef("pk"),
+        status=TeamInvite.STATUS_PENDING,
+    )
+    active_owned_applications = Application.objects.filter(
+        program=program,
+        user_id=OuterRef("pk"),
+        status__in=Application.ACTIVE_STATUSES,
+    )
+    active_team_memberships = TeamMember.objects.filter(
+        user_id=OuterRef("pk"),
+        status=TeamMember.STATUS_ACCEPTED,
+        team__application__program=program,
+        team__application__status__in=Application.ACTIVE_STATUSES,
+    )
+
+    normalized_query = query.strip()
+    # SQLite не нормализует регистр кириллицы для ILIKE так же, как production
+    # PostgreSQL. Небольшой набор Unicode-вариантов сохраняет ORM-фильтрацию и
+    # одинаковый контракт для обычного lower/UPPER/Title ввода.
+    query_variants = dict.fromkeys(
+        (
+            normalized_query,
+            normalized_query.casefold(),
+            normalized_query.lower(),
+            normalized_query.upper(),
+            normalized_query.title(),
+            normalized_query.capitalize(),
+        )
+    )
+    search_filter = Q()
+    for query_variant in query_variants:
+        search_filter |= (
+            Q(first_name__icontains=query_variant)
+            | Q(last_name__icontains=query_variant)
+            | Q(candidate_full_name__icontains=query_variant)
+            | Q(candidate_reverse_name__icontains=query_variant)
+            | Q(email__istartswith=query_variant)
+        )
+
+    # Минимальная длина query и жесткий limit не позволяют использовать этот
+    # scoped endpoint как глобальное перечисление пользователей платформы.
+    return (
+        User.objects.annotate(
+            candidate_full_name=Concat(
+                "first_name",
+                Value(" "),
+                "last_name",
+            ),
+            candidate_reverse_name=Concat(
+                "last_name",
+                Value(" "),
+                "first_name",
+            ),
+            candidate_is_registered=Exists(registrations),
+            candidate_has_pending_invite=Exists(pending_current_invites),
+            candidate_has_active_application=Exists(active_owned_applications),
+            candidate_has_active_membership=Exists(active_team_memberships),
+        )
+        .filter(
+            is_active=True,
+            candidate_is_registered=True,
+            candidate_has_pending_invite=False,
+            candidate_has_active_application=False,
+            candidate_has_active_membership=False,
+        )
+        .exclude(pk=team.captain_id)
+        .filter(search_filter)
+        .only("id", "first_name", "last_name", "avatar")
+        .order_by(Lower("last_name"), Lower("first_name"), "pk")[
+            :TEAM_INVITE_CANDIDATE_LIMIT
+        ]
+    )
 
 
 def create_team_invite(

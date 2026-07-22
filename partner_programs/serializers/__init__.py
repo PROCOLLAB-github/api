@@ -19,6 +19,7 @@ from .programs import (
 from .submissions import SubmissionSerializer
 from .team_invites import (
     MyTeamInviteSerializer,
+    TeamInviteCandidateQuerySerializer,
     TeamInviteCreateSerializer,
     TeamInviteSerializer,
 )
@@ -50,6 +51,7 @@ __all__ = [
     "ProgramProjectFilterRequestSerializer",
     "SubmissionSerializer",
     "MyTeamInviteSerializer",
+    "TeamInviteCandidateQuerySerializer",
     "TeamInviteCreateSerializer",
     "TeamInviteSerializer",
     "TeamMemberSerializer",

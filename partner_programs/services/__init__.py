@@ -45,6 +45,7 @@ from partner_programs.services.team_invites import (
     accept_team_invite,
     create_team_invite,
     decline_team_invite,
+    get_team_invite_candidates,
     revoke_team_invite,
 )
 from partner_programs.services.exports import (
@@ -125,6 +126,7 @@ __all__ = [
     "create_user_and_register_to_program",
     "get_filterable_program_fields",
     "get_filtered_program_project_links",
+    "get_team_invite_candidates",
     "decline_team_invite",
     "prepare_project_scores_export_data",
     "publish_finished_program_projects",

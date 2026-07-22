@@ -17,3 +17,12 @@ class TeamInviteMutationScopedRateThrottle(ScopedRateThrottle):
 
     def get_rate(self):
         return self.rate
+
+
+class TeamInviteCandidateSearchScopedRateThrottle(ScopedRateThrottle):
+    """Ограничивает scoped-поиск кандидатов без глобального DRF throttling."""
+
+    rate = "20/min"
+
+    def get_rate(self):
+        return self.rate
