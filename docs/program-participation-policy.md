@@ -8,8 +8,38 @@ Policy хранится в `PartnerProgram` и задает допустимый
 заявок.
 
 Policy валидируется на уровне модели и базы данных и применяется
-Application/Team service при create, смене формата и submit. Публичные Program
-serializers при этом намеренно не расширены.
+Application/Team service при create, смене формата и submit.
+
+## Публичный detail contract
+
+`GET /programs/<program_id>/` возвращает read-only объект
+`application_policy`:
+
+```json
+{
+  "application_policy": {
+    "participation_format": "individual_or_team",
+    "allowed_participation_modes": ["individual", "team"],
+    "team_min_size": 2,
+    "team_max_size": 5,
+    "datetime_application_ends": "2026-08-31T20:59:59Z",
+    "is_application_deadline_passed": false
+  }
+}
+```
+
+`allowed_participation_modes` содержит только финальные режимы, разрешенные
+методом `allows_participation_mode`: `individual`, `team` или оба значения.
+Черновой режим `undecided` клиенту для выбора формата не возвращается.
+
+`team_min_size` и `team_max_size` равны `null` для `individual_only` и содержат
+настроенные границы для форматов с командами. `datetime_application_ends`
+сериализуется стандартным DRF DateTimeField; `null` означает отсутствие
+отдельного дедлайна. `is_application_deadline_passed` вычисляется существующим
+model method без fallback на legacy-дедлайны.
+
+Policy добавлена только в detail serializers. Контракт списка `GET /programs/`
+не изменен. Объект не содержит user-specific состояний регистрации или заявки.
 
 ## Формат участия
 

@@ -5,6 +5,7 @@ from core.services import get_likes_count, get_links, get_views_count, is_fan
 from courses.models import CourseContentStatus
 from courses.services.access import resolve_course_availability
 from partner_programs.models import (
+    Application,
     PartnerProgram,
     PartnerProgramField,
     PartnerProgramFieldValue,
@@ -16,6 +17,41 @@ from projects.validators import validate_project
 from .fields import PartnerProgramFieldValueUpdateSerializer
 
 User = get_user_model()
+
+
+class PartnerProgramApplicationPolicySerializer(serializers.Serializer):
+    """Публичный read-only контракт правил создания Application."""
+
+    participation_format = serializers.ChoiceField(
+        choices=PartnerProgram.PARTICIPATION_FORMAT_CHOICES,
+        read_only=True,
+    )
+    allowed_participation_modes = serializers.SerializerMethodField()
+    team_min_size = serializers.IntegerField(read_only=True, allow_null=True)
+    team_max_size = serializers.IntegerField(read_only=True, allow_null=True)
+    datetime_application_ends = serializers.DateTimeField(
+        read_only=True,
+        allow_null=True,
+    )
+    is_application_deadline_passed = serializers.SerializerMethodField()
+
+    def get_allowed_participation_modes(
+        self,
+        program: PartnerProgram,
+    ) -> list[str]:
+        # Клиенту нужны только финальные режимы; undecided остается состоянием
+        # черновика и намеренно не участвует в выборе формата заявки.
+        final_modes = (
+            Application.PARTICIPATION_MODE_INDIVIDUAL,
+            Application.PARTICIPATION_MODE_TEAM,
+        )
+        return [mode for mode in final_modes if program.allows_participation_mode(mode)]
+
+    def get_is_application_deadline_passed(
+        self,
+        program: PartnerProgram,
+    ) -> bool:
+        return program.is_application_deadline_passed()
 
 
 class PartnerProgramListSerializer(serializers.ModelSerializer):
@@ -94,6 +130,10 @@ class PartnerProgramBaseSerializerMixin(serializers.ModelSerializer):
     materials = serializers.SerializerMethodField()
     is_user_manager = serializers.SerializerMethodField()
     courses = serializers.SerializerMethodField()
+    application_policy = PartnerProgramApplicationPolicySerializer(
+        source="*",
+        read_only=True,
+    )
 
     def get_materials(self, program: PartnerProgram):
         materials = program.materials.all()
@@ -180,6 +220,7 @@ class PartnerProgramForMemberSerializer(PartnerProgramBaseSerializerMixin):
             "publish_projects_after_finish",
             "is_user_manager",
             "courses",
+            "application_policy",
         )
 
 
@@ -205,6 +246,7 @@ class PartnerProgramForUnregisteredUserSerializer(PartnerProgramBaseSerializerMi
             "publish_projects_after_finish",
             "is_user_manager",
             "courses",
+            "application_policy",
         )
 
 
