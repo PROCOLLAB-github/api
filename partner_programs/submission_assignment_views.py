@@ -63,9 +63,12 @@ def _domain_error_response(exc):
 
 class ProgramPermissionMixin:
     def check_permissions(self, request):
+        program_id = self.kwargs.get("program_id")
+        if program_id is None and getattr(self, "swagger_fake_view", False):
+            return super().check_permissions(request)
         self.program = get_object_or_404(
             PartnerProgram,
-            pk=self.kwargs["program_id"],
+            pk=program_id,
         )
         return super().check_permissions(request)
 

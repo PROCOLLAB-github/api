@@ -59,7 +59,7 @@ class SubmissionAssignmentTestCase(TestCase):
             program=self.other_program,
         )
         self.other_expert = self.other_expert_user.expert
-        self.submission = self.create_submission()
+        self.submission = self.create_submission(participant=self.participant)
         self.list_url = f"/programs/{self.program.pk}/submission-assignments/"
 
     def authenticate(self, user=None):
@@ -74,7 +74,9 @@ class SubmissionAssignmentTestCase(TestCase):
         title="Assignment solution",
     ):
         program = program or self.program
-        participant = participant or self.participant
+        participant = participant or create_user(
+            prefix="assignment-submission-participant"
+        )
         application = Application.objects.create(
             program=program,
             user=participant,
