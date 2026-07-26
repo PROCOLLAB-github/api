@@ -12,6 +12,8 @@ from core.utils import XlsxFileToExport, build_xlsx_download_response
 from mailing.views import MailingTemplateRender
 from partner_programs.models import (
     Application,
+    Evaluation,
+    EvaluationScore,
     PartnerProgram,
     PartnerProgramField,
     PartnerProgramFieldValue,
@@ -19,6 +21,7 @@ from partner_programs.models import (
     PartnerProgramProject,
     PartnerProgramUserProfile,
     Submission,
+    SubmissionExpertAssignment,
     Team,
     TeamInvite,
     TeamMember,
@@ -247,6 +250,138 @@ class SubmissionAdmin(admin.ModelAdmin):
     readonly_fields = (
         "created_at",
         "updated_at",
+    )
+    date_hierarchy = "created_at"
+
+
+@admin.register(SubmissionExpertAssignment)
+class SubmissionExpertAssignmentAdmin(admin.ModelAdmin):
+    list_display = (
+        "submission",
+        "expert",
+        "status",
+        "assigned_by",
+        "assigned_at",
+        "completed_at",
+        "revoked_at",
+    )
+    list_filter = (
+        "status",
+        "submission__program",
+        "assigned_at",
+        "completed_at",
+        "revoked_at",
+    )
+    search_fields = (
+        "=submission__id",
+        "submission__title",
+        "submission__program__name",
+        "submission__program__tag",
+        "expert__user__email",
+        "expert__user__first_name",
+        "expert__user__last_name",
+        "assigned_by__email",
+    )
+    raw_id_fields = (
+        "submission",
+        "expert",
+        "assigned_by",
+        "revoked_by",
+    )
+    readonly_fields = (
+        "assigned_at",
+        "created_at",
+        "updated_at",
+    )
+    list_select_related = (
+        "submission",
+        "submission__program",
+        "expert",
+        "expert__user",
+        "assigned_by",
+        "revoked_by",
+    )
+    date_hierarchy = "assigned_at"
+
+
+@admin.register(Evaluation)
+class EvaluationAdmin(admin.ModelAdmin):
+    list_display = (
+        "submission",
+        "expert",
+        "status",
+        "submitted_at",
+        "created_at",
+        "updated_at",
+    )
+    list_filter = (
+        "status",
+        "submission__program",
+        "submitted_at",
+    )
+    search_fields = (
+        "=submission__id",
+        "submission__title",
+        "submission__program__name",
+        "submission__program__tag",
+        "expert__user__email",
+        "expert__user__first_name",
+        "expert__user__last_name",
+    )
+    raw_id_fields = (
+        "submission",
+        "expert",
+    )
+    readonly_fields = (
+        "created_at",
+        "updated_at",
+    )
+    list_select_related = (
+        "submission",
+        "submission__program",
+        "expert",
+        "expert__user",
+    )
+    date_hierarchy = "created_at"
+
+
+@admin.register(EvaluationScore)
+class EvaluationScoreAdmin(admin.ModelAdmin):
+    list_display = (
+        "evaluation",
+        "criterion",
+        "value",
+        "criterion_name",
+    )
+    list_filter = (
+        "criterion__partner_program",
+        "criterion_type",
+        "created_at",
+    )
+    search_fields = (
+        "=evaluation__id",
+        "=evaluation__submission__id",
+        "criterion__name",
+        "criterion_name",
+        "evaluation__expert__user__email",
+    )
+    raw_id_fields = (
+        "evaluation",
+        "criterion",
+    )
+    readonly_fields = (
+        "criterion_name",
+        "criterion_type",
+        "min_value",
+        "max_value",
+        "created_at",
+        "updated_at",
+    )
+    list_select_related = (
+        "evaluation",
+        "evaluation__submission",
+        "evaluation__expert",
+        "criterion",
     )
     date_hierarchy = "created_at"
 

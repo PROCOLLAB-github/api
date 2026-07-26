@@ -835,6 +835,251 @@ class Submission(models.Model):
         )
 
 
+class SubmissionExpertAssignment(models.Model):
+    """Назначение эксперта на конкретную зафиксированную сдачу."""
+
+    STATUS_ASSIGNED = "assigned"
+    STATUS_COMPLETED = "completed"
+    STATUS_REVOKED = "revoked"
+
+    STATUS_CHOICES = (
+        (STATUS_ASSIGNED, "Назначено"),
+        (STATUS_COMPLETED, "Завершено"),
+        (STATUS_REVOKED, "Отозвано"),
+    )
+
+    ACTIVE_STATUSES = (
+        STATUS_ASSIGNED,
+        STATUS_COMPLETED,
+    )
+
+    submission = models.ForeignKey(
+        Submission,
+        on_delete=models.CASCADE,
+        related_name="expert_assignments",
+    )
+    expert = models.ForeignKey(
+        "users.Expert",
+        on_delete=models.PROTECT,
+        related_name="submission_assignments",
+    )
+    status = models.CharField(
+        max_length=16,
+        choices=STATUS_CHOICES,
+        default=STATUS_ASSIGNED,
+    )
+    assigned_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="assigned_submission_experts",
+    )
+    assigned_at = models.DateTimeField(auto_now_add=True)
+    revoked_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        related_name="revoked_submission_experts",
+        null=True,
+        blank=True,
+    )
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    revoke_reason = models.TextField(blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+    class Meta:
+        verbose_name = "Назначение эксперта на Submission"
+        verbose_name_plural = "Назначения экспертов на Submission"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["submission", "expert"],
+                condition=models.Q(status__in=("assigned", "completed")),
+                name="uniq_active_submission_expert_assignment",
+            ),
+            models.CheckConstraint(
+                check=(
+                    models.Q(
+                        status="assigned",
+                        completed_at__isnull=True,
+                        revoked_at__isnull=True,
+                    )
+                    | models.Q(
+                        status="completed",
+                        completed_at__isnull=False,
+                        revoked_at__isnull=True,
+                    )
+                    | models.Q(
+                        status="revoked",
+                        completed_at__isnull=True,
+                        revoked_at__isnull=False,
+                    )
+                ),
+                name="submission_assignment_status_timestamps",
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=["submission", "status"],
+                name="subm_assign_status_idx",
+            ),
+            models.Index(
+                fields=["expert", "status"],
+                name="expert_assignment_status_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            f"SubmissionExpertAssignment<{self.pk}> "
+            f"submission={self.submission_id} expert={self.expert_id} "
+            f"status={self.status}"
+        )
+
+
+class Evaluation(models.Model):
+    """Единая форма оценки конкретной Submission конкретным экспертом."""
+
+    STATUS_DRAFT = "draft"
+    STATUS_SUBMITTED = "submitted"
+
+    STATUS_CHOICES = (
+        (STATUS_DRAFT, "Черновик"),
+        (STATUS_SUBMITTED, "Отправлено"),
+    )
+
+    submission = models.ForeignKey(
+        Submission,
+        on_delete=models.CASCADE,
+        related_name="evaluations",
+    )
+    expert = models.ForeignKey(
+        "users.Expert",
+        on_delete=models.PROTECT,
+        related_name="submission_evaluations",
+    )
+    status = models.CharField(
+        max_length=16,
+        choices=STATUS_CHOICES,
+        default=STATUS_DRAFT,
+    )
+    comment = models.TextField(blank=True)
+    total_score = models.DecimalField(
+        max_digits=18,
+        decimal_places=6,
+        null=True,
+        blank=True,
+    )
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+    class Meta:
+        verbose_name = "Оценка Submission"
+        verbose_name_plural = "Оценки Submission"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["submission", "expert"],
+                name="uniq_evaluation_submission_expert",
+            ),
+            models.CheckConstraint(
+                check=(
+                    models.Q(status="draft", submitted_at__isnull=True)
+                    | models.Q(status="submitted", submitted_at__isnull=False)
+                ),
+                name="evaluation_status_submitted_at",
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=["submission", "status"],
+                name="eval_submission_status_idx",
+            ),
+            models.Index(
+                fields=["expert", "status"],
+                name="evaluation_expert_status_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            f"Evaluation<{self.pk}> submission={self.submission_id} "
+            f"expert={self.expert_id} status={self.status}"
+        )
+
+
+class EvaluationScore(models.Model):
+    """Числовая оценка по одному критерию внутри Evaluation."""
+
+    NUMERIC_CRITERION_TYPES = ("int", "float")
+
+    evaluation = models.ForeignKey(
+        Evaluation,
+        on_delete=models.CASCADE,
+        related_name="scores",
+    )
+    criterion = models.ForeignKey(
+        "project_rates.Criteria",
+        on_delete=models.PROTECT,
+        related_name="evaluation_scores",
+    )
+    value = models.DecimalField(max_digits=18, decimal_places=6)
+    criterion_name = models.CharField(max_length=50, editable=False)
+    criterion_type = models.CharField(max_length=8, editable=False)
+    min_value = models.FloatField(null=True, blank=True, editable=False)
+    max_value = models.FloatField(null=True, blank=True, editable=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def _capture_criterion_snapshot(self):
+        if self._state.adding and self.criterion_id:
+            self.criterion_name = self.criterion.name
+            self.criterion_type = self.criterion.type
+            self.min_value = self.criterion.min_value
+            self.max_value = self.criterion.max_value
+
+    def clean(self):
+        super().clean()
+        if self.criterion_id and self.criterion.type not in self.NUMERIC_CRITERION_TYPES:
+            raise ValidationError(
+                {"criterion": "Для EvaluationScore допустим только числовой критерий."}
+            )
+
+    def save(self, *args, **kwargs):
+        self._capture_criterion_snapshot()
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+    class Meta:
+        verbose_name = "Оценка по критерию"
+        verbose_name_plural = "Оценки по критериям"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["evaluation", "criterion"],
+                name="uniq_evaluation_score_criterion",
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=["criterion", "created_at"],
+                name="eval_score_criterion_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            f"EvaluationScore<{self.pk}> evaluation={self.evaluation_id} "
+            f"criterion={self.criterion_id} value={self.value}"
+        )
+
+
 class PartnerProgramUserProfile(models.Model):
     """
     PartnerProgramUserProfile model
