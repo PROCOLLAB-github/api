@@ -2,6 +2,15 @@
 
 Статус: proposal.
 
+Фактический статус MVP-моделей на 25 июля 2026 года:
+
+- `SubmissionExpertAssignment`, `Evaluation` и `EvaluationScore` реализованы в
+  `partner_programs`;
+- API и lifecycle service еще не реализованы;
+- временно используется существующий `project_rates.Criteria`;
+- дедлайном MVP остается существующий `datetime_evaluation_ends`;
+- `Result`, ranking и публикация итогов еще не реализованы.
+
 Документ описывает следующий этап React-контура PROCOLLAB: назначение
 экспертов на конкретные `Submission`, кабинет эксперта и управляемую отправку
 оценки. RFC является только анализом. Он не меняет модели, миграции,
