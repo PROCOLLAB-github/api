@@ -9,6 +9,9 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
     TokenVerifyView,
 )
+from partner_programs.submission_assignment_views import (
+    SubmissionAssignmentRevokeView,
+)
 from users.authentication import ActivityTrackingJWTAuthentication
 from users.token_views import ThrottledTokenObtainPairView
 
@@ -62,6 +65,11 @@ urlpatterns = [
     path(
         "submissions/",
         include("partner_programs.submission_urls", namespace="submissions"),
+    ),
+    path(
+        "submission-assignments/<int:assignment_id>/revoke/",
+        SubmissionAssignmentRevokeView.as_view(),
+        name="submission-assignment-revoke",
     ),
     path(
         "team-invites/",

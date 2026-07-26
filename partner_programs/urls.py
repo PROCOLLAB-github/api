@@ -5,6 +5,9 @@ from partner_programs.applications_views import (
     MyProgramApplicationView,
     ProgramApplicationCreateView,
 )
+from partner_programs.submission_assignment_views import (
+    ProgramSubmissionAssignmentListCreateView,
+)
 from partner_programs.views import (
     PartnerProgramCreateUserAndRegister,
     PartnerProgramDataSchema,
@@ -26,6 +29,11 @@ app_name = "partner_programs"
 
 urlpatterns = [
     path("", PartnerProgramList.as_view()),
+    path(
+        "<int:program_id>/submission-assignments/",
+        ProgramSubmissionAssignmentListCreateView.as_view(),
+        name="submission-assignment-list-create",
+    ),
     path(
         "<int:program_id>/applications/my/",
         MyProgramApplicationView.as_view(),

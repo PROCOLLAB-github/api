@@ -6,7 +6,11 @@
 
 - `SubmissionExpertAssignment`, `Evaluation` и `EvaluationScore` реализованы в
   `partner_programs`;
-- API и lifecycle service еще не реализованы;
+- Assignment service и manager API реализованы:
+  `GET/POST /programs/<program_id>/submission-assignments/` и
+  `POST /submission-assignments/<assignment_id>/revoke/`;
+- Expert Submission read API, Evaluation mutation API, frontend и `Result`
+  еще не реализованы;
 - временно используется существующий `project_rates.Criteria`;
 - дедлайном MVP остается существующий `datetime_evaluation_ends`;
 - `Result`, ranking и публикация итогов еще не реализованы.
@@ -578,7 +582,7 @@ RFC не меняет:
 1. **Evaluation models.** Добавить `SubmissionExpertAssignment`, `Evaluation`,
    `EvaluationScore`, migrations, admin, constraints и model tests. API не
    добавлять.
-2. **Assignment service/API.** Транзакционные manager permissions,
+2. **Assignment service/API (реализовано).** Транзакционные manager permissions,
    list/create/revoke, history и tests.
 3. **Expert Submission read API.** Изолированный queryset, PII-safe serializer,
    criteria contract и object-level permission tests.
