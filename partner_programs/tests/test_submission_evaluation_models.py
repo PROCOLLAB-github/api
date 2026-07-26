@@ -188,6 +188,35 @@ class EvaluationScoreModelTests(SubmissionEvaluationModelTestCase):
         self.assertEqual(score.value, Decimal("7.250000"))
         self.assertIsInstance(score.value, Decimal)
 
+    def test_int_criterion_rejects_fractional_decimal(self):
+        criterion = create_rate_criteria(
+            self.program,
+            name="Integer impact",
+            type="int",
+        )
+
+        with self.assertRaises(ValidationError) as error:
+            self.create_score(
+                criterion=criterion,
+                value=Decimal("7.5"),
+            )
+
+        self.assertIn("value", error.exception.message_dict)
+
+    def test_int_criterion_accepts_whole_decimal(self):
+        criterion = create_rate_criteria(
+            self.program,
+            name="Integer impact",
+            type="int",
+        )
+
+        score = self.create_score(
+            criterion=criterion,
+            value=Decimal("7"),
+        )
+
+        self.assertEqual(score.value, Decimal("7"))
+
     def test_evaluation_and_criterion_are_unique(self):
         self.create_score()
 
@@ -208,7 +237,19 @@ class EvaluationScoreModelTests(SubmissionEvaluationModelTestCase):
         self.assertEqual(score.min_value, 0.5)
         self.assertEqual(score.max_value, 10.5)
 
-    def test_criterion_changes_do_not_change_snapshot(self):
+    def test_existing_score_uses_snapshot_type_after_criterion_changes(self):
+        score = self.create_score(value=Decimal("7.5"))
+        self.criterion.type = "str"
+        self.criterion.save()
+
+        score.value = Decimal("8.5")
+        score.save()
+        score.refresh_from_db()
+
+        self.assertEqual(score.value, Decimal("8.500000"))
+        self.assertEqual(score.criterion_type, "float")
+
+    def test_existing_score_save_does_not_overwrite_snapshot(self):
         score = self.create_score()
         original_snapshot = (
             score.criterion_name,
@@ -217,11 +258,13 @@ class EvaluationScoreModelTests(SubmissionEvaluationModelTestCase):
             score.max_value,
         )
         self.criterion.name = "Updated impact"
-        self.criterion.type = "int"
+        self.criterion.type = "str"
         self.criterion.min_value = 1
         self.criterion.max_value = 20
         self.criterion.save()
 
+        score.value = Decimal("8.5")
+        score.save()
         score.refresh_from_db()
 
         self.assertEqual(

@@ -1045,12 +1045,27 @@ class EvaluationScore(models.Model):
             self.min_value = self.criterion.min_value
             self.max_value = self.criterion.max_value
 
+    def _get_criterion_type_for_validation(self):
+        if self._state.adding:
+            return self.criterion.type if self.criterion_id else None
+        return self.criterion_type
+
     def clean(self):
         super().clean()
-        if self.criterion_id and self.criterion.type not in self.NUMERIC_CRITERION_TYPES:
-            raise ValidationError(
-                {"criterion": "Для EvaluationScore допустим только числовой критерий."}
-            )
+        criterion_type = self._get_criterion_type_for_validation()
+        errors = {}
+
+        if criterion_type and criterion_type not in self.NUMERIC_CRITERION_TYPES:
+            errors["criterion"] = "Для EvaluationScore допустим только числовой критерий."
+        if (
+            criterion_type == "int"
+            and self.value is not None
+            and self.value != self.value.to_integral_value()
+        ):
+            errors["value"] = "Для целочисленного критерия укажите целое значение."
+
+        if errors:
+            raise ValidationError(errors)
 
     def save(self, *args, **kwargs):
         self._capture_criterion_snapshot()
