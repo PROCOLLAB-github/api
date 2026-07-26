@@ -194,6 +194,11 @@ REST_FRAMEWORK = {
         "submission_create": config(
             "DRF_THROTTLE_SUBMISSION_CREATE", default="10/min", cast=str
         ),
+        "submission_assignment_create": config(
+            "DRF_THROTTLE_SUBMISSION_ASSIGNMENT_CREATE",
+            default="60/min",
+            cast=str,
+        ),
     },
 }
 
