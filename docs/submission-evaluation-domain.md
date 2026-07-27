@@ -9,11 +9,11 @@
 - Assignment service и manager API реализованы:
   `GET/POST /programs/<program_id>/submission-assignments/` и
   `POST /submission-assignments/<assignment_id>/revoke/`;
-- Expert Submission read API, Evaluation mutation API, frontend и `Result`
-  еще не реализованы;
+- Expert Submission read API, Evaluation mutation API и manager Evaluation
+  read API реализованы в рамках DEV-050, DEV-051 и DEV-052;
+- frontend, `Result`, ranking и публикация итогов еще не реализованы;
 - временно используется существующий `project_rates.Criteria`;
 - дедлайном MVP остается существующий `datetime_evaluation_ends`;
-- `Result`, ranking и публикация итогов еще не реализованы.
 
 Документ описывает следующий этап React-контура PROCOLLAB: назначение
 экспертов на конкретные `Submission`, кабинет эксперта и управляемую отправку
@@ -584,12 +584,12 @@ RFC не меняет:
    добавлять.
 2. **Assignment service/API (реализовано).** Транзакционные manager permissions,
    list/create/revoke, history и tests.
-3. **Expert Submission read API.** Изолированный queryset, PII-safe serializer,
-   criteria contract и object-level permission tests.
-4. **Evaluation mutation API.** Draft create/update/submit, idempotency,
-   locking, ranges, completeness и throttling.
-5. **Manager evaluation read API.** Просмотр форм/статусов своей Program без
-   редактирования экспертных scores.
+3. **Expert Submission read API (реализовано).** Изолированный queryset,
+   PII-safe serializer, criteria contract и object-level permission tests.
+4. **Evaluation mutation API (реализовано).** Draft create/update/submit,
+   idempotency, locking, ranges, completeness и throttling.
+5. **Manager evaluation read API (реализовано).** Просмотр форм/статусов своей
+   Program без редактирования экспертных scores.
 6. **React expert cabinet.** Список назначений, detail, autosave draft и
    финальная отправка.
 7. **Publication and Result RFC.** Настройка видимости участнику, формула

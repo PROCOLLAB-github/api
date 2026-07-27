@@ -199,6 +199,15 @@ REST_FRAMEWORK = {
             default="60/min",
             cast=str,
         ),
+        "evaluation_create": config(
+            "DRF_THROTTLE_EVALUATION_CREATE", default="10/min", cast=str
+        ),
+        "evaluation_update": config(
+            "DRF_THROTTLE_EVALUATION_UPDATE", default="120/min", cast=str
+        ),
+        "evaluation_submit": config(
+            "DRF_THROTTLE_EVALUATION_SUBMIT", default="20/min", cast=str
+        ),
     },
 }
 

@@ -1,5 +1,17 @@
 from rest_framework.throttling import ScopedRateThrottle
 
+# Roadmap: DEV-051
+# Отдельный лимит частого autosave черновика Evaluation.
+
+
+class PatchOnlyScopedRateThrottle(ScopedRateThrottle):
+    """Ограничивает только PATCH, не затрагивая чтение Evaluation."""
+
+    def allow_request(self, request, view):
+        if request.method != "PATCH":
+            return True
+        return super().allow_request(request, view)
+
 
 class TeamMutationScopedRateThrottle(ScopedRateThrottle):
     """Ограничивает только mutation Team, не меняя глобальную throttle policy."""
