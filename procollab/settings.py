@@ -18,6 +18,12 @@ SECRET_KEY = config("DJANGO_SECRET_KEY", default="django-default-secret-key", ca
 
 DEBUG = config("DEBUG", default=False, cast=bool)
 
+ALLOW_REACT_DEV_DEMO_SEED = config(
+    "ALLOW_REACT_DEV_DEMO_SEED",
+    default=False,
+    cast=bool,
+)
+
 AUTOPOSTING_ON = config("AUTOPOSTING_ON", default=False, cast=bool)
 
 TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN", default="", cast=str)
