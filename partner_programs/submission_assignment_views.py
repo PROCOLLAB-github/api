@@ -33,6 +33,10 @@ def _assignment_queryset():
         submission_id=OuterRef("submission_id"),
         expert_id=OuterRef("expert_id"),
     ).values("status")[:1]
+    evaluation = Evaluation.objects.filter(
+        submission_id=OuterRef("submission_id"),
+        expert_id=OuterRef("expert_id"),
+    )
     return SubmissionExpertAssignment.objects.select_related(
         "submission",
         "expert",
@@ -41,6 +45,10 @@ def _assignment_queryset():
         "revoked_by",
     ).annotate(
         annotated_evaluation_status=Subquery(evaluation_status),
+        annotated_evaluation_id=Subquery(evaluation.values("id")[:1]),
+        annotated_evaluation_updated_at=Subquery(evaluation.values("updated_at")[:1]),
+        annotated_evaluation_submitted_at=Subquery(evaluation.values("submitted_at")[:1]),
+        annotated_evaluation_total_score=Subquery(evaluation.values("total_score")[:1]),
     )
 
 

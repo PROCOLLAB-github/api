@@ -5,6 +5,10 @@ from partner_programs.applications_views import (
     MyProgramApplicationView,
     ProgramApplicationCreateView,
 )
+from partner_programs.evaluation_views import (
+    ProgramEvaluationDetailView,
+    ProgramEvaluationListView,
+)
 from partner_programs.submission_assignment_views import (
     ProgramSubmissionAssignmentListCreateView,
 )
@@ -29,6 +33,16 @@ app_name = "partner_programs"
 
 urlpatterns = [
     path("", PartnerProgramList.as_view()),
+    path(
+        "<int:program_id>/evaluations/",
+        ProgramEvaluationListView.as_view(),
+        name="evaluation-list",
+    ),
+    path(
+        "<int:program_id>/evaluations/<int:evaluation_id>/",
+        ProgramEvaluationDetailView.as_view(),
+        name="evaluation-detail",
+    ),
     path(
         "<int:program_id>/submission-assignments/",
         ProgramSubmissionAssignmentListCreateView.as_view(),

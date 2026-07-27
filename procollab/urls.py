@@ -67,6 +67,14 @@ urlpatterns = [
         include("partner_programs.submission_urls", namespace="submissions"),
     ),
     path(
+        "evaluations/",
+        include("partner_programs.evaluation_urls", namespace="evaluations"),
+    ),
+    path(
+        "expert/",
+        include("partner_programs.expert_urls", namespace="expert_submissions"),
+    ),
+    path(
         "submission-assignments/<int:assignment_id>/revoke/",
         SubmissionAssignmentRevokeView.as_view(),
         name="submission-assignment-revoke",

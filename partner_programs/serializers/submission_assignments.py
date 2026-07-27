@@ -44,6 +44,7 @@ class SubmissionAssignmentReadSerializer(serializers.ModelSerializer):
     assigned_by_id = serializers.IntegerField(read_only=True)
     revoked_by_id = serializers.IntegerField(read_only=True)
     evaluation_status = serializers.SerializerMethodField()
+    evaluation = serializers.SerializerMethodField()
 
     class Meta:
         model = SubmissionExpertAssignment
@@ -59,6 +60,7 @@ class SubmissionAssignmentReadSerializer(serializers.ModelSerializer):
             "revoked_at",
             "revoke_reason",
             "evaluation_status",
+            "evaluation",
         )
         read_only_fields = fields
 
@@ -73,6 +75,33 @@ class SubmissionAssignmentReadSerializer(serializers.ModelSerializer):
             .values_list("status", flat=True)
             .first()
         )
+
+    def get_evaluation(self, assignment):
+        if not hasattr(assignment, "annotated_evaluation_id"):
+            evaluation = (
+                Evaluation.objects.filter(
+                    submission_id=assignment.submission_id,
+                    expert_id=assignment.expert_id,
+                )
+                .values(
+                    "id",
+                    "status",
+                    "updated_at",
+                    "submitted_at",
+                    "total_score",
+                )
+                .first()
+            )
+            return evaluation
+        if assignment.annotated_evaluation_id is None:
+            return None
+        return {
+            "id": assignment.annotated_evaluation_id,
+            "status": assignment.annotated_evaluation_status,
+            "updated_at": assignment.annotated_evaluation_updated_at,
+            "submitted_at": assignment.annotated_evaluation_submitted_at,
+            "total_score": assignment.annotated_evaluation_total_score,
+        }
 
 
 class SubmissionAssignmentCreateSerializer(serializers.Serializer):

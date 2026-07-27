@@ -299,6 +299,7 @@ class SubmissionAssignmentListAPITests(SubmissionAssignmentTestCase):
                 "revoked_at",
                 "revoke_reason",
                 "evaluation_status",
+                "evaluation",
             },
         )
         self.assertEqual(
@@ -312,6 +313,7 @@ class SubmissionAssignmentListAPITests(SubmissionAssignmentTestCase):
         self.assertNotIn("form_data", item["submission"])
         self.assertNotIn("email", item["expert"])
         self.assertNotIn("participant", item)
+        self.assertIsNone(item["evaluation"])
 
     def test_evaluation_status_reports_null_draft_and_submitted(self):
         no_evaluation = self.create_assignment()
