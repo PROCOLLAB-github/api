@@ -1,0 +1,72 @@
+name: Sync roadmap
+
+on:
+  push:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, closed]
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build payload
+        id: payload
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_ACTION: ${{ github.event.action }}
+          REPOSITORY: ${{ github.repository }}
+          REF_NAME: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
+          EVENT_PATH: ${{ github.event_path }}
+          SERVER_URL: ${{ github.server_url }}
+          TOKEN: ${{ secrets.ROADMAP_WEBHOOK_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [ "$EVENT_NAME" = "push" ]; then
+            jq -n \
+              --arg token "$TOKEN" \
+              --arg event_type "push" \
+              --arg repository "$REPOSITORY" \
+              --arg branch "$REF_NAME" \
+              --arg sha "$SHA" \
+              --arg commit_message "$(jq -r '.head_commit.message // ""' "$EVENT_PATH")" \
+              --arg author "$(jq -r '.head_commit.author.name // env.ACTOR' "$EVENT_PATH")" \
+              --arg timestamp "$(jq -r '.head_commit.timestamp // now | todateiso8601' "$EVENT_PATH")" \
+              --arg commit_url "$SERVER_URL/$REPOSITORY/commit/$SHA" \
+              '{token:$token,event_type:$event_type,repository:$repository,branch:$branch,sha:$sha,commit_message:$commit_message,author:$author,timestamp:$timestamp,commit_url:$commit_url}' \
+              > payload.json
+          else
+            jq -n \
+              --arg token "$TOKEN" \
+              --arg event_type "pull_request" \
+              --arg action "$(jq -r '.action // ""' "$EVENT_PATH")" \
+              --arg repository "$REPOSITORY" \
+              --arg pr_number "$(jq -r '.number // ""' "$EVENT_PATH")" \
+              --arg pr_url "$(jq -r '.pull_request.html_url // ""' "$EVENT_PATH")" \
+              --arg pr_title "$(jq -r '.pull_request.title // ""' "$EVENT_PATH")" \
+              --arg pr_body "$(jq -r '.pull_request.body // ""' "$EVENT_PATH")" \
+              --arg branch "$(jq -r '.pull_request.head.ref // ""' "$EVENT_PATH")" \
+              --arg timestamp "$(jq -r '.pull_request.updated_at // now | todateiso8601' "$EVENT_PATH")" \
+              --argjson merged "$(jq -r '.pull_request.merged // false' "$EVENT_PATH")" \
+              '{token:$token,event_type:$event_type,action:$action,repository:$repository,pr_number:$pr_number,pr_url:$pr_url,pr_title:$pr_title,pr_body:$pr_body,branch:$branch,timestamp:$timestamp,merged:$merged}' \
+              > payload.json
+          fi
+
+          cat payload.json | jq 'del(.token)'
+
+      - name: Send to roadmap
+        env:
+          ROADMAP_WEBHOOK_URL: ${{ secrets.ROADMAP_WEBHOOK_URL }}
+        run: |
+          set -euo pipefail
+          test -n "$ROADMAP_WEBHOOK_URL"
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --header 'Content-Type: application/json' \
+            --data @payload.json \
+            "$ROADMAP_WEBHOOK_URL"
