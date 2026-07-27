@@ -7,7 +7,12 @@ from threading import Barrier, Thread
 from django.conf import settings
 from django.core.cache import cache
 from django.db import close_old_connections
-from django.test import TestCase, TransactionTestCase, override_settings
+from django.test import (
+    TestCase,
+    TransactionTestCase,
+    override_settings,
+    skipUnlessDBFeature,
+)
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -937,6 +942,7 @@ class ConcurrentEvaluationSubmitTests(TransactionTestCase):
             value=Decimal("8"),
         )
 
+    @skipUnlessDBFeature("has_select_for_update")
     def test_concurrent_submit_keeps_consistent_terminal_state(self):
         barrier = Barrier(2)
         results = []
