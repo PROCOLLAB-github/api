@@ -5,6 +5,7 @@ from django.utils import timezone
 
 from partner_programs.models import Application, PartnerProgram, Team, TeamMember
 from partner_programs.services.application_team import (
+    _lock_application,
     ActiveApplicationConflictError,
     ApplicationDeadlinePassedError,
     ApplicationNotEditableError,
@@ -35,6 +36,29 @@ class ApplicationTeamServiceTests(TestCase):
         self.program = create_partner_program()
         self.user = create_user(prefix="team-service-owner")
         self.registration = create_program_member(self.program, user=self.user)
+
+    def test_application_lock_targets_only_application_row(self):
+        application = Application(pk=123)
+
+        with patch(
+            "partner_programs.services.application_team."
+            "Application.objects.select_for_update"
+        ) as select_for_update:
+            queryset = select_for_update.return_value
+            related_queryset = queryset.select_related.return_value
+            related_queryset.get.return_value = application
+
+            result = _lock_application(application)
+
+        select_for_update.assert_called_once_with(of=("self",))
+        queryset.select_related.assert_called_once_with(
+            "program",
+            "user",
+            "created_by",
+            "project",
+        )
+        related_queryset.get.assert_called_once_with(pk=application.pk)
+        self.assertIs(result, application)
 
     def configure_team_policy(
         self,

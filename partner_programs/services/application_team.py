@@ -124,7 +124,7 @@ def _lock_program(program: PartnerProgram) -> PartnerProgram:
 
 def _lock_application(application: Application) -> Application:
     return (
-        Application.objects.select_for_update()
+        Application.objects.select_for_update(of=("self",))
         .select_related("program", "user", "created_by", "project")
         .get(pk=application.pk)
     )
