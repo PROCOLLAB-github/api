@@ -1,3 +1,5 @@
+# Roadmap: DEV-073
+
 import re
 
 import tablib
@@ -13,6 +15,7 @@ from mailing.views import MailingTemplateRender
 from partner_programs.models import (
     Application,
     Evaluation,
+    EvaluationAmendment,
     EvaluationScore,
     PartnerProgram,
     PartnerProgramField,
@@ -311,6 +314,7 @@ class EvaluationAdmin(admin.ModelAdmin):
         "expert",
         "status",
         "submitted_at",
+        "amended_at",
         "created_at",
         "updated_at",
     )
@@ -335,6 +339,7 @@ class EvaluationAdmin(admin.ModelAdmin):
     readonly_fields = (
         "created_at",
         "updated_at",
+        "amended_at",
     )
     list_select_related = (
         "submission",
@@ -384,6 +389,52 @@ class EvaluationScoreAdmin(admin.ModelAdmin):
         "criterion",
     )
     date_hierarchy = "created_at"
+
+
+@admin.register(EvaluationAmendment)
+class EvaluationAmendmentAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "evaluation",
+        "changed_by",
+        "created_at",
+    )
+    list_filter = (
+        "evaluation__submission__program",
+        "created_at",
+    )
+    search_fields = (
+        "=evaluation__id",
+        "=evaluation__submission__id",
+        "changed_by__email",
+    )
+    readonly_fields = (
+        "evaluation",
+        "changed_by",
+        "previous_comment",
+        "comment",
+        "previous_scores",
+        "scores",
+        "previous_total_score",
+        "total_score",
+        "created_at",
+    )
+    list_select_related = (
+        "evaluation",
+        "evaluation__submission",
+        "changed_by",
+    )
+    date_hierarchy = "created_at"
+    actions = None
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 class PartnerProgramMaterialInline(admin.StackedInline):

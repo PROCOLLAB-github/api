@@ -1,3 +1,5 @@
+# Roadmap: DEV-073
+
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -974,6 +976,7 @@ class Evaluation(models.Model):
         blank=True,
     )
     submitted_at = models.DateTimeField(null=True, blank=True)
+    amended_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -1092,6 +1095,63 @@ class EvaluationScore(models.Model):
         return (
             f"EvaluationScore<{self.pk}> evaluation={self.evaluation_id} "
             f"criterion={self.criterion_id} value={self.value}"
+        )
+
+
+class EvaluationAmendment(models.Model):
+    """Неизменяемый снимок изменения уже отправленной экспертной оценки."""
+
+    evaluation = models.ForeignKey(
+        Evaluation,
+        on_delete=models.CASCADE,
+        related_name="amendments",
+    )
+    changed_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="evaluation_amendments",
+    )
+    previous_comment = models.TextField(blank=True)
+    comment = models.TextField(blank=True)
+    previous_scores = models.JSONField(default=list)
+    scores = models.JSONField(default=list)
+    previous_total_score = models.DecimalField(
+        max_digits=18,
+        decimal_places=6,
+        null=True,
+        blank=True,
+    )
+    total_score = models.DecimalField(
+        max_digits=18,
+        decimal_places=6,
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise ValidationError("Историю изменения оценки нельзя редактировать.")
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError("Историю изменения оценки нельзя удалять.")
+
+    class Meta:
+        verbose_name = "Изменение экспертной оценки"
+        verbose_name_plural = "История изменений экспертных оценок"
+        ordering = ("created_at", "id")
+        indexes = [
+            models.Index(
+                fields=["evaluation", "created_at"],
+                name="eval_amend_eval_created_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            f"EvaluationAmendment<{self.pk}> evaluation={self.evaluation_id} "
+            f"changed_by={self.changed_by_id}"
         )
 
 

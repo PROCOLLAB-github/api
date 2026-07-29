@@ -1,4 +1,4 @@
-# Roadmap: DEV-050, DEV-051, DEV-052
+# Roadmap: DEV-050, DEV-051, DEV-052, DEV-073
 # Контур экспертного доступа к Submission и управления Evaluation.
 
 from drf_yasg import openapi
@@ -14,6 +14,8 @@ from core.throttling import PostOnlyScopedRateThrottle
 from partner_programs.pagination import PartnerProgramPagination
 from partner_programs.permissions import IsAdminOrManagerOfProgram
 from partner_programs.serializers.evaluations import (
+    EvaluationAmendmentSerializer,
+    EvaluationAmendSerializer,
     EvaluationDraftCreateSerializer,
     EvaluationDraftUpdateSerializer,
     EvaluationReadSerializer,
@@ -29,8 +31,10 @@ from partner_programs.services.evaluations import (
     EvaluationNotFoundError,
     EvaluationServiceError,
     EvaluationValidationError,
+    amend_submitted_evaluation,
     create_or_get_draft_evaluation,
     expert_submission_assignments,
+    get_evaluation_amendments,
     get_expert_submission_detail,
     get_my_evaluation,
     get_visible_evaluation,
@@ -334,6 +338,68 @@ class EvaluationSubmitView(APIView):
         return Response(EvaluationReadSerializer(evaluation).data)
 
 
+class EvaluationAmendView(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [PatchOnlyScopedRateThrottle]
+    throttle_scope = "evaluation_amend"
+
+    @swagger_auto_schema(
+        operation_description=(
+            "Изменяет comment и/или полный набор scores уже отправленной Evaluation. "
+            "Операция доступна только эксперту-владельцу и сохраняет submitted_at."
+        ),
+        request_body=EvaluationAmendSerializer,
+        responses={
+            200: EvaluationReadSerializer,
+            400: "Передан неполный или некорректный набор Criteria.",
+            401: "Требуется авторизация.",
+            404: "Evaluation скрыта или не существует.",
+            409: "Статус Evaluation, Submission или assignment не допускает изменение.",
+            429: "Превышен evaluation_amend throttle.",
+        },
+    )
+    def patch(self, request, evaluation_id):
+        serializer = EvaluationAmendSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            evaluation = amend_submitted_evaluation(
+                evaluation_id=evaluation_id,
+                user=request.user,
+                comment_supplied="comment" in serializer.validated_data,
+                comment=serializer.validated_data.get("comment", ""),
+                scores_supplied="scores" in serializer.validated_data,
+                scores=serializer.validated_data.get("scores"),
+            )
+        except EvaluationServiceError as exc:
+            return _domain_error_response(exc)
+        return Response(EvaluationReadSerializer(evaluation).data)
+
+
+class EvaluationAmendmentListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_description=(
+            "Возвращает неизменяемую историю правок Evaluation владельцу, "
+            "manager программы или staff."
+        ),
+        responses={
+            200: EvaluationAmendmentSerializer(many=True),
+            401: "Требуется авторизация.",
+            404: "Evaluation скрыта или не существует.",
+        },
+    )
+    def get(self, request, evaluation_id):
+        try:
+            amendments = get_evaluation_amendments(
+                evaluation_id=evaluation_id,
+                user=request.user,
+            )
+        except EvaluationServiceError as exc:
+            return _domain_error_response(exc)
+        return Response(EvaluationAmendmentSerializer(amendments, many=True).data)
+
+
 class ProgramEvaluationListView(ProgramPermissionMixin, APIView):
     permission_classes = [IsAuthenticated, IsAdminOrManagerOfProgram]
     pagination_class = PartnerProgramPagination
@@ -400,3 +466,6 @@ class ProgramEvaluationDetailView(ProgramPermissionMixin, APIView):
             pk=evaluation_id,
         )
         return Response(ManagerEvaluationSerializer(evaluation).data)
+
+    amend_submitted_evaluation,
+    get_evaluation_amendments,
