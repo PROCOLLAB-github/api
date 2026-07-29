@@ -5,8 +5,9 @@
 - DEV-050 — Expert Submission API
 - DEV-051 — Evaluation mutation API
 - DEV-052 — Manager evaluation read API
+- DEV-073 — изменение submitted Evaluation с неизменяемой историей
 
-Roadmap-IDs: DEV-050, DEV-051, DEV-052
+Roadmap-IDs: DEV-050, DEV-051, DEV-052, DEV-073
 
 ## Назначение
 
@@ -23,6 +24,8 @@ membership в программе.
 - `SubmissionExpertAssignment` связывает конкретную Submission и Expert.
 - `Evaluation` хранит форму оценки, комментарий и lifecycle.
 - `EvaluationScore` хранит одно числовое значение и snapshot критерия.
+- `EvaluationAmendment` хранит неизменяемые снимки до и после изменения
+  отправленной оценки.
 - `project_rates.Criteria` временно используется как каталог критериев
   программы.
 
@@ -40,16 +43,21 @@ Assignment:
 Evaluation:
 
 - `draft` — доступно атомарное обновление `comment` и полного набора `scores`;
-- `submitted` — терминальное неизменяемое состояние.
+- `submitted` — отправленное состояние; обычный PATCH запрещен, изменение
+  возможно только через DEV-073 amend с audit-записью.
 
 Финальный submit в одной транзакции переводит Evaluation в `submitted`, а
-assignment в `completed`. Reopen и revision history отсутствуют.
+assignment в `completed`. Amend не возвращает Evaluation в draft, не меняет
+`submitted_at` и сохраняет историю. Reopen отсутствует.
 
 ## Права доступа
 
 - Expert list/detail доступны только эксперту с текущим membership программы
   и assignment `assigned` или `completed`.
 - Создание и изменение draft требуют assignment `assigned`.
+- Amend submitted Evaluation доступен только владельцу при assignment
+  `assigned` или `completed` и текущем membership программы.
+- Историю amend читают владелец, manager программы и staff/superuser.
 - Staff может открыть PII-safe expert detail в административном режиме.
 - Владелец-эксперт, manager программы и staff могут читать Evaluation detail.
 - Manager list/detail ограничены конкретной программой.
@@ -111,12 +119,31 @@ Autosave владельца draft. Можно передать `comment`, `score
 Повторный submit идемпотентен: возвращает `200` и сохраняет первоначальный
 `submitted_at`.
 
+### PATCH /evaluations/\<evaluation_id\>/amend/
+
+Изменяет `comment` и/или полный набор `scores` уже отправленной Evaluation.
+Endpoint доступен только эксперту-владельцу. Evaluation остается `submitted`,
+исходный `submitted_at` сохраняется, `amended_at` обновляется, а `total_score`
+сбрасывается в `null` до появления формулы пересчета.
+
+Если передан `scores`, payload обязан содержать все текущие числовые Criteria
+программы. Валидация и замена scores, обновление Evaluation и создание
+`EvaluationAmendment` выполняются в одной транзакции. Полностью совпадающий
+запрос возвращает `200`, но не обновляет `amended_at` и не создает историю.
+
+### GET /evaluations/\<evaluation_id\>/amendments/
+
+Возвращает упорядоченную неизменяемую историю со снимками comment, scores и
+total_score до и после каждой правки. Доступ имеют эксперт-владелец, manager
+программы и staff/superuser. Для остальных существование Evaluation скрывается
+ответом `404`.
+
 ## Manager API
 
 ### GET /programs/\<program_id\>/submission-assignments/
 
 Существующий контракт дополнен nullable-полем `evaluation` с полями `id`,
-`status`, `updated_at`, `submitted_at`, `total_score`. Старое поле
+`status`, `updated_at`, `submitted_at`, `amended_at`, `total_score`. Старое поле
 `evaluation_status` сохранено.
 
 ### GET /programs/\<program_id\>/evaluations/
@@ -131,7 +158,7 @@ Autosave владельца draft. Можно передать `comment`, `score
 - `limit`, `offset`.
 
 Ответ содержит безопасные Submission/Expert/Assignment summaries, scores,
-comment, total_score и timestamps.
+comment, total_score, `submitted_at`, `amended_at` и остальные timestamps.
 
 ### GET /programs/\<program_id\>/evaluations/\<evaluation_id\>/
 
@@ -147,6 +174,8 @@ Read-only detail в пределах программы manager. Mutation-мет
 - PATCH сначала валидирует весь новый набор и только затем удаляет старый.
 - Submit требует все текущие числовые Criteria программы и повторно проверяет
   типы и диапазоны.
+- Amend с `scores` также требует полный набор текущих числовых Criteria до
+  начала любых изменений.
 - Нечисловые Criteria не включаются в форму; свободный текст хранится в
   `Evaluation.comment`.
 
@@ -155,6 +184,8 @@ Read-only detail в пределах программы manager. Mutation-мет
 - Повторный create существующего draft возвращает его без изменения.
 - Повторный PATCH с теми же данными не создаёт дублей.
 - Повторный submit submitted Evaluation не меняет `submitted_at`.
+- Повторный amend с теми же comment и scores не создает новую историю и не
+  меняет `amended_at`.
 - Уникальность `submission + expert` и `evaluation + criterion` дополнительно
   защищена существующими constraints.
 
@@ -165,6 +196,8 @@ Read-only detail в пределах программы manager. Mutation-мет
 - PATCH блокирует assignment и Evaluation; набор scores заменяется атомарно.
 - Submit блокирует assignment и Evaluation в стабильном порядке, валидирует
   полную форму и записывает одинаковый timestamp в Evaluation и assignment.
+- Amend блокирует assignment и Evaluation в том же порядке, затем атомарно заменяет scores,
+  обновляет Evaluation и записывает снимок `EvaluationAmendment`.
 - Два конкурентных submit не создают противоречивое терминальное состояние.
 
 ## Защита персональных данных
@@ -182,7 +215,8 @@ Manager responses содержат только минимальные имя/ф
 
 - `evaluation_create`: `10/min`;
 - `evaluation_update`: `120/min`;
-- `evaluation_submit`: `20/min`.
+- `evaluation_submit`: `20/min`;
+- `evaluation_amend`: `30/min`.
 
 Scopes применяются только к соответствующим mutation-методам и не включают
 глобальный DRF throttle.
@@ -205,8 +239,8 @@ Scopes применяются только к соответствующим mut
 `partner_programs.tests.test_expert_evaluation_api`
 
 Он покрывает expert list/detail, PII regression, draft create, полную замену
-scores, rollback, submit lifecycle, concurrent submit, manager read-only API,
-filters, pagination и throttling.
+scores, rollback, submit lifecycle, amend submitted Evaluation, audit history,
+concurrent submit, manager read-only API, filters, pagination и throttling.
 
 Также сохраняются model tests и Assignment API regression.
 

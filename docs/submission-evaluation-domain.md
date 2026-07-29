@@ -1,3 +1,4 @@
+<!-- Roadmap: DEV-073 -->
 # Submission Evaluation Domain RFC
 
 Статус: proposal.
@@ -11,6 +12,8 @@
   `POST /submission-assignments/<assignment_id>/revoke/`;
 - Expert Submission read API, Evaluation mutation API и manager Evaluation
   read API реализованы в рамках DEV-050, DEV-051 и DEV-052;
+- изменение submitted Evaluation и неизменяемая история реализованы в рамках
+  DEV-073;
 - frontend, `Result`, ranking и публикация итогов еще не реализованы;
 - временно используется существующий `project_rates.Criteria`;
 - дедлайном MVP остается существующий `datetime_evaluation_ends`;
@@ -190,6 +193,21 @@ backfill ProjectScore в Evaluation и обратная синхронизаци
 отдельный `EvaluationCriterion` в самостоятельном PR. Не следует молча
 добавлять эти значения в legacy Criteria.
 
+### EvaluationAmendment
+
+`EvaluationAmendment` — неизменяемая audit-запись изменения submitted
+Evaluation:
+
+- `evaluation`;
+- `changed_by`;
+- `previous_comment`, `comment`;
+- `previous_scores`, `scores`;
+- `previous_total_score`, `total_score`;
+- `created_at`.
+
+`Evaluation.amended_at` хранит время последнего фактического изменения.
+Снимки scores включают идентификатор и snapshot критерия вместе со значением.
+
 ## 4. Сущности и связи
 
 ```text
@@ -242,10 +260,11 @@ Cross-table и ManyToMany invariants проверяются транзакцио
 | Статус | Редактирование | Допустимый переход |
 |---|---|---|
 | `draft` | Назначенным экспертом | `submitted` |
-| `submitted` | Запрещено | Терминальный в MVP |
+| `submitted` | Только отдельный amend владельца с audit | Остается `submitted` |
 
 MVP намеренно не добавляет `cancelled`, `revised` или `reopened` без готового
-audit contract. Возврат submitted Evaluation к редактированию запрещен.
+audit contract. Возврат submitted Evaluation в draft запрещен; DEV-073 меняет
+ее только отдельной атомарной операцией с неизменяемой историей.
 
 Будущее явное правило может добавить manager-only action `reopen` с
 обязательной причиной. До перехода прежняя финальная форма и scores должны
@@ -428,6 +447,28 @@ Service под transaction и row locks:
 
 Рекомендуемый scope: `evaluation_submit`, default `20/min`.
 
+#### `PATCH /evaluations/<evaluation_id>/amend/`
+
+Права: только владелец-эксперт. Evaluation должна оставаться в статусе
+`submitted`, Submission — в `submitted/final`, назначение — в
+`assigned/completed`, а эксперт должен по-прежнему состоять в Program.
+
+Можно изменить `comment` и полностью заменить `scores`. Переданный набор
+scores обязан содержать все числовые Criteria Program; типы, диапазоны и
+принадлежность Program проверяются теми же правилами, что для draft.
+Изменение выполняется атомарно, не создает новую Evaluation, не меняет
+`submitted_at` и статус assignment. `amended_at` обновляется только при
+фактическом изменении, а `total_score` сбрасывается до отдельного пересчета.
+
+Полностью совпадающий запрос является no-op и не создает запись истории.
+Рекомендуемый scope: `evaluation_amend`, default `30/min`.
+
+#### `GET /evaluations/<evaluation_id>/amendments/`
+
+Неизменяемые снимки до и после изменения доступны владельцу Evaluation,
+manager соответствующей Program и staff/superuser. Остальные получают `404`,
+чтобы endpoint не раскрывал существование оценки.
+
 ### Назначение экспертов менеджером
 
 #### `GET /programs/<program_id>/submission-assignments/`
@@ -479,10 +520,10 @@ Delete endpoint не используется, чтобы сохранять и�
 
 ### Не входящий в MVP reopen
 
-Если продукт подтвердит исправление финальной оценки, отдельный manager action
-может иметь вид `POST /evaluations/<id>/reopen/`. Он требует reason и
-неизменяемого snapshot предыдущей submitted revision. До реализации revision
-model endpoint добавлять нельзя.
+DEV-073 разрешает владельцу точечно изменить submitted Evaluation без возврата
+в draft. Отдельный manager action `POST /evaluations/<id>/reopen/` по-прежнему
+не входит в MVP: он потребует reason, отдельной модели переходов статуса и
+самостоятельного продуктового решения.
 
 ## 8. DB constraints
 
@@ -494,14 +535,16 @@ model endpoint добавлять нельзя.
    историю.
 2. `UniqueConstraint(submission, expert)` для Evaluation.
 3. `UniqueConstraint(evaluation, criterion)` для EvaluationScore.
-4. Общий `value >= 0` не добавляется без продуктового правила: существующий
+4. `EvaluationAmendment` хранит неизменяемые JSON-снимки comment, scores и
+   total_score до и после каждой фактической правки.
+5. Общий `value >= 0` не добавляется без продуктового правила: существующий
    Criteria может допускать другой диапазон. Индивидуальные min/max являются
    cross-row правилом и проверяются service/model validation; для Criteria
    типа `int` дополнительно запрещается дробное значение.
-5. `submitted_at IS NOT NULL` для submitted Evaluation и `IS NULL` для draft,
+6. `submitted_at IS NOT NULL` для submitted Evaluation и `IS NULL` для draft,
    если синтаксис текущей версии Django/PostgreSQL позволяет выразить это без
    неоднозначности.
-6. Assignment timestamps согласуются со статусом: revoked требует
+7. Assignment timestamps согласуются со статусом: revoked требует
    `revoked_at`, completed требует `completed_at`.
 
 Транзакционный service дополнительно проверяет:

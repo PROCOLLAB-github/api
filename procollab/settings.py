@@ -214,6 +214,9 @@ REST_FRAMEWORK = {
         "evaluation_submit": config(
             "DRF_THROTTLE_EVALUATION_SUBMIT", default="20/min", cast=str
         ),
+        "evaluation_amend": config(
+            "DRF_THROTTLE_EVALUATION_AMEND", default="30/min", cast=str
+        ),
     },
 }
 

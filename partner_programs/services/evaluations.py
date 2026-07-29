@@ -1,4 +1,4 @@
-# Roadmap: DEV-050, DEV-051, DEV-052
+# Roadmap: DEV-050, DEV-051, DEV-052, DEV-073
 # Контур экспертного доступа к Submission и управления Evaluation.
 
 from dataclasses import dataclass
@@ -11,6 +11,7 @@ from django.utils import timezone
 
 from partner_programs.models import (
     Evaluation,
+    EvaluationAmendment,
     EvaluationScore,
     PartnerProgram,
     Submission,
@@ -62,6 +63,11 @@ class SubmissionUnavailableError(EvaluationConflictError):
 class EvaluationSubmittedError(EvaluationConflictError):
     code = "evaluation_submitted"
     default_detail = "Отправленная оценка недоступна для изменения."
+
+
+class EvaluationNotSubmittedError(EvaluationConflictError):
+    code = "evaluation_not_submitted"
+    default_detail = "Изменить можно только отправленную оценку."
 
 
 @dataclass(frozen=True)
@@ -170,6 +176,7 @@ def expert_submission_assignments(*, user):
             my_evaluation_status=Subquery(evaluation.values("status")[:1]),
             my_evaluation_updated_at=Subquery(evaluation.values("updated_at")[:1]),
             my_evaluation_submitted_at=Subquery(evaluation.values("submitted_at")[:1]),
+            my_evaluation_amended_at=Subquery(evaluation.values("amended_at")[:1]),
         )
         .order_by("-assigned_at", "-id")
     )
@@ -320,6 +327,32 @@ def _replace_scores(*, evaluation, validated_scores):
             criterion=criterion,
             value=value,
         )
+
+
+def _validated_complete_scores(*, program, scores):
+    validated_scores = _validated_scores(program=program, scores=scores)
+    expected_ids = set(get_numeric_criteria(program).values_list("id", flat=True))
+    actual_ids = {criterion.pk for criterion, _value in validated_scores}
+    if actual_ids != expected_ids:
+        raise EvaluationValidationError(
+            "Передайте полный набор числовых критериев программы.",
+            field="scores",
+        )
+    return validated_scores
+
+
+def _score_snapshot(evaluation):
+    return [
+        {
+            "criterion_id": score.criterion_id,
+            "criterion_name": score.criterion_name,
+            "criterion_type": score.criterion_type,
+            "min_value": score.min_value,
+            "max_value": score.max_value,
+            "value": str(score.value),
+        }
+        for score in evaluation.scores.order_by("criterion_id", "id")
+    ]
 
 
 def _existing_creation_result(evaluation):
@@ -534,6 +567,119 @@ def submit_evaluation(*, evaluation_id, user):
             ]
         )
         return evaluation
+
+
+def amend_submitted_evaluation(
+    *,
+    evaluation_id,
+    user,
+    comment_supplied=False,
+    comment="",
+    scores_supplied=False,
+    scores=None,
+):
+    identity, expert = _evaluation_identity_for_owner(
+        evaluation_id=evaluation_id,
+        user=user,
+    )
+    with transaction.atomic():
+        assignment = _assignment_queryset(
+            submission_id=identity.submission_id,
+            expert_id=expert.pk,
+            for_update=True,
+        ).first()
+        if assignment is None:
+            raise EvaluationNotFoundError()
+        if assignment.status not in SubmissionExpertAssignment.ACTIVE_STATUSES:
+            raise AssignmentUnavailableError()
+
+        evaluation = (
+            Evaluation.objects.select_for_update()
+            .select_related("submission", "submission__program")
+            .get(pk=identity.pk)
+        )
+        _require_expert_membership(expert, evaluation.submission.program)
+        if evaluation.status != Evaluation.STATUS_SUBMITTED:
+            raise EvaluationNotSubmittedError()
+        _require_submission_status(evaluation.submission)
+
+        validated_scores = None
+        if scores_supplied:
+            validated_scores = _validated_complete_scores(
+                program=evaluation.submission.program,
+                scores=scores or [],
+            )
+
+        previous_comment = evaluation.comment
+        previous_scores = _score_snapshot(evaluation)
+        next_comment = comment if comment_supplied else previous_comment
+        current_score_values = {
+            score.criterion_id: score.value
+            for score in evaluation.scores.only("criterion_id", "value")
+        }
+        next_score_values = (
+            {criterion.pk: value for criterion, value in validated_scores}
+            if validated_scores is not None
+            else current_score_values
+        )
+        if next_comment == previous_comment and next_score_values == current_score_values:
+            return evaluation
+
+        previous_total_score = evaluation.total_score
+        if validated_scores is not None:
+            _replace_scores(
+                evaluation=evaluation,
+                validated_scores=validated_scores,
+            )
+
+        evaluation.comment = next_comment
+        evaluation.total_score = None
+        evaluation.amended_at = timezone.now()
+        evaluation.save(
+            update_fields=[
+                "comment",
+                "total_score",
+                "amended_at",
+                "updated_at",
+            ]
+        )
+        EvaluationAmendment.objects.create(
+            evaluation=evaluation,
+            changed_by=user,
+            previous_comment=previous_comment,
+            comment=evaluation.comment,
+            previous_scores=previous_scores,
+            scores=_score_snapshot(evaluation),
+            previous_total_score=previous_total_score,
+            total_score=evaluation.total_score,
+        )
+        return evaluation
+
+
+def get_evaluation_amendments(*, evaluation_id, user):
+    evaluation = (
+        Evaluation.objects.select_related(
+            "submission",
+            "submission__program",
+            "expert",
+        )
+        .filter(pk=evaluation_id)
+        .first()
+    )
+    if evaluation is None:
+        raise EvaluationNotFoundError()
+    if user.is_staff or user.is_superuser:
+        pass
+    elif evaluation.submission.program.is_manager(user):
+        pass
+    else:
+        try:
+            expert = user.expert
+        except Expert.DoesNotExist as exc:
+            raise EvaluationNotFoundError() from exc
+        if evaluation.expert_id != expert.pk:
+            raise EvaluationNotFoundError()
+    return evaluation.amendments.select_related("changed_by").all()
 
 
 def get_visible_evaluation(*, evaluation_id, user):

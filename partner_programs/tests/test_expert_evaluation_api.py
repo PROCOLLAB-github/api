@@ -1,4 +1,4 @@
-# Roadmap: DEV-050, DEV-051, DEV-052
+# Roadmap: DEV-050, DEV-051, DEV-052, DEV-073
 # Проверки экспертного доступа, autosave, submit и manager read-only API.
 
 from decimal import Decimal
@@ -19,6 +19,7 @@ from rest_framework.test import APIClient
 from partner_programs.models import (
     Application,
     Evaluation,
+    EvaluationAmendment,
     EvaluationScore,
     Submission,
     SubmissionExpertAssignment,
@@ -776,6 +777,305 @@ class EvaluationSubmitAPITests(ExpertEvaluationAPITestCase):
             {},
             format="json",
             REMOTE_ADDR="203.0.113.92",
+        )
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 429)
+
+
+class EvaluationAmendmentAPITests(ExpertEvaluationAPITestCase):
+    def setUp(self):
+        super().setUp()
+        self.submitted_at = timezone.now()
+        self.evaluation = self.create_evaluation(
+            comment="Initial submitted comment",
+            status=Evaluation.STATUS_SUBMITTED,
+            submitted_at=self.submitted_at,
+            total_score=Decimal("12.5"),
+        )
+        for criterion, value in (
+            (self.int_criterion, Decimal("6")),
+            (self.float_criterion, Decimal("3.5")),
+        ):
+            EvaluationScore.objects.create(
+                evaluation=self.evaluation,
+                criterion=criterion,
+                value=value,
+            )
+        self.assignment.status = SubmissionExpertAssignment.STATUS_COMPLETED
+        self.assignment.completed_at = self.submitted_at
+        self.assignment.save()
+        self.amend_url = f"/evaluations/{self.evaluation.pk}/amend/"
+        self.history_url = f"/evaluations/{self.evaluation.pk}/amendments/"
+
+    def test_owner_amends_comment_and_complete_scores(self):
+        completed_at = self.assignment.completed_at
+        self.authenticate()
+
+        response = self.client.patch(
+            self.amend_url,
+            {
+                "comment": "Corrected comment",
+                "scores": self.score_payload(int_value="9", float_value="5.25"),
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.evaluation.refresh_from_db()
+        self.assignment.refresh_from_db()
+        self.assertEqual(self.evaluation.status, Evaluation.STATUS_SUBMITTED)
+        self.assertEqual(self.evaluation.submitted_at, self.submitted_at)
+        self.assertIsNotNone(self.evaluation.amended_at)
+        self.assertIsNone(self.evaluation.total_score)
+        self.assertIsNotNone(response.data["amended_at"])
+        self.assertEqual(
+            {score.criterion_id: score.value for score in self.evaluation.scores.all()},
+            {
+                self.int_criterion.pk: Decimal("9"),
+                self.float_criterion.pk: Decimal("5.25"),
+            },
+        )
+        self.assertEqual(
+            self.assignment.status,
+            SubmissionExpertAssignment.STATUS_COMPLETED,
+        )
+        self.assertEqual(self.assignment.completed_at, completed_at)
+        self.assertEqual(
+            Evaluation.objects.filter(
+                submission=self.submission,
+                expert=self.expert,
+            ).count(),
+            1,
+        )
+
+        amendment = EvaluationAmendment.objects.get(evaluation=self.evaluation)
+        self.assertEqual(amendment.changed_by, self.expert_user)
+        self.assertEqual(amendment.previous_comment, "Initial submitted comment")
+        self.assertEqual(amendment.comment, "Corrected comment")
+        self.assertEqual(amendment.previous_total_score, Decimal("12.5"))
+        self.assertIsNone(amendment.total_score)
+        self.assertEqual(
+            {item["criterion_id"] for item in amendment.previous_scores},
+            {self.int_criterion.pk, self.float_criterion.pk},
+        )
+        self.assertEqual(
+            {item["criterion_id"]: Decimal(item["value"]) for item in amendment.scores},
+            {
+                self.int_criterion.pk: Decimal("9"),
+                self.float_criterion.pk: Decimal("5.25"),
+            },
+        )
+
+        list_response = self.client.get("/expert/submissions/")
+        self.assertEqual(
+            list_response.data["results"][0]["my_evaluation"]["amended_at"],
+            self.evaluation.amended_at,
+        )
+
+    def test_comment_only_preserves_scores_and_creates_history(self):
+        score_ids = tuple(
+            self.evaluation.scores.order_by("id").values_list("id", flat=True)
+        )
+        self.authenticate()
+
+        response = self.client.patch(
+            self.amend_url,
+            {"comment": "Comment only"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            tuple(self.evaluation.scores.order_by("id").values_list("id", flat=True)),
+            score_ids,
+        )
+        amendment = EvaluationAmendment.objects.get(evaluation=self.evaluation)
+        self.assertEqual(amendment.previous_scores, amendment.scores)
+
+    def test_identical_request_does_not_create_history(self):
+        self.authenticate()
+        payload = {
+            "comment": "Changed once",
+            "scores": self.score_payload(int_value="8", float_value="4.5"),
+        }
+
+        first = self.client.patch(self.amend_url, payload, format="json")
+        self.evaluation.refresh_from_db()
+        first_amended_at = self.evaluation.amended_at
+        second = self.client.patch(self.amend_url, payload, format="json")
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        self.evaluation.refresh_from_db()
+        self.assertEqual(self.evaluation.amended_at, first_amended_at)
+        self.assertEqual(
+            EvaluationAmendment.objects.filter(evaluation=self.evaluation).count(),
+            1,
+        )
+
+    def test_incomplete_scores_roll_back_comment_and_scores(self):
+        score_ids = tuple(
+            self.evaluation.scores.order_by("id").values_list("id", flat=True)
+        )
+        self.authenticate()
+
+        response = self.client.patch(
+            self.amend_url,
+            {
+                "comment": "Must rollback",
+                "scores": [
+                    {"criterion_id": self.int_criterion.pk, "value": "8"},
+                ],
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.evaluation.refresh_from_db()
+        self.assertEqual(self.evaluation.comment, "Initial submitted comment")
+        self.assertEqual(
+            tuple(self.evaluation.scores.order_by("id").values_list("id", flat=True)),
+            score_ids,
+        )
+        self.assertFalse(
+            EvaluationAmendment.objects.filter(evaluation=self.evaluation).exists()
+        )
+
+    def test_draft_evaluation_cannot_be_amended(self):
+        self.evaluation.status = Evaluation.STATUS_DRAFT
+        self.evaluation.submitted_at = None
+        self.evaluation.save()
+        self.authenticate()
+
+        response = self.client.patch(
+            self.amend_url,
+            {"comment": "Forbidden"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 409)
+
+    def test_revoked_assignment_cannot_be_amended(self):
+        self.assignment.status = SubmissionExpertAssignment.STATUS_REVOKED
+        self.assignment.completed_at = None
+        self.assignment.revoked_by = self.manager
+        self.assignment.revoked_at = timezone.now()
+        self.assignment.revoke_reason = "Revoked"
+        self.assignment.save()
+        self.authenticate()
+
+        response = self.client.patch(
+            self.amend_url,
+            {"comment": "Forbidden"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 409)
+
+    def test_other_expert_and_manager_cannot_amend(self):
+        for user in (self.other_expert_user, self.manager):
+            with self.subTest(user=user.pk):
+                self.authenticate(user)
+                response = self.client.patch(
+                    self.amend_url,
+                    {"comment": "Forbidden"},
+                    format="json",
+                )
+                self.assertEqual(response.status_code, 404)
+
+    def test_history_is_visible_to_owner_manager_and_staff(self):
+        self.authenticate()
+        amend_response = self.client.patch(
+            self.amend_url,
+            {"comment": "Visible history"},
+            format="json",
+        )
+        self.assertEqual(amend_response.status_code, 200)
+
+        for user in (self.expert_user, self.manager, self.staff):
+            with self.subTest(user=user.pk):
+                self.authenticate(user)
+                response = self.client.get(self.history_url)
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(len(response.data), 1)
+                self.assertEqual(
+                    response.data[0]["evaluation_id"],
+                    self.evaluation.pk,
+                )
+
+        self.authenticate(self.manager)
+        manager_response = self.client.get(
+            f"/programs/{self.program.pk}/evaluations/{self.evaluation.pk}/"
+        )
+        self.assertEqual(manager_response.status_code, 200)
+        self.assertEqual(
+            manager_response.data["amended_at"],
+            amend_response.data["amended_at"],
+        )
+
+        self.authenticate(self.other_expert_user)
+        hidden_response = self.client.get(self.history_url)
+        self.assertEqual(hidden_response.status_code, 404)
+
+    def test_assigned_episode_can_be_amended_and_stays_assigned(self):
+        self.assignment.status = SubmissionExpertAssignment.STATUS_ASSIGNED
+        self.assignment.completed_at = None
+        self.assignment.save()
+        self.authenticate()
+
+        response = self.client.patch(
+            self.amend_url,
+            {"comment": "Assigned correction"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assignment.refresh_from_db()
+        self.assertEqual(
+            self.assignment.status,
+            SubmissionExpertAssignment.STATUS_ASSIGNED,
+        )
+
+    def test_invalid_submission_or_missing_membership_blocks_amendment(self):
+        self.authenticate()
+        self.submission.status = Submission.STATUS_RETURNED
+        self.submission.submitted_at = None
+        self.submission.save()
+
+        invalid_submission = self.client.patch(
+            self.amend_url,
+            {"comment": "Forbidden"},
+            format="json",
+        )
+        self.assertEqual(invalid_submission.status_code, 409)
+
+        self.submission.status = Submission.STATUS_SUBMITTED
+        self.submission.submitted_at = timezone.now()
+        self.submission.save()
+        self.expert.programs.remove(self.program)
+        missing_membership = self.client.patch(
+            self.amend_url,
+            {"comment": "Still forbidden"},
+            format="json",
+        )
+        self.assertEqual(missing_membership.status_code, 404)
+
+    @override_settings(REST_FRAMEWORK=throttle_settings(evaluation_amend="1/min"))
+    def test_amend_is_scoped_throttled(self):
+        self.authenticate()
+
+        first = self.client.patch(
+            self.amend_url,
+            {"comment": "First amendment"},
+            format="json",
+            REMOTE_ADDR="203.0.113.93",
+        )
+        second = self.client.patch(
+            self.amend_url,
+            {"comment": "Second amendment"},
+            format="json",
+            REMOTE_ADDR="203.0.113.93",
         )
 
         self.assertEqual(first.status_code, 200)

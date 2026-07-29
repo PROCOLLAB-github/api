@@ -1,7 +1,7 @@
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.settings import api_settings
 
-# Roadmap: DEV-051
+# Roadmap: DEV-051, DEV-073
 # Отдельный лимит частого autosave черновика Evaluation.
 
 

@@ -1,10 +1,11 @@
-# Roadmap: DEV-050, DEV-051, DEV-052
+# Roadmap: DEV-050, DEV-051, DEV-052, DEV-073
 # PII-safe контракты решений и экспертных оценок.
 
 from rest_framework import serializers
 
 from partner_programs.models import (
     Evaluation,
+    EvaluationAmendment,
     EvaluationScore,
     PartnerProgram,
     Submission,
@@ -44,6 +45,10 @@ class EvaluationDraftUpdateSerializer(serializers.Serializer):
         if not attrs:
             raise serializers.ValidationError("Передайте comment или scores.")
         return attrs
+
+
+class EvaluationAmendSerializer(EvaluationDraftUpdateSerializer):
+    pass
 
 
 class ProgramSummarySerializer(serializers.ModelSerializer):
@@ -118,6 +123,7 @@ class EvaluationReadSerializer(serializers.ModelSerializer):
             "scores",
             "total_score",
             "submitted_at",
+            "amended_at",
             "created_at",
             "updated_at",
         )
@@ -141,6 +147,7 @@ class ExpertEvaluationSummarySerializer(serializers.Serializer):
     status = serializers.CharField(allow_null=True, read_only=True)
     updated_at = serializers.DateTimeField(allow_null=True, read_only=True)
     submitted_at = serializers.DateTimeField(allow_null=True, read_only=True)
+    amended_at = serializers.DateTimeField(allow_null=True, read_only=True)
 
 
 class ExpertSubmissionListSerializer(serializers.ModelSerializer):
@@ -183,6 +190,7 @@ class ExpertSubmissionListSerializer(serializers.ModelSerializer):
             "status": assignment.my_evaluation_status,
             "updated_at": assignment.my_evaluation_updated_at,
             "submitted_at": assignment.my_evaluation_submitted_at,
+            "amended_at": assignment.my_evaluation_amended_at,
         }
 
 
@@ -279,6 +287,7 @@ class ManagerEvaluationSerializer(serializers.ModelSerializer):
             "comment",
             "total_score",
             "submitted_at",
+            "amended_at",
             "created_at",
             "updated_at",
         )
@@ -293,3 +302,24 @@ class ManagerEvaluationSerializer(serializers.ModelSerializer):
             "assigned_at": evaluation.assignment_assigned_at,
             "completed_at": evaluation.assignment_completed_at,
         }
+
+
+class EvaluationAmendmentSerializer(serializers.ModelSerializer):
+    evaluation_id = serializers.IntegerField(read_only=True)
+    changed_by_id = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = EvaluationAmendment
+        fields = (
+            "id",
+            "evaluation_id",
+            "changed_by_id",
+            "previous_comment",
+            "comment",
+            "previous_scores",
+            "scores",
+            "previous_total_score",
+            "total_score",
+            "created_at",
+        )
+        read_only_fields = fields
