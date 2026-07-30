@@ -118,4 +118,44 @@ jobs:
             --verbosity 2
 
       - name: Run full backend test suite
-        run: poetry run python manage.py test --verbosity 1
+        run: poetry run python manage.py test --verbosity 1 --keepdb
+
+      - name: Remove retained PostgreSQL test database
+        if: always()
+        run: |
+          poetry run python - <<'PY'
+          import os
+
+          import psycopg2
+          from psycopg2 import sql
+
+          test_database = "test_procollab_ci"
+
+          connection = psycopg2.connect(
+              dbname=os.environ["DATABASE_NAME"],
+              user=os.environ["DATABASE_USER"],
+              password=os.environ["DATABASE_PASSWORD"],
+              host=os.environ["DATABASE_HOST"],
+              port=os.environ["DATABASE_PORT"],
+          )
+          connection.autocommit = True
+
+          try:
+              with connection.cursor() as cursor:
+                  cursor.execute(
+                      """
+                      SELECT pg_terminate_backend(pid)
+                      FROM pg_stat_activity
+                      WHERE datname = %s
+                        AND pid <> pg_backend_pid()
+                      """,
+                      [test_database],
+                  )
+                  cursor.execute(
+                      sql.SQL("DROP DATABASE IF EXISTS {}").format(
+                          sql.Identifier(test_database)
+                      )
+                  )
+          finally:
+              connection.close()
+          PY
