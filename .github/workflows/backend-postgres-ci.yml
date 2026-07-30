@@ -111,6 +111,10 @@ jobs:
             partner_programs.tests.test_application_team_models.ApplicationTeamDatabaseConstraintTests \
             partner_programs.tests.test_application_team_service.ApplicationTeamServiceSequentialConflictTests \
             partner_programs.tests.test_program_participation_policy.PartnerProgramParticipationPolicyConstraintTests \
+            partner_programs.tests.test_team_api \
+            partner_programs.tests.test_team_invite_api \
+            partner_programs.tests.test_team_invite_service \
+            partner_programs.tests.test_team_management_service \
             --verbosity 2
 
       - name: Run full backend test suite

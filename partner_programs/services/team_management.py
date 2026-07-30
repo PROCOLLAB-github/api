@@ -66,12 +66,12 @@ def _lock_team_graph(team: Team) -> tuple[PartnerProgram, Application, Team]:
 
     program = PartnerProgram.objects.select_for_update().get(pk=program_id)
     application = (
-        Application.objects.select_for_update()
+        Application.objects.select_for_update(of=("self",))
         .select_related("program", "user", "created_by", "project")
         .get(pk=application_id)
     )
     locked_team = (
-        Team.objects.select_for_update()
+        Team.objects.select_for_update(of=("self",))
         .select_related("application", "application__program", "captain")
         .get(pk=team_id)
     )
@@ -121,9 +121,7 @@ def leave_team(*, team: Team, actor: User) -> TeamMember:
             raise CaptainTransferRequiredError()
 
         member = (
-            TeamMember.objects.select_for_update()
-            .filter(team=team, user=actor)
-            .first()
+            TeamMember.objects.select_for_update().filter(team=team, user=actor).first()
         )
         if (
             member is None
@@ -151,16 +149,11 @@ def remove_team_member(*, team: Team, actor: User, member_id: int) -> TeamMember
         _require_mutable_team(application=application, program=program)
 
         member = (
-            TeamMember.objects.select_for_update()
-            .filter(team=team, pk=member_id)
-            .first()
+            TeamMember.objects.select_for_update().filter(team=team, pk=member_id).first()
         )
         if member is None:
             raise TeamMemberNotFoundError()
-        if (
-            member.role == TeamMember.ROLE_CAPTAIN
-            or member.user_id == team.captain_id
-        ):
+        if member.role == TeamMember.ROLE_CAPTAIN or member.user_id == team.captain_id:
             raise CaptainTransferRequiredError(
                 "Капитана нельзя удалить из команды без передачи капитанства."
             )

@@ -66,9 +66,7 @@ class TeamInviteCapacityReachedError(ApplicationTeamServiceError):
 
 class TeamInviteActiveApplicationConflictError(ApplicationTeamServiceError):
     code = "team_invite_active_application_conflict"
-    default_detail = (
-        "Пользователь уже участвует в другой активной заявке этой программы."
-    )
+    default_detail = "Пользователь уже участвует в другой активной заявке этой программы."
     default_field = "user_id"
 
 
@@ -93,12 +91,12 @@ def _lock_team_graph(team: Team) -> tuple[PartnerProgram, Application, Team]:
 
     program = PartnerProgram.objects.select_for_update().get(pk=program_id)
     application = (
-        Application.objects.select_for_update()
+        Application.objects.select_for_update(of=("self",))
         .select_related("program", "user", "created_by", "project")
         .get(pk=application_id)
     )
     locked_team = (
-        Team.objects.select_for_update()
+        Team.objects.select_for_update(of=("self",))
         .select_related("application", "application__program", "captain")
         .get(pk=team.pk)
     )
@@ -111,7 +109,7 @@ def _lock_invite_graph(
     """Блокирует граф приглашения в том же порядке, что и операции Team."""
     program, application, team = _lock_team_graph(invite.team)
     locked_invite = (
-        TeamInvite.objects.select_for_update()
+        TeamInvite.objects.select_for_update(of=("self",))
         .select_related("team", "team__application", "user", "invited_by")
         .get(pk=invite.pk)
     )
@@ -148,17 +146,25 @@ def _require_no_target_conflict(*, program: PartnerProgram, user: User) -> None:
 
 
 def _accepted_members_count(team: Team) -> int:
-    return TeamMember.objects.select_for_update().filter(
-        team=team,
-        status=TeamMember.STATUS_ACCEPTED,
-    ).count()
+    return (
+        TeamMember.objects.select_for_update()
+        .filter(
+            team=team,
+            status=TeamMember.STATUS_ACCEPTED,
+        )
+        .count()
+    )
 
 
 def _pending_invites_count(team: Team) -> int:
-    return TeamInvite.objects.select_for_update().filter(
-        team=team,
-        status=TeamInvite.STATUS_PENDING,
-    ).count()
+    return (
+        TeamInvite.objects.select_for_update()
+        .filter(
+            team=team,
+            status=TeamInvite.STATUS_PENDING,
+        )
+        .count()
+    )
 
 
 def _require_invite_capacity(*, team: Team, program: PartnerProgram) -> None:
@@ -315,19 +321,25 @@ def create_team_invite(
         if (
             application.participation_mode != Application.PARTICIPATION_MODE_TEAM
             or target.pk == team.captain_id
-            or TeamMember.objects.select_for_update().filter(
+            or TeamMember.objects.select_for_update()
+            .filter(
                 team=team,
                 user=target,
                 status=TeamMember.STATUS_ACCEPTED,
-            ).exists()
+            )
+            .exists()
         ):
             raise TeamInviteTargetInvalidError()
 
-        existing = TeamInvite.objects.select_for_update().filter(
-            team=team,
-            user=target,
-            status=TeamInvite.STATUS_PENDING,
-        ).first()
+        existing = (
+            TeamInvite.objects.select_for_update()
+            .filter(
+                team=team,
+                user=target,
+                status=TeamInvite.STATUS_PENDING,
+            )
+            .first()
+        )
         if existing is not None:
             return TeamInviteCreationResult(existing, created=False)
 
@@ -375,10 +387,14 @@ def accept_team_invite(*, invite: TeamInvite, actor: User) -> TeamInvite:
         _require_registered_target(program=program, user=invite.user)
         _require_no_target_conflict(program=program, user=invite.user)
 
-        member = TeamMember.objects.select_for_update().filter(
-            team=team,
-            user=invite.user,
-        ).first()
+        member = (
+            TeamMember.objects.select_for_update()
+            .filter(
+                team=team,
+                user=invite.user,
+            )
+            .first()
+        )
         if member is not None and member.status == TeamMember.STATUS_ACCEPTED:
             raise TeamInviteTargetInvalidError(
                 "Пользователь уже является участником этой команды."
@@ -406,11 +422,15 @@ def accept_team_invite(*, invite: TeamInvite, actor: User) -> TeamInvite:
 
         # Принятие места в одной команде закрывает конкурирующие pending-инвайты
         # этого пользователя в рамках той же Program, но сохраняет их историю.
-        other_invites = TeamInvite.objects.select_for_update().filter(
-            user=invite.user,
-            status=TeamInvite.STATUS_PENDING,
-            team__application__program=program,
-        ).exclude(pk=invite.pk)
+        other_invites = (
+            TeamInvite.objects.select_for_update()
+            .filter(
+                user=invite.user,
+                status=TeamInvite.STATUS_PENDING,
+                team__application__program=program,
+            )
+            .exclude(pk=invite.pk)
+        )
         list(other_invites.values_list("pk", flat=True))
         other_invites.update(
             status=TeamInvite.STATUS_REVOKED,
