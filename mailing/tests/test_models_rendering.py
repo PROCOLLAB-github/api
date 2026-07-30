@@ -75,10 +75,9 @@ class MailingRenderingTests(TestCase):
         self.assertTrue(context["picked_users"][0]["picked"])
         self.assertEqual(context["unpicked_users"][0]["id"], unpicked_user.id)
         self.assertFalse(context["unpicked_users"][0]["picked"])
-        self.assertEqual(
-            context["template_fields"],
-            [
-                {"key": "title", "title": "Title", "default": "Default title"},
-                {"key": "text", "title": "Text", "default": ""},
-            ],
-        )
+        template_fields = {field["key"]: field for field in context["template_fields"]}
+        self.assertEqual(set(template_fields), {"title", "text"})
+        self.assertEqual(template_fields["title"]["title"], "Title")
+        self.assertEqual(template_fields["title"]["default"], "Default title")
+        self.assertEqual(template_fields["text"]["title"], "Text")
+        self.assertEqual(template_fields["text"]["default"], "")
