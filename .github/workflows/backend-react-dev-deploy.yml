@@ -1,0 +1,150 @@
+# Roadmap: DEV-075
+name: Backend React-dev deploy
+
+on:
+  workflow_run:
+    workflows:
+      - Backend PostgreSQL CI
+    types:
+      - completed
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-react-dev-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy backend to React-dev
+    if: >-
+      ${{
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'master' &&
+        github.event.workflow_run.head_repository.full_name == github.repository &&
+        github.event.workflow_run.head_sha != ''
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
+      DEPLOY_RUN_ID: ${{ github.run_id }}
+
+    steps:
+      - name: Validate deploy source
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          if [[ ! "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Successful CI run did not provide a valid commit SHA." >&2
+            exit 1
+          fi
+
+          if [[ ! "$DEPLOY_RUN_ID" =~ ^[0-9]+$ ]]; then
+            echo "GitHub Actions run ID is invalid." >&2
+            exit 1
+          fi
+
+      - name: Checkout tested commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 1
+
+      - name: Verify checked out commit
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          actual_sha="$(git rev-parse HEAD)"
+          if [[ "$actual_sha" != "$DEPLOY_SHA" ]]; then
+            echo "Checked out commit does not match the successful CI run." >&2
+            exit 1
+          fi
+
+      - name: Prepare pinned SSH configuration
+        shell: bash
+        env:
+          REACT_DEV_SSH_HOST: ${{ secrets.REACT_DEV_SSH_HOST }}
+          REACT_DEV_SSH_PORT: ${{ secrets.REACT_DEV_SSH_PORT }}
+          REACT_DEV_SSH_USER: ${{ secrets.REACT_DEV_SSH_USER }}
+          REACT_DEV_SSH_PRIVATE_KEY: ${{ secrets.REACT_DEV_SSH_PRIVATE_KEY }}
+          REACT_DEV_SSH_KNOWN_HOSTS: ${{ secrets.REACT_DEV_SSH_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+
+          required_secrets=(
+            REACT_DEV_SSH_HOST
+            REACT_DEV_SSH_PORT
+            REACT_DEV_SSH_USER
+            REACT_DEV_SSH_PRIVATE_KEY
+            REACT_DEV_SSH_KNOWN_HOSTS
+          )
+          for secret_name in "${required_secrets[@]}"; do
+            if [[ -z "${!secret_name:-}" ]]; then
+              echo "Required GitHub Secret is empty: ${secret_name}" >&2
+              exit 1
+            fi
+          done
+
+          if [[ ! "$REACT_DEV_SSH_PORT" =~ ^[0-9]+$ ]] ||
+            ((REACT_DEV_SSH_PORT < 1 || REACT_DEV_SSH_PORT > 65535)); then
+            echo "React-dev SSH port is invalid." >&2
+            exit 1
+          fi
+
+          if [[ ! "$REACT_DEV_SSH_USER" =~ ^[a-z_][a-z0-9_.-]*$ ]]; then
+            echo "React-dev SSH user is invalid." >&2
+            exit 1
+          fi
+
+          if [[ "$REACT_DEV_SSH_HOST" =~ [[:space:]] ]]; then
+            echo "React-dev SSH host is invalid." >&2
+            exit 1
+          fi
+
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$REACT_DEV_SSH_PRIVATE_KEY" |
+            tr -d '\r' > "$HOME/.ssh/react_dev_deploy_key"
+          printf '%s\n' "$REACT_DEV_SSH_KNOWN_HOSTS" |
+            tr -d '\r' > "$HOME/.ssh/react_dev_known_hosts"
+          chmod 600 \
+            "$HOME/.ssh/react_dev_deploy_key" \
+            "$HOME/.ssh/react_dev_known_hosts"
+
+          test -s "$HOME/.ssh/react_dev_deploy_key"
+          test -s "$HOME/.ssh/react_dev_known_hosts"
+          ssh-keygen -y -f "$HOME/.ssh/react_dev_deploy_key" >/dev/null
+
+      - name: Deploy tested commit to React-dev
+        shell: bash
+        env:
+          REACT_DEV_SSH_HOST: ${{ secrets.REACT_DEV_SSH_HOST }}
+          REACT_DEV_SSH_PORT: ${{ secrets.REACT_DEV_SSH_PORT }}
+          REACT_DEV_SSH_USER: ${{ secrets.REACT_DEV_SSH_USER }}
+        run: |
+          set -Eeuo pipefail
+
+          ssh_options=(
+            -i "$HOME/.ssh/react_dev_deploy_key"
+            -p "$REACT_DEV_SSH_PORT"
+            -o BatchMode=yes
+            -o IdentitiesOnly=yes
+            -o PasswordAuthentication=no
+            -o KbdInteractiveAuthentication=no
+            -o StrictHostKeyChecking=yes
+            -o UserKnownHostsFile="$HOME/.ssh/react_dev_known_hosts"
+            -o ConnectTimeout=10
+            -o ServerAliveInterval=15
+            -o ServerAliveCountMax=3
+          )
+
+          ssh "${ssh_options[@]}" \
+            -- "$REACT_DEV_SSH_USER@$REACT_DEV_SSH_HOST" \
+            "bash -s -- '$DEPLOY_SHA' '$DEPLOY_RUN_ID'" \
+            < scripts/deploy_react_dev.sh
