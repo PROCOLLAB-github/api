@@ -6,6 +6,7 @@ readonly DEPLOY_DIR="/root/api-react-dev"
 readonly FORBIDDEN_DIR="/root/api"
 readonly EXPECTED_REPOSITORY="PROCOLLAB-github/api"
 readonly EXPECTED_COMPOSE_PROJECT="api-react"
+readonly CELERY_SERVICE="celerys"
 readonly HEALTH_URL="https://api-react-dev.procollab.ru/programs/?limit=1"
 readonly LOCK_FILE="${DEPLOY_DIR}/.react-dev-deploy.lock"
 readonly LOCK_TIMEOUT_SECONDS=10
@@ -193,12 +194,12 @@ rollback_deployment() {
             --detach \
             --no-deps \
             --force-recreate \
-            web celery ||
+            web "$CELERY_SERVICE" ||
             rollback_failed=1
 
         if ((rollback_failed == 0)); then
             wait_for_service_running web || rollback_failed=1
-            wait_for_service_running celery || rollback_failed=1
+            wait_for_service_running "$CELERY_SERVICE" || rollback_failed=1
         fi
 
         if ((rollback_failed == 0)); then
@@ -397,7 +398,7 @@ validate_compose_services() {
 
     services_output="$("${COMPOSE_CMD[@]}" config --services)"
     mapfile -t services <<< "$services_output"
-    for expected_service in web celery redis; do
+    for expected_service in web "$CELERY_SERVICE" redis; do
         found=false
         for service in "${services[@]}"; do
             if [[ "$service" == "$expected_service" ]]; then
@@ -419,7 +420,7 @@ mapfile -t current_celery_containers < <(
     docker ps \
         --quiet \
         --filter "label=com.docker.compose.project=${COMPOSE_PROJECT}" \
-        --filter "label=com.docker.compose.service=celery"
+        --filter "label=com.docker.compose.service=${CELERY_SERVICE}"
 )
 if ((${#current_celery_containers[@]} != 1)); then
     fail "Не найден ровно один running celery container проекта api-react."
@@ -468,8 +469,8 @@ fi
 validate_compose_services
 
 BUILD_ATTEMPTED=true
-log "Сборка новых web и celery images без остановки текущих containers."
-"${COMPOSE_CMD[@]}" build web celery
+log "Сборка новых web и ${CELERY_SERVICE} images без остановки текущих containers."
+"${COMPOSE_CMD[@]}" build web "$CELERY_SERVICE"
 
 new_web_image_id="$(
     docker image inspect --format '{{.Id}}' "$PREVIOUS_WEB_IMAGE_REF"
@@ -494,15 +495,15 @@ log "Применение миграций React-dev на новом web image."
 MIGRATION_COMPLETED=true
 
 CONTAINERS_MAY_HAVE_CHANGED=true
-log "Пересоздание только React-dev web и celery."
+log "Пересоздание только React-dev web и ${CELERY_SERVICE}."
 "${COMPOSE_CMD[@]}" up \
     --detach \
     --no-deps \
     --force-recreate \
-    web celery
+    web "$CELERY_SERVICE"
 
 wait_for_service_running web
-wait_for_service_running celery
+wait_for_service_running "$CELERY_SERVICE"
 if ! health_check "Deploy"; then
     fail "Публичный React-dev HTTPS health-check не пройден."
 fi
@@ -510,7 +511,7 @@ fi
 web_container_id=""
 celery_container_id=""
 compose_service_container_id web web_container_id
-compose_service_container_id celery celery_container_id
+compose_service_container_id "$CELERY_SERVICE" celery_container_id
 web_status="$(docker inspect --format '{{.State.Status}}' "$web_container_id")"
 celery_status="$(docker inspect --format '{{.State.Status}}' "$celery_container_id")"
 

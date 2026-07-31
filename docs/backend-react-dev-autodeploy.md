@@ -70,24 +70,27 @@ Script находит уже работающий `web` container по labels:
 - `com.docker.compose.project=api-react`;
 - `com.docker.compose.service=web`.
 
+Фактические Compose services `web`, `celerys` и `redis` подтверждены по labels
+React-dev сервера, включая `com.docker.compose.service=celerys`.
+
 Из labels читаются Compose project, working directory и config files. Все пути
 проверяются через `realpath`: working directory должен совпадать с
 `/root/api-react-dev`, каждый config file должен находиться внутри этого каталога,
 а legacy `docker-compose.yml` отклоняется.
 
 Compose-команда собирается как Bash array без `eval`. До любых изменений
-containers проверяется наличие точных сервисов `web`, `celery` и `redis`. Иное
-имя celery не угадывается: deploy завершается с явной ошибкой.
+containers проверяется наличие точных сервисов `web`, `celerys` и `redis`. Иное
+имя Celery service не угадывается: deploy завершается с явной ошибкой.
 
 ## Порядок deploy
 
 1. Получение deployment lock через `flock`.
 2. Проверка repository, origin, git state и stale deploy.
 3. Сохранение предыдущих SHA, container IDs, image IDs и image references.
-4. Сборка новых `web` и `celery` images без остановки текущего backend.
+4. Сборка новых `web` и `celerys` images без остановки текущего backend.
 5. `python manage.py check` во временном container нового `web` image.
 6. `python manage.py migrate --noinput` с существующим React-dev `.env`.
-7. Пересоздание только `web` и `celery` через `up -d --no-deps --force-recreate`.
+7. Пересоздание только `web` и `celerys` через `up -d --no-deps --force-recreate`.
 8. Ожидание running state с ограниченным timeout.
 9. Публичный HTTPS health-check.
 
@@ -109,7 +112,7 @@ https://api-react-dev.procollab.ru/programs/?limit=1
 - непустой body;
 - отсутствие HTML/SPA fallback;
 - корректный JSON;
-- running state `web` и `celery`.
+- running state `web` и `celerys`.
 
 Используются ограниченные connect/total timeout и восемь попыток с паузой.
 Полный API response в лог не выводится.
@@ -125,7 +128,7 @@ script:
 
 1. возвращает предыдущий code SHA;
 2. возвращает предыдущие image IDs на сохраненные image references;
-3. пересоздает только `web` и `celery`;
+3. пересоздает только `web` и `celerys`;
 4. повторяет ограниченный React-dev health-check;
 5. сообщает результат rollback;
 6. завершает deploy с ошибкой даже при успешном rollback.
@@ -152,7 +155,7 @@ GitHub Actions использует одну общую concurrency group с
 - repository имеет tracked изменения или неверный origin;
 - workflow устарел относительно текущего `origin/master`;
 - Compose labels отсутствуют или указывают вне React-dev;
-- сервисы называются не `web`, `celery`, `redis`;
+- сервисы называются не `web`, `celerys`, `redis`;
 - build, Django check или migration завершились ошибкой;
 - containers не перешли в running state;
 - HTTPS endpoint вернул redirect, HTML, не-JSON или статус не `200`;
