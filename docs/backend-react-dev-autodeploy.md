@@ -88,8 +88,10 @@ containers проверяется наличие точных сервисов `
 2. Проверка repository, origin, git state и stale deploy.
 3. Сохранение предыдущих SHA, container IDs, image IDs и image references.
 4. Сборка новых `web` и `celerys` images без остановки текущего backend.
-5. `python manage.py check` во временном container нового `web` image.
-6. `python manage.py migrate --noinput` с существующим React-dev `.env`.
+5. `python manage.py check` во временном container нового `web` image без TTY
+   и без доступа к stdin deploy-скрипта.
+6. `python manage.py migrate --noinput` с существующим React-dev `.env`, также без TTY
+   и с stdin, подключенным к `/dev/null`.
 7. Пересоздание только `web` и `celerys` через `up -d --no-deps --force-recreate`.
 8. Ожидание running state с ограниченным timeout.
 9. Публичный HTTPS health-check.
