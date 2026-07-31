@@ -121,13 +121,15 @@ class IsAdminOrManagerOfProgram(BasePermission):
         if getattr(user, "is_staff", False) or getattr(user, "is_superuser", False):
             return True
 
-        program_id = view.kwargs.get("pk") or view.kwargs.get("program_id")
-        if not program_id:
-            return False
+        program = getattr(view, "program", None)
+        if program is None:
+            program_id = view.kwargs.get("pk") or view.kwargs.get("program_id")
+            if not program_id:
+                return False
 
-        try:
-            program = PartnerProgram.objects.get(pk=program_id)
-        except PartnerProgram.DoesNotExist:
-            return False
+            try:
+                program = PartnerProgram.objects.get(pk=program_id)
+            except PartnerProgram.DoesNotExist:
+                return False
 
         return program.is_manager(user)

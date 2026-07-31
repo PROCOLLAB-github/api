@@ -1,3 +1,5 @@
+# Roadmap: DEV-076, DEV-056
+
 from django.urls import path
 
 from news.views import NewsDetail, NewsDetailSetLiked, NewsDetailSetViewed, NewsList
@@ -9,6 +11,7 @@ from partner_programs.evaluation_views import (
     ProgramEvaluationDetailView,
     ProgramEvaluationListView,
 )
+from partner_programs.manager_overview_views import ManagerProgramOverviewView
 from partner_programs.submission_assignment_views import (
     ProgramSubmissionAssignmentListCreateView,
 )
@@ -33,6 +36,11 @@ app_name = "partner_programs"
 
 urlpatterns = [
     path("", PartnerProgramList.as_view()),
+    path(
+        "<int:program_id>/manager-overview/",
+        ManagerProgramOverviewView.as_view(),
+        name="manager-overview",
+    ),
     path(
         "<int:program_id>/evaluations/",
         ProgramEvaluationListView.as_view(),
