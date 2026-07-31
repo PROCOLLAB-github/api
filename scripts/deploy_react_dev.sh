@@ -484,14 +484,19 @@ fi
 HEALTH_JSON_IMAGE_ID="$new_web_image_id"
 
 log "Django system check на новом web image."
-"${COMPOSE_CMD[@]}" run --rm --no-deps web python manage.py check
+"${COMPOSE_CMD[@]}" run \
+    --rm \
+    --no-deps \
+    --no-TTY \
+    web python manage.py check </dev/null
 
 MIGRATION_STARTED=true
 log "Применение миграций React-dev на новом web image."
 "${COMPOSE_CMD[@]}" run \
     --rm \
     --no-deps \
-    web python manage.py migrate --noinput
+    --no-TTY \
+    web python manage.py migrate --noinput </dev/null
 MIGRATION_COMPLETED=true
 
 CONTAINERS_MAY_HAVE_CHANGED=true
