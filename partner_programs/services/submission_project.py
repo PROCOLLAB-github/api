@@ -55,15 +55,9 @@ def create_project_from_submission(*, submission_id, actor):
     Submission остается историческим снимком решения. Повторные версии одной
     Application используют одну связь Application.project и не клонируют Project.
     """
-    submission = (
-        Submission.objects.select_for_update()
-        .select_related("application")
-        .get(pk=submission_id)
-    )
-    application = (
-        Application.objects.select_for_update()
-        .select_related("user", "project")
-        .get(pk=submission.application_id)
+    submission = Submission.objects.select_for_update().get(pk=submission_id)
+    application = Application.objects.select_for_update().get(
+        pk=submission.application_id
     )
 
     if not (actor.is_staff or actor.is_superuser or application.user_id == actor.pk):
