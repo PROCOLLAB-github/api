@@ -5,8 +5,18 @@ from partner_programs.serializers.teams import ApplicationTeamSummarySerializer
 from projects.models import Project
 
 
+class ApplicationProjectSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Project
+        fields = ("id", "name", "draft", "is_public")
+
+
 class ApplicationSerializer(serializers.ModelSerializer):
     team = serializers.SerializerMethodField()
+    project_summary = ApplicationProjectSummarySerializer(
+        source="project",
+        read_only=True,
+    )
     team_name = serializers.CharField(
         required=False,
         allow_blank=True,
@@ -34,6 +44,7 @@ class ApplicationSerializer(serializers.ModelSerializer):
             "created_by",
             "status",
             "team",
+            "project_summary",
             "submitted_at",
             "approved_at",
             "rejected_at",
@@ -56,6 +67,7 @@ class ApplicationSerializer(serializers.ModelSerializer):
             "team_name",
             "form_data",
             "project",
+            "project_summary",
             "project_id",
             "submitted_at",
             "approved_at",

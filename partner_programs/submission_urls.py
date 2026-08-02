@@ -6,10 +6,16 @@ from partner_programs.submission_views import (
     SubmissionDetailView,
     SubmissionSubmitView,
 )
+from partner_programs.submission_project_views import SubmissionProjectCreateView
 
 app_name = "submissions"
 
 urlpatterns = [
+    path(
+        "<int:submission_id>/project/",
+        SubmissionProjectCreateView.as_view(),
+        name="project-create",
+    ),
     path(
         "<int:submission_id>/evaluations/my/",
         MyEvaluationView.as_view(),

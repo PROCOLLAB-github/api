@@ -198,7 +198,7 @@ class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         check_related_fields_update(request.data, pk)
-        return super(ProjectDetail, self).put(request, pk)
+        return super(ProjectDetail, self).patch(request, pk)
 
 
 class ProjectRecommendedUsers(generics.RetrieveAPIView):
