@@ -13,6 +13,7 @@ from projects.workspace_selectors import (
     get_workspace_project_queryset,
 )
 from projects.workspace_serializers import (
+    ProjectWorkspaceCreateSerializer,
     ProjectWorkspaceDetailSerializer,
     ProjectWorkspaceListSerializer,
     ProjectWorkspaceUpdateSerializer,
@@ -60,6 +61,28 @@ class MyProjectsView(generics.ListAPIView):
             user=self.request.user,
             search=self.request.query_params.get("search"),
         )
+
+
+class ProjectWorkspaceCreateView(APIView):
+    """Создает самостоятельный приватный черновик для React workspace."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = ProjectWorkspaceCreateSerializer(
+            data=request.data,
+            context={"request": request},
+        )
+        serializer.is_valid(raise_exception=True)
+        project = serializer.save()
+        created_project = get_workspace_project_queryset(user=request.user).get(
+            pk=project.pk
+        )
+        response_serializer = ProjectWorkspaceDetailSerializer(
+            created_project,
+            context={"request": request},
+        )
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
 
 class ProjectWorkspaceDetailView(APIView):

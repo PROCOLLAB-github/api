@@ -1,6 +1,7 @@
+from django.db import transaction
 from rest_framework import serializers
 
-from projects.models import Project
+from projects.models import Project, ProjectLink
 
 
 PROJECT_WORKSPACE_EDITABLE_FIELDS = frozenset(
@@ -16,10 +17,22 @@ PROJECT_WORKSPACE_EDITABLE_FIELDS = frozenset(
         "presentation_address",
         "image_address",
         "cover_image_address",
+        "industry",
+        "links",
         "draft",
         "is_public",
     }
 )
+
+PROJECT_PUBLICATION_REQUIRED_FIELDS = {
+    "name": "Укажите название проекта.",
+    "region": "Укажите регион.",
+    "industry": "Выберите отрасль.",
+    "description": "Добавьте описание проекта.",
+    "problem": "Опишите проблему.",
+    "target_audience": "Опишите целевую аудиторию.",
+    "cover_image_address": "Загрузите обложку проекта.",
+}
 
 
 class ProjectWorkspaceUserSerializer(serializers.Serializer):
@@ -126,6 +139,12 @@ class ProjectWorkspaceDetailSerializer(ProjectWorkspaceListSerializer):
 
 class ProjectWorkspaceUpdateSerializer(serializers.ModelSerializer):
     editable_fields = PROJECT_WORKSPACE_EDITABLE_FIELDS
+    links = serializers.ListField(
+        child=serializers.URLField(),
+        required=False,
+        allow_empty=True,
+        write_only=True,
+    )
 
     class Meta:
         model = Project
@@ -134,6 +153,28 @@ class ProjectWorkspaceUpdateSerializer(serializers.ModelSerializer):
             "name": {"allow_blank": False, "allow_null": False},
             "description": {"allow_blank": True, "allow_null": True},
         }
+
+    def _get_resulting_value(self, attrs, field):
+        """Возвращает значение поля после применения частичного обновления."""
+        if field in attrs:
+            return attrs[field]
+        return getattr(self.instance, field)
+
+    def _requires_publication_validation(self, attrs):
+        """Определяет, переводит ли запрос Project в публикуемое состояние.
+
+        Legacy Project может уже иметь сочетание draft=true и is_public=true,
+        поэтому обычное редактирование такого объекта не считаем публикацией.
+        Явное включение публичности или снятие флага черновика всегда требует
+        заполненного проекта, как и изменение уже опубликованного Project.
+        """
+        resulting_draft = self._get_resulting_value(attrs, "draft")
+        resulting_is_public = self._get_resulting_value(attrs, "is_public")
+        return (
+            ("draft" in attrs and resulting_draft is False)
+            or ("is_public" in attrs and resulting_is_public is True)
+            or (resulting_draft is False and resulting_is_public is True)
+        )
 
     def validate(self, attrs):
         unsupported = set(self.initial_data).difference(self.editable_fields)
@@ -144,4 +185,53 @@ class ProjectWorkspaceUpdateSerializer(serializers.ModelSerializer):
                     for field in sorted(unsupported)
                 }
             )
+
+        if self._requires_publication_validation(attrs):
+            errors = {}
+            for field, message in PROJECT_PUBLICATION_REQUIRED_FIELDS.items():
+                value = self._get_resulting_value(attrs, field)
+                if value is None or (isinstance(value, str) and not value.strip()):
+                    errors[field] = message
+            if errors:
+                raise serializers.ValidationError(errors)
         return attrs
+
+    def validate_links(self, links):
+        """Удаляет дубликаты ссылок, сохраняя пользовательский порядок."""
+        return list(dict.fromkeys(links))
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        """Атомарно обновляет Project и его отдельные строки ProjectLink."""
+        links = validated_data.pop("links", None)
+        project = super().update(instance, validated_data)
+        if links is not None:
+            ProjectLink.objects.filter(project=project).delete()
+            ProjectLink.objects.bulk_create(
+                [ProjectLink(project=project, link=link) for link in links]
+            )
+        return project
+
+
+class ProjectWorkspaceCreateSerializer(serializers.Serializer):
+    """Создает пустой приватный черновик без клиентских полей владения."""
+
+    def validate(self, attrs):
+        if self.initial_data:
+            raise serializers.ValidationError(
+                {
+                    field: "Поле нельзя передавать при создании черновика."
+                    for field in sorted(self.initial_data)
+                }
+            )
+        return attrs
+
+    @transaction.atomic
+    def create(self, validated_data):
+        # Отдельный React-контур явно создает private draft; legacy POST /projects/
+        # сохраняет прежний контракт и model default is_public.
+        return Project.objects.create(
+            leader=self.context["request"].user,
+            draft=True,
+            is_public=False,
+        )
