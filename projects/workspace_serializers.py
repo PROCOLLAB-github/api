@@ -24,6 +24,16 @@ PROJECT_WORKSPACE_EDITABLE_FIELDS = frozenset(
     }
 )
 
+PROJECT_PUBLICATION_REQUIRED_FIELDS = {
+    "name": "Укажите название проекта.",
+    "region": "Укажите регион.",
+    "industry": "Выберите отрасль.",
+    "description": "Добавьте описание проекта.",
+    "problem": "Опишите проблему.",
+    "target_audience": "Опишите целевую аудиторию.",
+    "cover_image_address": "Загрузите обложку проекта.",
+}
+
 
 class ProjectWorkspaceUserSerializer(serializers.Serializer):
     id = serializers.IntegerField()
@@ -144,6 +154,28 @@ class ProjectWorkspaceUpdateSerializer(serializers.ModelSerializer):
             "description": {"allow_blank": True, "allow_null": True},
         }
 
+    def _get_resulting_value(self, attrs, field):
+        """Возвращает значение поля после применения частичного обновления."""
+        if field in attrs:
+            return attrs[field]
+        return getattr(self.instance, field)
+
+    def _requires_publication_validation(self, attrs):
+        """Определяет, переводит ли запрос Project в публикуемое состояние.
+
+        Legacy Project может уже иметь сочетание draft=true и is_public=true,
+        поэтому обычное редактирование такого объекта не считаем публикацией.
+        Явное включение публичности или снятие флага черновика всегда требует
+        заполненного проекта, как и изменение уже опубликованного Project.
+        """
+        resulting_draft = self._get_resulting_value(attrs, "draft")
+        resulting_is_public = self._get_resulting_value(attrs, "is_public")
+        return (
+            ("draft" in attrs and resulting_draft is False)
+            or ("is_public" in attrs and resulting_is_public is True)
+            or (resulting_draft is False and resulting_is_public is True)
+        )
+
     def validate(self, attrs):
         unsupported = set(self.initial_data).difference(self.editable_fields)
         if unsupported:
@@ -153,6 +185,15 @@ class ProjectWorkspaceUpdateSerializer(serializers.ModelSerializer):
                     for field in sorted(unsupported)
                 }
             )
+
+        if self._requires_publication_validation(attrs):
+            errors = {}
+            for field, message in PROJECT_PUBLICATION_REQUIRED_FIELDS.items():
+                value = self._get_resulting_value(attrs, field)
+                if value is None or (isinstance(value, str) and not value.strip()):
+                    errors[field] = message
+            if errors:
+                raise serializers.ValidationError(errors)
         return attrs
 
     def validate_links(self, links):
@@ -183,23 +224,6 @@ class ProjectWorkspaceCreateSerializer(serializers.Serializer):
                     for field in sorted(self.initial_data)
                 }
             )
-        if self.instance and self.instance.draft and attrs.get("draft") is False:
-            required_fields = {
-                "name": "Укажите название проекта.",
-                "region": "Укажите регион.",
-                "industry": "Выберите отрасль.",
-                "description": "Добавьте описание проекта.",
-                "problem": "Опишите проблему.",
-                "target_audience": "Опишите целевую аудиторию.",
-                "cover_image_address": "Загрузите обложку проекта.",
-            }
-            errors = {}
-            for field, message in required_fields.items():
-                value = attrs.get(field, getattr(self.instance, field))
-                if value is None or (isinstance(value, str) and not value.strip()):
-                    errors[field] = message
-            if errors:
-                raise serializers.ValidationError(errors)
         return attrs
 
     @transaction.atomic

@@ -28,6 +28,20 @@ class ProjectWorkspaceAPITests(TestCase):
     def authenticate(self, user):
         self.client.force_authenticate(user=user)
 
+    def create_complete_draft(self):
+        project = create_project(
+            leader=self.leader,
+            draft=True,
+            is_public=False,
+            industry=self.industry,
+        )
+        project.region = "Москва"
+        project.problem = "Проблема"
+        project.target_audience = "Целевая аудитория"
+        project.cover_image_address = "https://example.com/cover.png"
+        project.save()
+        return project
+
     def test_workspace_endpoints_require_authentication(self):
         project = create_project(leader=self.leader)
 
@@ -241,19 +255,13 @@ class ProjectWorkspaceAPITests(TestCase):
         self.assertFalse(project.is_public)
 
     def test_complete_draft_can_be_published(self):
-        project = create_project(leader=self.leader, draft=True, is_public=False)
+        project = self.create_complete_draft()
         self.authenticate(self.leader)
 
         response = self.client.patch(
             f"/projects/{project.pk}/workspace/",
             {
                 "name": "Published project",
-                "region": "Москва",
-                "industry": self.industry.pk,
-                "description": "Описание",
-                "problem": "Проблема",
-                "target_audience": "Целевая аудитория",
-                "cover_image_address": "https://example.com/cover.png",
                 "draft": False,
                 "is_public": True,
             },
@@ -264,6 +272,86 @@ class ProjectWorkspaceAPITests(TestCase):
         project.refresh_from_db()
         self.assertFalse(project.draft)
         self.assertTrue(project.is_public)
+
+    def test_publication_patch_prefers_payload_over_stored_values(self):
+        project = self.create_complete_draft()
+        project.description = None
+        project.save()
+        self.authenticate(self.leader)
+
+        response = self.client.patch(
+            f"/projects/{project.pk}/workspace/",
+            {
+                "description": "Описание из запроса",
+                "draft": False,
+                "is_public": True,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        project.refresh_from_db()
+        self.assertEqual(project.description, "Описание из запроса")
+        self.assertFalse(project.draft)
+        self.assertTrue(project.is_public)
+
+    def test_publication_rejects_whitespace_only_fields(self):
+        project = self.create_complete_draft()
+        self.authenticate(self.leader)
+
+        response = self.client.patch(
+            f"/projects/{project.pk}/workspace/",
+            {
+                "region": "   ",
+                "draft": False,
+                "is_public": True,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("region", response.data)
+        project.refresh_from_db()
+        self.assertTrue(project.draft)
+        self.assertFalse(project.is_public)
+
+    def test_incomplete_draft_cannot_bypass_publication_with_single_flag(self):
+        payloads = ({"draft": False}, {"is_public": True})
+
+        for payload in payloads:
+            with self.subTest(payload=payload):
+                project = create_project(
+                    leader=self.leader,
+                    draft=True,
+                    is_public=False,
+                )
+                self.authenticate(self.leader)
+
+                response = self.client.patch(
+                    f"/projects/{project.pk}/workspace/",
+                    payload,
+                    format="json",
+                )
+
+                self.assertEqual(response.status_code, 400)
+                project.refresh_from_db()
+                self.assertTrue(project.draft)
+                self.assertFalse(project.is_public)
+
+    def test_workspace_update_does_not_allow_put(self):
+        project = create_project(leader=self.leader, draft=True, is_public=False)
+        self.authenticate(self.leader)
+
+        response = self.client.put(
+            f"/projects/{project.pk}/workspace/",
+            {"draft": False, "is_public": True},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 405)
+        project.refresh_from_db()
+        self.assertTrue(project.draft)
+        self.assertFalse(project.is_public)
 
     def test_leader_can_patch_industry_and_project_links(self):
         project = create_project(leader=self.leader, draft=True, is_public=False)
