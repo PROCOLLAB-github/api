@@ -27,6 +27,7 @@ from projects.views import (
 from projects.workspace_views import (
     MyProjectsView,
     ProjectCatalogView,
+    ProjectWorkspaceCreateView,
     ProjectWorkspaceDetailView,
 )
 
@@ -65,6 +66,11 @@ urlpatterns = [
     path("", ProjectList.as_view()),
     path("catalog/", ProjectCatalogView.as_view(), name="workspace-catalog"),
     path("my/", MyProjectsView.as_view(), name="workspace-my"),
+    path(
+        "workspace/",
+        ProjectWorkspaceCreateView.as_view(),
+        name="workspace-create",
+    ),
     path(
         "<int:project_id>/workspace/",
         ProjectWorkspaceDetailView.as_view(),

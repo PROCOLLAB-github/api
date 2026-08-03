@@ -3,7 +3,8 @@ from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
 from rest_framework.test import APIClient
 
-from partner_programs.models import Application
+from partner_programs.models import Application, Submission
+from projects.models import Project, ProjectLink
 from projects.tests.helpers import (
     create_collaborator,
     create_industry,
@@ -32,10 +33,46 @@ class ProjectWorkspaceAPITests(TestCase):
 
         self.assertEqual(self.client.get("/projects/catalog/").status_code, 401)
         self.assertEqual(self.client.get("/projects/my/").status_code, 401)
+        self.assertEqual(self.client.post("/projects/workspace/").status_code, 401)
         self.assertEqual(
             self.client.get(f"/projects/{project.pk}/workspace/").status_code,
             401,
         )
+
+    def test_workspace_create_makes_private_draft_for_current_user(self):
+        self.authenticate(self.leader)
+
+        response = self.client.post("/projects/workspace/", {}, format="json")
+
+        self.assertEqual(response.status_code, 201)
+        project = Project.objects.get(pk=response.data["id"])
+        self.assertEqual(project.leader, self.leader)
+        self.assertTrue(project.draft)
+        self.assertFalse(project.is_public)
+        self.assertTrue(response.data["can_edit"])
+        self.assertEqual(response.data["current_user_role"], "leader")
+
+    def test_workspace_create_rejects_client_owned_fields(self):
+        self.authenticate(self.leader)
+
+        response = self.client.post(
+            "/projects/workspace/",
+            {"leader": self.outsider.pk, "draft": False, "is_public": True},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(Project.objects.filter(leader=self.leader).exists())
+        self.assertFalse(Project.objects.filter(leader=self.outsider).exists())
+
+    def test_workspace_create_does_not_create_application_or_submission(self):
+        self.authenticate(self.leader)
+
+        response = self.client.post("/projects/workspace/", {}, format="json")
+
+        self.assertEqual(response.status_code, 201)
+        self.assertFalse(Application.objects.exists())
+        self.assertFalse(Submission.objects.exists())
 
     def test_catalog_returns_only_public_published_projects(self):
         visible = create_project(
@@ -160,15 +197,118 @@ class ProjectWorkspaceAPITests(TestCase):
 
         response = self.client.patch(
             f"/projects/{project.pk}/workspace/",
-            {"name": "Updated", "draft": False, "is_public": True},
+            {"name": "Updated", "draft": True, "is_public": False},
             format="json",
         )
 
         self.assertEqual(response.status_code, 200)
         project.refresh_from_db()
         self.assertEqual(project.name, "Updated")
+        self.assertTrue(project.draft)
+        self.assertFalse(project.is_public)
+
+    def test_draft_requires_main_fields_before_publication(self):
+        project = create_project(leader=self.leader, draft=True, is_public=False)
+        project.name = None
+        project.description = None
+        project.region = None
+        project.industry = None
+        project.cover_image_address = None
+        project.save()
+        self.authenticate(self.leader)
+
+        response = self.client.patch(
+            f"/projects/{project.pk}/workspace/",
+            {"draft": False, "is_public": True},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            set(response.data),
+            {
+                "name",
+                "region",
+                "industry",
+                "description",
+                "problem",
+                "target_audience",
+                "cover_image_address",
+            },
+        )
+        project.refresh_from_db()
+        self.assertTrue(project.draft)
+        self.assertFalse(project.is_public)
+
+    def test_complete_draft_can_be_published(self):
+        project = create_project(leader=self.leader, draft=True, is_public=False)
+        self.authenticate(self.leader)
+
+        response = self.client.patch(
+            f"/projects/{project.pk}/workspace/",
+            {
+                "name": "Published project",
+                "region": "Москва",
+                "industry": self.industry.pk,
+                "description": "Описание",
+                "problem": "Проблема",
+                "target_audience": "Целевая аудитория",
+                "cover_image_address": "https://example.com/cover.png",
+                "draft": False,
+                "is_public": True,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        project.refresh_from_db()
         self.assertFalse(project.draft)
         self.assertTrue(project.is_public)
+
+    def test_leader_can_patch_industry_and_project_links(self):
+        project = create_project(leader=self.leader, draft=True, is_public=False)
+        old_link = ProjectLink.objects.create(
+            project=project,
+            link="https://old.example.com",
+        )
+        replacement_industry = create_industry(name="Replacement industry")
+        self.authenticate(self.leader)
+
+        response = self.client.patch(
+            f"/projects/{project.pk}/workspace/",
+            {
+                "industry": replacement_industry.pk,
+                "links": [
+                    "https://example.com/one",
+                    "https://example.com/one",
+                    "https://example.com/two",
+                ],
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        project.refresh_from_db()
+        self.assertEqual(project.industry, replacement_industry)
+        self.assertFalse(ProjectLink.objects.filter(pk=old_link.pk).exists())
+        self.assertEqual(
+            response.data["links"],
+            ["https://example.com/one", "https://example.com/two"],
+        )
+
+    def test_legacy_post_projects_contract_remains_available(self):
+        self.authenticate(self.leader)
+
+        response = self.client.post(
+            "/projects/",
+            {"name": "Legacy project"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        project = Project.objects.get(pk=response.data["id"])
+        self.assertEqual(project.leader, self.leader)
+        self.assertTrue(project.draft)
 
     def test_collaborator_cannot_patch_and_leader_cannot_replace_leader(self):
         project = create_project(leader=self.leader, draft=True, is_public=False)

@@ -1,6 +1,7 @@
+from django.db import transaction
 from rest_framework import serializers
 
-from projects.models import Project
+from projects.models import Project, ProjectLink
 
 
 PROJECT_WORKSPACE_EDITABLE_FIELDS = frozenset(
@@ -16,6 +17,8 @@ PROJECT_WORKSPACE_EDITABLE_FIELDS = frozenset(
         "presentation_address",
         "image_address",
         "cover_image_address",
+        "industry",
+        "links",
         "draft",
         "is_public",
     }
@@ -126,6 +129,12 @@ class ProjectWorkspaceDetailSerializer(ProjectWorkspaceListSerializer):
 
 class ProjectWorkspaceUpdateSerializer(serializers.ModelSerializer):
     editable_fields = PROJECT_WORKSPACE_EDITABLE_FIELDS
+    links = serializers.ListField(
+        child=serializers.URLField(),
+        required=False,
+        allow_empty=True,
+        write_only=True,
+    )
 
     class Meta:
         model = Project
@@ -145,3 +154,60 @@ class ProjectWorkspaceUpdateSerializer(serializers.ModelSerializer):
                 }
             )
         return attrs
+
+    def validate_links(self, links):
+        """Удаляет дубликаты ссылок, сохраняя пользовательский порядок."""
+        return list(dict.fromkeys(links))
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        """Атомарно обновляет Project и его отдельные строки ProjectLink."""
+        links = validated_data.pop("links", None)
+        project = super().update(instance, validated_data)
+        if links is not None:
+            ProjectLink.objects.filter(project=project).delete()
+            ProjectLink.objects.bulk_create(
+                [ProjectLink(project=project, link=link) for link in links]
+            )
+        return project
+
+
+class ProjectWorkspaceCreateSerializer(serializers.Serializer):
+    """Создает пустой приватный черновик без клиентских полей владения."""
+
+    def validate(self, attrs):
+        if self.initial_data:
+            raise serializers.ValidationError(
+                {
+                    field: "Поле нельзя передавать при создании черновика."
+                    for field in sorted(self.initial_data)
+                }
+            )
+        if self.instance and self.instance.draft and attrs.get("draft") is False:
+            required_fields = {
+                "name": "Укажите название проекта.",
+                "region": "Укажите регион.",
+                "industry": "Выберите отрасль.",
+                "description": "Добавьте описание проекта.",
+                "problem": "Опишите проблему.",
+                "target_audience": "Опишите целевую аудиторию.",
+                "cover_image_address": "Загрузите обложку проекта.",
+            }
+            errors = {}
+            for field, message in required_fields.items():
+                value = attrs.get(field, getattr(self.instance, field))
+                if value is None or (isinstance(value, str) and not value.strip()):
+                    errors[field] = message
+            if errors:
+                raise serializers.ValidationError(errors)
+        return attrs
+
+    @transaction.atomic
+    def create(self, validated_data):
+        # Отдельный React-контур явно создает private draft; legacy POST /projects/
+        # сохраняет прежний контракт и model default is_public.
+        return Project.objects.create(
+            leader=self.context["request"].user,
+            draft=True,
+            is_public=False,
+        )
