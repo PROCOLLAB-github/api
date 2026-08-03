@@ -24,6 +24,11 @@ from projects.views import (
     SetLikeOnProject,
     SwitchLeaderRole,
 )
+from projects.workspace_views import (
+    MyProjectsView,
+    ProjectCatalogView,
+    ProjectWorkspaceDetailView,
+)
 
 app_name = "projects"
 project_goal_list = GoalViewSet.as_view(
@@ -58,6 +63,13 @@ project_resource_detail = ResourceViewSet.as_view(
 )
 urlpatterns = [
     path("", ProjectList.as_view()),
+    path("catalog/", ProjectCatalogView.as_view(), name="workspace-catalog"),
+    path("my/", MyProjectsView.as_view(), name="workspace-my"),
+    path(
+        "<int:project_id>/workspace/",
+        ProjectWorkspaceDetailView.as_view(),
+        name="workspace-detail",
+    ),
     path("<int:pk>/like/", SetLikeOnProject.as_view()),
     path("<int:project_pk>/news/", NewsList.as_view()),
     path("<int:project_pk>/subscribe/", ProjectSubscribe.as_view()),
