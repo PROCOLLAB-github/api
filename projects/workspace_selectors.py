@@ -58,3 +58,12 @@ def get_workspace_project_queryset(*, user):
         ),
         "links",
     )
+
+
+def filter_workspace_visible_projects(queryset: QuerySet[Project], *, user):
+    """Ограничивает queryset действующими правилами видимости workspace."""
+    if user.is_staff or user.is_superuser:
+        return queryset
+    return queryset.filter(
+        Q(draft=False, is_public=True) | Q(leader=user) | Q(collaborator__user=user)
+    ).distinct()

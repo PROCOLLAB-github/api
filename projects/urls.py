@@ -24,6 +24,12 @@ from projects.views import (
     SetLikeOnProject,
     SwitchLeaderRole,
 )
+from projects.workspace_content_views import (
+    ProjectWorkspaceAchievementDetailView,
+    ProjectWorkspaceAchievementListView,
+    ProjectWorkspaceGoalDetailView,
+    ProjectWorkspaceGoalListView,
+)
 from projects.workspace_views import (
     MyProjectsView,
     ProjectCatalogView,
@@ -75,6 +81,26 @@ urlpatterns = [
         "<int:project_id>/workspace/",
         ProjectWorkspaceDetailView.as_view(),
         name="workspace-detail",
+    ),
+    path(
+        "<int:project_id>/workspace/goals/",
+        ProjectWorkspaceGoalListView.as_view(),
+        name="workspace-goals",
+    ),
+    path(
+        "<int:project_id>/workspace/goals/<int:goal_id>/",
+        ProjectWorkspaceGoalDetailView.as_view(),
+        name="workspace-goal-detail",
+    ),
+    path(
+        "<int:project_id>/workspace/achievements/",
+        ProjectWorkspaceAchievementListView.as_view(),
+        name="workspace-achievements",
+    ),
+    path(
+        "<int:project_id>/workspace/achievements/<int:achievement_id>/",
+        ProjectWorkspaceAchievementDetailView.as_view(),
+        name="workspace-achievement-detail",
     ),
     path("<int:pk>/like/", SetLikeOnProject.as_view()),
     path("<int:project_pk>/news/", NewsList.as_view()),
