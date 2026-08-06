@@ -1,4 +1,3 @@
-from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -8,6 +7,7 @@ from rest_framework.views import APIView
 
 from projects.pagination import ProjectsPagination
 from projects.workspace_selectors import (
+    filter_workspace_visible_projects,
     get_project_catalog_queryset,
     get_user_projects_queryset,
     get_workspace_project_queryset,
@@ -92,12 +92,7 @@ class ProjectWorkspaceDetailView(APIView):
 
     def get_object(self, request, project_id):
         queryset = get_workspace_project_queryset(user=request.user)
-        if not (request.user.is_staff or request.user.is_superuser):
-            queryset = queryset.filter(
-                Q(draft=False, is_public=True)
-                | Q(leader=request.user)
-                | Q(collaborator__user=request.user)
-            ).distinct()
+        queryset = filter_workspace_visible_projects(queryset, user=request.user)
         return get_object_or_404(queryset, pk=project_id)
 
     def get(self, request, project_id):
