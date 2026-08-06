@@ -17,6 +17,7 @@ readonly HEALTH_RETRY_DELAY_SECONDS=5
 
 DEPLOY_SHA="${1:-}"
 GITHUB_ACTIONS_RUN_ID="${2:-}"
+DEPLOY_IMAGE="${3:-}"
 
 PREVIOUS_SHA=""
 PREVIOUS_WEB_CONTAINER_ID=""
@@ -25,10 +26,12 @@ PREVIOUS_WEB_IMAGE_ID=""
 PREVIOUS_CELERY_IMAGE_ID=""
 PREVIOUS_WEB_IMAGE_REF=""
 PREVIOUS_CELERY_IMAGE_REF=""
+TARGET_WEB_IMAGE_REF=""
+TARGET_CELERY_IMAGE_REF=""
 HEALTH_JSON_IMAGE_ID=""
 HEALTH_BODY_FILE=""
 REPOSITORY_MOVED=false
-BUILD_ATTEMPTED=false
+IMAGE_REFERENCES_CHANGED=false
 MIGRATION_STARTED=false
 MIGRATION_COMPLETED=false
 CONTAINERS_MAY_HAVE_CHANGED=false
@@ -65,7 +68,7 @@ restore_repository() {
 restore_image_references() {
     local result=0
 
-    if [[ "$BUILD_ATTEMPTED" != true ]]; then
+    if [[ "$IMAGE_REFERENCES_CHANGED" != true ]]; then
         return 0
     fi
 
@@ -98,6 +101,40 @@ compose_service_container_id() {
     fi
 
     result_variable="${container_ids[0]}"
+}
+
+compose_service_image_ref() {
+    local service="$1"
+    local -n result_variable="$2"
+    local output=""
+
+    output="$(
+        "${COMPOSE_CMD[@]}" config --format json |
+            docker run \
+                --rm \
+                --interactive \
+                --entrypoint python \
+                "$PREVIOUS_WEB_IMAGE_ID" \
+                -c '
+import json
+import sys
+
+service = sys.argv[1]
+config = json.load(sys.stdin)
+image = config.get("services", {}).get(service, {}).get("image")
+if not isinstance(image, str) or not image:
+    raise SystemExit(f"Image reference is missing for service {service}")
+print(image)
+' \
+                "$service"
+    )"
+    if [[ -z "$output" || "$output" == *$'\n'* ]]; then
+        printf '[react-dev-deploy] Service %s has invalid image reference.\n' \
+            "$service" >&2
+        return 1
+    fi
+
+    result_variable="$output"
 }
 
 wait_for_service_running() {
@@ -193,6 +230,7 @@ rollback_deployment() {
         "${COMPOSE_CMD[@]}" up \
             --detach \
             --no-deps \
+            --no-build \
             --force-recreate \
             web "$CELERY_SERVICE" ||
             rollback_failed=1
@@ -234,7 +272,7 @@ handle_error() {
         "$line_number" >&2
 
     if [[ "$REPOSITORY_MOVED" == true ||
-        "$BUILD_ATTEMPTED" == true ||
+        "$IMAGE_REFERENCES_CHANGED" == true ||
         "$CONTAINERS_MAY_HAVE_CHANGED" == true ]]; then
         rollback_deployment
         rollback_status="$?"
@@ -259,6 +297,9 @@ if [[ ! "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]; then
 fi
 if [[ ! "$GITHUB_ACTIONS_RUN_ID" =~ ^[0-9]+$ ]]; then
     fail "GitHub Actions run ID должен быть числовым."
+fi
+if [[ ! "$DEPLOY_IMAGE" =~ ^ghcr\.io/procollab-github/api@sha256:[0-9a-f]{64}$ ]]; then
+    fail "DEPLOY_IMAGE должен быть immutable GHCR reference по sha256 digest."
 fi
 if [[ "$(uname -s)" != "Linux" ]]; then
     fail "Deploy script разрешено запускать только на Linux."
@@ -444,6 +485,13 @@ if [[ -z "$PREVIOUS_WEB_IMAGE_ID" || -z "$PREVIOUS_CELERY_IMAGE_ID" ||
     fail "Не удалось сохранить image state текущих React-dev containers."
 fi
 
+compose_service_image_ref web configured_web_image_ref
+compose_service_image_ref "$CELERY_SERVICE" configured_celery_image_ref
+if [[ "$configured_web_image_ref" != "$PREVIOUS_WEB_IMAGE_REF" ]] ||
+    [[ "$configured_celery_image_ref" != "$PREVIOUS_CELERY_IMAGE_REF" ]]; then
+    fail "Running image references не совпадают с текущей Compose-конфигурацией."
+fi
+
 git fetch origin master --prune
 if ! git cat-file -e "${DEPLOY_SHA}^{commit}"; then
     fail "DEPLOY_SHA отсутствует в backend repository."
@@ -467,21 +515,32 @@ if [[ "$actual_sha" != "$DEPLOY_SHA" ]]; then
 fi
 
 validate_compose_services
+compose_service_image_ref web TARGET_WEB_IMAGE_REF
+compose_service_image_ref "$CELERY_SERVICE" TARGET_CELERY_IMAGE_REF
 
-BUILD_ATTEMPTED=true
-log "Сборка новых web и ${CELERY_SERVICE} images без остановки текущих containers."
-"${COMPOSE_CMD[@]}" build web "$CELERY_SERVICE"
-
-new_web_image_id="$(
-    docker image inspect --format '{{.Id}}' "$PREVIOUS_WEB_IMAGE_REF"
+log "Загрузка проверенного backend image из GHCR по immutable digest."
+docker pull "$DEPLOY_IMAGE"
+new_image_id="$(docker image inspect --format '{{.Id}}' "$DEPLOY_IMAGE")"
+image_revision="$(
+    docker image inspect \
+        --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' \
+        "$DEPLOY_IMAGE"
 )"
-new_celery_image_id="$(
-    docker image inspect --format '{{.Id}}' "$PREVIOUS_CELERY_IMAGE_REF"
-)"
-if [[ -z "$new_web_image_id" || -z "$new_celery_image_id" ]]; then
-    fail "Не удалось определить новые web/celery images после build."
+if [[ -z "$new_image_id" ]]; then
+    fail "Не удалось определить загруженный backend image."
 fi
-HEALTH_JSON_IMAGE_ID="$new_web_image_id"
+if [[ "$image_revision" != "$DEPLOY_SHA" ]]; then
+    fail "Revision label загруженного image не совпадает с DEPLOY_SHA."
+fi
+
+IMAGE_REFERENCES_CHANGED=true
+docker image tag "$new_image_id" "$TARGET_WEB_IMAGE_REF"
+docker image tag "$new_image_id" "$TARGET_CELERY_IMAGE_REF"
+if [[ "$(docker image inspect --format '{{.Id}}' "$TARGET_WEB_IMAGE_REF")" != "$new_image_id" ]] ||
+    [[ "$(docker image inspect --format '{{.Id}}' "$TARGET_CELERY_IMAGE_REF")" != "$new_image_id" ]]; then
+    fail "Compose image references не указывают на загруженный backend image."
+fi
+HEALTH_JSON_IMAGE_ID="$new_image_id"
 
 log "Django system check на новом web image."
 "${COMPOSE_CMD[@]}" run \
@@ -504,6 +563,7 @@ log "Пересоздание только React-dev web и ${CELERY_SERVICE}."
 "${COMPOSE_CMD[@]}" up \
     --detach \
     --no-deps \
+    --no-build \
     --force-recreate \
     web "$CELERY_SERVICE"
 
@@ -517,6 +577,11 @@ web_container_id=""
 celery_container_id=""
 compose_service_container_id web web_container_id
 compose_service_container_id "$CELERY_SERVICE" celery_container_id
+web_image_id="$(docker inspect --format '{{.Image}}' "$web_container_id")"
+celery_image_id="$(docker inspect --format '{{.Image}}' "$celery_container_id")"
+if [[ "$web_image_id" != "$new_image_id" || "$celery_image_id" != "$new_image_id" ]]; then
+    fail "React-dev containers запущены не из ожидаемого backend image."
+fi
 web_status="$(docker inspect --format '{{.State.Status}}' "$web_container_id")"
 celery_status="$(docker inspect --format '{{.State.Status}}' "$celery_container_id")"
 
@@ -526,6 +591,7 @@ printf '%s\n' \
     "DEPLOY_SHA=${DEPLOY_SHA}" \
     "PREVIOUS_SHA=${PREVIOUS_SHA}" \
     "GITHUB_RUN_ID=${GITHUB_ACTIONS_RUN_ID}" \
+    "DEPLOY_IMAGE=${DEPLOY_IMAGE}" \
     "COMPOSE_PROJECT=${COMPOSE_PROJECT}" \
     "WEB_STATUS=${web_status}" \
     "CELERY_STATUS=${celery_status}" \
