@@ -12,6 +12,7 @@ on:
 
 permissions:
   contents: read
+  packages: write
 
 concurrency:
   group: backend-react-dev-deploy
@@ -33,6 +34,8 @@ jobs:
     env:
       DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
       DEPLOY_RUN_ID: ${{ github.run_id }}
+      DEPLOY_IMAGE_TAG: >-
+        ghcr.io/procollab-github/api:react-dev-${{ github.event.workflow_run.head_sha }}
 
     steps:
       - name: Validate deploy source
@@ -47,6 +50,11 @@ jobs:
 
           if [[ ! "$DEPLOY_RUN_ID" =~ ^[0-9]+$ ]]; then
             echo "GitHub Actions run ID is invalid." >&2
+            exit 1
+          fi
+
+          if [[ ! "$DEPLOY_IMAGE_TAG" =~ ^ghcr\.io/procollab-github/api:react-dev-[0-9a-f]{40}$ ]]; then
+            echo "React-dev image tag is invalid." >&2
             exit 1
           fi
 
@@ -66,6 +74,45 @@ jobs:
             echo "Checked out commit does not match the successful CI run." >&2
             exit 1
           fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish tested image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          cache-from: type=gha,scope=backend-react-dev
+          cache-to: type=gha,mode=max,scope=backend-react-dev
+          tags: ${{ env.DEPLOY_IMAGE_TAG }}
+          labels: |
+            org.opencontainers.image.revision=${{ env.DEPLOY_SHA }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+
+      - name: Pin published image by digest
+        shell: bash
+        env:
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          set -Eeuo pipefail
+
+          if [[ ! "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "Published image digest is invalid." >&2
+            exit 1
+          fi
+
+          deploy_image="ghcr.io/procollab-github/api@${IMAGE_DIGEST}"
+          echo "DEPLOY_IMAGE=${deploy_image}" >> "$GITHUB_ENV"
 
       - name: Prepare pinned SSH configuration
         shell: bash
@@ -146,5 +193,5 @@ jobs:
 
           ssh "${ssh_options[@]}" \
             -- "$REACT_DEV_SSH_USER@$REACT_DEV_SSH_HOST" \
-            "bash -s -- '$DEPLOY_SHA' '$DEPLOY_RUN_ID'" \
+            "bash -s -- '$DEPLOY_SHA' '$DEPLOY_RUN_ID' '$DEPLOY_IMAGE'" \
             < scripts/deploy_react_dev.sh

@@ -19,8 +19,10 @@ Deploy запускается только для успешного `push` в `
 
 Workflow получает SHA из завершившегося `Backend PostgreSQL CI`, проверяет формат
 из 40 lowercase hexadecimal символов и выполняет checkout именно этого commit.
+После checkout GitHub Actions собирает Docker image, публикует его в GHCR с
+revision label, равным tested SHA, и фиксирует образ по immutable `sha256` digest.
 Перед SSH фактический `git rev-parse HEAD` сравнивается с SHA успешного CI. На
-сервер передаются только проверенные SHA и GitHub Actions run ID.
+сервер передаются проверенные SHA, GitHub Actions run ID и digest image.
 
 Серверный script выполняет `git fetch origin master --prune`, проверяет наличие
 commit и его принадлежность текущему `origin/master`. `git pull` не используется.
@@ -46,6 +48,11 @@ Windows CRLF удаляются. SSH использует `BatchMode`, `Identiti
 `REACT_DEV_SSH_KNOWN_HOSTS` должен содержать заранее проверенный pinned host key.
 Workflow намеренно не использует `ssh-keyscan` и не принимает новый ключ
 автоматически.
+
+Для публикации image используется стандартный `GITHUB_TOKEN` с минимальными
+permissions `contents: read` и `packages: write`. Дополнительный registry secret
+на React-dev не передается: сервер скачивает тот же GHCR package
+`ghcr.io/procollab-github/api`, который уже используется release pipeline.
 
 ## Изоляция
 
@@ -87,14 +94,19 @@ containers проверяется наличие точных сервисов `
 1. Получение deployment lock через `flock`.
 2. Проверка repository, origin, git state и stale deploy.
 3. Сохранение предыдущих SHA, container IDs, image IDs и image references.
-4. Сборка новых `web` и `celerys` images без остановки текущего backend.
-5. `python manage.py check` во временном container нового `web` image без TTY
+4. Сборка backend image в GitHub Actions и публикация в GHCR по SHA-тегу.
+5. Загрузка image на React-dev по immutable digest и проверка revision label.
+6. Переназначение существующих Compose image references без server-side build.
+7. `python manage.py check` во временном container нового `web` image без TTY
    и без доступа к stdin deploy-скрипта.
-6. `python manage.py migrate --noinput` с существующим React-dev `.env`, также без TTY
+8. `python manage.py migrate --noinput` с существующим React-dev `.env`, также без TTY
    и с stdin, подключенным к `/dev/null`.
-7. Пересоздание только `web` и `celerys` через `up -d --no-deps --force-recreate`.
-8. Ожидание running state с ограниченным timeout.
-9. Публичный HTTPS health-check.
+9. Пересоздание только `web` и `celerys` с явным запретом server-side build.
+10. Проверка image ID, running state и публичный HTTPS health-check.
+
+React-dev сервер больше не устанавливает Python-зависимости и не обращается к
+PyPI во время deploy. Доступ к PyPI требуется только GitHub-hosted runner на
+стадии сборки image.
 
 Redis, database и nginx не пересоздаются. `docker compose down`, prune-команды и
 удаление старых images не выполняются.
@@ -121,7 +133,7 @@ https://api-react-dev.procollab.ru/programs/?limit=1
 
 ## Rollback
 
-При ошибке build, Django check или migration работающие containers не
+При ошибке pull, проверки image, Django check или migration работающие containers не
 пересоздаются; repository и image references возвращаются к предыдущему
 состоянию.
 
@@ -158,7 +170,10 @@ GitHub Actions использует одну общую concurrency group с
 - workflow устарел относительно текущего `origin/master`;
 - Compose labels отсутствуют или указывают вне React-dev;
 - сервисы называются не `web`, `celerys`, `redis`;
-- build, Django check или migration завершились ошибкой;
+- GitHub Actions не смог собрать или опубликовать image;
+- React-dev не смог скачать digest из GHCR;
+- revision label image не совпал с tested commit;
+- Django check или migration завершились ошибкой;
 - containers не перешли в running state;
 - HTTPS endpoint вернул redirect, HTML, не-JSON или статус не `200`;
 - rollback не смог восстановить containers или health-check.
