@@ -78,7 +78,7 @@ def create_user_file(
 ) -> UserFile:
     suffix = unique_suffix()
     return UserFile.objects.create(
-        link=f"https://cdn.example.com/news/{suffix}/{name}.{extension}",
+        link=f"https://cdn.example.com/news/{suffix}/{name}.{extension}",  # noqa: E231
         user=user,
         name=name,
         extension=extension,
@@ -87,8 +87,20 @@ def create_user_file(
     )
 
 
-def create_news_for(obj, *, text: str = "News text", files=None, pin: bool = False) -> News:
-    news = News.objects.add_news(obj, text=text, files=files or [])
+def create_news_for(
+    obj,
+    *,
+    text: str = "News text",
+    files=None,
+    pin: bool = False,
+    audience: str = News.Audience.PLATFORM,
+) -> News:
+    news = News.objects.add_news(
+        obj,
+        text=text,
+        files=files or [],
+        audience=audience,
+    )
     if pin:
         news.pin = True
         news.save(update_fields=["pin"])

@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.db.models import QuerySet
 from django.http import HttpRequest
 
-from news.models import News
+from news.models import News, NewsComment
 from partner_programs.models import PartnerProgram
 
 
@@ -15,6 +15,7 @@ class NewsAdmin(admin.ModelAdmin):
         "object_id",
         "text",
         "pin",
+        "audience",
         "datetime_created",
         "datetime_updated",
     )
@@ -24,10 +25,12 @@ class NewsAdmin(admin.ModelAdmin):
         "object_id",
         "text",
         "pin",
+        "audience",
         "datetime_created",
         "datetime_updated",
     )
     list_filter = (
+        "audience",
         "datetime_created",
         "datetime_updated",
     )
@@ -50,6 +53,20 @@ class NewsAdmin(admin.ModelAdmin):
                 content_type__model="PartnerProgram".lower(),
             )
         return qs
+
+
+@admin.register(NewsComment)
+class NewsCommentAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "news",
+        "author",
+        "datetime_created",
+        "datetime_updated",
+    )
+    list_filter = ("datetime_created", "datetime_updated")
+    search_fields = ("text", "author__email")
+    readonly_fields = ("datetime_created", "datetime_updated")
 
     # fieldsets = (
     #     (

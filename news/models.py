@@ -1,5 +1,7 @@
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
+from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
@@ -10,6 +12,10 @@ from django_stubs_ext.db.models import TypedModelMeta
 
 
 class News(models.Model):
+    class Audience(models.TextChoices):
+        PLATFORM = "platform", "Вся платформа"
+        PROGRAM_PARTICIPANTS = "program_participants", "Участники программы"
+
     content_type = models.ForeignKey(
         ContentType,
         on_delete=models.CASCADE,
@@ -38,6 +44,13 @@ class News(models.Model):
         verbose_name="Закрепить новость",
         help_text="Закрепить новость (пока только для профиля программ)",
     )
+    audience = models.CharField(
+        max_length=24,
+        choices=Audience.choices,
+        default=Audience.PLATFORM,
+        db_index=True,
+        verbose_name="Аудитория",
+    )
     datetime_created = models.DateTimeField(
         verbose_name="Дата создания", null=False, default=timezone.now
     )
@@ -49,7 +62,70 @@ class News(models.Model):
 
     objects = NewsManager()
 
+    def clean(self):
+        """Запрещает внутреннюю аудиторию вне контекста партнерской программы."""
+        super().clean()
+        if (
+            self.audience == self.Audience.PROGRAM_PARTICIPANTS
+            and self.content_type_id
+            and (
+                self.content_type.app_label != "partner_programs"
+                or self.content_type.model != "partnerprogram"
+            )
+        ):
+            raise ValidationError(
+                {
+                    "audience": (
+                        "Закрытая аудитория доступна только для новостей программы."
+                    )
+                }
+            )
+
     class Meta(TypedModelMeta):
         verbose_name = "Новость"
         verbose_name_plural = "Новости"
         ordering = ["-datetime_created"]
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(audience__in=("platform", "program_participants")),
+                name="news_valid_audience",
+            )
+        ]
+
+
+class NewsComment(models.Model):
+    news = models.ForeignKey(
+        News,
+        on_delete=models.CASCADE,
+        related_name="comments",
+        verbose_name="Новость",
+    )
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="news_comments",
+        verbose_name="Автор",
+    )
+    text = models.TextField(max_length=2000, verbose_name="Текст")
+    datetime_created = models.DateTimeField(
+        default=timezone.now,
+        verbose_name="Дата создания",
+    )
+    # Null означает, что комментарий ещё не редактировали. В API при этом
+    # возвращается дата создания, поэтому контракт datetime_updated стабилен.
+    datetime_updated = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Дата изменения",
+    )
+
+    class Meta(TypedModelMeta):
+        verbose_name = "Комментарий к новости"
+        verbose_name_plural = "Комментарии к новостям"
+        ordering = ["datetime_created", "id"]
+        indexes = [
+            models.Index(
+                fields=["news", "datetime_created"],
+                name="news_comment_order_idx",
+            )
+        ]

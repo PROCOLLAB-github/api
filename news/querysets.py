@@ -3,6 +3,7 @@ from django.db.models import QuerySet
 from django.shortcuts import get_object_or_404
 
 from news.models import News
+from news.access import can_view_program_participant_news
 from news.services import FEED_RECORD_TEXT
 from partner_programs.models import PartnerProgram
 from projects.models import Project
@@ -23,16 +24,26 @@ def get_user_news_queryset(user_id: int) -> QuerySet[News]:
     return News.objects.get_news(obj=user)
 
 
-def get_program_news_queryset(program_id: int) -> QuerySet[News]:
+def get_program_news_queryset(program_id: int, user=None) -> QuerySet[News]:
     program = get_object_or_404(PartnerProgram, pk=program_id)
-    return News.objects.get_news(obj=program).order_by("-pin", "-datetime_created")
+    queryset = News.objects.get_news(obj=program)
+    if can_view_program_participant_news(user, program):
+        queryset = queryset.filter(
+            audience__in=(
+                News.Audience.PLATFORM,
+                News.Audience.PROGRAM_PARTICIPANTS,
+            )
+        )
+    else:
+        queryset = queryset.filter(audience=News.Audience.PLATFORM)
+    return queryset.order_by("-pin", "-datetime_created")
 
 
-def get_news_queryset_for_context(kwargs: dict) -> QuerySet[News]:
+def get_news_queryset_for_context(kwargs: dict, user=None) -> QuerySet[News]:
     if kwargs.get("project_pk") is not None:
         return get_project_news_queryset(kwargs["project_pk"])
     if kwargs.get("partnerprogram_pk") is not None:
-        return get_program_news_queryset(kwargs["partnerprogram_pk"])
+        return get_program_news_queryset(kwargs["partnerprogram_pk"], user=user)
     if kwargs.get("user_pk") is not None:
         return get_user_news_queryset(kwargs["user_pk"])
     return News.objects.none()
