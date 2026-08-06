@@ -7,7 +7,11 @@ from invites.models import Invite
 from invites.permissions import InviteDecisionPermission, InviteDetailPermission
 from invites.querysets import get_visible_invites_queryset
 from invites.serializers import InviteDetailSerializer, InviteListSerializer
-from projects.models import Collaborator
+from invites.workspace_services import (
+    ProjectInvitationServiceError,
+    accept_project_invitation,
+    decline_project_invitation,
+)
 
 
 class InviteList(generics.ListCreateAPIView):
@@ -18,7 +22,8 @@ class InviteList(generics.ListCreateAPIView):
 
     def get_queryset(self):
         return get_visible_invites_queryset(self.request.user).filter(
-            is_accepted__isnull=True
+            is_accepted__isnull=True,
+            is_revoked=False,
         )
 
     def create(self, request, *args, **kwargs):
@@ -27,7 +32,7 @@ class InviteList(generics.ListCreateAPIView):
         if serializer.validated_data["project"].leader != request.user:
             # additional check that the user is the invite's project's leader
             return Response(status=status.HTTP_403_FORBIDDEN)
-        instance = serializer.save()
+        instance = serializer.save(invited_by=request.user)
         headers = self.get_success_headers(serializer.data)
 
         # using detailed serializer so that it'll pass User and Project objects detailed
@@ -51,27 +56,16 @@ class InviteAccept(generics.GenericAPIView):
 
     def post(self, request, *args, **kwargs):
         invite = self.get_object()  # type: Invite
-        if invite.is_accepted is not None:
+        try:
+            accept_project_invitation(
+                invitation_id=invite.pk,
+                actor=request.user,
+            )
+        except ProjectInvitationServiceError as exc:
             return Response(
-                {"detail": "Invite has already been processed."},
+                {"detail": exc.detail},
                 status=status.HTTP_409_CONFLICT,
             )
-        # add user to project collaborators
-        collaborator, created = Collaborator.objects.get_or_create(
-            user=invite.user,
-            project=invite.project,
-            defaults={
-                "role": invite.role,
-                "specialization": invite.specialization,
-            },
-        )
-        if not created:
-            return Response(
-                {"detail": "User is already a collaborator of this project."},
-                status=status.HTTP_409_CONFLICT,
-            )
-        invite.is_accepted = True
-        invite.save()
         return Response(status=status.HTTP_200_OK)
 
 
@@ -82,11 +76,14 @@ class InviteDecline(generics.GenericAPIView):
 
     def post(self, request, *args, **kwargs):
         invite = self.get_object()
-        if invite.is_accepted is not None:
+        try:
+            decline_project_invitation(
+                invitation_id=invite.pk,
+                actor=request.user,
+            )
+        except ProjectInvitationServiceError as exc:
             return Response(
-                {"detail": "Invite has already been processed."},
+                {"detail": exc.detail},
                 status=status.HTTP_409_CONFLICT,
             )
-        invite.is_accepted = False
-        invite.save()
         return Response(status=status.HTTP_200_OK)

@@ -1,5 +1,12 @@
 from django.urls import path
 
+from invites.workspace_views import (
+    IncomingProjectInvitationListView,
+    ProjectInvitationAcceptView,
+    ProjectInvitationDeclineView,
+    ProjectInvitationListCreateView,
+    ProjectInvitationRevokeView,
+)
 from news.views import NewsDetail, NewsDetailSetLiked, NewsDetailSetViewed, NewsList
 from partner_programs.views import PartnerProgramFieldValueBulkUpdateView
 from projects.views import (
@@ -78,9 +85,34 @@ urlpatterns = [
         name="workspace-create",
     ),
     path(
+        "workspace/invitations/incoming/",
+        IncomingProjectInvitationListView.as_view(),
+        name="workspace-invitations-incoming",
+    ),
+    path(
+        "workspace/invitations/<int:invitation_id>/accept/",
+        ProjectInvitationAcceptView.as_view(),
+        name="workspace-invitation-accept",
+    ),
+    path(
+        "workspace/invitations/<int:invitation_id>/decline/",
+        ProjectInvitationDeclineView.as_view(),
+        name="workspace-invitation-decline",
+    ),
+    path(
         "<int:project_id>/workspace/",
         ProjectWorkspaceDetailView.as_view(),
         name="workspace-detail",
+    ),
+    path(
+        "<int:project_id>/workspace/invitations/",
+        ProjectInvitationListCreateView.as_view(),
+        name="workspace-invitations",
+    ),
+    path(
+        "<int:project_id>/workspace/invitations/<int:invitation_id>/revoke/",
+        ProjectInvitationRevokeView.as_view(),
+        name="workspace-invitation-revoke",
     ),
     path(
         "<int:project_id>/workspace/goals/",

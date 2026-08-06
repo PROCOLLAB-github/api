@@ -49,7 +49,10 @@ class InviteListSerializer(serializers.ModelSerializer[Invite]):
             )
 
         if Invite.objects.filter(
-            project=project, user=user, is_accepted__isnull=True
+            project=project,
+            user=user,
+            is_accepted__isnull=True,
+            is_revoked=False,
         ).exists():
             raise serializers.ValidationError(
                 {"user": "У пользователя уже есть активное приглашение в этот проект."}
