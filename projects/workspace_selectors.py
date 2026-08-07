@@ -1,7 +1,9 @@
-from django.db.models import Prefetch, Q, QuerySet
+from django.db.models import Count, Prefetch, Q, QuerySet
 
+from core.models import SkillToObject
 from partner_programs.models import Application
 from projects.models import Collaborator, Project
+from vacancy.models import Vacancy
 
 
 def _with_workspace_relations(queryset: QuerySet[Project], user) -> QuerySet[Project]:
@@ -49,6 +51,17 @@ def get_workspace_project_queryset(*, user):
     collaborators = Collaborator.objects.select_related("user").order_by(
         "datetime_created", "id"
     )
+    required_skills = SkillToObject.objects.select_related("skill__category")
+    vacancies = (
+        Vacancy.objects.annotate(
+            workspace_response_count=Count(
+                "vacancy_requests",
+                filter=Q(vacancy_requests__is_approved__isnull=True),
+            )
+        )
+        .prefetch_related(Prefetch("required_skills", queryset=required_skills))
+        .order_by("-datetime_created", "-id")
+    )
     queryset = _with_workspace_relations(Project.objects.all(), user)
     return queryset.prefetch_related(
         Prefetch(
@@ -57,6 +70,7 @@ def get_workspace_project_queryset(*, user):
             to_attr="_workspace_collaborators",
         ),
         "links",
+        Prefetch("vacancies", queryset=vacancies),
     )
 
 
