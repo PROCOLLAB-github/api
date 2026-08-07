@@ -77,6 +77,28 @@ Angular использует legacy endpoints `GET/POST /projects/`, `GET/PUT/PA
 
 Ответ не содержит email, телефон, Application.form_data, Submission или закрытые профильные данные.
 
+DEV-087A добавляет read-only поле `vacancies` на основе существующего
+`ProjectVacancyListSerializer`. Оно содержит все вакансии текущего проекта, включая
+неактивные и созданные более 90 дней назад; ограничения публичного
+`GET /vacancies/` к workspace detail не применяются. Пример элемента:
+
+```json
+{
+  "id": 15,
+  "role": "Backend-разработчик",
+  "specialization": null,
+  "required_skills": [
+    {"id": 3, "name": "Python", "category": {"id": 1, "name": "Backend"}}
+  ],
+  "description": "Описание вакансии",
+  "project": 7,
+  "is_active": false,
+  "datetime_closed": "2026-08-01T10:00:00Z",
+  "response_count": 2,
+  "date_create_time": "2026-01-01T10:00:00+03:00"
+}
+```
+
 ### `PATCH /projects/<project_id>/workspace/`
 
 Руководитель и staff могут изменять только:
@@ -143,7 +165,7 @@ Angular использует legacy endpoints `GET/POST /projects/`, `GET/PUT/PA
 
 ## Производительность и совместимость
 
-List/detail selectors используют `select_related` и `Prefetch` для ролей, Application/Program, команды Project и ссылок. Тест списка задает query budget, который не растет с количеством Project.
+List/detail selectors используют `select_related` и `Prefetch` для ролей, Application/Program, команды Project и ссылок. Workspace detail отдельно предзагружает вакансии и их навыки, а число необработанных откликов считает в SQL; количество запросов не растёт с количеством вакансий. Тест списка задает query budget, который не растет с количеством Project.
 
 Legacy модели `Project`, `Collaborator`, `PartnerProgramProject`, `ProjectScore`, serializers и `/projects/` сохранены. Подтвержденная ошибка legacy PATCH, который вызывал полный PUT, исправлена на partial update и покрыта regression-тестом. Остальной legacy contract не расширяется новым workspace-ответом.
 
@@ -151,7 +173,7 @@ Legacy модели `Project`, `Collaborator`, `PartnerProgramProject`, `Project
 
 ## Что остается DEV-066
 
-Следующим этапом остаются полноценные вакансии, чат, рабочая область, новости, подписки, legacy-приглашения, расширенное управление командой Project, компаниями, ресурсами и целями, передача лидерства и удаление. Также не входят legacy `ProjectScore`, Evaluation lifecycle и автоматическое обновление Project из новых Submission.
+Следующим этапом остаются React-интерфейс управления вакансиями, чат, рабочая область, новости, подписки, legacy-приглашения, расширенное управление командой Project, передача лидерства и удаление. Также не входят legacy `ProjectScore`, Evaluation lifecycle и автоматическое обновление Project из новых Submission.
 
 ## Проверка
 

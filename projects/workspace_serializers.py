@@ -2,6 +2,7 @@ from django.db import transaction
 from rest_framework import serializers
 
 from projects.models import Project, ProjectLink
+from vacancy.serializers import ProjectVacancyListSerializer
 
 
 PROJECT_WORKSPACE_EDITABLE_FIELDS = frozenset(
@@ -33,6 +34,13 @@ PROJECT_PUBLICATION_REQUIRED_FIELDS = {
     "target_audience": "Опишите целевую аудиторию.",
     "cover_image_address": "Загрузите обложку проекта.",
 }
+
+
+class ProjectWorkspaceVacancySerializer(ProjectVacancyListSerializer):
+    """Переиспользует legacy-контракт с заранее подсчитанными откликами."""
+
+    def get_response_count(self, vacancy):
+        return vacancy.workspace_response_count
 
 
 class ProjectWorkspaceUserSerializer(serializers.Serializer):
@@ -106,6 +114,7 @@ class ProjectWorkspaceDetailSerializer(ProjectWorkspaceListSerializer):
     collaborators = serializers.SerializerMethodField()
     links = serializers.SerializerMethodField()
     industry = serializers.SerializerMethodField()
+    vacancies = ProjectWorkspaceVacancySerializer(many=True, read_only=True)
 
     class Meta(ProjectWorkspaceListSerializer.Meta):
         fields = ProjectWorkspaceListSerializer.Meta.fields + (
@@ -122,6 +131,7 @@ class ProjectWorkspaceDetailSerializer(ProjectWorkspaceListSerializer):
             "links",
             "industry",
             "datetime_created",
+            "vacancies",
         )
 
     def get_collaborators(self, project):
