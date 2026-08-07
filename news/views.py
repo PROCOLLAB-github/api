@@ -47,7 +47,7 @@ DETAIL_RESPONSE_SERIALIZERS = {
 
 class ContextNewsAPIView:
     def get_queryset(self):
-        return get_news_queryset_for_context(self.kwargs)
+        return get_news_queryset_for_context(self.kwargs, user=self.request.user)
 
     def get_news_object(self):
         return get_object_or_404(self.get_queryset(), pk=self.kwargs["pk"])
@@ -76,7 +76,10 @@ class NewsList(ContextNewsAPIView, generics.ListCreateAPIView):
     def post(self, request: Request, *args, **kwargs) -> Response:
         serializer = NewsCreateSerializer(
             data=request.data,
-            context={"request": request},
+            context={
+                "request": request,
+                "news_context": self.get_news_context(),
+            },
         )
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
@@ -85,14 +88,18 @@ class NewsList(ContextNewsAPIView, generics.ListCreateAPIView):
             project = get_object_or_404(Project, pk=kwargs["project_pk"])
             news = create_project_news(project, request.user, data)
             return Response(
-                self.get_detail_response_serializer_class()(news).data,
+                self.get_detail_response_serializer_class()(
+                    news, context={"user": request.user}
+                ).data,
                 status=status.HTTP_201_CREATED,
             )
         if kwargs.get("user_pk"):
             user = get_object_or_404(User, pk=kwargs["user_pk"])
             news = create_user_news(user, request.user, data)
             return Response(
-                self.get_detail_response_serializer_class()(news).data,
+                self.get_detail_response_serializer_class()(
+                    news, context={"user": request.user}
+                ).data,
                 status=status.HTTP_201_CREATED,
             )
 
@@ -100,7 +107,9 @@ class NewsList(ContextNewsAPIView, generics.ListCreateAPIView):
             program = get_object_or_404(PartnerProgram, pk=kwargs["partnerprogram_pk"])
             news = create_program_news(program, request.user, data)
             return Response(
-                self.get_detail_response_serializer_class()(news).data,
+                self.get_detail_response_serializer_class()(
+                    news, context={"user": request.user}
+                ).data,
                 status=status.HTTP_201_CREATED,
             )
         return Response(status=status.HTTP_400_BAD_REQUEST)
@@ -133,7 +142,10 @@ class NewsDetail(ContextNewsAPIView, generics.RetrieveUpdateDestroyAPIView):
         serializer = NewsUpdateSerializer(
             news,
             data=request.data,
-            context={"request": request},
+            context={
+                "request": request,
+                "news_context": self.get_news_context(),
+            },
             partial=kwargs.get("partial", False),
         )
         serializer.is_valid(raise_exception=True)

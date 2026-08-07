@@ -25,11 +25,34 @@ class NewsInputSerializer(serializers.ModelSerializer[News]):
         if user and user.is_authenticated:
             self.fields["files"].queryset = UserFile.objects.filter(user=user)
 
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        context_type = self.context.get("news_context")
+        audience = attrs.get("audience")
+
+        if context_type == "program":
+            if self.instance is None and audience is None:
+                attrs["audience"] = News.Audience.PROGRAM_PARTICIPANTS
+            return attrs
+
+        if audience not in (None, News.Audience.PLATFORM):
+            raise serializers.ValidationError(
+                {
+                    "audience": (
+                        "Закрытая аудитория доступна только для новостей программы."
+                    )
+                }
+            )
+        if self.instance is None:
+            attrs["audience"] = News.Audience.PLATFORM
+        return attrs
+
     class Meta:
         model = News
         fields = [
             "text",
             "files",
+            "audience",
         ]
 
 
@@ -78,6 +101,7 @@ class BaseNewsListResponseSerializer(BaseNewsResponseSerializer):
             "pin",
             "image_address",
             "text",
+            "audience",
             "datetime_created",
             "views_count",
             "likes_count",
@@ -100,7 +124,6 @@ class ProgramNewsListResponseSerializer(BaseNewsListResponseSerializer):
 
 
 class BaseNewsDetailResponseSerializer(BaseNewsResponseSerializer):
-
     class Meta:
         model = News
         fields = [
@@ -109,6 +132,7 @@ class BaseNewsDetailResponseSerializer(BaseNewsResponseSerializer):
             "pin",
             "image_address",
             "text",
+            "audience",
             "datetime_created",
             "datetime_updated",
             "views_count",
