@@ -1,4 +1,4 @@
-# Roadmap: DEV-072
+# Roadmap: DEV-072, DEV-083
 # Безопасная точка запуска демонстрационного набора только для React-dev.
 
 import os
@@ -75,6 +75,13 @@ class Command(BaseCommand):
             "assignments": "назначения",
             "evaluations": "оценки",
             "scores": "баллы",
+            "projects": "проекты",
+            "public_news": "публичные новости",
+            "internal_news": "внутренние новости",
+            "likes": "лайки",
+            "views": "просмотры",
+            "comments": "комментарии",
+            "internal_news_id": "ID внутренней новости",
         }
         self.stdout.write("Результат:")
         for label, count in summary.as_dict().items():

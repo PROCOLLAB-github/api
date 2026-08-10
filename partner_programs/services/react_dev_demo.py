@@ -1,4 +1,4 @@
-# Roadmap: DEV-072
+# Roadmap: DEV-072, DEV-083
 # Повторяемый связанный набор данных для ручной проверки React-dev.
 
 from dataclasses import dataclass
@@ -10,6 +10,8 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
+from core.models import Like, View
+from news.models import NewsComment
 from partner_programs.models import (
     Application,
     Evaluation,
@@ -28,6 +30,11 @@ from partner_programs.services.evaluations import (
     create_or_get_draft_evaluation,
     submit_evaluation,
     update_draft_evaluation,
+)
+from partner_programs.services.react_dev_news_demo import (
+    ReactDevNewsDemoDataError,
+    delete_react_dev_news_demo_data,
+    ensure_react_dev_news_demo_data,
 )
 from partner_programs.services.submission_assignments import (
     create_submission_assignment,
@@ -153,6 +160,13 @@ class ReactDevDemoSummary:
     assignments: int
     evaluations: int
     scores: int
+    projects: int
+    public_news: int
+    internal_news: int
+    likes: int
+    views: int
+    comments: int
+    internal_news_id: int
 
     def as_dict(self):
         return {
@@ -167,6 +181,13 @@ class ReactDevDemoSummary:
             "assignments": self.assignments,
             "evaluations": self.evaluations,
             "scores": self.scores,
+            "projects": self.projects,
+            "public_news": self.public_news,
+            "internal_news": self.internal_news,
+            "likes": self.likes,
+            "views": self.views,
+            "comments": self.comments,
+            "internal_news_id": self.internal_news_id,
         }
 
 
@@ -529,7 +550,7 @@ def _ensure_evaluation_states(submissions, criteria, expert_user, manager):
             )
 
 
-def _summary(program):
+def _summary(program, news_demo):
     application_qs = Application.objects.filter(program=program)
     submission_qs = Submission.objects.filter(program=program)
     evaluation_qs = Evaluation.objects.filter(submission__program=program)
@@ -556,6 +577,21 @@ def _summary(program):
         scores=EvaluationScore.objects.filter(
             evaluation__submission__program=program
         ).count(),
+        projects=1,
+        public_news=news_demo.public_news_count,
+        internal_news=1,
+        likes=Like.objects.filter(
+            content_type__app_label="news",
+            content_type__model="news",
+            object_id__in=news_demo.all_news_ids,
+        ).count(),
+        views=View.objects.filter(
+            content_type__app_label="news",
+            content_type__model="news",
+            object_id__in=news_demo.all_news_ids,
+        ).count(),
+        comments=NewsComment.objects.filter(news_id__in=news_demo.all_news_ids).count(),
+        internal_news_id=news_demo.internal_news.pk,
     )
 
 
@@ -564,6 +600,17 @@ def build_react_dev_demo_data(*, password, reset=False, dry_run=False):
 
     with transaction.atomic():
         if reset:
+            existing_users = {
+                spec["key"]: User.objects.filter(email=spec["email"]).first()
+                for spec in DEMO_USER_SPECS
+            }
+            try:
+                delete_react_dev_news_demo_data(
+                    program=_find_owned_program(),
+                    users_by_key=existing_users,
+                )
+            except ReactDevNewsDemoDataError as exc:
+                raise ReactDevDemoDataError(str(exc)) from exc
             _delete_owned_program()
 
         users = {spec["key"]: _ensure_user(spec, password) for spec in DEMO_USER_SPECS}
@@ -584,7 +631,14 @@ def build_react_dev_demo_data(*, password, reset=False, dry_run=False):
             users["expert"],
             users["manager"],
         )
-        summary = _summary(program)
+        try:
+            news_demo = ensure_react_dev_news_demo_data(
+                program=program,
+                users_by_key=users,
+            )
+        except ReactDevNewsDemoDataError as exc:
+            raise ReactDevDemoDataError(str(exc)) from exc
+        summary = _summary(program, news_demo)
 
         if dry_run:
             transaction.set_rollback(True)
