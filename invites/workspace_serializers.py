@@ -5,6 +5,38 @@ from projects.models import Project
 from users.models import CustomUser
 
 
+class ProjectInvitationCandidateQuerySerializer(serializers.Serializer):
+    """Проверяет обязательный узкий поисковый запрос кандидатов."""
+
+    q = serializers.CharField(  # noqa: VNE001 — имя закреплено API-контрактом.
+        required=True,
+        trim_whitespace=True,
+        min_length=3,
+        max_length=100,
+        error_messages={
+            "required": "Укажите поисковый запрос.",
+            "blank": "Укажите поисковый запрос.",
+            "min_length": "Введите не менее 3 символов.",
+            "max_length": "Введите не более 100 символов.",
+        },
+    )
+
+
+class ProjectInvitationCandidateSerializer(serializers.ModelSerializer):
+    """Возвращает только публичный минимум профиля кандидата."""
+
+    display_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CustomUser
+        fields = ("id", "display_name", "avatar")
+        read_only_fields = fields
+
+    def get_display_name(self, user: CustomUser) -> str:
+        """Формирует имя без fallback на закрытый email пользователя."""
+        return user.get_full_name().strip()
+
+
 class ProjectInvitationCreateSerializer(serializers.Serializer):
     """Принимает пользователя и необязательные данные будущего Collaborator."""
 
