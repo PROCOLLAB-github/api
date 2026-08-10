@@ -3,6 +3,7 @@ from django.urls import path
 from invites.workspace_views import (
     IncomingProjectInvitationListView,
     ProjectInvitationAcceptView,
+    ProjectInvitationCandidateSearchView,
     ProjectInvitationDeclineView,
     ProjectInvitationListCreateView,
     ProjectInvitationRevokeView,
@@ -108,6 +109,11 @@ urlpatterns = [
         "<int:project_id>/workspace/invitations/",
         ProjectInvitationListCreateView.as_view(),
         name="workspace-invitations",
+    ),
+    path(
+        "<int:project_id>/workspace/invitations/candidates/",
+        ProjectInvitationCandidateSearchView.as_view(),
+        name="workspace-invitation-candidates",
     ),
     path(
         "<int:project_id>/workspace/invitations/<int:invitation_id>/revoke/",

@@ -13,11 +13,15 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from invites.models import Invite
+from invites.throttling import ProjectInvitationCandidateSearchScopedRateThrottle
 from invites.workspace_serializers import (
     ProjectInvitationActionSerializer,
+    ProjectInvitationCandidateQuerySerializer,
+    ProjectInvitationCandidateSerializer,
     ProjectInvitationCreateSerializer,
     ProjectInvitationSerializer,
 )
+from invites.workspace_selectors import get_project_invitation_candidates
 from invites.workspace_services import (
     ProjectInvitationDuplicateError,
     ProjectInvitationNotOwnedError,
@@ -84,6 +88,27 @@ def _raise_domain_error(exc: ProjectInvitationServiceError):
 def _validate_empty_action_payload(data) -> None:
     serializer = ProjectInvitationActionSerializer(data=data)
     serializer.is_valid(raise_exception=True)
+
+
+class ProjectInvitationCandidateSearchView(APIView):
+    """Ищет кандидатов только внутри доступного лидеру Project."""
+
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ProjectInvitationCandidateSearchScopedRateThrottle]
+    throttle_scope = "project_invitation_candidate_search"
+
+    def get(self, request, project_id):
+        project = _get_visible_project(project_id=project_id, user=request.user)
+        _require_manager(request.user, project)
+        query_serializer = ProjectInvitationCandidateQuerySerializer(
+            data=request.query_params
+        )
+        query_serializer.is_valid(raise_exception=True)
+        candidates = get_project_invitation_candidates(
+            project=project,
+            query=query_serializer.validated_data["q"],
+        )
+        return Response(ProjectInvitationCandidateSerializer(candidates, many=True).data)
 
 
 class ProjectInvitationListCreateView(APIView):
