@@ -1,9 +1,27 @@
-from django.db.models import Count, Prefetch, Q, QuerySet
+from django.db.models import Count, Exists, OuterRef, Prefetch, Q, QuerySet
 
 from core.models import SkillToObject
 from partner_programs.models import Application
 from projects.models import Collaborator, Project
 from vacancy.models import Vacancy
+
+
+def annotate_workspace_subscription_state(
+    queryset: QuerySet[Project], *, user
+) -> QuerySet[Project]:
+    """Добавляет состояние подписки без загрузки списка пользователей."""
+    subscribers_field = Project._meta.get_field("subscribers")
+    through = Project.subscribers.through
+    current_subscription = through.objects.filter(
+        **{
+            f"{subscribers_field.m2m_field_name()}_id": OuterRef("pk"),
+            f"{subscribers_field.m2m_reverse_field_name()}_id": user.pk,
+        }
+    )
+    return queryset.annotate(
+        is_subscribed=Exists(current_subscription),
+        subscribers_count=Count("subscribers", distinct=True),
+    )
 
 
 def _with_workspace_relations(queryset: QuerySet[Project], user) -> QuerySet[Project]:
@@ -62,7 +80,10 @@ def get_workspace_project_queryset(*, user):
         .prefetch_related(Prefetch("required_skills", queryset=required_skills))
         .order_by("-datetime_created", "-id")
     )
-    queryset = _with_workspace_relations(Project.objects.all(), user)
+    queryset = annotate_workspace_subscription_state(
+        _with_workspace_relations(Project.objects.all(), user),
+        user=user,
+    )
     return queryset.prefetch_related(
         Prefetch(
             "collaborator_set",
@@ -81,3 +102,9 @@ def filter_workspace_visible_projects(queryset: QuerySet[Project], *, user):
     return queryset.filter(
         Q(draft=False, is_public=True) | Q(leader=user) | Q(collaborator__user=user)
     ).distinct()
+
+
+def get_workspace_subscription_queryset(*, user) -> QuerySet[Project]:
+    """Возвращает доступные проекты с read-only состоянием текущей подписки."""
+    queryset = annotate_workspace_subscription_state(Project.objects.all(), user=user)
+    return filter_workspace_visible_projects(queryset, user=user)

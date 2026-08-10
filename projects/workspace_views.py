@@ -1,22 +1,29 @@
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
-from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from projects.models import Project
 from projects.pagination import ProjectsPagination
 from projects.workspace_selectors import (
     filter_workspace_visible_projects,
     get_project_catalog_queryset,
     get_user_projects_queryset,
     get_workspace_project_queryset,
+    get_workspace_subscription_queryset,
 )
 from projects.workspace_serializers import (
+    ProjectSubscriptionActionSerializer,
+    ProjectSubscriptionStateSerializer,
     ProjectWorkspaceCreateSerializer,
     ProjectWorkspaceDetailSerializer,
     ProjectWorkspaceListSerializer,
     ProjectWorkspaceUpdateSerializer,
+)
+from projects.workspace_subscription_services import (
+    set_workspace_project_subscription,
 )
 
 
@@ -128,3 +135,48 @@ class ProjectWorkspaceDetailView(APIView):
             context={"request": request},
         )
         return Response(response_serializer.data, status=status.HTTP_200_OK)
+
+
+class ProjectWorkspaceSubscriptionView(APIView):
+    """Возвращает и идемпотентно меняет подписку текущего пользователя."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self, request, project_id):
+        queryset = get_workspace_subscription_queryset(user=request.user)
+        project = queryset.filter(pk=project_id).first()
+        if project is None:
+            raise NotFound("Проект не найден.")
+        return project
+
+    def get(self, request, project_id):
+        project = self.get_object(request, project_id)
+        return Response(ProjectSubscriptionStateSerializer(project).data)
+
+    def update_subscription(self, request, project_id, *, is_subscribed):
+        """Проверяет пустой payload и преобразует отсутствие доступа в safe 404."""
+        serializer = ProjectSubscriptionActionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            project = set_workspace_project_subscription(
+                project_id=project_id,
+                user=request.user,
+                is_subscribed=is_subscribed,
+            )
+        except Project.DoesNotExist as exc:
+            raise NotFound("Проект не найден.") from exc
+        return Response(ProjectSubscriptionStateSerializer(project).data)
+
+    def post(self, request, project_id):
+        return self.update_subscription(
+            request,
+            project_id,
+            is_subscribed=True,
+        )
+
+    def delete(self, request, project_id):
+        return self.update_subscription(
+            request,
+            project_id,
+            is_subscribed=False,
+        )

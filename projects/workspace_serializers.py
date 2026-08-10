@@ -56,6 +56,27 @@ class ProjectWorkspaceCollaboratorSerializer(serializers.Serializer):
     specialization = serializers.CharField(allow_blank=True, allow_null=True)
 
 
+class ProjectSubscriptionStateSerializer(serializers.Serializer):
+    """Стабильный workspace-контракт без персональных данных подписчиков."""
+
+    is_subscribed = serializers.BooleanField(read_only=True)
+    subscribers_count = serializers.IntegerField(read_only=True, min_value=0)
+
+
+class ProjectSubscriptionActionSerializer(serializers.Serializer):
+    """Разрешает только обязательный пустой payload действия подписки."""
+
+    def validate(self, attrs):
+        if self.initial_data:
+            raise serializers.ValidationError(
+                {
+                    field: "Это поле нельзя передавать для данного действия."
+                    for field in sorted(self.initial_data)
+                }
+            )
+        return attrs
+
+
 class ProjectActivitySerializer(serializers.Serializer):
     id = serializers.IntegerField(source="program_id")
     name = serializers.CharField(source="program.name")
@@ -115,6 +136,8 @@ class ProjectWorkspaceDetailSerializer(ProjectWorkspaceListSerializer):
     links = serializers.SerializerMethodField()
     industry = serializers.SerializerMethodField()
     vacancies = ProjectWorkspaceVacancySerializer(many=True, read_only=True)
+    is_subscribed = serializers.BooleanField(read_only=True)
+    subscribers_count = serializers.IntegerField(read_only=True, min_value=0)
 
     class Meta(ProjectWorkspaceListSerializer.Meta):
         fields = ProjectWorkspaceListSerializer.Meta.fields + (
@@ -132,6 +155,8 @@ class ProjectWorkspaceDetailSerializer(ProjectWorkspaceListSerializer):
             "industry",
             "datetime_created",
             "vacancies",
+            "is_subscribed",
+            "subscribers_count",
         )
 
     def get_collaborators(self, project):
