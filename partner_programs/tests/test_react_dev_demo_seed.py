@@ -1,4 +1,4 @@
-# Roadmap: DEV-072
+# Roadmap: DEV-072, DEV-083
 # Безопасность, повторяемость и API-контракт демонстрационного React-dev набора.
 
 import io
@@ -6,12 +6,15 @@ import os
 import secrets
 from unittest.mock import patch
 
+from django.contrib.contenttypes.models import ContentType
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import TestCase, override_settings
 from django.urls import include, path
 from rest_framework.test import APIClient
 
+from core.models import Like, View
+from news.models import News, NewsComment
 from partner_programs.models import (
     Application,
     Evaluation,
@@ -30,12 +33,22 @@ from partner_programs.services.react_dev_demo import (
     DEMO_SUBMISSION_SPECS,
     DEMO_USER_SPECS,
 )
+from partner_programs.services.react_dev_news_demo import (
+    DEMO_INTERNAL_PROGRAM_NEWS_TEXT,
+    DEMO_NEWS_PROJECT_NAME,
+    DEMO_PAGINATED_COMMENT_TEXTS,
+    DEMO_PROGRAM_NEWS_TEXTS,
+    DEMO_PROJECT_NEWS_TEXTS,
+    DEMO_USER_NEWS_TEXTS,
+)
 from partner_programs.tests.helpers import create_partner_program, create_user
 from project_rates.models import Criteria
+from projects.models import Project
 from users.models import CustomUser
 
 urlpatterns = [
     path("expert/", include("partner_programs.expert_urls")),
+    path("feed/", include("feed.urls")),
 ]
 
 
@@ -75,6 +88,10 @@ class ReactDevDemoSeedTests(TestCase):
             CustomUser.objects.filter(
                 email__in=[spec["email"] for spec in DEMO_USER_SPECS]
             ).exists()
+        )
+        self.assertFalse(Project.objects.filter(name=DEMO_NEWS_PROJECT_NAME).exists())
+        self.assertFalse(
+            News.objects.filter(text=DEMO_INTERNAL_PROGRAM_NEWS_TEXT).exists()
         )
 
     def test_seed_is_disabled_by_default_before_any_write(self):
@@ -197,6 +214,122 @@ class ReactDevDemoSeedTests(TestCase):
             SubmissionExpertAssignment.STATUS_COMPLETED,
         )
 
+        project = Project.objects.get(name=DEMO_NEWS_PROJECT_NAME)
+        self.assertEqual(project.leader, users["participant1"])
+        self.assertFalse(project.draft)
+        self.assertTrue(project.is_public)
+        self.assertEqual(len(self.news_ids_for(program, DEMO_PROGRAM_NEWS_TEXTS)), 11)
+        self.assertEqual(len(self.news_ids_for(project, DEMO_PROJECT_NEWS_TEXTS)), 11)
+        self.assertEqual(
+            News.objects.filter(text__in=DEMO_USER_NEWS_TEXTS).count(),
+            11,
+        )
+        internal = News.objects.get(text=DEMO_INTERNAL_PROGRAM_NEWS_TEXT)
+        self.assertEqual(internal.content_object, program)
+        self.assertEqual(internal.audience, News.Audience.PROGRAM_PARTICIPANTS)
+        seeded_news = News.objects.filter(
+            text__in=(
+                *DEMO_PROGRAM_NEWS_TEXTS,
+                *DEMO_PROJECT_NEWS_TEXTS,
+                *DEMO_USER_NEWS_TEXTS,
+                DEMO_INTERNAL_PROGRAM_NEWS_TEXT,
+            )
+        )
+        self.assertEqual(seeded_news.values("text").distinct().count(), 34)
+        self.assertGreater(seeded_news.values("datetime_created").distinct().count(), 3)
+
+    def test_each_public_feed_tab_has_a_second_page_without_duplicates(self):
+        self.run_seed()
+        participant = CustomUser.objects.get(email="demo.participant1@procollab.test")
+        client = APIClient()
+        client.force_authenticate(participant)
+
+        for source in ("program", "project", "user"):
+            with self.subTest(source=source):
+                first = client.get("/feed/news/", {"source": source})
+                second = client.get(
+                    "/feed/news/",
+                    {"source": source, "offset": 10},
+                )
+
+                self.assertEqual(first.status_code, 200)
+                self.assertEqual(second.status_code, 200)
+                self.assertEqual(first.data["count"], 11)
+                self.assertEqual(len(first.data["results"]), 10)
+                self.assertEqual(len(second.data["results"]), 1)
+                first_ids = {item["id"] for item in first.data["results"]}
+                second_ids = {item["id"] for item in second.data["results"]}
+                self.assertFalse(first_ids.intersection(second_ids))
+
+    def test_feed_exposes_seeded_reactions_views_and_paginated_comments(self):
+        self.run_seed()
+        participant = CustomUser.objects.get(email="demo.participant1@procollab.test")
+        news = News.objects.get(text=DEMO_PROGRAM_NEWS_TEXTS[0])
+        client = APIClient()
+        client.force_authenticate(participant)
+
+        feed = client.get("/feed/news/", {"source": "program", "limit": 100})
+        first_comments = client.get(f"/feed/news/{news.pk}/comments/")
+        second_comments = client.get(
+            f"/feed/news/{news.pk}/comments/",
+            {"offset": 20},
+        )
+
+        item = next(item for item in feed.data["results"] if item["id"] == news.pk)
+        self.assertEqual(item["likes_count"], 2)
+        self.assertEqual(item["views_count"], 3)
+        self.assertEqual(item["comments_count"], 21)
+        self.assertEqual(first_comments.data["count"], 21)
+        self.assertEqual(len(first_comments.data["results"]), 20)
+        self.assertEqual(len(second_comments.data["results"]), 1)
+        comment_ids = [
+            *(comment["id"] for comment in first_comments.data["results"]),
+            *(comment["id"] for comment in second_comments.data["results"]),
+        ]
+        self.assertEqual(len(comment_ids), len(set(comment_ids)))
+        self.assertEqual(
+            [comment["text"] for comment in first_comments.data["results"]]
+            + [comment["text"] for comment in second_comments.data["results"]],
+            list(DEMO_PAGINATED_COMMENT_TEXTS),
+        )
+
+    def test_internal_program_news_is_detail_only_for_program_member(self):
+        self.run_seed()
+        participant = CustomUser.objects.get(email="demo.participant1@procollab.test")
+        outsider = create_user(prefix="react-news-demo-outsider")
+        internal = News.objects.get(text=DEMO_INTERNAL_PROGRAM_NEWS_TEXT)
+        client = APIClient()
+        client.force_authenticate(participant)
+
+        list_response = client.get("/feed/news/", {"source": "program", "limit": 100})
+        member_detail = client.get(f"/feed/news/{internal.pk}/")
+        client.force_authenticate(outsider)
+        outsider_detail = client.get(f"/feed/news/{internal.pk}/")
+
+        self.assertNotIn(
+            internal.pk,
+            [item["id"] for item in list_response.data["results"]],
+        )
+        self.assertEqual(member_detail.status_code, 200)
+        self.assertEqual(
+            member_detail.data["audience"],
+            News.Audience.PROGRAM_PARTICIPANTS,
+        )
+        self.assertEqual(outsider_detail.status_code, 404)
+
+    def test_command_reports_news_counts_and_internal_news_id(self):
+        stdout, _stderr = self.run_seed()
+        internal = News.objects.get(text=DEMO_INTERNAL_PROGRAM_NEWS_TEXT)
+
+        self.assertIn("программы: 1", stdout)
+        self.assertIn("проекты: 1", stdout)
+        self.assertIn("публичные новости: 33", stdout)
+        self.assertIn("внутренние новости: 1", stdout)
+        self.assertIn("лайки: 6", stdout)
+        self.assertIn("просмотры: 9", stdout)
+        self.assertIn("комментарии: 23", stdout)
+        self.assertIn(f"ID внутренней новости: {internal.pk}", stdout)
+
     def test_repeated_run_does_not_create_duplicates(self):
         self.run_seed()
         first_ids = self.dataset_ids()
@@ -210,6 +343,11 @@ class ReactDevDemoSeedTests(TestCase):
         self.assertEqual(len(first_ids["assignments"]), 3)
         self.assertEqual(len(first_ids["evaluations"]), 2)
         self.assertEqual(len(first_ids["scores"]), 4)
+        self.assertEqual(len(first_ids["projects"]), 1)
+        self.assertEqual(len(first_ids["news"]), 34)
+        self.assertEqual(len(first_ids["likes"]), 6)
+        self.assertEqual(len(first_ids["views"]), 9)
+        self.assertEqual(len(first_ids["comments"]), 23)
 
         program = PartnerProgram.objects.get(name=DEMO_PROGRAM_NAME)
         draft = Evaluation.objects.get(
@@ -241,6 +379,8 @@ class ReactDevDemoSeedTests(TestCase):
 
         self.assertIn("Пробный запуск завершен", stdout)
         self.assertIn("сдачи: 3", stdout)
+        self.assertIn("публичные новости: 33", stdout)
+        self.assertIn("внутренние новости: 1", stdout)
         self.assert_demo_absent()
 
         self.run_seed()
@@ -260,6 +400,10 @@ class ReactDevDemoSeedTests(TestCase):
         self.run_seed()
         original_program = PartnerProgram.objects.get(name=DEMO_PROGRAM_NAME)
         original_program_id = original_program.pk
+        original_project_id = Project.objects.get(name=DEMO_NEWS_PROJECT_NAME).pk
+        original_internal_news_id = News.objects.get(
+            text=DEMO_INTERNAL_PROGRAM_NEWS_TEXT
+        ).pk
         demo_user_ids = set(
             CustomUser.objects.filter(
                 email__in=[spec["email"] for spec in DEMO_USER_SPECS]
@@ -270,6 +414,19 @@ class ReactDevDemoSeedTests(TestCase):
             name="[DEMO] Похожая, но посторонняя программа",
             tag="other-demo-program",
         )
+        demo_user = CustomUser.objects.get(email="demo.participant1@procollab.test")
+        unrelated_news = News.objects.add_news(
+            demo_user,
+            text="[DEMO] Посторонняя новость DEMO-пользователя",
+            audience=News.Audience.PLATFORM,
+        )
+        unrelated_project = Project.objects.create(
+            leader=outsider,
+            name="[DEMO] Другой публичный проект",
+            description="Не принадлежит seed-набору DEV-083.",
+            draft=False,
+            is_public=True,
+        )
 
         self.run_seed("--reset")
 
@@ -278,8 +435,18 @@ class ReactDevDemoSeedTests(TestCase):
             tag=DEMO_PROGRAM_TAG,
         )
         self.assertNotEqual(rebuilt.pk, original_program_id)
+        self.assertNotEqual(
+            Project.objects.get(name=DEMO_NEWS_PROJECT_NAME).pk,
+            original_project_id,
+        )
+        self.assertNotEqual(
+            News.objects.get(text=DEMO_INTERNAL_PROGRAM_NEWS_TEXT).pk,
+            original_internal_news_id,
+        )
         self.assertTrue(CustomUser.objects.filter(pk=outsider.pk).exists())
         self.assertTrue(PartnerProgram.objects.filter(pk=outsider_program.pk).exists())
+        self.assertTrue(News.objects.filter(pk=unrelated_news.pk).exists())
+        self.assertTrue(Project.objects.filter(pk=unrelated_project.pk).exists())
         self.assertEqual(
             set(
                 CustomUser.objects.filter(
@@ -295,6 +462,39 @@ class ReactDevDemoSeedTests(TestCase):
                 evaluation__submission__program=rebuilt,
             ).count(),
             4,
+        )
+        self.assertEqual(Project.objects.filter(name=DEMO_NEWS_PROJECT_NAME).count(), 1)
+        self.assertEqual(
+            News.objects.filter(
+                text__in=(
+                    *DEMO_PROGRAM_NEWS_TEXTS,
+                    *DEMO_PROJECT_NEWS_TEXTS,
+                    *DEMO_USER_NEWS_TEXTS,
+                    DEMO_INTERNAL_PROGRAM_NEWS_TEXT,
+                )
+            ).count(),
+            34,
+        )
+
+    def test_foreign_exact_project_name_aborts_without_partial_writes(self):
+        outsider = create_user(prefix="react-news-demo-project-owner")
+        project = Project.objects.create(
+            leader=outsider,
+            name=DEMO_NEWS_PROJECT_NAME,
+            description="Посторонний проект с конфликтующим точным именем.",
+            draft=False,
+            is_public=True,
+        )
+
+        with self.assertRaisesMessage(CommandError, "занято посторонним проектом"):
+            self.run_seed()
+
+        self.assertTrue(Project.objects.filter(pk=project.pk).exists())
+        self.assertFalse(PartnerProgram.objects.filter(name=DEMO_PROGRAM_NAME).exists())
+        self.assertFalse(
+            CustomUser.objects.filter(
+                email__in=[spec["email"] for spec in DEMO_USER_SPECS]
+            ).exists()
         )
 
     def test_expert_api_returns_three_expected_evaluation_states(self):
@@ -373,6 +573,15 @@ class ReactDevDemoSeedTests(TestCase):
             name=DEMO_PROGRAM_NAME,
             tag=DEMO_PROGRAM_TAG,
         )
+        news = News.objects.filter(
+            text__in=(
+                *DEMO_PROGRAM_NEWS_TEXTS,
+                *DEMO_PROJECT_NEWS_TEXTS,
+                *DEMO_USER_NEWS_TEXTS,
+                DEMO_INTERNAL_PROGRAM_NEWS_TEXT,
+            )
+        )
+        news_content_type = ContentType.objects.get_for_model(News)
         return {
             "users": tuple(
                 CustomUser.objects.filter(
@@ -407,4 +616,43 @@ class ReactDevDemoSeedTests(TestCase):
                 .order_by("pk")
                 .values_list("pk", flat=True)
             ),
+            "projects": tuple(
+                Project.objects.filter(name=DEMO_NEWS_PROJECT_NAME)
+                .order_by("pk")
+                .values_list("pk", flat=True)
+            ),
+            "news": tuple(news.order_by("pk").values_list("pk", flat=True)),
+            "likes": tuple(
+                Like.objects.filter(
+                    content_type=news_content_type,
+                    object_id__in=news.values("pk"),
+                )
+                .order_by("pk")
+                .values_list("pk", flat=True)
+            ),
+            "views": tuple(
+                View.objects.filter(
+                    content_type=news_content_type,
+                    object_id__in=news.values("pk"),
+                )
+                .order_by("pk")
+                .values_list("pk", flat=True)
+            ),
+            "comments": tuple(
+                NewsComment.objects.filter(news__in=news)
+                .order_by("pk")
+                .values_list("pk", flat=True)
+            ),
         }
+
+    def news_ids_for(self, source, texts):
+        content_type = ContentType.objects.get_for_model(source)
+        return tuple(
+            News.objects.filter(
+                content_type=content_type,
+                object_id=source.pk,
+                text__in=texts,
+            )
+            .order_by("pk")
+            .values_list("pk", flat=True)
+        )
