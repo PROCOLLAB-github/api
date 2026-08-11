@@ -6,10 +6,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from projects.models import Project
-from projects.pagination import ProjectsPagination
+from projects.pagination import ProjectsPagination, SubscribedProjectsPagination
 from projects.workspace_selectors import (
     filter_workspace_visible_projects,
     get_project_catalog_queryset,
+    get_subscribed_projects_queryset,
     get_user_projects_queryset,
     get_workspace_project_queryset,
     get_workspace_subscription_queryset,
@@ -65,6 +66,20 @@ class MyProjectsView(generics.ListAPIView):
 
     def get_queryset(self):
         return get_user_projects_queryset(
+            user=self.request.user,
+            search=self.request.query_params.get("search"),
+        )
+
+
+class SubscribedProjectsView(generics.ListAPIView):
+    """Доступные workspace-проекты из подписок текущего пользователя."""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = ProjectWorkspaceListSerializer
+    pagination_class = SubscribedProjectsPagination
+
+    def get_queryset(self):
+        return get_subscribed_projects_queryset(
             user=self.request.user,
             search=self.request.query_params.get("search"),
         )

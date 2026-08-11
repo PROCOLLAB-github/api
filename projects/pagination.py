@@ -13,3 +13,9 @@ class ProjectsPagination(pagination.LimitOffsetPagination):
     default_limit = 10
     limit_query_param = "limit"
     offset_query_param = "offset"
+
+
+class SubscribedProjectsPagination(pagination.PageNumberPagination):
+    """Сохраняет размер и структуру списков проектов с параметром `page`."""
+
+    page_size = ProjectsPagination.default_limit
