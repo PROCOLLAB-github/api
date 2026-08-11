@@ -30,7 +30,7 @@ def _with_workspace_relations(queryset: QuerySet[Project], user) -> QuerySet[Pro
     applications = Application.objects.select_related("program").order_by(
         "-updated_at", "-id"
     )
-    return queryset.select_related("leader", "industry").prefetch_related(
+    return queryset.prefetch_related(
         Prefetch(
             "collaborator_set",
             queryset=current_user_collaborations,
@@ -64,6 +64,17 @@ def get_user_projects_queryset(*, user, search=None):
     return _with_workspace_relations(queryset, user).order_by("-datetime_updated", "-id")
 
 
+def get_subscribed_projects_queryset(*, user, search=None):
+    """Возвращает пересечение подписок пользователя и доступных workspace-проектов."""
+    queryset = Project.objects.filter(subscribers=user)
+    queryset = filter_workspace_visible_projects(queryset, user=user)
+    if search and search.strip():
+        queryset = queryset.filter(name__icontains=search.strip())
+    return _with_workspace_relations(queryset.distinct(), user).order_by(
+        "-datetime_updated", "-id"
+    )
+
+
 def get_workspace_project_queryset(*, user):
     """Готовит detail queryset с безопасными пользовательскими связями проекта."""
     collaborators = Collaborator.objects.select_related("user").order_by(
@@ -80,8 +91,9 @@ def get_workspace_project_queryset(*, user):
         .prefetch_related(Prefetch("required_skills", queryset=required_skills))
         .order_by("-datetime_created", "-id")
     )
+    detail_projects = Project.objects.select_related("leader", "industry")
     queryset = annotate_workspace_subscription_state(
-        _with_workspace_relations(Project.objects.all(), user),
+        _with_workspace_relations(detail_projects, user),
         user=user,
     )
     return queryset.prefetch_related(
