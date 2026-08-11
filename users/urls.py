@@ -29,10 +29,17 @@ from users.views import (
     UserCVDownload,
     UserCVMailing,
 )
+from users.public_profile_views import PublicProfileDetailView, PublicProfileListView
 
 app_name = "users"
 
 urlpatterns = [
+    path("profiles/", PublicProfileListView.as_view(), name="public-profile-list"),
+    path(
+        "profiles/<int:pk>/",
+        PublicProfileDetailView.as_view(),
+        name="public-profile-detail",
+    ),
     path(
         "specialists/", SpecialistsList.as_view()
     ),  # this url actually returns  mentors, experts and investors
