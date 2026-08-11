@@ -43,6 +43,7 @@ from projects.workspace_views import (
     ProjectCatalogView,
     ProjectWorkspaceCreateView,
     ProjectWorkspaceDetailView,
+    ProjectWorkspaceSubscriptionView,
 )
 
 app_name = "projects"
@@ -109,6 +110,11 @@ urlpatterns = [
         "<int:project_id>/workspace/invitations/",
         ProjectInvitationListCreateView.as_view(),
         name="workspace-invitations",
+    ),
+    path(
+        "<int:project_id>/workspace/subscription/",
+        ProjectWorkspaceSubscriptionView.as_view(),
+        name="workspace-subscription",
     ),
     path(
         "<int:project_id>/workspace/invitations/candidates/",
