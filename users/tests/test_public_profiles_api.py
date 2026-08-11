@@ -281,7 +281,7 @@ class OwnProfileUpdateRegressionTests(TestCase):
         response = self.client.patch(
             f"/auth/users/{self.user.id}/",
             {
-                "first_name": "Новое имя",
+                "first_name": "Мария",
                 "avatar": "https://cdn.example.com/avatar.webp",
             },
             format="json",
@@ -289,7 +289,7 @@ class OwnProfileUpdateRegressionTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.user.refresh_from_db()
-        self.assertEqual(self.user.first_name, "Новое имя")
+        self.assertEqual(self.user.first_name, "Мария")
         self.assertEqual(self.user.avatar, "https://cdn.example.com/avatar.webp")
 
     def test_user_cannot_update_another_profile(self):
