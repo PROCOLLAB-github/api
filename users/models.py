@@ -533,12 +533,25 @@ class UserLink(models.Model):
             link: URLField instance of the user's link to some resource.
     """
 
+    class Kind(models.TextChoices):
+        TELEGRAM = "telegram", "Telegram"
+        VK = "vk", "ВКонтакте"
+        GITHUB = "github", "GitHub"
+        LINKEDIN = "linkedin", "LinkedIn"
+        WEBSITE = "website", "Сайт"
+
     user = models.ForeignKey(
         CustomUser,
         on_delete=models.CASCADE,
         related_name="links",
     )
     link = models.URLField()
+    kind = models.CharField(
+        max_length=16,
+        choices=Kind.choices,
+        null=True,
+        blank=True,
+    )
 
     def __str__(self):
         return f"UserLink<{self.id}> - {self.user.first_name} {self.user.last_name}"
@@ -547,6 +560,14 @@ class UserLink(models.Model):
         verbose_name = "Ссылка пользователя"
         verbose_name_plural = "Ссылки пользователей"
         unique_together = ("user", "link")
+        constraints = [
+            # Legacy-ссылки остаются без типа; ограничение применяется только к новому контракту.
+            models.UniqueConstraint(
+                fields=("user", "kind"),
+                condition=models.Q(kind__isnull=False),
+                name="unique_typed_user_link_kind",
+            )
+        ]
 
 
 class AbstractUserExperience(models.Model):

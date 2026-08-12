@@ -31,7 +31,9 @@ def get_public_profiles_queryset(*, detailed: bool = False) -> QuerySet[CustomUs
     if detailed:
         queryset = queryset.prefetch_related(
             Prefetch(
-                "links", queryset=UserLink.objects.order_by("id"), to_attr="public_links"
+                "links",
+                queryset=UserLink.objects.filter(kind__isnull=False).order_by("kind"),
+                to_attr="public_social_links",
             ),
             Prefetch("education", queryset=UserEducation.objects.order_by("id")),
             Prefetch(
