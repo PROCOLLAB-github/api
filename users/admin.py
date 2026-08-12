@@ -422,8 +422,9 @@ class UserAchievementAdmin(admin.ModelAdmin):
 
 @admin.register(UserLink)
 class UserLinkAdmin(admin.ModelAdmin):
-    list_display = ("id", "user", "link")
+    list_display = ("id", "user", "kind", "link")
     list_display_links = ("id", "user", "link")
+    list_filter = ("kind",)
 
 
 @admin.register(Expert)

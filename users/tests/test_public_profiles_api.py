@@ -208,7 +208,12 @@ class PublicProfileDetailAPITests(TestCase):
             v2_speciality=specialization,
         )
         attach_skill(user, build_skill("Аналитика"))
-        UserLink.objects.create(user=user, link="https://example.com/irina")
+        UserLink.objects.create(user=user, link="https://legacy.example.com/irina")
+        UserLink.objects.create(
+            user=user,
+            kind=UserLink.Kind.TELEGRAM,
+            link="https://t.me/irina",
+        )
         UserEducation.objects.create(user=user, organization_name="Университет")
         UserWorkExperience.objects.create(user=user, organization_name="Компания")
         UserLanguages.objects.create(
@@ -238,7 +243,7 @@ class PublicProfileDetailAPITests(TestCase):
                 "skills",
                 "patronymic",
                 "about_me",
-                "links",
+                "social_links",
                 "education",
                 "work_experience",
                 "user_languages",
@@ -246,6 +251,10 @@ class PublicProfileDetailAPITests(TestCase):
             },
         )
         self.assertEqual(response.data["specialization"]["id"], specialization.id)
+        self.assertEqual(
+            response.data["social_links"], {"telegram": "https://t.me/irina"}
+        )
+        self.assertNotContains(response, "legacy.example.com")
         self.assertEqual(response.data["achievements"][0]["files"][0]["name"], "file")
         self._assert_forbidden_keys_absent(response.data)
 

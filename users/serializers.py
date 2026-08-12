@@ -34,6 +34,7 @@ from users.models import (
     UserSkillConfirmation,
     UserWorkExperience,
 )
+from users.social_links import SocialLinksField, get_social_links, update_social_links
 from users.utils import normalize_user_phone
 from users.validators import specialization_exists_validator
 
@@ -459,6 +460,7 @@ class UserDetailSerializer(
     work_experience = UserWorkExperienceSerializer(required=False, many=True)
     user_languages = UserLanguagesSerializer(required=False, many=True)
     links = serializers.SerializerMethodField()
+    social_links = SocialLinksField(required=False, write_only=True)
     is_online = serializers.SerializerMethodField()
     projects = serializers.SerializerMethodField()
     programs = serializers.SerializerMethodField()
@@ -492,6 +494,28 @@ class UserDetailSerializer(
     def get_links(cls, user: CustomUser):
         return [user_link.link for user_link in user.links.all()]
 
+    def validate_social_links(self, value: dict[str, str | None]):
+        """Не допускает один URL одновременно в разных legacy/typed записях."""
+
+        instance = self.instance
+        errors: dict[str, str] = {}
+        seen_urls: dict[str, str] = {}
+        for kind, link in value.items():
+            if link is None:
+                continue
+            if link in seen_urls:
+                errors[kind] = "Эта ссылка уже указана для другого типа."
+                continue
+            seen_urls[link] = kind
+            if (
+                instance is not None
+                and instance.links.filter(link=link).exclude(kind=kind).exists()
+            ):
+                errors[kind] = "Эта ссылка уже сохранена в профиле."
+        if errors:
+            raise serializers.ValidationError(errors)
+        return value
+
     def get_is_online(self, user: CustomUser):
         request = self.context.get("request")
         if request and request.user.is_authenticated and request.user.id == user.id:
@@ -520,6 +544,7 @@ class UserDetailSerializer(
             "about_me",
             "avatar",
             "links",
+            "social_links",
             "city",
             "phone_number",
             "is_active",
@@ -543,6 +568,7 @@ class UserDetailSerializer(
         IMMUTABLE_FIELDS = ("email", "is_active", "password")
         USER_TYPE_FIELDS = ("member", "investor", "expert", "mentor")
         RELATED_FIELDS = ("achievements",)
+        social_links = validated_data.pop("social_links", None)
 
         if instance.user_type == CustomUser.MEMBER:
             IMMUTABLE_FIELDS = ("email", "user_type", "is_active", "password")
@@ -629,6 +655,9 @@ class UserDetailSerializer(
             setattr(instance, attr, value)
 
         instance.save()
+
+        if social_links is not None:
+            update_social_links(instance, social_links)
 
         return instance
 
@@ -730,6 +759,7 @@ class UserDetailSerializer(
         is available only to the profile owner (used for CV).
         """
         representation = super().to_representation(instance)
+        representation["social_links"] = get_social_links(instance)
         request = self.context.get("request")
         if request and request.user != instance:
             representation.pop("phone_number", None)

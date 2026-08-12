@@ -249,9 +249,13 @@ def update_links(links, pk):
     Bootleg version of updating links via user
     """
 
-    # delete all old links
-    UserLink.objects.filter(user_id=pk).delete()
-    # create new links
+    # Новый типизированный контракт хранится отдельно и не должен удаляться legacy PATCH.
+    typed_links = set(
+        UserLink.objects.filter(user_id=pk, kind__isnull=False).values_list(
+            "link", flat=True
+        )
+    )
+    UserLink.objects.filter(user_id=pk, kind__isnull=True).delete()
     UserLink.objects.bulk_create(
         [
             UserLink(
@@ -259,6 +263,7 @@ def update_links(links, pk):
                 link=link,
             )
             for link in links
+            if link not in typed_links
         ]
     )
 

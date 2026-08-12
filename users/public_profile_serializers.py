@@ -119,13 +119,13 @@ class PublicProfileDetailSerializer(PublicProfileListSerializer):
     work_experience = PublicProfileWorkExperienceSerializer(many=True, read_only=True)
     user_languages = PublicProfileLanguageSerializer(many=True, read_only=True)
     achievements = PublicProfileAchievementSerializer(many=True, read_only=True)
-    links = serializers.SerializerMethodField()
+    social_links = serializers.SerializerMethodField()
 
     class Meta(PublicProfileListSerializer.Meta):
         fields = PublicProfileListSerializer.Meta.fields + (
             "patronymic",
             "about_me",
-            "links",
+            "social_links",
             "education",
             "work_experience",
             "user_languages",
@@ -133,5 +133,11 @@ class PublicProfileDetailSerializer(PublicProfileListSerializer):
         )
 
     @staticmethod
-    def get_links(user: CustomUser) -> list[str]:
-        return [link.link for link in getattr(user, "public_links", [])]
+    def get_social_links(user: CustomUser) -> dict[str, str]:
+        """Возвращает только типизированные ссылки без внутренних полей модели."""
+
+        return {
+            link.kind: link.link
+            for link in getattr(user, "public_social_links", [])
+            if link.kind is not None
+        }
