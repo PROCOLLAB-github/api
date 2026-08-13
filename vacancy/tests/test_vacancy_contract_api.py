@@ -66,7 +66,7 @@ class VacancyCatalogContractTests(TestCase):
         self.assertEqual([item["id"] for item in response.data["results"]], [visible.id])
 
     def test_search_covers_role_specialization_description_and_project_name(self):
-        project = create_project(name="Арктическая платформа")
+        project = create_project(name="арктическая платформа")
         vacancy = create_vacancy(project=project, role="Python инженер")
         Vacancy.objects.filter(pk=vacancy.pk).update(
             specialization="Data science",
