@@ -71,8 +71,15 @@ class ProgramOverviewEvaluationsSerializer(ProgramOverviewTotalSerializer):
 class ManagerProgramOverviewSerializer(serializers.Serializer):
     program = ProgramOverviewProgramSerializer()
     registrations = ProgramOverviewTotalSerializer()
+    participants = ProgramOverviewTotalSerializer()
     applications = ProgramOverviewApplicationsSerializer()
     teams = ProgramOverviewTeamsSerializer()
     submissions = ProgramOverviewSubmissionsSerializer()
     expert_assignments = ProgramOverviewAssignmentsSerializer()
     evaluations = ProgramOverviewEvaluationsSerializer()
+
+
+class ManagedProgramSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    draft = serializers.BooleanField()

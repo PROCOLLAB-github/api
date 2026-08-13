@@ -11,7 +11,10 @@ from partner_programs.evaluation_views import (
     ProgramEvaluationDetailView,
     ProgramEvaluationListView,
 )
-from partner_programs.manager_overview_views import ManagerProgramOverviewView
+from partner_programs.manager_overview_views import (
+    ManagedProgramListView,
+    ManagerProgramOverviewView,
+)
 from partner_programs.submission_assignment_views import (
     ProgramSubmissionAssignmentListCreateView,
 )
@@ -36,6 +39,11 @@ app_name = "partner_programs"
 
 urlpatterns = [
     path("", PartnerProgramList.as_view()),
+    path(
+        "managed/",
+        ManagedProgramListView.as_view(),
+        name="managed-program-list",
+    ),
     path(
         "<int:program_id>/manager-overview/",
         ManagerProgramOverviewView.as_view(),

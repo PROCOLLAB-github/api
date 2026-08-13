@@ -1,4 +1,4 @@
-<!-- Roadmap: DEV-076, DEV-056 -->
+<!-- Roadmap: DEV-076, DEV-056, DEV-091 -->
 
 # Manager program overview API
 
@@ -22,6 +22,7 @@ GET /programs/<program_id>/manager-overview/
 {
   "program": {"id": 1, "name": "Program"},
   "registrations": {"total": 0},
+  "participants": {"total": 0},
   "applications": {
     "total": 0,
     "by_status": {
@@ -65,7 +66,11 @@ GET /programs/<program_id>/manager-overview/
 
 ## Семантика счетчиков
 
-- `registrations.total` — количество `PartnerProgramUserProfile` программы.
+- `registrations.total` — количество всех записей `PartnerProgramUserProfile`
+  программы, включая исторические записи с `user=null`.
+- `participants.total` — количество уникальных ненулевых `user_id` в
+  `PartnerProgramUserProfile`. Записи удаленного пользователя с `user=null` не
+  учитываются, один пользователь учитывается только один раз.
 - `applications.total` и `by_status` — заявки программы целиком и по статусам.
 - `applications.by_participation_mode` — заявки по режимам `undecided`,
   `individual` и `team`.
@@ -82,6 +87,33 @@ GET /programs/<program_id>/manager-overview/
 
 Подсчеты выполняются фиксированным набором ORM aggregate-запросов и не зависят
 от количества участников.
+
+## Программы, доступные организатору
+
+```http
+GET /programs/managed/
+```
+
+Endpoint требует авторизацию и возвращает компактный непагинированный список:
+
+```json
+[
+  {
+    "id": 123,
+    "name": "Кейс-чемпионат",
+    "draft": true
+  }
+]
+```
+
+Обычный пользователь получает только программы, где он указан в
+`PartnerProgram.managers`. Опубликованные и draft-программы включаются в список.
+Staff и superuser получают все программы. Пользователь без управляемых программ
+получает `200` и пустой массив, неавторизованный пользователь — `401`.
+
+Сортировка стабильна: сначала по `name`, затем по `id`. Ответ строится одним
+запросом и не загружает связанные сущности для каждой программы. Контракт
+существующего публичного `GET /programs/` не изменяется.
 
 ## Ограничения данных
 

@@ -1,4 +1,4 @@
-# Roadmap: DEV-076, DEV-056
+# Roadmap: DEV-076, DEV-056, DEV-091
 
 import json
 
@@ -264,6 +264,7 @@ class ManagerProgramOverviewAPITests(TestCase):
             {
                 "program": {"id": self.program.pk, "name": "Overview program"},
                 "registrations": {"total": 0},
+                "participants": {"total": 0},
                 "applications": {
                     "total": 0,
                     "by_status": {
@@ -314,6 +315,7 @@ class ManagerProgramOverviewAPITests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["registrations"], {"total": 2})
+        self.assertEqual(response.data["participants"], {"total": 2})
         self.assertEqual(response.data["applications"]["total"], 6)
         self.assertEqual(
             response.data["applications"]["by_status"],
@@ -374,11 +376,32 @@ class ManagerProgramOverviewAPITests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["program"]["id"], self.program.pk)
         self.assertEqual(response.data["registrations"]["total"], 2)
+        self.assertEqual(response.data["participants"]["total"], 2)
         self.assertEqual(response.data["applications"]["total"], 6)
         self.assertEqual(response.data["teams"]["total"], 1)
         self.assertEqual(response.data["submissions"]["total"], 5)
         self.assertEqual(response.data["expert_assignments"]["total"], 3)
         self.assertEqual(response.data["evaluations"]["total"], 2)
+
+    def test_participants_count_only_non_null_unique_users(self):
+        for index in range(2):
+            PartnerProgramUserProfile.objects.create(
+                user=create_user(prefix=f"overview-unique-participant-{index}"),
+                partner_program=self.program,
+                partner_program_data={"registration": index},
+            )
+        for index in range(2):
+            PartnerProgramUserProfile.objects.create(
+                user=None,
+                partner_program=self.program,
+                partner_program_data={"deleted_user_registration": index},
+            )
+
+        response = self.get_as(self.manager)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["registrations"], {"total": 4})
+        self.assertEqual(response.data["participants"], {"total": 2})
 
     def test_response_does_not_contain_pii_or_private_content(self):
         self.seed_complete_overview(self.program, self.manager, "overview-private")
