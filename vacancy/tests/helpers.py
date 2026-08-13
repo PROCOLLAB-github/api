@@ -15,6 +15,8 @@ def create_user(
     *,
     prefix: str = "vacancy-user",
     is_active: bool = True,
+    is_staff: bool = False,
+    is_superuser: bool = False,
 ) -> CustomUser:
     user = CustomUser.objects.create_user(
         email=f"{prefix}-{uuid4().hex}@example.com",
@@ -24,7 +26,9 @@ def create_user(
         birthday=date(2000, 1, 1),
     )
     user.is_active = is_active
-    user.save(update_fields=["is_active"])
+    user.is_staff = is_staff
+    user.is_superuser = is_superuser
+    user.save(update_fields=["is_active", "is_staff", "is_superuser"])
     return user
 
 
@@ -54,9 +58,10 @@ def create_user_file(
     user: CustomUser,
     link: str | None = None,
 ) -> UserFile:
+    file_link = link or "https://cdn.example.com/{}.pdf".format(uuid4().hex)
     return UserFile.objects.create(
         user=user,
-        link=link or f"https://cdn.example.com/{uuid4().hex}.pdf",
+        link=file_link,
         name="cv",
         extension="pdf",
         mime_type="application/pdf",

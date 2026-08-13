@@ -79,16 +79,16 @@ class VacancyAPITests(TestCase):
             [active_vacancy.id],
         )
 
-    def test_list_can_include_inactive_vacancies_by_filter(self):
+    def test_public_list_cannot_include_inactive_vacancies_by_filter(self):
         create_vacancy(role="Active vacancy", is_active=True)
-        inactive_vacancy = create_vacancy(role="Inactive vacancy", is_active=False)
+        create_vacancy(role="Inactive vacancy", is_active=False)
 
         response = self.client.get("/vacancies/", {"is_active": "false"})
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(
             [item["id"] for item in response.data["results"]],
-            [inactive_vacancy.id],
+            [],
         )
 
     def test_list_filters_by_project_role_salary_and_work_conditions(self):
@@ -116,8 +116,8 @@ class VacancyAPITests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual([item["id"] for item in response.data["results"]], [target.id])
 
-    def test_list_excludes_vacancies_older_than_90_days(self):
-        create_vacancy(
+    def test_list_includes_active_vacancies_older_than_90_days(self):
+        old = create_vacancy(
             role="Old vacancy",
             datetime_created=timezone.now() - timedelta(days=91),
         )
@@ -126,7 +126,10 @@ class VacancyAPITests(TestCase):
         response = self.client.get("/vacancies/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual([item["id"] for item in response.data["results"]], [fresh.id])
+        self.assertEqual(
+            [item["id"] for item in response.data["results"]],
+            [fresh.id, old.id],
+        )
 
     def test_detail_returns_vacancy_with_project_info(self):
         vacancy = create_vacancy(role="Detail vacancy")

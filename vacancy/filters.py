@@ -1,4 +1,4 @@
-from django.db.models import QuerySet, Q, F
+from django.db.models import Q, QuerySet
 
 from django_filters import rest_framework as filters
 
@@ -11,91 +11,62 @@ from vacancy.constants import (
 
 
 def project_id_filter(queryset, name, value) -> QuerySet:
-    return queryset.filter(
-        **{
-            "project_id": value[0],
-        }
-    )
+    return queryset.filter(project_id=value)
 
 
 class VacancyFilter(filters.FilterSet):
-    """Filter for Vacancies
-
-    Adds filtering to DRF list retrieve views
-
-    Parameters to filter by:
-        project_id (int),
-        is_active (boolean) (default to True if not set otherwise),
-        required_experience (multiple choise)
-        work_schedule (multiple choise)
-        work_format (multiple choise)
-        salary_min (int)
-        salary_max (int)
-
-    Examples:
-        ?project_id=1 equals to .filter(project_id=1)
-        (no params passed) equals to .filter(is_active=True)
-        ?is_active=false equals to .filter(is_active=False)
-        ?work_schedule=full_time&work_schedule=part_time equals to .filter(required_experience__in=value)
-        ?salary_min=100&salary_max=150 equals to .filter(salary__range=(100, 150))
-    """
-
-    def __init__(self, *args, **kwargs):
-        """if is_active filter is not passed, default to True"""
-        super().__init__(*args, **kwargs)
-        if self.data.get("is_active") is None:
-            self.data = dict(self.data)
-            self.data["is_active"] = True
+    """Фильтрует уже ограниченный безопасный queryset публичного каталога."""
 
     def filter_by_experience(
         self, queryset: QuerySet[Vacancy], name, value: list[str]
     ) -> QuerySet[Vacancy]:
-        return queryset.filter(
-            Q(required_experience__in=value) | Q(required_experience=None)
-        ).order_by(F("required_experience").asc(nulls_last=True))
+        return queryset.filter(required_experience__in=value)
 
     def filter_by_schedule(
         self, queryset: QuerySet[Vacancy], name, value: list[str]
     ) -> QuerySet[Vacancy]:
-        return queryset.filter(
-            Q(work_schedule__in=value) | Q(work_schedule=None)
-        ).order_by(F("work_schedule").asc(nulls_last=True))
+        return queryset.filter(work_schedule__in=value)
 
     def filter_by_format(
         self, queryset: QuerySet[Vacancy], name, value: list[str]
     ) -> QuerySet[Vacancy]:
-        return queryset.filter(Q(work_format__in=value) | Q(work_format=None)).order_by(
-            F("work_format").asc(nulls_last=True)
-        )
+        return queryset.filter(work_format__in=value)
 
     def filter_by_salary_min(
-        self, queryset: QuerySet[Vacancy], name, value: list[str]
+        self, queryset: QuerySet[Vacancy], name, value: str
     ) -> QuerySet[Vacancy]:
         try:
-            min_salary = int(value[0])
-            return queryset.filter(Q(salary__gte=min_salary) | Q(salary=None)).order_by(
-                F("salary").asc(nulls_last=True)
-            )
-        except ValueError:
+            min_salary = int(value)
+            return queryset.filter(salary__gte=min_salary)
+        except (TypeError, ValueError):
             return queryset
 
     def filter_by_salary_max(
-        self, queryset: QuerySet[Vacancy], name, value: list[str]
+        self, queryset: QuerySet[Vacancy], name, value: str
     ) -> QuerySet[Vacancy]:
         try:
-            max_salary = int(value[0])
-            return queryset.filter(Q(salary__lte=max_salary) | Q(salary=None)).order_by(
-                F("salary").asc(nulls_last=True)
-            )
-        except ValueError:
+            max_salary = int(value)
+            return queryset.filter(salary__lte=max_salary)
+        except (TypeError, ValueError):
             return queryset
 
     def filter_by_role(
-        self, queryset: QuerySet[Vacancy], name, value: list[str]
+        self, queryset: QuerySet[Vacancy], name, value: str
     ) -> QuerySet[Vacancy]:
-        if not value:
+        return queryset.filter(role__icontains=value)
+
+    def filter_by_search(self, queryset, name, value):
+        """Ищет вакансию по роли, специализации, описанию и названию проекта."""
+
+        search = value.strip()
+        if not search:
             return queryset
-        return queryset.filter(role__icontains=value[0])
+        return queryset.filter(
+            Q(role__icontains=search)
+            | Q(specialization__icontains=search)
+            | Q(description__icontains=search)
+            | Q(project__name__icontains=search)
+        )
 
     project_id = filters.Filter(method=project_id_filter)
     is_active = filters.BooleanFilter(field_name="is_active")
@@ -114,6 +85,7 @@ class VacancyFilter(filters.FilterSet):
     )
 
     role_contains = filters.Filter(method="filter_by_role")
+    search = filters.CharFilter(method="filter_by_search")
     salary_min = filters.Filter(method="filter_by_salary_min")
     salary_max = filters.Filter(method="filter_by_salary_max")
 
@@ -121,6 +93,7 @@ class VacancyFilter(filters.FilterSet):
         model = Vacancy
         fields = (
             "role_contains",
+            "search",
             "project_id",
             "is_active",
             "required_experience",

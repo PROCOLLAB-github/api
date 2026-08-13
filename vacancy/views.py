@@ -1,34 +1,46 @@
+from django.db import transaction
 from django.db.models import QuerySet
+from django.http import Http404
 from django_filters import rest_framework as filters
 from django.shortcuts import get_object_or_404
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
-from rest_framework import generics, mixins, permissions, status
+from rest_framework import generics, mixins, permissions, serializers, status
 from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.response import Response
 
 
-from projects.models import Collaborator, Project
 from vacancy.filters import VacancyFilter
-from vacancy.mapping import CeleryEmailParams, MessageTypeEnum
 from vacancy.models import Vacancy, VacancyResponse
 from vacancy.pagination import VacancyPagination
 from vacancy.permissions import (
-    IsProjectLeaderForVacancyResponse,
-    IsVacancyResponseOwnerOrReadOnly,
     IsVacancyProjectLeader,
 )
 from vacancy.serializers import (
+    VacancyCatalogSerializer,
     VacancyDetailSerializer,
-    VacancyResponseAcceptSerializer,
-    VacancyResponseDetailSerializer,
-    VacancyResponseDetailReadSerializer,
-    VacancyResponseFullFileInfoListSerializer,
-    VacancyResponseListSerializer,
     ProjectVacancyCreateListSerializer,
+    VacancyResponseManagerSerializer,
+    VacancyResponseSelfSerializer,
+    VacancyResponseWriteSerializer,
+)
+from vacancy.selectors import (
+    can_manage_vacancy,
+    can_view_vacancy,
+    get_public_vacancies_queryset,
+    get_response_queryset,
+    get_self_response_queryset,
+    get_vacancy_queryset,
+)
+from vacancy.response_services import (
+    accept_vacancy_response,
+    close_vacancy,
+    create_vacancy_response,
+    delete_vacancy_without_responses,
+    decline_vacancy_response,
+    reopen_vacancy,
 )
 from vacancy.services import update_vacancy_skills
-from vacancy.tasks import send_email
 
 
 @swagger_auto_schema(
@@ -40,29 +52,42 @@ from vacancy.tasks import send_email
     ],
 )
 class VacancyList(generics.ListCreateAPIView):
-    queryset = Vacancy.objects.get_vacancy_for_list_view()
     serializer_class = ProjectVacancyCreateListSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = VacancyFilter
     pagination_class = VacancyPagination
 
+    def get_queryset(self):
+        return get_public_vacancies_queryset()
+
+    def get_serializer_class(self):
+        if self.request.method == "GET":
+            return VacancyCatalogSerializer
+        return super().get_serializer_class()
+
 
 class VacancyDetail(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Vacancy.objects.get_vacancy_for_detail_view()
+    queryset = Vacancy.objects.all()
     serializer_class = VacancyDetailSerializer
     permission_classes = [IsVacancyProjectLeader]
+
+    def get_object(self):
+        vacancy = get_object_or_404(get_vacancy_queryset(), pk=self.kwargs["pk"])
+        if not can_view_vacancy(self.request.user, vacancy):
+            raise Http404
+        self.check_object_permissions(self.request, vacancy)
+        return vacancy
 
     def patch(self, request, *args, **kwargs):
         update_vacancy_skills(request, self.get_object())
         return self.partial_update(request, *args, **kwargs)
 
     def put(self, request, *args, **kwargs):
-        """updating the vacancy"""
         vacancy = self.get_object()
 
         if not request.data.get("is_active"):
-            # automatically declining every vacancy response if the vacancy is not active
+            # Legacy PUT сохраняет прежнее поведение: закрытие завершает ожидающие отклики.
             VacancyResponse.objects.filter(vacancy=vacancy, is_approved=None).update(
                 is_approved=False
             )
@@ -71,163 +96,167 @@ class VacancyDetail(generics.RetrieveUpdateDestroyAPIView):
 
         return self.update(request, *args, **kwargs)
 
+    def destroy(self, request, *args, **kwargs):
+        vacancy = self.get_object()
+        delete_vacancy_without_responses(vacancy.id, actor=request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
-class VacancyResponseList(
-    mixins.ListModelMixin, mixins.CreateModelMixin, GenericAPIView
-):
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-    serializer_class = VacancyResponseListSerializer
+
+class VacancyResponseList(mixins.ListModelMixin, mixins.CreateModelMixin, GenericAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = VacancyResponseWriteSerializer
 
     def get_serializer_class(self):
         if self.request.method == "GET":
-            return VacancyResponseFullFileInfoListSerializer
+            return VacancyResponseManagerSerializer
         return super().get_serializer_class()
 
     def get(self, request, *args, **kwargs):
-        """retrieve all responses for certain vacancy"""
-        # note: doesn't raise an error if the vacancy_id passed is non-existent
+        vacancy = get_object_or_404(Vacancy, pk=self.kwargs["vacancy_id"])
+        if not can_manage_vacancy(request.user, vacancy):
+            return Response(status=status.HTTP_403_FORBIDDEN)
         return self.list(request, *args, **kwargs)
 
     def get_queryset(self):
-        return VacancyResponse.objects.get_vacancy_response_for_list_view().filter(
-            vacancy__id=self.kwargs["vacancy_id"]
-        )
+        return get_response_queryset().filter(vacancy_id=self.kwargs["vacancy_id"])
 
     def post(self, request, vacancy_id):
-        vacancy = get_object_or_404(Vacancy, pk=vacancy_id)
-        if not vacancy.is_active:
-            return Response(
-                "You cannot apply for a closed vacancy", status.HTTP_400_BAD_REQUEST
-            )
-
-        try:
-            request.data["user_id"] = self.request.user.id
-            request.data["vacancy"] = vacancy_id
-        except AttributeError:
-            pass
+        vacancy = get_object_or_404(get_public_vacancies_queryset(), pk=vacancy_id)
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
-        vacancy_response = self.create(request, vacancy_id)
-
-        queryset = VacancyResponse.objects.get_vacancy_response_for_email().get(
-            vacancy__id=self.kwargs["vacancy_id"], user=self.request.user
+        response = create_vacancy_response(
+            vacancy_id=vacancy.id,
+            user=request.user,
+            validated_data=serializer.validated_data,
         )
-        project = queryset.vacancy.project
-
-        send_email.delay(
-            CeleryEmailParams(
-                message_type=MessageTypeEnum.RESPONDED.value,
-                user_id=project.leader.id,
-                project_name=project.name,
-                project_id=project.id,
-                vacancy_role=queryset.vacancy.role,
-                schema_id=2,
-            )
+        return Response(
+            VacancyResponseSelfSerializer(response, context={"request": request}).data,
+            status=status.HTTP_201_CREATED,
         )
-
-        return vacancy_response
 
 
 class VacancyResponseDetail(generics.RetrieveUpdateDestroyAPIView):
-    queryset = VacancyResponse.objects.get_vacancy_response_for_detail_view()
-    serializer_class = VacancyResponseDetailSerializer
-    permission_classes = [IsVacancyResponseOwnerOrReadOnly]
+    queryset = VacancyResponse.objects.all()
+    serializer_class = VacancyResponseWriteSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
-    def get_serializer_class(self):
-        if self.request.method == "GET":
-            return VacancyResponseDetailReadSerializer
-        return super().get_serializer_class()
+    def get_object(self):
+        response = get_object_or_404(get_response_queryset(), pk=self.kwargs["pk"])
+        is_owner = response.user_id == self.request.user.id
+        is_manager = can_manage_vacancy(self.request.user, response.vacancy)
+        if not (is_owner or is_manager):
+            raise Http404
+        if self.request.method not in permissions.SAFE_METHODS:
+            if not is_owner:
+                return self.permission_denied(self.request)
+            if response.is_approved is not None:
+                raise serializers.ValidationError("Обработанный отклик нельзя изменить.")
+        return response
+
+    def retrieve(self, request, *args, **kwargs):
+        response = self.get_object()
+        serializer_class = (
+            VacancyResponseSelfSerializer
+            if response.user_id == request.user.id
+            else VacancyResponseManagerSerializer
+        )
+        return Response(serializer_class(response, context={"request": request}).data)
+
+    def update(self, request, *args, **kwargs):
+        visible_instance = self.get_object()
+        with transaction.atomic():
+            instance = VacancyResponse.objects.select_for_update().get(
+                pk=visible_instance.pk
+            )
+            if instance.is_approved is not None:
+                raise serializers.ValidationError("Обработанный отклик нельзя изменить.")
+            serializer = self.get_serializer(
+                instance,
+                data=request.data,
+                partial=kwargs.pop("partial", False),
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+        return Response(
+            VacancyResponseSelfSerializer(instance, context={"request": request}).data,
+        )
+
+    def destroy(self, request, *args, **kwargs):
+        visible_instance = self.get_object()
+        with transaction.atomic():
+            instance = VacancyResponse.objects.select_for_update().get(
+                pk=visible_instance.pk
+            )
+            if instance.is_approved is not None:
+                raise serializers.ValidationError("Обработанный отклик нельзя отозвать.")
+            instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class VacancyResponseAccept(generics.GenericAPIView):
-    queryset = VacancyResponse.objects.get_vacancy_response_for_detail_view()
-    serializer_class = VacancyResponseAcceptSerializer
-    permission_classes = [IsProjectLeaderForVacancyResponse]
+    queryset = VacancyResponse.objects.all()
+    serializer_class = VacancyResponseManagerSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):
-        """accepting the vacancy"""
-        vacancy_request = self.get_object()
-        if vacancy_request.is_approved is not None:
-            # can't accept a vacancy that's already declined/accepted
-            return Response(status=status.HTTP_400_BAD_REQUEST)
-        vacancy_request.is_approved = True
-
-        vacancy = vacancy_request.vacancy
-        project_add_in: Project = vacancy.project
-        user_to_add = vacancy_request.user
-        role_add_as: str = vacancy.role
-
-        # check if this person already has a collaborator role in this project
-        if Collaborator.objects.filter(
-            project=project_add_in, user=user_to_add
-        ).exists():
-            return Response(
-                "You already work for this project, you can't accept a vacancy here",
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        new_collaborator = Collaborator(
-            user=user_to_add,
-            project=project_add_in,
-            role=role_add_as,
+        vacancy_response = get_object_or_404(get_response_queryset(), pk=pk)
+        if not can_manage_vacancy(request.user, vacancy_response.vacancy):
+            return Response(status=status.HTTP_403_FORBIDDEN)
+        accept_vacancy_response(pk, actor=request.user)
+        accepted = get_response_queryset().get(pk=pk)
+        return Response(
+            VacancyResponseManagerSerializer(accepted, context={"request": request}).data
         )
-
-        send_email.delay(
-            CeleryEmailParams(
-                message_type=MessageTypeEnum.ACCEPTED.value,
-                user_id=user_to_add.id,
-                project_name=project_add_in.name,
-                project_id=project_add_in.id,
-                vacancy_role=role_add_as,
-                schema_id=2,
-            )
-        )
-        # After acceptance, closes the vacancy.
-        vacancy.is_active = False
-        vacancy.save()
-        new_collaborator.save()
-        vacancy_request.save()
-        return Response(status=status.HTTP_200_OK)
 
 
 class VacancyResponseDecline(generics.GenericAPIView):
-    queryset = VacancyResponse.objects.get_vacancy_response_for_detail_view()
-    serializer_class = VacancyResponseAcceptSerializer
-    permission_classes = [IsProjectLeaderForVacancyResponse]
+    queryset = VacancyResponse.objects.all()
+    serializer_class = VacancyResponseManagerSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):
-        """declining the vacancy"""
-        vacancy_request = self.get_object()
-        if vacancy_request.is_approved is not None:
-            # can't decline a vacancy that's already declined/accepted
-            return Response(status=status.HTTP_400_BAD_REQUEST)
-        vacancy_request.is_approved = False
-        vacancy_request.save()
-
-        project = vacancy_request.vacancy.project
-        send_email.delay(
-            CeleryEmailParams(
-                message_type=MessageTypeEnum.REJECTED.value,
-                user_id=vacancy_request.user.id,
-                project_name=project.name,
-                project_id=project.id,
-                vacancy_role=vacancy_request.vacancy.role,
-                schema_id=2,
-            )
+        vacancy_response = get_object_or_404(get_response_queryset(), pk=pk)
+        if not can_manage_vacancy(request.user, vacancy_response.vacancy):
+            return Response(status=status.HTTP_403_FORBIDDEN)
+        decline_vacancy_response(pk, actor=request.user)
+        declined = get_response_queryset().get(pk=pk)
+        return Response(
+            VacancyResponseManagerSerializer(declined, context={"request": request}).data
         )
-
-        return Response(status=status.HTTP_200_OK)
 
 
 class UserVacancyResponses(ListAPIView):
-    serializer_class = VacancyResponseFullFileInfoListSerializer
-    permission_classes = [IsVacancyResponseOwnerOrReadOnly]
+    serializer_class = VacancyResponseSelfSerializer
+    permission_classes = [permissions.IsAuthenticated]
     pagination_class = VacancyPagination
 
     def get_queryset(self) -> QuerySet[VacancyResponse]:
-        return (
-            VacancyResponse.objects.get_vacancy_response_for_list_view()
-            .filter(user=self.request.user)
-            .order_by("datetime_created")
-        )
+        return get_self_response_queryset().filter(user=self.request.user)
+
+
+class VacancyClose(GenericAPIView):
+    queryset = Vacancy.objects.all()
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = VacancyDetailSerializer
+
+    def post(self, request, pk):
+        vacancy = get_object_or_404(get_vacancy_queryset(), pk=pk)
+        if not can_manage_vacancy(request.user, vacancy):
+            return Response(status=status.HTTP_403_FORBIDDEN)
+        close_vacancy(pk, actor=request.user)
+        closed = get_vacancy_queryset().get(pk=pk)
+        return Response(VacancyDetailSerializer(closed).data)
+
+
+class VacancyReopen(GenericAPIView):
+    queryset = Vacancy.objects.all()
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = VacancyDetailSerializer
+
+    def post(self, request, pk):
+        vacancy = get_object_or_404(get_vacancy_queryset(), pk=pk)
+        if not can_manage_vacancy(request.user, vacancy):
+            return Response(status=status.HTTP_403_FORBIDDEN)
+        reopen_vacancy(pk, actor=request.user)
+        reopened = get_vacancy_queryset().get(pk=pk)
+        return Response(VacancyDetailSerializer(reopened).data)

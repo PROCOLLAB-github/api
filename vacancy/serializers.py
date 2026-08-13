@@ -11,6 +11,7 @@ from files.serializers import UserFileSerializer
 from projects.models import Project
 from projects.validators import validate_project
 from users.serializers import UserDetailSerializer
+from users.public_profile_serializers import PublicProfileListSerializer
 from vacancy.constants import WorkExperience, WorkFormat, WorkSchedule
 from vacancy.models import Vacancy, VacancyResponse
 
@@ -55,21 +56,21 @@ class AbstractVacancyEnumFields(serializers.Serializer):
         representation["required_experience"] = WorkExperience.to_display(
             instance.required_experience
         )
-        representation["work_schedule"] = WorkSchedule.to_display(
-            instance.work_schedule
-        )
+        representation["work_schedule"] = WorkSchedule.to_display(instance.work_schedule)
         representation["work_format"] = WorkFormat.to_display(instance.work_format)
         return representation
 
 
 class AbstractVacancyReadOnlyFields(serializers.Serializer):
-    """Abstract read-only fields for Vacancy."""
+    """Общие вычисляемые поля read-only контрактов вакансии."""
 
     datetime_closed = serializers.DateTimeField(read_only=True)
     response_count = serializers.SerializerMethodField(read_only=True)
 
     def get_response_count(self, obj):
-        """Returns count non status responses."""
+        """Возвращает число откликов, которые ещё ожидают решения."""
+        if hasattr(obj, "pending_response_count"):
+            return obj.pending_response_count
         return obj.vacancy_requests.filter(is_approved=None).count()
 
 
@@ -99,7 +100,6 @@ class ProjectVacancyListSerializer(
     AbstractVacancyReadOnlyFields,
     RequiredSkillsSerializerMixin[Vacancy],
 ):
-
     class Meta:
         model = Vacancy
         fields = [
@@ -175,7 +175,6 @@ class VacancyListSerializer(
     RequiredSkillsSerializerMixin[Vacancy],
     AbstractVacancyReadOnlyFields,
 ):
-
     class Meta:
         model = Vacancy
         fields = [
@@ -189,9 +188,40 @@ class VacancyListSerializer(
             "response_count",
             "date_create_time",
         ]
-        read_only_fields = [
+
+
+class VacancyCatalogSerializer(
+    VacancyCreationDateSerializerMixin,
+    serializers.ModelSerializer,
+    AbstractVacancyReadOnlyFields,
+    AbstractVacancyEnumFields,
+    RequiredSkillsSerializerMixin[Vacancy],
+):
+    """Публичный контракт каталога без закрытых данных проекта."""
+
+    project = ProjectForVacancySerializer(read_only=True)
+
+    class Meta:
+        model = Vacancy
+        fields = [
+            "id",
+            "role",
+            "specialization",
+            "required_skills",
+            "description",
             "project",
+            "is_active",
+            "datetime_created",
+            "datetime_updated",
+            "datetime_closed",
+            "response_count",
+            "date_create_time",
+            "required_experience",
+            "work_schedule",
+            "work_format",
+            "salary",
         ]
+        read_only_fields = fields
 
 
 # TODO FIX This (Copied serializer from projects) - hotfix: rename
@@ -237,10 +267,10 @@ class ProjectVacancyCreateListSerializer(
     AbstractVacancyEnumFields,
     RequiredSkillsWriteSerializerMixin[Vacancy],
 ):
-
     def create(self, validated_data):
         project = validated_data["project"]
-        if project.leader != self.context["request"].user:
+        user = self.context["request"].user
+        if project.leader != user and not (user.is_staff or user.is_superuser):
             raise serializers.ValidationError("You are not the leader of the project")
 
         required_skills_ids = validated_data.pop("required_skills_ids")
@@ -386,3 +416,82 @@ class VacancyResponseDetailReadSerializer(VacancyResponseDetailSerializer):
     """Returns full file info for detail view without breaking writes."""
 
     accompanying_file = UserFileSerializer(read_only=True)
+
+
+class VacancyResponseFileSerializer(serializers.ModelSerializer):
+    """Не раскрывает владельца файла за пределами разрешённого отклика."""
+
+    class Meta:
+        model = UserFile
+        fields = ("link", "name", "extension", "mime_type", "size")
+
+
+class VacancyCandidateSerializer(PublicProfileListSerializer):
+    """Безопасная карточка кандидата для руководителя проекта."""
+
+    class Meta(PublicProfileListSerializer.Meta):
+        fields = (
+            "id",
+            "first_name",
+            "last_name",
+            "avatar",
+            "specialization",
+            "skills",
+            "about_me",
+        )
+
+
+class VacancyResponseWriteSerializer(serializers.ModelSerializer):
+    accompanying_file = serializers.SlugRelatedField(
+        slug_field="link",
+        queryset=UserFile.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+
+    class Meta:
+        model = VacancyResponse
+        fields = ("why_me", "accompanying_file")
+
+    def validate_accompanying_file(self, value):
+        """Разрешает прикладывать только файл текущего пользователя."""
+
+        if value is not None and value.user_id != self.context["request"].user.id:
+            raise serializers.ValidationError("Можно прикрепить только собственный файл.")
+        return value
+
+
+class VacancyResponseSelfSerializer(serializers.ModelSerializer):
+    vacancy = VacancyCatalogSerializer(read_only=True)
+    accompanying_file = VacancyResponseFileSerializer(read_only=True)
+
+    class Meta:
+        model = VacancyResponse
+        fields = (
+            "id",
+            "vacancy",
+            "why_me",
+            "accompanying_file",
+            "is_approved",
+            "datetime_created",
+            "datetime_updated",
+        )
+
+
+class VacancyResponseManagerSerializer(serializers.ModelSerializer):
+    user = VacancyCandidateSerializer(read_only=True)
+    accompanying_file = VacancyResponseFileSerializer(read_only=True)
+
+    class Meta:
+        model = VacancyResponse
+        fields = (
+            "id",
+            "user",
+            "why_me",
+            "accompanying_file",
+            "is_approved",
+            "vacancy",
+            "datetime_created",
+            "datetime_updated",
+        )
+        read_only_fields = fields
