@@ -1,12 +1,15 @@
 # Roadmap: DEV-076, DEV-056
 
 from drf_yasg.utils import swagger_auto_schema
+from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from partner_programs.models import PartnerProgram
 from partner_programs.permissions import IsAdminOrManagerOfProgram
 from partner_programs.serializers.manager_overview import (
+    ManagedProgramSerializer,
     ManagerProgramOverviewSerializer,
 )
 from partner_programs.services.manager_overview import (
@@ -35,3 +38,18 @@ class ManagerProgramOverviewView(ProgramPermissionMixin, APIView):
         serializer = ManagerProgramOverviewSerializer(data=overview)
         serializer.is_valid(raise_exception=True)
         return Response(serializer.data)
+
+
+class ManagedProgramListView(ListAPIView):
+    """Возвращает программы, для которых пользователь имеет права организатора."""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = ManagedProgramSerializer
+    pagination_class = None
+
+    def get_queryset(self):
+        queryset = PartnerProgram.objects.only("id", "name", "draft")
+        user = self.request.user
+        if not (user.is_staff or user.is_superuser):
+            queryset = queryset.filter(managers=user)
+        return queryset.order_by("name", "id")

@@ -30,9 +30,16 @@ def _count_by_choice(choices, field_name):
 
 def build_manager_program_overview(program: PartnerProgram) -> dict:
     """Возвращает обезличенные агрегаты этапов участия в одной программе."""
-    registrations = PartnerProgramUserProfile.objects.filter(
+    registration_metrics = PartnerProgramUserProfile.objects.filter(
         partner_program=program
-    ).aggregate(total=Count("id"))
+    ).aggregate(
+        total=Count("id"),
+        participants_total=Count(
+            "user_id",
+            filter=Q(user_id__isnull=False),
+            distinct=True,
+        ),
+    )
 
     application_metrics = Application.objects.filter(program=program).aggregate(
         total=Count("id"),
@@ -84,7 +91,10 @@ def build_manager_program_overview(program: PartnerProgram) -> dict:
             "id": program.pk,
             "name": program.name,
         },
-        "registrations": registrations,
+        "registrations": {"total": registration_metrics["total"]},
+        "participants": {
+            "total": registration_metrics["participants_total"],
+        },
         "applications": {
             "total": application_metrics["total"],
             "by_status": _choice_counts(
