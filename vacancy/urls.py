@@ -9,6 +9,8 @@ from vacancy.views import (
     VacancyResponseAccept,
     VacancyResponseDecline,
     UserVacancyResponses,
+    VacancyClose,
+    VacancyReopen,
 )
 
 app_name = "vacancies"
@@ -16,6 +18,8 @@ app_name = "vacancies"
 urlpatterns = [
     path("", VacancyList.as_view()),
     path("<int:pk>/", VacancyDetail.as_view()),
+    path("<int:pk>/close/", VacancyClose.as_view()),
+    path("<int:pk>/reopen/", VacancyReopen.as_view()),
     path("<int:vacancy_id>/responses/", VacancyResponseList.as_view()),
     path("responses/<int:pk>/", VacancyResponseDetail.as_view()),
     path("responses/self", UserVacancyResponses.as_view()),
