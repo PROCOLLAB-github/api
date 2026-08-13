@@ -407,19 +407,27 @@ class VacancyDecisionContractTests(TestCase):
             self.client.post(f"/vacancies/responses/{accepted.id}/accept/").status_code,
             status.HTTP_400_BAD_REQUEST,
         )
-        self.assertEqual(Collaborator.objects.filter(project=project).count(), 1)
+        self.assertEqual(
+            Collaborator.objects.filter(
+                project=project,
+                user=accepted_user,
+            ).count(),
+            1,
+        )
 
-    @patch("vacancy.response_services.Collaborator.objects.create")
-    def test_failed_accept_rolls_back_all_changes(self, create_collaborator):
-        create_collaborator.side_effect = RuntimeError("database error")
+    def test_failed_accept_rolls_back_all_changes(self):
         leader = create_user(prefix="leader")
         project = create_project(leader=leader)
         vacancy = create_vacancy(project=project)
         vacancy_response = create_vacancy_response(vacancy=vacancy)
         self.client.force_authenticate(leader)
 
-        with self.assertRaises(RuntimeError):
-            self.client.post(f"/vacancies/responses/{vacancy_response.id}/accept/")
+        with patch(
+            "vacancy.response_services.Collaborator.objects.create",
+            side_effect=RuntimeError("database error"),
+        ):
+            with self.assertRaises(RuntimeError):
+                self.client.post(f"/vacancies/responses/{vacancy_response.id}/accept/")
 
         vacancy.refresh_from_db()
         vacancy_response.refresh_from_db()

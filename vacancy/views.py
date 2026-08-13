@@ -235,6 +235,7 @@ class UserVacancyResponses(ListAPIView):
 
 
 class VacancyClose(GenericAPIView):
+    queryset = Vacancy.objects.all()
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = VacancyDetailSerializer
 
@@ -248,6 +249,7 @@ class VacancyClose(GenericAPIView):
 
 
 class VacancyReopen(GenericAPIView):
+    queryset = Vacancy.objects.all()
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = VacancyDetailSerializer
 
