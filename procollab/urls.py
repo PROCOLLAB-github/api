@@ -87,6 +87,10 @@ urlpatterns = [
     path("rate-project/", include(("project_rates.urls", "rate_projects"))),
     path("feed/", include("feed.urls", namespace="feed")),
     path(
+        "notifications/",
+        include("notifications.urls", namespace="notifications"),
+    ),
+    path(
         "api/token/",
         ThrottledTokenObtainPairView.as_view(),
         name="token_obtain_pair",

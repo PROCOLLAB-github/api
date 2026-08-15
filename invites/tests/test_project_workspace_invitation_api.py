@@ -16,6 +16,7 @@ from invites.tests.helpers import (
     link_project_to_program,
 )
 from projects.models import Collaborator
+from notifications.models import Notification
 
 
 class ProjectWorkspaceInvitationAPITests(TestCase):
@@ -119,6 +120,12 @@ class ProjectWorkspaceInvitationAPITests(TestCase):
         self.assertNotIn("email", response.data["recipient"])
         self.assertEqual(response.data["message"], "Присоединяйтесь к проекту")
         self.assertIsNone(response.data["processed_at"])
+        self.assertTrue(
+            Notification.objects.filter(
+                recipient=self.recipient,
+                type=Notification.Type.PROJECT_INVITE_CREATED,
+            ).exists()
+        )
 
     def test_only_leader_or_staff_can_create_invitation(self):
         for actor, expected_status in (
@@ -292,6 +299,12 @@ class ProjectWorkspaceInvitationAPITests(TestCase):
         self.assertEqual(collaborator.specialization, invitation.specialization)
         self.assertEqual(response.data["status"], Invite.STATUS_ACCEPTED)
         self.assertIsNotNone(response.data["processed_at"])
+        self.assertTrue(
+            Notification.objects.filter(
+                recipient=self.leader,
+                type=Notification.Type.PROJECT_INVITE_ACCEPTED,
+            ).exists()
+        )
 
         repeated = self.client.post(self.accept_url(invitation), {}, format="json")
         self.assertEqual(repeated.status_code, status.HTTP_409_CONFLICT)
@@ -351,6 +364,12 @@ class ProjectWorkspaceInvitationAPITests(TestCase):
         decline_response = self.client.post(self.decline_url(declined), {}, format="json")
         self.assertEqual(decline_response.status_code, status.HTTP_200_OK)
         self.assertEqual(decline_response.data["status"], Invite.STATUS_DECLINED)
+        self.assertTrue(
+            Notification.objects.filter(
+                recipient=self.leader,
+                type=Notification.Type.PROJECT_INVITE_DECLINED,
+            ).exists()
+        )
         repeated_decline = self.client.post(self.decline_url(declined), {}, format="json")
         self.assertEqual(repeated_decline.status_code, status.HTTP_409_CONFLICT)
         declined_accept = self.client.post(self.accept_url(declined), {}, format="json")
@@ -374,6 +393,12 @@ class ProjectWorkspaceInvitationAPITests(TestCase):
         self.assertEqual(invitation.status, Invite.STATUS_REVOKED)
         self.assertIsNotNone(invitation.resolved_at)
         self.assertTrue(Invite.objects.filter(pk=invitation.pk).exists())
+        self.assertTrue(
+            Notification.objects.filter(
+                recipient=self.recipient,
+                type=Notification.Type.PROJECT_INVITE_REVOKED,
+            ).exists()
+        )
         repeated = self.client.post(self.revoke_url(invitation), {}, format="json")
         self.assertEqual(repeated.status_code, status.HTTP_409_CONFLICT)
 

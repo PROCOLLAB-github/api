@@ -9,6 +9,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from notifications.events import notify_news_comment_created
 from core.models import Like, View
 from core.services import add_view, set_like
 from feed.news_pagination import NewsCommentPagination, ReactNewsFeedPagination
@@ -116,6 +117,7 @@ class ReactNewsCommentListCreateView(generics.ListCreateAPIView):
             author=request.user,
             text=serializer.validated_data["text"],
         )
+        notify_news_comment_created(comment)
         return Response(
             NewsCommentResponseSerializer(
                 comment,

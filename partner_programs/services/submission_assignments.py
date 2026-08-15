@@ -4,6 +4,10 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
+from notifications.events import (
+    notify_expert_assignment_created,
+    notify_expert_assignment_revoked,
+)
 from partner_programs.models import (
     Evaluation,
     PartnerProgram,
@@ -153,6 +157,7 @@ def create_submission_assignment(
                 "The assignment changed concurrently. Please retry."
             ) from exc
 
+        notify_expert_assignment_created(assignment)
         return SubmissionAssignmentCreationResult(
             assignment=assignment,
             created=True,
@@ -204,4 +209,5 @@ def revoke_submission_assignment(
                 "updated_at",
             ]
         )
+        notify_expert_assignment_revoked(assignment, actor=actor)
         return assignment

@@ -5,6 +5,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from partner_programs.models import Application, Submission
+from notifications.models import Notification
 from partner_programs.tests.helpers import create_partner_program, create_user
 
 
@@ -96,9 +97,7 @@ class SubmissionAPITests(TestCase):
         other_application = self.create_application(user=self.other_user)
         self.authenticate()
 
-        response = self.client.get(
-            f"/applications/{other_application.id}/submissions/"
-        )
+        response = self.client.get(f"/applications/{other_application.id}/submissions/")
 
         self.assertEqual(response.status_code, 404)
 
@@ -313,6 +312,7 @@ class SubmissionAPITests(TestCase):
 
     def test_submit_draft_sets_status_and_submitted_at(self):
         submission = self.create_submission()
+        self.program.managers.add(self.other_user)
         self.authenticate()
 
         response = self.client.post(
@@ -325,9 +325,16 @@ class SubmissionAPITests(TestCase):
         submission.refresh_from_db()
         self.assertEqual(submission.status, Submission.STATUS_SUBMITTED)
         self.assertIsNotNone(submission.submitted_at)
+        self.assertTrue(
+            Notification.objects.filter(
+                recipient=self.other_user,
+                type=Notification.Type.SUBMISSION_SUBMITTED,
+            ).exists()
+        )
 
     def test_repeated_submit_preserves_submitted_at(self):
         submission = self.create_submission()
+        self.program.managers.add(self.other_user)
         self.authenticate()
         url = f"/submissions/{submission.id}/submit/"
 
@@ -340,6 +347,13 @@ class SubmissionAPITests(TestCase):
         self.assertEqual(second_response.status_code, 200)
         submission.refresh_from_db()
         self.assertEqual(submission.submitted_at, first_submitted_at)
+        self.assertEqual(
+            Notification.objects.filter(
+                recipient=self.other_user,
+                type=Notification.Type.SUBMISSION_SUBMITTED,
+            ).count(),
+            1,
+        )
 
     def test_submit_final_or_cancelled_returns_bad_request(self):
         submission = self.create_submission()

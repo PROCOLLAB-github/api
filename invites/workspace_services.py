@@ -3,6 +3,10 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from invites.models import Invite
+from notifications.events import (
+    notify_project_invite_created,
+    notify_project_invite_resolved,
+)
 from partner_programs.models import PartnerProgramUserProfile
 from projects.models import Collaborator, Project
 
@@ -138,6 +142,7 @@ def create_project_invitation(
             if pending.exists():
                 raise ProjectInvitationDuplicateError() from exc
             raise
+        notify_project_invite_created(invitation)
         return invitation
 
 
@@ -160,6 +165,7 @@ def accept_project_invitation(*, invitation_id: int, actor: User) -> Invite:
         invitation.is_accepted = True
         invitation.resolved_at = timezone.now()
         invitation.save(update_fields=["is_accepted", "resolved_at", "datetime_updated"])
+        notify_project_invite_resolved(invitation, actor=actor, status="accepted")
         return invitation
 
 
@@ -173,6 +179,7 @@ def decline_project_invitation(*, invitation_id: int, actor: User) -> Invite:
         invitation.is_accepted = False
         invitation.resolved_at = timezone.now()
         invitation.save(update_fields=["is_accepted", "resolved_at", "datetime_updated"])
+        notify_project_invite_resolved(invitation, actor=actor, status="declined")
         return invitation
 
 
@@ -186,4 +193,5 @@ def revoke_project_invitation(*, invitation_id: int, actor: User) -> Invite:
         invitation.is_revoked = True
         invitation.resolved_at = timezone.now()
         invitation.save(update_fields=["is_revoked", "resolved_at", "datetime_updated"])
+        notify_project_invite_resolved(invitation, actor=actor, status="revoked")
         return invitation

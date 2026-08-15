@@ -12,6 +12,7 @@ from partner_programs.models import (
     Team,
     TeamMember,
 )
+from notifications.models import Notification
 from partner_programs.tests.helpers import (
     create_partner_program,
     create_program_member,
@@ -112,9 +113,7 @@ class ApplicationAPITests(TestCase):
 
     def test_team_application_can_be_created_through_extended_request(self):
         PartnerProgram.objects.filter(pk=self.program.pk).update(
-            participation_format=(
-                PartnerProgram.PARTICIPATION_FORMAT_INDIVIDUAL_OR_TEAM
-            ),
+            participation_format=(PartnerProgram.PARTICIPATION_FORMAT_INDIVIDUAL_OR_TEAM),
             team_min_size=2,
             team_max_size=5,
         )
@@ -209,9 +208,7 @@ class ApplicationAPITests(TestCase):
 
     def test_patch_participation_mode_uses_team_service(self):
         PartnerProgram.objects.filter(pk=self.program.pk).update(
-            participation_format=(
-                PartnerProgram.PARTICIPATION_FORMAT_INDIVIDUAL_OR_TEAM
-            ),
+            participation_format=(PartnerProgram.PARTICIPATION_FORMAT_INDIVIDUAL_OR_TEAM),
             team_min_size=2,
             team_max_size=5,
         )
@@ -301,6 +298,7 @@ class ApplicationAPITests(TestCase):
 
     def test_submit_transitions_draft_and_sets_submitted_at(self):
         application = self.create_application()
+        self.program.managers.add(self.other_user)
         self.authenticate()
 
         response = self.client.post(
@@ -314,9 +312,16 @@ class ApplicationAPITests(TestCase):
         self.assertEqual(application.status, Application.STATUS_SUBMITTED)
         self.assertIsNotNone(application.submitted_at)
         self.assertEqual(response.data["status"], Application.STATUS_SUBMITTED)
+        self.assertTrue(
+            Notification.objects.filter(
+                recipient=self.other_user,
+                type=Notification.Type.APPLICATION_SUBMITTED,
+            ).exists()
+        )
 
     def test_repeated_submit_preserves_submitted_at(self):
         application = self.create_application()
+        self.program.managers.add(self.other_user)
         self.authenticate()
         url = f"/applications/{application.id}/submit/"
 
@@ -329,6 +334,13 @@ class ApplicationAPITests(TestCase):
         self.assertEqual(second_response.status_code, 200)
         application.refresh_from_db()
         self.assertEqual(application.submitted_at, first_submitted_at)
+        self.assertEqual(
+            Notification.objects.filter(
+                recipient=self.other_user,
+                type=Notification.Type.APPLICATION_SUBMITTED,
+            ).count(),
+            1,
+        )
 
     def test_withdraw_transitions_application_and_is_idempotent(self):
         application = self.create_application(
@@ -444,6 +456,12 @@ class ApplicationAPITests(TestCase):
         self.assertEqual(withdraw_response.status_code, 200)
         application.refresh_from_db()
         self.assertEqual(application.status, Application.STATUS_WITHDRAWN)
+        self.assertTrue(
+            Notification.objects.filter(
+                recipient=self.user,
+                type=Notification.Type.APPLICATION_STATUS_CHANGED,
+            ).exists()
+        )
 
     def test_project_can_be_null(self):
         self.authenticate()

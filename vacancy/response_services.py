@@ -4,6 +4,10 @@ from rest_framework import serializers
 from rest_framework.exceptions import NotFound, PermissionDenied
 
 from projects.models import Collaborator
+from notifications.events import (
+    notify_vacancy_response_created,
+    notify_vacancy_response_resolved,
+)
 from vacancy.mapping import CeleryEmailParams, MessageTypeEnum
 from vacancy.models import Vacancy, VacancyResponse
 from vacancy.tasks import send_email
@@ -71,6 +75,7 @@ def create_vacancy_response(
         user=user,
         **validated_data,
     )
+    notify_vacancy_response_created(response)
     transaction.on_commit(
         lambda: send_email.delay(
             CeleryEmailParams(
@@ -131,6 +136,14 @@ def accept_vacancy_response(response_id: int, *, actor) -> VacancyResponse:
         is_approved=False,
         datetime_updated=timezone.now(),
     )
+    notify_vacancy_response_resolved(response, actor=actor, accepted=True)
+    for rejected_response in rejected:
+        rejected_response.vacancy = vacancy
+        notify_vacancy_response_resolved(
+            rejected_response,
+            actor=actor,
+            accepted=False,
+        )
 
     transaction.on_commit(
         lambda: send_email.delay(_email_payload(response, MessageTypeEnum.ACCEPTED.value))
@@ -155,6 +168,7 @@ def decline_vacancy_response(response_id: int, *, actor) -> VacancyResponse:
         raise serializers.ValidationError("Отклик уже обработан.")
     response.is_approved = False
     response.save(update_fields=("is_approved", "datetime_updated"))
+    notify_vacancy_response_resolved(response, actor=actor, accepted=False)
     transaction.on_commit(
         lambda: send_email.delay(_email_payload(response, MessageTypeEnum.REJECTED.value))
     )
@@ -172,10 +186,19 @@ def close_vacancy(vacancy_id: int, *, actor) -> Vacancy:
     if vacancy.is_active:
         vacancy.is_active = False
         vacancy.save(update_fields=("is_active", "datetime_closed", "datetime_updated"))
+        pending_responses = list(
+            VacancyResponse.objects.select_for_update().filter(
+                vacancy=vacancy,
+                is_approved__isnull=True,
+            )
+        )
         VacancyResponse.objects.filter(
             vacancy=vacancy,
             is_approved__isnull=True,
         ).update(is_approved=False, datetime_updated=timezone.now())
+        for response in pending_responses:
+            response.vacancy = vacancy
+            notify_vacancy_response_resolved(response, actor=actor, accepted=False)
     return vacancy
 
 

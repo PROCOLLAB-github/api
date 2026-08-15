@@ -9,6 +9,7 @@ from django.urls import Resolver404, resolve, reverse
 from django.utils import timezone
 from rest_framework.test import APIClient
 
+from notifications.models import Notification
 from partner_programs.models import (
     Application,
     Evaluation,
@@ -375,6 +376,12 @@ class SubmissionAssignmentCreateAPITests(SubmissionAssignmentTestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data["status"], "assigned")
         self.assertEqual(SubmissionExpertAssignment.objects.count(), 1)
+        self.assertTrue(
+            Notification.objects.filter(
+                recipient=self.expert_user,
+                type=Notification.Type.EXPERT_ASSIGNMENT_CREATED,
+            ).exists()
+        )
 
     def test_assigned_by_is_request_user(self):
         self.authenticate()
@@ -637,6 +644,12 @@ class SubmissionAssignmentRevokeAPITests(SubmissionAssignmentTestCase):
         self.assertEqual(
             self.assignment.status,
             SubmissionExpertAssignment.STATUS_REVOKED,
+        )
+        self.assertTrue(
+            Notification.objects.filter(
+                recipient=self.expert_user,
+                type=Notification.Type.EXPERT_ASSIGNMENT_REVOKED,
+            ).exists()
         )
 
     def test_revoke_records_actor_timestamp_and_trimmed_reason(self):

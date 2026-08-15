@@ -14,6 +14,10 @@ from partner_programs.models import (
     TeamInvite,
     TeamMember,
 )
+from notifications.events import (
+    notify_team_invite_created,
+    notify_team_invite_resolved,
+)
 from partner_programs.permissions import can_manage_team
 from partner_programs.services.application_team import (
     ActiveApplicationConflictError,
@@ -365,6 +369,7 @@ def create_team_invite(
                 raise TeamInviteDuplicateError() from exc
             return TeamInviteCreationResult(invite, created=False)
 
+        notify_team_invite_created(invite)
         return TeamInviteCreationResult(invite, created=True)
 
 
@@ -419,6 +424,7 @@ def accept_team_invite(*, invite: TeamInvite, actor: User) -> TeamInvite:
         invite.status = TeamInvite.STATUS_ACCEPTED
         invite.resolved_at = resolved_at
         invite.save(update_fields=["status", "resolved_at", "updated_at"])
+        notify_team_invite_resolved(invite, actor=actor, status="accepted")
 
         # Принятие места в одной команде закрывает конкурирующие pending-инвайты
         # этого пользователя в рамках той же Program, но сохраняет их историю.
@@ -455,6 +461,7 @@ def decline_team_invite(*, invite: TeamInvite, actor: User) -> TeamInvite:
         invite.status = TeamInvite.STATUS_DECLINED
         invite.resolved_at = timezone.now()
         invite.save(update_fields=["status", "resolved_at", "updated_at"])
+        notify_team_invite_resolved(invite, actor=actor, status="declined")
         return invite
 
 
@@ -473,4 +480,5 @@ def revoke_team_invite(*, invite: TeamInvite, actor: User) -> TeamInvite:
         invite.status = TeamInvite.STATUS_REVOKED
         invite.resolved_at = timezone.now()
         invite.save(update_fields=["status", "resolved_at", "updated_at"])
+        notify_team_invite_resolved(invite, actor=actor, status="revoked")
         return invite

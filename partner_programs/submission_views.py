@@ -9,6 +9,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from notifications.events import (
+    notify_submission_status_changed,
+    notify_submission_submitted,
+)
 from core.throttling import PostOnlyScopedRateThrottle
 from partner_programs.models import Application, Submission, TeamMember
 from partner_programs.permissions import can_edit_application, can_edit_submission
@@ -99,9 +103,7 @@ class ApplicationSubmissionListCreateView(APIView):
         submission_data = dict(serializer.validated_data)
         stage_key = submission_data.pop("stage_key", "main")
         validated_version = submission_data.pop("version", None)
-        requested_version = (
-            validated_version if "version" in request.data else None
-        )
+        requested_version = validated_version if "version" in request.data else None
         version = requested_version
 
         try:
@@ -245,6 +247,7 @@ class SubmissionSubmitView(APIView):
             submission.status = Submission.STATUS_SUBMITTED
             submission.submitted_at = timezone.now()
             submission.save(update_fields=["status", "submitted_at", "updated_at"])
+            notify_submission_submitted(submission, actor=request.user)
             return _submission_response(submission)
 
 
@@ -281,4 +284,5 @@ class SubmissionCancelView(APIView):
 
             submission.status = Submission.STATUS_CANCELLED
             submission.save(update_fields=["status", "updated_at"])
+            notify_submission_status_changed(submission, actor=request.user)
             return _submission_response(submission)
