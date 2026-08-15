@@ -63,7 +63,9 @@ class NotificationReadView(APIView):
     @transaction.atomic
     def post(self, request, notification_id):
         notification = get_object_or_404(
-            Notification.objects.select_for_update().select_related("actor"),
+            # Блокируем только само уведомление: actor nullable, а PostgreSQL
+            # запрещает FOR UPDATE для nullable-стороны LEFT OUTER JOIN.
+            Notification.objects.select_for_update(),
             pk=notification_id,
             recipient=request.user,
         )
