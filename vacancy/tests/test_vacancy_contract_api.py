@@ -9,6 +9,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from projects.models import Collaborator
+from notifications.models import Notification
 from vacancy.constants import WorkExperience, WorkFormat, WorkSchedule
 from vacancy.models import Vacancy, VacancyResponse
 from vacancy.tests.helpers import (
@@ -403,6 +404,18 @@ class VacancyDecisionContractTests(TestCase):
             ).exists()
         )
         self.assertEqual(send_email.call_count, 2)
+        self.assertTrue(
+            Notification.objects.filter(
+                recipient=accepted_user,
+                type=Notification.Type.VACANCY_RESPONSE_ACCEPTED,
+            ).exists()
+        )
+        self.assertTrue(
+            Notification.objects.filter(
+                recipient=rejected_user,
+                type=Notification.Type.VACANCY_RESPONSE_DECLINED,
+            ).exists()
+        )
         self.assertEqual(
             self.client.post(f"/vacancies/responses/{accepted.id}/accept/").status_code,
             status.HTTP_400_BAD_REQUEST,

@@ -2,6 +2,7 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from news.models import News, NewsComment
+from notifications.models import Notification
 from news.tests.helpers import (
     create_news_for,
     create_partner_program,
@@ -27,6 +28,7 @@ class ReactNewsCommentAPITests(TestCase):
         return f"/feed/news/{(news or self.news).pk}/comments/{comment.pk}/"
 
     def test_user_can_create_and_read_comments_oldest_first(self):
+        self.program.managers.add(self.other_user)
         first_response = self.client.post(
             self.list_url,
             {"text": "  First comment  "},
@@ -49,6 +51,13 @@ class ReactNewsCommentAPITests(TestCase):
         self.assertEqual(
             [item["id"] for item in list_response.data["results"]],
             [first_response.data["id"], second_response.data["id"]],
+        )
+        self.assertEqual(
+            Notification.objects.filter(
+                recipient=self.other_user,
+                type=Notification.Type.NEWS_COMMENT_CREATED,
+            ).count(),
+            2,
         )
 
     def test_author_can_edit_comment_and_user_input_is_preserved(self):

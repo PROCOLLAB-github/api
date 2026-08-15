@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
+from notifications.events import notify_application_submitted
 from partner_programs.models import (
     Application,
     PartnerProgram,
@@ -131,10 +132,13 @@ def _lock_application(application: Application) -> Application:
 
 
 def _require_registration(*, program: PartnerProgram, user: User) -> None:
-    if user is None or not PartnerProgramUserProfile.objects.filter(
-        partner_program=program,
-        user=user,
-    ).exists():
+    if (
+        user is None
+        or not PartnerProgramUserProfile.objects.filter(
+            partner_program=program,
+            user=user,
+        ).exists()
+    ):
         raise RegistrationRequiredError()
 
 
@@ -170,12 +174,16 @@ def _active_application_ids_for_user(
         user=user,
         status__in=Application.ACTIVE_STATUSES,
     ).values_list("pk", flat=True)
-    membership_ids = TeamMember.objects.select_for_update().filter(
-        user=user,
-        status=TeamMember.STATUS_ACCEPTED,
-        team__application__program=program,
-        team__application__status__in=Application.ACTIVE_STATUSES,
-    ).values_list("team__application_id", flat=True)
+    membership_ids = (
+        TeamMember.objects.select_for_update()
+        .filter(
+            user=user,
+            status=TeamMember.STATUS_ACCEPTED,
+            team__application__program=program,
+            team__application__status__in=Application.ACTIVE_STATUSES,
+        )
+        .values_list("team__application_id", flat=True)
+    )
     return set(owned_ids).union(membership_ids)
 
 
@@ -374,9 +382,7 @@ def change_application_participation_mode(
     with transaction.atomic():
         program = _lock_program(application.program)
         application = _lock_application(application)
-        if application.user_id != actor.pk and not (
-            actor.is_staff or actor.is_superuser
-        ):
+        if application.user_id != actor.pk and not (actor.is_staff or actor.is_superuser):
             raise ApplicationNotEditableError(
                 "Только владелец может изменить формат заявки."
             )
@@ -465,9 +471,11 @@ def validate_team_invariants(application: Application) -> None:
     if application.participation_mode == Application.PARTICIPATION_MODE_UNDECIDED:
         raise ParticipationModeUndecidedError()
 
-    team = Team.objects.select_related("application", "captain").filter(
-        application=application
-    ).first()
+    team = (
+        Team.objects.select_related("application", "captain")
+        .filter(application=application)
+        .first()
+    )
     if application.participation_mode == Application.PARTICIPATION_MODE_INDIVIDUAL:
         if team is not None:
             raise TeamNotAllowedError()
@@ -481,8 +489,9 @@ def validate_team_invariants(application: Application) -> None:
     # Invited/declined/removed/left сохраняют историю, но участниками команды
     # при submit считаются только accepted-записи, включая капитана.
     accepted_members = list(
-        TeamMember.objects.filter(team=team, status=TeamMember.STATUS_ACCEPTED)
-        .select_related("user")
+        TeamMember.objects.filter(
+            team=team, status=TeamMember.STATUS_ACCEPTED
+        ).select_related("user")
     )
     accepted_user_ids = {member.user_id for member in accepted_members}
     registered_user_ids = set(
@@ -535,9 +544,7 @@ def submit_application(*, application: Application, actor: User) -> Application:
     with transaction.atomic():
         program = _lock_program(application.program)
         application = _lock_application(application)
-        if application.user_id != actor.pk and not (
-            actor.is_staff or actor.is_superuser
-        ):
+        if application.user_id != actor.pk and not (actor.is_staff or actor.is_superuser):
             raise ApplicationNotEditableError(
                 "Только владелец или staff может отправить заявку."
             )
@@ -547,9 +554,7 @@ def submit_application(*, application: Application, actor: User) -> Application:
         if application.status == Application.STATUS_SUBMITTED:
             return application
         if application.status != Application.STATUS_DRAFT:
-            raise ApplicationNotEditableError(
-                "Отправить можно только черновик заявки."
-            )
+            raise ApplicationNotEditableError("Отправить можно только черновик заявки.")
 
         _require_registration(program=program, user=application.user)
         _require_open_application_deadline(program)
@@ -564,4 +569,5 @@ def submit_application(*, application: Application, actor: User) -> Application:
         application.status = Application.STATUS_SUBMITTED
         application.submitted_at = timezone.now()
         application.save(update_fields=["status", "submitted_at", "updated_at"])
+        notify_application_submitted(application, actor=actor)
         return application

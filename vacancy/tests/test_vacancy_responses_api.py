@@ -4,6 +4,7 @@ from django.test import TestCase
 from rest_framework import status
 from rest_framework.test import APIClient
 
+from notifications.models import Notification
 from projects.models import Collaborator
 from vacancy.models import VacancyResponse
 from vacancy.tests.helpers import (
@@ -42,6 +43,12 @@ class VacancyResponseAPITests(TestCase):
         self.assertEqual(vacancy_response.vacancy, vacancy)
         self.assertEqual(vacancy_response.accompanying_file, file)
         send_email_delay.assert_called_once()
+        self.assertTrue(
+            Notification.objects.filter(
+                recipient=vacancy.project.leader,
+                type=Notification.Type.VACANCY_RESPONSE_CREATED,
+            ).exists()
+        )
 
     @patch("vacancy.response_services.send_email.delay")
     def test_user_cannot_apply_to_closed_vacancy(self, send_email_delay):
@@ -148,6 +155,12 @@ class VacancyResponseDecisionAPITests(TestCase):
             ).exists()
         )
         self.assertEqual(send_email_delay.call_args.args[0]["user_id"], applicant.id)
+        self.assertTrue(
+            Notification.objects.filter(
+                recipient=applicant,
+                type=Notification.Type.VACANCY_RESPONSE_ACCEPTED,
+            ).exists()
+        )
 
     @patch("vacancy.response_services.send_email.delay")
     def test_project_leader_can_decline_response(self, send_email_delay):
@@ -167,6 +180,12 @@ class VacancyResponseDecisionAPITests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertFalse(vacancy_response.is_approved)
         self.assertEqual(send_email_delay.call_args.args[0]["user_id"], applicant.id)
+        self.assertTrue(
+            Notification.objects.filter(
+                recipient=applicant,
+                type=Notification.Type.VACANCY_RESPONSE_DECLINED,
+            ).exists()
+        )
 
     @patch("vacancy.response_services.send_email.delay")
     def test_non_leader_cannot_accept_response(self, send_email_delay):

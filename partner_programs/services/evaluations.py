@@ -9,6 +9,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import OuterRef, Prefetch, Subquery
 from django.utils import timezone
 
+from notifications.events import notify_evaluation_submitted
 from partner_programs.models import (
     Evaluation,
     EvaluationAmendment,
@@ -566,6 +567,7 @@ def submit_evaluation(*, evaluation_id, user):
                 "updated_at",
             ]
         )
+        notify_evaluation_submitted(evaluation, actor=user)
         return evaluation
 
 

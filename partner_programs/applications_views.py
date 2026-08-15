@@ -9,6 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from notifications.events import notify_application_status_changed
 from core.throttling import PostOnlyScopedRateThrottle
 from partner_programs.models import Application, PartnerProgram, TeamMember
 from partner_programs.permissions import can_edit_application
@@ -288,4 +289,5 @@ class ApplicationWithdrawView(APIView):
             application.status = Application.STATUS_WITHDRAWN
             application.withdrawn_at = timezone.now()
             application.save(update_fields=["status", "withdrawn_at", "updated_at"])
+            notify_application_status_changed(application, actor=request.user)
             return _application_response(application, request)

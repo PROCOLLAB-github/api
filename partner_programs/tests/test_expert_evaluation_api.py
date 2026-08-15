@@ -16,6 +16,7 @@ from django.test import (
 from django.utils import timezone
 from rest_framework.test import APIClient
 
+from notifications.models import Notification
 from partner_programs.models import (
     Application,
     Evaluation,
@@ -706,6 +707,12 @@ class EvaluationSubmitAPITests(ExpertEvaluationAPITestCase):
         self.assertEqual(
             self.assignment.completed_at,
             self.evaluation.submitted_at,
+        )
+        self.assertTrue(
+            Notification.objects.filter(
+                recipient=self.manager,
+                type=Notification.Type.EVALUATION_SUBMITTED,
+            ).exists()
         )
 
     def test_incomplete_criteria_return_400(self):

@@ -12,6 +12,7 @@ from partner_programs.models import (
     TeamInvite,
     TeamMember,
 )
+from notifications.models import Notification
 from partner_programs.services.application_team import create_or_get_application
 from partner_programs.services.team_invites import create_team_invite
 from partner_programs.tests.helpers import (
@@ -142,6 +143,13 @@ class TeamInviteAPITests(TestCase):
         self.assertFalse(
             TeamMember.objects.filter(team=self.team, user=self.target).exists()
         )
+        self.assertEqual(
+            Notification.objects.filter(
+                recipient=self.target,
+                type=Notification.Type.TEAM_INVITE_CREATED,
+            ).count(),
+            1,
+        )
 
     def test_member_and_manager_cannot_create_outsider_gets_hidden_404(self):
         for user in (self.member_user, self.manager):
@@ -216,7 +224,9 @@ class TeamInviteAPITests(TestCase):
         response = self.client.get("/team-invites/my/")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual([item["id"] for item in response.data], [pending.pk, resolved.pk])
+        self.assertEqual(
+            [item["id"] for item in response.data], [pending.pk, resolved.pk]
+        )
         self.assertEqual(response.data[0]["application_id"], self.application.pk)
         self.assertEqual(response.data[0]["program"]["id"], self.program.pk)
         self.assertEqual(response.data[0]["captain"]["id"], self.captain.pk)
@@ -244,11 +254,19 @@ class TeamInviteAPITests(TestCase):
 
         self.assertEqual(accepted.status_code, 200)
         self.assertEqual(accepted.data["status"], TeamInvite.STATUS_ACCEPTED)
+        self.assertTrue(
+            Notification.objects.filter(
+                recipient=self.captain,
+                type=Notification.Type.TEAM_INVITE_ACCEPTED,
+            ).exists()
+        )
         self.assertEqual(self.client.get(application_url).status_code, 200)
         self.assertEqual(self.client.get(team_url).status_code, 200)
         self.assertEqual(self.client.get(submission_url).status_code, 200)
         self.assertEqual(
-            self.client.patch(application_url, {"form_data": {}}, format="json").status_code,
+            self.client.patch(
+                application_url, {"form_data": {}}, format="json"
+            ).status_code,
             403,
         )
         self.assertEqual(
@@ -256,7 +274,9 @@ class TeamInviteAPITests(TestCase):
             403,
         )
         self.assertEqual(
-            self.client.patch(submission_url, {"title": "Нельзя"}, format="json").status_code,
+            self.client.patch(
+                submission_url, {"title": "Нельзя"}, format="json"
+            ).status_code,
             403,
         )
 
@@ -281,6 +301,12 @@ class TeamInviteAPITests(TestCase):
         )
         self.assertEqual(declined.status_code, 200)
         self.assertEqual(declined.data["status"], TeamInvite.STATUS_DECLINED)
+        self.assertTrue(
+            Notification.objects.filter(
+                recipient=self.captain,
+                type=Notification.Type.TEAM_INVITE_DECLINED,
+            ).exists()
+        )
         self.assertFalse(
             TeamMember.objects.filter(team=self.team, user=decline_target).exists()
         )
@@ -292,6 +318,12 @@ class TeamInviteAPITests(TestCase):
             self.action_url(revoke_invite, "revoke"),
             {},
             format="json",
+        )
+        self.assertTrue(
+            Notification.objects.filter(
+                recipient=revoke_target,
+                type=Notification.Type.TEAM_INVITE_REVOKED,
+            ).exists()
         )
         self.assertEqual(revoked.status_code, 200)
         self.assertEqual(revoked.data["status"], TeamInvite.STATUS_REVOKED)
@@ -317,7 +349,9 @@ class TeamInviteAPITests(TestCase):
             self.client.post(self.action_url(invite, "accept")).status_code,
             400,
         )
-        self.assertEqual(self.client.post("/team-invites/999999/accept/").status_code, 404)
+        self.assertEqual(
+            self.client.post("/team-invites/999999/accept/").status_code, 404
+        )
 
     def test_invite_mutations_are_blocked_after_application_submit(self):
         accept_target = self.target
