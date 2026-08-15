@@ -162,7 +162,12 @@ def notify_application_submitted(application, *, actor) -> None:
         title="Новая заявка",
         message=f"Отправлена заявка в программу «{application.program.name}».",
         action_url=f"/office/program/{application.program_id}",
-        event_key=_event_key("application", application.pk, "submitted"),
+        event_key=_event_key(
+            "application",
+            application.pk,
+            "submitted",
+            application.submitted_at.isoformat(),
+        ),
     )
 
 
@@ -177,7 +182,13 @@ def notify_application_status_changed(application, *, actor) -> None:
         title="Статус заявки изменён",
         message=f"Новый статус заявки: {application.get_status_display()}.",
         action_url=f"/office/program/{application.program_id}",
-        event_key=_event_key("application", application.pk, "status", application.status),
+        event_key=_event_key(
+            "application",
+            application.pk,
+            "status",
+            application.status,
+            application.updated_at.isoformat(),
+        ),
     )
 
 
@@ -190,7 +201,12 @@ def notify_submission_submitted(submission, *, actor) -> None:
         title="Новое решение",
         message=f"В программу «{submission.program.name}» отправлено решение.",
         action_url=f"/office/program/{submission.program_id}",
-        event_key=_event_key("submission", submission.pk, "submitted"),
+        event_key=_event_key(
+            "submission",
+            submission.pk,
+            "submitted",
+            submission.submitted_at.isoformat(),
+        ),
     )
 
 
@@ -212,7 +228,13 @@ def notify_submission_status_changed(submission, *, actor) -> None:
         title="Статус решения изменён",
         message=f"Новый статус решения: {submission.get_status_display()}.",
         action_url=f"/office/program/{submission.program_id}/submission",
-        event_key=_event_key("submission", submission.pk, "status", submission.status),
+        event_key=_event_key(
+            "submission",
+            submission.pk,
+            "status",
+            submission.status,
+            submission.updated_at.isoformat(),
+        ),
     )
 
 
