@@ -26,6 +26,8 @@ def set_existing_news_audiences(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
+    atomic = False
+
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
         ("news", "0009_news_pin"),
@@ -53,9 +55,7 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name="news",
             constraint=models.CheckConstraint(
-                check=models.Q(
-                    audience__in=("platform", "program_participants")
-                ),
+                check=models.Q(audience__in=("platform", "program_participants")),
                 name="news_valid_audience",
             ),
         ),
