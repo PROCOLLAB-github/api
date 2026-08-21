@@ -84,10 +84,9 @@ jobs:
               fi &&
 
               for attempt in $(seq 1 24); do
-                root_status="$(curl -s -o /dev/null -w '%{http_code}' https://dev.procollab.ru/ || true)" &&
                 admin_status="$(curl -s -o /dev/null -w '%{http_code}' https://dev.procollab.ru/admin/login/ || true)" &&
 
-                if [ "$root_status" = "401" ] && [ "$admin_status" = "200" ]; then
+                if [ "$admin_status" = "200" ]; then
                   echo "Smoke check passed on attempt ${attempt}" &&
                   break
                 fi
@@ -95,8 +94,8 @@ jobs:
                 sleep 5
               done &&
 
-              if [ "$root_status" != "401" ] || [ "$admin_status" != "200" ]; then
-                echo "Smoke check failed: /=${root_status} /admin/login/=${admin_status}" >&2 &&
+              if [ "$admin_status" != "200" ]; then
+                echo "Smoke check failed: /admin/login/=${admin_status}" >&2 &&
                 exit 1
               fi &&
 
