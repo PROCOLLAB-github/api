@@ -23,7 +23,9 @@ class NewsInputSerializer(serializers.ModelSerializer[News]):
         request = self.context.get("request")
         user = getattr(request, "user", None)
         if user and user.is_authenticated:
-            self.fields["files"].queryset = UserFile.objects.filter(user=user)
+            self.fields["files"].child_relation.queryset = UserFile.objects.filter(
+                user=user
+            )
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
