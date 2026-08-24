@@ -149,6 +149,16 @@ class CustomUser(AbstractUser):
         blank=True,
         verbose_name="Дата верификации",
     )
+    verification_notice_acknowledged_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Дата подтверждения уведомления о верификации",
+    )
+    profile_fill_prompt_acknowledged_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Дата подтверждения напоминания о заполнении профиля",
+    )
     last_activity = models.DateTimeField(
         null=True,
         blank=True,
