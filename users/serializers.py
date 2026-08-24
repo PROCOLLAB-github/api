@@ -450,6 +450,8 @@ class UserProgramsSerializer(serializers.ModelSerializer):
 class UserDetailSerializer(
     serializers.ModelSerializer[CustomUser], SkillsWriteSerializerMixin
 ):
+    verification_notice_acknowledged_at = serializers.DateTimeField(read_only=True)
+    profile_fill_prompt_acknowledged_at = serializers.DateTimeField(read_only=True)
     member = MemberSerializer(required=False)
     investor = InvestorSerializer(required=False)
     expert = ExpertSerializer(required=False)
@@ -530,6 +532,8 @@ class UserDetailSerializer(
             "mentor",
             "achievements",
             "verification_date",
+            "verification_notice_acknowledged_at",
+            "profile_fill_prompt_acknowledged_at",
             "onboarding_stage",
             "projects",
             "programs",
@@ -733,6 +737,8 @@ class UserDetailSerializer(
         request = self.context.get("request")
         if request and request.user != instance:
             representation.pop("phone_number", None)
+            representation.pop("verification_notice_acknowledged_at", None)
+            representation.pop("profile_fill_prompt_acknowledged_at", None)
         return representation
 
     def validate_phone_number(self, data):
@@ -941,9 +947,11 @@ class UserProjectListSerializer(serializers.ModelSerializer[Project]):
         links_cache = getattr(project, "_prefetched_objects_cache", {}).get(
             "program_links"
         )
-        link = links_cache[0] if links_cache else project.program_links.select_related(
-            "partner_program"
-        ).first()
+        link = (
+            links_cache[0]
+            if links_cache
+            else project.program_links.select_related("partner_program").first()
+        )
         if link and link.partner_program:
             return {
                 "id": link.partner_program_id,

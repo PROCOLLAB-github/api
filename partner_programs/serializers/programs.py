@@ -143,6 +143,7 @@ class PartnerProgramForMemberSerializer(PartnerProgramBaseSerializerMixin):
     views_count = serializers.SerializerMethodField(method_name="count_views")
     links = serializers.SerializerMethodField(method_name="get_links")
     is_user_manager = serializers.SerializerMethodField(method_name="get_is_user_manager")
+    welcome_acknowledged_at = serializers.SerializerMethodField()
 
     def count_views(self, program):
         return get_views_count(program)
@@ -158,6 +159,11 @@ class PartnerProgramForMemberSerializer(PartnerProgramBaseSerializerMixin):
         if user:
             return is_fan(obj, user)
         return False
+
+    def get_welcome_acknowledged_at(self, _program):
+        """Возвращает состояние приветствия только для текущей пары пользователь–программа."""
+        program_user_profile = self.context.get("program_user_profile")
+        return getattr(program_user_profile, "welcome_acknowledged_at", None)
 
     class Meta:
         model = PartnerProgram
@@ -179,6 +185,7 @@ class PartnerProgramForMemberSerializer(PartnerProgramBaseSerializerMixin):
             "datetime_evaluation_ends",
             "publish_projects_after_finish",
             "is_user_manager",
+            "welcome_acknowledged_at",
             "courses",
         )
 
