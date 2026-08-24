@@ -1184,6 +1184,11 @@ class PartnerProgramUserProfile(models.Model):
         related_name="partner_program_profiles",
     )
     partner_program_data = models.JSONField()
+    welcome_acknowledged_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Дата подтверждения приветствия программы",
+    )
     datetime_created = models.DateTimeField(auto_now_add=True)
     datetime_updated = models.DateTimeField(auto_now=True)
 
