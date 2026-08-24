@@ -73,13 +73,10 @@ class PartnerProgramList(generics.ListCreateAPIView):
             qs = PartnerProgram.objects.none()
         else:
             now = timezone.now()
-            qs = (
-                base_qs.filter(
-                    partner_program_profiles__user=self.request.user,
-                    datetime_finished__gte=now,
-                )
-                .distinct()
-            )
+            qs = base_qs.filter(
+                partner_program_profiles__user=self.request.user,
+                datetime_finished__gte=now,
+            ).distinct()
 
         user = self.request.user
         if not user.is_authenticated:
@@ -103,20 +100,59 @@ class PartnerProgramDetail(generics.RetrieveAPIView):
 
     def get(self, request, *args, **kwargs):
         program = self.get_object()
-        is_user_member = program.users.filter(pk=request.user.pk).exists()
+        program_user_profile = None
+        if request.user.is_authenticated:
+            program_user_profile = (
+                PartnerProgramUserProfile.objects.filter(
+                    partner_program=program,
+                    user=request.user,
+                )
+                .only("id", "welcome_acknowledged_at")
+                .first()
+            )
+        is_user_member = program_user_profile is not None
         serializer_class = (
             PartnerProgramForMemberSerializer
             if is_user_member
             else PartnerProgramForUnregisteredUserSerializer
         )
         serializer = serializer_class(
-            program, context={"request": request, "user": request.user}
+            program,
+            context={
+                "request": request,
+                "user": request.user,
+                "program_user_profile": program_user_profile,
+            },
         )
         data = serializer.data
         data["is_user_member"] = is_user_member
         if request.user.is_authenticated:
             add_view(program, request.user)
         return Response(data, status=status.HTTP_200_OK)
+
+
+class PartnerProgramWelcomeAcknowledgement(APIView):
+    """Идемпотентно фиксирует приветствие для текущего участника программы."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        program_user_profile = get_object_or_404(
+            PartnerProgramUserProfile,
+            partner_program_id=pk,
+            user=request.user,
+        )
+        if program_user_profile.welcome_acknowledged_at is None:
+            PartnerProgramUserProfile.objects.filter(
+                pk=program_user_profile.pk,
+                welcome_acknowledged_at__isnull=True,
+            ).update(welcome_acknowledged_at=timezone.now())
+            program_user_profile.refresh_from_db(fields=["welcome_acknowledged_at"])
+
+        return Response(
+            {"welcome_acknowledged_at": program_user_profile.welcome_acknowledged_at},
+            status=status.HTTP_200_OK,
+        )
 
 
 class PartnerProgramProjectApplyView(GenericAPIView):
@@ -139,7 +175,9 @@ class PartnerProgramProjectApplyView(GenericAPIView):
                 "program_id": program.id,
                 "can_submit": program.is_project_submission_open(),
                 "submission_deadline": program.get_project_submission_deadline(),
-                "program_fields": PartnerProgramFieldSerializer(fields_qs, many=True).data,
+                "program_fields": PartnerProgramFieldSerializer(
+                    fields_qs, many=True
+                ).data,
             },
             status=status.HTTP_200_OK,
         )

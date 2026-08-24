@@ -4,6 +4,8 @@ from news.views import NewsList, NewsDetail, NewsDetailSetViewed, NewsDetailSetL
 from users.views import (
     AchievementDetail,
     AchievementList,
+    AcknowledgeProfileFillPrompt,
+    AcknowledgeVerificationNotice,
     CurrentUser,
     PublicUserListView,
     SpecialistsList,
@@ -37,7 +39,7 @@ urlpatterns = [
         "specialists/", SpecialistsList.as_view()
     ),  # this url actually returns  mentors, experts and investors
     path("users/", UserList.as_view()),
-    path('public-users/', PublicUserListView.as_view(), name='public-users'),
+    path("public-users/", PublicUserListView.as_view(), name="public-users"),
     path("users/projects/", UserProjectsList.as_view()),
     path("users/projects/leader/", UserLeaderProjectsList.as_view()),
     path("users/liked/", LikedProjectList.as_view()),
@@ -55,8 +57,21 @@ urlpatterns = [
     path("users/<int:user_pk>/news/<int:pk>/", NewsDetail.as_view()),
     path("users/<int:user_pk>/news/<int:pk>/set_viewed/", NewsDetailSetViewed.as_view()),
     path("users/<int:user_pk>/news/<int:pk>/set_liked/", NewsDetailSetLiked.as_view()),
-    path("users/<int:user_pk>/approve_skill/<int:skill_pk>/", UserSkillsApproveDeclineView.as_view()),
+    path(
+        "users/<int:user_pk>/approve_skill/<int:skill_pk>/",
+        UserSkillsApproveDeclineView.as_view(),
+    ),
     path("users/current/", CurrentUser.as_view()),
+    path(
+        "users/current/acknowledge-verification-notice/",
+        AcknowledgeVerificationNotice.as_view(),
+        name="acknowledge-verification-notice",
+    ),
+    path(
+        "users/current/acknowledge-profile-fill-prompt/",
+        AcknowledgeProfileFillPrompt.as_view(),
+        name="acknowledge-profile-fill-prompt",
+    ),
     # todo: change password view
     path("users/current/programs/", CurrentUserPrograms.as_view()),
     path("users/current/programs/tags/", CurrentUserProgramsTags.as_view()),
