@@ -31,6 +31,7 @@ from partner_programs.views import (
     PartnerProgramRegister,
     PartnerProgramSetLiked,
     PartnerProgramSetViewed,
+    PartnerProgramWelcomeAcknowledgement,
     ProgramFiltersAPIView,
     ProgramProjectFilterAPIView,
 )
@@ -75,6 +76,11 @@ urlpatterns = [
         name="application-create",
     ),
     path("<int:pk>/", PartnerProgramDetail.as_view()),
+    path(
+        "<int:pk>/acknowledge-welcome/",
+        PartnerProgramWelcomeAcknowledgement.as_view(),
+        name="partner-program-acknowledge-welcome",
+    ),
     path(
         "partner-program-projects/<int:pk>/submit/",
         PartnerProgramProjectSubmitView.as_view(),

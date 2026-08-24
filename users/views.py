@@ -259,6 +259,41 @@ class CurrentUser(GenericAPIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+def _acknowledge_current_user_notice(request, field_name: str) -> Response:
+    """Идемпотентно фиксирует подтверждение системного окна текущим пользователем."""
+    User.objects.filter(
+        pk=request.user.pk,
+        **{f"{field_name}__isnull": True},
+    ).update(**{field_name: timezone.now()})
+    request.user.refresh_from_db(fields=[field_name])
+    serializer = UserDetailSerializer(request.user, context={"request": request})
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class AcknowledgeVerificationNotice(APIView):
+    """Фиксирует ознакомление текущего пользователя с ожиданием верификации."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        return _acknowledge_current_user_notice(
+            request,
+            "verification_notice_acknowledged_at",
+        )
+
+
+class AcknowledgeProfileFillPrompt(APIView):
+    """Фиксирует явное закрытие напоминания о заполнении профиля."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        return _acknowledge_current_user_notice(
+            request,
+            "profile_fill_prompt_acknowledged_at",
+        )
+
+
 class UserTypesView(APIView):
     permission_classes = [AllowAny]
 
