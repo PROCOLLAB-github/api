@@ -4,6 +4,8 @@ from news.views import NewsList, NewsDetail, NewsDetailSetViewed, NewsDetailSetL
 from users.views import (
     AchievementDetail,
     AchievementList,
+    AcknowledgeProfileFillPrompt,
+    AcknowledgeVerificationNotice,
     CurrentUser,
     PublicUserListView,
     SpecialistsList,
@@ -64,6 +66,16 @@ urlpatterns = [
     path("users/<int:user_pk>/news/<int:pk>/set_liked/", NewsDetailSetLiked.as_view()),
     path("users/<int:user_pk>/approve_skill/<int:skill_pk>/", UserSkillsApproveDeclineView.as_view()),
     path("users/current/", CurrentUser.as_view()),
+    path(
+        "users/current/acknowledge-verification-notice/",
+        AcknowledgeVerificationNotice.as_view(),
+        name="acknowledge-verification-notice",
+    ),
+    path(
+        "users/current/acknowledge-profile-fill-prompt/",
+        AcknowledgeProfileFillPrompt.as_view(),
+        name="acknowledge-profile-fill-prompt",
+    ),
     # todo: change password view
     path("users/current/programs/", CurrentUserPrograms.as_view()),
     path("users/current/programs/tags/", CurrentUserProgramsTags.as_view()),
