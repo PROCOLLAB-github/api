@@ -96,6 +96,7 @@ def create_vacancy(
     work_schedule: str | None = WorkSchedule.FULL_TIME.name.lower(),
     work_format: str | None = WorkFormat.REMOTE.name.lower(),
     salary: int | None = 100000,
+    city: str | None = None,
 ) -> Vacancy:
     vacancy = Vacancy.objects.create(
         project=project or create_project(),
@@ -107,6 +108,7 @@ def create_vacancy(
         work_schedule=work_schedule,
         work_format=work_format,
         salary=salary,
+        city=city,
     )
     if datetime_created is not None:
         Vacancy.objects.filter(pk=vacancy.pk).update(datetime_created=datetime_created)

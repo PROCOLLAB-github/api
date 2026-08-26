@@ -87,6 +87,7 @@ class VacancyCatalogContractTests(TestCase):
             work_format=WorkFormat.HYBRID.name.lower(),
             work_schedule=WorkSchedule.PART_TIME.name.lower(),
             salary=180000,
+            city="Казань",
         )
         create_vacancy(salary=90000)
 
@@ -106,6 +107,7 @@ class VacancyCatalogContractTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["count"], 1)
         self.assertEqual(response.data["results"][0]["id"], target.id)
+        self.assertEqual(response.data["results"][0]["city"], "Казань")
 
     def test_old_vacancy_is_visible_and_list_query_count_is_constant(self):
         old = create_vacancy(
