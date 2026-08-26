@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile
-    image: procollab-dev-api:${IMAGE_TAG:-dev}
+    image: ${DEPLOY_IMAGE:-procollab-dev-api:dev}
     restart: unless-stopped
     volumes:
       - ./log:/procollab/log
@@ -28,7 +28,7 @@ services:
   celerys:
     container_name: api_celery
     restart: always
-    image: procollab-dev-api:${IMAGE_TAG:-dev}
+    image: ${DEPLOY_IMAGE:-procollab-dev-api:dev}
     env_file:
       - .env
     command: bash ./scripts/celery.sh
