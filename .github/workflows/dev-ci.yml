@@ -24,7 +24,13 @@ jobs:
               git fetch --all --tags --prune
               git branch -r --contains "${{ github.sha }}" | grep -q 'origin/dev'
               git checkout --detach "${{ github.sha }}"
-              git rev-parse HEAD
+              git reset --hard "${{ github.sha }}"
+              test "$(git rev-parse HEAD)" = "${{ github.sha }}"
+              if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+                echo "Tracked working tree is dirty after reset" >&2
+                git status --short --untracked-files=no >&2
+                exit 1
+              fi
 
               export IMAGE_TAG="${{ github.sha }}"
 
@@ -69,7 +75,63 @@ jobs:
                   docker compose -f docker-compose.dev-ci.yml ps >&2 || true
                   exit 1
                 fi
-              done &&
+              done
+
+              docker compose -f docker-compose.dev-ci.yml exec -T web python - <<'PY'
+              import os
+
+              os.environ.setdefault("DJANGO_SETTINGS_MODULE", "procollab.settings")
+
+              import django
+
+              django.setup()
+
+              from vacancy.serializers import (
+                  ProjectVacancyCreateListSerializer,
+                  VacancyDetailSerializer,
+              )
+
+              create_fields = set(ProjectVacancyCreateListSerializer().fields.keys())
+              detail_fields = set(VacancyDetailSerializer().fields.keys())
+
+              print("ProjectVacancyCreateListSerializer fields:", sorted(create_fields))
+              print("VacancyDetailSerializer fields:", sorted(detail_fields))
+
+              if "city" not in create_fields:
+                  raise SystemExit("Runtime create serializer does not contain city")
+
+              if "city" not in detail_fields:
+                  raise SystemExit("Runtime detail serializer does not contain city")
+              PY
+
+              docker compose -f docker-compose.dev-ci.yml exec -T web \
+                python manage.py showmigrations vacancy
+
+              docker compose -f docker-compose.dev-ci.yml exec -T web python - <<'PY'
+              import os
+
+              os.environ.setdefault("DJANGO_SETTINGS_MODULE", "procollab.settings")
+
+              import django
+
+              django.setup()
+
+              from django.db import connection
+              from django.db.migrations.recorder import MigrationRecorder
+
+              applied = {
+                  (migration.app, migration.name)
+                  for migration in MigrationRecorder(connection).migration_qs
+              }
+
+              if ("vacancy", "0010_vacancy_city") not in applied:
+                  raise SystemExit("vacancy.0010_vacancy_city is not applied")
+
+              print("vacancy.0010_vacancy_city applied")
+              PY
+
+              docker compose -f docker-compose.dev-ci.yml exec -T web \
+                grep -n '"city"' /procollab/vacancy/serializers.py
 
               install -d /etc/nginx/procollab/includes &&
               install -m 644 deploy/nginx/host/includes/proxy_app.inc /etc/nginx/procollab/includes/proxy_app.inc &&
