@@ -2,7 +2,6 @@ from enum import Enum
 
 
 class ChoicesMixin:
-
     @classmethod
     def choices(cls):
         """Return a list of tuples (value, display_name) for choices."""
@@ -51,3 +50,10 @@ class WorkFormat(ChoicesMixin, Enum):
     REMOTE: str = "удаленная работа"
     OFFICE: str = "работа в офисе"
     HYBRID: str = "смешанный формат"
+
+    @classmethod
+    def from_display(cls, display_value):
+        """Нормализует legacy-значение Angular в канонический смешанный формат."""
+        if display_value == "смешанная":
+            display_value = cls.HYBRID.value
+        return super().from_display(display_value)
