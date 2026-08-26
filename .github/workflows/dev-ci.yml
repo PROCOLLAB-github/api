@@ -32,6 +32,43 @@ jobs:
                 exit 1
               fi
 
+              echo "=== HOST SOURCE ==="
+              pwd
+              git rev-parse HEAD
+              git status --short --untracked-files=all
+
+              echo "HEAD serializers blob:"
+              git rev-parse HEAD:vacancy/serializers.py
+
+              echo "working-tree serializers blob:"
+              git hash-object vacancy/serializers.py
+
+              echo "working-tree serializers sha256:"
+              sha256sum vacancy/serializers.py
+
+              grep -n '"city"' vacancy/serializers.py || true
+
+              expected_serializer_blob="$(git rev-parse HEAD:vacancy/serializers.py)"
+              actual_serializer_blob="$(git hash-object vacancy/serializers.py)"
+              if [ "$actual_serializer_blob" != "$expected_serializer_blob" ]; then
+                echo "Server serializers.py does not match HEAD blob" >&2
+                exit 1
+              fi
+
+              echo "=== INDEX FLAGS ==="
+              git ls-files -v \
+                vacancy/serializers.py \
+                vacancy/models.py \
+                vacancy/migrations/0010_vacancy_city.py || true
+              git sparse-checkout list || true
+
+              echo "=== HOST PYTHON CACHE IN BUILD CONTEXT ==="
+              find vacancy -maxdepth 3 \
+                \( -name '*.pyc' -o -name '__pycache__' \) \
+                -print 2>/dev/null | sort
+              echo "Python cache exclusions in .dockerignore:"
+              grep -En '^(__pycache__/|\*\.py\[cod\])$' .dockerignore || true
+
               export IMAGE_TAG="${{ github.sha }}"
 
               rm -f .env
@@ -56,7 +93,85 @@ jobs:
               chmod 600 .env
 
               docker compose -f docker-compose.dev-ci.yml config >/dev/null
-              docker compose -f docker-compose.dev-ci.yml build web &&
+              docker compose -f docker-compose.dev-ci.yml build --no-cache web
+
+              echo "=== IMAGE SOURCE ==="
+              docker run --rm \
+                --entrypoint sh \
+                "procollab-dev-api:${IMAGE_TAG}" \
+                -lc '
+                  pwd
+                  ls -l /procollab/vacancy/serializers.py
+                  sha256sum /procollab/vacancy/serializers.py
+                  grep -n "\"city\"" /procollab/vacancy/serializers.py || true
+                  echo "Duplicate vacancy serializer modules in image:"
+                  find / \
+                    -path "*/vacancy/serializers.py" \
+                    -o -path "*/vacancy/serializers.pyc" \
+                    2>/dev/null | sort
+                  echo "Python cache in image vacancy package:"
+                  find /procollab/vacancy \
+                    -maxdepth 2 \
+                    \( -name "*.pyc" -o -name "__pycache__" \) \
+                    -print 2>/dev/null || true
+                '
+
+              docker run --rm -i \
+                --env-file .env \
+                --entrypoint python \
+                "procollab-dev-api:${IMAGE_TAG}" \
+                - <<'PY'
+              import inspect
+              import os
+              import sys
+
+              os.environ.setdefault("DJANGO_SETTINGS_MODULE", "procollab.settings")
+
+              import django
+
+              django.setup()
+
+              import vacancy
+              import vacancy.serializers as serializers_module
+              from vacancy.serializers import (
+                  ProjectVacancyCreateListSerializer,
+                  VacancyDetailSerializer,
+              )
+
+              print("cwd:", os.getcwd())
+              print("sys.path:")
+              for value in sys.path:
+                  print(" ", value)
+
+              print("vacancy package:", vacancy.__file__)
+              print("vacancy.serializers module:", serializers_module.__file__)
+              print(
+                  "create serializer source file:",
+                  inspect.getsourcefile(ProjectVacancyCreateListSerializer),
+              )
+              print(
+                  "detail serializer source file:",
+                  inspect.getsourcefile(VacancyDetailSerializer),
+              )
+              print(
+                  "create Meta.fields:",
+                  ProjectVacancyCreateListSerializer.Meta.fields,
+              )
+              print("detail Meta.fields:", VacancyDetailSerializer.Meta.fields)
+              print(
+                  "create runtime fields:",
+                  list(ProjectVacancyCreateListSerializer().fields.keys()),
+              )
+              print(
+                  "detail runtime fields:",
+                  list(VacancyDetailSerializer().fields.keys()),
+              )
+              print("CREATE SOURCE:")
+              print(inspect.getsource(ProjectVacancyCreateListSerializer))
+              print("DETAIL SOURCE:")
+              print(inspect.getsource(VacancyDetailSerializer))
+              PY
+
               docker compose -f docker-compose.dev-ci.yml run --rm web python manage.py migrate &&
               docker compose -f docker-compose.dev-ci.yml up -d --force-recreate &&
               expected_image="procollab-dev-api:${IMAGE_TAG}" &&
@@ -77,8 +192,27 @@ jobs:
                 fi
               done
 
+              echo "=== RUNNING CONTAINER SOURCE ==="
+              docker compose -f docker-compose.dev-ci.yml exec -T web sh -lc '
+                pwd
+                sha256sum /procollab/vacancy/serializers.py
+                grep -n "\"city\"" /procollab/vacancy/serializers.py || true
+                echo "Duplicate vacancy serializer modules in running container:"
+                find / \
+                  -path "*/vacancy/serializers.py" \
+                  -o -path "*/vacancy/serializers.pyc" \
+                  2>/dev/null | sort
+                echo "Python cache in running vacancy package:"
+                find /procollab/vacancy \
+                  -maxdepth 2 \
+                  \( -name "*.pyc" -o -name "__pycache__" \) \
+                  -print 2>/dev/null || true
+              '
+
               docker compose -f docker-compose.dev-ci.yml exec -T web python - <<'PY'
+              import inspect
               import os
+              import sys
 
               os.environ.setdefault("DJANGO_SETTINGS_MODULE", "procollab.settings")
 
@@ -86,22 +220,41 @@ jobs:
 
               django.setup()
 
+              import vacancy
+              import vacancy.serializers as serializers_module
               from vacancy.serializers import (
                   ProjectVacancyCreateListSerializer,
                   VacancyDetailSerializer,
               )
 
-              create_fields = set(ProjectVacancyCreateListSerializer().fields.keys())
-              detail_fields = set(VacancyDetailSerializer().fields.keys())
+              print("cwd:", os.getcwd())
+              print("sys.path:")
+              for value in sys.path:
+                  print(" ", value)
 
-              print("ProjectVacancyCreateListSerializer fields:", sorted(create_fields))
-              print("VacancyDetailSerializer fields:", sorted(detail_fields))
-
-              if "city" not in create_fields:
-                  raise SystemExit("Runtime create serializer does not contain city")
-
-              if "city" not in detail_fields:
-                  raise SystemExit("Runtime detail serializer does not contain city")
+              print("vacancy package:", vacancy.__file__)
+              print("vacancy.serializers module:", serializers_module.__file__)
+              print(
+                  "create source:",
+                  inspect.getsourcefile(ProjectVacancyCreateListSerializer),
+              )
+              print(
+                  "detail source:",
+                  inspect.getsourcefile(VacancyDetailSerializer),
+              )
+              print(
+                  "create Meta.fields:",
+                  ProjectVacancyCreateListSerializer.Meta.fields,
+              )
+              print("detail Meta.fields:", VacancyDetailSerializer.Meta.fields)
+              print(
+                  "create runtime fields:",
+                  list(ProjectVacancyCreateListSerializer().fields.keys()),
+              )
+              print(
+                  "detail runtime fields:",
+                  list(VacancyDetailSerializer().fields.keys()),
+              )
               PY
 
               docker compose -f docker-compose.dev-ci.yml exec -T web \
@@ -130,8 +283,31 @@ jobs:
               print("vacancy.0010_vacancy_city applied")
               PY
 
-              docker compose -f docker-compose.dev-ci.yml exec -T web \
-                grep -n '"city"' /procollab/vacancy/serializers.py
+              docker compose -f docker-compose.dev-ci.yml exec -T web python - <<'PY'
+              import os
+
+              os.environ.setdefault("DJANGO_SETTINGS_MODULE", "procollab.settings")
+
+              import django
+
+              django.setup()
+
+              from vacancy.serializers import (
+                  ProjectVacancyCreateListSerializer,
+                  VacancyDetailSerializer,
+              )
+
+              create_fields = set(ProjectVacancyCreateListSerializer().fields.keys())
+              detail_fields = set(VacancyDetailSerializer().fields.keys())
+
+              if "city" not in create_fields:
+                  raise SystemExit("Runtime create serializer does not contain city")
+
+              if "city" not in detail_fields:
+                  raise SystemExit("Runtime detail serializer does not contain city")
+
+              print("Runtime serializers contain city")
+              PY
 
               install -d /etc/nginx/procollab/includes &&
               install -m 644 deploy/nginx/host/includes/proxy_app.inc /etc/nginx/procollab/includes/proxy_app.inc &&
