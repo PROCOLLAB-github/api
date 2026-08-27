@@ -1,0 +1,158 @@
+name: Backend PostgreSQL CI
+
+on:
+  pull_request:
+    branches:
+      - dev
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-postgres-dev-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  postgres-tests:
+    name: Backend PostgreSQL CI
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: procollab_ci
+          POSTGRES_USER: procollab_ci
+          POSTGRES_PASSWORD: procollab_ci_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U procollab_ci -d procollab_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      PYTHONUNBUFFERED: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      DJANGO_SETTINGS_MODULE: procollab.settings_ci
+      DJANGO_SECRET_KEY: ci-only-not-production-secret
+      DEBUG: "False"
+      DATABASE_NAME: procollab_ci
+      DATABASE_USER: procollab_ci
+      DATABASE_PASSWORD: procollab_ci_password
+      DATABASE_HOST: 127.0.0.1
+      DATABASE_PORT: "5432"
+      ALLOW_REACT_DEV_DEMO_SEED: "False"
+      AUTOPOSTING_ON: "False"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install "poetry==1.2.2"
+          poetry config virtualenvs.create true
+          poetry install --no-interaction --no-ansi --no-root
+
+      - name: Verify PostgreSQL connection and locking support
+        run: |
+          poetry run python - <<'PY'
+          import django
+
+          django.setup()
+
+          from django.db import connection
+
+          connection.ensure_connection()
+          assert connection.vendor == "postgresql", connection.vendor
+          assert connection.features.has_select_for_update
+          print(f"Database vendor: {connection.vendor}")
+          print(
+              "select_for_update support: "
+              f"{connection.features.has_select_for_update}"
+          )
+          PY
+
+      - name: Check Django configuration
+        run: poetry run python manage.py check
+
+      - name: Check Django models
+        run: poetry run python manage.py check --tag models
+
+      - name: Check migration consistency
+        run: poetry run python manage.py makemigrations --check --dry-run
+
+      - name: Apply migrations to empty PostgreSQL database
+        run: poetry run python manage.py migrate --noinput
+
+      - name: Check CI settings formatting
+        run: poetry run black --check procollab/settings_ci.py
+
+      - name: Lint CI settings
+        run: poetry run flake8 procollab/settings_ci.py
+
+      - name: Run PostgreSQL locking and vacancy response tests
+        shell: bash
+        run: |
+          test_targets=(
+            news.tests.test_news_migration_0010.NewsMigration0010PostgreSQLTests
+            vacancy.tests.test_vacancy_responses_api
+          )
+
+          if [[ -f vacancy/tests/test_vacancy_response_contract_api.py ]]; then
+            test_targets+=(vacancy.tests.test_vacancy_response_contract_api)
+          fi
+
+          poetry run python manage.py test "${test_targets[@]}" --verbosity 2
+
+      - name: Run full backend test suite
+        run: poetry run python manage.py test --verbosity 1 --keepdb
+
+      - name: Remove retained PostgreSQL test database
+        if: always()
+        run: |
+          poetry run python - <<'PY'
+          import os
+
+          import psycopg2
+          from psycopg2 import sql
+
+          test_database = "test_procollab_ci"
+
+          connection = psycopg2.connect(
+              dbname=os.environ["DATABASE_NAME"],
+              user=os.environ["DATABASE_USER"],
+              password=os.environ["DATABASE_PASSWORD"],
+              host=os.environ["DATABASE_HOST"],
+              port=os.environ["DATABASE_PORT"],
+          )
+          connection.autocommit = True
+
+          try:
+              with connection.cursor() as cursor:
+                  cursor.execute(
+                      """
+                      SELECT pg_terminate_backend(pid)
+                      FROM pg_stat_activity
+                      WHERE datname = %s
+                        AND pid <> pg_backend_pid()
+                      """,
+                      [test_database],
+                  )
+                  cursor.execute(
+                      sql.SQL("DROP DATABASE IF EXISTS {}").format(
+                          sql.Identifier(test_database)
+                      )
+                  )
+          finally:
+              connection.close()
+          PY
