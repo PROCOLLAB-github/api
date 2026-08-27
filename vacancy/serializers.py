@@ -61,6 +61,30 @@ class AbstractVacancyEnumFields(serializers.Serializer):
         return representation
 
 
+class VacancyCityValidationMixin:
+    """Проверяет город по итоговому формату вакансии для create, PUT и PATCH."""
+
+    CITY_REQUIRED_MESSAGE = "Для офисного или смешанного формата укажите город."
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        instance = getattr(self, "instance", None)
+        work_format = attrs.get("work_format", getattr(instance, "work_format", None))
+        city = attrs.get("city", getattr(instance, "city", None))
+
+        if work_format == WorkFormat.REMOTE.name.lower():
+            attrs["city"] = None
+        elif work_format in {
+            WorkFormat.OFFICE.name.lower(),
+            WorkFormat.HYBRID.name.lower(),
+        }:
+            if not city or not city.strip():
+                raise serializers.ValidationError({"city": self.CITY_REQUIRED_MESSAGE})
+            attrs["city"] = city.strip()
+
+        return attrs
+
+
 class AbstractVacancyReadOnlyFields(serializers.Serializer):
     """Общие вычисляемые поля read-only контрактов вакансии."""
 
@@ -98,6 +122,7 @@ class ProjectVacancyListSerializer(
     VacancyCreationDateSerializerMixin,
     serializers.ModelSerializer,
     AbstractVacancyReadOnlyFields,
+    AbstractVacancyEnumFields,
     RequiredSkillsSerializerMixin[Vacancy],
 ):
     class Meta:
@@ -113,6 +138,11 @@ class ProjectVacancyListSerializer(
             "datetime_closed",
             "response_count",
             "date_create_time",
+            "required_experience",
+            "work_schedule",
+            "work_format",
+            "salary",
+            "city",
         ]
 
 
@@ -137,6 +167,7 @@ class ProjectForVacancySerializer(serializers.ModelSerializer[Project]):
 
 
 class VacancyDetailSerializer(
+    VacancyCityValidationMixin,
     VacancyCreationDateSerializerMixin,
     serializers.ModelSerializer,
     AbstractVacancyReadOnlyFields,
@@ -165,6 +196,7 @@ class VacancyDetailSerializer(
             "work_schedule",
             "work_format",
             "salary",
+            "city",
         ]
         read_only_fields = ["project"]
 
@@ -187,6 +219,7 @@ class VacancyListSerializer(
             "datetime_closed",
             "response_count",
             "date_create_time",
+            "city",
         ]
 
 
@@ -220,6 +253,7 @@ class VacancyCatalogSerializer(
             "work_schedule",
             "work_format",
             "salary",
+            "city",
         ]
         read_only_fields = fields
 
@@ -261,6 +295,7 @@ class ProjectListSerializer_TODO_FIX(serializers.ModelSerializer):
 
 
 class ProjectVacancyCreateListSerializer(
+    VacancyCityValidationMixin,
     VacancyCreationDateSerializerMixin,
     serializers.ModelSerializer,
     AbstractVacancyReadOnlyFields,
@@ -321,6 +356,7 @@ class ProjectVacancyCreateListSerializer(
             "work_schedule",
             "work_format",
             "salary",
+            "city",
         ]
 
 

@@ -97,6 +97,11 @@ class ProjectWorkspaceVacanciesTests(TestCase):
                 "datetime_closed",
                 "response_count",
                 "date_create_time",
+                "required_experience",
+                "work_schedule",
+                "work_format",
+                "salary",
+                "city",
             },
         )
         self.assertEqual(item["project"], project.pk)

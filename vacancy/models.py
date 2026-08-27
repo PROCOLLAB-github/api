@@ -21,6 +21,7 @@ class Vacancy(models.Model):
         required_experience: CharField (choice).
         work_schedule: CharField (choice).
         work_format: CharField (choice).
+        city: CharField city for office and hybrid vacancies.
         project: A ForeignKey referring to the Company model.
         is_active: A boolean indicating if Vacancy is active.
         datetime_created: A DateTimeField indicating date of creation.
@@ -56,6 +57,12 @@ class Vacancy(models.Model):
         blank=True,
         null=True,
         verbose_name="Формат работы",
+    )
+    city = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        verbose_name="Город",
     )
     salary = models.IntegerField(
         blank=True,
