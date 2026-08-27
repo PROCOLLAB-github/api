@@ -9,9 +9,9 @@ Vacancy отвечает за вакансии внутри проектов Pro
 
 ## Статус модуля
 
-Модуль используется в продуктовых сценариях проектов, ленты и откликов, но
-находится в состоянии технического долга. Основная бизнес-логика все еще
-сосредоточена во `views.py` и serializers.
+Модуль используется в продуктовых сценариях проектов, ленты и откликов.
+Security-critical lifecycle откликов вынесен в транзакционные services и
+selectors, а views отвечают за HTTP orchestration и выбор безопасного контракта.
 
 Критичные API-flow закрыты regression-тестами: создание вакансии, фильтрация
 списка, отклик, повторный отклик, accept/decline, закрытие вакансии,
@@ -40,9 +40,11 @@ email-уведомления и permissions. Текущий coverage по мод
 ## Архитектура
 
 - `vacancy/models.py` - модели `Vacancy` и `VacancyResponse`.
-- `vacancy/views.py` - API endpoints и основная orchestration logic.
+- `vacancy/views.py` - API endpoints и HTTP orchestration logic.
 - `vacancy/serializers.py` - request/response serializers, validation и часть
   create/update logic.
+- `vacancy/response_services.py` - атомарное создание и обработка откликов.
+- `vacancy/selectors.py` - оптимизированные queryset и проверки manager-доступа.
 - `vacancy/filters.py` - фильтры списка вакансий.
 - `vacancy/managers.py` - queryset helpers для вакансий и откликов.
 - `vacancy/services.py` - вспомогательная логика обновления навыков вакансии.
@@ -72,19 +74,21 @@ email-уведомления и permissions. Текущий coverage по мод
 - `PUT /vacancies/<id>/` - полное обновление вакансии.
 - `PATCH /vacancies/<id>/` - частичное обновление вакансии.
 - `DELETE /vacancies/<id>/` - удаление вакансии.
-- `GET /vacancies/<vacancy_id>/responses/` - список откликов на вакансию.
+- `GET /vacancies/<vacancy_id>/responses/` - безопасный список откликов для
+  руководителя проекта, staff и superuser.
 - `POST /vacancies/<vacancy_id>/responses/` - отклик на вакансию.
 - `GET /vacancies/responses/<id>/` - детали отклика.
 - `PUT /vacancies/responses/<id>/` - обновление отклика.
 - `PATCH /vacancies/responses/<id>/` - частичное обновление отклика.
 - `DELETE /vacancies/responses/<id>/` - удаление отклика.
-- `GET /vacancies/responses/self` - отклики текущего пользователя.
+- `GET /vacancies/responses/self` - отклики только текущего пользователя.
 - `POST /vacancies/responses/<id>/accept/` - принять отклик.
 - `POST /vacancies/responses/<id>/decline/` - отклонить отклик.
 
 Связанные endpoints и сценарии:
 
-- `GET /projects/<id>/responses/` - отклики по всем вакансиям проекта.
+- `GET /projects/<id>/responses/` - совместимый manager-only список откликов по
+  всем вакансиям проекта; доступен руководителю, staff и superuser.
 - `GET /projects/?any_vacancies=true` - проекты с активными вакансиями.
 - `GET /feed/?type=vacancy` - служебные записи активных вакансий в ленте.
 
@@ -129,12 +133,29 @@ Queryset списка дополнительно ограничен ваканс
 
 При отклике:
 
-- вакансия должна быть активной;
-- пользователь подставляется из `request.user`;
+- требуется аутентификация;
+- вакансия должна быть активной, а проект - опубликованным и публичным;
+- пользователь всегда подставляется из `request.user`; поля `user`, `user_id`
+  и `vacancy` из payload не участвуют в создании;
+- лидер и участники этого проекта не могут откликнуться на его вакансию;
 - повторный отклик на ту же вакансию запрещен;
 - можно передать `why_me`;
-- можно приложить `accompanying_file`;
+- можно приложить только собственный `accompanying_file`;
 - лидеру проекта отправляется email о новом отклике.
+
+`GET /vacancies/<id>/` дополнительно возвращает read-only UI-hints:
+
+- `has_responded` - у текущего пользователя уже есть отклик;
+- `can_respond` - текущая вакансия доступна этому пользователю для отклика;
+- `can_manage_responses` - пользователь может управлять откликами.
+
+Эти признаки не являются границей безопасности: `POST` независимо повторяет
+все проверки внутри транзакции.
+
+Manager endpoints используют явный allow-list. Карточка кандидата содержит
+только `id`, имя, фамилию, аватар, специализацию, навыки и описание. Email,
+телефон, дата рождения и административные поля в ответ не включаются. Метаданные
+файла не содержат владельца и служебные поля.
 
 ### 4. Лидер принимает отклик
 
@@ -147,6 +168,11 @@ Queryset списка дополнительно ограничен ваканс
 - пользователю отправляется email;
 - вакансия закрывается через `is_active=False`;
 - `datetime_closed` обновляется автоматически в модели.
+- остальные ожидающие отклики этой вакансии получают `is_approved=False`.
+
+Вакансия, выбранный отклик и остальные ожидающие отклики блокируются в одной
+транзакции. Повторная обработка запрещена, а уникальное ограничение
+`Collaborator(project, user)` не допускает дублирования участника.
 
 ### 5. Лидер отклоняет отклик
 
@@ -199,10 +225,8 @@ Celery-задача `email_notificate_vacancy_outdated()` выбирает ак�
 
 ## Ограничения и риски
 
-- `vacancy/views.py` содержит много бизнес-логики: отклик, accept/decline,
-  закрытие вакансии, создание collaborator и отправка email.
 - `vacancy/serializers.py` содержит не только contracts, но и create/update
-  orchestration.
+  orchestration legacy CRUD вакансий.
 - `send_email` находится в `vacancy.tasks`, но используется также
   `partner_programs` и `project_rates`; это общий notification helper, который
   нужно вынести ближе к `mailing`.
@@ -210,10 +234,10 @@ Celery-задача `email_notificate_vacancy_outdated()` выбирает ак�
   ожидает его наличие.
 - `update_vacancy_skills()` может вернуть `Response`, но callers в `views.py`
   этот результат не обрабатывают.
-- `GET /vacancies/<vacancy_id>/responses/` для несуществующей вакансии сейчас
-  возвращает пустой список, а не 404.
-- `accompanying_file` ищется по всем `UserFile`, без явной проверки, что файл
-  принадлежит текущему пользователю.
+- Существующие legacy serializers откликов сохранены для совместимости кода,
+  но manager/self endpoints используют отдельные безопасные serializers.
+- Схема данных в этом этапе не менялась; `Vacancy.city` и миграция `0010`
+  сохраняются без изменений.
 
 ## Тесты
 
@@ -242,6 +266,14 @@ Celery-задача `email_notificate_vacancy_outdated()` выбирает ак�
 - decline-flow: отклик отклоняется, письмо отправляется пользователю;
 - запрет accept не-лидером;
 - запрет повторного accept/decline;
+- запрет отклика лидера и collaborator собственного проекта;
+- запрет отклика на draft/private проект;
+- запрет прикрепления чужого `UserFile`;
+- безопасные manager/self contracts без приватных данных;
+- manager-only доступ к vacancy/project response lists;
+- applicant state в detail вакансии;
+- атомарность accept и отклонение остальных ожидающих откликов;
+- постоянное число запросов manager-list при росте числа кандидатов;
 - обновление `datetime_closed` при смене активности вакансии;
 - замену `required_skills` через `update_vacancy_skills()`;
 - контролируемую ошибку при передаче несуществующего навыка;
@@ -252,5 +284,4 @@ Celery-задача `email_notificate_vacancy_outdated()` выбирает ак�
 Пока не покрыты точечными тестами:
 
 - admin export email лидеров;
-- запрет прикрепления чужого `UserFile` к отклику;
-- контракт `GET /vacancies/<vacancy_id>/responses/` для отсутствующей вакансии.
+- интеграция с внешним SMTP-брокером (в API-тестах Celery task мокируется).

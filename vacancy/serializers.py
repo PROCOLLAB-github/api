@@ -3,7 +3,12 @@ from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 from rest_framework import serializers
 
-from core.models import Skill, SkillToObject
+from core.models import (
+    Skill,
+    SkillToObject,
+    Specialization,
+    SpecializationCategory,
+)
 from core.serializers import SkillToObjectSerializer
 from core.services import get_views_count
 from files.models import UserFile
@@ -91,7 +96,9 @@ class AbstractVacancyReadOnlyFields(serializers.Serializer):
     response_count = serializers.SerializerMethodField(read_only=True)
 
     def get_response_count(self, obj):
-        """Returns count non status responses."""
+        """Возвращает число откликов, которые ещё ожидают решения."""
+        if hasattr(obj, "pending_response_count"):
+            return obj.pending_response_count
         return obj.vacancy_requests.filter(is_approved=None).count()
 
 
@@ -172,6 +179,40 @@ class VacancyDetailSerializer(
     RequiredSkillsWriteSerializerMixin[Vacancy],
 ):
     project = ProjectForVacancySerializer(many=False, read_only=True)
+    has_responded = serializers.SerializerMethodField(read_only=True)
+    can_respond = serializers.SerializerMethodField(read_only=True)
+    can_manage_responses = serializers.SerializerMethodField(read_only=True)
+
+    @staticmethod
+    def get_has_responded(vacancy: Vacancy) -> bool:
+        return bool(getattr(vacancy, "current_user_has_responded", False))
+
+    def get_can_respond(self, vacancy: Vacancy) -> bool:
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        return bool(
+            user
+            and user.is_authenticated
+            and vacancy.is_active
+            and vacancy.project.is_public
+            and not vacancy.project.draft
+            and vacancy.project.leader_id != user.id
+            and not getattr(vacancy, "current_user_is_collaborator", False)
+            and not self.get_has_responded(vacancy)
+        )
+
+    def get_can_manage_responses(self, vacancy: Vacancy) -> bool:
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        return bool(
+            user
+            and user.is_authenticated
+            and (
+                vacancy.project.leader_id == user.id
+                or getattr(user, "is_staff", False)
+                or getattr(user, "is_superuser", False)
+            )
+        )
 
     class Meta:
         model = Vacancy
@@ -194,8 +235,16 @@ class VacancyDetailSerializer(
             "work_format",
             "salary",
             "city",
+            "has_responded",
+            "can_respond",
+            "can_manage_responses",
         ]
-        read_only_fields = ["project"]
+        read_only_fields = [
+            "project",
+            "has_responded",
+            "can_respond",
+            "can_manage_responses",
+        ]
 
 
 class VacancyListSerializer(
@@ -416,3 +465,134 @@ class VacancyResponseDetailReadSerializer(VacancyResponseDetailSerializer):
     """Returns full file info for detail view without breaking writes."""
 
     accompanying_file = UserFileSerializer(read_only=True)
+
+
+class VacancyResponseFileSerializer(serializers.ModelSerializer):
+    """Метаданные файла без владельца и служебных полей."""
+
+    class Meta:
+        model = UserFile
+        fields = ("link", "name", "extension", "mime_type", "size")
+
+
+class VacancyCandidateSpecializationCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SpecializationCategory
+        fields = ("id", "name")
+
+
+class VacancyCandidateSpecializationSerializer(serializers.ModelSerializer):
+    category = VacancyCandidateSpecializationCategorySerializer(read_only=True)
+
+    class Meta:
+        model = Specialization
+        fields = ("id", "name", "category")
+
+
+class VacancyCandidateSerializer(serializers.ModelSerializer):
+    """Явный публичный allow-list кандидата для руководителя проекта."""
+
+    specialization = VacancyCandidateSpecializationSerializer(
+        source="v2_speciality",
+        read_only=True,
+    )
+    skills = SkillToObjectSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = User
+        fields = (
+            "id",
+            "first_name",
+            "last_name",
+            "avatar",
+            "specialization",
+            "skills",
+            "about_me",
+        )
+
+
+class VacancyResponseWriteSerializer(serializers.ModelSerializer):
+    accompanying_file = serializers.SlugRelatedField(
+        slug_field="link",
+        queryset=UserFile.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+
+    class Meta:
+        model = VacancyResponse
+        fields = ("why_me", "accompanying_file")
+
+    def validate_accompanying_file(self, value):
+        if value is not None and value.user_id != self.context["request"].user.id:
+            raise serializers.ValidationError("Можно прикрепить только собственный файл.")
+        return value
+
+
+class VacancyResponseVacancySerializer(
+    VacancyCreationDateSerializerMixin,
+    serializers.ModelSerializer,
+    AbstractVacancyReadOnlyFields,
+    AbstractVacancyEnumFields,
+    RequiredSkillsSerializerMixin[Vacancy],
+):
+    project = ProjectForVacancySerializer(read_only=True)
+
+    class Meta:
+        model = Vacancy
+        fields = (
+            "id",
+            "role",
+            "specialization",
+            "required_skills",
+            "description",
+            "project",
+            "is_active",
+            "datetime_created",
+            "datetime_updated",
+            "datetime_closed",
+            "response_count",
+            "date_create_time",
+            "required_experience",
+            "work_schedule",
+            "work_format",
+            "salary",
+            "city",
+        )
+        read_only_fields = fields
+
+
+class VacancyResponseSelfSerializer(serializers.ModelSerializer):
+    vacancy = VacancyResponseVacancySerializer(read_only=True)
+    accompanying_file = VacancyResponseFileSerializer(read_only=True)
+
+    class Meta:
+        model = VacancyResponse
+        fields = (
+            "id",
+            "vacancy",
+            "why_me",
+            "accompanying_file",
+            "is_approved",
+            "datetime_created",
+            "datetime_updated",
+        )
+
+
+class VacancyResponseManagerSerializer(serializers.ModelSerializer):
+    user = VacancyCandidateSerializer(read_only=True)
+    accompanying_file = VacancyResponseFileSerializer(read_only=True)
+
+    class Meta:
+        model = VacancyResponse
+        fields = (
+            "id",
+            "user",
+            "why_me",
+            "accompanying_file",
+            "is_approved",
+            "vacancy",
+            "datetime_created",
+            "datetime_updated",
+        )
+        read_only_fields = fields
