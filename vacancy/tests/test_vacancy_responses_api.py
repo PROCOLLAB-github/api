@@ -148,6 +148,47 @@ class VacancyResponseDecisionAPITests(TestCase):
         self.assertEqual(send_email_delay.call_args.args[0]["user_id"], applicant.id)
 
     @patch("vacancy.response_services.send_email.delay")
+    def test_project_save_does_not_reopen_vacancy_after_response_acceptance(
+        self, send_email_delay
+    ):
+        leader = create_user(prefix="leader")
+        accepted_applicant = create_user(prefix="accepted-applicant")
+        rejected_applicant = create_user(prefix="rejected-applicant")
+        project = create_project(leader=leader, draft=False)
+        vacancy = create_vacancy(project=project, is_active=True, role="Designer")
+        accepted_response = create_vacancy_response(
+            user=accepted_applicant,
+            vacancy=vacancy,
+        )
+        rejected_response = create_vacancy_response(
+            user=rejected_applicant,
+            vacancy=vacancy,
+        )
+        self.client.force_authenticate(leader)
+
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(
+                f"/vacancies/responses/{accepted_response.id}/accept/"
+            )
+
+        accepted_response.refresh_from_db()
+        rejected_response.refresh_from_db()
+        vacancy.refresh_from_db()
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(accepted_response.is_approved)
+        self.assertFalse(rejected_response.is_approved)
+        self.assertFalse(vacancy.is_active)
+        self.assertIsNotNone(vacancy.datetime_closed)
+        closed_at = vacancy.datetime_closed
+
+        project.description = "Updated after accepting a candidate"
+        project.save()
+
+        vacancy.refresh_from_db()
+        self.assertFalse(vacancy.is_active)
+        self.assertEqual(vacancy.datetime_closed, closed_at)
+
+    @patch("vacancy.response_services.send_email.delay")
     def test_project_leader_can_decline_response(self, send_email_delay):
         leader = create_user(prefix="leader")
         applicant = create_user(prefix="applicant")
