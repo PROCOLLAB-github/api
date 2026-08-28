@@ -2,6 +2,7 @@ from datetime import timedelta
 
 from django.test import TestCase
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from rest_framework import status
 from rest_framework.test import APIClient
 
@@ -156,17 +157,96 @@ class VacancyAPITests(TestCase):
             [active_vacancy.id],
         )
 
-    def test_list_can_include_inactive_vacancies_by_filter(self):
-        create_vacancy(role="Active vacancy", is_active=True)
-        inactive_vacancy = create_vacancy(role="Inactive vacancy", is_active=False)
+    def test_project_leader_can_list_inactive_vacancies_by_project(self):
+        leader = create_user(prefix="inactive-vacancy-leader")
+        project = create_project(leader=leader, draft=True)
+        while project.id < 10:
+            project = create_project(leader=leader, draft=True)
+        inactive_vacancy = create_vacancy(
+            project=project,
+            role="Inactive vacancy",
+            is_active=False,
+        )
+        self.client.force_authenticate(leader)
 
-        response = self.client.get("/vacancies/", {"is_active": "false"})
+        response = self.client.get(
+            "/vacancies/",
+            {"project_id": str(project.id), "is_active": "false"},
+        )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(
             [item["id"] for item in response.data["results"]],
             [inactive_vacancy.id],
         )
+
+    def test_outsider_does_not_see_draft_or_private_project_vacancies(self):
+        outsider = create_user(prefix="catalog-outsider")
+        draft_project = create_project(draft=True)
+        private_project = create_project(is_public=False)
+        public_vacancy = create_vacancy(role="Public project vacancy")
+        create_vacancy(
+            project=draft_project,
+            role="Draft project vacancy",
+            is_active=False,
+        )
+        create_vacancy(project=private_project, role="Private project vacancy")
+        self.client.force_authenticate(outsider)
+
+        response = self.client.get("/vacancies/")
+        inactive_response = self.client.get("/vacancies/", {"is_active": "false"})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            [item["id"] for item in response.data["results"]],
+            [public_vacancy.id],
+        )
+        self.assertEqual(inactive_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(inactive_response.data["results"], [])
+
+    def test_anonymous_does_not_see_closed_project_vacancies(self):
+        draft_project = create_project(draft=True)
+        private_project = create_project(is_public=False)
+        public_vacancy = create_vacancy(role="Public project vacancy")
+        create_vacancy(project=draft_project, role="Draft project vacancy")
+        create_vacancy(project=private_project, role="Private project vacancy")
+        create_vacancy(role="Inactive vacancy", is_active=False)
+
+        response = self.client.get("/vacancies/")
+        inactive_response = self.client.get("/vacancies/", {"is_active": "false"})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            [item["id"] for item in response.data["results"]],
+            [public_vacancy.id],
+        )
+        self.assertEqual(inactive_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(inactive_response.data["results"], [])
+
+    def test_outsider_cannot_use_project_filter_to_disclose_closed_project(self):
+        outsider = create_user(prefix="project-filter-outsider")
+        draft_project = create_project(draft=True)
+        private_project = create_project(is_public=False)
+        create_vacancy(
+            project=draft_project,
+            role="Draft project vacancy",
+            is_active=False,
+        )
+        create_vacancy(project=private_project, role="Private project vacancy")
+        self.client.force_authenticate(outsider)
+
+        draft_response = self.client.get(
+            "/vacancies/",
+            {"project_id": str(draft_project.id), "is_active": "false"},
+        )
+        private_response = self.client.get(
+            "/vacancies/", {"project_id": str(private_project.id)}
+        )
+
+        self.assertEqual(draft_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(draft_response.data["results"], [])
+        self.assertEqual(private_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(private_response.data["results"], [])
 
     def test_list_filters_by_project_role_salary_and_work_conditions(self):
         project = create_project(name="Target project")
@@ -205,6 +285,36 @@ class VacancyAPITests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual([item["id"] for item in response.data["results"]], [fresh.id])
 
+    def test_list_returns_real_vacancy_timestamps(self):
+        now = timezone.now()
+        older = create_vacancy(
+            role="Older vacancy",
+            datetime_created=now - timedelta(days=2),
+        )
+        newer = create_vacancy(
+            role="Newer vacancy",
+            datetime_created=now - timedelta(days=1),
+        )
+
+        response = self.client.get("/vacancies/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        vacancies = {item["id"]: item for item in response.data["results"]}
+        self.assertEqual(
+            parse_datetime(vacancies[older.id]["datetime_created"]),
+            older.datetime_created,
+        )
+        self.assertEqual(
+            parse_datetime(vacancies[newer.id]["datetime_created"]),
+            newer.datetime_created,
+        )
+        self.assertNotEqual(
+            vacancies[older.id]["datetime_created"],
+            vacancies[newer.id]["datetime_created"],
+        )
+        self.assertIn("datetime_updated", vacancies[older.id])
+        self.assertIn("date_create_time", vacancies[older.id])
+
     def test_detail_returns_vacancy_with_project_info(self):
         vacancy = create_vacancy(role="Detail vacancy", city=None)
 
@@ -215,6 +325,14 @@ class VacancyAPITests(TestCase):
         self.assertEqual(response.data["role"], "Detail vacancy")
         self.assertEqual(response.data["project"]["id"], vacancy.project.id)
         self.assertIsNone(response.data["city"])
+        self.assertEqual(
+            parse_datetime(response.data["datetime_created"]),
+            vacancy.datetime_created,
+        )
+        self.assertEqual(
+            parse_datetime(response.data["datetime_updated"]),
+            vacancy.datetime_updated,
+        )
 
     def test_patch_validates_city_against_final_work_format(self):
         leader = create_user(prefix="patch-city-leader")

@@ -11,11 +11,7 @@ from vacancy.constants import (
 
 
 def project_id_filter(queryset, name, value) -> QuerySet:
-    return queryset.filter(
-        **{
-            "project_id": value[0],
-        }
-    )
+    return queryset.filter(project_id=value)
 
 
 class VacancyFilter(filters.FilterSet):
@@ -44,7 +40,7 @@ class VacancyFilter(filters.FilterSet):
         """if is_active filter is not passed, default to True"""
         super().__init__(*args, **kwargs)
         if self.data.get("is_active") is None:
-            self.data = dict(self.data)
+            self.data = self.data.copy()
             self.data["is_active"] = True
 
     def filter_by_experience(
@@ -69,10 +65,10 @@ class VacancyFilter(filters.FilterSet):
         )
 
     def filter_by_salary_min(
-        self, queryset: QuerySet[Vacancy], name, value: list[str]
+        self, queryset: QuerySet[Vacancy], name, value: str
     ) -> QuerySet[Vacancy]:
         try:
-            min_salary = int(value[0])
+            min_salary = int(value)
             return queryset.filter(Q(salary__gte=min_salary) | Q(salary=None)).order_by(
                 F("salary").asc(nulls_last=True)
             )
@@ -80,10 +76,10 @@ class VacancyFilter(filters.FilterSet):
             return queryset
 
     def filter_by_salary_max(
-        self, queryset: QuerySet[Vacancy], name, value: list[str]
+        self, queryset: QuerySet[Vacancy], name, value: str
     ) -> QuerySet[Vacancy]:
         try:
-            max_salary = int(value[0])
+            max_salary = int(value)
             return queryset.filter(Q(salary__lte=max_salary) | Q(salary=None)).order_by(
                 F("salary").asc(nulls_last=True)
             )
@@ -91,11 +87,11 @@ class VacancyFilter(filters.FilterSet):
             return queryset
 
     def filter_by_role(
-        self, queryset: QuerySet[Vacancy], name, value: list[str]
+        self, queryset: QuerySet[Vacancy], name, value: str
     ) -> QuerySet[Vacancy]:
         if not value:
             return queryset
-        return queryset.filter(role__icontains=value[0])
+        return queryset.filter(role__icontains=value)
 
     project_id = filters.Filter(method=project_id_filter)
     is_active = filters.BooleanFilter(field_name="is_active")

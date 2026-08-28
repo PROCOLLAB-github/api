@@ -1,5 +1,5 @@
 from django.db import transaction
-from django.db.models import QuerySet
+from django.db.models import Q, QuerySet
 from django.http import Http404
 from django_filters import rest_framework as filters
 from django.shortcuts import get_object_or_404
@@ -49,6 +49,27 @@ class VacancyList(generics.ListCreateAPIView):
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = VacancyFilter
     pagination_class = VacancyPagination
+
+    def get_queryset(self):
+        """Закрытые вакансии доступны только менеджеру запрошенного проекта."""
+
+        queryset = super().get_queryset()
+        public_catalog = Q(
+            is_active=True,
+            project__draft=False,
+            project__is_public=True,
+        )
+        project_id = self.request.query_params.get("project_id")
+        user = self.request.user
+
+        if project_id and user.is_authenticated:
+            if user.is_staff or user.is_superuser:
+                return queryset
+            return queryset.filter(
+                public_catalog | Q(project_id=project_id, project__leader_id=user.id)
+            )
+
+        return queryset.filter(public_catalog)
 
 
 class VacancyDetail(generics.RetrieveUpdateDestroyAPIView):
