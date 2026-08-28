@@ -1,4 +1,4 @@
-from django.db.models import Count, Exists, OuterRef, Prefetch, Q, QuerySet
+from django.db.models import Count, Exists, OuterRef, Prefetch, Q, QuerySet, Subquery
 
 from core.models import SkillToObject
 from projects.models import Collaborator, Project
@@ -68,12 +68,16 @@ def with_applicant_state(queryset: QuerySet[Vacancy], user) -> QuerySet[Vacancy]
 
     if not user or not user.is_authenticated:
         return queryset
+
+    current_user_response = VacancyResponse.objects.filter(
+        vacancy_id=OuterRef("pk"),
+        user_id=user.id,
+    ).order_by("-datetime_created", "-pk")
+
     return queryset.annotate(
-        current_user_has_responded=Exists(
-            VacancyResponse.objects.filter(
-                vacancy_id=OuterRef("pk"),
-                user_id=user.id,
-            )
+        current_user_has_responded=Exists(current_user_response),
+        current_user_response_is_approved=Subquery(
+            current_user_response.values("is_approved")[:1]
         ),
         current_user_is_collaborator=Exists(
             Collaborator.objects.filter(

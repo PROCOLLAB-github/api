@@ -180,12 +180,28 @@ class VacancyDetailSerializer(
 ):
     project = ProjectForVacancySerializer(many=False, read_only=True)
     has_responded = serializers.SerializerMethodField(read_only=True)
+    response_status = serializers.SerializerMethodField(read_only=True)
     can_respond = serializers.SerializerMethodField(read_only=True)
     can_manage_responses = serializers.SerializerMethodField(read_only=True)
 
     @staticmethod
     def get_has_responded(vacancy: Vacancy) -> bool:
         return bool(getattr(vacancy, "current_user_has_responded", False))
+
+    def get_response_status(self, vacancy: Vacancy) -> str | None:
+        if not self.get_has_responded(vacancy):
+            return None
+
+        is_approved = getattr(
+            vacancy,
+            "current_user_response_is_approved",
+            None,
+        )
+        if is_approved is True:
+            return "accepted"
+        if is_approved is False:
+            return "rejected"
+        return "pending"
 
     def get_can_respond(self, vacancy: Vacancy) -> bool:
         request = self.context.get("request")
@@ -236,12 +252,14 @@ class VacancyDetailSerializer(
             "salary",
             "city",
             "has_responded",
+            "response_status",
             "can_respond",
             "can_manage_responses",
         ]
         read_only_fields = [
             "project",
             "has_responded",
+            "response_status",
             "can_respond",
             "can_manage_responses",
         ]
