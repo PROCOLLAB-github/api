@@ -165,6 +165,73 @@ class VacancyDetailContractTests(TestCase):
                 )
 
 
+class VacancyApplicantStateContractTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.leader = create_user(prefix="leader")
+        self.project = create_project(leader=self.leader)
+        self.vacancy = create_vacancy(project=self.project)
+
+    def get_detail(self, user=None, vacancy=None):
+        self.client.force_authenticate(user)
+        vacancy = vacancy or self.vacancy
+        return self.client.get(f"/vacancies/{vacancy.id}/")
+
+    def test_outsider_state_changes_after_first_response(self):
+        outsider = create_user(prefix="outsider")
+
+        before = self.get_detail(outsider)
+        self.assertEqual(before.status_code, status.HTTP_200_OK)
+        self.assertFalse(before.data["has_responded"])
+        self.assertTrue(before.data["can_respond"])
+        self.assertFalse(before.data["can_manage_responses"])
+
+        create_vacancy_response(user=outsider, vacancy=self.vacancy)
+        after = self.get_detail(outsider)
+        self.assertTrue(after.data["has_responded"])
+        self.assertFalse(after.data["can_respond"])
+
+    def test_leader_and_collaborator_states(self):
+        leader_response = self.get_detail(self.leader)
+        self.assertFalse(leader_response.data["has_responded"])
+        self.assertFalse(leader_response.data["can_respond"])
+        self.assertTrue(leader_response.data["can_manage_responses"])
+
+        collaborator = create_user(prefix="collaborator")
+        Collaborator.objects.create(
+            project=self.project,
+            user=collaborator,
+            role="Developer",
+        )
+        collaborator_response = self.get_detail(collaborator)
+        self.assertFalse(collaborator_response.data["can_respond"])
+        self.assertFalse(collaborator_response.data["can_manage_responses"])
+
+    def test_inactive_and_anonymous_states(self):
+        staff = create_user(prefix="staff", is_staff=True)
+        inactive = create_vacancy(project=self.project, is_active=False)
+        inactive_response = self.get_detail(staff, inactive)
+        self.assertEqual(inactive_response.status_code, status.HTTP_200_OK)
+        self.assertFalse(inactive_response.data["can_respond"])
+        self.assertTrue(inactive_response.data["can_manage_responses"])
+
+        anonymous_response = self.get_detail()
+        self.assertEqual(anonymous_response.status_code, status.HTTP_200_OK)
+        self.assertFalse(anonymous_response.data["has_responded"])
+        self.assertFalse(anonymous_response.data["can_respond"])
+        self.assertFalse(anonymous_response.data["can_manage_responses"])
+
+    def test_staff_and_superuser_can_manage_responses(self):
+        for user in (
+            create_user(prefix="staff", is_staff=True),
+            create_user(prefix="superuser", is_superuser=True),
+        ):
+            with self.subTest(user=user.id):
+                response = self.get_detail(user)
+                self.assertEqual(response.status_code, status.HTTP_200_OK)
+                self.assertTrue(response.data["can_manage_responses"])
+
+
 class VacancyResponseContractTests(TestCase):
     def setUp(self):
         self.client = APIClient()
@@ -204,17 +271,21 @@ class VacancyResponseContractTests(TestCase):
         self.assertEqual(VacancyResponse.objects.get().user, applicant)
         send_email.assert_called_once()
 
-    def test_member_and_duplicate_response_are_rejected(self):
+    def test_leader_member_and_duplicate_response_are_rejected(self):
         leader = create_user(prefix="leader")
         member = create_user(prefix="member")
         project = create_project(leader=leader)
         Collaborator.objects.create(project=project, user=member, role="Developer")
         vacancy = create_vacancy(project=project)
-        self.client.force_authenticate(member)
-        response = self.client.post(
-            f"/vacancies/{vacancy.id}/responses/", {"why_me": "Member"}, format="json"
-        )
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        for user in (leader, member):
+            with self.subTest(user=user.id):
+                self.client.force_authenticate(user)
+                response = self.client.post(
+                    f"/vacancies/{vacancy.id}/responses/",
+                    {"why_me": "Project member"},
+                    format="json",
+                )
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
         outsider = create_user(prefix="outsider")
         create_vacancy_response(user=outsider, vacancy=vacancy)
@@ -223,6 +294,41 @@ class VacancyResponseContractTests(TestCase):
             f"/vacancies/{vacancy.id}/responses/", {"why_me": "Again"}, format="json"
         )
         self.assertEqual(duplicate.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_legacy_project_response_list_requires_manager_and_is_safe(self):
+        leader = create_user(prefix="leader")
+        project = create_project(leader=leader)
+        applicant = create_user(prefix="applicant")
+        vacancy = create_vacancy(project=project)
+        create_vacancy_response(user=applicant, vacancy=vacancy)
+        url = f"/projects/{project.id}/responses/"
+
+        collaborator = create_user(prefix="collaborator")
+        Collaborator.objects.create(
+            project=project,
+            user=collaborator,
+            role="Developer",
+        )
+        outsider = create_user(prefix="outsider")
+        for user in (collaborator, outsider):
+            with self.subTest(forbidden_user=user.id):
+                self.client.force_authenticate(user)
+                self.assertEqual(
+                    self.client.get(url).status_code,
+                    status.HTTP_403_FORBIDDEN,
+                )
+
+        for user in (
+            leader,
+            create_user(prefix="staff", is_staff=True),
+            create_user(prefix="superuser", is_superuser=True),
+        ):
+            with self.subTest(manager=user.id):
+                self.client.force_authenticate(user)
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, status.HTTP_200_OK)
+                self.assertEqual(response.data[0]["user"]["id"], applicant.id)
+                assert_private_fields_absent(self, response.data)
 
     def test_response_list_requires_manager_and_never_exposes_private_profile_fields(
         self,
@@ -234,15 +340,30 @@ class VacancyResponseContractTests(TestCase):
         create_vacancy_response(user=applicant, vacancy=vacancy)
 
         outsider = create_user(prefix="outsider")
-        self.client.force_authenticate(outsider)
-        self.assertEqual(
-            self.client.get(f"/vacancies/{vacancy.id}/responses/").status_code,
-            status.HTTP_403_FORBIDDEN,
+        collaborator = create_user(prefix="collaborator")
+        Collaborator.objects.create(
+            project=project,
+            user=collaborator,
+            role="Developer",
         )
-        self.client.force_authenticate(leader)
-        response = self.client.get(f"/vacancies/{vacancy.id}/responses/")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        assert_private_fields_absent(self, response.data)
+        for user in (outsider, collaborator):
+            with self.subTest(forbidden_user=user.id):
+                self.client.force_authenticate(user)
+                self.assertEqual(
+                    self.client.get(f"/vacancies/{vacancy.id}/responses/").status_code,
+                    status.HTTP_403_FORBIDDEN,
+                )
+
+        for user in (
+            leader,
+            create_user(prefix="staff", is_staff=True),
+            create_user(prefix="superuser", is_superuser=True),
+        ):
+            with self.subTest(manager=user.id):
+                self.client.force_authenticate(user)
+                response = self.client.get(f"/vacancies/{vacancy.id}/responses/")
+                self.assertEqual(response.status_code, status.HTTP_200_OK)
+                assert_private_fields_absent(self, response.data)
 
     def test_response_detail_is_visible_only_to_owner_or_vacancy_manager(self):
         leader = create_user(prefix="leader")
