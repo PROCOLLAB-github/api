@@ -31,6 +31,7 @@ from vacancy.selectors import (
     get_response_queryset,
     get_self_response_queryset,
     get_vacancy_queryset,
+    with_applicant_state,
 )
 from vacancy.response_services import (
     accept_vacancy_response,
@@ -73,7 +74,10 @@ class VacancyDetail(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsVacancyProjectLeader]
 
     def get_object(self):
-        vacancy = get_object_or_404(get_vacancy_queryset(), pk=self.kwargs["pk"])
+        vacancy = get_object_or_404(
+            with_applicant_state(get_vacancy_queryset(), self.request.user),
+            pk=self.kwargs["pk"],
+        )
         if not can_view_vacancy(self.request.user, vacancy):
             raise Http404
         self.check_object_permissions(self.request, vacancy)

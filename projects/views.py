@@ -67,8 +67,8 @@ from projects.serializers import (
 )
 from users.models import LikesOnProject
 from users.serializers import UserListSerializer
-from vacancy.models import VacancyResponse
-from vacancy.serializers import VacancyResponseFullFileInfoListSerializer
+from vacancy.serializers import VacancyResponseManagerSerializer
+from vacancy.selectors import can_manage_project, get_response_queryset
 
 logger = logging.getLogger()
 
@@ -339,15 +339,25 @@ class AchievementDetail(generics.RetrieveUpdateDestroyAPIView):
 
 
 class ProjectVacancyResponses(generics.GenericAPIView):
-    serializer_class = VacancyResponseFullFileInfoListSerializer
-    permission_classes = [IsAuthenticated, ProjectVisibilityPermission]
+    serializer_class = VacancyResponseManagerSerializer
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return VacancyResponse.objects.filter(vacancy__project_id=self.kwargs["id"])
+        return get_response_queryset().filter(vacancy__project_id=self.kwargs["id"])
 
-    def get(self, *args, **kwargs):
+    def get(self, request, *args, **kwargs):
+        project = get_object_or_404(
+            Project.objects.only("id", "leader_id"),
+            pk=self.kwargs["id"],
+        )
+        if not can_manage_project(request.user, project):
+            return Response(status=status.HTTP_403_FORBIDDEN)
         queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True)
+        serializer = self.get_serializer(
+            queryset,
+            many=True,
+            context={"request": request},
+        )
         return Response(serializer.data)
 
 

@@ -1,6 +1,7 @@
-from django.db.models import Count, Prefetch, Q, QuerySet
+from django.db.models import Count, Exists, OuterRef, Prefetch, Q, QuerySet
 
 from core.models import SkillToObject
+from projects.models import Collaborator, Project
 from users.public_profile_selectors import get_public_profiles_queryset
 from vacancy.models import Vacancy, VacancyResponse
 
@@ -68,6 +69,27 @@ def get_self_response_queryset() -> QuerySet[VacancyResponse]:
     )
 
 
+def with_applicant_state(queryset: QuerySet[Vacancy], user) -> QuerySet[Vacancy]:
+    """Добавляет UI-подсказки одним запросом, не заменяя серверную проверку POST."""
+
+    if not user or not user.is_authenticated:
+        return queryset
+    return queryset.annotate(
+        current_user_has_responded=Exists(
+            VacancyResponse.objects.filter(
+                vacancy_id=OuterRef("pk"),
+                user_id=user.id,
+            )
+        ),
+        current_user_is_collaborator=Exists(
+            Collaborator.objects.filter(
+                project_id=OuterRef("project_id"),
+                user_id=user.id,
+            )
+        ),
+    )
+
+
 def is_staff(user) -> bool:
     return bool(
         user
@@ -76,10 +98,14 @@ def is_staff(user) -> bool:
     )
 
 
-def can_manage_vacancy(user, vacancy: Vacancy) -> bool:
+def can_manage_project(user, project: Project) -> bool:
     return is_staff(user) or (
-        bool(user and user.is_authenticated) and vacancy.project.leader_id == user.id
+        bool(user and user.is_authenticated) and project.leader_id == user.id
     )
+
+
+def can_manage_vacancy(user, vacancy: Vacancy) -> bool:
+    return can_manage_project(user, vacancy.project)
 
 
 def can_view_vacancy(user, vacancy: Vacancy) -> bool:

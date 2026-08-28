@@ -175,6 +175,40 @@ class VacancyDetailSerializer(
     RequiredSkillsWriteSerializerMixin[Vacancy],
 ):
     project = ProjectForVacancySerializer(many=False, read_only=True)
+    has_responded = serializers.SerializerMethodField(read_only=True)
+    can_respond = serializers.SerializerMethodField(read_only=True)
+    can_manage_responses = serializers.SerializerMethodField(read_only=True)
+
+    @staticmethod
+    def get_has_responded(vacancy: Vacancy) -> bool:
+        return bool(getattr(vacancy, "current_user_has_responded", False))
+
+    def get_can_respond(self, vacancy: Vacancy) -> bool:
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        return bool(
+            user
+            and user.is_authenticated
+            and vacancy.is_active
+            and vacancy.project.is_public
+            and not vacancy.project.draft
+            and vacancy.project.leader_id != user.id
+            and not getattr(vacancy, "current_user_is_collaborator", False)
+            and not self.get_has_responded(vacancy)
+        )
+
+    def get_can_manage_responses(self, vacancy: Vacancy) -> bool:
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        return bool(
+            user
+            and user.is_authenticated
+            and (
+                vacancy.project.leader_id == user.id
+                or getattr(user, "is_staff", False)
+                or getattr(user, "is_superuser", False)
+            )
+        )
 
     class Meta:
         model = Vacancy
@@ -197,8 +231,16 @@ class VacancyDetailSerializer(
             "work_format",
             "salary",
             "city",
+            "has_responded",
+            "can_respond",
+            "can_manage_responses",
         ]
-        read_only_fields = ["project"]
+        read_only_fields = [
+            "project",
+            "has_responded",
+            "can_respond",
+            "can_manage_responses",
+        ]
 
 
 class VacancyListSerializer(
