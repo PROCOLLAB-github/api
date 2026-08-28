@@ -18,6 +18,7 @@ class VacancyManager(Manager):
                 "project__id",
                 "is_active",
                 "datetime_created",
+                "datetime_updated",
             )
         )
 
