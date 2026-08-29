@@ -64,12 +64,15 @@ class VacancyList(generics.ListCreateAPIView):
 
         if project_id and user.is_authenticated:
             if user.is_staff or user.is_superuser:
-                return queryset
-            return queryset.filter(
-                public_catalog | Q(project_id=project_id, project__leader_id=user.id)
-            )
+                visible_queryset = queryset
+            else:
+                visible_queryset = queryset.filter(
+                    public_catalog | Q(project_id=project_id, project__leader_id=user.id)
+                )
+        else:
+            visible_queryset = queryset.filter(public_catalog)
 
-        return queryset.filter(public_catalog)
+        return with_applicant_state(visible_queryset, user)
 
 
 class VacancyDetail(generics.RetrieveUpdateDestroyAPIView):

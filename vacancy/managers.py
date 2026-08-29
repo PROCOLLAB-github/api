@@ -1,7 +1,9 @@
 from datetime import timedelta
 
-from django.db.models import Manager
+from django.db.models import Count, Manager, Prefetch, Q
 from django.utils import timezone
+
+from core.models import SkillToObject
 
 
 class VacancyManager(Manager):
@@ -10,15 +12,44 @@ class VacancyManager(Manager):
         return (
             self.get_queryset()
             .select_related("project")
+            .prefetch_related(
+                Prefetch(
+                    "required_skills",
+                    queryset=SkillToObject.objects.select_related(
+                        "skill",
+                        "skill__category",
+                    ),
+                )
+            )
+            .annotate(
+                pending_response_count=Count(
+                    "vacancy_requests",
+                    filter=Q(vacancy_requests__is_approved__isnull=True),
+                )
+            )
             .filter(datetime_created__gte=expiration_check)
             .only(
                 "role",
-                "required_skills",
+                "specialization",
                 "description",
                 "project__id",
+                "project__name",
+                "project__leader",
+                "project__description",
+                "project__image_address",
+                "project__industry",
+                "project__is_company",
+                "project__draft",
+                "project__is_public",
                 "is_active",
+                "datetime_closed",
                 "datetime_created",
                 "datetime_updated",
+                "required_experience",
+                "work_schedule",
+                "work_format",
+                "salary",
+                "city",
             )
         )
 
