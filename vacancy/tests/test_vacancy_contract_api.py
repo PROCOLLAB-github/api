@@ -65,6 +65,8 @@ class VacancyCatalogContractTests(TestCase):
         self.assertEqual(response.data["results"], [])
         response = self.client.get("/vacancies/")
         self.assertEqual([item["id"] for item in response.data["results"]], [visible.id])
+        self.assertIn("datetime_created", response.data["results"][0])
+        self.assertIn("datetime_updated", response.data["results"][0])
 
     def test_search_covers_role_specialization_description_and_project_name(self):
         project = create_project(name="арктическая платформа")
@@ -183,17 +185,40 @@ class VacancyApplicantStateContractTests(TestCase):
         before = self.get_detail(outsider)
         self.assertEqual(before.status_code, status.HTTP_200_OK)
         self.assertFalse(before.data["has_responded"])
+        self.assertIsNone(before.data["response_status"])
         self.assertTrue(before.data["can_respond"])
         self.assertFalse(before.data["can_manage_responses"])
 
         create_vacancy_response(user=outsider, vacancy=self.vacancy)
         after = self.get_detail(outsider)
         self.assertTrue(after.data["has_responded"])
+        self.assertEqual(after.data["response_status"], "pending")
         self.assertFalse(after.data["can_respond"])
+
+    def test_response_status_maps_processed_responses(self):
+        for is_approved, expected_status in (
+            (True, "accepted"),
+            (False, "rejected"),
+        ):
+            with self.subTest(is_approved=is_approved):
+                applicant = create_user(prefix=f"applicant-{expected_status}")
+                create_vacancy_response(
+                    user=applicant,
+                    vacancy=self.vacancy,
+                    is_approved=is_approved,
+                )
+
+                response = self.get_detail(applicant)
+
+                self.assertEqual(response.status_code, status.HTTP_200_OK)
+                self.assertTrue(response.data["has_responded"])
+                self.assertEqual(response.data["response_status"], expected_status)
+                self.assertFalse(response.data["can_respond"])
 
     def test_leader_and_collaborator_states(self):
         leader_response = self.get_detail(self.leader)
         self.assertFalse(leader_response.data["has_responded"])
+        self.assertIsNone(leader_response.data["response_status"])
         self.assertFalse(leader_response.data["can_respond"])
         self.assertTrue(leader_response.data["can_manage_responses"])
 
@@ -218,6 +243,7 @@ class VacancyApplicantStateContractTests(TestCase):
         anonymous_response = self.get_detail()
         self.assertEqual(anonymous_response.status_code, status.HTTP_200_OK)
         self.assertFalse(anonymous_response.data["has_responded"])
+        self.assertIsNone(anonymous_response.data["response_status"])
         self.assertFalse(anonymous_response.data["can_respond"])
         self.assertFalse(anonymous_response.data["can_manage_responses"])
 
@@ -230,6 +256,31 @@ class VacancyApplicantStateContractTests(TestCase):
                 response = self.get_detail(user)
                 self.assertEqual(response.status_code, status.HTTP_200_OK)
                 self.assertTrue(response.data["can_manage_responses"])
+
+    def test_response_status_does_not_add_separate_detail_query(self):
+        applicant = create_user(prefix="query-count-applicant")
+        create_vacancy_response(user=applicant, vacancy=self.vacancy)
+        self.client.force_authenticate(applicant)
+
+        with CaptureQueriesContext(connection) as queries:
+            response = self.client.get(f"/vacancies/{self.vacancy.id}/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        response_table = VacancyResponse._meta.db_table
+        response_queries = [
+            query["sql"]
+            for query in queries.captured_queries
+            if response_table in query["sql"]
+        ]
+        self.assertEqual(len(response_queries), 1)
+        self.assertEqual(
+            sum(
+                'AS "current_user_response_is_approved"' in query
+                for query in response_queries
+            ),
+            1,
+        )
+        self.assertEqual(response.data["response_status"], "pending")
 
 
 class VacancyResponseContractTests(TestCase):
