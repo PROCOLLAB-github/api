@@ -60,7 +60,10 @@ class VacancyList(generics.ListCreateAPIView):
     pagination_class = VacancyPagination
 
     def get_queryset(self):
-        return get_public_vacancies_queryset()
+        return with_applicant_state(
+            get_public_vacancies_queryset(),
+            self.request.user,
+        )
 
     def get_serializer_class(self):
         if self.request.method == "GET":
