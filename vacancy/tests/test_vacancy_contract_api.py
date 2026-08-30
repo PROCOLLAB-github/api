@@ -283,6 +283,97 @@ class VacancyApplicantStateContractTests(TestCase):
         self.assertEqual(response.data["response_status"], "pending")
 
 
+class VacancyCatalogApplicantStateContractTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.leader = create_user(prefix="catalog-leader")
+        self.project = create_project(leader=self.leader)
+        self.vacancy = create_vacancy(project=self.project)
+
+    def get_catalog_item(self, user=None, vacancy=None):
+        self.client.force_authenticate(user=user)
+        response = self.client.get("/vacancies/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        vacancy_id = (vacancy or self.vacancy).id
+        return next(item for item in response.data["results"] if item["id"] == vacancy_id)
+
+    def test_anonymous_and_outsider_states(self):
+        anonymous = self.get_catalog_item()
+        self.assertFalse(anonymous["has_responded"])
+        self.assertIsNone(anonymous["response_status"])
+        self.assertFalse(anonymous["can_respond"])
+        self.assertFalse(anonymous["can_manage_responses"])
+
+        outsider = create_user(prefix="catalog-outsider")
+        available = self.get_catalog_item(outsider)
+        self.assertFalse(available["has_responded"])
+        self.assertIsNone(available["response_status"])
+        self.assertTrue(available["can_respond"])
+        self.assertFalse(available["can_manage_responses"])
+
+    def test_leader_and_collaborator_states(self):
+        managed = self.get_catalog_item(self.leader)
+        self.assertFalse(managed["has_responded"])
+        self.assertFalse(managed["can_respond"])
+        self.assertTrue(managed["can_manage_responses"])
+
+        collaborator = create_user(prefix="catalog-collaborator")
+        Collaborator.objects.create(
+            project=self.project,
+            user=collaborator,
+            role="Developer",
+        )
+        member = self.get_catalog_item(collaborator)
+        self.assertFalse(member["has_responded"])
+        self.assertFalse(member["can_respond"])
+        self.assertFalse(member["can_manage_responses"])
+
+    def test_pending_response_state(self):
+        applicant = create_user(prefix="catalog-pending")
+        create_vacancy_response(user=applicant, vacancy=self.vacancy)
+
+        item = self.get_catalog_item(applicant)
+
+        self.assertTrue(item["has_responded"])
+        self.assertEqual(item["response_status"], "pending")
+        self.assertFalse(item["can_respond"])
+        self.assertFalse(item["can_manage_responses"])
+
+    def test_processed_response_status_mapping(self):
+        for is_approved, expected_status in (
+            (True, "accepted"),
+            (False, "rejected"),
+        ):
+            with self.subTest(expected_status=expected_status):
+                applicant = create_user(prefix=f"catalog-{expected_status}")
+                create_vacancy_response(
+                    user=applicant,
+                    vacancy=self.vacancy,
+                    is_approved=is_approved,
+                )
+
+                item = self.get_catalog_item(applicant)
+
+                self.assertTrue(item["has_responded"])
+                self.assertEqual(item["response_status"], expected_status)
+                self.assertFalse(item["can_respond"])
+
+    def test_catalog_query_count_does_not_grow_with_result_count(self):
+        outsider = create_user(prefix="catalog-query-count")
+        for index in range(4):
+            create_vacancy(project=self.project, role=f"Vacancy {index}")
+        self.client.force_authenticate(outsider)
+        self.client.get("/vacancies/", {"limit": 5})
+
+        def query_count(limit):
+            with CaptureQueriesContext(connection) as queries:
+                response = self.client.get("/vacancies/", {"limit": limit})
+                self.assertEqual(response.status_code, status.HTTP_200_OK)
+            return len(queries)
+
+        self.assertEqual(query_count(1), query_count(5))
+
+
 class VacancyResponseContractTests(TestCase):
     def setUp(self):
         self.client = APIClient()
