@@ -1,3 +1,4 @@
+from partner_programs.services.analytics import build_program_manager_analytics
 from partner_programs.services.exports import (
     BASE_COLUMNS,
     ProgramExportFile,
@@ -28,6 +29,7 @@ from partner_programs.services.registration import (
 )
 
 __all__ = [
+    "build_program_manager_analytics",
     "BASE_COLUMNS",
     "ProgramExportFile",
     "ProgramProjectAlreadyApplied",

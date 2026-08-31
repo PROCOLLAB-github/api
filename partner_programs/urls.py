@@ -8,6 +8,7 @@ from partner_programs.views import (
     PartnerProgramExportProjectsAPIView,
     PartnerProgramExportRatesAPIView,
     PartnerProgramList,
+    ProgramManagerAnalyticsAPIView,
     PartnerProgramProjectApplyView,
     PartnerProgramProjectsAPIView,
     PartnerProgramProjectSubmitView,
@@ -24,6 +25,11 @@ app_name = "partner_programs"
 urlpatterns = [
     path("", PartnerProgramList.as_view()),
     path("<int:pk>/", PartnerProgramDetail.as_view()),
+    path(
+        "<int:pk>/manager-overview/",
+        ProgramManagerAnalyticsAPIView.as_view(),
+        name="manager-overview",
+    ),
     path(
         "<int:pk>/acknowledge-welcome/",
         PartnerProgramWelcomeAcknowledgement.as_view(),

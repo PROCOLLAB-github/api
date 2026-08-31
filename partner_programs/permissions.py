@@ -3,6 +3,14 @@ from rest_framework.permissions import BasePermission
 from partner_programs.models import PartnerProgram
 
 
+def can_manage_program(user, program: PartnerProgram) -> bool:
+    if not user or not user.is_authenticated:
+        return False
+    if getattr(user, "is_staff", False) or getattr(user, "is_superuser", False):
+        return True
+    return program.is_manager(user)
+
+
 class IsProjectLeader(BasePermission):
     def has_object_permission(self, request, view, obj):
         return obj.project.leader == request.user
@@ -54,4 +62,4 @@ class IsAdminOrManagerOfProgram(BasePermission):
         except PartnerProgram.DoesNotExist:
             return False
 
-        return program.is_manager(user)
+        return can_manage_program(user, program)
