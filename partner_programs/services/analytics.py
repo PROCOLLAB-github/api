@@ -1,3 +1,4 @@
+from collections import defaultdict
 from datetime import timedelta
 
 from django.db.models import Count, Exists, OuterRef, Q
@@ -89,10 +90,8 @@ def _get_regions(program_id: int) -> list[dict]:
     )
 
 
-def _get_solution_metrics(
-    program_id: int,
-    required_evaluations: int,
-) -> dict[str, int]:
+def _get_solution_metrics(program, assignments_by_project: dict) -> dict[str, int]:
+    program_id = program.id
     project_rows = (
         PartnerProgramProject.objects.filter(partner_program_id=program_id)
         .annotate(
@@ -104,35 +103,46 @@ def _get_solution_metrics(
                 distinct=True,
             )
         )
-        .values_list("submitted", "rated_experts")
+        .values_list("project_id", "submitted", "rated_experts")
     )
 
     metrics = {
         "created": 0,
         "not_submitted": 0,
         "submitted": 0,
-        "awaiting_first_evaluation": 0,
-        "requiring_additional_evaluations": 0,
+        "awaiting_evaluation": 0,
+        "partially_evaluated": 0,
         "evaluated": 0,
     }
-    for submitted, rated_experts in project_rows:
+    for project_id, submitted, rated_experts in project_rows:
         metrics["created"] += 1
         if not submitted:
             metrics["not_submitted"] += 1
             continue
 
         metrics["submitted"] += 1
-        if rated_experts == 0:
-            metrics["awaiting_first_evaluation"] += 1
-        elif rated_experts < required_evaluations:
-            metrics["requiring_additional_evaluations"] += 1
+        if not program.is_distributed_evaluation:
+            status = "evaluated" if rated_experts > 0 else "awaiting_evaluation"
+            metrics[status] += 1
+            continue
+
+        project_assignments = assignments_by_project.get(
+            project_id,
+            {"total": 0, "evaluated": 0},
+        )
+        assigned = project_assignments["total"]
+        evaluated_assignments = project_assignments["evaluated"]
+        if assigned == 0 or evaluated_assignments == 0:
+            metrics["awaiting_evaluation"] += 1
+        elif evaluated_assignments < assigned:
+            metrics["partially_evaluated"] += 1
         else:
             metrics["evaluated"] += 1
 
     return metrics
 
 
-def _get_assignment_metrics(program_id: int) -> dict[str, int]:
+def _get_assignment_metrics(program_id: int) -> tuple[dict[str, int], dict]:
     score_exists = Exists(
         ProjectScore.objects.filter(
             project_id=OuterRef("project_id"),
@@ -140,17 +150,20 @@ def _get_assignment_metrics(program_id: int) -> dict[str, int]:
             criteria__partner_program_id=program_id,
         )
     )
-    metrics = (
+    assignment_rows = (
         ProjectExpertAssignment.objects.filter(partner_program_id=program_id)
         .annotate(has_score=score_exists)
-        .aggregate(
-            total=Count("id"),
-            evaluated=Count("id", filter=Q(has_score=True)),
-            unique_experts=Count("expert_id", distinct=True),
-        )
+        .values_list("project_id", "has_score")
     )
-    metrics["pending"] = metrics["total"] - metrics["evaluated"]
-    return metrics
+    metrics = {"total": 0, "pending": 0, "evaluated": 0}
+    by_project = defaultdict(lambda: {"total": 0, "evaluated": 0})
+    for project_id, has_score in assignment_rows:
+        metrics["total"] += 1
+        metrics["evaluated" if has_score else "pending"] += 1
+        by_project[project_id]["total"] += 1
+        if has_score:
+            by_project[project_id]["evaluated"] += 1
+    return metrics, dict(by_project)
 
 
 def _get_activity(program_id: int) -> list[dict]:
@@ -195,22 +208,20 @@ def _get_activity(program_id: int) -> list[dict]:
 
 def build_program_manager_analytics(program) -> dict:
     program_id = program.id
-    required_evaluations = program.max_project_rates or 1
     participants = _get_participant_metrics(program_id)
     regions = _get_regions(program_id)
-    solutions = _get_solution_metrics(program_id, required_evaluations)
-    assignments = _get_assignment_metrics(program_id)
+    assignments, assignments_by_project = _get_assignment_metrics(program_id)
+    solutions = _get_solution_metrics(program, assignments_by_project)
 
     projects_awaiting_evaluation = (
-        solutions["awaiting_first_evaluation"]
-        + solutions["requiring_additional_evaluations"]
+        solutions["awaiting_evaluation"] + solutions["partially_evaluated"]
     )
 
     return {
         "summary": {
             "participants": {"total": participants["unique_participants"]},
             "projects": {"total": solutions["created"]},
-            "experts": {"total": assignments["unique_experts"]},
+            "experts": {"total": program.experts.count()},
             "regions": {"total": len(regions), "items": regions},
         },
         "participant_funnel": {
@@ -227,7 +238,8 @@ def build_program_manager_analytics(program) -> dict:
             "evaluated": solutions["evaluated"],
         },
         "evaluation_status": {
-            "required_evaluations_per_project": required_evaluations,
+            "mode": ("distributed" if program.is_distributed_evaluation else "open"),
+            "max_evaluations_per_project": program.max_project_rates,
             "assignments": {
                 "total": assignments["total"],
                 "pending": assignments["pending"],
@@ -235,10 +247,8 @@ def build_program_manager_analytics(program) -> dict:
             },
             "projects": {
                 "submitted": solutions["submitted"],
-                "awaiting_first_evaluation": solutions["awaiting_first_evaluation"],
-                "requiring_additional_evaluations": solutions[
-                    "requiring_additional_evaluations"
-                ],
+                "awaiting_evaluation": solutions["awaiting_evaluation"],
+                "partially_evaluated": solutions["partially_evaluated"],
                 "evaluated": solutions["evaluated"],
             },
         },

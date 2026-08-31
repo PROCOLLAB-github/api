@@ -44,13 +44,17 @@ class ProgramAssignmentEvaluationSerializer(serializers.Serializer):
 
 class ProgramProjectEvaluationSerializer(serializers.Serializer):
     submitted = serializers.IntegerField(min_value=0)
-    awaiting_first_evaluation = serializers.IntegerField(min_value=0)
-    requiring_additional_evaluations = serializers.IntegerField(min_value=0)
+    awaiting_evaluation = serializers.IntegerField(min_value=0)
+    partially_evaluated = serializers.IntegerField(min_value=0)
     evaluated = serializers.IntegerField(min_value=0)
 
 
 class ProgramEvaluationStatusSerializer(serializers.Serializer):
-    required_evaluations_per_project = serializers.IntegerField(min_value=1)
+    mode = serializers.ChoiceField(choices=("open", "distributed"))
+    max_evaluations_per_project = serializers.IntegerField(
+        min_value=1,
+        allow_null=True,
+    )
     assignments = ProgramAssignmentEvaluationSerializer()
     projects = ProgramProjectEvaluationSerializer()
 

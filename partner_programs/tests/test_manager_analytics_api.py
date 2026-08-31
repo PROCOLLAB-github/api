@@ -154,7 +154,7 @@ class ProgramManagerAnalyticsMetricsTests(TestCase):
         )
         self.assertEqual(response.data["attention"]["participants_without_team"], 1)
 
-    def test_solution_and_evaluation_metrics_use_scores_from_distinct_experts(self):
+    def test_open_evaluation_uses_any_score_instead_of_max_project_rates(self):
         evaluated_project = create_project(name="Evaluated")
         partial_project = create_project(name="Partially evaluated")
         pending_project = create_project(name="Pending")
@@ -219,23 +219,168 @@ class ProgramManagerAnalyticsMetricsTests(TestCase):
                 "created": 4,
                 "not_submitted": 1,
                 "submitted": 3,
-                "evaluated": 1,
+                "evaluated": 2,
             },
         )
         self.assertEqual(
             response.data["evaluation_status"],
             {
-                "required_evaluations_per_project": 2,
+                "mode": "open",
+                "max_evaluations_per_project": 2,
                 "assignments": {"total": 5, "pending": 2, "evaluated": 3},
                 "projects": {
                     "submitted": 3,
-                    "awaiting_first_evaluation": 1,
-                    "requiring_additional_evaluations": 1,
-                    "evaluated": 1,
+                    "awaiting_evaluation": 1,
+                    "partially_evaluated": 0,
+                    "evaluated": 2,
                 },
             },
         )
-        self.assertEqual(response.data["attention"]["projects_awaiting_evaluation"], 2)
+        self.assertEqual(response.data["attention"]["projects_awaiting_evaluation"], 1)
+
+    def test_open_evaluation_limit_is_informational_only(self):
+        self.program.max_project_rates = 3
+        self.program.save(update_fields=["max_project_rates"])
+        project = create_project(name="Open evaluation")
+        create_program_project(self.program, project=project, submitted=True)
+        expert = create_rate_expert(
+            prefix="analytics-open-expert",
+            program=self.program,
+        )
+        criteria = Criteria.objects.create(
+            name="Open impact",
+            type="int",
+            partner_program=self.program,
+        )
+        ProjectScore.objects.create(
+            criteria=criteria,
+            user=expert,
+            project=project,
+            value="8",
+        )
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.data["evaluation_status"]["mode"], "open")
+        self.assertEqual(
+            response.data["evaluation_status"]["max_evaluations_per_project"],
+            3,
+        )
+        self.assertEqual(
+            response.data["evaluation_status"]["projects"],
+            {
+                "submitted": 1,
+                "awaiting_evaluation": 0,
+                "partially_evaluated": 0,
+                "evaluated": 1,
+            },
+        )
+        self.assertEqual(response.data["solution_funnel"]["evaluated"], 1)
+        self.assertEqual(response.data["attention"]["projects_awaiting_evaluation"], 0)
+
+    def test_summary_experts_uses_program_membership_without_assignments(self):
+        create_rate_expert(
+            prefix="analytics-program-expert-1",
+            program=self.program,
+        )
+        create_rate_expert(
+            prefix="analytics-program-expert-2",
+            program=self.program,
+        )
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.data["summary"]["experts"]["total"], 2)
+        self.assertEqual(
+            response.data["evaluation_status"]["assignments"]["total"],
+            0,
+        )
+
+    def _create_distributed_evaluation(self, *, assignments: int, scores: int):
+        self.program.is_distributed_evaluation = True
+        self.program.save(update_fields=["is_distributed_evaluation"])
+        project = create_project(name="Distributed evaluation")
+        create_program_project(self.program, project=project, submitted=True)
+        criteria = Criteria.objects.create(
+            name="Distributed impact",
+            type="int",
+            partner_program=self.program,
+        )
+        experts = [
+            create_rate_expert(
+                prefix=f"analytics-distributed-expert-{index}",
+                program=self.program,
+            )
+            for index in range(assignments)
+        ]
+        for expert in experts:
+            ProjectExpertAssignment.objects.create(
+                partner_program=self.program,
+                project=project,
+                expert=expert.expert,
+            )
+        for expert in experts[:scores]:
+            ProjectScore.objects.create(
+                criteria=criteria,
+                user=expert,
+                project=project,
+                value="8",
+            )
+
+    def test_distributed_project_without_assignments_is_awaiting_evaluation(self):
+        self._create_distributed_evaluation(assignments=0, scores=0)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.data["evaluation_status"]["mode"], "distributed")
+        self.assertEqual(
+            response.data["evaluation_status"]["projects"],
+            {
+                "submitted": 1,
+                "awaiting_evaluation": 1,
+                "partially_evaluated": 0,
+                "evaluated": 0,
+            },
+        )
+        self.assertEqual(response.data["attention"]["projects_awaiting_evaluation"], 1)
+
+    def test_distributed_assignments_without_scores_are_awaiting_evaluation(self):
+        self._create_distributed_evaluation(assignments=2, scores=0)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(
+            response.data["evaluation_status"]["projects"]["awaiting_evaluation"],
+            1,
+        )
+        self.assertEqual(
+            response.data["evaluation_status"]["assignments"],
+            {"total": 2, "pending": 2, "evaluated": 0},
+        )
+
+    def test_distributed_project_with_one_of_two_scores_is_partial(self):
+        self._create_distributed_evaluation(assignments=2, scores=1)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(
+            response.data["evaluation_status"]["projects"]["partially_evaluated"],
+            1,
+        )
+        self.assertEqual(response.data["solution_funnel"]["evaluated"], 0)
+        self.assertEqual(response.data["attention"]["projects_awaiting_evaluation"], 1)
+
+    def test_distributed_project_with_all_assignment_scores_is_evaluated(self):
+        self._create_distributed_evaluation(assignments=2, scores=2)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(
+            response.data["evaluation_status"]["projects"]["evaluated"],
+            1,
+        )
+        self.assertEqual(response.data["solution_funnel"]["evaluated"], 1)
+        self.assertEqual(response.data["attention"]["projects_awaiting_evaluation"], 0)
 
     def test_activity_groups_events_and_fills_thirty_day_range(self):
         participant = create_program_member(self.program)
