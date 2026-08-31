@@ -26,6 +26,7 @@ from partner_programs.pagination import PartnerProgramPagination
 from partner_programs.permissions import (
     IsAdminOrManagerOfProgram,
     IsProjectLeader,
+    can_manage_program,
 )
 from partner_programs.serializers import (
     PartnerProgramDataSchemaSerializer,
@@ -37,6 +38,7 @@ from partner_programs.serializers import (
     PartnerProgramProjectApplySerializer,
     PartnerProgramUserSerializer,
     ProgramProjectFilterRequestSerializer,
+    ProgramManagerAnalyticsSerializer,
 )
 from partner_programs.services import (
     ProgramProjectAlreadyApplied,
@@ -49,6 +51,7 @@ from partner_programs.services import (
     get_filterable_program_fields,
     get_filtered_program_project_links,
     register_user_to_program,
+    build_program_manager_analytics,
     require_can_apply_project_to_program,
 )
 from partner_programs.serializers import PartnerProgramFieldValueUpdateSerializer
@@ -421,6 +424,23 @@ class ProgramFiltersAPIView(APIView):
         program = get_object_or_404(PartnerProgram, pk=pk)
         fields = get_filterable_program_fields(program)
         serializer = PartnerProgramFieldSerializer(fields, many=True)
+        return Response(serializer.data)
+
+
+class ProgramManagerAnalyticsAPIView(APIView):
+    """Aggregated program analytics for managers and administrators."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk: int):
+        program = get_object_or_404(PartnerProgram, pk=pk)
+        if not can_manage_program(request.user, program):
+            raise PermissionDenied("Недостаточно прав.")
+
+        serializer = ProgramManagerAnalyticsSerializer(
+            data=build_program_manager_analytics(program)
+        )
+        serializer.is_valid(raise_exception=True)
         return Response(serializer.data)
 
 

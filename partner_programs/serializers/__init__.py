@@ -1,3 +1,4 @@
+from .analytics import ProgramManagerAnalyticsSerializer
 from .fields import PartnerProgramFieldValueUpdateSerializer
 from .programs import (
     PartnerProgramBaseSerializerMixin,
@@ -26,6 +27,7 @@ __all__ = [
     "PartnerProgramForUnregisteredUserSerializer",
     "PartnerProgramListSerializer",
     "PartnerProgramMaterialSerializer",
+    "ProgramManagerAnalyticsSerializer",
     "PartnerProgramNewUserSerializer",
     "PartnerProgramProjectApplySerializer",
     "PartnerProgramUserSerializer",
