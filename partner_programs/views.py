@@ -24,6 +24,7 @@ from partner_programs.models import (
 )
 from partner_programs.pagination import PartnerProgramPagination
 from partner_programs.permissions import (
+    IsAdminManagerOrExpertOfProgram,
     IsAdminOrManagerOfProgram,
     IsProjectLeader,
     can_manage_program,
@@ -418,7 +419,7 @@ class PartnerProgramProjectSubmitView(GenericAPIView):
 
 
 class ProgramFiltersAPIView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminOrManagerOfProgram]
+    permission_classes = [IsAuthenticated, IsAdminManagerOrExpertOfProgram]
 
     def get(self, request, pk):
         program = get_object_or_404(PartnerProgram, pk=pk)
