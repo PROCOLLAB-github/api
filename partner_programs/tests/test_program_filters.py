@@ -12,6 +12,7 @@ from partner_programs.tests.helpers import (
     create_project,
     create_user,
 )
+from users.models import CustomUser
 
 
 class PartnerProgramProjectFilterAPITests(TestCase):
@@ -20,6 +21,11 @@ class PartnerProgramProjectFilterAPITests(TestCase):
         self.manager = create_user(prefix="program-filter-manager")
         self.program = create_partner_program()
         self.program.managers.add(self.manager)
+
+    def _create_expert(self, *, prefix, program):
+        expert = create_user(prefix=prefix, user_type=CustomUser.EXPERT)
+        expert.expert.programs.add(program)
+        return expert
 
     def test_manager_can_get_filterable_program_fields(self):
         filterable = create_program_field(
@@ -52,6 +58,92 @@ class PartnerProgramProjectFilterAPITests(TestCase):
         response = self.client.get(f"/programs/{self.program.id}/filters/")
 
         self.assertEqual(response.status_code, 403)
+
+    def test_anonymous_cannot_get_filterable_program_fields(self):
+        response = self.client.get(f"/programs/{self.program.id}/filters/")
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_program_expert_can_get_filterable_program_fields(self):
+        expert = self._create_expert(
+            prefix="program-filter-expert",
+            program=self.program,
+        )
+        self.client.force_authenticate(expert)
+
+        response = self.client.get(f"/programs/{self.program.id}/filters/")
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_other_program_expert_cannot_get_filterable_program_fields(self):
+        other_program = create_partner_program()
+        expert = self._create_expert(
+            prefix="other-program-filter-expert",
+            program=other_program,
+        )
+        self.client.force_authenticate(expert)
+
+        response = self.client.get(f"/programs/{self.program.id}/filters/")
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_staff_can_get_filterable_program_fields(self):
+        staff = create_user(prefix="program-filter-staff", is_staff=True)
+        self.client.force_authenticate(staff)
+
+        response = self.client.get(f"/programs/{self.program.id}/filters/")
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_superuser_can_get_filterable_program_fields(self):
+        superuser = create_user(
+            prefix="program-filter-superuser",
+            is_staff=True,
+            is_superuser=True,
+        )
+        self.client.force_authenticate(superuser)
+
+        response = self.client.get(f"/programs/{self.program.id}/filters/")
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_expert_receives_same_filter_schema_as_manager(self):
+        create_program_field(
+            self.program,
+            name="track",
+            label="Track",
+            field_type="select",
+            options=["ai", "edu"],
+            show_filter=True,
+        )
+        expert = self._create_expert(
+            prefix="program-filter-schema-expert",
+            program=self.program,
+        )
+
+        self.client.force_authenticate(self.manager)
+        manager_response = self.client.get(f"/programs/{self.program.id}/filters/")
+        self.client.force_authenticate(expert)
+        expert_response = self.client.get(f"/programs/{self.program.id}/filters/")
+
+        self.assertEqual(manager_response.status_code, 200)
+        self.assertEqual(expert_response.status_code, 200)
+        self.assertEqual(expert_response.data, manager_response.data)
+
+    def test_filter_schema_endpoint_remains_read_only(self):
+        expert = self._create_expert(
+            prefix="program-filter-read-only-expert",
+            program=self.program,
+        )
+        self.client.force_authenticate(expert)
+
+        response = self.client.post(
+            f"/programs/{self.program.id}/filters/",
+            {},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 405)
 
     def test_manager_can_filter_program_projects_by_field_value(self):
         field = create_program_field(

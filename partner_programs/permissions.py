@@ -40,6 +40,29 @@ class IsExpertOrManagerOfProgram(BasePermission):
         return program.experts.filter(user=request.user).exists()
 
 
+class IsAdminManagerOrExpertOfProgram(BasePermission):
+    """Allow administrators, managers, and experts of one program."""
+
+    def has_permission(self, request, view):
+        user = request.user
+        if not user or not user.is_authenticated:
+            return False
+
+        program_id = view.kwargs.get("pk") or view.kwargs.get("program_id")
+        if not program_id:
+            return False
+
+        try:
+            program = PartnerProgram.objects.get(pk=program_id)
+        except PartnerProgram.DoesNotExist:
+            return False
+
+        return (
+            can_manage_program(user, program)
+            or program.experts.filter(user=user).exists()
+        )
+
+
 class IsAdminOrManagerOfProgram(BasePermission):
     """
     Доступ разрешён только админам и менеджерам конкретной программы.
