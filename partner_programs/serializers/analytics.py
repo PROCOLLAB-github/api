@@ -19,6 +19,7 @@ class ProgramAnalyticsSummarySerializer(serializers.Serializer):
     projects = AnalyticsTotalSerializer()
     experts = AnalyticsTotalSerializer()
     regions = AnalyticsRegionsSerializer()
+    participant_regions = AnalyticsRegionsSerializer()
 
 
 class ProgramParticipantFunnelSerializer(serializers.Serializer):

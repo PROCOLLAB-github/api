@@ -90,6 +90,21 @@ def _get_regions(program_id: int) -> list[dict]:
     )
 
 
+def _get_participant_regions(program_id: int) -> list[dict]:
+    return list(
+        PartnerProgramUserProfile.objects.filter(
+            partner_program_id=program_id,
+            user_id__isnull=False,
+            user__city__isnull=False,
+        )
+        .annotate(name=Trim("user__city"))
+        .exclude(name="")
+        .values("name")
+        .annotate(count=Count("user_id", distinct=True))
+        .order_by("-count", "name")
+    )
+
+
 def _get_solution_metrics(program, assignments_by_project: dict) -> dict[str, int]:
     program_id = program.id
     project_rows = (
@@ -210,6 +225,7 @@ def build_program_manager_analytics(program) -> dict:
     program_id = program.id
     participants = _get_participant_metrics(program_id)
     regions = _get_regions(program_id)
+    participant_regions = _get_participant_regions(program_id)
     assignments, assignments_by_project = _get_assignment_metrics(program_id)
     solutions = _get_solution_metrics(program, assignments_by_project)
 
@@ -223,6 +239,10 @@ def build_program_manager_analytics(program) -> dict:
             "projects": {"total": solutions["created"]},
             "experts": {"total": program.experts.count()},
             "regions": {"total": len(regions), "items": regions},
+            "participant_regions": {
+                "total": len(participant_regions),
+                "items": participant_regions,
+            },
         },
         "participant_funnel": {
             "registrations": participants["registrations"],

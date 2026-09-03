@@ -140,6 +140,7 @@ class ProgramManagerAnalyticsMetricsTests(TestCase):
                     "total": 1,
                     "items": [{"name": "Moscow", "count": 2}],
                 },
+                "participant_regions": {"total": 0, "items": []},
             },
         )
         self.assertEqual(
@@ -153,6 +154,43 @@ class ProgramManagerAnalyticsMetricsTests(TestCase):
             },
         )
         self.assertEqual(response.data["attention"]["participants_without_team"], 1)
+
+    def test_participant_regions_use_only_program_participants_and_preserve_legacy_values(
+        self,
+    ):
+        for prefix, city in (
+            ("analytics-region-moscow-1", "Москва"),
+            ("analytics-region-moscow-2", " Москва "),
+            ("analytics-region-legacy-city", "Набережные Челны"),
+            ("analytics-region-legacy-typo", "Мсква"),
+            ("analytics-region-empty", ""),
+            ("analytics-region-whitespace", "   "),
+            ("analytics-region-null", None),
+        ):
+            create_program_member(
+                self.program,
+                user=create_user(prefix=prefix, city=city),
+            )
+
+        other_program = create_partner_program(name="Other analytics program")
+        create_program_member(
+            other_program,
+            user=create_user(prefix="analytics-region-other-program", city="Москва"),
+        )
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        participant_regions = response.data["summary"]["participant_regions"]
+        self.assertEqual(participant_regions["total"], 3)
+        self.assertEqual(
+            {item["name"]: item["count"] for item in participant_regions["items"]},
+            {
+                "Москва": 2,
+                "Набережные Челны": 1,
+                "Мсква": 1,
+            },
+        )
 
     def test_open_evaluation_uses_any_score_instead_of_max_project_rates(self):
         evaluated_project = create_project(name="Evaluated")
@@ -419,6 +457,10 @@ class ProgramManagerAnalyticsMetricsTests(TestCase):
         self.assertEqual(response.data["summary"]["projects"]["total"], 0)
         self.assertEqual(response.data["summary"]["experts"]["total"], 0)
         self.assertEqual(response.data["summary"]["regions"], {"total": 0, "items": []})
+        self.assertEqual(
+            response.data["summary"]["participant_regions"],
+            {"total": 0, "items": []},
+        )
         self.assertEqual(len(response.data["activity"]), 30)
         self.assertTrue(
             all(
