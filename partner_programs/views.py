@@ -56,6 +56,17 @@ from partner_programs.services import (
     require_can_apply_project_to_program,
 )
 from partner_programs.serializers import PartnerProgramFieldValueUpdateSerializer
+from partner_programs.serializers.analytics import (
+    ProgramAssignmentScopeSerializer,
+    ProgramAssignmentScoresSerializer,
+    ProgramAssignmentSerializer,
+)
+from partner_programs.services.assignment_analytics import (
+    assignment_rows,
+    build_assignment,
+    build_assignment_scores,
+    build_assignments,
+)
 from projects.models import Project
 from projects.serializers import ProjectListSerializer
 
@@ -428,21 +439,52 @@ class ProgramFiltersAPIView(APIView):
         return Response(serializer.data)
 
 
-class ProgramManagerAnalyticsAPIView(APIView):
-    """Aggregated program analytics for managers and administrators."""
-
+class ProgramManagerAnalyticsAccessAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, pk: int):
+    def get_program(self, request, pk):
         program = get_object_or_404(PartnerProgram, pk=pk)
         if not can_manage_program(request.user, program):
             raise PermissionDenied("Недостаточно прав.")
+        return program
+
+
+class ProgramManagerAnalyticsAPIView(ProgramManagerAnalyticsAccessAPIView):
+    """Aggregated program analytics for managers and administrators."""
+
+    def get(self, request, pk: int):
+        program = self.get_program(request, pk)
 
         serializer = ProgramManagerAnalyticsSerializer(
             data=build_program_manager_analytics(program)
         )
         serializer.is_valid(raise_exception=True)
         return Response(serializer.data)
+
+
+class ProgramManagerAssignmentsAPIView(ProgramManagerAnalyticsAccessAPIView):
+    def get(self, request, pk):
+        program = self.get_program(request, pk)
+        query = ProgramAssignmentScopeSerializer(data=request.query_params.dict())
+        query.is_valid(raise_exception=True)
+        scope = query.validated_data["scope"]
+        assignments = build_assignments(program.pk)
+        if scope != "all":
+            assignments = [
+                item
+                for item in assignments
+                if (item["status"] == "completed") == (scope == "completed")
+            ]
+        return Response(ProgramAssignmentSerializer(assignments, many=True).data)
+
+
+class ProgramManagerAssignmentScoresAPIView(ProgramManagerAnalyticsAccessAPIView):
+    def get(self, request, pk, assignment_id):
+        program = self.get_program(request, pk)
+        row = get_object_or_404(assignment_rows(program.pk), pk=assignment_id)
+        assignment = build_assignment(row, now=timezone.now())
+        assignment["scores"] = build_assignment_scores(program.pk, assignment)
+        return Response(ProgramAssignmentScoresSerializer(assignment).data)
 
 
 class ProgramProjectFilterAPIView(GenericAPIView):
