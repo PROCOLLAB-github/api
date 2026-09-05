@@ -7,7 +7,10 @@ from django.utils import timezone
 
 from partner_programs.models import PartnerProgramProject, PartnerProgramUserProfile
 from projects.models import Collaborator
-from project_rates.models import ProjectExpertAssignment, ProjectScore
+from partner_programs.services.assignment_analytics import (
+    build_assignments,
+    build_delayed_experts,
+)
 
 ACTIVITY_DAYS = 30
 
@@ -157,26 +160,16 @@ def _get_solution_metrics(program, assignments_by_project: dict) -> dict[str, in
     return metrics
 
 
-def _get_assignment_metrics(program_id: int) -> tuple[dict[str, int], dict]:
-    score_exists = Exists(
-        ProjectScore.objects.filter(
-            project_id=OuterRef("project_id"),
-            user_id=OuterRef("expert__user_id"),
-            criteria__partner_program_id=program_id,
-        )
-    )
-    assignment_rows = (
-        ProjectExpertAssignment.objects.filter(partner_program_id=program_id)
-        .annotate(has_score=score_exists)
-        .values_list("project_id", "has_score")
-    )
+def _get_assignment_metrics(assignments: list[dict]) -> tuple[dict[str, int], dict]:
     metrics = {"total": 0, "pending": 0, "evaluated": 0}
     by_project = defaultdict(lambda: {"total": 0, "evaluated": 0})
-    for project_id, has_score in assignment_rows:
+    for assignment in assignments:
+        project_id = assignment["project"]["id"]
+        completed = assignment["status"] == "completed"
         metrics["total"] += 1
-        metrics["evaluated" if has_score else "pending"] += 1
+        metrics["evaluated" if completed else "pending"] += 1
         by_project[project_id]["total"] += 1
-        if has_score:
+        if completed:
             by_project[project_id]["evaluated"] += 1
     return metrics, dict(by_project)
 
@@ -226,7 +219,8 @@ def build_program_manager_analytics(program) -> dict:
     participants = _get_participant_metrics(program_id)
     regions = _get_regions(program_id)
     participant_regions = _get_participant_regions(program_id)
-    assignments, assignments_by_project = _get_assignment_metrics(program_id)
+    assignment_items = build_assignments(program_id)
+    assignments, assignments_by_project = _get_assignment_metrics(assignment_items)
     solutions = _get_solution_metrics(program, assignments_by_project)
 
     projects_awaiting_evaluation = (
@@ -275,6 +269,11 @@ def build_program_manager_analytics(program) -> dict:
         "attention": {
             "participants_without_team": participants["without_team"],
             "projects_awaiting_evaluation": projects_awaiting_evaluation,
+            "delayed_experts": (
+                build_delayed_experts(assignment_items)
+                if program.is_distributed_evaluation
+                else {"total": 0, "items": []}
+            ),
         },
         "activity": _get_activity(program_id),
     }

@@ -60,9 +60,78 @@ class ProgramEvaluationStatusSerializer(serializers.Serializer):
     projects = ProgramProjectEvaluationSerializer()
 
 
+class AssignmentExpertSerializer(serializers.Serializer):
+    expert_id = serializers.IntegerField()
+    user_id = serializers.IntegerField()
+    first_name = serializers.CharField(allow_blank=True)
+    last_name = serializers.CharField(allow_blank=True)
+    full_name = serializers.CharField(allow_blank=True)
+    avatar = serializers.URLField(allow_null=True)
+
+
+class AssignmentProjectSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+
+
+class ProgramAssignmentScopeSerializer(serializers.Serializer):
+    scope = serializers.ChoiceField(
+        choices=("all", "completed", "pending"), default="all"
+    )
+
+
+class ProgramAssignmentSerializer(serializers.Serializer):
+    assignment_id = serializers.IntegerField()
+    expert = AssignmentExpertSerializer()
+    project = AssignmentProjectSerializer()
+    status = serializers.ChoiceField(
+        choices=("not_ready", "pending", "in_progress", "completed")
+    )
+    criteria_total = serializers.IntegerField(min_value=0)
+    criteria_scored = serializers.IntegerField(min_value=0)
+    assigned_at = serializers.DateTimeField()
+    project_submitted = serializers.BooleanField()
+    project_submitted_at = serializers.DateTimeField(allow_null=True)
+    waiting_since = serializers.DateTimeField(allow_null=True)
+    waiting_seconds = serializers.IntegerField(min_value=0, allow_null=True)
+
+
+class AssignmentCriterionSerializer(serializers.Serializer):
+    criterion_id = serializers.IntegerField()
+    name = serializers.CharField()
+    description = serializers.CharField(allow_null=True, allow_blank=True)
+    type = serializers.CharField()
+    min_value = serializers.FloatField(allow_null=True)
+    max_value = serializers.FloatField(allow_null=True)
+    value = serializers.CharField(
+        allow_null=True, allow_blank=True, trim_whitespace=False
+    )
+    is_scored = serializers.BooleanField()
+
+
+class ProgramAssignmentScoresSerializer(ProgramAssignmentSerializer):
+    scores = AssignmentCriterionSerializer(many=True)
+
+
+class DelayedExpertSerializer(AssignmentExpertSerializer):
+    assignments_total = serializers.IntegerField(min_value=0)
+    completed = serializers.IntegerField(min_value=0)
+    pending = serializers.IntegerField(min_value=0)
+    overdue_24h = serializers.IntegerField(min_value=0)
+    overdue_48h = serializers.IntegerField(min_value=0)
+    oldest_waiting_since = serializers.DateTimeField()
+    oldest_waiting_seconds = serializers.IntegerField(min_value=0)
+    severity = serializers.ChoiceField(choices=("critical", "warning"))
+
+
+class DelayedExpertsSerializer(AnalyticsTotalSerializer):
+    items = DelayedExpertSerializer(many=True)
+
+
 class ProgramAttentionSerializer(serializers.Serializer):
     participants_without_team = serializers.IntegerField(min_value=0)
     projects_awaiting_evaluation = serializers.IntegerField(min_value=0)
+    delayed_experts = DelayedExpertsSerializer()
 
 
 class ProgramActivityItemSerializer(serializers.Serializer):

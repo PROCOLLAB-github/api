@@ -265,7 +265,9 @@ class ProgramManagerAnalyticsMetricsTests(TestCase):
             {
                 "mode": "open",
                 "max_evaluations_per_project": 2,
-                "assignments": {"total": 5, "pending": 2, "evaluated": 3},
+                # Open project evaluation still needs any score, but the real
+                # assignments also require the automatically created Comment.
+                "assignments": {"total": 5, "pending": 5, "evaluated": 0},
                 "projects": {
                     "submitted": 3,
                     "awaiting_evaluation": 1,
@@ -339,7 +341,7 @@ class ProgramManagerAnalyticsMetricsTests(TestCase):
         self.program.save(update_fields=["is_distributed_evaluation"])
         project = create_project(name="Distributed evaluation")
         create_program_project(self.program, project=project, submitted=True)
-        criteria = Criteria.objects.create(
+        Criteria.objects.create(
             name="Distributed impact",
             type="int",
             partner_program=self.program,
@@ -358,12 +360,13 @@ class ProgramManagerAnalyticsMetricsTests(TestCase):
                 expert=expert.expert,
             )
         for expert in experts[:scores]:
-            ProjectScore.objects.create(
-                criteria=criteria,
-                user=expert,
-                project=project,
-                value="8",
-            )
+            for criteria in self.program.criterias.all():
+                ProjectScore.objects.create(
+                    criteria=criteria,
+                    user=expert,
+                    project=project,
+                    value="8",
+                )
 
     def test_distributed_project_without_assignments_is_awaiting_evaluation(self):
         self._create_distributed_evaluation(assignments=0, scores=0)
