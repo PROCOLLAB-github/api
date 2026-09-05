@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from django.db.models import Exists, OuterRef
+from django.db.models import Exists, F, OuterRef, Value
+from django.db.models.functions import Concat
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.timezone import now
@@ -22,7 +23,10 @@ from partner_programs.models import (
     PartnerProgramProject,
     PartnerProgramUserProfile,
 )
-from partner_programs.pagination import PartnerProgramPagination
+from partner_programs.pagination import (
+    PartnerProgramPagination,
+    ProgramAttentionPagination,
+)
 from partner_programs.permissions import (
     IsAdminManagerOrExpertOfProgram,
     IsAdminOrManagerOfProgram,
@@ -60,6 +64,15 @@ from partner_programs.serializers.analytics import (
     ProgramAssignmentScopeSerializer,
     ProgramAssignmentScoresSerializer,
     ProgramAssignmentSerializer,
+)
+from partner_programs.serializers.attention import (
+    ProgramAttentionParticipantSerializer,
+    ProgramAttentionProjectSerializer,
+    ProgramAttentionQuerySerializer,
+)
+from partner_programs.services.analytics import (
+    participants_without_team_rows,
+    projects_awaiting_evaluation_rows,
 )
 from partner_programs.services.assignment_analytics import (
     assignment_rows,
@@ -485,6 +498,57 @@ class ProgramManagerAssignmentScoresAPIView(ProgramManagerAnalyticsAccessAPIView
         assignment = build_assignment(row, now=timezone.now())
         assignment["scores"] = build_assignment_scores(program.pk, assignment)
         return Response(ProgramAssignmentScoresSerializer(assignment).data)
+
+
+class ProgramManagerAttentionListAPIView(ProgramManagerAnalyticsAccessAPIView):
+    """Общий read-only доступ и пагинация только двух новых списков внимания."""
+
+    def get(self, request, pk):
+        """Проверяет управление программой до поиска, подсчёта и сериализации страницы."""
+        program = self.get_program(request, pk)
+        query = ProgramAttentionQuerySerializer(data=request.query_params.dict())
+        query.is_valid(raise_exception=True)
+        paginator = ProgramAttentionPagination(query.validated_data)
+        queryset = self.get_queryset(program, query.validated_data["search"])
+        page = paginator.paginate_queryset(queryset, request, view=self)
+        response = paginator.get_paginated_response(
+            self.serializer_class(page, many=True).data
+        )
+        if self.include_mode:
+            response.data["mode"] = (
+                "distributed" if program.is_distributed_evaluation else "open"
+            )
+        return response
+
+
+class ProgramManagerParticipantsWithoutTeamAPIView(ProgramManagerAttentionListAPIView):
+    """Уникальные зарегистрированные пользователи без команды именно этой программы."""
+
+    serializer_class = ProgramAttentionParticipantSerializer
+    include_mode = False
+
+    def get_queryset(self, program, search):
+        """Ищет по имени до пагинации; старые регистрации первыми с user_id tie-breaker."""
+        queryset = participants_without_team_rows(program.pk)
+        if search:
+            queryset = queryset.annotate(
+                search_name=Concat("user__first_name", Value(" "), "user__last_name")
+            ).filter(search_name__icontains=search)
+        return queryset.order_by(F("registered_at").asc(nulls_last=True), "user_id")
+
+
+class ProgramManagerProjectsAwaitingEvaluationAPIView(ProgramManagerAttentionListAPIView):
+    """Сданные работы из того же предиката, что и projects_awaiting_evaluation."""
+
+    serializer_class = ProgramAttentionProjectSerializer
+    include_mode = True
+
+    def get_queryset(self, program, search):
+        """Не включает not_ready; неизвестные даты сдачи остаются в конце списка."""
+        queryset = projects_awaiting_evaluation_rows(program)
+        if search:
+            queryset = queryset.filter(project__name__icontains=search)
+        return queryset.order_by(F("datetime_submitted").asc(nulls_last=True), "pk")
 
 
 class ProgramProjectFilterAPIView(GenericAPIView):
