@@ -69,10 +69,13 @@ from partner_programs.serializers.attention import (
     ProgramAttentionParticipantSerializer,
     ProgramAttentionProjectSerializer,
     ProgramAttentionQuerySerializer,
+    ProgramNotSubmittedMetadataSerializer,
+    ProgramNotSubmittedProjectSerializer,
 )
 from partner_programs.services.analytics import (
     participants_without_team_rows,
     projects_awaiting_evaluation_rows,
+    projects_not_submitted_rows,
 )
 from partner_programs.services.assignment_analytics import (
     assignment_rows,
@@ -501,7 +504,7 @@ class ProgramManagerAssignmentScoresAPIView(ProgramManagerAnalyticsAccessAPIView
 
 
 class ProgramManagerAttentionListAPIView(ProgramManagerAnalyticsAccessAPIView):
-    """Общий read-only доступ и пагинация только двух новых списков внимания."""
+    """Общий read-only доступ и пагинация списков внимания."""
 
     def get(self, request, pk):
         """Проверяет управление программой до поиска, подсчёта и сериализации страницы."""
@@ -514,11 +517,16 @@ class ProgramManagerAttentionListAPIView(ProgramManagerAnalyticsAccessAPIView):
         response = paginator.get_paginated_response(
             self.serializer_class(page, many=True).data
         )
-        if self.include_mode:
-            response.data["mode"] = (
-                "distributed" if program.is_distributed_evaluation else "open"
-            )
+        response.data.update(self.get_metadata(program))
         return response
+
+    def get_metadata(self, program):
+        """Сохраняет метаданные существующих списков; новые задаются локально."""
+        if self.include_mode:
+            return {
+                "mode": "distributed" if program.is_distributed_evaluation else "open"
+            }
+        return {}
 
 
 class ProgramManagerParticipantsWithoutTeamAPIView(ProgramManagerAttentionListAPIView):
@@ -549,6 +557,34 @@ class ProgramManagerProjectsAwaitingEvaluationAPIView(ProgramManagerAttentionLis
         if search:
             queryset = queryset.filter(project__name__icontains=search)
         return queryset.order_by(F("datetime_submitted").asc(nulls_last=True), "pk")
+
+
+class ProgramManagerProjectsNotSubmittedAPIView(ProgramManagerAttentionListAPIView):
+    """Read-only список несданных связей только текущей соревновательной программы."""
+
+    serializer_class = ProgramNotSubmittedProjectSerializer
+
+    def get_queryset(self, program, search):
+        """Поиск по названию до count/page; старые связи первыми, затем их pk."""
+        queryset = projects_not_submitted_rows(program)
+        if search:
+            queryset = queryset.filter(project__name__icontains=search)
+        return queryset.order_by("datetime_created", "pk")
+
+    def get_metadata(self, program):
+        """Повторно использует действующий контракт сроков сдачи программы."""
+        applicable = program.is_competitive
+        return ProgramNotSubmittedMetadataSerializer(
+            {
+                "applicable": applicable,
+                "submission_deadline": (
+                    program.get_project_submission_deadline() if applicable else None
+                ),
+                "submission_open": (
+                    program.is_project_submission_open() if applicable else False
+                ),
+            }
+        ).data
 
 
 class ProgramProjectFilterAPIView(GenericAPIView):

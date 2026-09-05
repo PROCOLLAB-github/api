@@ -145,6 +145,35 @@ def _get_participant_regions(program_id: int) -> list[dict]:
     )
 
 
+def _not_submitted_filter():
+    """Единый признак несданной связи проекта для воронки, счётчика и списка."""
+    return Q(submitted=False)
+
+
+def projects_not_submitted_rows(program):
+    """Несданные связи соревновательной программы, независимо от свойств проекта.
+
+    Несоревновательная программа не требует сдачи: список для неё неприменим.
+    Выбираются только публичные поля руководителя; сериализация не делает SQL.
+    """
+    rows = PartnerProgramProject.objects.filter(
+        _not_submitted_filter(), partner_program_id=program.pk
+    )
+    if not program.is_competitive:
+        return rows.none()
+    return rows.select_related("project", "project__leader").only(
+        "id",
+        "project_id",
+        "datetime_created",
+        "project__name",
+        "project__leader_id",
+        "project__leader__id",
+        "project__leader__first_name",
+        "project__leader__last_name",
+        "project__leader__avatar",
+    )
+
+
 def _solution_rows(program):
     """Общая SQL-классификация работ программы для overview и детализации.
 
@@ -202,7 +231,7 @@ def _solution_rows(program):
         )
     return rows.annotate(
         status=Case(
-            When(submitted=False, then=Value("not_submitted")),
+            When(_not_submitted_filter(), then=Value("not_submitted")),
             default=evaluated_status,
             output_field=CharField(),
         )
@@ -237,7 +266,7 @@ def projects_awaiting_evaluation_rows(program):
 def _get_solution_metrics(program) -> dict[str, int]:
     return _solution_rows(program).aggregate(
         created=Count("pk"),
-        not_submitted=Count("pk", filter=Q(submitted=False)),
+        not_submitted=Count("pk", filter=_not_submitted_filter()),
         submitted=Count("pk", filter=Q(submitted=True)),
         awaiting_evaluation=Count("pk", filter=Q(status="awaiting_evaluation")),
         partially_evaluated=Count("pk", filter=Q(status="partially_evaluated")),
@@ -349,6 +378,10 @@ def build_program_manager_analytics(program) -> dict:
         "attention": {
             "participants_without_team": participants["without_team"],
             "projects_awaiting_evaluation": projects_awaiting_evaluation,
+            "projects_not_submitted": {
+                "applicable": program.is_competitive,
+                "total": solutions["not_submitted"] if program.is_competitive else 0,
+            },
             "delayed_experts": (
                 build_delayed_experts(assignment_items)
                 if program.is_distributed_evaluation
