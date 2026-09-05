@@ -13,3 +13,21 @@ class PartnerProgramPagination(pagination.LimitOffsetPagination):
     default_limit = 10
     limit_query_param = "limit"
     offset_query_param = "offset"
+
+
+class ProgramAttentionPagination(pagination.LimitOffsetPagination):
+    """Стандартная обёртка DRF с уже проверенными параметрами списка внимания."""
+
+    default_limit = 25
+    max_limit = 100
+
+    def __init__(self, query):
+        self.query = query
+
+    def get_limit(self, request):
+        """Не подменяет ошибочный limit значением по умолчанию после валидации."""
+        return self.query["limit"]
+
+    def get_offset(self, request):
+        """Использует валидированный неотрицательный offset."""
+        return self.query["offset"]

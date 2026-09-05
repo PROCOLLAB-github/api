@@ -1,21 +1,28 @@
-from collections import defaultdict
 from datetime import timedelta
 
-from django.db.models import Count, Exists, OuterRef, Q
-from django.db.models.functions import TruncDate, Trim
+from django.db.models import Case, CharField, Count, Exists, F, IntegerField, Min
+from django.db.models import OuterRef, Q, Subquery, Value, When
+from django.db.models.functions import Coalesce, TruncDate, Trim
 from django.utils import timezone
 
 from partner_programs.models import PartnerProgramProject, PartnerProgramUserProfile
 from projects.models import Collaborator
 from partner_programs.services.assignment_analytics import (
+    annotated_assignment_queryset,
     build_assignments,
     build_delayed_experts,
 )
+from project_rates.models import ProjectScore
 
 ACTIVITY_DAYS = 30
 
 
-def _get_participant_metrics(program_id: int) -> dict[str, int]:
+def _participant_profiles(program_id):
+    """Регистрации с признаками команды только в проектах текущей программы.
+
+    Руководитель считается участником команды и без записи Collaborator.
+    Поле project регистрационной анкеты не заменяет фактические связи команды.
+    """
     leader_exists = Exists(
         PartnerProgramProject.objects.filter(
             partner_program_id=program_id,
@@ -35,13 +42,47 @@ def _get_participant_metrics(program_id: int) -> dict[str, int]:
             project__program_links__partner_program_id=program_id,
         )
     )
-    profiles = PartnerProgramUserProfile.objects.filter(
+    return PartnerProgramUserProfile.objects.filter(
         partner_program_id=program_id
     ).annotate(
         is_project_leader=leader_exists,
         is_submitted_project_leader=submitted_leader_exists,
         is_project_collaborator=collaborator_exists,
     )
+
+
+def _without_team_filter():
+    """Общий предикат уникального участника без команды для счётчика и списка."""
+    return Q(
+        user_id__isnull=False,
+        is_project_leader=False,
+        is_project_collaborator=False,
+    )
+
+
+def participants_without_team_rows(program_id):
+    """Уникальные пользователи без команды с первой регистрацией в программе.
+
+    Группировка сохраняет одну строку на user_id даже при исторических дублях.
+    Удалённые пользователи исключены; поиск и пагинация остаются на уровне SQL.
+    """
+    return (
+        _participant_profiles(program_id)
+        .filter(_without_team_filter())
+        .order_by()
+        .values(
+            "user_id",
+            "user__first_name",
+            "user__last_name",
+            "user__avatar",
+            "user__city",
+        )
+        .annotate(registered_at=Min("datetime_created"))
+    )
+
+
+def _get_participant_metrics(program_id: int) -> dict[str, int]:
+    profiles = _participant_profiles(program_id)
     participant_filter = Q(user_id__isnull=False)
     team_filter = Q(is_project_leader=True) | Q(is_project_collaborator=True)
 
@@ -59,11 +100,7 @@ def _get_participant_metrics(program_id: int) -> dict[str, int]:
         ),
         without_team=Count(
             "user_id",
-            filter=(
-                participant_filter
-                & Q(is_project_leader=False)
-                & Q(is_project_collaborator=False)
-            ),
+            filter=_without_team_filter(),
             distinct=True,
         ),
         project_creators=Count(
@@ -108,70 +145,113 @@ def _get_participant_regions(program_id: int) -> list[dict]:
     )
 
 
-def _get_solution_metrics(program, assignments_by_project: dict) -> dict[str, int]:
-    program_id = program.id
-    project_rows = (
-        PartnerProgramProject.objects.filter(partner_program_id=program_id)
-        .annotate(
-            rated_experts=Count(
-                "project__scores__user_id",
-                filter=Q(
-                    project__scores__criteria__partner_program_id=program_id,
-                ),
-                distinct=True,
+def _solution_rows(program):
+    """Общая SQL-классификация работ программы для overview и детализации.
+
+    В distributed учитываются только реальные назначения и общая проверка
+    завершённости каждого назначения. В open достаточно первой оценки по
+    критериям программы; прогресс назначений в этом режиме неприменим (null).
+    """
+    rows = PartnerProgramProject.objects.filter(partner_program_id=program.pk)
+    if program.is_distributed_evaluation:
+        assignment_totals = (
+            annotated_assignment_queryset(program.pk)
+            .filter(project_id=OuterRef("project_id"))
+            .order_by()
+            .values("project_id")
+            .annotate(
+                total=Count("pk"),
+                completed=Count("pk", filter=Q(is_completed=True)),
             )
         )
-        .values_list("project_id", "submitted", "rated_experts")
+        rows = rows.annotate(
+            assignments_total=Coalesce(
+                Subquery(assignment_totals.values("total")[:1]), 0
+            ),
+            assignments_completed=Coalesce(
+                Subquery(assignment_totals.values("completed")[:1]), 0
+            ),
+        )
+        evaluated_status = Case(
+            When(
+                Q(assignments_total=0) | Q(assignments_completed=0),
+                then=Value("awaiting_evaluation"),
+            ),
+            When(
+                assignments_completed__lt=F("assignments_total"),
+                then=Value("partially_evaluated"),
+            ),
+            default=Value("evaluated"),
+            output_field=CharField(),
+        )
+    else:
+        rows = rows.annotate(
+            assignments_total=Value(None, output_field=IntegerField()),
+            assignments_completed=Value(None, output_field=IntegerField()),
+            has_program_score=Exists(
+                ProjectScore.objects.filter(
+                    project_id=OuterRef("project_id"),
+                    criteria__partner_program_id=program.pk,
+                )
+            ),
+        )
+        evaluated_status = Case(
+            When(has_program_score=True, then=Value("evaluated")),
+            default=Value("awaiting_evaluation"),
+            output_field=CharField(),
+        )
+    return rows.annotate(
+        status=Case(
+            When(submitted=False, then=Value("not_submitted")),
+            default=evaluated_status,
+            output_field=CharField(),
+        )
     )
 
-    metrics = {
-        "created": 0,
-        "not_submitted": 0,
-        "submitted": 0,
-        "awaiting_evaluation": 0,
-        "partially_evaluated": 0,
-        "evaluated": 0,
-    }
-    for project_id, submitted, rated_experts in project_rows:
-        metrics["created"] += 1
-        if not submitted:
-            metrics["not_submitted"] += 1
-            continue
 
-        metrics["submitted"] += 1
-        if not program.is_distributed_evaluation:
-            status = "evaluated" if rated_experts > 0 else "awaiting_evaluation"
-            metrics[status] += 1
-            continue
+def projects_awaiting_evaluation_rows(program):
+    """Сданные работы, из которых состоит счётчик ожидания оценивания.
 
-        project_assignments = assignments_by_project.get(
-            project_id,
-            {"total": 0, "evaluated": 0},
+    Одна строка соответствует связи проекта с программой, а не назначению.
+    Фильтрация, count и пагинация выполняются в SQL; руководитель загружается
+    тем же запросом без полного пользовательского сериализатора или N+1.
+    """
+    return (
+        _solution_rows(program)
+        .filter(status__in=("awaiting_evaluation", "partially_evaluated"))
+        .select_related("project", "project__leader")
+        .only(
+            "id",
+            "project_id",
+            "datetime_submitted",
+            "project__name",
+            "project__leader_id",
+            "project__leader__id",
+            "project__leader__first_name",
+            "project__leader__last_name",
+            "project__leader__avatar",
         )
-        assigned = project_assignments["total"]
-        evaluated_assignments = project_assignments["evaluated"]
-        if assigned == 0 or evaluated_assignments == 0:
-            metrics["awaiting_evaluation"] += 1
-        elif evaluated_assignments < assigned:
-            metrics["partially_evaluated"] += 1
-        else:
-            metrics["evaluated"] += 1
-
-    return metrics
+    )
 
 
-def _get_assignment_metrics(assignments: list[dict]) -> tuple[dict[str, int], dict]:
+def _get_solution_metrics(program) -> dict[str, int]:
+    return _solution_rows(program).aggregate(
+        created=Count("pk"),
+        not_submitted=Count("pk", filter=Q(submitted=False)),
+        submitted=Count("pk", filter=Q(submitted=True)),
+        awaiting_evaluation=Count("pk", filter=Q(status="awaiting_evaluation")),
+        partially_evaluated=Count("pk", filter=Q(status="partially_evaluated")),
+        evaluated=Count("pk", filter=Q(status="evaluated")),
+    )
+
+
+def _get_assignment_metrics(assignments: list[dict]) -> dict[str, int]:
     metrics = {"total": 0, "pending": 0, "evaluated": 0}
-    by_project = defaultdict(lambda: {"total": 0, "evaluated": 0})
     for assignment in assignments:
-        project_id = assignment["project"]["id"]
         completed = assignment["status"] == "completed"
         metrics["total"] += 1
         metrics["evaluated" if completed else "pending"] += 1
-        by_project[project_id]["total"] += 1
-        if completed:
-            by_project[project_id]["evaluated"] += 1
-    return metrics, dict(by_project)
+    return metrics
 
 
 def _get_activity(program_id: int) -> list[dict]:
@@ -220,8 +300,8 @@ def build_program_manager_analytics(program) -> dict:
     regions = _get_regions(program_id)
     participant_regions = _get_participant_regions(program_id)
     assignment_items = build_assignments(program_id)
-    assignments, assignments_by_project = _get_assignment_metrics(assignment_items)
-    solutions = _get_solution_metrics(program, assignments_by_project)
+    assignments = _get_assignment_metrics(assignment_items)
+    solutions = _get_solution_metrics(program)
 
     projects_awaiting_evaluation = (
         solutions["awaiting_evaluation"] + solutions["partially_evaluated"]
