@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
 
 from files.models import UserFile
@@ -352,6 +352,31 @@ class PartnerProgramField(models.Model):
         opts = self.options.split("|") if self.options else []
         return [opt.strip() for opt in opts if opt.strip()]
 
+    def clean(self):
+        """ModelForm/admin and normal model writes share the reserved case rules."""
+        super().clean()
+        from partner_programs.services.case_fields import (
+            validate_program_case_configuration,
+        )
+
+        validate_program_case_configuration(self)
+
+    def save(self, *args, **kwargs):
+        """Serialize case definition edits with case value writes; no schema changes."""
+        from partner_programs.services.case_fields import is_program_case_field
+
+        with transaction.atomic():
+            previous = (
+                type(self).objects.select_for_update().filter(pk=self.pk).first()
+                if self.pk
+                else None
+            )
+            if is_program_case_field(self) or (
+                previous and is_program_case_field(previous)
+            ):
+                self.full_clean()
+            return super().save(*args, **kwargs)
+
 
 class PartnerProgramFieldValue(models.Model):
     program_project = models.ForeignKey(
@@ -385,7 +410,31 @@ class PartnerProgramFieldValue(models.Model):
             raise ValidationError(
                 "Нельзя изменять значения полей программы после сдачи проекта на проверку."
             )
+        from partner_programs.services.case_fields import (
+            is_program_case_field,
+            validate_case_value,
+        )
+
+        if is_program_case_field(self.field):
+            if self.field.partner_program_id != self.program_project.partner_program_id:
+                raise ValidationError("Поле кейса не относится к программе этой связи.")
+            validate_case_value(self.field, self.value_text)
 
     def save(self, *args, **kwargs):
+        from partner_programs.services.case_fields import is_program_case_field
+
+        if is_program_case_field(self.field):
+            # Admin/model writes obey the same link -> definition lock order as PUT.
+            with transaction.atomic():
+                self.program_project = (
+                    PartnerProgramProject.objects.select_for_update(of=("self",))
+                    .select_related("partner_program")
+                    .get(pk=self.program_project_id)
+                )
+                self.field = PartnerProgramField.objects.select_for_update().get(
+                    pk=self.field_id
+                )
+                self.full_clean()
+                return super().save(*args, **kwargs)
         self.full_clean()
         super().save(*args, **kwargs)

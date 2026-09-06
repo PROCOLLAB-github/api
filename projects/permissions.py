@@ -13,8 +13,8 @@ from partner_programs.models import (
 from projects.models import Project
 
 
-def has_project_read_involvement(user, project: Project) -> bool:
-    """Shared restricted READ visibility; program/admin roles grant no WRITE rights."""
+def has_project_read_involvement(user, project: Project, *, program_id=None) -> bool:
+    """Restricted READ; optional program scope limits program roles, never grants WRITE."""
     if not user or not user.is_authenticated:
         return False
 
@@ -27,14 +27,13 @@ def has_project_read_involvement(user, project: Project) -> bool:
     if project.invite_set.filter(user_id=user.id).exists():
         return True
 
-    return (
-        PartnerProgramProject.objects.filter(project_id=project.id)
-        .filter(
-            Q(partner_program__managers__id=user.id)
-            | Q(partner_program__experts__user_id=user.id)
-        )
-        .exists()
-    )
+    links = PartnerProgramProject.objects.filter(project_id=project.id)
+    if program_id is not None:
+        links = links.filter(partner_program_id=program_id)
+    return links.filter(
+        Q(partner_program__managers__id=user.id)
+        | Q(partner_program__experts__user_id=user.id)
+    ).exists()
 
 
 class ProjectVisibilityPermission(BasePermission):
