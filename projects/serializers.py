@@ -261,11 +261,11 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     trl = serializers.IntegerField(required=False, allow_null=True)
 
     def get_partner_program(self, project):
-        try:
-            link = project.program_links.select_related("partner_program").get()
-            return PartnerProgramProjectSerializer(link).data
-        except PartnerProgramProject.DoesNotExist:
-            return None
+        """Keep the legacy singular contract: choose the earliest link by pk."""
+        link = (
+            project.program_links.select_related("partner_program").order_by("pk").first()
+        )
+        return PartnerProgramProjectSerializer(link).data if link is not None else None
 
     @classmethod
     def get_partner_program_tags(cls, project):
