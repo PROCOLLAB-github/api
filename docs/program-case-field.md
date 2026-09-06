@@ -114,6 +114,10 @@ model errors удаляемой формы, поэтому проверка вы
   "program_id": 12,
   "project_id": 55,
   "submitted": false,
+  "is_competitive": true,
+  "submission_open": true,
+  "submission_deadline": "2026-10-01T18:00:00Z",
+  "can_submit": true,
   "fields": [
     {
       "id": 5,
@@ -137,6 +141,23 @@ staff/superuser, manager/expert **именно программы этой св�
 публичность проекта доступа к этим полям не даёт. Роли программы B не раскрывают
 поля программы A, даже если проект общий. Старые вызовы visibility helper без
 program scope сохраняют существующую семантику.
+
+Metadata описывает **запрошенную** связь `PartnerProgramProject`, а не первую
+программу проекта:
+
+- `is_competitive: boolean` — `link.partner_program.is_competitive`;
+- `submission_open: boolean` — результат
+  `link.partner_program.is_project_submission_open()`;
+- `submission_deadline: datetime | null` — результат
+  `link.partner_program.get_project_submission_deadline()`, в JSON — ISO 8601
+  либо null. Сохраняется существующий fallback на окончание регистрации;
+- `can_submit: boolean` — `is_competitive and not link.submitted and submission_open`.
+
+У сданной либо неконкурсной связи `can_submit=false`, даже если окно ещё открыто.
+Это snapshot доступности стадии сдачи, не новое разрешение: проверка прав лидера,
+обязательных полей и остальные проверки submit endpoint остаются неизменными.
+`fields` в GET и формат PUT не меняются. Metadata вычисляется из уже загруженных
+link/program и не добавляет SQL-запросов.
 
 Для лидера GET использует **3 SQL-запроса** независимо от количества полей:
 link + program + project одним join; все values; все definitions. Для остальных
@@ -171,6 +192,11 @@ Project. Manager/expert/staff не получают право записи. Ч�
 
 Следующий Angular этап должен использовать `programLinkId`, не подставлять
 `options[0]` на apply и показывать placeholder «Выберите кейс» до явного выбора.
+
+Обычный `PATCH /projects/{projectId}/` без ключа `partner_program_id` не меняет
+привязки к программам. Регрессия проверяет проект с двумя связями A/B: обе строки
+связей и связанные профили участников сохраняются без изменений. Явная смена
+программы через legacy поле остаётся прежним отдельным поведением.
 
 ## Совместимость фильтров и границы
 
