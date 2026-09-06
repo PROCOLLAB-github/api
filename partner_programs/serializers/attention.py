@@ -61,6 +61,23 @@ class ProgramAttentionLeaderSerializer(serializers.Serializer):
         return user.avatar or None
 
 
+class ProgramNotSubmittedProjectSerializer(serializers.Serializer):
+    """Минимальный read-only контракт несданной связи, без приватных данных."""
+
+    program_project_id = serializers.IntegerField(source="pk")
+    project = AssignmentProjectSerializer()
+    leader = ProgramAttentionLeaderSerializer(source="project.leader", allow_null=True)
+    linked_at = serializers.DateTimeField(source="datetime_created")
+
+
+class ProgramNotSubmittedMetadataSerializer(serializers.Serializer):
+    """Срок и доступность сдачи из существующих методов программы, без нового SLA."""
+
+    applicable = serializers.BooleanField()
+    submission_deadline = serializers.DateTimeField(allow_null=True)
+    submission_open = serializers.BooleanField()
+
+
 WAITING_REASONS = {
     "no_assignments": "Эксперты не назначены",
     "no_completed_evaluations": "Нет завершённых оценок",

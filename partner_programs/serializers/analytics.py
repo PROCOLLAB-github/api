@@ -128,9 +128,16 @@ class DelayedExpertsSerializer(AnalyticsTotalSerializer):
     items = DelayedExpertSerializer(many=True)
 
 
+class ProjectsNotSubmittedSerializer(AnalyticsTotalSerializer):
+    """Несданные связи программы; требование сдачи применимо только к конкурсной."""
+
+    applicable = serializers.BooleanField()
+
+
 class ProgramAttentionSerializer(serializers.Serializer):
     participants_without_team = serializers.IntegerField(min_value=0)
     projects_awaiting_evaluation = serializers.IntegerField(min_value=0)
+    projects_not_submitted = ProjectsNotSubmittedSerializer()
     delayed_experts = DelayedExpertsSerializer()
 
 
