@@ -1,14 +1,11 @@
 from django.contrib.auth import get_user_model
-from django.db import transaction
 from django.db.models import Exists, F, OuterRef, Value
 from django.db.models.functions import Concat
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from django.utils.timezone import now
-from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import generics, permissions, status
-from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -19,7 +16,6 @@ from core.services import add_view, set_like
 from core.utils import build_xlsx_download_response
 from partner_programs.models import (
     PartnerProgram,
-    PartnerProgramFieldValue,
     PartnerProgramProject,
     PartnerProgramUserProfile,
 )
@@ -60,6 +56,12 @@ from partner_programs.services import (
     require_can_apply_project_to_program,
 )
 from partner_programs.serializers import PartnerProgramFieldValueUpdateSerializer
+from partner_programs.services.project_fields import (
+    program_link_fields,
+    resolve_legacy_program_link,
+    submit_program_project,
+    update_program_link_fields,
+)
 from partner_programs.serializers.analytics import (
     ProgramAssignmentScopeSerializer,
     ProgramAssignmentScoresSerializer,
@@ -336,113 +338,42 @@ class PartnerProgramDataSchema(generics.RetrieveAPIView):
 
 
 class PartnerProgramFieldValueBulkUpdateView(APIView):
+    """Backward-compatible write facade for projects with exactly one program link."""
+
     permission_classes = [IsAuthenticated]
     serializer_class = PartnerProgramFieldValueUpdateSerializer
 
-    def get_project(self, project_id):
-        try:
-            return Project.objects.get(id=project_id)
-        except Project.DoesNotExist:
-            raise NotFound("Проект не найден")
-
     @swagger_auto_schema(request_body=PartnerProgramFieldValueUpdateSerializer(many=True))
     def put(self, request, project_id, *args, **kwargs):
-        project = self.get_project(project_id)
+        link_id = resolve_legacy_program_link(project_id, request.user)
+        update_program_link_fields(link_id, request.user, request.data)
+        return Response({"detail": "Значения успешно обновлены"})
 
-        if project.leader != request.user:
-            raise PermissionDenied("Вы не являетесь лидером этого проекта")
 
-        try:
-            program_project = PartnerProgramProject.objects.select_related(
-                "partner_program"
-            ).get(project=project)
-        except PartnerProgramProject.DoesNotExist:
-            raise ValidationError("Проект не привязан ни к одной программе")
+class PartnerProgramProjectFieldsView(APIView):
+    """Canonical read/partial PUT contract scoped to one program-project link."""
 
-        partner_program = program_project.partner_program
+    permission_classes = [IsAuthenticated]
 
-        if partner_program.is_competitive and program_project.submitted:
-            raise ValidationError(
-                "Нельзя изменять значения полей программы после сдачи проекта на проверку."
-            )
+    def get(self, request, pk, *args, **kwargs):
+        return Response(program_link_fields(pk, request.user))
 
-        serializer = self.serializer_class(data=request.data, many=True)
-        serializer.is_valid(raise_exception=True)
-
-        with transaction.atomic():
-            for item in serializer.validated_data:
-                field = item["field"]
-
-                if field.partner_program_id != partner_program.id:
-                    raise ValidationError(
-                        f"Поле с id={field.id} не относится к программе этого проекта"
-                    )
-
-                value_text = item.get("value_text")
-
-                obj, created = PartnerProgramFieldValue.objects.update_or_create(
-                    program_project=program_project,
-                    field=field,
-                    defaults={"value_text": value_text},
-                )
-
-                if created:
-                    try:
-                        obj.full_clean()
-                    except ValidationError as e:
-                        raise ValidationError(e.message_dict)
-
-        return Response(
-            {"detail": "Значения успешно обновлены"},
-            status=status.HTTP_200_OK,
-        )
+    @swagger_auto_schema(request_body=PartnerProgramFieldValueUpdateSerializer(many=True))
+    def put(self, request, pk, *args, **kwargs):
+        update_program_link_fields(pk, request.user, request.data)
+        return Response({"detail": "Значения успешно обновлены"})
 
 
 class PartnerProgramProjectSubmitView(GenericAPIView):
+    """Submit the URL link atomically, keeping the existing leader-only contract."""
+
     permission_classes = [IsAuthenticated, IsProjectLeader]
     serializer_class = EmptySerializer
     queryset = PartnerProgramProject.objects.all()
 
-    @swagger_auto_schema(
-        manual_parameters=[
-            openapi.Parameter(
-                name="id",
-                in_=openapi.IN_PATH,
-                description="Уникальный идентификатор связи проекта и программы",
-                type=openapi.TYPE_INTEGER,
-                required=True,
-            ),
-        ]
-    )
     def post(self, request, pk, *args, **kwargs):
-        program_project = self.get_object()
-
-        if not program_project.partner_program.is_competitive:
-            return Response(
-                {"detail": "Программа не является конкурсной."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        if program_project.submitted:
-            return Response(
-                {"detail": "Проект уже был сдан на проверку."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        if not program_project.partner_program.is_project_submission_open():
-            return Response(
-                {"detail": "Срок подачи проектов в программу завершён."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        program_project.submitted = True
-        program_project.datetime_submitted = now()
-        program_project.save()
-
-        return Response(
-            {"detail": "Проект успешно сдан на проверку."},
-            status=status.HTTP_200_OK,
-        )
+        submit_program_project(pk, request.user)
+        return Response({"detail": "Проект успешно сдан на проверку."})
 
 
 class ProgramFiltersAPIView(APIView):

@@ -19,6 +19,11 @@ from partner_programs.models import (
     PartnerProgramUserProfile,
 )
 from partner_programs.services import prepare_project_scores_export_data
+from partner_programs.forms import (
+    ProgramFieldInlineFormSet,
+    ProgramFieldValueInlineFormSet,
+)
+from partner_programs.services.case_fields import case_field_has_values
 
 
 class PartnerProgramMaterialInline(admin.StackedInline):
@@ -31,6 +36,7 @@ class PartnerProgramMaterialInline(admin.StackedInline):
 
 class PartnerProgramFieldInline(admin.TabularInline):
     model = PartnerProgramField
+    formset = ProgramFieldInlineFormSet
     extra = 0
 
 
@@ -298,6 +304,7 @@ class PartnerProgramMaterialAdmin(admin.ModelAdmin):
 
 class PartnerProgramFieldValueInline(admin.TabularInline):
     model = PartnerProgramFieldValue
+    formset = ProgramFieldValueInlineFormSet
     extra = 0
     autocomplete_fields = ("field",)
     readonly_fields = ("get_display_value",)
@@ -326,6 +333,16 @@ class PartnerProgramProjectAdmin(admin.ModelAdmin):
 
 @admin.register(PartnerProgramField)
 class PartnerProgramFieldAdmin(admin.ModelAdmin):
+    def get_deleted_objects(self, objs, request):
+        """Use Django's standard protected deletion UI for single and bulk actions."""
+        deleted, counts, permissions_needed, protected = super().get_deleted_objects(
+            objs, request
+        )
+        for obj in objs:
+            if case_field_has_values(obj):
+                protected.append(f"Используемое поле кейса: {obj}")
+        return deleted, counts, permissions_needed, protected
+
     list_display = (
         "id",
         "partner_program",

@@ -1,14 +1,20 @@
 from dataclasses import dataclass
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
+from partner_programs.constants import PROGRAM_CASE_FIELD_NAME
 from partner_programs.models import (
     PartnerProgram,
     PartnerProgramFieldValue,
     PartnerProgramProject,
     PartnerProgramUserProfile,
+)
+from partner_programs.services.case_fields import (
+    get_program_case_field,
+    validate_case_value,
 )
 from projects.models import Project
 
@@ -64,8 +70,11 @@ def _validate_required_program_fields(
     program: PartnerProgram,
     values_data: list[dict],
 ) -> None:
+    """Only reserved case is deferred to submission; generic required fields remain."""
     required_fields = list(
-        program.fields.filter(is_required=True).values("id", "label")
+        program.fields.filter(is_required=True)
+        .exclude(name=PROGRAM_CASE_FIELD_NAME)
+        .values("id", "label")
     )
     provided_field_ids = {item["field"].id for item in values_data}
     missing_required = [
@@ -111,7 +120,7 @@ def apply_project_to_program(
     if existing_link:
         raise ProgramProjectAlreadyApplied(existing_link)
 
-    serializer = serializer_class(data=data)
+    serializer = serializer_class(data=data, context={"program": program})
     serializer.is_valid(raise_exception=True)
     validated_data = serializer.validated_data
 
@@ -123,6 +132,16 @@ def apply_project_to_program(
     _validate_program_field_ownership(program=program, values_data=values_data)
 
     with transaction.atomic():
+        # Missing case is valid at draft creation; an explicit choice must stay valid
+        # even if the definition changed between input validation and this transaction.
+        case_field = get_program_case_field(program, for_update=True)
+        if case_field is not None:
+            for item in values_data:
+                if item["field"].pk == case_field.pk:
+                    try:
+                        validate_case_value(case_field, item.get("value_text"))
+                    except DjangoValidationError as error:
+                        raise ValidationError({"program_field_values": error.messages})
         project = Project.objects.create(
             leader=user,
             draft=True,
