@@ -5,9 +5,11 @@ from unittest.mock import patch
 from django.core.exceptions import ValidationError
 
 from django.test import TestCase
+from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from rest_framework.test import APIClient
 
-from partner_programs.models import PartnerProgramFieldValue
+from partner_programs.models import PartnerProgram, PartnerProgramFieldValue
 from partner_programs.tests.helpers import (
     create_partner_program,
     create_program_field,
@@ -53,6 +55,10 @@ class ProgramLinkFieldsAPITests(TestCase):
                 "program_id": self.program.pk,
                 "project_id": self.project.pk,
                 "submitted": False,
+                "is_competitive": True,
+                "submission_open": True,
+                "submission_deadline": self.program.datetime_registration_ends,
+                "can_submit": True,
             },
         )
         fields = response.data["fields"]
@@ -72,6 +78,115 @@ class ProgramLinkFieldsAPITests(TestCase):
                 "options",
                 "value",
             },
+        )
+
+    def assert_submission_metadata(
+        self, link, *, competitive, submission_open, deadline, can_submit
+    ):
+        response = self.client.get(
+            f"/programs/partner-program-projects/{link.pk}/fields/"
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["program_link_id"], link.pk)
+        self.assertEqual(data["program_id"], link.partner_program_id)
+        self.assertIs(data["is_competitive"], competitive)
+        self.assertIs(data["submission_open"], submission_open)
+        self.assertIs(data["can_submit"], can_submit)
+        if deadline is None:
+            self.assertIsNone(data["submission_deadline"])
+        else:
+            self.assertEqual(parse_datetime(data["submission_deadline"]), deadline)
+
+    def test_competitive_open_metadata_uses_submission_deadline(self):
+        deadline = timezone.now() + timezone.timedelta(days=2)
+        self.program.datetime_project_submission_ends = deadline
+        self.program.save(update_fields=["datetime_project_submission_ends"])
+        self.assert_submission_metadata(
+            self.link,
+            competitive=True,
+            submission_open=True,
+            deadline=deadline,
+            can_submit=True,
+        )
+
+    def test_competitive_closed_metadata(self):
+        deadline = timezone.now() - timezone.timedelta(days=1)
+        self.program.datetime_project_submission_ends = deadline
+        self.program.save(update_fields=["datetime_project_submission_ends"])
+        self.assert_submission_metadata(
+            self.link,
+            competitive=True,
+            submission_open=False,
+            deadline=deadline,
+            can_submit=False,
+        )
+
+    def test_already_submitted_metadata_keeps_window_open_but_cannot_submit(self):
+        self.link.submitted = True
+        self.link.save(update_fields=["submitted"])
+        self.assert_submission_metadata(
+            self.link,
+            competitive=True,
+            submission_open=True,
+            deadline=self.program.datetime_registration_ends,
+            can_submit=False,
+        )
+
+    def test_noncompetitive_metadata_keeps_window_open_but_cannot_submit(self):
+        self.program.is_competitive = False
+        self.program.save(update_fields=["is_competitive"])
+        self.assert_submission_metadata(
+            self.link,
+            competitive=False,
+            submission_open=True,
+            deadline=self.program.datetime_registration_ends,
+            can_submit=False,
+        )
+
+    def test_metadata_preserves_nullable_deadline_from_program_method(self):
+        # Current records require a registration deadline; preserve the helper contract
+        # without changing the schema to manufacture an otherwise impossible record.
+        with patch.object(
+            PartnerProgram, "get_project_submission_deadline", return_value=None
+        ):
+            self.assert_submission_metadata(
+                self.link,
+                competitive=True,
+                submission_open=True,
+                deadline=None,
+                can_submit=True,
+            )
+
+    def test_metadata_uses_requested_link_when_project_has_different_program_states(self):
+        closed_deadline = timezone.now() - timezone.timedelta(days=1)
+        self.program.datetime_project_submission_ends = closed_deadline
+        self.program.save(update_fields=["datetime_project_submission_ends"])
+        self.link.submitted = True
+        self.link.save(update_fields=["submitted"])
+        # B is deliberately not the first link, and must not inherit A's closed/submitted state.
+        self.assert_submission_metadata(
+            self.other_link,
+            competitive=True,
+            submission_open=True,
+            deadline=self.other_program.datetime_registration_ends,
+            can_submit=True,
+        )
+        self.assert_submission_metadata(
+            self.link,
+            competitive=True,
+            submission_open=False,
+            deadline=closed_deadline,
+            can_submit=False,
+        )
+        self.other_program.is_competitive = False
+        self.other_program.save(update_fields=["is_competitive"])
+        self.assert_submission_metadata(
+            self.other_link,
+            competitive=False,
+            submission_open=True,
+            deadline=self.other_program.datetime_registration_ends,
+            can_submit=False,
         )
 
     def test_partial_update_changes_only_requested_link(self):
@@ -255,6 +370,7 @@ class ProgramLinkFieldsAPITests(TestCase):
         with self.assertNumQueries(3):
             first = self.client.get(self.url)
         self.assertEqual(len(first.data["fields"]), 1)
+        self.assertIs(first.data["can_submit"], True)
         for _ in range(19):
             field = create_program_field(self.program)
             PartnerProgramFieldValue.objects.create(
@@ -263,3 +379,4 @@ class ProgramLinkFieldsAPITests(TestCase):
         with self.assertNumQueries(3):
             many = self.client.get(self.url)
         self.assertEqual(len(many.data["fields"]), 20)
+        self.assertIs(many.data["can_submit"], True)
