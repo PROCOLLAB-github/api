@@ -19,7 +19,10 @@ from partner_programs.models import (
     PartnerProgramUserProfile,
 )
 from partner_programs.services import prepare_project_scores_export_data
-from partner_programs.forms import ProgramFieldInlineFormSet
+from partner_programs.forms import (
+    ProgramFieldInlineFormSet,
+    ProgramFieldValueInlineFormSet,
+)
 from partner_programs.services.case_fields import case_field_has_values
 
 
@@ -301,6 +304,7 @@ class PartnerProgramMaterialAdmin(admin.ModelAdmin):
 
 class PartnerProgramFieldValueInline(admin.TabularInline):
     model = PartnerProgramFieldValue
+    formset = ProgramFieldValueInlineFormSet
     extra = 0
     autocomplete_fields = ("field",)
     readonly_fields = ("get_display_value",)

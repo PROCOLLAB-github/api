@@ -403,13 +403,9 @@ class PartnerProgramFieldValue(models.Model):
         return self.value_text
 
     def clean(self):
-        if (
-            self.program_project.partner_program.is_competitive
-            and self.program_project.submitted
-        ):
-            raise ValidationError(
-                "Нельзя изменять значения полей программы после сдачи проекта на проверку."
-            )
+        from partner_programs.services.field_values import validate_field_value_mutation
+
+        validate_field_value_mutation(self)
         from partner_programs.services.case_fields import (
             is_program_case_field,
             validate_case_value,
@@ -426,10 +422,10 @@ class PartnerProgramFieldValue(models.Model):
         if is_program_case_field(self.field):
             # Admin/model writes obey the same link -> definition lock order as PUT.
             with transaction.atomic():
-                self.program_project = (
-                    PartnerProgramProject.objects.select_for_update(of=("self",))
-                    .select_related("partner_program")
-                    .get(pk=self.program_project_id)
+                # Keep the parent-form instance: its unsaved submitted=True matters.
+                # Validation also checks DB state, under this same link lock.
+                PartnerProgramProject.objects.select_for_update().get(
+                    pk=self.program_project_id
                 )
                 self.field = PartnerProgramField.objects.select_for_update().get(
                     pk=self.field_id
