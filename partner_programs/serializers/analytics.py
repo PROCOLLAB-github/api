@@ -147,6 +147,24 @@ class ProgramActivityItemSerializer(serializers.Serializer):
     submitted_solutions = serializers.IntegerField(min_value=0)
 
 
+class ProgramCaseAnalyticsMetricsSerializer(serializers.Serializer):
+    participants_total = serializers.IntegerField(min_value=0)
+    projects_total = serializers.IntegerField(min_value=0)
+    not_submitted = serializers.IntegerField(min_value=0)
+    submitted = serializers.IntegerField(min_value=0)
+
+
+class ProgramCaseAnalyticsItemSerializer(ProgramCaseAnalyticsMetricsSerializer):
+    name = serializers.CharField(trim_whitespace=False)
+
+
+class ProgramCaseAnalyticsSerializer(serializers.Serializer):
+    configured = serializers.BooleanField()
+    submission_applicable = serializers.BooleanField()
+    items = ProgramCaseAnalyticsItemSerializer(many=True)
+    without_case = ProgramCaseAnalyticsMetricsSerializer()
+
+
 class ProgramManagerAnalyticsSerializer(serializers.Serializer):
     summary = ProgramAnalyticsSummarySerializer()
     participant_funnel = ProgramParticipantFunnelSerializer()
@@ -154,3 +172,4 @@ class ProgramManagerAnalyticsSerializer(serializers.Serializer):
     evaluation_status = ProgramEvaluationStatusSerializer()
     attention = ProgramAttentionSerializer()
     activity = ProgramActivityItemSerializer(many=True)
+    cases = ProgramCaseAnalyticsSerializer()

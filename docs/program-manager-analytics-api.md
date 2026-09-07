@@ -43,6 +43,15 @@ Endpoint доступен менеджерам указанной програм
     "submitted": 2,
     "evaluated": 1
   },
+  "cases": {
+    "configured": true,
+    "submission_applicable": true,
+    "items": [
+      {"name": "Кейс A", "participants_total": 2, "projects_total": 2, "not_submitted": 0, "submitted": 2},
+      {"name": "Кейс B", "participants_total": 0, "projects_total": 0, "not_submitted": 0, "submitted": 0}
+    ],
+    "without_case": {"participants_total": 0, "projects_total": 0, "not_submitted": 0, "submitted": 0}
+  },
   "evaluation_status": {
     "mode": "distributed",
     "max_evaluations_per_project": 2,
@@ -118,12 +127,55 @@ Endpoint доступен менеджерам указанной програм
 
 ## Кейсы
 
-В текущей модели нет отдельной сущности или обязательной связи «кейс».
-Произвольные `PartnerProgramField` могут иметь похожее название, но не являются
-стабильным системным контрактом. Поэтому `cases` в ответ не добавляется.
-Для такой аналитики нужна отдельная модель кейса и явная внешняя связь
-`PartnerProgramProject` с выбранным кейсом либо утверждённое системное поле с
-гарантированным идентификатором.
+Top-level `cases` — аддитивный блок существующего manager overview, без нового
+endpoint и без изменений разрешений. Источник — [системное поле](program-case-field.md)
+с exact `name=PROGRAM_CASE_FIELD_NAME` (`case`). Другие select/label/имена не
+используются как эвристика.
+
+`configured` сообщает наличие definition. `items` следует текущему порядку
+`get_options_list()` и включает options с нулём проектов. Сравнение сохранённого
+`PartnerProgramFieldValue.value_text` с option точное. Значения относятся только
+к конкретной связи и definition текущей программы, не к Project глобально.
+
+В каждом item и `without_case`:
+
+- `projects_total` — число связей `PartnerProgramProject`;
+- `submitted`, `not_submitted` — разбиение по raw boolean `submitted` связи,
+  независимо от draft/public проекта и datetime_submitted;
+- `participants_total` — число уникальных ненулевых user_id зарегистрированных
+  `PartnerProgramUserProfile` этой программы, состоящих в команде через leader
+  или Collaborator. Приглашения и одно лишь project в регистрационной анкете
+  членства не образуют. Пользователи других программ без регистрации здесь
+  исключены. Лидер и collaborator, а также несколько проектов одного bucket,
+  не дублируют пользователя. Один человек может учитываться в нескольких buckets;
+  сумма participants_total не обязана равняться summary.participants.total.
+
+`without_case` собирает отсутствующее/null/пустое значение и устаревшие значения
+вне options. При отсутствии system field: `configured=false`, `items=[]`, все
+связи и соответствующие участники остаются в `without_case`. Похожий generic
+select не используется вместо case. Никакие исторические данные не исправляются.
+
+`submission_applicable = program.is_competitive` — подсказка для UI. При false
+счётчики всё равно отражают реальные submitted flags; не создаются искусственные
+сдачи. Для каждого bucket `projects_total = submitted + not_submitted`.
+
+Инварианты для любой программы, в том числе без definition:
+
+```text
+sum(items.projects_total) + without_case.projects_total = solution_funnel.created
+sum(items.submitted) + without_case.submitted = solution_funnel.submitted
+sum(items.not_submitted) + without_case.not_submitted = solution_funnel.not_submitted
+```
+
+`build_case_analytics(program)` добавляет **4 SQL-запроса**, независимо от количества
+options: definition, grouped counts, distinct case/user пары лидеров и collaborators.
+Фильтрация зарегистрированных пользователей — IN subquery без размножения строк.
+Сериализаторы явные, все счётчики IntegerField(min_value=0), без SQL. Тест сравнивает
+1 и 20 options (в том числе HTTP overview); общий бюджет manager overview увеличен
+с 10 до 14 запросов, прежняя проверка независимости от числа проектов сохранена.
+
+Новых моделей, миграций, endpoint/drilldown/export по кейсам нет. Остальные поля
+overview, scoring, team/invite rules, фильтры, сохранение fields и submission не меняются.
 
 ## Статусы назначений и проектов
 
@@ -329,7 +381,7 @@ SQL SELECT: связанные таблицы через JOIN, число кри
 Score drilldown добавляет два фиксированных запроса (критерии и оценки пары).
 
 Regression query budget для manager с уже аутентифицированным request.user:
-список — 3 SQL, overview — 10 SQL, scores — 5 SQL; не растёт при переходе
+список — 3 SQL, overview с cases — 14 SQL, scores — 5 SQL; не растёт при переходе
 от 1 к 31 назначению. JWT/session-аутентификация может добавить свои запросы.
 Проверяются SQLite и PostgreSQL; новых моделей, индексов и миграций нет.
 
@@ -496,7 +548,7 @@ SerializerMethodField форматирует только уже загруже�
 Regression-бюджет для manager с уже аутентифицированным `request.user`: не более
 4 SQL на непустую страницу (программа, проверка manager, count, строки страницы).
 Он проверяется при росте каждого списка с 1 до 31 строки, для работ — также
-с ростом назначений. Счётчик сводки сохраняет прежний бюджет не более 10 SQL.
+с ростом назначений. Overview с блоком cases использует не более 14 SQL.
 Запросы JWT/session-аутентификации могут добавляться отдельно. Проверка
 кириллического регистронезависимого поиска выполняется на PostgreSQL: SQLite
 по умолчанию не поддерживает эквивалентный Unicode case-fold.
@@ -622,7 +674,7 @@ email, описанию и приватным данным поиск не вы�
 набором полей. Сериализация уже выбранных строк выполняет **0 SQL**. Regression
 проверяет одинаковое число SQL при росте с 1 до 31 строки с разными руководителями:
 не более 4 запросов для аутентифицированного manager, как у списков #725.
-Overview сохраняет бюджет не более 10 SQL и прежние контракты assignments,
+Overview с cases использует не более 14 SQL и сохраняет прежние контракты assignments,
 scores, delayed_experts и двух существующих списков внимания.
 
 Кейсы, сообщения, напоминания и изменение scoring/submission lifecycle не входят

@@ -471,7 +471,20 @@ class ProgramManagerAnalyticsMetricsTests(TestCase):
                 for item in response.data["activity"]
             )
         )
-        self.assertNotIn("cases", response.data)
+        self.assertEqual(
+            response.data["cases"],
+            {
+                "configured": False,
+                "submission_applicable": False,
+                "items": [],
+                "without_case": {
+                    "participants_total": 0,
+                    "projects_total": 0,
+                    "not_submitted": 0,
+                    "submitted": 0,
+                },
+            },
+        )
 
     def test_query_count_does_not_grow_with_program_size(self):
         with CaptureQueriesContext(connection) as empty_context:
@@ -492,4 +505,5 @@ class ProgramManagerAnalyticsMetricsTests(TestCase):
         self.assertEqual(populated_response.status_code, 200)
 
         self.assertEqual(len(populated_context), len(empty_context))
-        self.assertLessEqual(len(populated_context), 10)
+        # The additive cases block uses four fixed queries, never one per option.
+        self.assertLessEqual(len(populated_context), 14)

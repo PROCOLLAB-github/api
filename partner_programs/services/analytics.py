@@ -12,6 +12,7 @@ from partner_programs.services.assignment_analytics import (
     build_assignments,
     build_delayed_experts,
 )
+from partner_programs.services.case_analytics import build_case_analytics
 from project_rates.models import ProjectScore
 
 ACTIVITY_DAYS = 30
@@ -389,4 +390,5 @@ def build_program_manager_analytics(program) -> dict:
             ),
         },
         "activity": _get_activity(program_id),
+        "cases": build_case_analytics(program),
     }
