@@ -212,5 +212,42 @@ Project. Manager/expert/staff не получают право записи. Ч�
 критерии и scoring не изменены. Тесты проверяют A, B, A+B и независимые значения
 одного Project в разных программах.
 
-Analytics по кейсам, отдельная модель кейса, автоматическое исправление старых
-данных и frontend — следующие отдельные этапы, не часть этого PR.
+## Аналитика проектов по системному кейсу
+
+Существующий `GET /programs/{programId}/manager-overview/` дополнен top-level
+блоком `cases` (полный контракт — в [analytics docs](program-manager-analytics-api.md#кейсы)).
+Новый endpoint или drilldown не добавляются; права manager/staff/superuser прежние.
+
+- `configured` — наличие definition с exact `name=PROGRAM_CASE_FIELD_NAME` (`case`).
+  Label, тип, show_filter и похожие имена (`Case`, `cases`, `case_name`, `кейс`)
+  не определяют системный кейс.
+- `items` содержит **все текущие options**, включая нулевые строки, в порядке
+  конфигурации. Сохранённое значение сравнивается с option точно, без исправления
+  опечаток, изменения регистра или trim выбранного value.
+- `projects_total` считает связи Project × Program именно этой программы;
+  `submitted` / `not_submitted` используют только флаг связи `submitted`.
+- `without_case` содержит отсутствующий/пустой/null результат выбора и значения
+  вне актуальных options. При отсутствии definition все связи попадают сюда,
+  `configured=false`, `items=[]`. Исторические данные не изменяются и не теряются.
+  `value_text` сейчас NOT NULL; null результата также возникает при отсутствии
+  строки значения в коррелированном подзапросе.
+- `participants_total` — уникальные зарегистрированные в этой программе
+  пользователи, являющиеся лидером или Collaborator хотя бы одного проекта
+  bucket. Orphan profiles, непринадлежащие программе пользователи, приглашения
+  без членства и одно лишь поле project в анкете не считаются. Лидер учитывается
+  без Collaborator; дубли ролей/проектов внутри bucket не увеличивают счётчик.
+  Один пользователь может входить в разные cases и without_case: сумму этих
+  значений **нельзя считать глобальным числом уникальных участников**.
+- `submission_applicable=program.is_competitive`. Это metadata UI; даже при false
+  счётчики сохраняют raw flags, `projects_total = submitted + not_submitted`.
+
+Суммы `items + without_case` по projects_total/submitted/not_submitted точно
+соответствуют solution_funnel.created/submitted/not_submitted. Helper делает
+четыре фиксированных SQL-запроса независимо от числа options/связей: definition,
+сгруппированные счётчики, пары лидеров и пары collaborators. Регистрации проверяются
+SQL IN subquery; множества user_id объединяются внутри bucket. Для 1 и 20 options
+число запросов одинаково; сериализаторы SQL не выполняют.
+
+Analytics только читает существующие данные. Case validation, option protection,
+canonical GET/PUT, submission, admin и остальные поля overview не меняются.
+Отдельная Case model, миграции, export/drilldown по кейсам и frontend не добавляются.

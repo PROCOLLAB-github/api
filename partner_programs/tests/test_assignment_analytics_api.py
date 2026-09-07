@@ -531,7 +531,8 @@ class AssignmentAnalyticsTests(TestCase):
             with CaptureQueriesContext(connection) as queries:
                 self.get(url)
             counts.append(len(queries))
-        self.assertEqual(counts, [3, 10, 5])
+        # Only overview grows by the four fixed case-analytics queries.
+        self.assertEqual(counts, [3, 14, 5])
         for _ in range(30):
             expert = create_rate_expert(program=self.program)
             self.score(self.assignment(expert=expert, hours=49), 1)
