@@ -1,7 +1,8 @@
 from datetime import datetime, timezone as dt_timezone
+from typing import TypedDict
 
 from django.contrib.auth import get_user_model
-from django.db.models import DateTimeField, Exists, OuterRef, Q, Value
+from django.db.models import DateTimeField, Exists, F, OuterRef, Q, Value
 from django.db.models.functions import Coalesce, Greatest
 
 from partner_programs.models import (
@@ -13,6 +14,37 @@ from projects.models import Collaborator
 
 User = get_user_model()
 MIN_ACTIVITY_DATETIME = datetime(1970, 1, 1, tzinfo=dt_timezone.utc)
+
+
+class CurrentProgramApplication(TypedDict):
+    project_id: int
+    program_link_id: int
+    submitted: bool
+
+
+def get_current_program_application(
+    *, program_id: int, user_id: int
+) -> CurrentProgramApplication | None:
+    """Возвращает первую по pk заявку лидера строго в указанной программе."""
+
+    application = (
+        PartnerProgramProject.objects.filter(
+            partner_program_id=program_id,
+            project__leader_id=user_id,
+        )
+        .annotate(program_link_id=F("pk"))
+        .order_by("program_link_id")
+        .values("project_id", "program_link_id", "submitted")
+        .first()
+    )
+    if application is None:
+        return None
+
+    return {
+        "project_id": application["project_id"],
+        "program_link_id": application["program_link_id"],
+        "submitted": application["submitted"],
+    }
 
 
 def programs_with_submission_deadline_on(target_date):

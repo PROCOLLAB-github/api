@@ -29,6 +29,7 @@ from partner_programs.permissions import (
     IsProjectLeader,
     can_manage_program,
 )
+from partner_programs.selectors import get_current_program_application
 from partner_programs.serializers import (
     PartnerProgramDataSchemaSerializer,
     PartnerProgramFieldSerializer,
@@ -144,6 +145,12 @@ class PartnerProgramDetail(generics.RetrieveAPIView):
                 .first()
             )
         is_user_member = program_user_profile is not None
+        current_application = None
+        if is_user_member:
+            current_application = get_current_program_application(
+                program_id=program.pk,
+                user_id=request.user.pk,
+            )
         serializer_class = (
             PartnerProgramForMemberSerializer
             if is_user_member
@@ -159,6 +166,7 @@ class PartnerProgramDetail(generics.RetrieveAPIView):
         )
         data = serializer.data
         data["is_user_member"] = is_user_member
+        data["current_application"] = current_application
         if request.user.is_authenticated:
             add_view(program, request.user)
         return Response(data, status=status.HTTP_200_OK)
