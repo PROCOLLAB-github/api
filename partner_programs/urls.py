@@ -15,7 +15,11 @@ from partner_programs.manager_overview_views import (
     ManagedProgramListView,
     ManagerProgramOverviewView,
 )
-from partner_programs.project_analytics_views import ProjectAnalyticsAPIView
+from partner_programs.project_analytics_views import (
+    ProjectAnalyticsAPIView,
+    ProjectAnalyticsAssignmentsAPIView,
+    ProjectAnalyticsAssignmentScoresAPIView,
+)
 from partner_programs.submission_assignment_views import (
     ProgramSubmissionAssignmentListCreateView,
 )
@@ -56,6 +60,16 @@ urlpatterns = [
         "<int:program_id>/project-analytics/",
         ProjectAnalyticsAPIView.as_view(),
         name="project-analytics",
+    ),
+    path(
+        "<int:program_id>/project-analytics/assignments/",
+        ProjectAnalyticsAssignmentsAPIView.as_view(),
+        name="project-analytics-assignments",
+    ),
+    path(
+        "<int:program_id>/project-analytics/assignments/<int:assignment_id>/scores/",
+        ProjectAnalyticsAssignmentScoresAPIView.as_view(),
+        name="project-analytics-assignment-scores",
     ),
     path(
         "<int:program_id>/evaluations/",

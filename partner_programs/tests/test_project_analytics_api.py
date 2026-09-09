@@ -122,7 +122,7 @@ class ProjectAnalyticsAccessTests(ProjectAnalyticsFixture, TestCase):
 
 
 class ProjectAnalyticsMetricsTests(ProjectAnalyticsFixture, TestCase):
-    def test_empty_contract_has_only_b5_fields_and_thirty_zero_days(self):
+    def test_empty_contract_has_b5_fields_additive_delays_and_thirty_zero_days(self):
         payload = self.overview()
         self.assertEqual(
             set(payload),
@@ -161,7 +161,11 @@ class ProjectAnalyticsMetricsTests(ProjectAnalyticsFixture, TestCase):
         )
         self.assertEqual(
             payload["attention"],
-            {"participants_without_team": 0, "projects_awaiting_evaluation": 0},
+            {
+                "participants_without_team": 0,
+                "projects_awaiting_evaluation": 0,
+                "delayed_experts": {"total": 0, "items": []},
+            },
         )
         today = timezone.localdate()
         self.assertEqual(

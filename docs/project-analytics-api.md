@@ -1,8 +1,9 @@
-# Legacy Project Analytics (B5)
+# Legacy Project Analytics (B5 + B6a)
 
 `GET /programs/<program_id>/project-analytics/` is the manager-facing overview
 for the legacy Angular `Project` flow. It is a semantic production port of DEV
-#721 and #723, with the small assignment-completion rule from #724.
+#721 and #723. B6a ports assignment drilldowns and delayed experts from DEV #724
+into `/project-analytics/`, not the DEV `/manager-overview/` namespace.
 
 ## Two independent domains
 
@@ -19,7 +20,7 @@ creating an Application or Submission alone does not change legacy metrics.
 
 ## Access
 
-The endpoint reuses production `ProgramPermissionMixin`, `IsAuthenticated` and
+All three endpoints reuse production `ProgramPermissionMixin`, `IsAuthenticated` and
 `IsAdminOrManagerOfProgram`. A manager of the requested program, staff or
 superuser can read it. Participant-only, expert-only and managers of other
 programs receive 403; anonymous receives 401; an unknown program receives 404.
@@ -65,7 +66,8 @@ Example with an empty program (the real `activity` array always has 30 entries):
   },
   "attention": {
     "participants_without_team": 0,
-    "projects_awaiting_evaluation": 0
+    "projects_awaiting_evaluation": 0,
+    "delayed_experts": {"total": 0, "items": []}
   },
   "activity": [
     {"date": "2026-06-15", "registrations": 0, "submitted_solutions": 0}
@@ -161,9 +163,119 @@ in open and distributed modes. Returned region cardinality and in-memory row
 processing can still grow with program size; fixed SQL count does not mean
 constant memory or database work.
 
+Assignment rows are loaded **once** per overview. The shared read-only
+`services/project_assignment_analytics.py` builder supplies statuses for the
+overview counters, by-project completion and delayed experts. B5 has no second
+completion algorithm or duplicate assignment SELECT. Regions, funnels, activity
+and the existing attention counters keep their B5 semantics.
+
+## Assignment list
+
+`GET /programs/<program_id>/project-analytics/assignments/`
+
+Returns a JSON array of real legacy `ProjectExpertAssignment` rows, ordered by
+assignment PK, in both open and distributed modes. There is no pagination or
+synthetic assignment generation.
+
+- `scope=all` (default): all assignments.
+- `scope=completed`: only `status == "completed"`.
+- `scope=pending`: every noncompleted assignment, including `not_ready`,
+  `pending` and `in_progress`.
+- Empty or unsupported scope: 400.
+
+```json
+{
+  "assignment_id": 10,
+  "expert": {
+    "expert_id": 4, "user_id": 15,
+    "first_name": "Ivan", "last_name": "Ivanov", "full_name": "Ivan Ivanov",
+    "avatar": null
+  },
+  "project": {"id": 42, "name": "Project"},
+  "status": "in_progress",
+  "criteria_total": 5,
+  "criteria_scored": 2,
+  "assigned_at": "2026-09-01T12:00:00Z",
+  "project_submitted": true,
+  "project_submitted_at": "2026-09-02T12:00:00Z",
+  "waiting_since": "2026-09-02T12:00:00Z",
+  "waiting_seconds": 172800
+}
+```
+
+`not_ready` means the current-program link is not submitted. `completed` uses
+the shared B5 rule: submitted, nonempty current criteria, all criteria scored
+by the assigned expert's **user ID** for this Project. `in_progress` means at
+least one but not all current criteria scored; otherwise a submitted assignment
+is `pending`, including zero criteria. Adding a criterion can make a previously
+completed assignment incomplete. No new lifecycle semantics are introduced.
+
+Only the six listed expert fields and project ID/name are exposed, without
+full User/Project serializers, email, phone, auth data or personal forms.
+
+## Assignment scores
+
+`GET /programs/<program_id>/project-analytics/assignments/<assignment_id>/scores/`
+
+Returns the same assignment object with a `scores` array containing **all**
+current-program criteria in criterion-PK order:
+
+```json
+{
+  "criterion_id": 7, "name": "Quality", "description": null, "type": "int",
+  "min_value": 0, "max_value": 10, "value": null, "is_scored": false
+}
+```
+
+A missing score is `value=null, is_scored=false`. An existing score retains
+its exact string/null value and has `is_scored=true`, including blank strings,
+whitespace and null. There is no numeric conversion, trimming or averaging.
+Scores of another expert, Project or program cannot affect progress or values.
+Unknown or foreign-program assignment IDs return 404, even for a manager of
+both programs. Lookup is scoped before resolving the assignment ID.
+
+For a Project linked to A and B, each endpoint uses its own program's link,
+submission state/timestamp, criteria, scores and assignments. The singular
+legacy project program serializer is not consulted.
+
+## Waiting and delayed experts
+
+Waiting is defined only for incomplete submitted assignments with a real
+`PartnerProgramProject.datetime_submitted`. Its start is the later of that
+timestamp and `ProjectExpertAssignment.datetime_created`; seconds are measured
+against one timezone-aware `now` and clamped to zero. Completed/not-ready rows
+have null waiting fields. Historical `submitted=true` with a missing timestamp
+also has null waiting fields: timestamps are never inferred or written.
+
+`attention.delayed_experts` is additive to B5. In **open** mode it is always
+`{"total": 0, "items": []}` even when real legacy assignments exist. Open-mode
+project evaluation continues to depend on the first current-program score.
+
+In **distributed** mode, each item includes the six safe expert fields above
+plus `assignments_total`, `completed`, `pending`, `overdue_24h`, `overdue_48h`,
+`oldest_waiting_since`, `oldest_waiting_seconds` and `severity`:
+
+- `critical`: at least one incomplete assignment waiting **>= 48 hours**.
+- Otherwise `warning`: at least two incomplete assignments waiting **>= 24 hours**.
+- Otherwise the expert is omitted.
+
+Totals include all real assignments; `pending` includes every noncompleted
+status. Completed, not-ready and missing-timestamp rows contribute no waiting
+SLA. Items sort critical first, then oldest waiting seconds descending, then
+expert ID ascending. All counts and seconds are nonnegative; assignment waiting
+fields are nullable. Serializers have strict status/severity choices and no SQL.
+
+SQL budgets (manager requests): list **3**, scores **5**, overview **10**.
+List/overview counts are unchanged for 1 versus 31 assignments; scores are
+unchanged for 1 versus 20 criteria. The overview service remains **8 SELECTs**.
+Delayed aggregation and serialization add no queries.
+
 ## Scope
 
-No models, migrations, lifecycle/permissions changes, case analytics, delayed
-experts, projects-not-submitted objects, assignments/score drilldowns or
-attention lists. B6 endpoints are intentionally absent. Foundation #732-#735,
-production manager overview, frontend, dependencies and deployment are untouched.
+No models, migrations, scoring writes, deadline or lifecycle/permission changes.
+No B6b attention-list endpoints, projects-not-submitted object or case analytics.
+Foundation #732-#735, production `/manager-overview/`, `/submission-assignments/`
+and `/evaluations/`, frontend, dependencies and deployment remain untouched.
+Production Application/Team/Submission/SubmissionExpertAssignment/Evaluation
+records do not enter legacy assignment analytics; legacy assignments/scores
+likewise do not affect those production APIs.

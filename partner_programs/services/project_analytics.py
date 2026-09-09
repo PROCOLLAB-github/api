@@ -3,12 +3,16 @@
 from collections import Counter, defaultdict
 from datetime import timedelta
 
-from django.db.models import Count, Exists, OuterRef, Q, Subquery
-from django.db.models.functions import Coalesce, TruncDate
+from django.db.models import Count, Exists, OuterRef, Q
+from django.db.models.functions import TruncDate
 from django.utils import timezone
 
 from partner_programs.models import PartnerProgramProject, PartnerProgramUserProfile
-from project_rates.models import Criteria, ProjectExpertAssignment, ProjectScore
+from partner_programs.services.project_assignment_analytics import (
+    build_assignments,
+    build_delayed_experts,
+)
+from project_rates.models import ProjectScore
 from projects.models import Collaborator
 
 ACTIVITY_DAYS = 30
@@ -67,45 +71,13 @@ def _regions(queryset, *, field, identity):
     return {"total": len(items), "items": items}
 
 
-def _assignment_metrics(program_id):
-    """DEV #724 completion: submitted link and scores for all current criteria."""
-    criteria = (
-        Criteria.objects.filter(partner_program_id=program_id)
-        .order_by()
-        .values("partner_program_id")
-        .annotate(total=Count("pk"))
-    )
-    scores = (
-        ProjectScore.objects.filter(
-            criteria__partner_program_id=program_id,
-            project_id=OuterRef("project_id"),
-            user_id=OuterRef("expert__user_id"),
-        )
-        .order_by()
-        .values("project_id", "user_id")
-        .annotate(total=Count("criteria_id", distinct=True))
-    )
-    rows = (
-        ProjectExpertAssignment.objects.filter(partner_program_id=program_id)
-        .annotate(
-            criteria_total=Coalesce(Subquery(criteria.values("total")[:1]), 0),
-            criteria_scored=Coalesce(Subquery(scores.values("total")[:1]), 0),
-            project_submitted=Exists(
-                PartnerProgramProject.objects.filter(
-                    partner_program_id=program_id,
-                    project_id=OuterRef("project_id"),
-                    submitted=True,
-                )
-            ),
-        )
-        .values_list(
-            "project_id", "project_submitted", "criteria_total", "criteria_scored"
-        )
-    )
+def _assignment_metrics(assignments):
+    """Reuse shared statuses, with no second assignment query or completion rule."""
     metrics = {"total": 0, "pending": 0, "evaluated": 0}
     by_project = defaultdict(lambda: {"total": 0, "evaluated": 0})
-    for project_id, submitted, total, scored in rows:
-        completed = submitted and total > 0 and scored >= total
+    for assignment in assignments:
+        project_id = assignment["project"]["id"]
+        completed = assignment["status"] == "completed"
         metrics["total"] += 1
         metrics["evaluated" if completed else "pending"] += 1
         by_project[project_id]["total"] += 1
@@ -190,7 +162,8 @@ def _activity(program_id):
 
 def build_project_analytics(program) -> dict:
     participants = _participant_metrics(program.pk)
-    assignments, by_project = _assignment_metrics(program.pk)
+    assignment_details = build_assignments(program.pk)
+    assignments, by_project = _assignment_metrics(assignment_details)
     solutions = _solution_metrics(program, by_project)
     return {
         "summary": {
@@ -235,6 +208,11 @@ def build_project_analytics(program) -> dict:
             ),
             "projects_awaiting_evaluation": (
                 solutions["awaiting_evaluation"] + solutions["partially_evaluated"]
+            ),
+            "delayed_experts": (
+                build_delayed_experts(assignment_details)
+                if program.is_distributed_evaluation
+                else {"total": 0, "items": []}
             ),
         },
         "activity": _activity(program.pk),
