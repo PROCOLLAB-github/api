@@ -28,6 +28,7 @@ from projects.models import (
     Resource,
 )
 from projects.validators import validate_project
+from projects.access import has_project_level_read_access, program_role_project_links
 from vacancy.serializers import ProjectVacancyListSerializer
 
 User = get_user_model()
@@ -261,11 +262,30 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     trl = serializers.IntegerField(required=False, allow_null=True)
 
     def get_partner_program(self, project):
-        try:
-            link = project.program_links.select_related("partner_program").get()
-            return PartnerProgramProjectSerializer(link).data
-        except PartnerProgramProject.DoesNotExist:
-            return None
+        user = getattr(self.context.get("request"), "user", None)
+        link = None
+        if (
+            user
+            and user.is_authenticated
+            and not has_project_level_read_access(user, project)
+        ):
+            link = (
+                program_role_project_links(user, project)
+                .select_related("partner_program")
+                .order_by("pk")
+                .first()
+            )
+            if link is None and (project.draft or not project.is_public):
+                return None
+        # Independent project roles and existing public readers retain the legacy
+        # singular contract. Program-role readers serialize only an eligible link.
+        if link is None:
+            link = (
+                project.program_links.select_related("partner_program")
+                .order_by("pk")
+                .first()
+            )
+        return PartnerProgramProjectSerializer(link).data if link is not None else None
 
     @classmethod
     def get_partner_program_tags(cls, project):
