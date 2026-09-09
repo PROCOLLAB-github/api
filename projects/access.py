@@ -35,3 +35,11 @@ def has_project_read_involvement(user, project: Project) -> bool:
         has_project_level_read_access(user, project)
         or program_role_project_links(user, project).exists()
     )
+
+
+def has_program_link_read_access(user, link: PartnerProgramProject) -> bool:
+    """Read this link's fields, never another program via shared Project access."""
+    return (
+        has_project_level_read_access(user, link.project)
+        or program_role_project_links(user, link.project).filter(pk=link.pk).exists()
+    )
