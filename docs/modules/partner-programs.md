@@ -40,7 +40,7 @@
   проектов, фильтрации проектов, публикации проектов и подготовки
   Excel-выгрузок.
 - `partner_programs/selectors.py` - выборки участников для аналитики и
-  напоминаний.
+  напоминаний, legacy-заявка лидера в конкретной программе.
 - `partner_programs/permissions.py` - проверки менеджера программы, админа и
   лидера проекта.
 - `partner_programs/tasks.py` - celery-задача публикации проектов после
@@ -106,6 +106,41 @@
 
 Связанные курсы программы возвращаются в поле `courses`; для каждого курса
 указывается `is_available`.
+
+`GET /programs/<id>/` всегда возвращает top-level
+`current_project_application`: `null` для anonymous, authenticated non-member
+или участника без legacy-связи; для участника-лидера контракт такой:
+
+```json
+{
+  "current_project_application": {
+    "project_id": 123,
+    "program_link_id": 700,
+    "submitted": false
+  }
+}
+```
+
+Это legacy Angular flow `Project` × `PartnerProgramProject`, **не** production
+модель `Application`. Поэтому DEV-имя `current_application` (#731) в production
+не используется. Наличие настоящей Application, её status/project или участие
+через TeamMember не определяют это поле; Application API
+`/programs/<id>/applications/` и `/programs/<id>/applications/my/` не меняются.
+
+Selector `get_current_project_application(program_id=..., user_id=...)` читает
+только `PartnerProgramProject` с `partner_program_id` запрошенной программы и
+`project__leader_id` текущего пользователя. `submitted` передаётся напрямую из
+этой связи, без расчёта lifecycle. Collaborator/Invite не считаются владельцами;
+`PartnerProgramUserProfile.project`, singular `Project.partner_program` и связи
+других программ не используются. Если legacy-данные содержат несколько подходящих
+проектов одного лидера, выбирается минимальный pk **после фильтрации по программе**.
+
+Member gate остаётся во view: для anonymous/non-member selector не вызывается.
+Для member добавляется ровно один SQL с тремя выбранными колонками и `LIMIT 1`,
+независимо от количества проектов пользователя. Нет сканирования списка проектов
+или pagination. Existing serializers и поля `application_policy`,
+`welcome_acknowledged_at`, `courses`, `materials`, manager/member flags и dates
+сохраняются. Apply/submit, canonical fields и их submission metadata не меняются.
 
 ### 3. Пользователь регистрируется в программе
 
