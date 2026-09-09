@@ -1,6 +1,12 @@
 from rest_framework.permissions import BasePermission
 
-from partner_programs.models import Application, PartnerProgram, Submission, Team, TeamMember
+from partner_programs.models import (
+    Application,
+    PartnerProgram,
+    Submission,
+    Team,
+    TeamMember,
+)
 
 
 def _is_authenticated(user) -> bool:
@@ -133,3 +139,17 @@ class IsAdminOrManagerOfProgram(BasePermission):
                 return False
 
         return program.is_manager(user)
+
+
+class IsAdminOrManagerOrExpertOfProgram(IsAdminOrManagerOfProgram):
+    """Filter-schema read access; do not use for manager mutation endpoints."""
+
+    def has_permission(self, request, view):
+        if super().has_permission(request, view):
+            return True
+        if not _is_authenticated(request.user):
+            return False
+        program_id = view.kwargs.get("pk") or view.kwargs.get("program_id")
+        return PartnerProgram.objects.filter(
+            pk=program_id, experts__user_id=request.user.pk
+        ).exists()

@@ -26,6 +26,7 @@ from partner_programs.models import (
 from partner_programs.pagination import PartnerProgramPagination
 from partner_programs.permissions import (
     IsAdminOrManagerOfProgram,
+    IsAdminOrManagerOrExpertOfProgram,
     IsProjectLeader,
 )
 from partner_programs.serializers import (
@@ -74,13 +75,10 @@ class PartnerProgramList(generics.ListCreateAPIView):
             qs = PartnerProgram.objects.none()
         else:
             now = timezone.now()
-            qs = (
-                base_qs.filter(
-                    partner_program_profiles__user=self.request.user,
-                    datetime_finished__gte=now,
-                )
-                .distinct()
-            )
+            qs = base_qs.filter(
+                partner_program_profiles__user=self.request.user,
+                datetime_finished__gte=now,
+            ).distinct()
 
         user = self.request.user
         if not user.is_authenticated:
@@ -179,7 +177,9 @@ class PartnerProgramProjectApplyView(GenericAPIView):
                 "program_id": program.id,
                 "can_submit": program.is_project_submission_open(),
                 "submission_deadline": program.get_project_submission_deadline(),
-                "program_fields": PartnerProgramFieldSerializer(fields_qs, many=True).data,
+                "program_fields": PartnerProgramFieldSerializer(
+                    fields_qs, many=True
+                ).data,
             },
             status=status.HTTP_200_OK,
         )
@@ -419,7 +419,7 @@ class PartnerProgramProjectSubmitView(GenericAPIView):
 
 
 class ProgramFiltersAPIView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminOrManagerOfProgram]
+    permission_classes = [IsAuthenticated, IsAdminOrManagerOrExpertOfProgram]
 
     def get(self, request, pk):
         program = get_object_or_404(PartnerProgram, pk=pk)

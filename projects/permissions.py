@@ -1,16 +1,15 @@
 from datetime import datetime, timedelta
 
 from django.utils import timezone
-from django.db.models import Q
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import SAFE_METHODS, BasePermission
 
 from partner_programs.models import (
     PartnerProgram,
-    PartnerProgramProject,
     PartnerProgramUserProfile,
 )
 from projects.models import Project
+from projects.access import has_project_read_involvement
 
 
 class ProjectVisibilityPermission(BasePermission):
@@ -31,7 +30,10 @@ class ProjectVisibilityPermission(BasePermission):
         if not project_id and view.__module__.startswith("projects."):
             project_id = view.kwargs.get("id") or view.kwargs.get("pk")
 
-        if not project_id and getattr(getattr(view, "queryset", None), "model", None) is Project:
+        if (
+            not project_id
+            and getattr(getattr(view, "queryset", None), "model", None) is Project
+        ):
             project_id = view.kwargs.get("pk")
 
         if not project_id:
@@ -58,29 +60,7 @@ class ProjectVisibilityPermission(BasePermission):
     def _can_view_project(self, request, project: Project) -> bool:
         if project.is_public:
             return True
-
-        user = getattr(request, "user", None)
-        if not user or not user.is_authenticated:
-            return False
-
-        if user.is_superuser or user.is_staff:
-            return True
-
-        if project.leader_id == user.id:
-            return True
-
-        if project.collaborator_set.filter(user_id=user.id).exists():
-            return True
-
-        if project.invite_set.filter(user_id=user.id).exists():
-            return True
-
-        return PartnerProgramProject.objects.filter(
-            project_id=project.id,
-        ).filter(
-            Q(partner_program__managers__id=user.id)
-            | Q(partner_program__experts__user_id=user.id)
-        ).exists()
+        return has_project_read_involvement(getattr(request, "user", None), project)
 
 
 class IsProjectLeaderOrReadOnlyForNonDrafts(BasePermission):
@@ -132,6 +112,9 @@ class HasInvolvementInProjectOrReadOnly(BasePermission):
         return False
 
     def has_object_permission(self, request, view, obj):
+        if request.method in SAFE_METHODS:
+            return not obj.draft or has_project_read_involvement(request.user, obj)
+
         if not obj.draft:
             # not a draft, read-only for everyone, write only for leader
             if (request.method in SAFE_METHODS) or (request.user == obj.leader):
@@ -195,9 +178,7 @@ class TimingAfterEndsProgramPermission(BasePermission):
             datetime_finished + timedelta(seconds=self._SECONDS_AFTER_CANT_EDIT)
         )
         days_until_resolution: int = (
-            int(self._SECONDS_AFTER_CANT_EDIT / 60 / 60 / 24)
-            - days_from_end_program
-            - 1
+            int(self._SECONDS_AFTER_CANT_EDIT / 60 / 60 / 24) - days_from_end_program - 1
         )
         return {
             "program_name": program_profile.partner_program.name,
@@ -222,7 +203,9 @@ class IsProjectLeaderOrReadOnly(BasePermission):
             return False
 
         project_pk = view.kwargs.get("project_pk")
-        project_id = project_pk or view.kwargs.get("project_id") or request.data.get("project")
+        project_id = (
+            project_pk or view.kwargs.get("project_id") or request.data.get("project")
+        )
         if not project_id:
             return False
 
@@ -259,10 +242,14 @@ class CanBindProjectToProgram(BasePermission):
 
         submission_deadline = program.get_project_submission_deadline()
         if submission_deadline and submission_deadline < timezone.now():
-            raise ValidationError({"partner_program_id": "Срок подачи проектов в программу завершён."})
+            raise ValidationError(
+                {"partner_program_id": "Срок подачи проектов в программу завершён."}
+            )
 
         if program.datetime_finished < timezone.now():
-            raise ValidationError({"partner_program_id": "Нельзя выбрать завершённую программу."})
+            raise ValidationError(
+                {"partner_program_id": "Нельзя выбрать завершённую программу."}
+            )
 
         if program.is_manager(request.user):
             return True
