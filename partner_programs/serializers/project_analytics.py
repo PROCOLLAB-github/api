@@ -2,6 +2,10 @@
 
 from rest_framework import serializers
 
+from partner_programs.serializers.project_assignment_analytics import (
+    ProjectDelayedExpertsSerializer,
+)
+
 
 class ProjectAnalyticsTotalSerializer(serializers.Serializer):
     total = serializers.IntegerField(min_value=0)
@@ -62,6 +66,7 @@ class ProjectAnalyticsEvaluationSerializer(serializers.Serializer):
 class ProjectAnalyticsAttentionSerializer(serializers.Serializer):
     participants_without_team = serializers.IntegerField(min_value=0)
     projects_awaiting_evaluation = serializers.IntegerField(min_value=0)
+    delayed_experts = ProjectDelayedExpertsSerializer()
 
 
 class ProjectAnalyticsActivitySerializer(serializers.Serializer):
