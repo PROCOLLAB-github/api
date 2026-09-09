@@ -622,7 +622,7 @@ class ProjectAssignmentIsolationTests(ProjectAssignmentAnalyticsFixture, TestCas
 
 
 class ProjectAssignmentContractTests(ProjectAssignmentAnalyticsFixture, TestCase):
-    def test_all_b5_fields_are_preserved_apart_from_additive_delayed_experts(self):
+    def test_all_b5_b6a_fields_are_preserved_apart_from_b6b_additions(self):
         assignments = [
             self.assignment(submitted=False),
             self.assignment(),
@@ -651,6 +651,8 @@ class ProjectAssignmentContractTests(ProjectAssignmentAnalyticsFixture, TestCase
             payload = self.get(self.overview_url)
             self.assertIn("delayed_experts", payload["attention"])
             del payload["attention"]["delayed_experts"]
+            del payload["attention"]["projects_not_submitted"]
+            del payload["cases"]
             evaluated = 1 if distributed else 2
             self.assertEqual(
                 payload,
@@ -805,7 +807,7 @@ class ProjectAssignmentContractTests(ProjectAssignmentAnalyticsFixture, TestCase
                     )
             for url, budget in (
                 (self.url, 3),
-                (self.overview_url, 10),
+                (self.overview_url, 14),
                 (self.scores_url(first.pk), 5),
             ):
                 with self.subTest(size=size, url=url), CaptureQueriesContext(
@@ -813,7 +815,7 @@ class ProjectAssignmentContractTests(ProjectAssignmentAnalyticsFixture, TestCase
                 ) as queries:
                     self.get(url)
                 self.assertEqual(len(queries), budget)
-            with self.assertNumQueries(8):
+            with self.assertNumQueries(12):
                 build_project_analytics(self.program)
 
     def test_scores_query_budget_one_vs_twenty_criteria(self):

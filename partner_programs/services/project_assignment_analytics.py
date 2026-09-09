@@ -1,6 +1,15 @@
 """Read-only legacy Project assignments, independent of the Application domain."""
 
-from django.db.models import BooleanField, Count, OuterRef, Subquery, Value
+from django.db.models import (
+    BooleanField,
+    Case,
+    Count,
+    F,
+    OuterRef,
+    Subquery,
+    Value,
+    When,
+)
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
@@ -8,8 +17,8 @@ from partner_programs.models import PartnerProgramProject
 from project_rates.models import Criteria, ProjectExpertAssignment, ProjectScore
 
 
-def assignment_rows(program_id):
-    """One SELECT with program-scoped subqueries and only safe DTO fields."""
+def annotated_assignment_queryset(program_id):
+    """Authoritative program-scoped completion annotations for legacy assignments."""
     criteria = (
         Criteria.objects.filter(partner_program_id=program_id)
         .order_by()
@@ -41,6 +50,25 @@ def assignment_rows(program_id):
             ),
             project_submitted_at=Subquery(link.values("datetime_submitted")[:1]),
         )
+        .annotate(
+            is_completed=Case(
+                When(
+                    project_submitted=True,
+                    criteria_total__gt=0,
+                    criteria_scored__gte=F("criteria_total"),
+                    then=Value(True),
+                ),
+                default=Value(False),
+                output_field=BooleanField(),
+            )
+        )
+    )
+
+
+def assignment_rows(program_id):
+    """One SELECT with shared completion and only safe assignment DTO fields."""
+    return (
+        annotated_assignment_queryset(program_id)
         .order_by("pk")
         .values(
             "id",
@@ -56,6 +84,7 @@ def assignment_rows(program_id):
             "criteria_scored",
             "project_submitted",
             "project_submitted_at",
+            "is_completed",
         )
     )
 
@@ -65,7 +94,7 @@ def build_assignment(row, *, now):
     total, scored = row["criteria_total"], row["criteria_scored"]
     if not row["project_submitted"]:
         status = "not_ready"
-    elif total > 0 and scored >= total:
+    elif row["is_completed"]:
         status = "completed"
     elif total > 0 and scored > 0:
         status = "in_progress"

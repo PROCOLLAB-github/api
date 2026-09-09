@@ -3,14 +3,31 @@
 from collections import Counter, defaultdict
 from datetime import timedelta
 
-from django.db.models import Count, Exists, OuterRef, Q
-from django.db.models.functions import TruncDate
+from django.db.models import (
+    Case,
+    CharField,
+    Count,
+    Exists,
+    F,
+    IntegerField,
+    Min,
+    OuterRef,
+    Q,
+    Subquery,
+    Value,
+    When,
+)
+from django.db.models.functions import Coalesce, TruncDate
 from django.utils import timezone
 
 from partner_programs.models import PartnerProgramProject, PartnerProgramUserProfile
 from partner_programs.services.project_assignment_analytics import (
+    annotated_assignment_queryset,
     build_assignments,
     build_delayed_experts,
+)
+from partner_programs.services.project_case_analytics import (
+    build_project_case_analytics,
 )
 from project_rates.models import ProjectScore
 from projects.models import Collaborator
@@ -18,12 +35,12 @@ from projects.models import Collaborator
 ACTIVITY_DAYS = 30
 
 
-def _participant_metrics(program_id):
+def _participant_profiles(program_id):
     links = PartnerProgramProject.objects.filter(
         partner_program_id=program_id,
         project__leader_id=OuterRef("user_id"),
     )
-    profiles = PartnerProgramUserProfile.objects.filter(
+    return PartnerProgramUserProfile.objects.filter(
         partner_program_id=program_id
     ).annotate(
         is_leader=Exists(links),
@@ -35,6 +52,30 @@ def _participant_metrics(program_id):
             )
         ),
     )
+
+
+def _without_team_filter():
+    return Q(user_id__isnull=False, is_leader=False, is_collaborator=False)
+
+
+def participants_without_team_rows(program_id):
+    return (
+        _participant_profiles(program_id)
+        .filter(_without_team_filter())
+        .order_by()
+        .values(
+            "user_id",
+            "user__first_name",
+            "user__last_name",
+            "user__avatar",
+            "user__city",
+        )
+        .annotate(registered_at=Min("datetime_created"))
+    )
+
+
+def _participant_metrics(program_id):
+    profiles = _participant_profiles(program_id)
     participant = Q(user_id__isnull=False)
     return profiles.aggregate(
         registrations=Count("pk"),
@@ -83,6 +124,114 @@ def _assignment_metrics(assignments):
         by_project[project_id]["total"] += 1
         by_project[project_id]["evaluated"] += int(completed)
     return metrics, by_project
+
+
+def _annotated_solution_rows(program):
+    """SQL classification for paginated attention, using shared completion."""
+    rows = PartnerProgramProject.objects.filter(partner_program_id=program.pk)
+    if program.is_distributed_evaluation:
+        assignment_totals = (
+            annotated_assignment_queryset(program.pk)
+            .filter(project_id=OuterRef("project_id"))
+            .order_by()
+            .values("project_id")
+            .annotate(
+                total=Count("pk"),
+                completed=Count("pk", filter=Q(is_completed=True)),
+            )
+        )
+        rows = rows.annotate(
+            assignments_total=Coalesce(
+                Subquery(assignment_totals.values("total")[:1]), 0
+            ),
+            assignments_completed=Coalesce(
+                Subquery(assignment_totals.values("completed")[:1]), 0
+            ),
+        )
+        evaluated_status = Case(
+            When(
+                Q(assignments_total=0) | Q(assignments_completed=0),
+                then=Value("awaiting_evaluation"),
+            ),
+            When(
+                assignments_completed__lt=F("assignments_total"),
+                then=Value("partially_evaluated"),
+            ),
+            default=Value("evaluated"),
+            output_field=CharField(),
+        )
+        waiting_reason = Case(
+            When(assignments_total=0, then=Value("no_assignments")),
+            When(
+                assignments_completed=0,
+                then=Value("no_completed_evaluations"),
+            ),
+            default=Value("partially_evaluated"),
+            output_field=CharField(),
+        )
+    else:
+        rows = rows.annotate(
+            assignments_total=Value(None, output_field=IntegerField()),
+            assignments_completed=Value(None, output_field=IntegerField()),
+            has_program_score=Exists(
+                ProjectScore.objects.filter(
+                    project_id=OuterRef("project_id"),
+                    criteria__partner_program_id=program.pk,
+                )
+            ),
+        )
+        evaluated_status = Case(
+            When(has_program_score=True, then=Value("evaluated")),
+            default=Value("awaiting_evaluation"),
+            output_field=CharField(),
+        )
+        waiting_reason = Value("awaiting_first_evaluation", output_field=CharField())
+    return rows.annotate(
+        status=Case(
+            When(submitted=False, then=Value("not_submitted")),
+            default=evaluated_status,
+            output_field=CharField(),
+        ),
+        reason=waiting_reason,
+    )
+
+
+def projects_awaiting_evaluation_rows(program):
+    return (
+        _annotated_solution_rows(program)
+        .filter(status__in=("awaiting_evaluation", "partially_evaluated"))
+        .select_related("project", "project__leader")
+        .only(
+            "id",
+            "project_id",
+            "datetime_submitted",
+            "project__name",
+            "project__leader_id",
+            "project__leader__id",
+            "project__leader__first_name",
+            "project__leader__last_name",
+            "project__leader__avatar",
+        )
+    )
+
+
+def projects_not_submitted_rows(program):
+    rows = PartnerProgramProject.objects.filter(
+        partner_program_id=program.pk, submitted=False
+    )
+    if not program.is_competitive:
+        return rows.none()
+    return rows.select_related("project", "project__leader").only(
+        "id",
+        "project_id",
+        "datetime_created",
+        "project__name",
+        "project__leader_id",
+        "project__leader__id",
+        "project__leader__first_name",
+        "project__leader__last_name",
+        "project__leader__avatar",
+    )
 
 
 def _solution_metrics(program, assignments):
@@ -165,6 +314,7 @@ def build_project_analytics(program) -> dict:
     assignment_details = build_assignments(program.pk)
     assignments, by_project = _assignment_metrics(assignment_details)
     solutions = _solution_metrics(program, by_project)
+    cases = build_project_case_analytics(program)
     return {
         "summary": {
             "participants": {"total": participants["unique_participants"]},
@@ -209,6 +359,10 @@ def build_project_analytics(program) -> dict:
             "projects_awaiting_evaluation": (
                 solutions["awaiting_evaluation"] + solutions["partially_evaluated"]
             ),
+            "projects_not_submitted": {
+                "applicable": program.is_competitive,
+                "total": solutions["not_submitted"] if program.is_competitive else 0,
+            },
             "delayed_experts": (
                 build_delayed_experts(assignment_details)
                 if program.is_distributed_evaluation
@@ -216,4 +370,5 @@ def build_project_analytics(program) -> dict:
             ),
         },
         "activity": _activity(program.pk),
+        "cases": cases,
     }
