@@ -60,11 +60,17 @@ def program_link_fields(link_id, user):
     fields = PartnerProgramFieldSerializer(
         link.partner_program.fields.order_by("pk"), many=True
     ).data
+    program = link.partner_program
+    submission_open = program.is_project_submission_open()
     return {
         "program_link_id": link.pk,
         "program_id": link.partner_program_id,
         "project_id": link.project_id,
         "submitted": link.submitted,
+        "is_competitive": program.is_competitive,
+        "submission_open": submission_open,
+        "submission_deadline": program.get_project_submission_deadline(),
+        "can_submit": program.is_competitive and not link.submitted and submission_open,
         "fields": [{**field, "value": values.get(field["id"])} for field in fields],
     }
 
