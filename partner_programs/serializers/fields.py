@@ -5,8 +5,19 @@ from rest_framework import serializers
 from partner_programs.models import PartnerProgramField
 
 
+class ProgramFieldReference(serializers.PrimaryKeyRelatedField):
+    """Resolve input ids within the URL program before revealing field validation."""
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        program = self.context.get("program")
+        return (
+            queryset.filter(partner_program=program) if program is not None else queryset
+        )
+
+
 class PartnerProgramFieldValueUpdateSerializer(serializers.Serializer):
-    field_id = serializers.PrimaryKeyRelatedField(
+    field_id = ProgramFieldReference(
         queryset=PartnerProgramField.objects.all(),
         source="field",
     )

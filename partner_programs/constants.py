@@ -1,3 +1,6 @@
+PROGRAM_CASE_FIELD_NAME = "case"
+
+
 DEFAULT_DATA_SCHEMA = {
     "field": {"type": "text"},
 }
