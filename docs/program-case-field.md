@@ -114,6 +114,10 @@ model errors удаляемой формы, поэтому проверка вы
   "program_id": 12,
   "project_id": 55,
   "submitted": false,
+  "is_competitive": true,
+  "submission_open": true,
+  "submission_deadline": "2026-10-01T18:00:00Z",
+  "can_submit": true,
   "fields": [
     {
       "id": 5,
@@ -140,10 +144,29 @@ independent project-level access либо program-role links с точным PK 
 связи. Все три исходных helper из production #732 сохраняются без изменений;
 scoped singular Project detail и WRITE permissions не заменяются DEV-версией.
 
+Metadata описывает только запрошенную связь `PartnerProgramProject`, не первую
+программу общего проекта:
+
+- `is_competitive: boolean` — `link.partner_program.is_competitive`;
+- `submission_open: boolean` — `link.partner_program.is_project_submission_open()`;
+- `submission_deadline: datetime | null` — результат существующего
+  `link.partner_program.get_project_submission_deadline()`, в JSON ISO 8601 либо null.
+  Сохраняется приоритет `datetime_project_submission_ends` и fallback на окончание
+  регистрации;
+- `can_submit: boolean` — `is_competitive and not link.submitted and submission_open`.
+
+У сданной или неконкурсной связи `can_submit=false`, даже если окно сдачи открыто.
+Это snapshot стадии, не authorization policy: значение одинаково для всех читателей
+этой связи и не проверяет выбор case. Authoritative submit endpoint по-прежнему
+проверяет лидера, case, deadline и остальные условия. GET/PUT/submit permissions
+#732/#733 неизменны. `fields` в GET и ответ PUT не меняются.
+Metadata берётся из уже загруженных link/program и не добавляет SQL.
+
 Для лидера GET использует **3 SQL-запроса** независимо от количества полей:
 link + program + project одним join; все values; все definitions. Для остальных
 ролей добавляются ограниченные EXISTS проверки доступа, не по числу полей.
-Регрессионный тест измеряет HTTP GET при 1 и 20 полях.
+Для manager/expert измерено **6 SQL-запросов**. Регрессионный тест измеряет HTTP GET
+при 1 и 20 полях для всех трёх ролей; число запросов не растёт с количеством fields.
 
 `PUT /programs/partner-program-projects/{programLinkId}/fields/`
 
@@ -174,6 +197,10 @@ Project. Manager/expert/staff не получают право записи. Ч�
 Следующий Angular этап должен использовать `programLinkId`, не подставлять
 `options[0]` на apply и показывать placeholder «Выберите кейс» до явного выбора.
 
+Обычный `PATCH /projects/{projectId}/` без `partner_program_id` не меняет связи
+проекта с программами или профили участников. Регрессия проверяет сохранение обеих
+связей A/B и всех значений связанных профилей; production Project runtime не меняется.
+
 ## Совместимость фильтров и границы
 
 `GET /programs/{programId}/filters/` возвращает case через существующее
@@ -197,9 +224,10 @@ Analytics по кейсам, отдельная модель кейса, авт�
 SubmissionExpertAssignment, Evaluation и их admin/API/migrations не изменяются.
 `/programs/{programId}/manager-overview/` сохраняет новый production contract.
 
-Metadata follow-up #729 намеренно не входит: `is_competitive`, `submission_open`,
-`submission_deadline`, `can_submit` не добавлены в GET fields. Аналитика,
-`current_project_application` и evaluation deadline остаются отдельными этапами.
+Поверх production #733 выполнен отдельный minimal semantic port DEV #729:
+`is_competitive`, `submission_open`, `submission_deadline`, `can_submit` добавлены
+только в canonical GET fields. PUT, submit и access helpers foundation не изменены.
+Аналитика, `current_project_application` и evaluation deadline остаются отдельными этапами.
 
 Перед включением на сервере нужен read-only inventory существующих definitions
 с exact `name="case"` и их values: некорректные flags/options и obsolete choices
