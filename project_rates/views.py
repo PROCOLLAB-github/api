@@ -10,6 +10,7 @@ from project_rates.serializers import (
     ProjectListForRateSerializer,
 )
 from project_rates.services import (
+    EvaluationDeadlinePassed,
     MaxProjectRatesReached,
     extract_project_rate_filters,
     get_projects_for_rate_queryset,
@@ -36,6 +37,11 @@ class RateProject(generics.CreateAPIView):
             return Response(
                 {"error": "you have no permission to rate this program"},
                 status=status.HTTP_403_FORBIDDEN,
+            )
+        except EvaluationDeadlinePassed as e:
+            return Response(
+                {"error": e.code, "detail": e.detail},
+                status=status.HTTP_409_CONFLICT,
             )
         except MaxProjectRatesReached as e:
             return Response(
