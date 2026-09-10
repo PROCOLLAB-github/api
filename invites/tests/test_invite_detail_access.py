@@ -1,9 +1,10 @@
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from rest_framework import status
 from rest_framework.test import APIClient
 
 from invites.models import Invite
 from invites.tests.helpers import create_invite, create_user
+from notifications.models import Notification
 
 
 class InviteDetailAccessTests(TestCase):
@@ -113,6 +114,7 @@ class InviteDetailAccessTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(invite.motivational_letter, "Initial")
 
+    @override_settings(NEXTGEN_SURFACE_ENABLED=False)
     def test_project_leader_can_delete_invite(self):
         invite = create_invite()
         self.client.force_authenticate(invite.project.leader)
@@ -121,6 +123,11 @@ class InviteDetailAccessTests(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Invite.objects.filter(pk=invite.pk).exists())
+        notification = Notification.objects.get(
+            recipient=invite.user,
+            type=Notification.Type.PROJECT_INVITE_REVOKED,
+        )
+        self.assertEqual(notification.action_url, "/office/projects/invites")
 
     def test_invited_user_cannot_delete_invite(self):
         invite = create_invite()

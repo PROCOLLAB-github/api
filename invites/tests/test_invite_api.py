@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from rest_framework import status
 from rest_framework.test import APIClient
 
@@ -15,12 +15,14 @@ from invites.tests.helpers import (
     invite_payload,
     link_project_to_program,
 )
+from notifications.models import Notification
 
 
 class InviteCreateAPITests(TestCase):
     def setUp(self):
         self.client = APIClient()
 
+    @override_settings(NEXTGEN_SURFACE_ENABLED=False)
     def test_project_leader_can_create_invite(self):
         leader = create_user(prefix="leader")
         recipient = create_user(prefix="recipient")
@@ -39,6 +41,11 @@ class InviteCreateAPITests(TestCase):
         self.assertEqual(response.data["sender"]["id"], leader.id)
         self.assertEqual(response.data["role"], "Designer")
         self.assertIsNone(response.data["is_accepted"])
+        notification = Notification.objects.get(
+            recipient=recipient,
+            type=Notification.Type.PROJECT_INVITE_CREATED,
+        )
+        self.assertEqual(notification.action_url, "/office/projects/invites")
 
     def test_project_leader_can_create_invite_without_motivational_letter(self):
         leader = create_user(prefix="leader")
@@ -124,7 +131,9 @@ class InviteCreateAPITests(TestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(Invite.objects.filter(project=project, user=recipient).count(), 1)
+        self.assertEqual(
+            Invite.objects.filter(project=project, user=recipient).count(), 1
+        )
 
     def test_program_project_invite_requires_program_membership(self):
         leader = create_user(prefix="leader")

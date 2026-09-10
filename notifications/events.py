@@ -1,3 +1,5 @@
+from django.conf import settings
+
 from notifications.models import Notification
 from notifications.services import create_notification, create_notifications
 
@@ -11,6 +13,10 @@ def _user_name(user) -> str:
     """Возвращает безопасное отображаемое имя без email и служебных полей."""
     name = user.get_full_name().strip()
     return name or "Пользователь"
+
+
+def _nextgen_notifications_enabled() -> bool:
+    return settings.NEXTGEN_SURFACE_ENABLED
 
 
 def notify_project_invite_created(invite) -> None:
@@ -72,9 +78,7 @@ def notify_vacancy_response_created(response) -> None:
         notification_type=Notification.Type.VACANCY_RESPONSE_CREATED,
         title="Новый отклик на вакансию",
         message=f"Получен отклик на вакансию «{vacancy.role}».",
-        action_url=(
-            f"/office/projects/{vacancy.project_id}/vacancies/" f"{vacancy.pk}/responses"
-        ),
+        action_url=f"/office/vacancies/{vacancy.pk}",
         event_key=_event_key("vacancy-response", response.pk, "created"),
     )
 
@@ -104,6 +108,8 @@ def notify_vacancy_response_resolved(response, *, actor, accepted: bool) -> None
 
 def notify_team_invite_created(invite) -> None:
     """Уведомляет пользователя о новом приглашении в команду заявки."""
+    if not _nextgen_notifications_enabled():
+        return
     create_notification(
         recipient_id=invite.user_id,
         actor_id=invite.invited_by_id,
@@ -117,6 +123,8 @@ def notify_team_invite_created(invite) -> None:
 
 def notify_team_invite_resolved(invite, *, actor, status: str) -> None:
     """Уведомляет капитана либо приглашённого о завершении приглашения."""
+    if not _nextgen_notifications_enabled():
+        return
     application_id = invite.team.application_id
     config = {
         "accepted": (
@@ -155,6 +163,8 @@ def notify_team_invite_resolved(invite, *, actor, status: str) -> None:
 
 def notify_application_submitted(application, *, actor) -> None:
     """Уведомляет всех менеджеров программы об отправленной заявке."""
+    if not _nextgen_notifications_enabled():
+        return
     create_notifications(
         recipient_ids=application.program.managers.values_list("pk", flat=True),
         actor_id=actor.pk,
@@ -173,6 +183,8 @@ def notify_application_submitted(application, *, actor) -> None:
 
 def notify_application_status_changed(application, *, actor) -> None:
     """Уведомляет владельца заявки о подтверждённом изменении статуса."""
+    if not _nextgen_notifications_enabled():
+        return
     if application.user_id is None:
         return
     create_notification(
@@ -194,6 +206,8 @@ def notify_application_status_changed(application, *, actor) -> None:
 
 def notify_submission_submitted(submission, *, actor) -> None:
     """Уведомляет менеджеров программы об отправленном решении."""
+    if not _nextgen_notifications_enabled():
+        return
     create_notifications(
         recipient_ids=submission.program.managers.values_list("pk", flat=True),
         actor_id=actor.pk,
@@ -212,6 +226,8 @@ def notify_submission_submitted(submission, *, actor) -> None:
 
 def notify_submission_status_changed(submission, *, actor) -> None:
     """Уведомляет владельца заявки и принятых участников её команды."""
+    if not _nextgen_notifications_enabled():
+        return
     from partner_programs.models import TeamMember
 
     recipient_ids = [submission.application.user_id]
@@ -240,6 +256,8 @@ def notify_submission_status_changed(submission, *, actor) -> None:
 
 def notify_expert_assignment_created(assignment) -> None:
     """Уведомляет эксперта о назначенной работе."""
+    if not _nextgen_notifications_enabled():
+        return
     create_notification(
         recipient_id=assignment.expert.user_id,
         actor_id=assignment.assigned_by_id,
@@ -253,6 +271,8 @@ def notify_expert_assignment_created(assignment) -> None:
 
 def notify_expert_assignment_revoked(assignment, *, actor) -> None:
     """Уведомляет эксперта об отзыве назначения."""
+    if not _nextgen_notifications_enabled():
+        return
     create_notification(
         recipient_id=assignment.expert.user_id,
         actor_id=actor.pk,
@@ -266,6 +286,8 @@ def notify_expert_assignment_revoked(assignment, *, actor) -> None:
 
 def notify_evaluation_submitted(evaluation, *, actor) -> None:
     """Уведомляет менеджеров программы о финально отправленной оценке."""
+    if not _nextgen_notifications_enabled():
+        return
     submission = evaluation.submission
     create_notifications(
         recipient_ids=submission.program.managers.values_list("pk", flat=True),
@@ -280,6 +302,8 @@ def notify_evaluation_submitted(evaluation, *, actor) -> None:
 
 def notify_news_comment_created(comment) -> None:
     """Уведомляет владельцев источника новости о новом комментарии."""
+    if not _nextgen_notifications_enabled():
+        return
     news = comment.news
     model = news.content_type.model
     if model == "customuser":

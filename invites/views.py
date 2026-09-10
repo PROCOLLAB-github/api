@@ -1,4 +1,5 @@
 from django_filters import rest_framework as filters
+from django.db import transaction
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 
@@ -11,6 +12,10 @@ from invites.workspace_services import (
     ProjectInvitationServiceError,
     accept_project_invitation,
     decline_project_invitation,
+)
+from notifications.events import (
+    notify_project_invite_created,
+    notify_project_invite_resolved,
 )
 
 
@@ -32,7 +37,9 @@ class InviteList(generics.ListCreateAPIView):
         if serializer.validated_data["project"].leader != request.user:
             # additional check that the user is the invite's project's leader
             return Response(status=status.HTTP_403_FORBIDDEN)
-        instance = serializer.save(invited_by=request.user)
+        with transaction.atomic():
+            instance = serializer.save(invited_by=request.user)
+            notify_project_invite_created(instance)
         headers = self.get_success_headers(serializer.data)
 
         # using detailed serializer so that it'll pass User and Project objects detailed
@@ -47,6 +54,15 @@ class InviteDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Invite.objects.get_invite_for_list_view()
     serializer_class = InviteDetailSerializer
     permission_classes = [InviteDetailPermission]
+
+    def perform_destroy(self, instance):
+        with transaction.atomic():
+            notify_project_invite_resolved(
+                instance,
+                actor=self.request.user,
+                status="revoked",
+            )
+            instance.delete()
 
 
 class InviteAccept(generics.GenericAPIView):

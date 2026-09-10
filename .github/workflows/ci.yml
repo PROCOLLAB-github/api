@@ -60,9 +60,23 @@ jobs:
       - name: Install dependencies
         run: poetry install
 
+      - name: Run production surface quarantine tests
+        run: >-
+          poetry run python manage.py test
+          procollab.tests.test_nextgen_surface
+          notifications.tests.test_surface_quarantine
+          notifications.tests.test_notifications_api
+          --verbosity=2
+        env:
+          DEBUG: True
+          DJANGO_SETTINGS_MODULE: procollab.settings
+          NEXTGEN_SURFACE_ENABLED: False
+          PYTHONUNBUFFERED: 1
+
       - name: Run tests
         run: poetry run python manage.py test --verbosity=2
         env:
           DEBUG: True
           DJANGO_SETTINGS_MODULE: procollab.settings
+          NEXTGEN_SURFACE_ENABLED: True
           PYTHONUNBUFFERED: 1

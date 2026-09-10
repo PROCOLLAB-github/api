@@ -89,20 +89,30 @@ Compose-команда собирается как Bash array без `eval`. Д�
 containers проверяется наличие точных сервисов `web`, `celerys` и `redis`. Иное
 имя Celery service не угадывается: deploy завершается с явной ошибкой.
 
+Script атомарно генерирует ignored override
+`.react-dev-runtime/nextgen-surface.compose.yml`, который передаёт
+`NEXTGEN_SURFACE_ENABLED=True` только в `web` и `celerys`. Override добавляется к
+Compose config files ровно один раз, а итоговое значение обоих services
+проверяется до смены repository revision, миграций и перезапуска. Поэтому
+React-dev сохраняет будущий API surface, даже если setting отсутствует в
+серверном `.env`; production deploy этот override не использует.
+
 ## Порядок deploy
 
 1. Получение deployment lock через `flock`.
 2. Проверка repository, origin, git state и stale deploy.
-3. Сохранение предыдущих SHA, container IDs, image IDs и image references.
-4. Сборка backend image в GitHub Actions и публикация в GHCR по SHA-тегу.
-5. Загрузка image на React-dev по immutable digest и проверка revision label.
-6. Переназначение существующих Compose image references без server-side build.
-7. `python manage.py check` во временном container нового `web` image без TTY
+3. Подключение React-dev Compose override и проверка
+   `NEXTGEN_SURFACE_ENABLED=True` для `web` и `celerys`.
+4. Сохранение предыдущих SHA, container IDs, image IDs и image references.
+5. Сборка backend image в GitHub Actions и публикация в GHCR по SHA-тегу.
+6. Загрузка image на React-dev по immutable digest и проверка revision label.
+7. Переназначение существующих Compose image references без server-side build.
+8. `python manage.py check` во временном container нового `web` image без TTY
    и без доступа к stdin deploy-скрипта.
-8. `python manage.py migrate --noinput` с существующим React-dev `.env`, также без TTY
+9. `python manage.py migrate --noinput` с существующим React-dev `.env`, также без TTY
    и с stdin, подключенным к `/dev/null`.
-9. Пересоздание только `web` и `celerys` с явным запретом server-side build.
-10. Проверка image ID, running state и публичный HTTPS health-check.
+10. Пересоздание только `web` и `celerys` с явным запретом server-side build.
+11. Проверка image ID, running state и публичный HTTPS health-check.
 
 React-dev сервер больше не устанавливает Python-зависимости и не обращается к
 PyPI во время deploy. Доступ к PyPI требуется только GitHub-hosted runner на

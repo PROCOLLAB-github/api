@@ -50,6 +50,7 @@ jobs:
       DATABASE_HOST: 127.0.0.1
       DATABASE_PORT: "5432"
       ALLOW_REACT_DEV_DEMO_SEED: "False"
+      NEXTGEN_SURFACE_ENABLED: "True"
       AUTOPOSTING_ON: "False"
 
     steps:
@@ -103,6 +104,16 @@ jobs:
 
       - name: Lint CI settings
         run: poetry run flake8 procollab/settings_ci.py
+
+      - name: Run production surface quarantine tests
+        env:
+          NEXTGEN_SURFACE_ENABLED: "False"
+        run: |
+          poetry run python manage.py test \
+            procollab.tests.test_nextgen_surface \
+            notifications.tests.test_surface_quarantine \
+            notifications.tests.test_notifications_api \
+            --verbosity 2
 
       - name: Run PostgreSQL locking and constraint tests
         run: |

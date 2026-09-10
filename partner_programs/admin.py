@@ -4,6 +4,7 @@ import re
 
 import tablib
 from django import forms
+from django.conf import settings
 from django.contrib import admin
 from django.db.models import QuerySet
 from django.http import HttpRequest
@@ -37,7 +38,18 @@ from partner_programs.forms import (
 from partner_programs.services.case_fields import case_field_has_values
 
 
-@admin.register(Application)
+def register_nextgen_admin(model):
+    """Registers future-domain models only where their runtime surface is enabled."""
+
+    def decorator(admin_class):
+        if settings.NEXTGEN_SURFACE_ENABLED:
+            admin.site.register(model, admin_class)
+        return admin_class
+
+    return decorator
+
+
+@register_nextgen_admin(Application)
 class ApplicationAdmin(admin.ModelAdmin):
     list_display = (
         "id",
@@ -77,7 +89,7 @@ class ApplicationAdmin(admin.ModelAdmin):
     date_hierarchy = "created_at"
 
 
-@admin.register(Team)
+@register_nextgen_admin(Team)
 class TeamAdmin(admin.ModelAdmin):
     list_display = (
         "id",
@@ -121,7 +133,7 @@ class TeamAdmin(admin.ModelAdmin):
         return obj.application.program
 
 
-@admin.register(TeamMember)
+@register_nextgen_admin(TeamMember)
 class TeamMemberAdmin(admin.ModelAdmin):
     list_display = (
         "id",
@@ -171,7 +183,7 @@ class TeamMemberAdmin(admin.ModelAdmin):
         return obj.team.application.program
 
 
-@admin.register(TeamInvite)
+@register_nextgen_admin(TeamInvite)
 class TeamInviteAdmin(admin.ModelAdmin):
     list_display = (
         "id",
@@ -220,7 +232,7 @@ class TeamInviteAdmin(admin.ModelAdmin):
         return obj.team.application.program
 
 
-@admin.register(Submission)
+@register_nextgen_admin(Submission)
 class SubmissionAdmin(admin.ModelAdmin):
     list_display = (
         "id",
@@ -262,7 +274,7 @@ class SubmissionAdmin(admin.ModelAdmin):
     date_hierarchy = "created_at"
 
 
-@admin.register(SubmissionExpertAssignment)
+@register_nextgen_admin(SubmissionExpertAssignment)
 class SubmissionExpertAssignmentAdmin(admin.ModelAdmin):
     list_display = (
         "submission",
@@ -312,7 +324,7 @@ class SubmissionExpertAssignmentAdmin(admin.ModelAdmin):
     date_hierarchy = "assigned_at"
 
 
-@admin.register(Evaluation)
+@register_nextgen_admin(Evaluation)
 class EvaluationAdmin(admin.ModelAdmin):
     list_display = (
         "submission",
@@ -355,7 +367,7 @@ class EvaluationAdmin(admin.ModelAdmin):
     date_hierarchy = "created_at"
 
 
-@admin.register(EvaluationScore)
+@register_nextgen_admin(EvaluationScore)
 class EvaluationScoreAdmin(admin.ModelAdmin):
     list_display = (
         "evaluation",
@@ -396,7 +408,7 @@ class EvaluationScoreAdmin(admin.ModelAdmin):
     date_hierarchy = "created_at"
 
 
-@admin.register(EvaluationAmendment)
+@register_nextgen_admin(EvaluationAmendment)
 class EvaluationAmendmentAdmin(admin.ModelAdmin):
     list_display = (
         "id",
@@ -544,8 +556,10 @@ class PartnerProgramAdmin(admin.ModelAdmin):
     )
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[PartnerProgram]:
-        qs = super().get_queryset(request).prefetch_related(
-            "managers", "materials", "fields"
+        qs = (
+            super()
+            .get_queryset(request)
+            .prefetch_related("managers", "materials", "fields")
         )
         if "Руководитель программы" in request.user.groups.all().values_list(
             "name", flat=True
@@ -564,9 +578,7 @@ class PartnerProgramAdmin(admin.ModelAdmin):
                 "partner_programs/admin/program_manager_change_form.html"
             )
         else:
-            self.change_form_template = (
-                "partner_programs/admin/programs_change_form.html"
-            )
+            self.change_form_template = "partner_programs/admin/programs_change_form.html"
 
         return super().change_view(request, object_id, form_url, extra_context)
 
