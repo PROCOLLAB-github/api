@@ -1,5 +1,6 @@
 from django.db import transaction
 from django.db.models import Count, Prefetch, Q, QuerySet
+from django.utils import timezone
 
 from rest_framework.exceptions import ValidationError
 
@@ -18,6 +19,14 @@ class MaxProjectRatesReached(Exception):
     def __init__(self, max_project_rates: int):
         self.max_project_rates = max_project_rates
         super().__init__("max project rates reached for this program")
+
+
+class EvaluationDeadlinePassed(Exception):
+    code = "evaluation_deadline_passed"
+    detail = "Срок оценивания завершён."
+
+    def __init__(self):
+        super().__init__(self.detail)
 
 
 def get_rate_program(program_id: int) -> PartnerProgram:
@@ -73,8 +82,7 @@ def get_projects_for_rate_queryset(
         )
 
     return (
-        projects_qs
-        .annotate(
+        projects_qs.annotate(
             rated_count=Count(
                 "scores__user",
                 filter=Q(scores__criteria__partner_program=program),
@@ -100,18 +108,20 @@ def submit_project_scores(*, user, project_id: int, data) -> None:
     )
     serializer.is_valid(raise_exception=True)
 
-    scores_qs = ProjectScore.objects.filter(
-        project_id=project_id,
-        criteria__partner_program=program,
-    )
-    user_has_scores = scores_qs.filter(user_id=user.id).exists()
-
-    if program.max_project_rates:
-        distinct_raters = scores_qs.values("user_id").distinct().count()
-        if not user_has_scores and distinct_raters >= program.max_project_rates:
-            raise MaxProjectRatesReached(program.max_project_rates)
-
     with transaction.atomic():
+        _ensure_evaluation_deadline_open(program)
+
+        scores_qs = ProjectScore.objects.filter(
+            project_id=project_id,
+            criteria__partner_program=program,
+        )
+        user_has_scores = scores_qs.filter(user_id=user.id).exists()
+
+        if program.max_project_rates:
+            distinct_raters = scores_qs.values("user_id").distinct().count()
+            if not user_has_scores and distinct_raters >= program.max_project_rates:
+                raise MaxProjectRatesReached(program.max_project_rates)
+
         ProjectScore.objects.bulk_create(
             [ProjectScore(**item) for item in serializer.validated_data],
             update_conflicts=True,
@@ -123,16 +133,24 @@ def submit_project_scores(*, user, project_id: int, data) -> None:
     _send_project_rated_email(project=project, program=program)
 
 
-def _prepare_project_score_data(*, user, project_id: int, data) -> tuple[list, list, PartnerProgram]:
+def _ensure_evaluation_deadline_open(program: PartnerProgram) -> None:
+    deadline = program.datetime_evaluation_ends
+    if deadline is not None and timezone.now() > deadline:
+        raise EvaluationDeadlinePassed
+
+
+def _prepare_project_score_data(
+    *, user, project_id: int, data
+) -> tuple[list, list, PartnerProgram]:
     rating_data = [dict(criterion) for criterion in data]
     criteria_ids = [criterion["criterion_id"] for criterion in rating_data]
 
     criteria_qs = Criteria.objects.filter(id__in=criteria_ids).select_related(
         "partner_program"
     )
-    partner_program_ids = (
-        criteria_qs.values_list("partner_program_id", flat=True).distinct()
-    )
+    partner_program_ids = criteria_qs.values_list(
+        "partner_program_id", flat=True
+    ).distinct()
     if not criteria_qs.exists():
         raise ValueError("Criteria not found")
     if partner_program_ids.count() != 1:
@@ -152,11 +170,14 @@ def _prepare_project_score_data(*, user, project_id: int, data) -> tuple[list, l
     ).exists():
         raise ValueError("Project is not linked to the program")
 
-    if program.is_distributed_evaluation and not ProjectExpertAssignment.objects.filter(
-        partner_program=program,
-        project_id=project_id,
-        expert__user_id=user.id,
-    ).exists():
+    if (
+        program.is_distributed_evaluation
+        and not ProjectExpertAssignment.objects.filter(
+            partner_program=program,
+            project_id=project_id,
+            expert__user_id=user.id,
+        ).exists()
+    ):
         raise ValueError("you are not assigned to rate this project")
 
     return rating_data, criteria_ids, program
