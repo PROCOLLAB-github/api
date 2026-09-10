@@ -133,6 +133,7 @@ class ProjectAnalyticsMetricsTests(ProjectAnalyticsFixture, TestCase):
                 "evaluation_status",
                 "attention",
                 "activity",
+                "cases",
             },
         )
         self.assertEqual(
@@ -164,7 +165,22 @@ class ProjectAnalyticsMetricsTests(ProjectAnalyticsFixture, TestCase):
             {
                 "participants_without_team": 0,
                 "projects_awaiting_evaluation": 0,
+                "projects_not_submitted": {"applicable": False, "total": 0},
                 "delayed_experts": {"total": 0, "items": []},
+            },
+        )
+        self.assertEqual(
+            payload["cases"],
+            {
+                "configured": False,
+                "submission_applicable": False,
+                "items": [],
+                "without_case": {
+                    "participants_total": 0,
+                    "projects_total": 0,
+                    "not_submitted": 0,
+                    "submitted": 0,
+                },
             },
         )
         today = timezone.localdate()
@@ -682,6 +698,6 @@ class ProjectAnalyticsContractTests(ProjectAnalyticsFixture, TestCase):
                 self.assertEqual(
                     payload["evaluation_status"]["assignments"]["total"], size
                 )
-        self.assertEqual(set(counts.values()), {10}, counts)
-        with self.assertNumQueries(8):
+        self.assertEqual(set(counts.values()), {14}, counts)
+        with self.assertNumQueries(12):
             build_project_analytics(self.program)

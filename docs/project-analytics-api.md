@@ -1,9 +1,11 @@
-# Legacy Project Analytics (B5 + B6a)
+# Legacy Project Analytics (B5 + B6a + B6b)
 
 `GET /programs/<program_id>/project-analytics/` is the manager-facing overview
 for the legacy Angular `Project` flow. It is a semantic production port of DEV
 #721 and #723. B6a ports assignment drilldowns and delayed experts from DEV #724
-into `/project-analytics/`, not the DEV `/manager-overview/` namespace.
+into `/project-analytics/`. B6b ports attention drilldowns, not-submitted work
+and case analytics from DEV #725, #726 and #730. None of these contracts uses
+the DEV `/manager-overview/` namespace.
 
 ## Two independent domains
 
@@ -20,9 +22,9 @@ creating an Application or Submission alone does not change legacy metrics.
 
 ## Access
 
-All three endpoints reuse production `ProgramPermissionMixin`, `IsAuthenticated` and
-`IsAdminOrManagerOfProgram`. A manager of the requested program, staff or
-superuser can read it. Participant-only, expert-only and managers of other
+All six endpoints reuse production `ProgramPermissionMixin`, `IsAuthenticated`
+and `IsAdminOrManagerOfProgram`. A manager of the requested program, staff or
+superuser can read them. Participant-only, expert-only and managers of other
 programs receive 403; anonymous receives 401; an unknown program receives 404.
 POST, PUT, PATCH and DELETE are not supported (405 for an authorized caller).
 GET has no analytics/lifecycle writes. Standard HEAD/OPTIONS are supported.
@@ -67,11 +69,23 @@ Example with an empty program (the real `activity` array always has 30 entries):
   "attention": {
     "participants_without_team": 0,
     "projects_awaiting_evaluation": 0,
+    "projects_not_submitted": {"applicable": false, "total": 0},
     "delayed_experts": {"total": 0, "items": []}
   },
   "activity": [
     {"date": "2026-06-15", "registrations": 0, "submitted_solutions": 0}
-  ]
+  ],
+  "cases": {
+    "configured": false,
+    "submission_applicable": false,
+    "items": [],
+    "without_case": {
+      "participants_total": 0,
+      "projects_total": 0,
+      "not_submitted": 0,
+      "submitted": 0
+    }
+  }
 }
 ```
 
@@ -117,7 +131,12 @@ Only submitted links can be `evaluated`.
 
 `participants_without_team` is unique participants minus `with_team`.
 `projects_awaiting_evaluation` includes awaiting plus partially evaluated links.
-These are counters only, without attention detail endpoints.
+Both counters have matching detail endpoints described below.
+
+`attention.projects_not_submitted` is applicable only to competitive programs.
+Its total reuses `solution_funnel.not_submitted`, so overview performs no extra
+query for that counter. A noncompetitive program reports
+`{"applicable": false, "total": 0}` without changing the raw solution funnel.
 
 ## Evaluation semantics
 
@@ -155,9 +174,11 @@ today, ascending, including zero days. Registrations use profile
 and other programs are excluded. Filtering and grouping use Django's active
 timezone/local-date semantics.
 
-The service uses eight SELECTs with correlated subqueries and aggregates,
+The service uses twelve SELECTs with correlated subqueries and aggregates,
 without per-participant/project/assignment queries. The manager HTTP endpoint
-uses ten queries including production access checks. Regression fixtures with
+uses fourteen queries including production access checks. Four of those SELECTs
+are the bounded case definition, grouped-link, registered-leader and
+registered-collaborator queries. Regression fixtures with
 0, 1 and 31 participants/projects/regions/assignments have the same query count
 in open and distributed modes. Returned region cardinality and in-memory row
 processing can still grow with program size; fixed SQL count does not mean
@@ -168,6 +189,136 @@ Assignment rows are loaded **once** per overview. The shared read-only
 overview counters, by-project completion and delayed experts. B5 has no second
 completion algorithm or duplicate assignment SELECT. Regions, funnels, activity
 and the existing attention counters keep their B5 semantics.
+
+## Attention drilldowns
+
+The three attention lists use limit/offset pagination. `limit` defaults to 25
+and must be from 1 through 100; `offset` defaults to 0 and must be nonnegative.
+Invalid values return 400 before count/page SQL. `search` is trimmed and applied
+in SQL before count and pagination. An offset beyond the result set returns 200,
+the filtered count and an empty `results` array. `next` and `previous` preserve
+the search value. Each endpoint has a fixed four-query manager-request budget
+for one or 31 rows, and its explicit allow-list serializer performs no SQL.
+
+### Participants without a team
+
+`GET /programs/<program_id>/project-analytics/participants-without-team/`
+
+One result is one distinct non-null user registered in this program who is
+neither a Project leader nor a Collaborator on a Project linked to this program.
+`PartnerProgramUserProfile.project`, production Team/TeamMember, Invite and
+projects linked only to another program do not count as a team. Historical
+duplicate registrations collapse to the minimum registration timestamp.
+
+```json
+{
+  "count": 1,
+  "next": null,
+  "previous": null,
+  "results": [{
+    "user_id": 123,
+    "full_name": "Anna Petrova",
+    "avatar": null,
+    "city": "Moscow",
+    "registered_at": "2026-09-01T12:00:00Z"
+  }]
+}
+```
+
+Search covers first name, last name and their full-name combination, but not
+email, city or private questionnaire fields. Blank names use the localized
+fallback `Участник №<user_id>`. Results order by
+`registered_at`, then `user_id`. Without search, `count` equals
+`attention.participants_without_team` on the same database snapshot.
+
+### Projects awaiting evaluation
+
+`GET /programs/<program_id>/project-analytics/projects-awaiting-evaluation/`
+
+The unit is one submitted current-program `PartnerProgramProject`, not an
+assignment. The top-level `mode` is `open` or `distributed`. Results contain
+only project ID/name and leader ID/name/avatar, plus the link's submission time:
+
+```json
+{
+  "count": 1,
+  "next": null,
+  "previous": null,
+  "results": [{
+    "program_project_id": 70,
+    "project": {"id": 55, "name": "Project A"},
+    "leader": {"user_id": 123, "full_name": "Anna Petrova", "avatar": null},
+    "submitted_at": "2026-09-01T12:00:00Z",
+    "status": "awaiting_evaluation",
+    "reason": "no_assignments",
+    "reason_label": "Эксперты не назначены",
+    "assignments_total": 0,
+    "assignments_completed": 0
+  }],
+  "mode": "distributed"
+}
+```
+
+The actual reason labels are localized. Controlled reasons are
+`no_assignments`, `no_completed_evaluations`, `partially_evaluated` and
+`awaiting_first_evaluation`. In distributed mode, no assignments, zero complete
+assignments and partial completion are included; a link whose every real
+assignment is complete is excluded. Completion comes from the same annotated
+queryset as the B6a assignment list: submitted current-program link, nonempty
+current criteria, and a score from the assigned expert for every criterion.
+In open mode a submitted link remains until its Project has the first score for
+a current-program criterion; assignment totals are null. Search covers only
+Project name. Results order by submission time, then link PK.
+
+### Projects not submitted
+
+`GET /programs/<program_id>/project-analytics/projects-not-submitted/`
+
+For a competitive program, one result is one current-program link whose raw
+`submitted` flag is false. Project draft/public state, team, assignments and
+scores do not alter membership. Search covers only Project name; results order
+by link creation time, then link PK. `linked_at` is the link timestamp.
+
+The standard pagination envelope also includes:
+
+```json
+{
+  "applicable": true,
+  "submission_deadline": "2026-09-30T20:59:59Z",
+  "submission_open": true
+}
+```
+
+Deadline and open state come directly from
+`get_project_submission_deadline()` and `is_project_submission_open()`. For a
+noncompetitive program the list is empty, `applicable` and `submission_open`
+are false, and the deadline is null. This does not rewrite the raw solution
+funnel.
+
+## Case analytics
+
+Overview `cases` groups current-program `PartnerProgramProject` links using
+only the exact system field selected by `get_program_case_field()`
+(`name="case"`). Labels, field type, filter visibility and case-insensitive
+names are not identity heuristics. Current options retain configuration order
+and zero-count rows. If the field is absent, `configured` is false, `items` is
+empty and all links belong to `without_case`.
+
+Each bucket contains `participants_total`, `projects_total`, `not_submitted`
+and `submitted`. Project counts use raw link submission state even for a
+noncompetitive program; `submission_applicable` only tells the client whether
+submission is a meaningful program workflow. Missing, blank, whitespace,
+obsolete or otherwise non-current values belong to `without_case`.
+
+Participants are distinct users registered in the current program who lead or
+collaborate on a Project in that bucket. Orphan profiles, Invite,
+Team/TeamMember and users registered only elsewhere are excluded. A user is
+deduplicated within a bucket but may appear in more than one bucket.
+
+Every link belongs to exactly one project bucket, so item totals plus
+`without_case` reconcile to `solution_funnel.created`, `submitted` and
+`not_submitted`. A Project linked to programs A and B has independent link,
+submission and case values in each program.
 
 ## Assignment list
 
@@ -265,15 +416,15 @@ SLA. Items sort critical first, then oldest waiting seconds descending, then
 expert ID ascending. All counts and seconds are nonnegative; assignment waiting
 fields are nullable. Serializers have strict status/severity choices and no SQL.
 
-SQL budgets (manager requests): list **3**, scores **5**, overview **10**.
+SQL budgets (manager requests): assignment list **3**, scores **5**, overview
+**14**, and each attention detail list **4**.
 List/overview counts are unchanged for 1 versus 31 assignments; scores are
-unchanged for 1 versus 20 criteria. The overview service remains **8 SELECTs**.
+unchanged for 1 versus 20 criteria. The overview service uses **12 SELECTs**.
 Delayed aggregation and serialization add no queries.
 
 ## Scope
 
 No models, migrations, scoring writes, deadline or lifecycle/permission changes.
-No B6b attention-list endpoints, projects-not-submitted object or case analytics.
 Foundation #732-#735, production `/manager-overview/`, `/submission-assignments/`
 and `/evaluations/`, frontend, dependencies and deployment remain untouched.
 Production Application/Team/Submission/SubmissionExpertAssignment/Evaluation

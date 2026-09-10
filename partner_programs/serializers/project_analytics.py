@@ -63,9 +63,15 @@ class ProjectAnalyticsEvaluationSerializer(serializers.Serializer):
     projects = ProjectAnalyticsProjectsSerializer()
 
 
+class ProjectAnalyticsNotSubmittedCountSerializer(serializers.Serializer):
+    applicable = serializers.BooleanField()
+    total = serializers.IntegerField(min_value=0)
+
+
 class ProjectAnalyticsAttentionSerializer(serializers.Serializer):
     participants_without_team = serializers.IntegerField(min_value=0)
     projects_awaiting_evaluation = serializers.IntegerField(min_value=0)
+    projects_not_submitted = ProjectAnalyticsNotSubmittedCountSerializer()
     delayed_experts = ProjectDelayedExpertsSerializer()
 
 
@@ -75,6 +81,24 @@ class ProjectAnalyticsActivitySerializer(serializers.Serializer):
     submitted_solutions = serializers.IntegerField(min_value=0)
 
 
+class ProjectCaseAnalyticsMetricsSerializer(serializers.Serializer):
+    participants_total = serializers.IntegerField(min_value=0)
+    projects_total = serializers.IntegerField(min_value=0)
+    not_submitted = serializers.IntegerField(min_value=0)
+    submitted = serializers.IntegerField(min_value=0)
+
+
+class ProjectCaseAnalyticsItemSerializer(ProjectCaseAnalyticsMetricsSerializer):
+    name = serializers.CharField(trim_whitespace=False)
+
+
+class ProjectCaseAnalyticsSerializer(serializers.Serializer):
+    configured = serializers.BooleanField()
+    submission_applicable = serializers.BooleanField()
+    items = ProjectCaseAnalyticsItemSerializer(many=True)
+    without_case = ProjectCaseAnalyticsMetricsSerializer()
+
+
 class ProjectAnalyticsSerializer(serializers.Serializer):
     summary = ProjectAnalyticsSummarySerializer()
     participant_funnel = ProjectAnalyticsParticipantFunnelSerializer()
@@ -82,3 +106,4 @@ class ProjectAnalyticsSerializer(serializers.Serializer):
     evaluation_status = ProjectAnalyticsEvaluationSerializer()
     attention = ProjectAnalyticsAttentionSerializer()
     activity = ProjectAnalyticsActivitySerializer(many=True)
+    cases = ProjectCaseAnalyticsSerializer()

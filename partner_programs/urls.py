@@ -19,6 +19,9 @@ from partner_programs.project_analytics_views import (
     ProjectAnalyticsAPIView,
     ProjectAnalyticsAssignmentsAPIView,
     ProjectAnalyticsAssignmentScoresAPIView,
+    ProjectAnalyticsParticipantsWithoutTeamAPIView,
+    ProjectAnalyticsProjectsAwaitingEvaluationAPIView,
+    ProjectAnalyticsProjectsNotSubmittedAPIView,
 )
 from partner_programs.submission_assignment_views import (
     ProgramSubmissionAssignmentListCreateView,
@@ -70,6 +73,21 @@ urlpatterns = [
         "<int:program_id>/project-analytics/assignments/<int:assignment_id>/scores/",
         ProjectAnalyticsAssignmentScoresAPIView.as_view(),
         name="project-analytics-assignment-scores",
+    ),
+    path(
+        "<int:program_id>/project-analytics/participants-without-team/",
+        ProjectAnalyticsParticipantsWithoutTeamAPIView.as_view(),
+        name="project-analytics-participants-without-team",
+    ),
+    path(
+        "<int:program_id>/project-analytics/projects-awaiting-evaluation/",
+        ProjectAnalyticsProjectsAwaitingEvaluationAPIView.as_view(),
+        name="project-analytics-projects-awaiting-evaluation",
+    ),
+    path(
+        "<int:program_id>/project-analytics/projects-not-submitted/",
+        ProjectAnalyticsProjectsNotSubmittedAPIView.as_view(),
+        name="project-analytics-projects-not-submitted",
     ),
     path(
         "<int:program_id>/evaluations/",

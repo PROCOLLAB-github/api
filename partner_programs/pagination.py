@@ -13,3 +13,19 @@ class PartnerProgramPagination(pagination.LimitOffsetPagination):
     default_limit = 10
     limit_query_param = "limit"
     offset_query_param = "offset"
+
+
+class ProjectAnalyticsAttentionPagination(pagination.LimitOffsetPagination):
+    """Pagination with parameters validated before count and page queries."""
+
+    default_limit = 25
+    max_limit = 100
+
+    def __init__(self, query):
+        self.query = query
+
+    def get_limit(self, request):
+        return self.query["limit"]
+
+    def get_offset(self, request):
+        return self.query["offset"]
