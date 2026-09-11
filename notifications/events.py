@@ -19,6 +19,20 @@ def _nextgen_notifications_enabled() -> bool:
     return settings.NEXTGEN_SURFACE_ENABLED
 
 
+def _program_member_ids(program_id: int):
+    from partner_programs.models import PartnerProgramUserProfile
+
+    return (
+        PartnerProgramUserProfile.objects.filter(
+            partner_program_id=program_id,
+            user_id__isnull=False,
+        )
+        .order_by()
+        .values_list("user_id", flat=True)
+        .distinct()
+    )
+
+
 def notify_project_invite_created(invite) -> None:
     """Уведомляет пользователя о новом приглашении в проект."""
     create_notification(
@@ -102,6 +116,49 @@ def notify_vacancy_response_resolved(response, *, actor, accepted: bool) -> None
             "vacancy-response",
             response.pk,
             "accepted" if accepted else "declined",
+        ),
+    )
+
+
+def notify_program_news_published(news, *, program, actor) -> None:
+    """Уведомляет участников программы о созданной новости программы."""
+    create_notifications(
+        recipient_ids=_program_member_ids(program.pk),
+        actor_id=actor.pk,
+        notification_type=Notification.Type.PROGRAM_NEWS_PUBLISHED,
+        title="Новая новость в программе",
+        message=f"В программе «{program.name}» опубликована новая новость.",
+        action_url=f"/office/program/{program.pk}",
+        event_key=_event_key("program-news", news.pk, "published"),
+    )
+
+
+def notify_program_material_published(material, *, program, actor) -> None:
+    """Уведомляет участников программы о новом материале программы."""
+    create_notifications(
+        recipient_ids=_program_member_ids(program.pk),
+        actor_id=actor.pk,
+        notification_type=Notification.Type.PROGRAM_MATERIAL_PUBLISHED,
+        title="Новый материал в программе",
+        message=(f"В программе «{program.name}» добавлен материал «{material.title}»."),
+        action_url=f"/office/program/{program.pk}",
+        event_key=_event_key("program-material", material.pk, "published"),
+    )
+
+
+def notify_course_access_opened(course, *, program, actor) -> None:
+    """Уведомляет участников программы об одном переходе курса в published."""
+    create_notifications(
+        recipient_ids=_program_member_ids(program.pk),
+        actor_id=actor.pk,
+        notification_type=Notification.Type.COURSE_ACCESS_OPENED,
+        title="Открыт доступ к курсу",
+        message=(f"В программе «{program.name}» открыт доступ к курсу «{course.title}»."),
+        action_url=f"/office/courses/{course.pk}",
+        event_key=_event_key(
+            "course-access",
+            course.pk,
+            course.datetime_updated.isoformat(),
         ),
     )
 

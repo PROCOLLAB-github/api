@@ -1,6 +1,9 @@
 from typing import Any
 
+from django.db import transaction
+
 from news.models import News
+from notifications.events import notify_program_news_published
 from partner_programs.models import PartnerProgram
 from projects.models import Project
 from users.models import CustomUser
@@ -33,9 +36,12 @@ def create_user_news(
     return News.objects.add_news(user, **data)
 
 
+@transaction.atomic
 def create_program_news(
     program: PartnerProgram,
     author,
     data: dict[str, Any],
 ) -> News:
-    return News.objects.add_news(program, **data)
+    news = News.objects.add_news(program, **data)
+    notify_program_news_published(news, program=program, actor=author)
+    return news
