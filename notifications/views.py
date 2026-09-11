@@ -7,15 +7,11 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from notifications.models import Notification
+from notifications.selectors import get_visible_notifications
 from notifications.serializers import (
     NotificationListQuerySerializer,
     NotificationSerializer,
 )
-
-
-def _user_notifications(user):
-    return Notification.objects.filter(recipient=user).select_related("actor")
 
 
 class NotificationListView(APIView):
@@ -24,7 +20,7 @@ class NotificationListView(APIView):
     def get(self, request):
         query_serializer = NotificationListQuerySerializer(data=request.query_params)
         query_serializer.is_valid(raise_exception=True)
-        queryset = _user_notifications(request.user)
+        queryset = get_visible_notifications(request.user).select_related("actor")
         unread_count = queryset.filter(read_at__isnull=True).count()
         if query_serializer.validated_data["unread"]:
             queryset = queryset.filter(read_at__isnull=True)
@@ -50,10 +46,9 @@ class NotificationUnreadCountView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        unread_count = Notification.objects.filter(
-            recipient=request.user,
-            read_at__isnull=True,
-        ).count()
+        unread_count = (
+            get_visible_notifications(request.user).filter(read_at__isnull=True).count()
+        )
         return Response({"unread_count": unread_count})
 
 
@@ -65,9 +60,8 @@ class NotificationReadView(APIView):
         notification = get_object_or_404(
             # Блокируем только само уведомление: actor nullable, а PostgreSQL
             # запрещает FOR UPDATE для nullable-стороны LEFT OUTER JOIN.
-            Notification.objects.select_for_update(),
+            get_visible_notifications(request.user).select_for_update(),
             pk=notification_id,
-            recipient=request.user,
         )
         if notification.read_at is None:
             notification.read_at = timezone.now()
@@ -80,10 +74,11 @@ class NotificationReadAllView(APIView):
 
     @transaction.atomic
     def post(self, request):
-        updated = Notification.objects.filter(
-            recipient=request.user,
-            read_at__isnull=True,
-        ).update(read_at=timezone.now())
+        updated = (
+            get_visible_notifications(request.user)
+            .filter(read_at__isnull=True)
+            .update(read_at=timezone.now())
+        )
         return Response(
             {"updated": updated, "unread_count": 0},
             status=status.HTTP_200_OK,

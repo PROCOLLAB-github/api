@@ -6,6 +6,7 @@ import tablib
 from django import forms
 from django.conf import settings
 from django.contrib import admin
+from django.db import transaction
 from django.db.models import QuerySet
 from django.http import HttpRequest
 from django.urls import path
@@ -13,6 +14,7 @@ from django.utils import timezone
 
 from core.utils import XlsxFileToExport, build_xlsx_download_response
 from mailing.views import MailingTemplateRender
+from notifications.events import notify_program_material_published
 from partner_programs.models import (
     Application,
     Evaluation,
@@ -583,6 +585,18 @@ class PartnerProgramAdmin(admin.ModelAdmin):
             fieldset for fieldset in fieldsets if fieldset[0] != "Участие и заявки"
         )
 
+    @transaction.atomic
+    def save_formset(self, request, form, formset, change):
+        super().save_formset(request, form, formset, change)
+        if formset.model is not PartnerProgramMaterial:
+            return
+        for material in formset.new_objects:
+            notify_program_material_published(
+                material,
+                program=formset.instance,
+                actor=request.user,
+            )
+
     def get_queryset(self, request: HttpRequest) -> QuerySet[PartnerProgram]:
         qs = (
             super()
@@ -763,6 +777,16 @@ class PartnerProgramMaterialAdmin(admin.ModelAdmin):
     search_fields = ("title", "program__name")
 
     readonly_fields = ("datetime_created", "datetime_updated")
+
+    @transaction.atomic
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        if not change:
+            notify_program_material_published(
+                obj,
+                program=obj.program,
+                actor=request.user,
+            )
 
     def short_url(self, obj):
         return obj.url[:60] if obj.url else "—"

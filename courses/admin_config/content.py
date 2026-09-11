@@ -1,9 +1,18 @@
 from django.contrib import admin
+from django.db import transaction
 from django.http import Http404
 from django.urls import path
 
-from courses.models import Course, CourseLesson, CourseModule, CourseTask, CourseTaskOption
+from courses.models import (
+    Course,
+    CourseContentStatus,
+    CourseLesson,
+    CourseModule,
+    CourseTask,
+    CourseTaskOption,
+)
 from courses.services.export_course_results import build_course_results_export_response
+from notifications.events import notify_course_access_opened
 
 from .forms import CourseAdminForm, CourseModuleAdminForm, CourseTaskAdminForm
 from .helpers import UserFileUploadAdminMixin
@@ -106,7 +115,14 @@ class CourseAdmin(UserFileUploadAdminMixin, admin.ModelAdmin):
             raise Http404("Курс не найден.")
         return build_course_results_export_response(course)
 
+    @transaction.atomic
     def save_model(self, request, obj, form, change):
+        previous_status = None
+        if change and obj.pk:
+            previous_status = (
+                Course.objects.filter(pk=obj.pk).values_list("status", flat=True).first()
+            )
+
         avatar_upload = form.cleaned_data.get("avatar_upload")
         if avatar_upload:
             obj.avatar_file = self.create_user_file(request, avatar_upload)
@@ -120,6 +136,16 @@ class CourseAdmin(UserFileUploadAdminMixin, admin.ModelAdmin):
             obj.header_cover_file = self.create_user_file(request, header_cover_upload)
 
         super().save_model(request, obj, form, change)
+        if (
+            previous_status != CourseContentStatus.PUBLISHED
+            and obj.status == CourseContentStatus.PUBLISHED
+            and obj.partner_program_id is not None
+        ):
+            notify_course_access_opened(
+                obj,
+                program=obj.partner_program,
+                actor=request.user,
+            )
 
 
 @admin.register(CourseModule)

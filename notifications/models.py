@@ -17,6 +17,15 @@ class Notification(models.Model):
         VACANCY_RESPONSE_CREATED = "vacancy_response_created", "Новый отклик на вакансию"
         VACANCY_RESPONSE_ACCEPTED = "vacancy_response_accepted", "Отклик принят"
         VACANCY_RESPONSE_DECLINED = "vacancy_response_declined", "Отклик отклонён"
+        PROGRAM_NEWS_PUBLISHED = (
+            "program_news_published",
+            "Новая новость программы",
+        )
+        PROGRAM_MATERIAL_PUBLISHED = (
+            "program_material_published",
+            "Новый материал программы",
+        )
+        COURSE_ACCESS_OPENED = "course_access_opened", "Открыт доступ к курсу"
         TEAM_INVITE_CREATED = "team_invite_created", "Приглашение в команду"
         TEAM_INVITE_ACCEPTED = "team_invite_accepted", "Приглашение в команду принято"
         TEAM_INVITE_DECLINED = "team_invite_declined", "Приглашение в команду отклонено"
@@ -46,6 +55,9 @@ class Notification(models.Model):
         Type.VACANCY_RESPONSE_CREATED: Category.VACANCY,
         Type.VACANCY_RESPONSE_ACCEPTED: Category.VACANCY,
         Type.VACANCY_RESPONSE_DECLINED: Category.VACANCY,
+        Type.PROGRAM_NEWS_PUBLISHED: Category.PROGRAM,
+        Type.PROGRAM_MATERIAL_PUBLISHED: Category.PROGRAM,
+        Type.COURSE_ACCESS_OPENED: Category.PROGRAM,
         Type.TEAM_INVITE_CREATED: Category.PROGRAM,
         Type.TEAM_INVITE_ACCEPTED: Category.PROGRAM,
         Type.TEAM_INVITE_DECLINED: Category.PROGRAM,
