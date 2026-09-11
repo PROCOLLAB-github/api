@@ -9,6 +9,7 @@ readonly EXPECTED_COMPOSE_PROJECT="api-react"
 readonly CELERY_SERVICE="celerys"
 readonly HEALTH_URL="https://api-react-dev.procollab.ru/programs/?limit=1"
 readonly LOCK_FILE="${DEPLOY_DIR}/.react-dev-deploy.lock"
+readonly NEXTGEN_COMPOSE_OVERRIDE="${DEPLOY_DIR}/.react-dev-runtime/nextgen-surface.compose.yml"
 readonly LOCK_TIMEOUT_SECONDS=10
 readonly SERVICE_WAIT_ATTEMPTS=30
 readonly SERVICE_WAIT_DELAY_SECONDS=2
@@ -46,6 +47,25 @@ log() {
 fail() {
     printf '[react-dev-deploy] ERROR: %s\n' "$*" >&2
     return 1
+}
+
+write_nextgen_compose_override() {
+    local override_dir="${NEXTGEN_COMPOSE_OVERRIDE%/*}"
+    local temporary_file
+
+    install -d -m 700 "$override_dir"
+    temporary_file="$(mktemp "${override_dir}/nextgen-surface.XXXXXX")"
+    cat > "$temporary_file" <<'YAML'
+services:
+  web:
+    environment:
+      NEXTGEN_SURFACE_ENABLED: "True"
+  celerys:
+    environment:
+      NEXTGEN_SURFACE_ENABLED: "True"
+YAML
+    chmod 600 "$temporary_file"
+    mv -f -- "$temporary_file" "$NEXTGEN_COMPOSE_OVERRIDE"
 }
 
 cleanup_health_file() {
@@ -131,6 +151,45 @@ print(image)
     if [[ -z "$output" || "$output" == *$'\n'* ]]; then
         printf '[react-dev-deploy] Service %s has invalid image reference.\n' \
             "$service" >&2
+        return 1
+    fi
+
+    result_variable="$output"
+}
+
+compose_service_environment_value() {
+    local service="$1"
+    local setting_name="$2"
+    local -n result_variable="$3"
+    local output=""
+
+    output="$(
+        "${COMPOSE_CMD[@]}" config --format json |
+            docker run \
+                --rm \
+                --interactive \
+                --entrypoint python \
+                "$PREVIOUS_WEB_IMAGE_ID" \
+                -c '
+import json
+import sys
+
+service, setting_name = sys.argv[1:]
+config = json.load(sys.stdin)
+environment = config.get("services", {}).get(service, {}).get("environment", {})
+if not isinstance(environment, dict):
+    raise SystemExit(f"Environment is invalid for service {service}")
+value = environment.get(setting_name)
+if value is None:
+    raise SystemExit(f"{setting_name} is missing for service {service}")
+print(value)
+' \
+                "$service" \
+                "$setting_name"
+    )"
+    if [[ -z "$output" || "$output" == *$'\n'* ]]; then
+        printf '[react-dev-deploy] Service %s has invalid %s value.\n' \
+            "$service" "$setting_name" >&2
         return 1
     fi
 
@@ -336,6 +395,8 @@ if ! flock --wait "$LOCK_TIMEOUT_SECONDS" 9; then
     fail "Другой React-dev deploy уже выполняется; lock не получен."
 fi
 
+write_nextgen_compose_override
+
 origin_url="$(git remote get-url origin)"
 case "$origin_url" in
     "https://github.com/${EXPECTED_REPOSITORY}" | \
@@ -397,7 +458,9 @@ if [[ "$compose_working_dir" != "$DEPLOY_DIR" ]]; then
 fi
 
 legacy_compose_file="$(realpath -m "${DEPLOY_DIR}/docker-compose.yml")"
+nextgen_compose_override="$(realpath -e "$NEXTGEN_COMPOSE_OVERRIDE")"
 compose_config_files=()
+nextgen_override_found=false
 IFS=',' read -r -a raw_compose_config_files <<< "$compose_config_files_label"
 for raw_config_file in "${raw_compose_config_files[@]}"; do
     config_file="${raw_config_file#"${raw_config_file%%[![:space:]]*}"}"
@@ -415,10 +478,16 @@ for raw_config_file in "${raw_compose_config_files[@]}"; do
     if [[ "$config_file" == "$legacy_compose_file" ]]; then
         fail "Repository legacy docker-compose.yml запрещен для React-dev deploy."
     fi
+    if [[ "$config_file" == "$nextgen_compose_override" ]]; then
+        nextgen_override_found=true
+    fi
     compose_config_files+=("$config_file")
 done
 if ((${#compose_config_files[@]} == 0)); then
     fail "Compose config files не обнаружены."
+fi
+if [[ "$nextgen_override_found" != true ]]; then
+    compose_config_files+=("$nextgen_compose_override")
 fi
 
 COMPOSE_CMD=(
@@ -491,6 +560,16 @@ if [[ "$configured_web_image_ref" != "$PREVIOUS_WEB_IMAGE_REF" ]] ||
     [[ "$configured_celery_image_ref" != "$PREVIOUS_CELERY_IMAGE_REF" ]]; then
     fail "Running image references не совпадают с текущей Compose-конфигурацией."
 fi
+for service in web "$CELERY_SERVICE"; do
+    nextgen_surface_enabled=""
+    compose_service_environment_value \
+        "$service" \
+        NEXTGEN_SURFACE_ENABLED \
+        nextgen_surface_enabled
+    if [[ "$nextgen_surface_enabled" != "True" ]]; then
+        fail "NEXTGEN_SURFACE_ENABLED должен быть True для React-dev service ${service}."
+    fi
+done
 
 git fetch origin master --prune
 if ! git cat-file -e "${DEPLOY_SHA}^{commit}"; then
@@ -595,5 +674,6 @@ printf '%s\n' \
     "COMPOSE_PROJECT=${COMPOSE_PROJECT}" \
     "WEB_STATUS=${web_status}" \
     "CELERY_STATUS=${celery_status}" \
+    "NEXTGEN_SURFACE_ENABLED=True" \
     "MIGRATION_COMPLETED=${MIGRATION_COMPLETED}" \
     "HEALTH_CHECK_COMPLETED=true"

@@ -13,9 +13,17 @@
 ```dotenv
 EXTRA_ALLOWED_HOSTS=api-react-dev.procollab.ru,react-dev.procollab.ru
 EXTRA_CSRF_TRUSTED_ORIGINS=https://api-react-dev.procollab.ru,https://react-dev.procollab.ru
+NEXTGEN_SURFACE_ENABLED=True
 ```
 
-После изменения окружения настройки применятся при следующем запуске backend-процесса. Этот документ не описывает и не инициирует deploy.
+`NEXTGEN_SURFACE_ENABLED` включает Application/Team/Submission/Evaluation,
+React workspace, React news и public profiles API. По умолчанию setting равен
+`False`, поэтому production и legacy dev не публикуют этот surface. Автодеплой
+React-dev передаёт `True` в `web` и `celerys` через отдельный Compose override и
+проверяет итоговую конфигурацию до миграций и перезапуска.
+
+После изменения окружения настройки применятся при следующем запуске
+backend-процесса. Этот документ не описывает и не инициирует deploy.
 
 ## Правила разбора
 
@@ -28,4 +36,7 @@ EXTRA_CSRF_TRUSTED_ORIGINS=https://api-react-dev.procollab.ru,https://react-dev.
 
 ## Ограничения
 
-Настройка не меняет API endpoints, сущности, статусы или бизнес-логику. Она не выполняет проверку доступности доменов и не управляет nginx, Docker или инфраструктурой. Корректность формата trusted origins дополнительно проверяется стандартными проверками Django при запуске.
+Настройки доменов не меняют API endpoints, сущности, статусы или бизнес-логику.
+Они не выполняют проверку доступности доменов и не управляют nginx, Docker или
+инфраструктурой. Корректность формата trusted origins дополнительно проверяется
+стандартными проверками Django при запуске.

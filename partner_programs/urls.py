@@ -1,5 +1,6 @@
 # Roadmap: DEV-076, DEV-056
 
+from django.conf import settings
 from django.urls import path
 
 from news.views import NewsDetail, NewsDetailSetLiked, NewsDetailSetViewed, NewsList
@@ -50,16 +51,6 @@ app_name = "partner_programs"
 urlpatterns = [
     path("", PartnerProgramList.as_view()),
     path(
-        "managed/",
-        ManagedProgramListView.as_view(),
-        name="managed-program-list",
-    ),
-    path(
-        "<int:program_id>/manager-overview/",
-        ManagerProgramOverviewView.as_view(),
-        name="manager-overview",
-    ),
-    path(
         "<int:program_id>/project-analytics/",
         ProjectAnalyticsAPIView.as_view(),
         name="project-analytics",
@@ -88,31 +79,6 @@ urlpatterns = [
         "<int:program_id>/project-analytics/projects-not-submitted/",
         ProjectAnalyticsProjectsNotSubmittedAPIView.as_view(),
         name="project-analytics-projects-not-submitted",
-    ),
-    path(
-        "<int:program_id>/evaluations/",
-        ProgramEvaluationListView.as_view(),
-        name="evaluation-list",
-    ),
-    path(
-        "<int:program_id>/evaluations/<int:evaluation_id>/",
-        ProgramEvaluationDetailView.as_view(),
-        name="evaluation-detail",
-    ),
-    path(
-        "<int:program_id>/submission-assignments/",
-        ProgramSubmissionAssignmentListCreateView.as_view(),
-        name="submission-assignment-list-create",
-    ),
-    path(
-        "<int:program_id>/applications/my/",
-        MyProgramApplicationView.as_view(),
-        name="my-application",
-    ),
-    path(
-        "<int:program_id>/applications/",
-        ProgramApplicationCreateView.as_view(),
-        name="application-create",
     ),
     path("<int:pk>/", PartnerProgramDetail.as_view()),
     path(
@@ -171,3 +137,42 @@ urlpatterns = [
         name="partner-program-export-rates",
     ),
 ]
+
+if settings.NEXTGEN_SURFACE_ENABLED:
+    urlpatterns += [
+        path(
+            "managed/",
+            ManagedProgramListView.as_view(),
+            name="managed-program-list",
+        ),
+        path(
+            "<int:program_id>/manager-overview/",
+            ManagerProgramOverviewView.as_view(),
+            name="manager-overview",
+        ),
+        path(
+            "<int:program_id>/evaluations/",
+            ProgramEvaluationListView.as_view(),
+            name="evaluation-list",
+        ),
+        path(
+            "<int:program_id>/evaluations/<int:evaluation_id>/",
+            ProgramEvaluationDetailView.as_view(),
+            name="evaluation-detail",
+        ),
+        path(
+            "<int:program_id>/submission-assignments/",
+            ProgramSubmissionAssignmentListCreateView.as_view(),
+            name="submission-assignment-list-create",
+        ),
+        path(
+            "<int:program_id>/applications/my/",
+            MyProgramApplicationView.as_view(),
+            name="my-application",
+        ),
+        path(
+            "<int:program_id>/applications/",
+            ProgramApplicationCreateView.as_view(),
+            name="application-create",
+        ),
+    ]

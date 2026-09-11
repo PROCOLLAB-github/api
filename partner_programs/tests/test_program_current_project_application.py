@@ -2,6 +2,7 @@
 
 from unittest.mock import patch
 
+from django.conf import settings
 from django.core.cache import cache
 from django.db import connection
 from django.test import TestCase
@@ -275,7 +276,10 @@ class ProgramCurrentProjectApplicationTests(TestCase):
                     },
                     {**expected, "is_user_member": is_member},
                 )
-                self.assertIn("application_policy", response.data)
+                self.assertIs(
+                    "application_policy" in response.data,
+                    settings.NEXTGEN_SURFACE_ENABLED,
+                )
                 self.assertIs(response.data["is_user_manager"], is_member)
                 self.assertEqual(
                     response.data["materials"],

@@ -24,6 +24,12 @@ ALLOW_REACT_DEV_DEMO_SEED = config(
     cast=bool,
 )
 
+NEXTGEN_SURFACE_ENABLED = config(
+    "NEXTGEN_SURFACE_ENABLED",
+    default=False,
+    cast=bool,
+)
+
 AUTOPOSTING_ON = config("AUTOPOSTING_ON", default=False, cast=bool)
 
 TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN", default="", cast=str)
@@ -180,18 +186,14 @@ REST_FRAMEWORK = {
         "rest_framework.renderers.AdminRenderer",
     ],
     "DEFAULT_THROTTLE_RATES": {
-        "auth_register": config(
-            "DRF_THROTTLE_AUTH_REGISTER", default="5/min", cast=str
-        ),
+        "auth_register": config("DRF_THROTTLE_AUTH_REGISTER", default="5/min", cast=str),
         "auth_resend_email": config(
             "DRF_THROTTLE_AUTH_RESEND_EMAIL", default="3/min", cast=str
         ),
         "auth_reset_password": config(
             "DRF_THROTTLE_AUTH_RESET_PASSWORD", default="3/min", cast=str
         ),
-        "token_obtain": config(
-            "DRF_THROTTLE_TOKEN_OBTAIN", default="10/min", cast=str
-        ),
+        "token_obtain": config("DRF_THROTTLE_TOKEN_OBTAIN", default="10/min", cast=str),
         "program_register_new": config(
             "DRF_THROTTLE_PROGRAM_REGISTER_NEW", default="10/min", cast=str
         ),

@@ -1,4 +1,5 @@
-from django.urls import path, re_path, include
+from django.conf import settings
+from django.urls import include, path, re_path
 
 from news.views import NewsList, NewsDetail, NewsDetailSetViewed, NewsDetailSetLiked
 from users.views import (
@@ -36,17 +37,11 @@ from users.public_profile_views import PublicProfileDetailView, PublicProfileLis
 app_name = "users"
 
 urlpatterns = [
-    path("profiles/", PublicProfileListView.as_view(), name="public-profile-list"),
-    path(
-        "profiles/<int:pk>/",
-        PublicProfileDetailView.as_view(),
-        name="public-profile-detail",
-    ),
     path(
         "specialists/", SpecialistsList.as_view()
     ),  # this url actually returns  mentors, experts and investors
     path("users/", UserList.as_view()),
-    path('public-users/', PublicUserListView.as_view(), name='public-users'),
+    path("public-users/", PublicUserListView.as_view(), name="public-users"),
     path("users/projects/", UserProjectsList.as_view()),
     path("users/projects/leader/", UserLeaderProjectsList.as_view()),
     path("users/liked/", LikedProjectList.as_view()),
@@ -64,7 +59,10 @@ urlpatterns = [
     path("users/<int:user_pk>/news/<int:pk>/", NewsDetail.as_view()),
     path("users/<int:user_pk>/news/<int:pk>/set_viewed/", NewsDetailSetViewed.as_view()),
     path("users/<int:user_pk>/news/<int:pk>/set_liked/", NewsDetailSetLiked.as_view()),
-    path("users/<int:user_pk>/approve_skill/<int:skill_pk>/", UserSkillsApproveDeclineView.as_view()),
+    path(
+        "users/<int:user_pk>/approve_skill/<int:skill_pk>/",
+        UserSkillsApproveDeclineView.as_view(),
+    ),
     path("users/current/", CurrentUser.as_view()),
     path(
         "users/current/acknowledge-verification-notice/",
@@ -103,3 +101,13 @@ urlpatterns = [
         include("users.password_reset_urls", namespace="password_reset"),
     ),
 ]
+
+if settings.NEXTGEN_SURFACE_ENABLED:
+    urlpatterns += [
+        path("profiles/", PublicProfileListView.as_view(), name="public-profile-list"),
+        path(
+            "profiles/<int:pk>/",
+            PublicProfileDetailView.as_view(),
+            name="public-profile-detail",
+        ),
+    ]

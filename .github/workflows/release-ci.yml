@@ -87,6 +87,7 @@ jobs:
         run: poetry run python manage.py test
         env:
           DEBUG: True
+          NEXTGEN_SURFACE_ENABLED: True
 
   build:
     name: Build Image

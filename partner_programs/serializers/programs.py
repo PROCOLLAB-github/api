@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
@@ -134,6 +135,12 @@ class PartnerProgramBaseSerializerMixin(serializers.ModelSerializer):
         source="*",
         read_only=True,
     )
+
+    def get_fields(self):
+        fields = super().get_fields()
+        if not settings.NEXTGEN_SURFACE_ENABLED:
+            fields.pop("application_policy", None)
+        return fields
 
     def get_materials(self, program: PartnerProgram):
         materials = program.materials.all()

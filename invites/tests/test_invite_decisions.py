@@ -1,15 +1,17 @@
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from rest_framework import status
 from rest_framework.test import APIClient
 
 from projects.models import Collaborator
 from invites.tests.helpers import create_invite, create_user
+from notifications.models import Notification
 
 
 class InviteDecisionAPITests(TestCase):
     def setUp(self):
         self.client = APIClient()
 
+    @override_settings(NEXTGEN_SURFACE_ENABLED=False)
     def test_invited_user_can_accept_invite_and_become_collaborator(self):
         recipient = create_user(prefix="recipient")
         invite = create_invite(
@@ -32,7 +34,16 @@ class InviteDecisionAPITests(TestCase):
                 specialization="Market research",
             ).exists()
         )
+        notification = Notification.objects.get(
+            recipient=invite.project.leader,
+            type=Notification.Type.PROJECT_INVITE_ACCEPTED,
+        )
+        self.assertEqual(
+            notification.action_url,
+            f"/office/projects/{invite.project_id}/edit?section=team",
+        )
 
+    @override_settings(NEXTGEN_SURFACE_ENABLED=False)
     def test_invited_user_can_decline_invite(self):
         recipient = create_user(prefix="recipient")
         invite = create_invite(user=recipient)
@@ -43,6 +54,14 @@ class InviteDecisionAPITests(TestCase):
         invite.refresh_from_db()
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertFalse(invite.is_accepted)
+        notification = Notification.objects.get(
+            recipient=invite.project.leader,
+            type=Notification.Type.PROJECT_INVITE_DECLINED,
+        )
+        self.assertEqual(
+            notification.action_url,
+            f"/office/projects/{invite.project_id}/edit?section=team",
+        )
 
     def test_other_user_cannot_accept_or_decline_invite(self):
         invite = create_invite()

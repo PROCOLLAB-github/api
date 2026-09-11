@@ -107,6 +107,7 @@ celerybeat.pid
 # Environments
 .env
 .venv
+/.react-dev-runtime/
 env/
 venv/
 ENV/

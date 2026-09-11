@@ -58,31 +58,6 @@ urlpatterns = [
     # отключены. Для возврата модуля раскомментировать строку ниже.
     # path("events/", include("events.urls", namespace="events")),
     path("programs/", include("partner_programs.urls", namespace="partner_programs")),
-    path(
-        "applications/",
-        include("partner_programs.application_urls", namespace="applications"),
-    ),
-    path(
-        "submissions/",
-        include("partner_programs.submission_urls", namespace="submissions"),
-    ),
-    path(
-        "evaluations/",
-        include("partner_programs.evaluation_urls", namespace="evaluations"),
-    ),
-    path(
-        "expert/",
-        include("partner_programs.expert_urls", namespace="expert_submissions"),
-    ),
-    path(
-        "submission-assignments/<int:assignment_id>/revoke/",
-        SubmissionAssignmentRevokeView.as_view(),
-        name="submission-assignment-revoke",
-    ),
-    path(
-        "team-invites/",
-        include("partner_programs.team_invite_urls", namespace="team_invites"),
-    ),
     path("courses/", include("courses.urls", namespace="courses")),
     path("rate-project/", include(("project_rates.urls", "rate_projects"))),
     path("feed/", include("feed.urls", namespace="feed")),
@@ -100,6 +75,35 @@ urlpatterns = [
     path("", include("metrics.urls", namespace="metrics")),
     path("anymail/", include("anymail.urls")),
 ]
+
+if settings.NEXTGEN_SURFACE_ENABLED:
+    urlpatterns += [
+        path(
+            "applications/",
+            include("partner_programs.application_urls", namespace="applications"),
+        ),
+        path(
+            "submissions/",
+            include("partner_programs.submission_urls", namespace="submissions"),
+        ),
+        path(
+            "evaluations/",
+            include("partner_programs.evaluation_urls", namespace="evaluations"),
+        ),
+        path(
+            "expert/",
+            include("partner_programs.expert_urls", namespace="expert_submissions"),
+        ),
+        path(
+            "submission-assignments/<int:assignment_id>/revoke/",
+            SubmissionAssignmentRevokeView.as_view(),
+            name="submission-assignment-revoke",
+        ),
+        path(
+            "team-invites/",
+            include("partner_programs.team_invite_urls", namespace="team_invites"),
+        ),
+    ]
 
 if settings.DEBUG:
     import debug_toolbar

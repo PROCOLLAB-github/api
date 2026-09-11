@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.urls import path
 
 from invites.workspace_views import (
@@ -80,78 +81,6 @@ project_resource_detail = ResourceViewSet.as_view(
 )
 urlpatterns = [
     path("", ProjectList.as_view()),
-    path("catalog/", ProjectCatalogView.as_view(), name="workspace-catalog"),
-    path("my/", MyProjectsView.as_view(), name="workspace-my"),
-    path(
-        "subscribed/",
-        SubscribedProjectsView.as_view(),
-        name="workspace-subscribed",
-    ),
-    path(
-        "workspace/",
-        ProjectWorkspaceCreateView.as_view(),
-        name="workspace-create",
-    ),
-    path(
-        "workspace/invitations/incoming/",
-        IncomingProjectInvitationListView.as_view(),
-        name="workspace-invitations-incoming",
-    ),
-    path(
-        "workspace/invitations/<int:invitation_id>/accept/",
-        ProjectInvitationAcceptView.as_view(),
-        name="workspace-invitation-accept",
-    ),
-    path(
-        "workspace/invitations/<int:invitation_id>/decline/",
-        ProjectInvitationDeclineView.as_view(),
-        name="workspace-invitation-decline",
-    ),
-    path(
-        "<int:project_id>/workspace/",
-        ProjectWorkspaceDetailView.as_view(),
-        name="workspace-detail",
-    ),
-    path(
-        "<int:project_id>/workspace/invitations/",
-        ProjectInvitationListCreateView.as_view(),
-        name="workspace-invitations",
-    ),
-    path(
-        "<int:project_id>/workspace/subscription/",
-        ProjectWorkspaceSubscriptionView.as_view(),
-        name="workspace-subscription",
-    ),
-    path(
-        "<int:project_id>/workspace/invitations/candidates/",
-        ProjectInvitationCandidateSearchView.as_view(),
-        name="workspace-invitation-candidates",
-    ),
-    path(
-        "<int:project_id>/workspace/invitations/<int:invitation_id>/revoke/",
-        ProjectInvitationRevokeView.as_view(),
-        name="workspace-invitation-revoke",
-    ),
-    path(
-        "<int:project_id>/workspace/goals/",
-        ProjectWorkspaceGoalListView.as_view(),
-        name="workspace-goals",
-    ),
-    path(
-        "<int:project_id>/workspace/goals/<int:goal_id>/",
-        ProjectWorkspaceGoalDetailView.as_view(),
-        name="workspace-goal-detail",
-    ),
-    path(
-        "<int:project_id>/workspace/achievements/",
-        ProjectWorkspaceAchievementListView.as_view(),
-        name="workspace-achievements",
-    ),
-    path(
-        "<int:project_id>/workspace/achievements/<int:achievement_id>/",
-        ProjectWorkspaceAchievementDetailView.as_view(),
-        name="workspace-achievement-detail",
-    ),
     path("<int:pk>/like/", SetLikeOnProject.as_view()),
     path("<int:project_pk>/news/", NewsList.as_view()),
     path("<int:project_pk>/subscribe/", ProjectSubscribe.as_view()),
@@ -210,3 +139,79 @@ urlpatterns = [
     path("achievements/<int:pk>/", AchievementDetail.as_view()),
     path("<int:id>/responses/", ProjectVacancyResponses.as_view()),
 ]
+
+if settings.NEXTGEN_SURFACE_ENABLED:
+    urlpatterns += [
+        path("catalog/", ProjectCatalogView.as_view(), name="workspace-catalog"),
+        path("my/", MyProjectsView.as_view(), name="workspace-my"),
+        path(
+            "subscribed/",
+            SubscribedProjectsView.as_view(),
+            name="workspace-subscribed",
+        ),
+        path(
+            "workspace/",
+            ProjectWorkspaceCreateView.as_view(),
+            name="workspace-create",
+        ),
+        path(
+            "workspace/invitations/incoming/",
+            IncomingProjectInvitationListView.as_view(),
+            name="workspace-invitations-incoming",
+        ),
+        path(
+            "workspace/invitations/<int:invitation_id>/accept/",
+            ProjectInvitationAcceptView.as_view(),
+            name="workspace-invitation-accept",
+        ),
+        path(
+            "workspace/invitations/<int:invitation_id>/decline/",
+            ProjectInvitationDeclineView.as_view(),
+            name="workspace-invitation-decline",
+        ),
+        path(
+            "<int:project_id>/workspace/",
+            ProjectWorkspaceDetailView.as_view(),
+            name="workspace-detail",
+        ),
+        path(
+            "<int:project_id>/workspace/invitations/",
+            ProjectInvitationListCreateView.as_view(),
+            name="workspace-invitations",
+        ),
+        path(
+            "<int:project_id>/workspace/subscription/",
+            ProjectWorkspaceSubscriptionView.as_view(),
+            name="workspace-subscription",
+        ),
+        path(
+            "<int:project_id>/workspace/invitations/candidates/",
+            ProjectInvitationCandidateSearchView.as_view(),
+            name="workspace-invitation-candidates",
+        ),
+        path(
+            "<int:project_id>/workspace/invitations/<int:invitation_id>/revoke/",
+            ProjectInvitationRevokeView.as_view(),
+            name="workspace-invitation-revoke",
+        ),
+        path(
+            "<int:project_id>/workspace/goals/",
+            ProjectWorkspaceGoalListView.as_view(),
+            name="workspace-goals",
+        ),
+        path(
+            "<int:project_id>/workspace/goals/<int:goal_id>/",
+            ProjectWorkspaceGoalDetailView.as_view(),
+            name="workspace-goal-detail",
+        ),
+        path(
+            "<int:project_id>/workspace/achievements/",
+            ProjectWorkspaceAchievementListView.as_view(),
+            name="workspace-achievements",
+        ),
+        path(
+            "<int:project_id>/workspace/achievements/<int:achievement_id>/",
+            ProjectWorkspaceAchievementDetailView.as_view(),
+            name="workspace-achievement-detail",
+        ),
+    ]
