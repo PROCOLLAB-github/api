@@ -1,4 +1,4 @@
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from rest_framework.test import APIClient
@@ -11,6 +11,7 @@ from partner_programs.tests.helpers import (
 )
 
 
+@override_settings(NEXTGEN_SURFACE_ENABLED=True)
 class PartnerProgramApplicationPolicyAPITests(TestCase):
     def setUp(self):
         self.client = APIClient()
@@ -121,3 +122,35 @@ class PartnerProgramApplicationPolicyAPITests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertNotIn("application_policy", response.data["results"][0])
+
+
+@override_settings(NEXTGEN_SURFACE_ENABLED=False)
+class PartnerProgramApplicationPolicyDisabledAPITests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+    def assert_legacy_detail_contract(self, response, *, is_member: bool):
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("application_policy", response.data)
+        self.assertIs(response.data["is_user_member"], is_member)
+        self.assertIn("current_project_application", response.data)
+        self.assertIn("materials", response.data)
+        self.assertIn("courses", response.data)
+
+    def test_non_member_detail_omits_application_policy(self):
+        program = create_partner_program()
+        self.client.force_authenticate(create_user(prefix="policy-program-outsider"))
+
+        response = self.client.get(f"/programs/{program.pk}/")
+
+        self.assert_legacy_detail_contract(response, is_member=False)
+
+    def test_member_detail_omits_application_policy(self):
+        program = create_partner_program()
+        member = create_user(prefix="policy-program-member-off")
+        create_program_member(program, user=member)
+        self.client.force_authenticate(member)
+
+        response = self.client.get(f"/programs/{program.pk}/")
+
+        self.assert_legacy_detail_contract(response, is_member=True)

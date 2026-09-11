@@ -555,6 +555,34 @@ class PartnerProgramAdmin(admin.ModelAdmin):
         ("Служебная информация", {"fields": ("datetime_created", "datetime_updated")}),
     )
 
+    def get_list_display(self, request):
+        list_display = super().get_list_display(request)
+        if settings.NEXTGEN_SURFACE_ENABLED:
+            return list_display
+        return tuple(field for field in list_display if field != "participation_format")
+
+    def get_list_display_links(self, request, list_display):
+        list_display_links = super().get_list_display_links(request, list_display)
+        if settings.NEXTGEN_SURFACE_ENABLED or not list_display_links:
+            return list_display_links
+        return tuple(
+            field for field in list_display_links if field != "participation_format"
+        )
+
+    def get_list_filter(self, request):
+        list_filter = super().get_list_filter(request)
+        if settings.NEXTGEN_SURFACE_ENABLED:
+            return list_filter
+        return tuple(field for field in list_filter if field != "participation_format")
+
+    def get_fieldsets(self, request, obj=None):
+        fieldsets = super().get_fieldsets(request, obj)
+        if settings.NEXTGEN_SURFACE_ENABLED:
+            return fieldsets
+        return tuple(
+            fieldset for fieldset in fieldsets if fieldset[0] != "Участие и заявки"
+        )
+
     def get_queryset(self, request: HttpRequest) -> QuerySet[PartnerProgram]:
         qs = (
             super()
