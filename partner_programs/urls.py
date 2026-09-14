@@ -26,9 +26,16 @@ from partner_programs.views import (
     ProgramProjectFilterAPIView,
 )
 
+from partner_programs.widget_views import ProgramRoleWidgetAPIView
+
 app_name = "partner_programs"
 
 urlpatterns = [
+    path(
+        "<int:pk>/analytics-widget/",
+        ProgramRoleWidgetAPIView.as_view(),
+        name="analytics-widget",
+    ),
     path("", PartnerProgramList.as_view()),
     path("<int:pk>/", PartnerProgramDetail.as_view()),
     path(
