@@ -127,7 +127,7 @@ jobs:
             sha256sum "$repo/docker-compose.dev-ci.yml" > "$snapshot/compose-source.sha256"
             runtime() {
               # Only safe runtime fields; never environment, health output or mounts.
-              docker inspect -f '{"container_id":{{json .Id}},"image_reference":{{json .Config.Image}},"image_id":{{json .Image}},"status":{{json .State.Status}},"started_at":{{json .State.StartedAt}},"restart_count":{{json .RestartCount}},"health":{{if .State.Health}}{{json .State.Health.Status}}{{else}}"not-configured"{{end}}}' "$1"
+              docker inspect -f '{"container_id":{{json .Id}},"image_reference":{{json .Config.Image}},"image_id":{{json .Image}},"status":{{json .State.Status}},"started_at":{{json .State.StartedAt}},"restart_count":{{json .RestartCount}}}' "$1"
             }
             for service in web celerys; do
               container=$(container_for "$service")
