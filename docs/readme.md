@@ -7,6 +7,7 @@
 ## API
 
 - [Описание API](api.md)
+- [Ролевой виджет программы для Angular](modules/program-role-widget.md)
 - [Swagger](https://api.procollab.ru/swagger)
 - [Redoc](https://api.procollab.ru/redoc)
 
