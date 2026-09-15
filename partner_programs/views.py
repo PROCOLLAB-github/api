@@ -167,6 +167,10 @@ class PartnerProgramDetail(generics.RetrieveAPIView):
         data = serializer.data
         data["is_user_member"] = is_user_member
         data["current_application"] = current_application
+        data["is_user_expert"] = bool(
+            request.user.is_authenticated
+            and program.experts.filter(user_id=request.user.pk).exists()
+        )
         if request.user.is_authenticated:
             add_view(program, request.user)
         return Response(data, status=status.HTTP_200_OK)
