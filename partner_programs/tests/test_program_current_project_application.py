@@ -274,7 +274,7 @@ class ProgramCurrentProjectApplicationTests(TestCase):
                         for key, value in response.data.items()
                         if key != "current_project_application"
                     },
-                    {**expected, "is_user_member": is_member},
+                    {**expected, "is_user_member": is_member, "is_user_expert": False},
                 )
                 self.assertIs(
                     "application_policy" in response.data,
