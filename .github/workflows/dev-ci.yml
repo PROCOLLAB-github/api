@@ -3,6 +3,10 @@ name: DEV preflight and rollback snapshot (no deploy)
 on:
   workflow_dispatch:
     inputs:
+      cleanup_cache:
+        description: "Только согласованная очистка неиспользуемого DEV build cache"
+        type: boolean
+        default: false
       verify_only:
         description: "Только read-only проверка reset-cover deploy, без нового snapshot"
         type: boolean
@@ -22,7 +26,7 @@ concurrency:
 
 jobs:
   preflight:
-    if: github.ref == 'refs/heads/ops/dev-widget-preflight-20260915' && inputs.verify_only != true
+    if: github.ref == 'refs/heads/ops/dev-widget-preflight-20260915' && inputs.verify_only != true && inputs.cleanup_cache != true
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -252,7 +256,7 @@ jobs:
             DEV_PREFLIGHT
 
   verify:
-    if: github.ref == 'refs/heads/ops/dev-widget-preflight-20260915' && inputs.verify_only == true
+    if: github.ref == 'refs/heads/ops/dev-widget-preflight-20260915' && inputs.verify_only == true && inputs.cleanup_cache != true
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -344,3 +348,68 @@ jobs:
             done
             printf 'READ_ONLY_VERIFY_COMPLETE=true\n'
             DEV_VERIFY
+
+  cleanup:
+    if: github.ref == 'refs/heads/ops/dev-widget-preflight-20260915' && inputs.cleanup_cache == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Remove only unused DEV build cache
+        uses: garygrossgarten/github-action-ssh@release
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: ${{ secrets.DEV_SERVER_USER }}
+          password: ${{ secrets.DEV_SERVER_PASSWORD }}
+          command: |
+            bash -se <<'DEV_CACHE'
+            # Разрешена только очистка неиспользуемого кеша сборки перед deploy #351.
+            set -Eeuo pipefail
+            test '${{ github.run_attempt }}' = 1
+            test "$(id -u)" = 0
+            repo=/root/api
+            front=/home/front/app
+            backups=/root/procollab-dev-rollback
+            test "$(readlink -f "$repo")" = "$repo"
+            test "$(readlink -f "$front")" = "$front"
+            test "$(readlink -f "$backups")" = "$backups"
+            grep -Eq 'server_name[[:space:]]+dev\.procollab\.ru;' /etc/nginx/sites-enabled/dev.procollab.ru
+            test "$(git -C "$repo" rev-parse HEAD)" = dd3d48b121a1fd0668857c9b8766bb588be2360b
+            test -z "$(git -C "$repo" status --porcelain --untracked-files=no)"
+            manifest() { (cd "$1" && find . -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1); }
+            images() { docker image ls -a --no-trunc --digests --format '{{.ID}} {{.Repository}} {{.Tag}} {{.Digest}}' | LC_ALL=C sort | sha256sum | cut -d' ' -f1; }
+            volumes() { docker volume ls --format '{{.Driver}} {{.Name}}' | LC_ALL=C sort | sha256sum | cut -d' ' -f1; }
+            containers() {
+              for container in $(docker ps -aq --no-trunc); do
+                docker inspect -f '{{.Id}} {{.Image}} {{.State.Status}} {{.State.StartedAt}} {{.RestartCount}}' "$container"
+              done | LC_ALL=C sort | sha256sum | cut -d' ' -f1
+            }
+            for service in web celerys; do
+              container=$(docker ps -q --no-trunc --filter "label=com.docker.compose.project.working_dir=$repo" --filter "label=com.docker.compose.service=$service")
+              [[ "$container" =~ ^[0-9a-f]{64}$ ]]
+              test "$(docker inspect -f '{{.State.Status}}' "$container")" = running
+              test "$(docker inspect -f '{{.Image}}' "$container")" = sha256:2f568147f6dea7a56fa1ee51e252545d299115e75063d6fa47ff896ef40037ea
+            done
+            front_before=$(manifest "$front")
+            test "$front_before" = d6d532c54a3e030a197fd73349d9b4c222e0d19830bf60ce3edace166db7b8c2
+            backups_before=$(manifest "$backups")
+            images_before=$(images)
+            volumes_before=$(volumes)
+            containers_before=$(containers)
+            before_free=$(df -PB1 "$backups" | awk 'NR==2 {print $4}')
+            printf 'DISK_AVAILABLE_BEFORE=%s\n' "$before_free"
+            # В отличие от system/image/volume prune, эта команда удаляет только кеш сборки.
+            docker builder prune --all --force
+            test "$(images)" = "$images_before"
+            test "$(volumes)" = "$volumes_before"
+            test "$(containers)" = "$containers_before"
+            test "$(manifest "$front")" = "$front_before"
+            test "$(manifest "$backups")" = "$backups_before"
+            test "$(git -C "$repo" rev-parse HEAD)" = dd3d48b121a1fd0668857c9b8766bb588be2360b
+            after_free=$(df -PB1 "$backups" | awk 'NR==2 {print $4}')
+            front_size=$(du -sb "$front" | cut -f1)
+            required=$((front_size * 2 + 1073741824))
+            printf 'DISK_AVAILABLE_AFTER=%s\nSNAPSHOT_REQUIRED_BYTES=%s\n' "$after_free" "$required"
+            printf 'IMAGES_UNCHANGED=true\nVOLUMES_UNCHANGED=true\nCONTAINERS_UNCHANGED=true\nFRONTEND_UNCHANGED=true\nSNAPSHOTS_UNCHANGED=true\n'
+            test "$after_free" -gt "$required"
+            printf 'CACHE_CLEANUP_COMPLETE=true\n'
+            DEV_CACHE
