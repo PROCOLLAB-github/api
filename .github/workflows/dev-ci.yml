@@ -317,7 +317,9 @@ jobs:
             migration_hash=$(docker exec "$web" python manage.py showmigrations --plan | sha256sum | cut -d' ' -f1)
             test "$migration_hash" = "$(sha256sum "$snapshot/migrations.txt" | cut -d' ' -f1)"
             printf 'MIGRATION_STATE_UNCHANGED=true\n'
-            docker exec "$celery" celery -A procollab inspect ping --timeout=15 | grep -q pong
+            # Сначала дочитываем вывод Docker: ранний выход grep -q даёт SIGPIPE при pipefail.
+            celery_ping=$(docker exec "$celery" celery -A procollab inspect ping --timeout=15)
+            grep -q pong <<< "$celery_ping"
             printf 'CELERY_PING=pong\n'
             nginx -t
             frontend_hash=$(cd /home/front/app && find . -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)
