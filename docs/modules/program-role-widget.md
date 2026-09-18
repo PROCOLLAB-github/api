@@ -1,8 +1,11 @@
 # Read-only виджет программы для Angular
 
-DEV-база backend: `ed5244bd4a098bd0f1cee0f5e380dd67bdd61a96`.
-Парный Angular основан на `99c8813a66f89560a946eab7d1de73ab2925d0f5`.
-Ветка: `feature/dev-program-role-analytics-widget`; итоговые SHA и ссылки указаны в Draft PR.
+PROD-port backend #742 основан на master `4c49f5918e571708f872c532b1f5154fc2a03428`.
+Сохранены namespace `project-analytics` и поле `current_project_application`.
+Отсутствующие на PROD DEV-имена helpers не добавляются как копии: виджет использует
+существующие селекторы legacy Project; React manager-overview не участвует.
+Результаты нового production-прогона фиксируются в PR; исторические DEV-проверки
+ниже не заменяют проверку PROD-ветки.
 
 ## Контракт
 
@@ -41,9 +44,9 @@ GET не изменяет бизнес-данные. Ответ содержит
 | Роль | `program.is_manager(user)` → `program.experts` → `PartnerProgramUserProfile` | Только текущая программа; global staff/user_type, наличие назначений и клиентские claims не дают роль |
 | Проект команды | PartnerProgramProject текущей программы; Project.leader либо Exists Collaborator | Новый локальный selector; максимум две строки для обнаружения несоответствия правилу одной команды. Один проект без выбора |
 | Кейс | `get_program_case_field`: точный name="case"; PartnerProgramFieldValue текущей связи | Нет fallback по label, первому option, глобальному Project или другой программе |
-| Участники и без проектов | `_get_participant_metrics` основной аналитики | Distinct user; без проекта = нет лидерства и Collaborator на проекте программы; черновик учитывается |
-| Проекты и решения | `_get_solution_metrics` основной аналитики | Единица учёта — PartnerProgramProject; отправленные — submitted-связи, не пользователи |
-| Этап проекта | `_solution_rows` основной аналитики | Неподанный → not_submitted; submitted без начала → submitted; назначение/начатая оценка → review; общая итоговая классификация → evaluated |
+| Участники и без проектов | `_participant_metrics` и `participants_without_team_rows` из `project_analytics` | Distinct user; без проекта = нет лидерства и Collaborator на проекте программы; черновик учитывается |
+| Проекты и решения | SQL aggregate над `_annotated_solution_rows` из `project_analytics` | Единица учёта — PartnerProgramProject; отправленные — submitted-связи, не пользователи. Большая аналитика не сериализуется |
+| Этап проекта | `_annotated_solution_rows` основной legacy-аналитики | Неподанный → not_submitted; submitted без начала → submitted; назначение/начатая оценка → review; общая итоговая классификация → evaluated |
 | Остаток эксперта | `annotated_assignment_queryset`, фильтр текущих program/expert, SQL aggregate | Незавершённые назначения, включая not_ready, а не число незаполненных критериев |
 | Срок | `PartnerProgram.datetime_evaluation_ends` | Не срок подачи или окончания программы |
 
@@ -57,7 +60,7 @@ Distributed completion остаётся общим: submitted-связь, нен
 
 Используются только Angular-модели Project, Collaborator, PartnerProgramProject, PartnerProgramUserProfile, Expert, ProjectExpertAssignment, Criteria, ProjectScore и существующие поля программы.
 
-`current_application` остаётся legacy-контрактом лидера с прежней семантикой. Для члена команды null в этом поле не влияет на новый `participant_project`. Просмотр виджета не даёт права редактировать поля или отправлять проект вместо лидера.
+На PROD существующее поле `current_project_application` остаётся legacy-контрактом лидера с прежней семантикой. DEV-имя `current_application` не добавляется и не переименовывает PROD-контракт. Для члена команды null в этом поле не влияет на новый `participant_project`. Просмотр виджета не даёт права редактировать поля или отправлять проект вместо лидера.
 
 React-модели Application, Team, Submission, SubmissionExpertAssignment, Evaluation, их serializers/services/endpoints не используются и не изменяются. Менеджерские API не открываются другим ролям.
 
@@ -65,7 +68,7 @@ React-модели Application, Team, Submission, SubmissionExpertAssignment, Ev
 
 Сервис использует общие SQL-агрегации. Не сериализует большую аналитику и не загружает проекты/регистрации в браузер. Тест проверяет постоянное число SQL-запросов при росте числа проектов и отсутствие INSERT/UPDATE/DELETE.
 
-## Проверки 14.09.2026
+## Исторические проверки DEV 14.09.2026
 
 Python 3.11, существующее Poetry-окружение. Локальные SQLite и PostgreSQL 18; production/DEV базы не использовались.
 
@@ -91,6 +94,6 @@ Targeted: 120 тестов PASS. Новые 15 тестов проверяют �
 
 Скриншоты трёх ролей/нулевых состояний и сравнение исходной геометрии находятся в парном Angular PR, `docs/program-role-widget/README.md`. Браузерный smoke использует реальные Angular-компоненты и локальные fixtures; живой DEV вход/сдача/оценивание в браузере не проверялись.
 
-## Зависимость будущего DEV-развёртывания
+## Зависимость развёртывания
 
-Сначала backend-контракт и detail-флаг, затем Angular-виджет. Изменение read-only, миграций нет. Merge, deploy и PROD-операции не выполнены.
+Сначала backend-контракт и detail-флаг, затем Angular-виджет. Изменение read-only, миграций нет. Фактическое состояние релиза и новый полный прогон PROD-ветки фиксируются отдельно в PR и отчёте развёртывания.

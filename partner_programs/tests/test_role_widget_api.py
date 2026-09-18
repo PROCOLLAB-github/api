@@ -232,7 +232,8 @@ class ProgramRoleWidgetTests(TestCase):
         data = self.widget(manager)["organizer"]
         overview = self.client.get(
             reverse(
-                "partner_programs:project-analytics", kwargs={"program_id": self.program.pk}
+                "partner_programs:project-analytics",
+                kwargs={"program_id": self.program.pk},
             )
         ).data
         self.assertEqual(data["participants"], 3)

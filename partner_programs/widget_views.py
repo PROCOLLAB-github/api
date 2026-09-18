@@ -11,9 +11,12 @@ from partner_programs.services.role_analytics import build_program_role_widget
 
 
 class ProgramRoleWidgetAPIView(APIView):
+    """Отдельный безопасный GET-контракт без доступа к менеджерской аналитике."""
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
+        """Определяет роль по серверным связям и сериализует только её метрики."""
         program = get_object_or_404(PartnerProgram, pk=pk)
         # role/user_id/project_id клиента не используются для доступа или выбора.
         data = build_program_role_widget(program, request.user)

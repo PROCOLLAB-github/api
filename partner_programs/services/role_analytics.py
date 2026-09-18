@@ -47,7 +47,9 @@ def organizer_widget_metrics(program):
         "participants": participants["unique_participants"],
         "projects": solutions["created"],
         "submitted_solutions": solutions["submitted"] if program.is_competitive else None,
-        "participants_without_project": participants_without_team_rows(program.pk).count(),
+        "participants_without_project": participants_without_team_rows(
+            program.pk
+        ).count(),
     }
 
 
