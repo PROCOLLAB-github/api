@@ -272,7 +272,7 @@ jobs:
             set -Eeuo pipefail
             test '${{ github.run_attempt }}' = 1
             repo=/root/api
-            snapshot=/root/procollab-dev-rollback/20260918T084631Z-35326078602-1
+            snapshot=/root/procollab-dev-rollback/20260918T122725Z-35344739528-1
             expected=dd3d48b121a1fd0668857c9b8766bb588be2360b
             frontend_state='${{ inputs.frontend_state }}'
             case "$frontend_state" in snapshot|changed) ;; *) exit 1;; esac
@@ -289,7 +289,7 @@ jobs:
             test "$(readlink -f /home/front/app)" = /home/front/app
             test -f "$snapshot/COMPLETE"
             test ! -e "$snapshot/INCOMPLETE"
-            test "$(sha256sum "$snapshot/SHA256SUMS" | cut -d' ' -f1)" = c9f575e2f2788fc237939922bb70d7b2771e7a37cf2140e9791a099213cb4337
+            test "$(sha256sum "$snapshot/SHA256SUMS" | cut -d' ' -f1)" = 9343575209f708bb84bf242357467490e41de98237124d032c44c91901089fc4
             (cd "$snapshot" && sha256sum --check --status SHA256SUMS)
             cd "$repo"
             test "$(git rev-parse HEAD)" = "$expected"
