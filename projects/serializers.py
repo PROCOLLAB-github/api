@@ -236,6 +236,7 @@ class ResourceSerializer(serializers.ModelSerializer):
 
 
 class ProjectDetailSerializer(serializers.ModelSerializer):
+    is_default_cover = serializers.SerializerMethodField()
     achievements = AchievementListSerializer(many=True, read_only=True)
     cover = UserFileSerializer(required=False)
     collaborators = CollaboratorSerializer(
@@ -260,6 +261,23 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
     )
     implementation_deadline = serializers.DateField(required=False, allow_null=True)
     trl = serializers.IntegerField(required=False, allow_null=True)
+
+    def get_is_default_cover(self, project):
+        """Сверяет URL с системными обложками, а не с владельцем или доменом.
+
+        Набор живёт только в этом экземпляре сериализатора: один запрос даже
+        при many=True, без глобального устаревающего кеша и N+1 на новый флаг.
+        После PUT проверяется фактический URL, назначенный Project.save().
+        """
+        from projects.models import DefaultProjectCover
+
+        if not hasattr(self, "_default_cover_urls"):
+            self._default_cover_urls = set(
+                DefaultProjectCover.objects.filter(image__isnull=False)
+                .exclude(image_id="")
+                .values_list("image_id", flat=True)
+            )
+        return project.cover_image_address in self._default_cover_urls
 
     def get_partner_program(self, project):
         user = getattr(self.context.get("request"), "user", None)
@@ -342,6 +360,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "is_public",
             "cover",
             "cover_image_address",
+            "is_default_cover",
             "actuality",
             "problem",
             "target_audience",

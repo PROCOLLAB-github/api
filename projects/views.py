@@ -24,6 +24,7 @@ from partner_programs.models import (
     PartnerProgramUserProfile,
 )
 from projects.exceptions import CollaboratorDoesNotExist
+from projects.cover_reset import reset_project_cover
 from projects.filters import ProjectFilter
 from projects.helpers import (
     check_related_fields_update,
@@ -201,6 +202,21 @@ class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
         return super(ProjectDetail, self).patch(request, pk)
 
 
+class ProjectResetCover(generics.GenericAPIView):
+    """Команда Angular-редактора с теми же ограничениями, что и запись проекта."""
+
+    queryset = Project.objects.all()
+    permission_classes = ProjectDetail.permission_classes
+    serializer_class = EmptySerializer
+
+    @transaction.atomic
+    def post(self, request, pk):
+        """Проверяет права на актуальном проекте и сохраняет обложку до очистки файла."""
+        project = get_object_or_404(self.get_queryset().select_for_update(), pk=pk)
+        self.check_object_permissions(request, project)
+        return Response(reset_project_cover(project, request.user.id))
+
+
 class ProjectRecommendedUsers(generics.RetrieveAPIView):
     queryset = Project.objects.all()
     permission_classes = [IsProjectLeader]
@@ -261,7 +277,10 @@ class ProjectCollaborators(generics.GenericAPIView):
     Project collaborator retrieve/add/delete view
     """
 
-    permission_classes = [ProjectVisibilityPermission, IsProjectLeaderOrReadOnlyForNonDrafts]
+    permission_classes = [
+        ProjectVisibilityPermission,
+        IsProjectLeaderOrReadOnlyForNonDrafts,
+    ]
     queryset = Project.objects.all()
     serializer_class = ProjectCollaboratorSerializer
 
@@ -588,7 +607,9 @@ class DuplicateProjectView(APIView):
         collaborators_to_create: list[Collaborator] = []
         leader_collaborator = None
 
-        for collaborator in original_project.collaborator_set.select_related("user").all():
+        for collaborator in original_project.collaborator_set.select_related(
+            "user"
+        ).all():
             if collaborator.user_id == leader_id:
                 leader_collaborator = collaborator
                 continue
