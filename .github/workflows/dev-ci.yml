@@ -272,6 +272,15 @@ jobs:
             expected=dd3d48b121a1fd0668857c9b8766bb588be2360b
             frontend_state='${{ inputs.frontend_state }}'
             case "$frontend_state" in snapshot|changed) ;; *) exit 1;; esac
+            # Диагностика отказа snapshot #351: только размеры, без очистки файлов/образов.
+            front_size=$(du -sb /home/front/app | cut -f1)
+            available=$(df -PB1 /root/procollab-dev-rollback | awk 'NR==2 {print $4}')
+            printf 'DISK_AVAILABLE_BYTES=%s\nFRONTEND_SIZE_BYTES=%s\nSNAPSHOT_REQUIRED_BYTES=%s\n' "$available" "$front_size" "$((front_size * 2 + 1073741824))"
+            docker system df
+            du -sh /var/log /var/cache/apt/archives /root/procollab-dev-rollback
+            test -f /root/procollab-dev-rollback/20260918T114436Z-35341114541-1/INCOMPLETE
+            test ! -e /root/procollab-dev-rollback/20260918T114436Z-35341114541-1/COMPLETE
+            printf 'FAILED_SNAPSHOT_INCOMPLETE=true\n'
             test "$(readlink -f "$repo")" = "$repo"
             test "$(readlink -f /home/front/app)" = /home/front/app
             test -f "$snapshot/COMPLETE"
