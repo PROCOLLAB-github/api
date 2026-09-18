@@ -90,7 +90,7 @@ jobs:
                 test "$status" = "$expected"
               done
               # Ping не запрашивает задачи, аргументы или пользовательские данные.
-              docker exec "$celery" celery -A procollab inspect ping --timeout=15 2>&1 | grep -q pong
+              docker exec "$celery" celery -A procollab inspect ping --timeout=15 2>&1 | grep pong >/dev/null
               printf 'CELERY_PONG=true\n'
             }
             stage=initial-smoke
