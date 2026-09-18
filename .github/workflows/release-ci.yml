@@ -1,264 +1,178 @@
-name: Release Prod
+name: PROD backend snapshot and inspection only
 
 on:
-  release:
-    types: [ published ]
   workflow_dispatch:
     inputs:
-      image_tag:
-        description: Docker image tag to build and deploy
+      confirmation:
+        description: Введите INSPECT_PROD для инспекции или резервной копии без deploy
         required: true
         type: string
-      deploy_ref:
-        description: Git ref or tag to checkout on the server
+      mode:
+        description: snapshot до merge или read-only verify после backend deploy
         required: true
-        type: string
+        default: snapshot
+        type: choice
+        options:
+          - snapshot
+          - verify
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prod-backend-snapshot
+  cancel-in-progress: false
 
 jobs:
-  prepare:
-    name: Resolve Release Ref
+  snapshot:
+    if: github.ref == 'refs/heads/ops/prod-analytics-cover-snapshot-20260918' && github.event.inputs.confirmation == 'INSPECT_PROD' && (github.event.inputs.mode == 'snapshot' || github.event.inputs.mode == 'verify')
     runs-on: ubuntu-latest
-    outputs:
-      image_tag: ${{ steps.vars.outputs.image_tag }}
-      deploy_ref: ${{ steps.vars.outputs.deploy_ref }}
+    timeout-minutes: 20
     steps:
-      - name: Resolve image tag and deploy ref
-        id: vars
-        run: |
-          if [ "${{ github.event_name }}" = "release" ]; then
-            image_tag='${{ github.event.release.tag_name }}'
-            deploy_ref='${{ github.event.release.tag_name }}'
-          else
-            image_tag='${{ github.event.inputs.image_tag }}'
-            deploy_ref='${{ github.event.inputs.deploy_ref }}'
-          fi
-
-          if [ -z "$image_tag" ]; then
-            echo "IMAGE_TAG is empty" >&2
-            exit 1
-          fi
-
-          if [ -z "$deploy_ref" ]; then
-            echo "DEPLOY_REF is empty" >&2
-            exit 1
-          fi
-
-          echo "image_tag=$image_tag" >> "$GITHUB_OUTPUT"
-          echo "deploy_ref=$deploy_ref" >> "$GITHUB_OUTPUT"
-
-  test:
-    name: Tests
-    runs-on: ubuntu-latest
-    needs: [ prepare ]
-    steps:
-      - uses: actions/checkout@v3
+      - name: Только snapshot PROD, без изменения runtime
+        uses: garygrossgarten/github-action-ssh@release
         with:
-          ref: ${{ needs.prepare.outputs.deploy_ref }}
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v4
-        with:
-          python-version: 3.11
-
-      - name: cache poetry install
-        uses: actions/cache@v4
-        with:
-          path: ~/.local
-          key: poetry-1.2.2-0
-
-      - uses: snok/install-poetry@v1
-        with:
-          version: 1.2.2
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-
-      - name: cache deps
-        id: cache-deps
-        uses: actions/cache@v4
-        with:
-          path: .venv
-          key: pydeps-${{ hashFiles('**/poetry.lock') }}
-
-      - run: poetry install
-
-      - run: poetry run pip install setuptools
-
-      - name: Run tests
-        run: poetry run python manage.py test
-        env:
-          DEBUG: True
-          NEXTGEN_SURFACE_ENABLED: True
-
-  build:
-    name: Build Image
-    runs-on: ubuntu-latest
-    needs: [ prepare, test ]
-    outputs:
-      image_tag: ${{ needs.prepare.outputs.image_tag }}
-      deploy_ref: ${{ needs.prepare.outputs.deploy_ref }}
-    steps:
-      - name: "Checkout repository"
-        uses: actions/checkout@v3
-        with:
-          ref: ${{ needs.prepare.outputs.deploy_ref }}
-
-      - name: "Set up QEMU"
-        uses: docker/setup-qemu-action@v3
-
-      - name: "Set up Docker Buildx"
-        uses: docker/setup-buildx-action@v3
-
-      - name: "Login to GitHub Registry"
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/procollab-github/api
-          tags: |
-            type=raw,value=${{ needs.prepare.outputs.image_tag }}
-      - name: Build and push container
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: Dockerfile
-          push: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-  deploy:
-      name: Deploy
-      runs-on: ubuntu-latest
-      needs: [ prepare, build ]
-      steps:
-        - name: Deploy to server
-          uses: garygrossgarten/github-action-ssh@release
-          with:
-            host: ${{ secrets.SERVER_HOST }}
-            username: ${{ secrets.SERVER_USER }}
-            password: ${{ secrets.SERVER_PASSWORD }}
-            command: |
-              set -eu
-
-              export IMAGE_TAG="${{ needs.prepare.outputs.image_tag }}"
-              export DEPLOY_REF="${{ needs.prepare.outputs.deploy_ref }}"
-              echo "Deploying IMAGE_TAG=${IMAGE_TAG} from DEPLOY_REF=${DEPLOY_REF}"
-
-              if [ "$(id -un)" = "app" ]; then
-                git -C /home/app/procollab-backend fetch --all --tags --prune
-                git -C /home/app/procollab-backend checkout --detach "${DEPLOY_REF}"
-                git -C /home/app/procollab-backend rev-parse HEAD
-              else
-                sudo -u app git -C /home/app/procollab-backend fetch --all --tags --prune
-                sudo -u app git -C /home/app/procollab-backend checkout --detach "${DEPLOY_REF}"
-                sudo -u app git -C /home/app/procollab-backend rev-parse HEAD
-              fi
-
-              cd /home/app/procollab-backend
-              rm -f .env
-              touch .env
-
-              echo "DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" >> .env
-
-              echo "DATABASE_NAME=${{ secrets.DATABASE_NAME }}" >> .env
-              echo "DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}" >> .env
-              echo "DATABASE_USER=${{ secrets.DATABASE_USER }}" >> .env
-              echo "DATABASE_HOST=${{ secrets.DATABASE_HOST }}" >> .env
-              echo "DATABASE_PORT=${{ secrets.DATABASE_PORT }}" >> .env
-
-              echo "SELECTEL_ACCOUNT_ID=${{ secrets.SELECTEL_ACCOUNT_ID }}" >> .env
-              echo "SELECTEL_CONTAINER_NAME=${{ secrets.SELECTEL_CONTAINER_NAME }}" >> .env
-              echo "SELECTEL_CONTAINER_PASSWORD=${{ secrets.SELECTEL_CONTAINER_PASSWORD }}" >> .env
-              echo "SELECTEL_CONTAINER_USERNAME=${{ secrets.SELECTEL_CONTAINER_USERNAME }}" >> .env
-
-              echo "EMAIL_USER=${{ secrets.EMAIL_USER }}" >> .env
-              echo "UNISENDER_GO_API_KEY=${{ secrets.UNISENDER_GO_API_KEY }}" >> .env
-
-              chmod 600 .env
-              docker compose -f docker-compose.prod-ci.yml -p prod config >/dev/null
-              docker compose -f docker-compose.prod-ci.yml -p prod pull web celerys
-
-              docker compose -f docker-compose.prod-ci.yml -p prod run --rm web python manage.py migrate
-              docker compose -f docker-compose.prod-ci.yml -p prod up -d --force-recreate
-              expected_image="ghcr.io/procollab-github/api:${IMAGE_TAG}"
-              for service in web celerys; do
-                container="$(docker compose -f docker-compose.prod-ci.yml -p prod ps -q "$service")"
-                if [ -z "$container" ]; then
-                  echo "Service ${service} has no running container" >&2
-                  docker compose -f docker-compose.prod-ci.yml -p prod ps >&2 || true
-                  exit 1
-                fi
-
-                actual_image="$(docker inspect -f '{{.Config.Image}}' "$container")"
-                echo "Service ${service}: container=${container} image=${actual_image}"
-                if [ "$actual_image" != "$expected_image" ]; then
-                  echo "Service ${service} uses unexpected image: ${actual_image}, expected ${expected_image}" >&2
-                  docker compose -f docker-compose.prod-ci.yml -p prod ps >&2 || true
-                  exit 1
-                fi
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          command: |
+            bash -se <<'SNAPSHOT_WRAPPER'
+            runner=(bash -se)
+            if [ "$(id -u)" != 0 ]; then runner=(sudo -n bash -se); fi
+            "${runner[@]}" <<'PROD_SNAPSHOT'
+            export SNAPSHOT_RUN_ID='${{ github.run_id }}'
+            export SNAPSHOT_RUN_ATTEMPT='${{ github.run_attempt }}'
+            export SNAPSHOT_MODE='${{ github.event.inputs.mode }}'
+            #!/usr/bin/env bash
+            # Только фиксация PROD и создание новой точки возврата; runtime не меняется.
+            set -Eeuo pipefail
+            umask 077
+            stage=guards
+            trap 'printf "SNAPSHOT_FAILED stage=%s line=%s\n" "$stage" "$LINENO" >&2' ERR
+            test "$(id -u)" = 0
+            [[ "${SNAPSHOT_RUN_ID:?}" =~ ^[0-9]+$ ]]
+            test "${SNAPSHOT_RUN_ATTEMPT:?}" = 1
+            [[ "${SNAPSHOT_MODE:?}" = snapshot || "$SNAPSHOT_MODE" = verify ]]
+            repo=/home/app/procollab-backend
+            base=/var/backups/procollab-prod-analytics-cover
+            test "$(readlink -f "$repo")" = "$repo"
+            test -f "$repo/docker-compose.prod-ci.yml"
+            cd "$repo"
+            repo_git() { sudo -n -u app git -C "$repo" "$@"; }
+            server_sha=$(repo_git rev-parse HEAD)
+            [[ "$server_sha" =~ ^[0-9a-f]{40}$ ]]
+            # Незакоммиченные серверные правки нельзя молча затереть будущим deploy.
+            test -z "$(repo_git status --porcelain --untracked-files=no)"
+            container_for() { docker ps -q --no-trunc --filter label=com.docker.compose.project=prod --filter "label=com.docker.compose.service=$1"; }
+            runtime() {
+              docker inspect -f '{"container_id":{{json .Id}},"image_reference":{{json .Config.Image}},"image_id":{{json .Image}},"status":{{json .State.Status}},"started_at":{{json .State.StartedAt}},"restart_count":{{json .RestartCount}}}' "$1"
+            }
+            web=$(container_for web)
+            celery=$(container_for celerys)
+            [[ "$web" =~ ^[0-9a-f]{64}$ && "$celery" =~ ^[0-9a-f]{64}$ ]]
+            web_ref=$(docker inspect -f '{{.Config.Image}}' "$web")
+            celery_ref=$(docker inspect -f '{{.Config.Image}}' "$celery")
+            [[ "$web_ref" == ghcr.io/procollab-github/api:* ]]
+            test "$web_ref" = "$celery_ref"
+            web_image=$(docker inspect -f '{{.Image}}' "$web")
+            test "$web_image" = "$(docker inspect -f '{{.Image}}' "$celery")"
+            test "$(docker image inspect -f '{{.Id}}' "$web_image")" = "$web_image"
+            test "$(docker inspect -f '{{.State.Status}}' "$web")" = running
+            test "$(docker inspect -f '{{.State.Status}}' "$celery")" = running
+            export IMAGE_TAG="${web_ref#ghcr.io/procollab-github/api:}"
+            compose() { docker compose -f "$repo/docker-compose.prod-ci.yml" -p prod "$@"; }
+            smoke() {
+              local route expected status
+              for pair in '/:401' '/admin/login/:200' '/api/token/:405'; do
+                route=${pair%:*}; expected=${pair##*:}
+                status=$(curl --silent --show-error --max-time 30 -o /dev/null -w '%{http_code}' "https://api.procollab.ru$route")
+                printf 'API_SMOKE path=%s status=%s\n' "$route" "$status"
+                test "$status" = "$expected"
               done
-              if [ "$(id -u)" -eq 0 ]; then
-                nginx -t
-                systemctl reload nginx
-              else
-                sudo nginx -t
-                sudo systemctl reload nginx
-              fi
-
-              for attempt in $(seq 1 24); do
-                root_status="$(curl -s -o /dev/null -w '%{http_code}' https://api.procollab.ru/ || true)"
-                admin_status="$(curl -s -o /dev/null -w '%{http_code}' https://api.procollab.ru/admin/login/ || true)"
-
-                if [ "$root_status" = "401" ] && [ "$admin_status" = "200" ]; then
-                  echo "Smoke check passed on attempt ${attempt}"
-                  break
-                fi
-
-                sleep 5
-              done
-
-              if [ "$root_status" != "401" ] || [ "$admin_status" != "200" ]; then
-                echo "Smoke check failed: /=${root_status} /admin/login/=${admin_status}" >&2
-                exit 1
-              fi
-
-              docker compose -f docker-compose.prod-ci.yml -p prod ps
-
-              celery_status=""
-              celery_ping=""
-              celery_container=""
-              for attempt in $(seq 1 12); do
-                celery_container="$(docker compose -f docker-compose.prod-ci.yml -p prod ps -q celerys 2>/dev/null || true)"
-                if [ -n "$celery_container" ]; then
-                  celery_status="$(docker inspect -f '{{.State.Status}}' "$celery_container" 2>/dev/null || true)"
-                else
-                  celery_status="missing"
-                fi
-
-                echo "Celery check attempt ${attempt}: container=${celery_container:-missing} status=${celery_status}"
-                if [ "$celery_status" = "running" ]; then
-                  celery_ping="$(docker compose -f docker-compose.prod-ci.yml -p prod exec -T celerys sh -lc 'celery -A procollab inspect ping --timeout=15' 2>&1 || true)"
-                  printf '%s\n' "$celery_ping"
-                  if printf '%s\n' "$celery_ping" | grep -q 'pong'; then
-                    echo "Celery check passed on attempt ${attempt}"
-                    break
-                  fi
-                fi
-
-                sleep 5
-              done
-
-              if [ "$celery_status" != "running" ] || ! printf '%s\n' "$celery_ping" | grep -q 'pong'; then
-                echo "Celery check failed: status=${celery_status}" >&2
-                docker compose -f docker-compose.prod-ci.yml -p prod ps >&2 || true
-                docker compose -f docker-compose.prod-ci.yml -p prod logs --tail=200 celerys >&2 || true
-                docker compose -f docker-compose.prod-ci.yml -p prod logs --tail=100 redis >&2 || true
-                docker compose -f docker-compose.prod-ci.yml -p prod logs --tail=100 web >&2 || true
-                exit 1
-              fi
+              # Ping не запрашивает задачи, аргументы или пользовательские данные.
+              docker exec "$celery" celery -A procollab inspect ping --timeout=15 2>&1 | grep -q pong
+              printf 'CELERY_PONG=true\n'
+            }
+            stage=initial-smoke
+            smoke
+            nginx -t >/dev/null 2>&1
+            # После штатного deploy этот режим получает недостающие image IDs без новой копии.
+            if test "$SNAPSHOT_MODE" = verify; then
+              test "$(repo_git rev-parse HEAD)" = "$server_sha"
+              test "$(container_for web)" = "$web"
+              test "$(container_for celerys)" = "$celery"
+              test "$(docker inspect -f '{{.Image}}' "$web")" = "$web_image"
+              test "$(docker inspect -f '{{.Image}}' "$celery")" = "$web_image"
+              printf 'SERVER_GIT_SHA=%s\nIMAGE_REFERENCE=%s\nIMAGE_ID=%s\n' "$server_sha" "$web_ref" "$web_image"
+              runtime "$web"
+              runtime "$celery"
+              printf 'LOCAL_RUNNING_IMAGES_PRESENT=true\nREAD_ONLY_VERIFY_COMPLETE=true\n'
+              exit 0
+            fi
+            stage=space
+            test ! -L "$base"
+            if test ! -e "$base"; then mkdir -m 700 "$base"; fi
+            test "$(stat -c '%u:%a' "$base")" = 0:700
+            test "$(readlink -f "$base")" = "$base"
+            available=$(df -PB1 "$base" | awk 'NR==2 {print $4}')
+            printf 'BACKEND_AVAILABLE_BYTES=%s\n' "$available"
+            test "$available" -gt 1073741824
+            snapshot="$base/$(date -u +%Y%m%dT%H%M%SZ)-${SNAPSHOT_RUN_ID}-${SNAPSHOT_RUN_ATTEMPT}"
+            mkdir -m 700 "$snapshot"
+            touch "$snapshot/INCOMPLETE"
+            printf 'BACKEND_SNAPSHOT=%s\n' "$snapshot"
+            printf '%s\n' "$server_sha" > "$snapshot/server-git-sha.txt"
+            printf '%s\n' "$web_ref" > "$snapshot/image-reference.txt"
+            printf '%s\n' "$web_image" > "$snapshot/image-id.txt"
+            runtime "$web" > "$snapshot/web.json"
+            runtime "$celery" > "$snapshot/celerys.json"
+            repo_git status --porcelain --untracked-files=no > "$snapshot/tracked-status.txt"
+            cp -p "$repo/docker-compose.prod-ci.yml" "$snapshot/docker-compose.prod-ci.yml"
+            compose ps -q --all | LC_ALL=C sort > "$snapshot/compose-container-ids.txt"
+            compose ps --services --status running | LC_ALL=C sort > "$snapshot/compose-running-services.txt"
+            stage=migrations
+            docker exec "$web" python manage.py showmigrations --plan > "$snapshot/migrations.txt" 2> "$snapshot/migrations-stderr.txt"
+            if grep -Eq '^\[ \]' "$snapshot/migrations.txt"; then
+              printf 'Unapplied migrations detected; snapshot cannot authorize deployment\n' >&2
+              exit 1
+            fi
+            stage=nginx
+            # Содержимое конфигурации не выводится в Actions; чувствительные литералы запрещены.
+            nginx -T 2>/dev/null | python3 -c '
+            import re, sys
+            data = sys.stdin.read()
+            markers = [r"-----BEGIN .*PRIVATE KEY-----", r"gh[pousr]_[A-Za-z0-9]{36,}", r"github_pat_[A-Za-z0-9_]{60,}", r"AKIA[0-9A-Z]{16}", r"(?i)(password|secret|token)\s+[\"\x27]?[A-Za-z0-9_+/=-]{16,}", r"(?i)proxy_set_header\s+Authorization\s+[\"\x27]?(Basic|Bearer)\s+"]
+            if any(re.search(pattern, data) for pattern in markers):
+                raise SystemExit("Refusing to save nginx configuration with a credential marker")
+            with open(sys.argv[1], "w", encoding="utf-8") as output:
+                output.write(data)
+            ' "$snapshot/nginx-config.txt"
+            nginx -t > "$snapshot/nginx-test.txt" 2>&1
+            stage=unchanged
+            test "$(repo_git rev-parse HEAD)" = "$server_sha"
+            test -z "$(repo_git status --porcelain --untracked-files=no)"
+            test "$(container_for web)" = "$web"
+            test "$(container_for celerys)" = "$celery"
+            runtime "$web" > "$snapshot/web-after.json"
+            runtime "$celery" > "$snapshot/celerys-after.json"
+            cmp "$snapshot/web.json" "$snapshot/web-after.json"
+            cmp "$snapshot/celerys.json" "$snapshot/celerys-after.json"
+            compose ps -q --all | LC_ALL=C sort > "$snapshot/compose-container-ids-after.txt"
+            cmp "$snapshot/compose-container-ids.txt" "$snapshot/compose-container-ids-after.txt"
+            cmp "$repo/docker-compose.prod-ci.yml" "$snapshot/docker-compose.prod-ci.yml"
+            test "$(docker image inspect -f '{{.Id}}' "$web_image")" = "$web_image"
+            nginx -T 2>/dev/null | sha256sum | cut -d' ' -f1 > "$snapshot/nginx-live-after.sha256"
+            test "$(sha256sum "$snapshot/nginx-config.txt" | cut -d' ' -f1)" = "$(cat "$snapshot/nginx-live-after.sha256")"
+            smoke
+            (
+              cd "$snapshot"
+              find . -type f ! -name INCOMPLETE ! -name COMPLETE ! -name SHA256SUMS -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > SHA256SUMS
+              sha256sum --check --status SHA256SUMS
+            )
+            mv "$snapshot/INCOMPLETE" "$snapshot/COMPLETE"
+            printf 'SERVER_GIT_SHA=%s\nIMAGE_REFERENCE=%s\nIMAGE_ID=%s\n' "$server_sha" "$web_ref" "$web_image"
+            cat "$snapshot/web.json" "$snapshot/celerys.json"
+            printf 'SNAPSHOT_SHA256=%s\n' "$(sha256sum "$snapshot/SHA256SUMS" | cut -d' ' -f1)"
+            printf 'LOCAL_RUNNING_IMAGES_PRESENT=true\nRUNTIME_UNCHANGED=true\nSNAPSHOT_COMPLETE=true\n'
+            PROD_SNAPSHOT
+            SNAPSHOT_WRAPPER
