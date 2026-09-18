@@ -2,6 +2,16 @@ name: DEV preflight and rollback snapshot (no deploy)
 
 on:
   workflow_dispatch:
+    inputs:
+      verify_only:
+        description: "Только read-only проверка reset-cover deploy, без нового snapshot"
+        type: boolean
+        default: false
+      frontend_state:
+        description: "Ожидаемое состояние frontend относительно snapshot"
+        type: choice
+        options: [snapshot, changed]
+        default: snapshot
 
 permissions:
   contents: read
@@ -12,7 +22,7 @@ concurrency:
 
 jobs:
   preflight:
-    if: github.ref == 'refs/heads/ops/dev-widget-preflight-20260915'
+    if: github.ref == 'refs/heads/ops/dev-widget-preflight-20260915' && inputs.verify_only != true
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -240,3 +250,86 @@ jobs:
             printf 'COMPLETE: DEV inspection and static frontend backup only\n'
 
             DEV_PREFLIGHT
+
+  verify:
+    if: github.ref == 'refs/heads/ops/dev-widget-preflight-20260915' && inputs.verify_only == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Verify DEV runtime read-only
+        uses: garygrossgarten/github-action-ssh@release
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: ${{ secrets.DEV_SERVER_USER }}
+          password: ${{ secrets.DEV_SERVER_PASSWORD }}
+          command: |
+            bash -se <<'DEV_VERIFY'
+            # Ни одна команда проверки не меняет source, контейнеры, файлы сборки или БД.
+            set -Eeuo pipefail
+            test '${{ github.run_attempt }}' = 1
+            repo=/root/api
+            snapshot=/root/procollab-dev-rollback/20260918T084631Z-35326078602-1
+            expected=dd3d48b121a1fd0668857c9b8766bb588be2360b
+            frontend_state='${{ inputs.frontend_state }}'
+            case "$frontend_state" in snapshot|changed) ;; *) exit 1;; esac
+            test "$(readlink -f "$repo")" = "$repo"
+            test "$(readlink -f /home/front/app)" = /home/front/app
+            test -f "$snapshot/COMPLETE"
+            test ! -e "$snapshot/INCOMPLETE"
+            test "$(sha256sum "$snapshot/SHA256SUMS" | cut -d' ' -f1)" = c9f575e2f2788fc237939922bb70d7b2771e7a37cf2140e9791a099213cb4337
+            (cd "$snapshot" && sha256sum --check --status SHA256SUMS)
+            cd "$repo"
+            test "$(git rev-parse HEAD)" = "$expected"
+            test -z "$(git status --porcelain --untracked-files=no)"
+            printf 'SERVER_GIT_SHA=%s\n' "$expected"
+            container_for() {
+              docker ps -q --no-trunc --filter "label=com.docker.compose.project.working_dir=$repo" --filter "label=com.docker.compose.service=$1"
+            }
+            web=$(container_for web)
+            celery=$(container_for celerys)
+            [[ "$web" =~ ^[0-9a-f]{64}$ ]]
+            [[ "$celery" =~ ^[0-9a-f]{64}$ ]]
+            image=$(docker inspect -f '{{.Image}}' "$web")
+            for container in "$web" "$celery"; do
+              test "$(docker inspect -f '{{.State.Status}}' "$container")" = running
+              test "$(docker inspect -f '{{.Image}}' "$container")" = "$image"
+              reference=$(docker inspect -f '{{.Config.Image}}' "$container")
+              [[ "$reference" == "procollab-dev-api:$expected-"* ]]
+              docker inspect -f '{"container_id":{{json .Id}},"image_reference":{{json .Config.Image}},"image_id":{{json .Image}},"status":{{json .State.Status}}}' "$container"
+            done
+            test "$(docker image inspect -f '{{.Id}}' "$image")" = "$image"
+            docker exec -i "$web" python - <<'PY'
+            import os
+            os.environ.setdefault("DJANGO_SETTINGS_MODULE", "procollab.settings")
+            import django
+            django.setup()
+            from django.urls import resolve
+            from projects.serializers import ProjectDetailSerializer
+            from projects.views import ProjectDetail, ProjectResetCover
+            assert "is_default_cover" in ProjectDetailSerializer().fields
+            assert resolve("/projects/1/reset-cover/").func.view_class is ProjectResetCover
+            assert ProjectResetCover.permission_classes is ProjectDetail.permission_classes
+            print("RUNTIME_IS_DEFAULT_COVER=true")
+            print("RUNTIME_RESET_ROUTE=true")
+            print("PROJECT_PERMISSIONS_UNCHANGED=true")
+            PY
+            docker exec "$web" sha256sum /procollab/projects/cover_reset.py /procollab/projects/serializers.py /procollab/projects/views.py
+            migration_hash=$(docker exec "$web" python manage.py showmigrations --plan | sha256sum | cut -d' ' -f1)
+            test "$migration_hash" = "$(sha256sum "$snapshot/migrations.txt" | cut -d' ' -f1)"
+            printf 'MIGRATION_STATE_UNCHANGED=true\n'
+            docker exec "$celery" celery -A procollab inspect ping --timeout=15 | grep -q pong
+            printf 'CELERY_PING=pong\n'
+            nginx -t
+            frontend_hash=$(cd /home/front/app && find . -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)
+            previous_hash=$(sha256sum "$snapshot/frontend.sha256" | cut -d' ' -f1)
+            if test "$frontend_state" = snapshot; then test "$frontend_hash" = "$previous_hash"; else test "$frontend_hash" != "$previous_hash"; fi
+            printf 'FRONTEND_MANIFEST_SHA256=%s\nFRONTEND_STATE=%s\n' "$frontend_hash" "$frontend_state"
+            printf 'FRONTEND_FILE_COUNT=%s\n' "$(find /home/front/app -type f | wc -l)"
+            for item in /:200 /admin/login/:200 /api/token/:405; do
+              url=${item%:*}
+              status=$(curl --silent --show-error --max-time 20 --resolve dev.procollab.ru:443:127.0.0.1 -o /dev/null -w '%{http_code}' "https://dev.procollab.ru$url")
+              test "$status" = "${item##*:}"
+              printf 'SMOKE %s %s\n' "$url" "$status"
+            done
+            printf 'READ_ONLY_VERIFY_COMPLETE=true\n'
+            DEV_VERIFY
