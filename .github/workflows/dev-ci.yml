@@ -101,13 +101,13 @@ jobs:
             test "$(docker image inspect -f '{{.Id}}' "$celery_image")" = "$celery_image"
             server_sha=$(git rev-parse HEAD)
             [[ "$server_sha" =~ ^[0-9a-f]{40}$ ]]
-            # Снимок разрешён только для принятого состояния перед reset-cover deploy.
-            test "$server_sha" = 8ed5670d2123dd1f1b53668567ad60bde8641bcc
+            # Снимок перед #351 разрешён только для проверенного DEV после #743/#350.
+            test "$server_sha" = dd3d48b121a1fd0668857c9b8766bb588be2360b
             test -z "$(git status --porcelain --untracked-files=no)"
-            test "$web_image" = sha256:e9ac4ff2b14d7067558d2321e443425973f1b1bea266d9aa81a7439bf6959104
+            test "$web_image" = sha256:2f568147f6dea7a56fa1ee51e252545d299115e75063d6fa47ff896ef40037ea
             test "$celery_image" = "$web_image"
-            test "$(sha256sum "$front/index.html" | cut -d' ' -f1)" = b2576029472f3901ab9a3ce88e0c2d3471d1d1d197d2824e150b18b76c68ce88
-            test "$(sha256sum "$front/main.js" | cut -d' ' -f1)" = 9070dcd680ea7b9f64fc71dab31b1a4317fb87e83cd02a497687ca8bfa5a9a5b
+            test "$(sha256sum "$front/index.html" | cut -d' ' -f1)" = 49122cd7ef675e9238eb5555bc2592afb43dca6ba3cb849abd3c0329e7bcc800
+            test "$(sha256sum "$front/main.js" | cut -d' ' -f1)" = fa0f9692dbdb13025597f089215c11887a9bf6152b7c011bffa11681612a80df
             test "$(sha256sum "$front/styles.css" | cut -d' ' -f1)" = d0de585599a7a9bd7d927a3bf3ae0ec8b0cbe34514928c81e687f4a8a26a7570
 
             smoke() {
