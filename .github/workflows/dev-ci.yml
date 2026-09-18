@@ -91,6 +91,14 @@ jobs:
             test "$(docker image inspect -f '{{.Id}}' "$celery_image")" = "$celery_image"
             server_sha=$(git rev-parse HEAD)
             [[ "$server_sha" =~ ^[0-9a-f]{40}$ ]]
+            # Снимок разрешён только для принятого состояния перед reset-cover deploy.
+            test "$server_sha" = 8ed5670d2123dd1f1b53668567ad60bde8641bcc
+            test -z "$(git status --porcelain --untracked-files=no)"
+            test "$web_image" = sha256:e9ac4ff2b14d7067558d2321e443425973f1b1bea266d9aa81a7439bf6959104
+            test "$celery_image" = "$web_image"
+            test "$(sha256sum "$front/index.html" | cut -d' ' -f1)" = b2576029472f3901ab9a3ce88e0c2d3471d1d1d197d2824e150b18b76c68ce88
+            test "$(sha256sum "$front/main.js" | cut -d' ' -f1)" = 9070dcd680ea7b9f64fc71dab31b1a4317fb87e83cd02a497687ca8bfa5a9a5b
+            test "$(sha256sum "$front/styles.css" | cut -d' ' -f1)" = d0de585599a7a9bd7d927a3bf3ae0ec8b0cbe34514928c81e687f4a8a26a7570
 
             smoke() {
               local root_status admin_status token_status
@@ -135,6 +143,21 @@ jobs:
               runtime "$container" > "$snapshot/$service.json"
             done
 
+            # Только чтение: состояние миграций, работа воркера и конфигурация nginx.
+            stage=operational-inspection
+            docker compose -f docker-compose.dev-ci.yml ps --services --filter status=running > "$snapshot/compose-running-services.txt"
+            grep -qx web "$snapshot/compose-running-services.txt"
+            grep -qx celerys "$snapshot/compose-running-services.txt"
+            docker exec "$web" python manage.py showmigrations --plan > "$snapshot/migrations.txt"
+            if grep -q '^\[ \]' "$snapshot/migrations.txt"; then
+              printf 'Pending migrations detected; snapshot remains INCOMPLETE\n' >&2
+              exit 1
+            fi
+            docker exec "$celery" celery -A procollab inspect ping --timeout=15 > "$snapshot/celery-ping.txt"
+            grep -q pong "$snapshot/celery-ping.txt"
+            nginx -t > "$snapshot/nginx-test.txt" 2>&1
+            sha256sum /etc/nginx/nginx.conf /etc/nginx/sites-enabled/dev.procollab.ru /etc/nginx/procollab/includes/proxy_app.inc > "$snapshot/nginx-config.sha256"
+
             manifest() { (cd "$1" && find . -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum); }
             metadata() { (cd "$1" && find . -printf '%y %m %U %G %s %T@ %p\n' | LC_ALL=C sort); }
             stage=frontend-backup
@@ -146,6 +169,23 @@ jobs:
             manifest "$front" > "$snapshot/frontend-after.sha256"
             cmp "$snapshot/frontend.sha256" "$snapshot/frontend-copy.sha256"
             cmp "$snapshot/frontend.sha256" "$snapshot/frontend-after.sha256"
+            python3 - "$snapshot/frontend/index.html" > "$snapshot/primary-assets.txt" <<'PY'
+            import re
+            import sys
+            from pathlib import Path
+
+            html = Path(sys.argv[1]).read_text()
+            assets = sorted(set(re.findall(r'(?:src|href)="([^"?#]+\.(?:js|css))"', html)))
+            assert assets, "Primary assets отсутствуют"
+            for asset in assets:
+                assert re.fullmatch(r'[A-Za-z0-9_.-]+\.(js|css)', asset), "Неожиданный путь asset"
+                print(asset)
+            PY
+            while IFS= read -r asset; do
+              status=$(curl --silent --show-error --max-time 20 --resolve dev.procollab.ru:443:127.0.0.1 -o /dev/null -w '%{http_code}' "https://dev.procollab.ru/$asset")
+              printf '%s %s\n' "$status" "$asset" >> "$snapshot/primary-assets-smoke.txt"
+              test "$status" = 200
+            done < "$snapshot/primary-assets.txt"
 
             printf 'services:\n  web:\n    image: "%s"\n  celerys:\n    image: "%s"\n' "$web_image" "$celery_image" > "$snapshot/rollback-images.yml"
             printf '%s\n' "$project" > "$snapshot/compose-project.txt"
@@ -172,9 +212,12 @@ jobs:
             cmp "$snapshot/frontend.sha256" "$snapshot/frontend-final.sha256"
             metadata "$front" > "$snapshot/frontend-files-after.txt"
             cmp "$snapshot/frontend-files.txt" "$snapshot/frontend-files-after.txt"
+            sha256sum --check --status "$snapshot/nginx-config.sha256"
             smoke
-            (cd "$snapshot" && sha256sum server-git-sha.txt compose-project.txt compose-source.sha256 server-tracked-status.txt web.json celerys.json rollback-images.yml frontend.sha256 frontend-files.txt > SHA256SUMS)
+            (cd "$snapshot" && sha256sum server-git-sha.txt compose-project.txt compose-source.sha256 server-tracked-status.txt web.json celerys.json rollback-images.yml frontend.sha256 frontend-files.txt compose-running-services.txt migrations.txt celery-ping.txt nginx-test.txt nginx-config.sha256 primary-assets.txt primary-assets-smoke.txt > SHA256SUMS)
             mv "$snapshot/INCOMPLETE" "$snapshot/COMPLETE"
+            test -f "$snapshot/COMPLETE"
+            test ! -e "$snapshot/INCOMPLETE"
 
             # Receipt contains only version, integrity and runtime metadata.
             printf 'SNAPSHOT=%s\nSERVER_GIT_SHA=%s\nCOMPOSE_PROJECT=%s\n' "$snapshot" "$server_sha" "$project"
@@ -190,6 +233,10 @@ jobs:
             printf 'FRONTEND_MANIFEST_END\n'
             printf 'FRONTEND_FILE_COUNT=%s\n' "$(find "$front" -type f | wc -l)"
             printf 'RUNTIME_UNCHANGED=true\nLOCAL_RUNNING_IMAGES_PRESENT=true\n'
+            printf 'MIGRATIONS_ALL_APPLIED=true\nNGINX_TEST=true\nCELERY_PING=pong\n'
+            printf 'PRIMARY_ASSETS_SMOKE_BEGIN\n'; cat "$snapshot/primary-assets-smoke.txt"
+            printf 'PRIMARY_ASSETS_SMOKE_END\n'
+            printf 'SNAPSHOT_COMPLETE=true\n'
             printf 'COMPLETE: DEV inspection and static frontend backup only\n'
 
             DEV_PREFLIGHT
