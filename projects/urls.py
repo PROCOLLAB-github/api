@@ -16,6 +16,7 @@ from projects.views import (
     ProjectDetail,
     ProjectList,
     ProjectRecommendedUsers,
+    ProjectResetCover,
     ProjectSubscribe,
     ProjectSubscribers,
     ProjectUnsubscribe,
@@ -57,6 +58,7 @@ project_resource_detail = ResourceViewSet.as_view(
     }
 )
 urlpatterns = [
+    path("<int:pk>/reset-cover/", ProjectResetCover.as_view(), name="reset-cover"),
     path("", ProjectList.as_view()),
     path("<int:pk>/like/", SetLikeOnProject.as_view()),
     path("<int:project_pk>/news/", NewsList.as_view()),
