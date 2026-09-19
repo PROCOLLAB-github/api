@@ -30,6 +30,7 @@ def _notification_defaults(
     title: str,
     message: str,
     action_url: str | None,
+    image_url: str | None = None,
 ) -> dict:
     try:
         category = Notification.TYPE_CATEGORY[notification_type]
@@ -41,6 +42,7 @@ def _notification_defaults(
         "category": category,
         "title": title,
         "message": message,
+        "image_url": image_url,
         "action_url": _validate_action_url(action_url),
     }
 
@@ -55,8 +57,13 @@ def create_notification(
     message: str,
     action_url: str | None,
     event_key: str,
+    image_url: str | None = None,
 ) -> Notification | None:
-    """Создаёт одно идемпотентное уведомление внутри транзакции события."""
+    """Создаёт идемпотентное уведомление внутри транзакции события.
+
+    image_url задаёт визуальный источник отдельно от actor. Повтор события
+    не переписывает сохранённые текст и изображение старого уведомления.
+    """
     if actor_id is not None and actor_id == recipient_id:
         return None
     notification, _created = Notification.objects.get_or_create(
@@ -68,6 +75,7 @@ def create_notification(
             title=title,
             message=message,
             action_url=action_url,
+            image_url=image_url,
         ),
     )
     return notification
@@ -83,8 +91,13 @@ def create_notifications(
     message: str,
     action_url: str | None,
     event_key: str,
+    image_url: str | None = None,
 ) -> list[Notification]:
-    """Создаёт уведомления нескольким уникальным получателям одним INSERT."""
+    """Создаёт уведомления уникальным получателям одним INSERT.
+
+    image_url общий для события и не влияет на исключение автора из получателей.
+    Конфликт event_key сохраняет исходное уведомление, включая его изображение.
+    """
     recipients = sorted(
         {
             recipient_id
@@ -100,6 +113,7 @@ def create_notifications(
         title=title,
         message=message,
         action_url=action_url,
+        image_url=image_url,
     )
     notifications = [
         Notification(

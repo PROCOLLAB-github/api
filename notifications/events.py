@@ -126,8 +126,9 @@ def notify_program_news_published(news, *, program, actor) -> None:
         recipient_ids=_program_member_ids(program.pk),
         actor_id=actor.pk,
         notification_type=Notification.Type.PROGRAM_NEWS_PUBLISHED,
-        title="Новая новость в программе",
-        message=f"В программе «{program.name}» опубликована новая новость.",
+        title="Новая публикация",
+        message=f"В программе «{program.name}» появилась новость.",
+        image_url=program.image_address or None,
         action_url=f"/office/program/{program.pk}",
         event_key=_event_key("program-news", news.pk, "published"),
     )
@@ -139,8 +140,9 @@ def notify_program_material_published(material, *, program, actor) -> None:
         recipient_ids=_program_member_ids(program.pk),
         actor_id=actor.pk,
         notification_type=Notification.Type.PROGRAM_MATERIAL_PUBLISHED,
-        title="Новый материал в программе",
+        title="Новый материал",
         message=(f"В программе «{program.name}» добавлен материал «{material.title}»."),
+        image_url=program.image_address or None,
         action_url=f"/office/program/{program.pk}",
         event_key=_event_key("program-material", material.pk, "published"),
     )
@@ -154,6 +156,7 @@ def notify_course_access_opened(course, *, program, actor) -> None:
         notification_type=Notification.Type.COURSE_ACCESS_OPENED,
         title="Открыт доступ к курсу",
         message=(f"В программе «{program.name}» открыт доступ к курсу «{course.title}»."),
+        image_url=program.image_address or None,
         action_url=f"/office/courses/{course.pk}",
         event_key=_event_key(
             "course-access",

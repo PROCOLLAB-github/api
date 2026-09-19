@@ -16,6 +16,34 @@
 исторический снимок заголовка и текста, внутренний `action_url`, `event_key`,
 `read_at` и время создания.
 
+`image_url: string | null` — отдельное изображение визуального источника события,
+сохранённое на момент создания уведомления. Оно не заменяет `actor` и не влияет
+на получателей, исключение автора, visibility или идемпотентность.
+
+Три программных события (`program_news_published`, `program_material_published`,
+`course_access_opened`) используют `PartnerProgram.image_address`; пустая строка
+и отсутствие изображения сохраняются как `null`. Остальные события по умолчанию
+получают `image_url=null` и сохраняют прежний контракт actor.
+
+Миграция `notifications.0003_notification_image_url` добавляет только nullable
+URLField. Data migration/backfill нет: старые тексты не обновляются, исторические
+строки получают `image_url=null`. Retry старого события также не дополняет его
+новым изображением. Изменение изображения программы не переписывает уведомления.
+
+Новые программные тексты:
+
+| Тип | Заголовок | Сообщение |
+|---|---|---|
+| `program_news_published` | Новая публикация | В программе «{program.name}» появилась новость. |
+| `program_material_published` | Новый материал | В программе «{program.name}» добавлен материал «{material.title}». |
+| `course_access_opened` | Открыт доступ к курсу | В программе «{program.name}» открыт доступ к курсу «{course.title}». |
+
+Angular получает поле через общий CamelcaseInterceptor как `imageUrl`. Для этих
+трёх типов он показывает только изображение программы либо прежнюю иконку типа
+(feed/file/academic-hat), включая старые уведомления и ошибку загрузки картинки.
+Actor avatar для программных типов не используется. Остальные типы сохраняют
+actor avatar и прежний fallback; дополнительных запросов программы нет.
+
 - удаление получателя каскадно удаляет его уведомления;
 - удаление инициатора сохраняет уведомление с `actor=null`;
 - `UniqueConstraint(recipient, event_key)` защищает от повторов и гонок;
@@ -62,6 +90,7 @@ GET /notifications/?limit=20&offset=0&unread=true
       "category": "vacancy",
       "title": "Новый отклик на вакансию",
       "message": "Получен отклик на вакансию «Frontend-разработчик».",
+      "image_url": null,
       "action_url": "/office/projects/7/vacancies/21/responses",
       "read_at": null,
       "created_at": "2026-08-15T12:00:00Z",

@@ -74,10 +74,10 @@ class ProgramNewsNotificationTests(TestCase):
                 Notification.Type.PROGRAM_NEWS_PUBLISHED,
             )
             self.assertEqual(notification.category, Notification.Category.PROGRAM)
-            self.assertEqual(notification.title, "Новая новость в программе")
+            self.assertEqual(notification.title, "Новая публикация")
             self.assertEqual(
                 notification.message,
-                f"В программе «{self.program.name}» опубликована новая новость.",
+                f"В программе «{self.program.name}» появилась новость.",
             )
             self.assertEqual(
                 notification.action_url,
@@ -244,7 +244,7 @@ class ProgramMaterialNotificationTests(TestCase):
         first = notifications.get(
             event_key=f"program-material:{materials[0].pk}:published"
         )
-        self.assertEqual(first.title, "Новый материал в программе")
+        self.assertEqual(first.title, "Новый материал")
         self.assertEqual(
             first.message,
             f"В программе «{self.program.name}» добавлен материал «Регламент».",
