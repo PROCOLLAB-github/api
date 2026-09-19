@@ -38,6 +38,21 @@ class NotificationServiceTests(TestCase):
         self.assertIsNone(result)
         self.assertFalse(Notification.objects.exists())
 
+    def test_single_image_is_saved_without_overwriting_existing_event(self):
+        image = "https://example.com/program.png"
+        first = self.create(image_url=image)
+        second = self.create(image_url="https://example.com/new.png")
+        self.assertEqual(first.pk, second.pk)
+        second.refresh_from_db()
+        self.assertEqual(second.image_url, image)
+        self.assertEqual(second.actor_id, self.actor.pk)
+
+    def test_retry_does_not_backfill_old_notification(self):
+        first = self.create()
+        self.create(image_url="https://example.com/program.png")
+        first.refresh_from_db()
+        self.assertIsNone(first.image_url)
+
     def test_bulk_service_deduplicates_recipients_and_skips_actor(self):
         second = create_user(prefix="service-second")
 

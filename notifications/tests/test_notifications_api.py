@@ -8,10 +8,11 @@ from news.tests.helpers import create_user
 from notifications.models import Notification
 
 
-def create_notification(*, recipient, actor=None, suffix="1", read=False):
+def create_notification(*, recipient, actor=None, suffix="1", read=False, image_url=None):
     return Notification.objects.create(
         recipient=recipient,
         actor=actor,
+        image_url=image_url,
         type=Notification.Type.PROJECT_INVITE_CREATED,
         category=Notification.Category.PROJECT,
         title=f"Уведомление {suffix}",
@@ -136,6 +137,7 @@ class NotificationAPITests(TestCase):
                 recipient=self.user,
                 actor=self.actor,
                 suffix=f"query-{index}",
+                image_url=f"https://example.com/program-{index}.png",
             )
         self.client.force_authenticate(self.user)
 
@@ -145,3 +147,4 @@ class NotificationAPITests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data["results"]), 12)
         self.assertEqual(len(queries), 3)
+        self.assertTrue(all(row["image_url"] for row in response.data["results"]))

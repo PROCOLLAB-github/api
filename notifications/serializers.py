@@ -22,6 +22,7 @@ class NotificationSerializer(serializers.ModelSerializer):
             "category",
             "title",
             "message",
+            "image_url",
             "action_url",
             "read_at",
             "created_at",

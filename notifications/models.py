@@ -88,6 +88,8 @@ class Notification(models.Model):
     category = models.CharField(max_length=16, choices=Category.choices)
     title = models.CharField(max_length=160)
     message = models.TextField()
+    # Изображение фиксируется на момент события и не подменяет пользователя actor.
+    image_url = models.URLField(null=True, blank=True)
     action_url = models.CharField(max_length=500, null=True, blank=True)
     event_key = models.CharField(max_length=255)
     read_at = models.DateTimeField(null=True, blank=True)
