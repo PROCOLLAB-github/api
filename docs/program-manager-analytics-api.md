@@ -184,13 +184,19 @@ overview, scoring, team/invite rules, фильтры, сохранение field
 `PartnerProgramProject.submitted` / `datetime_submitted` и дата создания назначения.
 Модели, запись оценок и поведение сдачи проекта не меняются.
 
-`criteria_total` — число критериев программы. `criteria_scored` — число DISTINCT
+Внутренние аннотации: `criteria_total` — число критериев программы,
+`criteria_scored` — число DISTINCT
 критериев этой программы, по которым существует строка оценки именно этого
 пользователя и проекта. Оценки другой программы/эксперта/проекта не учитываются.
 Строка со значением `"0"` или пустым/nullable значением считается существующей
 оценкой; аналитика не вводит новую валидацию `ProjectScore.value`.
 Создаваемый текущим signal критерий «Комментарий» типа `str` также входит в
 общее число критериев: исключения по названию или типу не вводятся.
+
+Количество оценённых критериев — внутренняя деталь вычисления статуса назначения.
+`criteria_total` и `criteria_scored` не входят в публичный assignment object:
+их нет ни в списке назначений, ни в ответе `/assignments/<assignment_id>/scores/`.
+Детализация `scores` с критериями и фактическими оценками сохраняется.
 
 | Условие | status |
 | --- | --- |
@@ -243,8 +249,6 @@ overview, scoring, team/invite rules, фильтры, сохранение field
     },
     "project": {"id": 55, "name": "Проект А"},
     "status": "in_progress",
-    "criteria_total": 3,
-    "criteria_scored": 1,
     "assigned_at": "2026-09-03T10:00:00Z",
     "project_submitted": true,
     "project_submitted_at": "2026-09-03T12:00:00Z",
