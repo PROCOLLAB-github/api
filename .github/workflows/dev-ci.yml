@@ -1,12 +1,12 @@
-name: DEV disk inspection and unused build cache cleanup
+name: DEV disk inspection and unused Docker data cleanup
 
 on:
   workflow_dispatch:
     inputs:
       mode:
-        description: Только диагностика либо согласованная очистка неиспользуемого build cache
+        description: Диагностика либо согласованная очистка build cache и проверенных dangling images
         type: choice
-        options: [inspect, cleanup-cache]
+        options: [inspect, cleanup-safe]
         default: inspect
         required: true
       confirmation:
@@ -23,11 +23,11 @@ concurrency:
 
 jobs:
   inspect:
-    if: github.ref == 'refs/heads/ops/dev-disk-recovery-20260920' && inputs.confirmation == 'DEV_DISK_RECOVERY' && (inputs.mode == 'inspect' || inputs.mode == 'cleanup-cache')
+    if: github.ref == 'refs/heads/ops/dev-disk-recovery-20260920' && inputs.confirmation == 'DEV_DISK_RECOVERY' && (inputs.mode == 'inspect' || inputs.mode == 'cleanup-safe')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: DEV disk diagnostics or unused cache cleanup only
+      - name: DEV disk diagnostics or guarded unused Docker data cleanup
         uses: garygrossgarten/github-action-ssh@release
         with:
           host: ${{ secrets.DEV_SERVER_HOST }}
@@ -42,7 +42,7 @@ jobs:
             test "$(readlink -f "$repo")" = "$repo"
             grep -Eq 'server_name[[:space:]]+dev\.procollab\.ru;' /etc/nginx/sites-enabled/dev.procollab.ru
             mode='${{ inputs.mode }}'
-            case "$mode" in inspect|cleanup-cache) ;; *) exit 1;; esac
+            case "$mode" in inspect|cleanup-safe) ;; *) exit 1;; esac
 
             # Не выводим environment контейнеров, конфигурацию приложения и содержимое файлов.
             runtime() {
@@ -54,7 +54,6 @@ jobs:
                 docker inspect -f '{"container_id":{{json .Id}},"image_reference":{{json .Config.Image}},"image_id":{{json .Image}},"status":{{json .State.Status}},"started_at":{{json .State.StartedAt}},"restart_count":{{json .RestartCount}}}' "$container"
               done
             }
-            images() { docker image ls -a --no-trunc --digests --format '{{.ID}} {{.Repository}} {{.Tag}} {{.Digest}}' | LC_ALL=C sort | sha256sum; }
             volumes() { docker volume ls --format '{{.Driver}} {{.Name}}' | LC_ALL=C sort | sha256sum; }
             containers() {
               local container
@@ -84,7 +83,7 @@ jobs:
             done
             printf 'ALL_CONTAINER_IMAGE_REFERENCES_END\nROLLBACK_IMAGE_REFERENCES_BEGIN\n'
             # Читаем только известные JSON-receipts образов, без пользовательских файлов и secrets.
-            python3 - <<'PY'
+            rollback_receipts=$(python3 - <<'PY'
             import json
             import re
             from pathlib import Path
@@ -108,23 +107,81 @@ jobs:
                     assert re.fullmatch(r'sha256:[0-9a-f]{64}', value)
                     print(f'ROLLBACK_IMAGE={value} RECEIPT={snapshot.name}/{name}', flush=True)
             PY
+            )
+            printf '%s\n' "$rollback_receipts"
             printf 'ROLLBACK_IMAGE_REFERENCES_END\n'
             printf 'DIRECTORY_SIZES\n'
             for directory in /var/lib/docker /var/lib/containerd /var/log /var/cache/apt/archives /root/api /root/procollab-dev-rollback /home/front/app; do
               if test -d "$directory"; then du -xsh "$directory"; fi
             done
 
-            if test "$mode" = cleanup-cache; then
+            if test "$mode" = cleanup-safe; then
               test "$server_sha" = af8be9575df6251748da3f93959dd9be38daaddb
-              images_before=$(images)
               volumes_before=$(volumes)
               containers_before=$(containers)
-              # Удаляется только неиспользуемый кеш сборки. Образы и volumes не очищаются.
-              docker builder prune --all --force
-              test "$(images)" = "$images_before"
+              ROLLBACK_RECEIPTS="$rollback_receipts" python3 - <<'PY'
+            import json
+            import os
+            import re
+            import subprocess
+
+            # Фиксированный список из read-only диагностики: новые кандидаты автоматически не добавляются.
+            candidates = set('''
+            sha256:095b46ac4e31b93511d822b8153bdbbd8865bf10f2c974ce1c08cc5992a135f5
+            sha256:1d23a02d4351a99d13deb706f1f0ac5aa2a708bbdae250701a0a86b41dc1680c
+            sha256:204000e1a40e3389f01b6eb01913e9c7ee49e47d2bc212b40d077119bde9b652
+            sha256:224d7f80290d7127fc854be420ad062ebff99a4414d850b26bb561772d939cc0
+            sha256:45d79cf149fd56a4fb0b64e8e543aa45fa7c9f0404a3662e475f4947919ffb0b
+            sha256:45f0757c43e3c0a3768638b1a47392e979a5a5a953152f1f38ca08939bb721ca
+            sha256:670c4543e9f458f26e41c7f0e890bde11942176821d9f4db825ddf210366bde4
+            sha256:6915aafa10a9bc9198a5dfd376a29e99df8742f5b7c2b990c69cd15d840714a4
+            sha256:75c99d55356ccc063f04e79d43a1f0c67750c1083658405f1950089e239c791e
+            sha256:841dcedbee36cca1714ee9e24ee96513ec840f83f199e0352e9e5a36a4c8327c
+            sha256:8ef323d9fe998c78a1ada84aaa5f00248e2eac25a41d8ecb5b3fae8b815168d7
+            sha256:a42144ed3a9b5f65da48a14249f72b85754fdbd5ee0f80bc776c6161eb495b0b
+            sha256:c422bc780edc2f909c78962ea2c0abf70f3b8f37f4a1108b2a88c3091f815d87
+            sha256:c7995c53e59ed25e0e38b5f2db5f2e77535e527ee7df0a1f8d8025127ab047f2
+            sha256:cda22d2a2a9d2915d384fe00e3b755c595f49dcbd84a926b8538c8aa7e1950a2
+            sha256:cefa5ee3598f42adb313b12a133f5d0162f7121ac41ca15aa62b3db30d017cd2
+            sha256:e1a7aeb9052fbdfa9f79d951307bee280f02e91ed7b2368bbeedd360435903d0
+            sha256:f2fdd51ff6f6676f48f3c7750451dabd1ef0bc5823b4779ae8a2a64596d50762
+            '''.split())
+            assert len(candidates) == 18
+            assert all(re.fullmatch(r'sha256:[0-9a-f]{64}', value) for value in candidates)
+
+            def docker(*arguments):
+                """Возвращает только запрошенные метаданные; ошибка Docker прерывает очистку."""
+                return subprocess.check_output(['docker', *arguments], text=True).strip()
+
+            def image_inventory():
+                """Сохраняет ссылки всех образов, чтобы проверить сохранность остальных образов."""
+                return set(docker('image', 'ls', '-a', '--no-trunc', '--digests', '--format',
+                                  '{{.ID}} {{.Repository}} {{.Tag}} {{.Digest}}').splitlines())
+
+            dangling = set(docker('image', 'ls', '--no-trunc', '-q', '--filter', 'dangling=true').splitlines())
+            used = {docker('inspect', '-f', '{{.Image}}', container)
+                    for container in docker('ps', '-aq', '--no-trunc').splitlines()}
+            rollback = set(re.findall(r'ROLLBACK_IMAGE=(sha256:[0-9a-f]{64})', os.environ['ROLLBACK_RECEIPTS']))
+            assert rollback and candidates <= dangling
+            assert not candidates & (used | rollback)
+            for candidate in sorted(candidates):
+                assert json.loads(docker('image', 'inspect', '-f', '{{json .RepoTags}}', candidate)) == []
+                print(f'CONFIRMED_UNUSED_DANGLING={candidate}', flush=True)
+            protected = {line for line in image_inventory() if line.split()[0] not in candidates}
+            print(f'CONFIRMED_UNUSED_DANGLING_COUNT={len(candidates)}', flush=True)
+
+            # Docker сохраняет используемый кеш. Образы удаляем без force и без удаления родительских образов.
+            subprocess.run(['docker', 'builder', 'prune', '--all', '--force'], check=True)
+            for candidate in sorted(candidates):
+                assert candidate in set(docker('image', 'ls', '--no-trunc', '-q', '--filter', 'dangling=true').splitlines())
+                assert not docker('ps', '-aq', '--filter', f'ancestor={candidate}')
+                subprocess.run(['docker', 'image', 'rm', '--no-prune', candidate], check=True)
+            assert image_inventory() == protected
+            print('PROTECTED_IMAGES_UNCHANGED=true', flush=True)
+            PY
               test "$(volumes)" = "$volumes_before"
               test "$(containers)" = "$containers_before"
-              printf 'IMAGES_UNCHANGED=true\nVOLUMES_UNCHANGED=true\nCONTAINERS_UNCHANGED=true\n'
+              printf 'VOLUMES_UNCHANGED=true\nCONTAINERS_UNCHANGED=true\n'
             fi
             printf 'DISK_AFTER\n'
             df -h
