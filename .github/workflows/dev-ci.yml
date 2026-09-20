@@ -1,323 +1,102 @@
-name: Deploy Dev
+name: DEV disk inspection and unused build cache cleanup
 
 on:
-  push:
-    branches: 
-      - dev
   workflow_dispatch:
+    inputs:
+      mode:
+        description: Только диагностика либо согласованная очистка неиспользуемого build cache
+        type: choice
+        options: [inspect, cleanup-cache]
+        default: inspect
+        required: true
+      confirmation:
+        description: Введите DEV_DISK_RECOVERY
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dev-disk-recovery-20260920
+  cancel-in-progress: false
 
 jobs:
-  deploy:
-      name: Deploy
-      runs-on: ubuntu-latest
-      steps:
-        - name: Deploy to server
-          uses: garygrossgarten/github-action-ssh@release
-          with:
-            host: ${{ secrets.DEV_SERVER_HOST }}
-            username: ${{ secrets.DEV_SERVER_USER }}
-            password: ${{ secrets.DEV_SERVER_PASSWORD }}
-            command: |
-              set -eu
+  inspect:
+    if: github.ref == 'refs/heads/ops/dev-disk-recovery-20260920' && inputs.confirmation == 'DEV_DISK_RECOVERY' && (inputs.mode == 'inspect' || inputs.mode == 'cleanup-cache')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: DEV disk diagnostics or unused cache cleanup only
+        uses: garygrossgarten/github-action-ssh@release
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: ${{ secrets.DEV_SERVER_USER }}
+          password: ${{ secrets.DEV_SERVER_PASSWORD }}
+          command: |
+            bash -se <<'DEV_DISK'
+            set -Eeuo pipefail
+            test '${{ github.run_attempt }}' = 1
+            test "$(id -u)" = 0
+            repo=/root/api
+            test "$(readlink -f "$repo")" = "$repo"
+            grep -Eq 'server_name[[:space:]]+dev\.procollab\.ru;' /etc/nginx/sites-enabled/dev.procollab.ru
+            mode='${{ inputs.mode }}'
+            case "$mode" in inspect|cleanup-cache) ;; *) exit 1;; esac
 
-              cd /root/api
-              git fetch --all --tags --prune
-              git branch -r --contains "${{ github.sha }}" | grep -q 'origin/dev'
-              git checkout --detach "${{ github.sha }}"
-              git reset --hard "${{ github.sha }}"
-              test "$(git rev-parse HEAD)" = "${{ github.sha }}"
-              if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
-                echo "Tracked working tree is dirty after reset" >&2
-                git status --short --untracked-files=no >&2
-                exit 1
-              fi
-
-              expected_serializer_blob="$(git rev-parse HEAD:vacancy/serializers.py)"
-              actual_serializer_blob="$(git hash-object vacancy/serializers.py)"
-              if [ "$actual_serializer_blob" != "$expected_serializer_blob" ]; then
-                echo "Server serializers.py does not match HEAD blob" >&2
-                exit 1
-              fi
-
-              echo "Deploy source HEAD: $(git rev-parse HEAD)"
-              echo "vacancy/serializers.py blob: ${actual_serializer_blob}"
-
-              export IMAGE_TAG="${{ github.sha }}"
-              SOURCE_IMAGE="procollab-dev-api:${IMAGE_TAG}"
-              export DEPLOY_IMAGE="$SOURCE_IMAGE"
-
-              rm -f .env
-              touch .env
-
-              echo "DJANGO_SECRET_KEY=${{ secrets.DEV_DJANGO_SECRET_KEY }}" >> .env
-
-              echo "DATABASE_NAME=${{ secrets.DEV_DATABASE_NAME }}" >> .env
-              echo "DATABASE_PASSWORD=${{ secrets.DEV_DATABASE_PASSWORD }}" >> .env
-              echo "DATABASE_USER=${{ secrets.DEV_DATABASE_USER }}" >> .env
-              echo "DATABASE_HOST=${{ secrets.DEV_DATABASE_HOST }}" >> .env
-              echo "DATABASE_PORT=${{ secrets.DEV_DATABASE_PORT }}" >> .env
-
-              echo "SELECTEL_ACCOUNT_ID=${{ secrets.SELECTEL_ACCOUNT_ID }}" >> .env
-              echo "SELECTEL_CONTAINER_NAME=${{ secrets.SELECTEL_CONTAINER_NAME }}" >> .env
-              echo "SELECTEL_CONTAINER_PASSWORD=${{ secrets.SELECTEL_CONTAINER_PASSWORD }}" >> .env
-              echo "SELECTEL_CONTAINER_USERNAME=${{ secrets.SELECTEL_CONTAINER_USERNAME }}" >> .env
-
-              echo "EMAIL_USER=${{ secrets.EMAIL_USER }}" >> .env
-              echo "UNISENDER_GO_API_KEY=${{ secrets.UNISENDER_GO_API_KEY }}" >> .env
-
-              chmod 600 .env
-
-              docker compose -f docker-compose.dev-ci.yml config >/dev/null
-              docker compose -f docker-compose.dev-ci.yml build web
-
-              BUILT_IMAGE_ID="$(
-                docker image inspect \
-                  -f '{{.Id}}' \
-                  "$SOURCE_IMAGE"
-              )"
-
-              echo "Built image: ${SOURCE_IMAGE}"
-              echo "Built image ID: ${BUILT_IMAGE_ID}"
-
-              case "$BUILT_IMAGE_ID" in
-                sha256:*) ;;
-                *)
-                  echo "Invalid built image ID: ${BUILT_IMAGE_ID}" >&2
-                  exit 1
-                  ;;
-              esac
-
-              BUILT_IMAGE_SHORT="$(
-                printf '%s' "${BUILT_IMAGE_ID#sha256:}" |
-                  cut -c1-12
-              )"
-              RUNTIME_IMAGE_TAG="${IMAGE_TAG}-${BUILT_IMAGE_SHORT}"
-              RUNTIME_IMAGE="procollab-dev-api:${RUNTIME_IMAGE_TAG}"
-
-              docker image rm "$RUNTIME_IMAGE" >/dev/null 2>&1 || true
-              docker tag "$BUILT_IMAGE_ID" "$RUNTIME_IMAGE"
-
-              RUNTIME_IMAGE_ID="$(
-                docker image inspect -f '{{.Id}}' "$RUNTIME_IMAGE"
-              )"
-              test "$RUNTIME_IMAGE_ID" = "$BUILT_IMAGE_ID"
-
-              export DEPLOY_IMAGE="$RUNTIME_IMAGE"
-
-              echo "Pinned runtime image: ${RUNTIME_IMAGE}"
-              echo "Pinned runtime image ID: ${RUNTIME_IMAGE_ID}"
-              docker compose -f docker-compose.dev-ci.yml config >/dev/null
-              docker compose -f docker-compose.dev-ci.yml config --format json |
-                docker run --rm -i \
-                  --entrypoint python \
-                  "$RUNTIME_IMAGE" \
-                  -c '
-              import json
-              import sys
-
-              expected = sys.argv[1]
-              services = json.load(sys.stdin)["services"]
-              for service_name in ("web", "celerys"):
-                  actual = services[service_name]["image"]
-                  print(f"Compose {service_name} image: {actual}")
-                  if actual != expected:
-                      raise SystemExit(
-                          f"Compose {service_name} does not use {expected}"
-                      )
-              ' "$RUNTIME_IMAGE"
-
-              BUILT_SERIALIZER_SHA="$(
-                docker run --rm \
-                  --entrypoint sha256sum \
-                  "$RUNTIME_IMAGE" \
-                  /procollab/vacancy/serializers.py |
-                  awk '{print $1}'
-              )"
-              test -n "$BUILT_SERIALIZER_SHA"
-              echo "Built vacancy/serializers.py SHA-256: ${BUILT_SERIALIZER_SHA}"
-
-              docker compose -f docker-compose.dev-ci.yml run --rm -T web python - <<'PY'
-              import os
-
-              os.environ.setdefault("DJANGO_SETTINGS_MODULE", "procollab.settings")
-
-              import django
-
-              django.setup()
-
-              from vacancy.serializers import (
-                  ProjectVacancyCreateListSerializer,
-                  VacancyDetailSerializer,
-              )
-
-              create_fields = ProjectVacancyCreateListSerializer.Meta.fields
-              detail_fields = VacancyDetailSerializer.Meta.fields
-
-              print("Compose run create serializer fields:", create_fields)
-              print("Compose run detail serializer fields:", detail_fields)
-
-              if "city" not in create_fields:
-                  raise SystemExit("Compose run create serializer uses stale image")
-
-              if "city" not in detail_fields:
-                  raise SystemExit("Compose run detail serializer uses stale image")
-              PY
-
-              docker compose -f docker-compose.dev-ci.yml run --rm web \
-                python manage.py migrate
-              docker compose -f docker-compose.dev-ci.yml run --rm web \
-                python manage.py showmigrations vacancy
-
-              docker compose -f docker-compose.dev-ci.yml rm -sf web celerys || true
-              docker compose -f docker-compose.dev-ci.yml up \
-                -d \
-                --no-build \
-                --force-recreate
-
+            # Не выводим environment контейнеров, конфигурацию приложения и содержимое файлов.
+            runtime() {
+              local service container
               for service in web celerys; do
-                container="$(docker compose -f docker-compose.dev-ci.yml ps -q "$service")"
-                if [ -z "$container" ]; then
-                  echo "Service ${service} has no running container" >&2
-                  docker compose -f docker-compose.dev-ci.yml ps >&2 || true
-                  exit 1
-                fi
-
-                configured_image="$(docker inspect -f '{{.Config.Image}}' "$container")"
-                actual_image_id="$(docker inspect -f '{{.Image}}' "$container")"
-                echo "Service ${service}: container=${container} reference=${configured_image} image_id=${actual_image_id}"
-                if [ "$actual_image_id" != "$BUILT_IMAGE_ID" ]; then
-                  echo "Service ${service} uses wrong image ID" >&2
-                  echo "Expected: ${BUILT_IMAGE_ID}" >&2
-                  echo "Actual:   ${actual_image_id}" >&2
-                  echo "Reference: ${configured_image}" >&2
-                  exit 1
-                fi
+                container=$(docker ps -aq --no-trunc --filter "label=com.docker.compose.project.working_dir=$repo" --filter "label=com.docker.compose.service=$service")
+                [[ "$container" =~ ^[0-9a-f]{64}$ ]]
+                printf 'SERVICE=%s\n' "$service"
+                docker inspect -f '{"container_id":{{json .Id}},"image_reference":{{json .Config.Image}},"image_id":{{json .Image}},"status":{{json .State.Status}},"started_at":{{json .State.StartedAt}},"restart_count":{{json .RestartCount}}}' "$container"
               done
+            }
+            images() { docker image ls -a --no-trunc --digests --format '{{.ID}} {{.Repository}} {{.Tag}} {{.Digest}}' | LC_ALL=C sort | sha256sum; }
+            volumes() { docker volume ls --format '{{.Driver}} {{.Name}}' | LC_ALL=C sort | sha256sum; }
+            containers() {
+              local container
+              for container in $(docker ps -aq --no-trunc); do
+                docker inspect -f '{{.Id}} {{.Image}} {{.State.Status}} {{.State.StartedAt}} {{.RestartCount}}' "$container"
+              done | LC_ALL=C sort | sha256sum
+            }
+            server_sha=$(git --no-optional-locks -C "$repo" rev-parse HEAD)
+            runtime_before=$(runtime)
+            printf 'MODE=%s\nSERVER_GIT_SHA=%s\nRUNTIME_BEFORE\n%s\n' "$mode" "$server_sha" "$runtime_before"
+            printf 'DISK_BEFORE\n'
+            df -h
+            df -i
+            docker system df
+            # Без столбца COMMAND: аргументы процессов не нужны для оценки занятого места.
+            docker ps -a --no-trunc --format 'table {{.ID}}\t{{.Image}}\t{{.Status}}\t{{.Names}}'
+            docker images --format '{{.Repository}}:{{.Tag}} {{.ID}} {{.Size}}'
+            printf 'DOCKER_USAGE_DETAIL\n'
+            docker system df -v
+            printf 'DIRECTORY_SIZES\n'
+            for directory in /var/lib/docker /var/lib/containerd /var/log /var/cache/apt/archives /root/api /root/procollab-dev-rollback /home/front/app; do
+              if test -d "$directory"; then du -xsh "$directory"; fi
+            done
 
-              RUNNING_SERIALIZER_SHA="$(
-                docker compose -f docker-compose.dev-ci.yml exec -T web \
-                  sha256sum /procollab/vacancy/serializers.py |
-                  awk '{print $1}'
-              )"
-              echo "Running vacancy/serializers.py SHA-256: ${RUNNING_SERIALIZER_SHA}"
-              if [ "$RUNNING_SERIALIZER_SHA" != "$BUILT_SERIALIZER_SHA" ]; then
-                echo "Running serializer source does not match built image" >&2
-                echo "Expected: ${BUILT_SERIALIZER_SHA}" >&2
-                echo "Actual:   ${RUNNING_SERIALIZER_SHA}" >&2
-                exit 1
-              fi
-
-              docker compose -f docker-compose.dev-ci.yml exec -T web python - <<'PY'
-              import os
-
-              os.environ.setdefault("DJANGO_SETTINGS_MODULE", "procollab.settings")
-
-              import django
-
-              django.setup()
-
-              from django.db import connection
-              from django.db.migrations.recorder import MigrationRecorder
-
-              applied = {
-                  (migration.app, migration.name)
-                  for migration in MigrationRecorder(connection).migration_qs
-              }
-
-              if ("vacancy", "0010_vacancy_city") not in applied:
-                  raise SystemExit("vacancy.0010_vacancy_city is not applied")
-
-              print("vacancy.0010_vacancy_city applied")
-              PY
-
-              docker compose -f docker-compose.dev-ci.yml exec -T web python - <<'PY'
-              import os
-
-              os.environ.setdefault("DJANGO_SETTINGS_MODULE", "procollab.settings")
-
-              import django
-
-              django.setup()
-
-              from vacancy.serializers import (
-                  ProjectVacancyCreateListSerializer,
-                  VacancyDetailSerializer,
-              )
-
-              create_fields = set(ProjectVacancyCreateListSerializer().fields.keys())
-              detail_fields = set(VacancyDetailSerializer().fields.keys())
-
-              print("Runtime create serializer fields:", sorted(create_fields))
-              print("Runtime detail serializer fields:", sorted(detail_fields))
-
-              if "city" not in create_fields:
-                  raise SystemExit("Runtime create serializer does not contain city")
-
-              if "city" not in detail_fields:
-                  raise SystemExit("Runtime detail serializer does not contain city")
-
-              print("Runtime serializers contain city")
-              PY
-
-              install -d /etc/nginx/procollab/includes &&
-              install -m 644 deploy/nginx/host/includes/proxy_app.inc /etc/nginx/procollab/includes/proxy_app.inc &&
-              install -m 644 deploy/nginx/host/dev/dev.procollab.ru /etc/nginx/sites-available/dev.procollab.ru &&
-              ln -sfn /etc/nginx/sites-available/dev.procollab.ru /etc/nginx/sites-enabled/dev.procollab.ru &&
-              if [ "$(id -u)" -eq 0 ]; then
-                nginx -t &&
-                systemctl reload nginx
-              else
-                sudo nginx -t &&
-                sudo systemctl reload nginx
-              fi &&
-
-              for attempt in $(seq 1 24); do
-                admin_status="$(curl -s -o /dev/null -w '%{http_code}' https://dev.procollab.ru/admin/login/ || true)" &&
-
-                if [ "$admin_status" = "200" ]; then
-                  echo "Smoke check passed on attempt ${attempt}" &&
-                  break
-                fi
-
-                sleep 5
-              done &&
-
-              if [ "$admin_status" != "200" ]; then
-                echo "Smoke check failed: /admin/login/=${admin_status}" >&2 &&
-                exit 1
-              fi &&
-
-              docker compose -f docker-compose.dev-ci.yml ps
-
-              celery_status=""
-              celery_ping=""
-              celery_container=""
-              for attempt in $(seq 1 12); do
-                celery_container="$(docker compose -f docker-compose.dev-ci.yml ps -q celerys 2>/dev/null || true)"
-                if [ -n "$celery_container" ]; then
-                  celery_status="$(docker inspect -f '{{.State.Status}}' "$celery_container" 2>/dev/null || true)"
-                else
-                  celery_status="missing"
-                fi
-
-                echo "Celery check attempt ${attempt}: container=${celery_container:-missing} status=${celery_status}"
-                if [ "$celery_status" = "running" ]; then
-                  celery_ping="$(docker compose -f docker-compose.dev-ci.yml exec -T celerys sh -lc 'celery -A procollab inspect ping --timeout=15' 2>&1 || true)"
-                  printf '%s\n' "$celery_ping"
-                  if printf '%s\n' "$celery_ping" | grep -q 'pong'; then
-                    echo "Celery check passed on attempt ${attempt}"
-                    break
-                  fi
-                fi
-
-                sleep 5
-              done
-
-              if [ "$celery_status" != "running" ] || ! printf '%s\n' "$celery_ping" | grep -q 'pong'; then
-                echo "Celery check failed: status=${celery_status}" >&2
-                docker compose -f docker-compose.dev-ci.yml ps >&2 || true
-                docker compose -f docker-compose.dev-ci.yml logs --tail=200 celerys >&2 || true
-                docker compose -f docker-compose.dev-ci.yml logs --tail=100 redis >&2 || true
-                docker compose -f docker-compose.dev-ci.yml logs --tail=100 web >&2 || true
-                exit 1
-              fi
+            if test "$mode" = cleanup-cache; then
+              test "$server_sha" = af8be9575df6251748da3f93959dd9be38daaddb
+              images_before=$(images)
+              volumes_before=$(volumes)
+              containers_before=$(containers)
+              # Удаляется только неиспользуемый кеш сборки. Образы и volumes не очищаются.
+              docker builder prune --all --force
+              test "$(images)" = "$images_before"
+              test "$(volumes)" = "$volumes_before"
+              test "$(containers)" = "$containers_before"
+              printf 'IMAGES_UNCHANGED=true\nVOLUMES_UNCHANGED=true\nCONTAINERS_UNCHANGED=true\n'
+            fi
+            printf 'DISK_AFTER\n'
+            df -h
+            docker system df
+            runtime_after=$(runtime)
+            test "$runtime_after" = "$runtime_before"
+            test "$(git --no-optional-locks -C "$repo" rev-parse HEAD)" = "$server_sha"
+            printf 'RUNTIME_AFTER\n%s\nRUNTIME_UNCHANGED=true\n' "$runtime_after"
+            printf 'DEV_DISK_OPERATION_COMPLETE=true\n'
+            DEV_DISK
