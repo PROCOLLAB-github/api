@@ -86,6 +86,11 @@ def assignment_rows(program_id):
 
 
 def build_assignment(row, *, now):
+    """Возвращает назначение без внутренних счётчиков критериев.
+
+    Аннотации total/scored нужны для прежнего правила завершённости и статуса,
+    но не входят в публичные данные списка и детализации оценок.
+    """
     total, scored = row["criteria_total"], row["criteria_scored"]
     if not row["project_submitted"]:
         status = "not_ready"
@@ -118,8 +123,6 @@ def build_assignment(row, *, now):
         },
         "project": {"id": row["project_id"], "name": row["project__name"]},
         "status": status,
-        "criteria_total": total,
-        "criteria_scored": scored,
         "assigned_at": row["datetime_created"],
         "project_submitted": row["project_submitted"],
         "project_submitted_at": submitted_at,

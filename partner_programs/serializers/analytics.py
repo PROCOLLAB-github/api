@@ -81,14 +81,14 @@ class ProgramAssignmentScopeSerializer(serializers.Serializer):
 
 
 class ProgramAssignmentSerializer(serializers.Serializer):
+    """Публичное назначение: счётчики критериев остаются внутри расчёта статуса."""
+
     assignment_id = serializers.IntegerField()
     expert = AssignmentExpertSerializer()
     project = AssignmentProjectSerializer()
     status = serializers.ChoiceField(
         choices=("not_ready", "pending", "in_progress", "completed")
     )
-    criteria_total = serializers.IntegerField(min_value=0)
-    criteria_scored = serializers.IntegerField(min_value=0)
     assigned_at = serializers.DateTimeField()
     project_submitted = serializers.BooleanField()
     project_submitted_at = serializers.DateTimeField(allow_null=True)

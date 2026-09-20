@@ -104,15 +104,15 @@ class AssignmentAnalyticsTests(TestCase):
                 self.score(assignment, count)
                 item = self.get()[0]
                 self.assertEqual(item["status"], expected)
-                self.assertEqual(item["criteria_total"], 3)
-                self.assertEqual(item["criteria_scored"], count)
+                self.assertNotIn("criteria_total", item)
+                self.assertNotIn("criteria_scored", item)
 
     def test_zero_criteria_is_pending_not_completed(self):
         Criteria.objects.filter(partner_program=self.program).delete()
-        self.assignment()
+        assignment = self.assignment()
         item = self.get()[0]
         self.assertEqual(item["status"], "pending")
-        self.assertEqual(item["criteria_total"], 0)
+        self.assertEqual(self.get(self.scores_url(assignment))["scores"], [])
 
     def test_unsubmitted_even_with_scores_is_not_ready(self):
         assignment = self.assignment(submitted=False)
@@ -133,7 +133,11 @@ class AssignmentAnalyticsTests(TestCase):
                 user=self.expert,
                 value="8",
             )
-        self.assertEqual(self.get()[0]["criteria_scored"], 1)
+        self.assertEqual(self.get()[0]["status"], "in_progress")
+        self.assertEqual(
+            [item["value"] for item in self.get(self.scores_url(assignment))["scores"]],
+            ["0", None, None],
+        )
 
     def test_unrelated_program_user_and_project_scores_are_ignored(self):
         assignment = self.assignment()
@@ -157,7 +161,6 @@ class AssignmentAnalyticsTests(TestCase):
         )
         self.score(assignment, 1)
         item = self.get()[0]
-        self.assertEqual(item["criteria_scored"], 1)
         self.assertEqual(item["status"], "in_progress")
         scores = self.get(self.scores_url(assignment))["scores"]
         self.assertEqual([item["value"] for item in scores], ["0", None, None])
@@ -438,8 +441,6 @@ class AssignmentAnalyticsTests(TestCase):
                 "expert",
                 "project",
                 "status",
-                "criteria_total",
-                "criteria_scored",
                 "assigned_at",
                 "project_submitted",
                 "project_submitted_at",
@@ -447,6 +448,9 @@ class AssignmentAnalyticsTests(TestCase):
                 "waiting_seconds",
             },
         )
+        self.assertEqual(set(build_assignments(self.program.pk)[0]), set(item))
+        detail = self.get(self.scores_url(assignment))
+        self.assertEqual(set(detail), set(item) | {"scores"})
         self.assertEqual(
             set(item["expert"]),
             {"expert_id", "user_id", "first_name", "last_name", "full_name", "avatar"},
@@ -474,14 +478,18 @@ class AssignmentAnalyticsTests(TestCase):
         self.assertEqual(expert["avatar"], self.expert.avatar)
         self.get(self.overview_url)
 
-    def test_score_detail_returns_all_criteria_with_progress_and_missing_values(self):
+    def test_score_detail_keeps_criteria_and_values_without_aggregate_counts(self):
         assignment = self.assignment()
         for count in (0, 1, 3):
             with self.subTest(count=count):
                 self.score(assignment, count)
                 detail = self.get(self.scores_url(assignment))
-                self.assertEqual(detail["criteria_scored"], count)
-                self.assertEqual(detail["criteria_total"], 3)
+                self.assertNotIn("criteria_scored", detail)
+                self.assertNotIn("criteria_total", detail)
+                self.assertEqual(
+                    detail["status"],
+                    {0: "pending", 1: "in_progress", 3: "completed"}[count],
+                )
                 scores = detail["scores"]
                 self.assertEqual(
                     [item["criterion_id"] for item in scores],
