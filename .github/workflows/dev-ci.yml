@@ -99,7 +99,12 @@ jobs:
                     if not path.exists():
                         continue
                     assert not path.is_symlink()
-                    value = json.loads(path.read_text())['image_id']
+                    receipt = path.read_text()
+                    # Первый незавершённый snapshot содержит пустой receipt; он не является точкой отката.
+                    if not receipt.strip() and (snapshot / 'INCOMPLETE').is_file() and not (snapshot / 'COMPLETE').exists():
+                        print(f'EMPTY_INCOMPLETE_RECEIPT={snapshot.name}/{name}', flush=True)
+                        continue
+                    value = json.loads(receipt)['image_id']
                     assert re.fullmatch(r'sha256:[0-9a-f]{64}', value)
                     print(f'ROLLBACK_IMAGE={value} RECEIPT={snapshot.name}/{name}', flush=True)
             PY
