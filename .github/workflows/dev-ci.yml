@@ -74,6 +74,36 @@ jobs:
             docker images --format '{{.Repository}}:{{.Tag}} {{.ID}} {{.Size}}'
             printf 'DOCKER_USAGE_DETAIL\n'
             docker system df -v
+            printf 'DANGLING_IMAGES_BEGIN\n'
+            for candidate in $(docker image ls --no-trunc -q --filter dangling=true | LC_ALL=C sort -u); do
+              docker image inspect -f '{"image_id":{{json .Id}},"repo_tags":{{json .RepoTags}},"repo_digests":{{json .RepoDigests}},"size":{{json .Size}},"created":{{json .Created}}}' "$candidate"
+            done
+            printf 'DANGLING_IMAGES_END\nALL_CONTAINER_IMAGE_REFERENCES_BEGIN\n'
+            for container in $(docker ps -aq --no-trunc); do
+              docker inspect -f '{"container_id":{{json .Id}},"name":{{json .Name}},"image_id":{{json .Image}},"status":{{json .State.Status}}}' "$container"
+            done
+            printf 'ALL_CONTAINER_IMAGE_REFERENCES_END\nROLLBACK_IMAGE_REFERENCES_BEGIN\n'
+            # Читаем только известные JSON-receipts образов, без пользовательских файлов и secrets.
+            python3 - <<'PY'
+            import json
+            import re
+            from pathlib import Path
+            root = Path('/root/procollab-dev-rollback')
+            assert root.is_dir() and not root.is_symlink()
+            for snapshot in sorted(root.iterdir()):
+                if not re.fullmatch(r'[0-9]{8}T[0-9]{6}Z-[0-9]+-[0-9]+', snapshot.name):
+                    continue
+                assert not snapshot.is_symlink()
+                for name in ('web.json', 'celerys.json'):
+                    path = snapshot / name
+                    if not path.exists():
+                        continue
+                    assert not path.is_symlink()
+                    value = json.loads(path.read_text())['image_id']
+                    assert re.fullmatch(r'sha256:[0-9a-f]{64}', value)
+                    print(f'ROLLBACK_IMAGE={value} RECEIPT={snapshot.name}/{name}', flush=True)
+            PY
+            printf 'ROLLBACK_IMAGE_REFERENCES_END\n'
             printf 'DIRECTORY_SIZES\n'
             for directory in /var/lib/docker /var/lib/containerd /var/log /var/cache/apt/archives /root/api /root/procollab-dev-rollback /home/front/app; do
               if test -d "$directory"; then du -xsh "$directory"; fi
