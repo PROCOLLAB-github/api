@@ -344,8 +344,6 @@ synthetic assignment generation.
   },
   "project": {"id": 42, "name": "Project"},
   "status": "in_progress",
-  "criteria_total": 5,
-  "criteria_scored": 2,
   "assigned_at": "2026-09-01T12:00:00Z",
   "project_submitted": true,
   "project_submitted_at": "2026-09-02T12:00:00Z",
@@ -360,6 +358,11 @@ by the assigned expert's **user ID** for this Project. `in_progress` means at
 least one but not all current criteria scored; otherwise a submitted assignment
 is `pending`, including zero criteria. Adding a criterion can make a previously
 completed assignment incomplete. No new lifecycle semantics are introduced.
+
+Счётчики `criteria_total` / `criteria_scored` не входят в публичный объект
+назначения ни в списке, ни в детализации `/scores/`. Внутренние SQL-аннотации
+сохранены: по ним по-прежнему определяются завершённость и статус назначения.
+Overview, delayed experts, ожидание/SLA и «Завершили: X из Y» не меняются.
 
 Only the six listed expert fields and project ID/name are exposed, without
 full User/Project serializers, email, phone, auth data or personal forms.
@@ -381,7 +384,7 @@ current-program criteria in criterion-PK order:
 A missing score is `value=null, is_scored=false`. An existing score retains
 its exact string/null value and has `is_scored=true`, including blank strings,
 whitespace and null. There is no numeric conversion, trimming or averaging.
-Scores of another expert, Project or program cannot affect progress or values.
+Оценки другого эксперта, проекта или программы не влияют на статус и значения.
 Unknown or foreign-program assignment IDs return 404, even for a manager of
 both programs. Lookup is scoped before resolving the assignment ID.
 

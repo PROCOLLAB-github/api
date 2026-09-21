@@ -90,7 +90,11 @@ def assignment_rows(program_id):
 
 
 def build_assignment(row, *, now):
-    """Shared completion and waiting semantics for overview and drilldowns."""
+    """Формирует публичное назначение с общими правилами статуса и ожидания.
+
+    Счётчики критериев остаются внутренними SQL-аннотациями: они нужны
+    для статуса, но не входят в контракт списка или детализации оценки.
+    """
     total, scored = row["criteria_total"], row["criteria_scored"]
     if not row["project_submitted"]:
         status = "not_ready"
@@ -104,7 +108,7 @@ def build_assignment(row, *, now):
     submitted_at = row["project_submitted_at"] if row["project_submitted"] else None
     waiting_since = None
     waiting_seconds = None
-    # Missing historical submission timestamps cannot establish an SLA start.
+    # Без исторической даты сдачи нельзя достоверно определить начало SLA.
     if status not in ("not_ready", "completed") and submitted_at is not None:
         waiting_since = max(submitted_at, row["datetime_created"])
         waiting_seconds = max(0, int((now - waiting_since).total_seconds()))
@@ -123,8 +127,6 @@ def build_assignment(row, *, now):
         },
         "project": {"id": row["project_id"], "name": row["project__name"]},
         "status": status,
-        "criteria_total": total,
-        "criteria_scored": scored,
         "assigned_at": row["datetime_created"],
         "project_submitted": row["project_submitted"],
         "project_submitted_at": submitted_at,
