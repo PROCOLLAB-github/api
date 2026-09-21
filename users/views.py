@@ -35,7 +35,7 @@ from core.permissions import IsOwnerOrReadOnly
 from core.throttling import PostOnlyScopedRateThrottle
 from events.models import Event
 from events.serializers import EventsListSerializer
-from partner_programs.models import PartnerProgram
+from partner_programs.models import PartnerProgram, PartnerProgramProject
 from partner_programs.serializers import (
     PartnerProgramListSerializer,
     UserProgramsSerializer,
@@ -417,7 +417,14 @@ class UserProjectsList(GenericAPIView):
                 Q(leader_id=self.request.user.id)
                 | Q(collaborator__user=self.request.user)
             )
-            .prefetch_related("program_links__partner_program")
+            .prefetch_related(
+                Prefetch(
+                    "program_links",
+                    queryset=PartnerProgramProject.objects.select_related(
+                        "partner_program"
+                    ).order_by("pk"),
+                )
+            )
             .distinct()
         )
 
@@ -439,7 +446,14 @@ class UserLeaderProjectsList(GenericAPIView):
     def get(self, request):
         queryset = (
             Project.objects.filter(leader_id=self.request.user.id)
-            .prefetch_related("program_links__partner_program")
+            .prefetch_related(
+                Prefetch(
+                    "program_links",
+                    queryset=PartnerProgramProject.objects.select_related(
+                        "partner_program"
+                    ).order_by("pk"),
+                )
+            )
             .distinct()
         )
 

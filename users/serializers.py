@@ -960,6 +960,8 @@ class ResendVerifyEmailSerializer(serializers.Serializer):
 
 
 class UserProjectListSerializer(serializers.ModelSerializer[Project]):
+    """Компактный список проектов пользователя с той же legacy-связью, что в detail."""
+
     views_count = serializers.SerializerMethodField(method_name="count_views")
     short_description = serializers.SerializerMethodField()
     partner_program = serializers.SerializerMethodField()
@@ -974,16 +976,29 @@ class UserProjectListSerializer(serializers.ModelSerializer[Project]):
 
     @staticmethod
     def get_partner_program(project):
+        """Возвращает состояние связи с минимальным PK без загрузки полей заявки.
+
+        Даже пустой prefetch — готовый результат: повторный SELECT на каждый
+        проект без программы создавал бы N+1. Минимальный PK сохраняет семантику
+        detail независимо от порядка переданного prefetch-кеша.
+        """
         links_cache = getattr(project, "_prefetched_objects_cache", {}).get(
             "program_links"
         )
-        link = links_cache[0] if links_cache else project.program_links.select_related(
-            "partner_program"
-        ).first()
+        link = (
+            min(links_cache, key=lambda item: item.pk, default=None)
+            if links_cache is not None
+            else project.program_links.select_related("partner_program")
+            .order_by("pk")
+            .first()
+        )
         if link and link.partner_program:
             return {
                 "id": link.partner_program_id,
                 "name": link.partner_program.name,
+                "program_link_id": link.pk,
+                "program_id": link.partner_program_id,
+                "is_submitted": link.submitted,
             }
         return None
 
