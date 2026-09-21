@@ -1,4 +1,4 @@
-"""SQL-free, explicit contracts for legacy assignment analytics."""
+"""Явные контракты legacy-назначений без SQL и внутренних счётчиков критериев."""
 
 from rest_framework import serializers
 
@@ -30,8 +30,6 @@ class ProjectAssignmentAnalyticsSerializer(serializers.Serializer):
     status = serializers.ChoiceField(
         choices=("not_ready", "pending", "in_progress", "completed")
     )
-    criteria_total = serializers.IntegerField(min_value=0)
-    criteria_scored = serializers.IntegerField(min_value=0)
     assigned_at = serializers.DateTimeField()
     project_submitted = serializers.BooleanField()
     project_submitted_at = serializers.DateTimeField(allow_null=True)

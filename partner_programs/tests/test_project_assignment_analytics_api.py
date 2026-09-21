@@ -147,8 +147,14 @@ class ProjectAssignmentCompletionTests(ProjectAssignmentAnalyticsFixture, TestCa
                 self.score(assignment, count)
                 item = self.get()[0]
                 self.assertEqual(item["status"], status)
-                self.assertEqual(item["criteria_total"], 5)
-                self.assertEqual(item["criteria_scored"], count)
+                self.assertNotIn("criteria_total", item)
+                self.assertNotIn("criteria_scored", item)
+                detail = self.get(self.scores_url(assignment.pk))
+                self.assertNotIn("criteria_total", detail)
+                self.assertNotIn("criteria_scored", detail)
+                self.assertEqual(detail["status"], status)
+                self.assertEqual(len(detail["scores"]), 5)
+                self.assertEqual(sum(row["is_scored"] for row in detail["scores"]), count)
                 metrics = self.get(self.overview_url)["evaluation_status"]["assignments"]
                 self.assertEqual(
                     metrics,
@@ -164,7 +170,8 @@ class ProjectAssignmentCompletionTests(ProjectAssignmentAnalyticsFixture, TestCa
         self.program.criterias.all().delete()
         self.assignment()
         item = self.get()[0]
-        self.assertEqual((item["criteria_total"], item["criteria_scored"]), (0, 0))
+        self.assertNotIn("criteria_total", item)
+        self.assertNotIn("criteria_scored", item)
         self.assertEqual(item["status"], "pending")
 
     def test_unsubmitted_even_with_all_scores_is_not_ready(self):
@@ -197,10 +204,9 @@ class ProjectAssignmentCompletionTests(ProjectAssignmentAnalyticsFixture, TestCa
             criteria=foreign_criterion,
             value="foreign",
         )
-        self.assertEqual(self.get()[0]["criteria_scored"], 0)
+        self.assertEqual(self.get()[0]["status"], "pending")
         self.score(assignment, 1)
         item = self.get()[0]
-        self.assertEqual(item["criteria_scored"], 1)
         self.assertEqual(item["status"], "in_progress")
         scores = self.get(self.scores_url(assignment.pk))["scores"]
         self.assertEqual(
@@ -359,7 +365,6 @@ class ProjectAssignmentScoresTests(ProjectAssignmentAnalyticsFixture, TestCase):
         row_b = self.get(url_b)[0]
         self.assertEqual(row_b["assignment_id"], assignment_b.pk)
         self.assertEqual(row_b["status"], "not_ready")
-        self.assertEqual(row_b["criteria_scored"], 0)
         self.assertIsNone(row_b["project_submitted_at"])
         timestamp_b = NOW - timedelta(hours=25)
         PartnerProgramProject.objects.filter(pk=link_b.pk).update(
@@ -724,8 +729,6 @@ class ProjectAssignmentContractTests(ProjectAssignmentAnalyticsFixture, TestCase
                 "expert",
                 "project",
                 "status",
-                "criteria_total",
-                "criteria_scored",
                 "assigned_at",
                 "project_submitted",
                 "project_submitted_at",
@@ -735,6 +738,7 @@ class ProjectAssignmentContractTests(ProjectAssignmentAnalyticsFixture, TestCase
         )
         self.assertEqual(set(payload["expert"]), SAFE_EXPERT_FIELDS)
         self.assertEqual(set(payload["project"]), {"id", "name"})
+        self.assertEqual(set(self.get()[0]), set(payload) - {"scores"})
         delayed = self.delayed()
         self.assertEqual(
             set(delayed["items"][0]),
@@ -759,6 +763,18 @@ class ProjectAssignmentContractTests(ProjectAssignmentAnalyticsFixture, TestCase
                 self.assertTrue(serializer.is_valid(), serializer.errors)
                 self.assertEqual(serializer.data, data)
         assignments = build_assignments(self.program.pk)
+        self.assertEqual(set(assignments[0]), set(payload) - {"scores"})
+        with self.assertNumQueries(0):
+            for serializer_class, data in (
+                (ProjectAssignmentAnalyticsSerializer, assignments[0]),
+                (ProjectAssignmentScoresSerializer, payload),
+            ):
+                # Даже внутренние аннотации на входе не должны утечь в публичный DTO.
+                public = serializer_class(
+                    {**data, "criteria_total": 5, "criteria_scored": 0}
+                ).data
+                self.assertNotIn("criteria_total", public)
+                self.assertNotIn("criteria_scored", public)
         with self.assertNumQueries(0):
             self.assertEqual(build_delayed_experts(assignments)["total"], 1)
 
@@ -767,8 +783,6 @@ class ProjectAssignmentContractTests(ProjectAssignmentAnalyticsFixture, TestCase
         item = self.get()[0]
         for field, value in (
             ("status", "evaluated"),
-            ("criteria_total", -1),
-            ("criteria_scored", -1),
             ("waiting_seconds", -1),
         ):
             with self.subTest(field=field), self.assertNumQueries(0):
