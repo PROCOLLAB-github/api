@@ -4,7 +4,7 @@ from typing import Annotated
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
-from django.db.models import Q, QuerySet
+from django.db.models import QuerySet
 from django.shortcuts import get_object_or_404
 from django_filters import rest_framework as filters
 from drf_yasg import openapi
@@ -261,13 +261,7 @@ class ProjectCountView(generics.GenericAPIView):
 
     def get(self, request):
         return Response(
-            {
-                "all": self.get_queryset().filter(draft=False, is_public=True).count(),
-                "my": self.get_queryset()
-                .filter(Q(leader_id=request.user.id) | Q(collaborator__user=request.user))
-                .distinct()
-                .count(),
-            },
+            Project.objects.get_user_activity_counts(request.user),
             status=status.HTTP_200_OK,
         )
 
