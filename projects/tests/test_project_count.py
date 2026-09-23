@@ -80,8 +80,24 @@ class ProjectCountViewTests(APITestCase):
 
         self.assertEqual(count["my"], 8)
         self.assertEqual(count["my_leader"], 8)
-        self.assertEqual(count["my_in_program"], 2)
+        self.assertEqual(count["my_in_program"], 6)
         self.assertEqual(count["my_submitted"], 3)
+        self.assertLessEqual(count["my_submitted"], count["my_in_program"])
+
+    def test_program_count_includes_submitted_and_draft_collaborator_projects(self):
+        program = create_partner_program(name="Collaborator lifecycle")
+        collaborator_project = create_project(draft=True)
+        create_collaborator(collaborator_project, user=self.user)
+        link_project_to_program(collaborator_project, program, submitted=True)
+
+        other_user_project = create_project(draft=False)
+        link_project_to_program(other_user_project, program, submitted=True)
+
+        count = self.get_count()
+
+        self.assertEqual(count["my"], 1)
+        self.assertEqual(count["my_in_program"], 1)
+        self.assertEqual(count["my_submitted"], 1)
 
     def test_ignores_other_users_projects_and_counts_more_than_dashboard_page(self):
         for index in range(17):

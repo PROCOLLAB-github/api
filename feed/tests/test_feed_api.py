@@ -25,10 +25,11 @@ class FeedAPITests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         item = response.data["results"][0]
-        self.assertEqual(set(item.keys()), {"type_model", "content"})
+        self.assertEqual(set(item.keys()), {"type_model", "content", "published_at"})
         self.assertEqual(item["type_model"], "news")
         self.assertEqual(item["content"]["id"], news.id)
         self.assertEqual(item["content"]["text"], "User feed news")
+        self.assertEqual(item["published_at"], item["content"]["datetime_created"])
 
     def test_feed_returns_project_news_as_news_content(self):
         project = create_project(name="Feed project")
@@ -38,7 +39,7 @@ class FeedAPITests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         item = response.data["results"][0]
-        self.assertEqual(set(item.keys()), {"type_model", "content"})
+        self.assertEqual(set(item.keys()), {"type_model", "content", "published_at"})
         self.assertEqual(item["type_model"], "news")
         self.assertEqual(item["content"]["id"], news.id)
         self.assertEqual(item["content"]["text"], "Project feed news")
@@ -61,7 +62,7 @@ class FeedAPITests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         item = response.data["results"][0]
-        self.assertEqual(set(item.keys()), {"type_model", "content"})
+        self.assertEqual(set(item.keys()), {"type_model", "content", "published_at"})
         self.assertEqual(item["type_model"], "project")
         self.assertEqual(item["content"]["id"], project.id)
 
@@ -72,10 +73,37 @@ class FeedAPITests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         item = response.data["results"][0]
-        self.assertEqual(set(item.keys()), {"type_model", "content"})
+        self.assertEqual(set(item.keys()), {"type_model", "content", "published_at"})
         self.assertEqual(item["type_model"], "vacancy")
         self.assertEqual(item["content"]["id"], vacancy.id)
         self.assertEqual(item["content"]["role"], "Backend developer")
+
+    def test_category_counts_are_global_and_respect_visibility(self):
+        project = create_project(name="Visible project")
+        create_news_for(project, text="Visible project news")
+        create_vacancy(project=project, role="Visible vacancy")
+        create_news_for(self.user, text="Visible user news")
+        create_news_for(
+            create_project(name="Private project", is_public=False),
+            text="Private project news",
+        )
+        create_news_for(create_partner_program(name="Program"), text="Program news")
+
+        response = self.client.get("/feed/?type=vacancy&limit=1")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(
+            response.data["counts"],
+            {
+                "all": 4,
+                "project": 2,
+                "vacancy": 1,
+                "news": 1,
+                "partnerprogram": 0,
+                "education": 0,
+            },
+        )
 
     def test_feed_combines_supported_filters_and_ignores_program_news(self):
         project_news = create_news_for(
@@ -91,9 +119,7 @@ class FeedAPITests(TestCase):
         vacancy = create_vacancy(role="Combined vacancy")
         create_news_for_model(project)
 
-        response = self.client.get(
-            "/feed/?type=project|vacancy|news|partnerprogram"
-        )
+        response = self.client.get("/feed/?type=project|vacancy|news|partnerprogram")
 
         self.assertEqual(response.status_code, 200)
         items_by_text = {

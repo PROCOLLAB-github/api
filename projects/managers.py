@@ -83,12 +83,7 @@ class ProjectManager(Manager):
                 my_leader=Count("pk", filter=Q(leader_id=user.id), distinct=True),
                 my_in_program=Count(
                     "pk",
-                    filter=(
-                        user_projects
-                        & Q(canonical_program_link_id__isnull=False)
-                        & Q(canonical_program_link_submitted=False)
-                        & Q(draft=False)
-                    ),
+                    filter=user_projects & Q(canonical_program_link_id__isnull=False),
                     distinct=True,
                 ),
                 my_submitted=Count(
