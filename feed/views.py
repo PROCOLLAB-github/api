@@ -1,4 +1,4 @@
-from django.db.models import Q, QuerySet
+from django.db.models import Count, Q, QuerySet
 from rest_framework.views import APIView
 
 from feed.pagination import FeedPagination
@@ -21,20 +21,11 @@ class NewSimpleFeed(APIView):
         news_types: list[str] = filter_queries.split("|")
         if "news" in news_types:
             news_types.append("customuser")
-        return [
-            news_type
-            for news_type in news_types
-            if news_type != "partnerprogram"
-        ]
+        return [news_type for news_type in news_types if news_type != "partnerprogram"]
 
-    def get_queryset(self) -> QuerySet[News]:
-        filters = self._get_filter_data()
-
-        queryset = (
-            News.objects.select_related("content_type")
-            .prefetch_related("content_object", "files")
-            .filter(content_type__model__in=filters)
-            .order_by("-datetime_created")
+    def get_visible_queryset(self) -> QuerySet[News]:
+        queryset = News.objects.select_related("content_type").prefetch_related(
+            "content_object", "files"
         )
 
         existing_object_filters = {
@@ -49,11 +40,31 @@ class NewSimpleFeed(APIView):
         }
         for model_name, ids_queryset in existing_object_filters.items():
             queryset = queryset.exclude(
-                Q(content_type__model=model_name)
-                & ~Q(object_id__in=ids_queryset)
+                Q(content_type__model=model_name) & ~Q(object_id__in=ids_queryset)
             )
 
         return queryset
+
+    def get_queryset(self) -> QuerySet[News]:
+        return (
+            self.get_visible_queryset()
+            .filter(content_type__model__in=self._get_filter_data())
+            .order_by("-datetime_created", "-pk")
+        )
+
+    def get_category_counts(self) -> dict[str, int]:
+        # Программы и образование пока не включены в ленту; не считаем скрытый контент.
+        counts = self.get_visible_queryset().aggregate(
+            project=Count("pk", filter=Q(content_type__model="project")),
+            vacancy=Count("pk", filter=Q(content_type__model="vacancy")),
+            news=Count("pk", filter=Q(content_type__model="customuser")),
+        )
+        return {
+            "all": sum(counts.values()),
+            **counts,
+            "partnerprogram": 0,
+            "education": 0,
+        }
 
     def get(self, *args, **kwargs):
         paginator = self.pagination_class()
@@ -66,4 +77,6 @@ class NewSimpleFeed(APIView):
             },
             many=True,
         )
-        return paginator.get_paginated_response(serializer.data)
+        response = paginator.get_paginated_response(serializer.data)
+        response.data["counts"] = self.get_category_counts()
+        return response

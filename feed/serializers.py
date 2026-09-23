@@ -83,4 +83,5 @@ class FeedItemResponseSerializer(serializers.Serializer):
         return {
             "type_model": type_model,
             "content": content,
+            "published_at": data["datetime_created"],
         }
