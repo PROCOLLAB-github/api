@@ -1,3 +1,5 @@
+import re
+
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
@@ -74,23 +76,57 @@ class UserFilter(filters.FilterSet):
     def filter_age__lte(cls, queryset, name, value):
         return filter_age(queryset, MIN_AGE_VALUE, value)
 
+    @staticmethod
+    def fullname_literal_pattern(value):
+        """Буквальный поиск с регистром Unicode, независимый от LC_CTYPE БД.
+
+        На существующих окружениях icontains не сворачивает регистр кириллицы.
+        Явные варианты букв обходятся без изменения collation/данных; каждый
+        символ экранируется, поэтому ввод пользователя не становится regex.
+        """
+        return "".join(
+            "(?:"
+            + "|".join(re.escape(v) for v in sorted({c, c.lower(), c.upper()}))
+            + ")"
+            for c in value
+        )
+
     @classmethod
     def filter_by_fullname(cls, queryset, name, value):
+        """Ищет фрагменты имени и фамилии совместно, также в обратном порядке.
+
+        split нормализует пробелы; пустая строка не фильтрует. Для составных
+        имён пробуем границу между двумя полями. Оба условия обязательны:
+        «Иван Иванов» не должен находить Петра Иванова по одной фамилии.
+        Вся фильтрация выполняется в SQL до пагинации.
+        """
         words = value.split()
-        first_word = words[0]
-        if len(words) >= 2:
-            # if there are more than 2 words, we assume that the first two are first_name and last_name
-            first_word, second_word = words[0], words[1]
-            # we search for both first_name and last_name in both orders
-            return queryset.filter(
-                Q(first_name__icontains=first_word)
-                | Q(last_name__icontains=second_word)
-                | Q(first_name__icontains=second_word)
-                | Q(last_name__icontains=first_word)
+        if not words:
+            return queryset
+        # Два поля ограничены моделью. Более длинная строка не может совпасть;
+        # не строим для неё большой набор SQL-условий на публичном endpoint.
+        name_limit = (
+            sum(
+                queryset.model._meta.get_field(field).max_length
+                for field in ("first_name", "last_name")
             )
-        return queryset.filter(
-            Q(first_name__icontains=first_word) | Q(last_name__icontains=first_word)
+            + 1
         )
+        if len(" ".join(words)) > name_limit:
+            return queryset.none()
+        if len(words) == 1:
+            pattern = cls.fullname_literal_pattern(words[0])
+            return queryset.filter(
+                Q(first_name__regex=pattern) | Q(last_name__regex=pattern)
+            )
+        predicate = Q()
+        for boundary in range(1, len(words)):
+            first = cls.fullname_literal_pattern(" ".join(words[:boundary]))
+            last = cls.fullname_literal_pattern(" ".join(words[boundary:]))
+            predicate |= (Q(first_name__regex=first) & Q(last_name__regex=last)) | (
+                Q(first_name__regex=last) & Q(last_name__regex=first)
+            )
+        return queryset.filter(predicate)
 
     about_me__contains = filters.Filter(field_name="about_me", lookup_expr="contains")
     speciality__icontains = filters.Filter(
