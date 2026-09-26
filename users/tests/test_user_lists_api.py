@@ -35,6 +35,114 @@ class PublicUserListAPITests(TestCase):
         returned_ids = {item["id"] for item in response.data["results"]}
         self.assertEqual(returned_ids, {matched_user.id})
 
+    def test_fullname_matches_case_spacing_and_both_parts(self):
+        """Регистр и пробелы не меняют выдачу; одно совпавшее слово недостаточно."""
+        wanted = build_user(
+            email="fullname1@example.test", first_name="Иван", last_name="Иванов"
+        )
+        build_user(email="fullname2@example.test", first_name="Иван", last_name="Петров")
+        build_user(email="fullname3@example.test", first_name="Пётр", last_name="Иванов")
+        for query in (
+            "Иван Иванов",
+            "иван иванов",
+            "ИВАН ИВАНОВ",
+            "иВаН иВаНоВ",
+            "  Иван   Иванов  ",
+            "Иванов Иван",
+            "ив иванов",
+        ):
+            with self.subTest(query=query):
+                response = self.client.get("/auth/public-users/", {"fullname": query})
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.data["count"], 1)
+                self.assertEqual([u["id"] for u in response.data["results"]], [wanted.id])
+
+    def test_all_query_parts_are_required(self):
+        """Несовпавшая часть запроса исключает одноимённых пользователей целиком."""
+        build_user(email="partial1@example.test", first_name="Иван", last_name="Иванов")
+        build_user(email="partial2@example.test", first_name="Иван", last_name="Петров")
+        for query in ("Иван НесуществующаяФамилия", "НесуществующаяФамилия Иван"):
+            with self.subTest(query=query):
+                response = self.client.get("/auth/public-users/", {"fullname": query})
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.data["count"], 0)
+
+    def test_regex_metacharacters_match_only_literal_name(self):
+        """Скобки и точки допустимы как текст, но не выполняются как regex."""
+        wanted = build_user(
+            email="literal@example.test", first_name="A[bc].*", last_name="Smith"
+        )
+        build_user(email="regex@example.test", first_name="Abbb", last_name="Smith")
+        response = self.client.get("/auth/public-users/", {"fullname": "a[bc].* SMITH"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([u["id"] for u in response.data["results"]], [wanted.id])
+
+    def test_compound_names_and_query_longer_than_model_fields(self):
+        """Составные имена сохраняются; заведомо слишком длинный ввод безопасно пуст."""
+        wanted = build_user(
+            email="compound@example.test", first_name="Анна Мария", last_name="Ван Дейк"
+        )
+        for query in ("анна мария ван дейк", "ВАН ДЕЙК АННА МАРИЯ"):
+            response = self.client.get("/auth/public-users/", {"fullname": query})
+            self.assertEqual([u["id"] for u in response.data["results"]], [wanted.id])
+        response = self.client.get("/auth/public-users/", {"fullname": "Я " * 600})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["count"], 0)
+
+    def test_single_name_surname_and_literal_characters(self):
+        """Одиночный фрагмент ищется в обоих полях, regex-символы буквальны."""
+        wanted = build_user(
+            email="fullname4@example.test", first_name="Алёна", last_name="Иванова"
+        )
+        build_user(email="fullname5@example.test", first_name="Пётр", last_name="Сидоров")
+        for query in ("алёна", "АЛЁНА", "лЁн", "иванова", "иВаНоВа", "ванов"):
+            with self.subTest(query=query):
+                response = self.client.get("/auth/public-users/", {"fullname": query})
+                self.assertEqual([u["id"] for u in response.data["results"]], [wanted.id])
+        for query in (".*", "[", "Иванова Несуществующая", "(а+)+$"):
+            with self.subTest(query=query):
+                response = self.client.get("/auth/public-users/", {"fullname": query})
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.data["count"], 0)
+
+    def test_case_search_is_independent_of_postgres_c_collation(self):
+        """C collation не должна превращать кириллицу в регистрозависимый поиск."""
+        from django.db.models.functions import Collate
+        from users.filters import UserFilter
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+
+        wanted = build_user(
+            email="fullname6@example.test", first_name="Иван", last_name="Иванов"
+        )
+        found = User.objects.alias(c_name=Collate("first_name", "C")).filter(
+            c_name__regex=UserFilter.fullname_literal_pattern("иВаН")
+        )
+        self.assertEqual(list(found.values_list("pk", flat=True)), [wanted.pk])
+
+    def test_empty_fullname_and_other_filters_are_preserved(self):
+        """Пустой поиск не меняет остальные фильтры и права публичной выдачи."""
+        wanted = build_user(
+            email="fullname7@example.test",
+            first_name="John",
+            last_name="Smith",
+            user_type=1,
+        )
+        build_user(
+            email="fullname8@example.test",
+            first_name="John",
+            last_name="Smith",
+            user_type=2,
+        )
+        for query in (" ", "", "JOHN SMITH", "john", "sMiTh"):
+            with self.subTest(query=query):
+                response = self.client.get(
+                    "/auth/public-users/", {"fullname": query, "user_type": 1}
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual([u["id"] for u in response.data["results"]], [wanted.id])
+
     def test_public_users_can_be_filtered_by_skill(self):
         matched_user = build_user(email="skilled@example.com")
         other_user = build_user(email="unskilled@example.com")
