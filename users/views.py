@@ -53,6 +53,7 @@ from users.serializers import (
     AchievementDetailSerializer,
     AchievementListSerializer,
     PublicUserSerializer,
+    MemberStatisticsSerializer,
     ResendVerifyEmailSerializer,
     SpecializationSerializer,
     SpecializationsSerializer,
@@ -71,6 +72,7 @@ from .helpers import check_chache_for_cv
 from .pagination import UsersPagination
 from .schema import SKILL_PK_PARAM, USER_PK_PARAM
 from .services.cv_data_prepare import UserCVDataPreparerV2
+from .services.member_statistics import get_member_statistics
 from .tasks import send_mail_cv
 
 User = get_user_model()
@@ -658,6 +660,21 @@ class UserCVMailing(APIView):
         cache.set(cache_key, timezone.now(), timeout=cooldown_time)
 
         return Response(data={"detail": "success"}, status=status.HTTP_200_OK)
+
+
+class PublicMemberStatisticsView(APIView):
+    """Глобальные метрики каталога с тем же публичным доступом, что у списка.
+
+    Параметры поиска, фильтров и пагинации намеренно не читаются. GET выполняет
+    только агрегирующий SELECT и не использует сериализацию пользователей.
+    """
+
+    permission_classes = [AllowAny]
+
+    @swagger_auto_schema(responses={200: MemberStatisticsSerializer})
+    def get(self, request):
+        """Возвращает четыре числа независимо от текущей выдачи участников."""
+        return Response(MemberStatisticsSerializer(get_member_statistics()).data)
 
 
 class PublicUserListView(ListAPIView):

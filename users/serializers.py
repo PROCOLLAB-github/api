@@ -38,6 +38,15 @@ from users.utils import normalize_user_phone
 from users.validators import specialization_exists_validator
 
 
+class MemberStatisticsSerializer(serializers.Serializer):
+    """Публичная статистика содержит только четыре агрегата, без данных людей."""
+
+    total = serializers.IntegerField(min_value=0, read_only=True)
+    in_projects = serializers.IntegerField(min_value=0, read_only=True)
+    in_programs = serializers.IntegerField(min_value=0, read_only=True)
+    new_last_30_days = serializers.IntegerField(min_value=0, read_only=True)
+
+
 class UserFileReadSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserFile
