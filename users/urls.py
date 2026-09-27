@@ -9,6 +9,7 @@ from users.views import (
     AcknowledgeVerificationNotice,
     CurrentUser,
     PublicUserListView,
+    PublicMemberStatisticsView,
     SpecialistsList,
     UserAdditionalRolesView,
     UserDetail,
@@ -42,6 +43,11 @@ urlpatterns = [
     ),  # this url actually returns  mentors, experts and investors
     path("users/", UserList.as_view()),
     path("public-users/", PublicUserListView.as_view(), name="public-users"),
+    path(
+        "public-users/stats/",
+        PublicMemberStatisticsView.as_view(),
+        name="public-member-statistics",
+    ),
     path("users/projects/", UserProjectsList.as_view()),
     path("users/projects/leader/", UserLeaderProjectsList.as_view()),
     path("users/liked/", LikedProjectList.as_view()),
