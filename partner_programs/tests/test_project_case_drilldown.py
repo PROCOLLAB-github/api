@@ -1,4 +1,4 @@
-"""Contract, security, XLSX and query-budget tests for opt-in case analytics."""
+"""Контракт, права, XLSX и число запросов нового режима аналитики кейсов."""
 
 import io
 from urllib.parse import parse_qs, unquote, urlsplit
@@ -19,7 +19,6 @@ from partner_programs.models import (
 from partner_programs.serializers.project_case_drilldown import ProjectCaseRowSerializer
 from partner_programs.services.exports import (
     BASE_COLUMNS,
-    CASE_PROJECT_COLUMNS,
     build_program_projects_export_file,
 )
 from partner_programs.services.case_analytics import build_case_analytics
@@ -72,7 +71,7 @@ class ProjectCaseDrilldownTests(TestCase):
             submitted=submitted,
         )
         if value is not None:
-            # Historical invalid values must remain readable, without relaxing writes.
+            # Исторические невалидные значения читаются без ослабления правил записи.
             PartnerProgramFieldValue.objects.bulk_create(
                 [
                     PartnerProgramFieldValue(
@@ -98,7 +97,21 @@ class ProjectCaseDrilldownTests(TestCase):
         self.assertEqual(book.sheetnames, ["Проекты"])
         self.addCleanup(book.close)
         rows = list(book.active.iter_rows(values_only=True))
-        self.assertEqual(list(rows[0]), CASE_PROJECT_COLUMNS)
+        self.assertEqual(
+            list(rows[0]),
+            [
+                "№",
+                "Название проекта",
+                "Кейс",
+                "Ссылка на презентацию",
+                "Лидер",
+                "Регион",
+                "Размер команды",
+                "Сдача решения",
+                "Дата привязки к программе",
+                "Дата сдачи решения",
+            ],
+        )
         return book, rows[1:], response
 
     def test_selected_projection_and_full_bucket_metrics(self):
@@ -164,8 +177,8 @@ class ProjectCaseDrilldownTests(TestCase):
                 "full_name": "Program User",
             },
         )
-        # Project creation also inserts the leader as a collaborator. Preserve
-        # the existing export formula (1 + rows), including that stored row.
+        # Создание Project также добавляет лидера в Collaborator. Сохраняем
+        # формулу существующего экспорта (1 + строки), включая эту запись.
         self.assertEqual(row["team_size"], 4)
         self.assertTrue(row["submitted"])
         self.assertEqual(parse_datetime(row["submitted_at"]), link.datetime_submitted)
@@ -283,7 +296,7 @@ class ProjectCaseDrilldownTests(TestCase):
         self.assertEqual(rows_a[0][7], "Сдано")
         self.assertEqual(rows_b[0][7], "Не сдано")
         self.assertIsNone(rows_b[0][9])
-        # Even historically corrupt values from a different program are ignored.
+        # Даже исторически некорректные значения другой программы игнорируются.
         self.link("A", field=other_field)
         self.assertEqual(self.page("without_case")["count"], 1)
 

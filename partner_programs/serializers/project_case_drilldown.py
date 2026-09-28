@@ -1,4 +1,4 @@
-"""Opt-in manager contracts; the public/legacy project serializer stays unchanged."""
+"""Opt-in контракт менеджера, отдельный от прежнего сериализатора проектов."""
 
 from rest_framework import serializers
 
@@ -29,8 +29,8 @@ class ProjectCaseQuerySerializer(serializers.Serializer):
                     errors[key] = "Укажите параметр только один раз."
         if errors:
             raise serializers.ValidationError(errors)
-        # QueryDict is treated as an HTML form by DRF: a supplied empty integer
-        # otherwise becomes a missing field and silently takes its default.
+        # DRF считает QueryDict HTML-формой: пустой integer иначе становится
+        # отсутствующим полем и незаметно получает default.
         return super().to_internal_value({key: data[key] for key in data})
 
     def validate(self, attrs):

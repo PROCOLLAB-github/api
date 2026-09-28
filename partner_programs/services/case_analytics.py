@@ -1,4 +1,4 @@
-"""Read-only case analytics for legacy Project links in one program."""
+"""Read-only аналитика кейсов по связям Project × Program."""
 
 from django.db.models import Case, Count, F, OuterRef, Subquery, TextField, Value, When
 
@@ -23,10 +23,10 @@ _UNSET = object()
 
 
 def project_case_links(program, *, field):
-    """Classify every Project × Program link against exact current options.
+    """Классифицирует связи по точному совпадению с текущими options.
 
-    NULL is the typed without_case bucket, including missing/blank/obsolete
-    values. Overview, list and export all use this expression without writes.
+    NULL обозначает without_case, включая отсутствующие/пустые/устаревшие
+    значения. Overview, список и экспорт используют одно выражение без writes.
     """
     options = field.get_options_list() if field else []
     case_value = (
@@ -53,11 +53,11 @@ def project_case_links(program, *, field):
 
 
 def build_case_analytics(program, *, field=_UNSET) -> dict:
-    """Group current-program links by exact current system case options.
+    """Группирует связи выбранной программы по текущим options системного case.
 
-    Four bounded SELECTs load the case definition, grouped link counts,
-    registered leaders and registered collaborators. Every link belongs to one
-    project bucket; participants are unique inside each bucket.
+    Четыре ограниченных SELECT загружают definition, счётчики связей,
+    зарегистрированных лидеров и участников. Связь входит в один bucket,
+    участники уникальны внутри каждого bucket.
     """
     if field is _UNSET:
         field = get_program_case_field(program)

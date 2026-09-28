@@ -1,4 +1,4 @@
-"""Read-only, program-scoped projection shared by the case list and XLSX."""
+"""Read-only проекция связей выбранной программы для списка кейса и XLSX."""
 
 from django.db.models import Count, IntegerField, OuterRef, Subquery, Value
 from django.db.models.functions import Coalesce
@@ -40,8 +40,8 @@ def case_project_rows(program, *, field, selection):
             "project__leader__last_name",
         )
         .annotate(
-            # Keep the legacy export definition: leader + collaborator rows,
-            # not unique registered participants from the bucket metrics.
+            # Сохраняем legacy export: лидер + строки Collaborator.
+            # Это не число уникальных зарегистрированных участников bucket.
             team_size=Coalesce(
                 Subquery(collaborators, output_field=IntegerField()), Value(0)
             )

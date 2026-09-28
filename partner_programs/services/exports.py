@@ -361,14 +361,14 @@ def _literal_excel_cell(worksheet, value):
     value = sanitize_excel_value(value)
     cell = WriteOnlyCell(worksheet, value=value)
     if isinstance(value, str):
-        # openpyxl infers formulas/error cells from leading '=' / '#N/A'.
-        # Keep exact sanitized user text without adding an apostrophe or a formula.
+        # openpyxl выводит тип formula/error по '=' / '#N/A'.
+        # Явный string сохраняет исходный текст без апострофа или формулы.
         cell.data_type = "s"
     return cell
 
 
 def build_case_projects_export_file(*, program, field, selection) -> ProgramExportFile:
-    """Export the full bucket; pagination/search never enter this contract."""
+    """Выгружает весь bucket; pagination/search в этот контракт не входят."""
     workbook = Workbook(write_only=True)
     worksheet = workbook.create_sheet(title="Проекты")
     worksheet.append(CASE_PROJECT_COLUMNS)
