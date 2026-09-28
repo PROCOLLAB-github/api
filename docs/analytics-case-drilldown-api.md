@@ -120,4 +120,3 @@ Angular проверяет DTO/scope и не подменяет case export ст
 Feature не записывает данные; rollback схемы не требуется. При откате backend после Angular
 сначала откатить Angular либо принять временную недоступность case drilldown.
 Release/deploy и проверку живой production-среды выполняет пользователь.
-
