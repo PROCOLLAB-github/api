@@ -193,7 +193,9 @@ class CustomUserAdmin(admin.ModelAdmin):
 
     def formfield_for_manytomany(self, db_field, request, **kwargs):
         if db_field.name == "user_permissions":
-            kwargs["queryset"] = Permission.objects.select_related("content_type").order_by(
+            kwargs["queryset"] = Permission.objects.select_related(
+                "content_type"
+            ).order_by(
                 "content_type__app_label",
                 "content_type__model",
                 "codename",
@@ -429,6 +431,9 @@ class UserLinkAdmin(admin.ModelAdmin):
 @admin.register(Expert)
 class ExpertAdmin(admin.ModelAdmin):
     list_display = ("id", "user")
+    search_fields = ("user__first_name", "user__last_name", "user__email")
+    list_filter = ("user__partner_program_profiles__partner_program",)
+    list_select_related = ("user",)
 
 
 @admin.register(UserEducation)
