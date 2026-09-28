@@ -1,6 +1,6 @@
-"""Read-only case analytics on existing Project × Program relations."""
+"""Read-only аналитика кейсов по связям Project × Program."""
 
-from django.db.models import Count, OuterRef, Subquery, TextField, Value
+from django.db.models import Case, Count, F, OuterRef, Subquery, TextField, Value, When
 
 from partner_programs.models import (
     PartnerProgramFieldValue,
@@ -19,25 +19,17 @@ def _empty_metrics():
     }
 
 
-def build_case_analytics(program) -> dict:
-    """Count program links by exact current options of the system field name='case'.
+_UNSET = object()
 
-    Missing/empty/obsolete choices share without_case; every link is counted once,
-    using only its submitted flag, including in noncompetitive programs. Options
-    retain configuration order and zero rows. Team participants are leaders or
-    collaborators registered in THIS program, unique within each bucket. A user
-    may appear in several cases, so participant totals are not globally additive.
-    Four SQL queries (definition, link counts, leader pairs, collaborator pairs),
-    independent of option count; serializers perform no queries.
+
+def project_case_links(program, *, field):
+    """Классифицирует связи по точному совпадению с текущими options.
+
+    NULL обозначает without_case, включая отсутствующие/пустые/устаревшие
+    значения. Overview, список и экспорт используют одно выражение без writes.
     """
-    field = get_program_case_field(program)
     options = field.get_options_list() if field else []
-    buckets = {name: _empty_metrics() for name in options}
-    without_case = _empty_metrics()
-    participant_ids = {name: set() for name in buckets}
-    participant_ids[None] = set()
-
-    choice = (
+    case_value = (
         Subquery(
             PartnerProgramFieldValue.objects.filter(
                 program_project_id=OuterRef("pk"), field_id=field.pk
@@ -46,28 +38,52 @@ def build_case_analytics(program) -> dict:
         if field
         else Value(None, output_field=TextField())
     )
-    links = (
+    return (
         PartnerProgramProject.objects.filter(partner_program_id=program.pk)
         .order_by()
-        .annotate(case_value=choice)
+        .annotate(case_value=case_value)
+        .annotate(
+            case_name=Case(
+                When(case_value__in=options, then=F("case_value")),
+                default=Value(None),
+                output_field=TextField(),
+            )
+        )
     )
-    for row in links.values("case_value", "submitted").annotate(total=Count("pk")):
-        metrics = buckets.get(row["case_value"], without_case)
+
+
+def build_case_analytics(program, *, field=_UNSET) -> dict:
+    """Группирует связи выбранной программы по текущим options системного case.
+
+    Четыре ограниченных SELECT загружают definition, счётчики связей,
+    зарегистрированных лидеров и участников. Связь входит в один bucket,
+    участники уникальны внутри каждого bucket.
+    """
+    if field is _UNSET:
+        field = get_program_case_field(program)
+    options = field.get_options_list() if field else []
+    buckets = {name: _empty_metrics() for name in options}
+    without_case = _empty_metrics()
+    participant_ids = {name: set() for name in buckets}
+    participant_ids[None] = set()
+
+    links = project_case_links(program, field=field)
+    for row in links.values("case_name", "submitted").annotate(total=Count("pk")):
+        metrics = buckets.get(row["case_name"], without_case)
         metrics["projects_total"] += row["total"]
         metrics["submitted" if row["submitted"] else "not_submitted"] += row["total"]
 
     registered_users = PartnerProgramUserProfile.objects.filter(
         partner_program_id=program.pk, user_id__isnull=False
     ).values("user_id")
-    # IN subqueries do not multiply memberships if legacy profiles are duplicated.
     for user_path in ("project__leader_id", "project__collaborator__user_id"):
         pairs = (
             links.filter(**{f"{user_path}__in": registered_users})
-            .values_list("case_value", user_path)
+            .values_list("case_name", user_path)
             .distinct()
         )
-        for case_value, user_id in pairs:
-            bucket = case_value if case_value in buckets else None
+        for value, user_id in pairs:
+            bucket = value if value in buckets else None
             participant_ids[bucket].add(user_id)
 
     for name, metrics in buckets.items():
