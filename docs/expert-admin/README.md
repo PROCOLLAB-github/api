@@ -23,6 +23,17 @@ list_select_related = ("user",)
 сравнение ФИО: запрос «Иван Иванов» также может найти «Пётр Иванов», поскольку оба
 слова входят в фамилию. Такое стандартное поведение явно покрыто тестом.
 
+Регистронезависимость зависит от базы данных, а не от дополнительной логики Admin:
+
+- **PostgreSQL:** поиск кириллицы без учёта регистра проверяется отдельным тестом
+  `test_search_cyrillic_is_case_insensitive_on_postgresql` в Backend PostgreSQL CI.
+- **SQLite CI:** portable-проверка использует ASCII email — `anna@example.com` /
+  `ANNA@EXAMPLE.COM`. SQLite LIKE не обеспечивает полноценную регистронезависимость
+  Unicode/кириллицы; кириллический тест явно пропускается при
+  `connection.vendor != "postgresql"`.
+
+Production `ExpertAdmin`, `search_fields` и workflows этой доработкой не меняются.
+
 **Filter:** `RelatedFieldListFilter` по legacy пути
 `Expert.user → CustomUser.partner_program_profiles → PartnerProgramUserProfile.partner_program`.
 Choices формируются из существующих PartnerProgram через их `__str__`, включая
@@ -48,7 +59,7 @@ program filter работают одновременно; `All` снимает �
 Модели, schema, migrations, staff/superuser permissions и бизнес-правила не менялись.
 Angular, React, Application/Team/Submission/current_application не затронуты.
 
-## Проверки
+## Первоначальные проверки (head `381afde`)
 
 Локальная среда: Python 3.11.15, Django 4.2.11, PostgreSQL 18.1 (UTF-8, ICU ru-RU),
 Black 22.12.0. Отдельный временный кластер PostgreSQL на loopback, отдельные базы
@@ -72,6 +83,24 @@ Black 22.12.0. Отдельный временный кластер PostgreSQL �
 пустую выдачу, All, программы, отсутствие регистрации, двойную регистрацию,
 search+filter, отсутствующий/невалидный ID, запросы user column, запрет доступа
 для non-staff и staff без Expert permissions.
+
+## Проверки после разделения SQLite / PostgreSQL
+
+В наборе 19 admin-тестов:
+
+| БД | Targeted `users.tests.test_expert_admin` | Case-insensitive |
+| --- | --- | --- |
+| PostgreSQL | 19 выполнены, 0 skipped, exit 0 | ASCII email и кириллица |
+| SQLite | 18 выполнены, 1 skipped, exit 0 | ASCII email; кириллица явно skipped |
+
+Обычный SQLite suite запускается с `DJANGO_SETTINGS_MODULE=procollab.settings`,
+`DEBUG=True`: `python manage.py test --noinput --verbosity 2`, как в обычном CI.
+Полный PostgreSQL suite: `DJANGO_SETTINGS_MODULE=procollab.settings_ci`,
+`python manage.py test --noinput --verbosity 1 --keepdb`, как в Backend PostgreSQL CI.
+Проверки используют разные локальные рабочие копии/БД, без изменения workflows
+или настроек приложения. Django check, Black, Flake8 и diff-check проходят.
+Итоги полных прогонов и обоих GitHub CI на актуальном exact head зафиксированы
+в [PR #758](https://github.com/PROCOLLAB-github/api/pull/758).
 
 ## Browser QA
 

@@ -1,4 +1,5 @@
 from django.contrib.admin.filters import RelatedFieldListFilter
+from django.db import connection
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import translation
@@ -106,7 +107,16 @@ class ExpertAdminTests(TestCase):
         self.assert_experts(self.changelist({"q": "Анна Смирнова"}), [self.anna])
         self.assert_experts(self.changelist({"q": "Анна Иванов"}), [])
 
-    def test_search_is_case_insensitive(self):
+    def test_search_ascii_email_is_case_insensitive(self):
+        self.assert_experts(self.changelist({"q": "ANNA@EXAMPLE.COM"}), [self.anna])
+
+    def test_search_cyrillic_is_case_insensitive_on_postgresql(self):
+        # SQLite LIKE не обеспечивает полноценную регистронезависимость Unicode/кириллицы.
+        # Поведение production PostgreSQL проверяется в Backend PostgreSQL CI.
+        if connection.vendor != "postgresql":
+            self.skipTest(
+                "Регистронезависимость кириллицы проверяется только на PostgreSQL"
+            )
         self.assert_experts(self.changelist({"q": "АННА СМИРНОВА"}), [self.anna])
 
     def test_unknown_search_is_empty(self):
