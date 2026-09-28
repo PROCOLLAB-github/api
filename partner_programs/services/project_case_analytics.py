@@ -1,6 +1,6 @@
 """Read-only case analytics for legacy Project links in one program."""
 
-from django.db.models import Count, OuterRef, Subquery, TextField, Value
+from django.db.models import Case, Count, F, OuterRef, Subquery, TextField, Value, When
 
 from partner_programs.models import (
     PartnerProgramFieldValue,
@@ -19,20 +19,16 @@ def _empty_metrics():
     }
 
 
-def build_project_case_analytics(program) -> dict:
-    """Group current-program links by exact current system case options.
+_UNSET = object()
 
-    Four bounded SELECTs load the case definition, grouped link counts,
-    registered leaders and registered collaborators. Every link belongs to one
-    project bucket; participants are unique inside each bucket.
+
+def project_case_links(program, *, field):
+    """Классифицируем связь Project × Program по точным текущим options.
+
+    NULL обозначает without_case, включая отсутствующие, пустые и устаревшие
+    значения. Сводка, список и экспорт используют одно выражение без записи в БД.
     """
-    field = get_program_case_field(program)
     options = field.get_options_list() if field else []
-    buckets = {name: _empty_metrics() for name in options}
-    without_case = _empty_metrics()
-    participant_ids = {name: set() for name in buckets}
-    participant_ids[None] = set()
-
     case_value = (
         Subquery(
             PartnerProgramFieldValue.objects.filter(
@@ -42,13 +38,38 @@ def build_project_case_analytics(program) -> dict:
         if field
         else Value(None, output_field=TextField())
     )
-    links = (
+    return (
         PartnerProgramProject.objects.filter(partner_program_id=program.pk)
         .order_by()
         .annotate(case_value=case_value)
+        .annotate(
+            case_name=Case(
+                When(case_value__in=options, then=F("case_value")),
+                default=Value(None),
+                output_field=TextField(),
+            )
+        )
     )
-    for row in links.values("case_value", "submitted").annotate(total=Count("pk")):
-        metrics = buckets.get(row["case_value"], without_case)
+
+
+def build_project_case_analytics(program, *, field=_UNSET) -> dict:
+    """Group current-program links by exact current system case options.
+
+    Four bounded SELECTs load the case definition, grouped link counts,
+    registered leaders and registered collaborators. Every link belongs to one
+    project bucket; participants are unique inside each bucket.
+    """
+    if field is _UNSET:
+        field = get_program_case_field(program)
+    options = field.get_options_list() if field else []
+    buckets = {name: _empty_metrics() for name in options}
+    without_case = _empty_metrics()
+    participant_ids = {name: set() for name in buckets}
+    participant_ids[None] = set()
+
+    links = project_case_links(program, field=field)
+    for row in links.values("case_name", "submitted").annotate(total=Count("pk")):
+        metrics = buckets.get(row["case_name"], without_case)
         metrics["projects_total"] += row["total"]
         metrics["submitted" if row["submitted"] else "not_submitted"] += row["total"]
 
@@ -58,7 +79,7 @@ def build_project_case_analytics(program) -> dict:
     for user_path in ("project__leader_id", "project__collaborator__user_id"):
         pairs = (
             links.filter(**{f"{user_path}__in": registered_users})
-            .values_list("case_value", user_path)
+            .values_list("case_name", user_path)
             .distinct()
         )
         for value, user_id in pairs:

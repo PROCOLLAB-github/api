@@ -18,7 +18,10 @@ from partner_programs.models import (
     PartnerProgramProject,
     PartnerProgramUserProfile,
 )
-from partner_programs.pagination import PartnerProgramPagination
+from partner_programs.pagination import (
+    PartnerProgramPagination,
+    ProjectAnalyticsAttentionPagination,
+)
 from partner_programs.permissions import (
     IsAdminOrManagerOfProgram,
     IsAdminOrManagerOrExpertOfProgram,
@@ -55,6 +58,19 @@ from partner_programs.services.project_fields import (
     resolve_legacy_program_link,
     submit_program_project,
     update_program_link_fields,
+)
+from partner_programs.serializers.project_case_drilldown import (
+    ProjectCaseListQuerySerializer,
+    ProjectCaseQuerySerializer,
+    ProjectCaseRowSerializer,
+    case_analytics_requested,
+)
+from partner_programs.services.case_fields import get_program_case_field
+from partner_programs.services.exports import build_case_projects_export_file
+from partner_programs.services.project_case_analytics import build_project_case_analytics
+from partner_programs.services.project_case_drilldown import (
+    case_list_metadata,
+    case_project_rows,
 )
 from projects.models import Project
 from projects.serializers import ProjectListSerializer
@@ -407,6 +423,30 @@ class PartnerProgramProjectsAPIView(generics.ListAPIView):
     permission_classes = [IsAuthenticated, IsAdminOrManagerOfProgram]
     pagination_class = PartnerProgramPagination
 
+    def list(self, request, *args, **kwargs):
+        if not case_analytics_requested(request.query_params):
+            return super().list(request, *args, **kwargs)
+
+        program = get_object_or_404(PartnerProgram, pk=self.kwargs["pk"])
+        field = get_program_case_field(program)
+        query = ProjectCaseListQuerySerializer(
+            data=request.query_params,
+            context={"case_options": field.get_options_list() if field else []},
+        )
+        query.is_valid(raise_exception=True)
+        selection = query.validated_data
+        rows = case_project_rows(program, field=field, selection=selection)
+        if selection["search"]:
+            rows = rows.filter(project__name__icontains=selection["search"])
+        paginator = ProjectAnalyticsAttentionPagination(selection)
+        page = paginator.paginate_queryset(rows, request, view=self)
+        response = paginator.get_paginated_response(
+            ProjectCaseRowSerializer(page, many=True).data
+        )
+        cases = build_project_case_analytics(program, field=field)
+        response.data.update(case_list_metadata(cases, selection))
+        return response
+
     def get_queryset(self):
         if "pk" not in self.kwargs:
             return Project.objects.none()
@@ -473,6 +513,20 @@ class PartnerProgramExportProjectsAPIView(APIView):
         if not self._has_access(request.user, program):
             return Response(
                 {"detail": "Недостаточно прав."}, status=status.HTTP_403_FORBIDDEN
+            )
+
+        if case_analytics_requested(request.query_params):
+            field = get_program_case_field(program)
+            query = ProjectCaseQuerySerializer(
+                data=request.query_params,
+                context={"case_options": field.get_options_list() if field else []},
+            )
+            query.is_valid(raise_exception=True)
+            export_file = build_case_projects_export_file(
+                program=program, field=field, selection=query.validated_data
+            )
+            return build_xlsx_download_response(
+                export_file.binary_data, base_name=export_file.base_name
             )
 
         only_submitted = request.query_params.get("only_submitted") in (

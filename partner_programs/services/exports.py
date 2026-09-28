@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from django.db.models import Prefetch
 from django.utils import timezone
 from openpyxl import Workbook
+from openpyxl.cell import WriteOnlyCell
 
 from core.utils import XlsxFileToExport, sanitize_excel_value
 from partner_programs.models import (
@@ -15,6 +16,8 @@ from partner_programs.models import (
     PartnerProgramProject,
     PartnerProgramUserProfile,
 )
+from partner_programs.serializers.project_analytics_attention import participant_name
+from partner_programs.services.project_case_drilldown import case_project_rows
 from project_rates.models import Criteria, ProjectScore
 from projects.models import Collaborator
 
@@ -337,6 +340,73 @@ def build_program_project_scores_export_file(
     return ProgramExportFile(
         binary_data=binary_data_to_export,
         base_name=base_name,
+    )
+
+
+CASE_PROJECT_COLUMNS = [
+    "№",
+    "Название проекта",
+    "Кейс",
+    "Ссылка на презентацию",
+    "Лидер",
+    "Регион",
+    "Размер команды",
+    "Сдача решения",
+    "Дата привязки к программе",
+    "Дата сдачи решения",
+]
+
+
+def _literal_excel_cell(worksheet, value):
+    value = sanitize_excel_value(value)
+    cell = WriteOnlyCell(worksheet, value=value)
+    if isinstance(value, str):
+        # openpyxl распознаёт '=' / '#N/A' как формулу/ошибку.
+        # Сохраняем очищенный текст буквально, без апострофа и вычислений.
+        cell.data_type = "s"
+    return cell
+
+
+def build_case_projects_export_file(*, program, field, selection) -> ProgramExportFile:
+    """Выгружаем весь bucket; поиск и пагинация не входят в этот контракт."""
+    workbook = Workbook(write_only=True)
+    worksheet = workbook.create_sheet(title="Проекты")
+    worksheet.append(CASE_PROJECT_COLUMNS)
+    links = case_project_rows(program, field=field, selection=selection)
+    for number, link in enumerate(links.iterator(chunk_size=1000), start=1):
+        project = link.project
+        leader = project.leader
+        submitted_at = link.datetime_submitted if link.submitted else None
+        values = [
+            number,
+            project.name,
+            link.case_name if link.case_name is not None else "Без выбранного кейса",
+            project.presentation_address,
+            participant_name(leader.pk, leader.first_name, leader.last_name)
+            if leader
+            else "",
+            project.region,
+            link.team_size,
+            ("Сдано" if link.submitted else "Не сдано")
+            if program.is_competitive
+            else "Не требуется",
+            link.datetime_created.isoformat(),
+            submitted_at.isoformat() if submitted_at else "",
+        ]
+        worksheet.append([_literal_excel_cell(worksheet, value) for value in values])
+
+    buffer = io.BytesIO()
+    workbook.save(buffer)
+    scope = selection["case_scope"]
+    scope_label = {
+        "all": "all_cases",
+        "without_case": "without_case",
+        "selected": f"case - {selection.get('case_name', '')}",
+    }[scope]
+    date_suffix = timezone.now().strftime("%d.%m.%y")
+    return ProgramExportFile(
+        binary_data=buffer.getvalue(),
+        base_name=f"projects_{scope_label} - {program.name or 'program'} - {date_suffix}",
     )
 
 
