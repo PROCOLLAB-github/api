@@ -1,0 +1,63 @@
+{
+  "base": "11f1e66a85e266d57fc6b0f8c080ee8cd0683f19",
+  "browser": "154.0.8037.57",
+  "assertions": 17,
+  "errors": [],
+  "findings": [
+    {
+      "scenario": "all",
+      "expertIds": [1, 2, 3, 4],
+      "url": "http://127.0.0.1:8340/admin/users/expert/"
+    },
+    {
+      "scenario": "search: Анна",
+      "expertIds": [2],
+      "url": "http://127.0.0.1:8340/admin/users/expert/?q=%D0%90%D0%BD%D0%BD%D0%B0"
+    },
+    {
+      "scenario": "search: Иванов",
+      "expertIds": [1, 3],
+      "url": "http://127.0.0.1:8340/admin/users/expert/?q=%D0%98%D0%B2%D0%B0%D0%BD%D0%BE%D0%B2"
+    },
+    {
+      "scenario": "search: иван@example.com",
+      "expertIds": [1],
+      "url": "http://127.0.0.1:8340/admin/users/expert/?q=%D0%B8%D0%B2%D0%B0%D0%BD%40example.com"
+    },
+    {
+      "scenario": "search: Иван Иванов",
+      "expertIds": [1, 3],
+      "url": "http://127.0.0.1:8340/admin/users/expert/?q=%D0%98%D0%B2%D0%B0%D0%BD+%D0%98%D0%B2%D0%B0%D0%BD%D0%BE%D0%B2"
+    },
+    {
+      "scenario": "search: Несуществующий",
+      "expertIds": [],
+      "url": "http://127.0.0.1:8340/admin/users/expert/?q=%D0%9D%D0%B5%D1%81%D1%83%D1%89%D0%B5%D1%81%D1%82%D0%B2%D1%83%D1%8E%D1%89%D0%B8%D0%B9"
+    },
+    {
+      "scenario": "program",
+      "expertIds": [1, 2],
+      "url": "http://127.0.0.1:8340/admin/users/expert/?user__partner_program_profiles__partner_program__id__exact=1"
+    },
+    {
+      "scenario": "search + program",
+      "expertIds": [1],
+      "url": "http://127.0.0.1:8340/admin/users/expert/?q=%D0%98%D0%B2%D0%B0%D0%BD%D0%BE%D0%B2&user__partner_program_profiles__partner_program__id__exact=1"
+    },
+    {
+      "scenario": "All preserves search",
+      "expertIds": [1, 3],
+      "url": "http://127.0.0.1:8340/admin/users/expert/?q=%D0%98%D0%B2%D0%B0%D0%BD%D0%BE%D0%B2"
+    },
+    {
+      "scenario": "other program; dual registration appears once",
+      "expertIds": [1, 3],
+      "url": "http://127.0.0.1:8340/admin/users/expert/?user__partner_program_profiles__partner_program__id__exact=2"
+    },
+    {
+      "scenario": "nonexistent program",
+      "expertIds": [],
+      "url": "http://127.0.0.1:8340/admin/users/expert/?user__partner_program_profiles__partner_program__id__exact=999999999"
+    }
+  ]
+}
