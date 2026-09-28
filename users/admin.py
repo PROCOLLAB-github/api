@@ -429,7 +429,14 @@ class UserLinkAdmin(admin.ModelAdmin):
 
 @admin.register(Expert)
 class ExpertAdmin(admin.ModelAdmin):
-    list_display = ("id", "user")
+    list_display = ("id", "user", "email")
+    search_fields = ("user__first_name", "user__last_name", "user__email")
+    list_filter = ("user__partner_program_profiles__partner_program",)
+    list_select_related = ("user",)
+
+    @admin.display(description="Email")
+    def email(self, obj):
+        return obj.user.email
 
 
 @admin.register(UserEducation)
