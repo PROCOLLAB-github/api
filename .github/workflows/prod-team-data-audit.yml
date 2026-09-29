@@ -1,0 +1,183 @@
+name: PROD Team Data Audit (read-only)
+
+on:
+  pull_request:
+    branches:
+      - master
+    types:
+      - opened
+      - reopened
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Read-only PROD team audit
+    if: github.event.pull_request.head.ref == 'chore/prod-team-data-audit-20260929'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Audit production data without mutations
+        uses: garygrossgarten/github-action-ssh@release
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          command: |
+            set -eu
+
+            cd /home/app/procollab-backend
+
+            docker compose -f docker-compose.prod-ci.yml -p prod ps web
+
+            docker compose -f docker-compose.prod-ci.yml -p prod exec -T web python - <<'PY'
+            import json
+            import os
+            from datetime import datetime, timezone
+
+            os.environ.setdefault("DJANGO_SETTINGS_MODULE", "procollab.settings")
+
+            import django
+
+            django.setup()
+
+            from django.db import connection, transaction
+
+            QUERIES = {
+                "01_multiple_teams_active_program": """
+                    WITH members AS (
+                        SELECT p.id AS project_id, p.leader_id AS user_id
+                        FROM projects_project p
+
+                        UNION
+
+                        SELECT c.project_id, c.user_id
+                        FROM projects_collaborator c
+                    )
+                    SELECT
+                        l.partner_program_id,
+                        m.user_id,
+                        array_agg(DISTINCT m.project_id ORDER BY m.project_id) AS project_ids
+                    FROM members m
+                    JOIN partner_programs_partnerprogramproject l
+                      ON l.project_id = m.project_id
+                    JOIN partner_programs_partnerprogram p
+                      ON p.id = l.partner_program_id
+                    WHERE p.is_competitive
+                      AND p.datetime_finished > CURRENT_TIMESTAMP
+                    GROUP BY l.partner_program_id, m.user_id
+                    HAVING count(DISTINCT m.project_id) > 1;
+                """,
+                "02_duplicate_pending_invites": """
+                    SELECT
+                        project_id,
+                        user_id,
+                        array_agg(id ORDER BY id) AS invite_ids
+                    FROM invites_invite
+                    WHERE is_accepted IS NULL
+                    GROUP BY project_id, user_id
+                    HAVING count(*) > 1;
+                """,
+                "03_invites_with_ambiguous_program_context": """
+                    SELECT
+                        i.id AS invite_id,
+                        i.project_id,
+                        array_agg(l.id ORDER BY l.id) AS possible_program_link_ids
+                    FROM invites_invite i
+                    JOIN partner_programs_partnerprogramproject l
+                      ON l.project_id = i.project_id
+                    GROUP BY i.id, i.project_id
+                    HAVING count(l.id) > 1;
+                """,
+                "04_roster_without_program_membership": """
+                    WITH members AS (
+                        SELECT id AS project_id, leader_id AS user_id
+                        FROM projects_project
+
+                        UNION
+
+                        SELECT project_id, user_id
+                        FROM projects_collaborator
+                    )
+                    SELECT
+                        l.partner_program_id,
+                        m.project_id,
+                        m.user_id
+                    FROM members m
+                    JOIN partner_programs_partnerprogramproject l
+                      ON l.project_id = m.project_id
+                    JOIN partner_programs_partnerprogram p
+                      ON p.id = l.partner_program_id
+                    LEFT JOIN partner_programs_partnerprogramuserprofile u
+                      ON u.partner_program_id = l.partner_program_id
+                     AND u.user_id = m.user_id
+                    WHERE p.is_competitive
+                      AND u.id IS NULL;
+                """,
+                "05_projects_with_multiple_program_links": """
+                    SELECT
+                        project_id,
+                        array_agg(id ORDER BY id) AS program_link_ids,
+                        array_agg(partner_program_id ORDER BY id) AS program_ids
+                    FROM partner_programs_partnerprogramproject
+                    GROUP BY project_id
+                    HAVING count(*) > 1;
+                """,
+                "06_leader_of_one_collaborator_of_another_same_program": """
+                    SELECT DISTINCT
+                        l1.partner_program_id,
+                        p1.leader_id AS user_id,
+                        p1.id AS leader_project_id,
+                        c.project_id AS collaborator_project_id
+                    FROM projects_project p1
+                    JOIN partner_programs_partnerprogramproject l1
+                      ON l1.project_id = p1.id
+                    JOIN partner_programs_partnerprogram pp
+                      ON pp.id = l1.partner_program_id
+                    JOIN projects_collaborator c
+                      ON c.user_id = p1.leader_id
+                     AND c.project_id <> p1.id
+                    JOIN partner_programs_partnerprogramproject l2
+                      ON l2.project_id = c.project_id
+                     AND l2.partner_program_id = l1.partner_program_id
+                    WHERE pp.is_competitive
+                      AND pp.datetime_finished > CURRENT_TIMESTAMP;
+                """,
+            }
+
+            summary = {}
+
+            with transaction.atomic():
+                with connection.cursor() as cursor:
+                    cursor.execute("SET TRANSACTION READ ONLY")
+                    cursor.execute("SET LOCAL statement_timeout = '60s'")
+
+                    for name, sql in QUERIES.items():
+                        cursor.execute(sql)
+                        summary[name] = len(cursor.fetchall())
+
+            print("=== PROD TEAM DATA AUDIT (READ ONLY) ===")
+            print("timestamp_utc:", datetime.now(timezone.utc).isoformat())
+            print(json.dumps(summary, ensure_ascii=False, indent=2))
+
+            print("\n=== ROLLOUT ASSESSMENT ===")
+            if summary["02_duplicate_pending_invites"] == 0:
+                print("PR_B: GO_BY_DATA_AUDIT")
+            else:
+                print("PR_B: BLOCK_DUPLICATE_PENDING_INVITES")
+
+            c_review_keys = (
+                "01_multiple_teams_active_program",
+                "03_invites_with_ambiguous_program_context",
+                "04_roster_without_program_membership",
+                "05_projects_with_multiple_program_links",
+            )
+            if any(summary[key] > 0 for key in c_review_keys):
+                print("PR_C: REVIEW_REQUIRED")
+            else:
+                print("PR_C: GO_BY_DATA_AUDIT")
+
+            print("No production rows were modified.")
+            PY
