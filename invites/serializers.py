@@ -1,8 +1,7 @@
-from django.apps import apps
 from rest_framework import serializers
 
 from invites.models import Invite
-from projects.models import Collaborator
+from projects import team_service
 from projects.serializers import ProjectListSerializer
 from users.models import CustomUser
 from users.serializers import UserDetailSerializer
@@ -33,48 +32,16 @@ class InviteListSerializer(serializers.ModelSerializer[Invite]):
             "is_accepted",
         ]
         read_only_fields = ["is_accepted"]
+        # Unique conflict проверяется service под lock и возвращает одинаковый 409.
+        validators = []
 
-    def validate(self, attrs):
-        project = attrs["project"]
-        user = attrs["user"]
-
-        if project.leader_id == user.id:
-            raise serializers.ValidationError(
-                {"user": "Пользователь уже является лидером проекта."}
-            )
-
-        if Collaborator.objects.filter(project=project, user=user).exists():
-            raise serializers.ValidationError(
-                {"user": "Пользователь уже состоит в проекте."}
-            )
-
-        if Invite.objects.filter(
-            project=project, user=user, is_accepted__isnull=True
-        ).exists():
-            raise serializers.ValidationError(
-                {"user": "У пользователя уже есть активное приглашение в этот проект."}
-            )
-
-        link = project.program_links.select_related("partner_program").first()
-        if link:
-            PartnerProgramUserProfile = apps.get_model(
-                "partner_programs", "PartnerProgramUserProfile"
-            )
-            is_participant = PartnerProgramUserProfile.objects.filter(
-                user_id=user.id,
-                partner_program_id=link.partner_program_id,
-            ).exists()
-            if not is_participant:
-                raise serializers.ValidationError(
-                    {
-                        "user": (
-                            "Нельзя пригласить пользователя: проект относится к программе, "
-                            "а пользователь не является её участником."
-                        )
-                    }
-                )
-
-        return attrs
+    def create(self, validated_data):
+        return team_service.create_invite(
+            project_id=validated_data.pop("project").pk,
+            user_id=validated_data.pop("user").pk,
+            actor=self.context["request"].user,
+            **validated_data,
+        )
 
 
 class InviteDetailSerializer(serializers.ModelSerializer[Invite]):
@@ -82,7 +49,7 @@ class InviteDetailSerializer(serializers.ModelSerializer[Invite]):
     project = ProjectListSerializer(many=False, read_only=True)
     sender = InviteSenderSerializer(source="project.leader", read_only=True)
     specialization = serializers.CharField(
-        required=False, allow_null=True, allow_blank=True
+        required=False, allow_null=True, allow_blank=True, max_length=100
     )
 
     class Meta:
@@ -106,3 +73,10 @@ class InviteDetailSerializer(serializers.ModelSerializer[Invite]):
             "datetime_created",
             "datetime_updated",
         ]
+
+    def update(self, instance, validated_data):
+        return team_service.edit_pending_invite(
+            invite_id=instance.pk,
+            actor=self.context["request"].user,
+            **validated_data,
+        )
