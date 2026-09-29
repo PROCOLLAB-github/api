@@ -1,8 +1,6 @@
 import logging
-from typing import Annotated
 
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
 from django.db.models import QuerySet
 from django.shortcuts import get_object_or_404
@@ -23,7 +21,6 @@ from partner_programs.models import (
     PartnerProgramProject,
     PartnerProgramUserProfile,
 )
-from projects.exceptions import CollaboratorDoesNotExist
 from projects.cover_reset import reset_project_cover
 from projects.filters import ProjectFilter
 from projects.helpers import (
@@ -41,10 +38,12 @@ from projects.models import (
     Resource,
 )
 from projects.pagination import ProjectsPagination
+from projects import team_service
 from projects.permissions import (
     CanBindProjectToProgram,
     HasInvolvementInProjectOrReadOnly,
     IsProjectLeader,
+    IsProjectTeamManager,
     IsProjectLeaderOrReadOnly,
     IsProjectLeaderOrReadOnlyForNonDrafts,
     ProjectVisibilityPermission,
@@ -284,59 +283,31 @@ class ProjectCollaborators(generics.GenericAPIView):
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
+    def get_permissions(self):
+        if self.request.method in permissions.SAFE_METHODS:
+            return super().get_permissions()
+        return [IsAuthenticated(), IsProjectTeamManager()]
+
     def post(self, request, pk: int):
-        """add collaborators to the project"""
-        m2m_manager = self.get_object().collaborators
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        collaborators = serializer.validated_data["collaborators"]
-        for user in collaborators:
-            m2m_manager.add(user)
-        return Response(status=200)
+        project = self.get_object()
+        team_service.reject_direct_add(project_id=project.pk, actor=request.user)
 
     def delete(self, request, pk: int):
-        """delete collaborator from project"""
-        requested_collab_id: int = int(self.request.query_params.get("id"))
-
-        project_id, leader_id = self._project_data(pk)
-        existing_collab_id = self._collabs_queryset(
-            project_id, requested_collab_id, leader_id
+        project = self.get_object()
+        try:
+            user_id = int(request.query_params.get("id"))
+            if user_id <= 0:
+                raise ValueError
+        except (TypeError, ValueError):
+            raise team_service.TeamError(
+                "invalid_collaborator_id",
+                "Укажите корректный ID участника.",
+                status_code=422,
+            )
+        team_service.remove_member(
+            project_id=project.pk, user_id=user_id, actor=request.user
         )
-
-        if leader_id == requested_collab_id:
-            return Response(
-                {
-                    "error": f"User with id: {leader_id} is a leader of a project. "
-                    f"Be careful not to delete yourself from a project!"
-                },
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            )
-        if not existing_collab_id:
-            return Response(
-                {
-                    "error": f"User with id: {requested_collab_id} are not part of this project."
-                },
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            )
-
-        existing_collab_id.delete()
         return Response(status=204)
-
-    def _project_data(
-        self, project_pk: int
-    ) -> tuple[Annotated[int, "ID проекта"], Annotated[int, "ID лидера проекта"]]:
-        project = get_object_or_404(
-            Project.objects.select_related("leader"), id=project_pk
-        )
-        return project.id, project.leader.id
-
-    @staticmethod
-    def _collabs_queryset(project_id: int, requested_id: int, leader_id: int) -> QuerySet:
-        return Collaborator.objects.exclude(
-            user__id=leader_id
-        ).get(  # чтоб случайно лидер сам себя не удалил
-            user__id=requested_id, project__id=project_id
-        )
 
 
 class AchievementList(generics.ListCreateAPIView):
@@ -483,108 +454,29 @@ class LeaveProject(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
 
     def delete(self, request, project_pk: int) -> Response:
-        current_user_id = self.request.user.id
-        collaborator = get_object_or_404(
-            Collaborator.objects.all(),
-            project_id=project_pk,
-            user_id=current_user_id,
-        )
-        project = Project.objects.select_related("leader").get(id=project_pk)
-        if project.leader.id == current_user_id:
-            return Response(
-                {
-                    "error": "You can't leave if you are a leader of a project. "
-                    "Please, switch leadership!"
-                },
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            )
-        collaborator.delete()
+        team_service.leave_team(project_id=project_pk, actor=request.user)
         return Response(status=204)
 
 
-class DeleteProjectCollaborators(generics.GenericAPIView):
-    permission_classes = [IsProjectLeader]
-
-    def _project_data(
-        self, project_pk: int
-    ) -> tuple[Annotated[int, "ID проекта"], Annotated[int, "ID лидера проекта"]]:
-        project = get_object_or_404(
-            Project.objects.select_related("leader"), id=project_pk
-        )
-        return project.id, project.leader.id
-
-    @staticmethod
-    def _collabs_queryset(project_id: int, requested_id: int, leader_id: int) -> QuerySet:
-        return Collaborator.objects.exclude(
-            user__id=leader_id
-        ).get(  # чтоб случайно лидер сам себя не удалил
-            user__id=requested_id, project__id=project_id
-        )
+class DeleteProjectCollaborators(ProjectCollaborators):
+    # Сохраняем legacy-класс без отдельного обходного пути авторизации.
+    lookup_url_kwarg = "project_pk"
 
     def delete(self, request, project_pk: int) -> Response:
-        requested_collab_id: int = int(self.request.query_params.get("id"))
-
-        project_id, leader_id = self._project_data(project_pk)
-        existing_collab_id = self._collabs_queryset(
-            project_id, requested_collab_id, leader_id
-        )
-
-        if leader_id == requested_collab_id:
-            return Response(
-                {
-                    "error": f"User with id: {leader_id} is a leader of a project. "
-                    f"Be careful not to delete yourself from a project!"
-                },
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            )
-        if not existing_collab_id:
-            return Response(
-                {
-                    "error": f"User with id: {requested_collab_id} are not part of this project."
-                },
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            )
-
-        existing_collab_id.delete()
-        return Response(status=204)
+        return super().delete(request, pk=project_pk)
 
 
 class SwitchLeaderRole(generics.GenericAPIView):
-    permission_classes = [IsProjectLeader]
-    queryset = Project.objects.all().select_related("leader")
+    permission_classes = [IsAuthenticated, IsProjectTeamManager]
+    queryset = Project.objects.all()
     serializer_class = EmptySerializer
-
-    @staticmethod
-    def _get_new_leader(user_id: int, project: Project) -> Collaborator:
-        try:
-            return Collaborator.objects.select_related("user").get(
-                user_id=user_id, project=project
-            )
-        except ObjectDoesNotExist:
-            raise CollaboratorDoesNotExist(
-                f"""Collaborator with user_id: {user_id} does not exist. Either user_id is not correct, or project_id
-                is not correct, or try adding this user to a project (as collaborator) before making them a leader. """
-            )
-
-    @staticmethod
-    def _get_project(project_pk: int) -> Project:
-        return get_object_or_404(Project.objects.all(), id=project_pk)
+    lookup_url_kwarg = "project_pk"
 
     def patch(self, request, project_pk: int, user_to_leader_pk: int) -> Response:
-        project = self._get_project(project_pk)
-
-        new_leader_id = user_to_leader_pk
-
-        if project.leader.id == new_leader_id:
-            return Response(
-                {"error": "User is already a leader of a project"},
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            )
-
-        new_leader = self._get_new_leader(new_leader_id, project)
-
-        project.leader = new_leader.user
-        project.save()
+        project = self.get_object()
+        team_service.switch_leader(
+            project_id=project.pk, user_id=user_to_leader_pk, actor=request.user
+        )
         return Response(status=204)
 
 

@@ -125,6 +125,14 @@ class IsProjectLeader(BasePermission):
         return False
 
 
+class IsProjectTeamManager(IsProjectLeader):
+    def has_object_permission(self, request, view, obj):
+        from projects.team_service import require_team_manager
+
+        require_team_manager(obj, request.user)
+        return True
+
+
 class HasInvolvementInProjectOrReadOnly(BasePermission):
     """
     READ: published projects pass this gate; drafts use shared restricted visibility.
