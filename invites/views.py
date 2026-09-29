@@ -7,7 +7,7 @@ from invites.models import Invite
 from invites.permissions import InviteDecisionPermission, InviteDetailPermission
 from invites.querysets import get_visible_invites_queryset
 from invites.serializers import InviteDetailSerializer, InviteListSerializer
-from projects.models import Collaborator
+from projects import team_service
 
 
 class InviteList(generics.ListCreateAPIView):
@@ -22,19 +22,15 @@ class InviteList(generics.ListCreateAPIView):
         )
 
     def create(self, request, *args, **kwargs):
-        serializer = InviteListSerializer(data=request.data)
+        serializer = InviteListSerializer(
+            data=request.data, context=self.get_serializer_context()
+        )
         serializer.is_valid(raise_exception=True)
-        if serializer.validated_data["project"].leader != request.user:
-            # additional check that the user is the invite's project's leader
-            return Response(status=status.HTTP_403_FORBIDDEN)
         instance = serializer.save()
-        headers = self.get_success_headers(serializer.data)
-
-        # using detailed serializer so that it'll pass User and Project objects detailed
-        detailed_data = InviteDetailSerializer(instance, data=serializer.data)
-        detailed_data.is_valid()
         return Response(
-            detailed_data.data, status=status.HTTP_201_CREATED, headers=headers
+            InviteDetailSerializer(instance).data,
+            status=status.HTTP_201_CREATED,
+            headers=self.get_success_headers(serializer.data),
         )
 
 
@@ -43,6 +39,9 @@ class InviteDetail(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = InviteDetailSerializer
     permission_classes = [InviteDetailPermission]
 
+    def perform_destroy(self, instance):
+        team_service.revoke_invite(invite_id=instance.pk, actor=self.request.user)
+
 
 class InviteAccept(generics.GenericAPIView):
     queryset = Invite.objects.get_invite_for_list_view()
@@ -50,28 +49,8 @@ class InviteAccept(generics.GenericAPIView):
     permission_classes = [InviteDecisionPermission]
 
     def post(self, request, *args, **kwargs):
-        invite = self.get_object()  # type: Invite
-        if invite.is_accepted is not None:
-            return Response(
-                {"detail": "Invite has already been processed."},
-                status=status.HTTP_409_CONFLICT,
-            )
-        # add user to project collaborators
-        collaborator, created = Collaborator.objects.get_or_create(
-            user=invite.user,
-            project=invite.project,
-            defaults={
-                "role": invite.role,
-                "specialization": invite.specialization,
-            },
-        )
-        if not created:
-            return Response(
-                {"detail": "User is already a collaborator of this project."},
-                status=status.HTTP_409_CONFLICT,
-            )
-        invite.is_accepted = True
-        invite.save()
+        invite = self.get_object()
+        team_service.accept_invite(invite_id=invite.pk, actor=request.user)
         return Response(status=status.HTTP_200_OK)
 
 
@@ -82,11 +61,5 @@ class InviteDecline(generics.GenericAPIView):
 
     def post(self, request, *args, **kwargs):
         invite = self.get_object()
-        if invite.is_accepted is not None:
-            return Response(
-                {"detail": "Invite has already been processed."},
-                status=status.HTTP_409_CONFLICT,
-            )
-        invite.is_accepted = False
-        invite.save()
+        team_service.decline_invite(invite_id=invite.pk, actor=request.user)
         return Response(status=status.HTTP_200_OK)

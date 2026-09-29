@@ -91,8 +91,8 @@ class InviteCreateAPITests(TestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("user", response.data)
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(response.data["code"], "already_project_leader")
 
     def test_cannot_invite_existing_collaborator(self):
         leader = create_user(prefix="leader")
@@ -107,8 +107,8 @@ class InviteCreateAPITests(TestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("user", response.data)
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(response.data["code"], "already_project_member")
 
     def test_cannot_create_duplicate_active_invite(self):
         leader = create_user(prefix="leader")
@@ -123,8 +123,10 @@ class InviteCreateAPITests(TestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(Invite.objects.filter(project=project, user=recipient).count(), 1)
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(
+            Invite.objects.filter(project=project, user=recipient).count(), 1
+        )
 
     def test_program_project_invite_requires_program_membership(self):
         leader = create_user(prefix="leader")
@@ -139,8 +141,8 @@ class InviteCreateAPITests(TestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("user", response.data)
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(response.data["code"], "not_program_member")
 
     def test_program_member_can_be_invited_to_program_project(self):
         leader = create_user(prefix="leader")
