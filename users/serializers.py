@@ -944,6 +944,12 @@ class UserProjectListSerializer(serializers.ModelSerializer[Project]):
     views_count = serializers.SerializerMethodField(method_name="count_views")
     short_description = serializers.SerializerMethodField()
     partner_program = serializers.SerializerMethodField()
+    team_policy = serializers.SerializerMethodField()
+
+    def get_team_policy(self, project):
+        from projects.team_policy import policy_snapshot
+
+        return policy_snapshot(project)
 
     @classmethod
     def count_views(cls, project):
@@ -994,6 +1000,7 @@ class UserProjectListSerializer(serializers.ModelSerializer[Project]):
             "draft",
             "is_company",
             "partner_program",
+            "team_policy",
         ]
 
         read_only_fields = ["leader", "views_count", "is_company", "partner_program"]

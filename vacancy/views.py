@@ -9,6 +9,8 @@ from rest_framework import generics, mixins, permissions, serializers, status
 from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.response import Response
 
+from projects.serializers import requested_program_link
+
 from vacancy.filters import VacancyFilter
 from vacancy.models import Vacancy, VacancyResponse
 from vacancy.pagination import VacancyPagination
@@ -211,7 +213,9 @@ class VacancyResponseAccept(generics.GenericAPIView):
         vacancy_response = get_object_or_404(get_response_queryset(), pk=pk)
         if not can_manage_vacancy(request.user, vacancy_response.vacancy):
             return Response(status=status.HTTP_403_FORBIDDEN)
-        accept_vacancy_response(pk, actor=request.user)
+        accept_vacancy_response(
+            pk, actor=request.user, program_link_id=requested_program_link(request)
+        )
         accepted = get_response_queryset().get(pk=pk)
         return Response(
             VacancyResponseManagerSerializer(

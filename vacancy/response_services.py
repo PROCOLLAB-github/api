@@ -4,6 +4,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import NotFound, PermissionDenied
 
 from projects.models import Collaborator
+from projects import team_policy, team_service
 from vacancy.mapping import CeleryEmailParams, MessageTypeEnum
 from vacancy.models import Vacancy, VacancyResponse
 from vacancy.tasks import send_email
@@ -29,6 +30,8 @@ def _lock_vacancy_then_response(
         vacancy_id = (
             VacancyResponse.objects.only("vacancy_id").get(pk=response_id).vacancy_id
         )
+        project_id = Vacancy.objects.only("project_id").get(pk=vacancy_id).project_id
+        team_policy.lock_team(project_id)
         vacancy = (
             Vacancy.objects.select_for_update()
             .select_related("project")
@@ -51,6 +54,8 @@ def create_vacancy_response(
     """Создаёт отклик от request.user под блокировкой вакансии."""
 
     try:
+        project_id = Vacancy.objects.only("project_id").get(pk=vacancy_id).project_id
+        team_policy.lock_team(project_id)
         vacancy = (
             Vacancy.objects.select_for_update()
             .select_related("project")
@@ -107,7 +112,9 @@ def _email_payload(response: VacancyResponse, message_type: str) -> CeleryEmailP
 
 
 @transaction.atomic
-def accept_vacancy_response(response_id: int, *, actor) -> VacancyResponse:
+def accept_vacancy_response(
+    response_id: int, *, actor, program_link_id=None
+) -> VacancyResponse:
     """Принимает кандидата, закрывает вакансию и отклоняет остальные отклики."""
 
     vacancy, response = _lock_vacancy_then_response(response_id)
@@ -120,10 +127,13 @@ def accept_vacancy_response(response_id: int, *, actor) -> VacancyResponse:
     ).exists():
         raise serializers.ValidationError("Пользователь уже состоит в команде проекта.")
 
-    Collaborator.objects.create(
-        project=vacancy.project,
+    team_service.add_member(
+        project_id=vacancy.project_id,
         user_id=response.user_id,
         role=vacancy.role,
+        actor=actor,
+        allow_staff=True,
+        program_link_id=program_link_id,
     )
     response.is_approved = True
     response.save(update_fields=("is_approved", "datetime_updated"))

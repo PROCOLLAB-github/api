@@ -53,7 +53,10 @@ class PartnerProgramFieldValueBulkUpdateAPITests(TestCase):
         self.program.is_competitive = True
         self.program.save(update_fields=["is_competitive"])
         self.program_link.submitted = True
-        self.program_link.save(update_fields=["submitted"])
+        # Историческое состояние для проверки чтения/freeze, не новый submission.
+        type(self.program_link).objects.filter(pk=self.program_link.pk).update(
+            submitted=self.program_link.submitted
+        )
         self.client.force_authenticate(self.leader)
 
         response = self.client.put(

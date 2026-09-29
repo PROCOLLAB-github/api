@@ -105,12 +105,16 @@ def create_program_project(
     project: Project | None = None,
     submitted: bool = False,
 ) -> PartnerProgramProject:
-    return PartnerProgramProject.objects.create(
+    # Исторические fixtures чтения могут предшествовать новой team policy.
+    # Проверки новых mutations используют реальные save/service отдельно.
+    link = PartnerProgramProject(
         partner_program=program,
         project=project or create_project(),
         submitted=submitted,
         datetime_submitted=timezone.now() if submitted else None,
     )
+    PartnerProgramProject.objects.bulk_create([link])
+    return link
 
 
 def create_course(program: PartnerProgram, **overrides) -> Course:

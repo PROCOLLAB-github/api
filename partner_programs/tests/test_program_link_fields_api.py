@@ -124,7 +124,10 @@ class ProgramLinkFieldsAPITests(TestCase):
 
     def test_already_submitted_metadata_keeps_window_open_but_cannot_submit(self):
         self.link.submitted = True
-        self.link.save(update_fields=["submitted"])
+        # Историческое состояние для проверки чтения/freeze, не новый submission.
+        type(self.link).objects.filter(pk=self.link.pk).update(
+            submitted=self.link.submitted
+        )
         self.assert_submission_metadata(
             self.link,
             competitive=True,
@@ -163,7 +166,10 @@ class ProgramLinkFieldsAPITests(TestCase):
         self.program.datetime_project_submission_ends = closed_deadline
         self.program.save(update_fields=["datetime_project_submission_ends"])
         self.link.submitted = True
-        self.link.save(update_fields=["submitted"])
+        # Историческое состояние для проверки чтения/freeze, не новый submission.
+        type(self.link).objects.filter(pk=self.link.pk).update(
+            submitted=self.link.submitted
+        )
         # B is deliberately not the first link, and must not inherit A's closed/submitted state.
         self.assert_submission_metadata(
             self.other_link,
@@ -268,7 +274,10 @@ class ProgramLinkFieldsAPITests(TestCase):
     def test_submitted_competitive_link_blocks_all_field_updates(self):
         extra = create_program_field(self.program)
         self.link.submitted = True
-        self.link.save()
+        # Уже существовавшая сданная связь для проверки запрета редактирования полей.
+        type(self.link).objects.filter(pk=self.link.pk).update(
+            submitted=self.link.submitted
+        )
         for field, value in ((self.field, "B"), (extra, "text")):
             self.assertEqual(
                 self.put([{"field_id": field.pk, "value_text": value}]).status_code, 400
@@ -282,7 +291,10 @@ class ProgramLinkFieldsAPITests(TestCase):
         teammate = create_user()
         create_program_member(self.program, user=teammate)
         create_program_member(self.other_program, user=teammate)
-        Collaborator.objects.create(user=teammate, project=self.project)
+        # Явный контекст для двух программ одного Project.
+        member = Collaborator(user=teammate, project=self.project)
+        member._program_link_id = self.link.pk
+        member.save()
         for user in (
             self.leader,
             manager,

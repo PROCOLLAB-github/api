@@ -1,6 +1,5 @@
 from typing import Optional
 
-from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.validators import (
@@ -8,7 +7,7 @@ from django.core.validators import (
     MaxValueValidator,
     MinValueValidator,
 )
-from django.db import models
+from django.db import models, transaction
 from django.db.models import UniqueConstraint
 
 from files.models import UserFile
@@ -203,8 +202,27 @@ class Project(models.Model):
     def __str__(self):
         return f"Project<{self.id}> - {self.name}"
 
+    def clean(self):
+        super().clean()
+        from projects.team_policy import validate_model_leader
+        from projects.team_errors import TeamError
+
+        try:
+            validate_model_leader(self)
+        except TeamError as error:
+            raise ValidationError(
+                str(error.detail["detail"]), code=str(error.detail["code"])
+            ) from error
+
+    @transaction.atomic
     def save(self, *args, **kwargs):
         """Set random cover and avatar images if not provided."""
+        if self.pk:
+            from projects.team_policy import lock_team
+
+            self._team_context = lock_team(self.pk)
+            if kwargs.get("update_fields") is None or "leader" in kwargs["update_fields"]:
+                self.clean()
         if not self.cover_image_address:
             self.cover_image_address = DefaultProjectCover.get_random_file_link()
 
@@ -324,33 +342,58 @@ class Collaborator(models.Model):
         ]
 
     def clean(self):
-        """
-        Если проект привязан к программе, добавлять коллаборатора можно
-        только если пользователь — участник этой программы.
-        (Проект привязан максимум к одной программе.)
-        """
-        link = self.project.program_links.select_related("partner_program").first()
-        if not link:
+        super().clean()
+        from projects.team_policy import validate_model_member
+        from projects.team_errors import TeamError
+
+        if not self.project_id or not self.user_id:
             return
-
-        PartnerProgramUserProfile = apps.get_model(
-            "partner_programs",
-            "PartnerProgramUserProfile",
-        )
-
-        is_participant = PartnerProgramUserProfile.objects.filter(
-            user_id=self.user_id,
-            partner_program_id=link.partner_program_id,
-        ).exists()
-
-        if not is_participant:
+        try:
+            validate_model_member(self)
+        except TeamError as error:
             raise ValidationError(
-                "Пользователь не является участником программы, к которой относится проект."
-            )
+                str(error.detail["detail"]), code=str(error.detail["code"])
+            ) from error
 
     def save(self, *args, **kwargs):
-        self.full_clean()
-        return super().save(*args, **kwargs)
+        from projects.team_policy import lock_team
+
+        with transaction.atomic():
+            context_id = getattr(self, "_program_link_id", None) or getattr(
+                self.project, "_team_program_link_id", None
+            )
+            self.project = lock_team(self.project_id).project
+            if context_id:
+                self._program_link_id = context_id
+            self.full_clean()
+            return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        from projects.team_policy import (
+            lock_team,
+            resolve_program_context,
+            require_mutable_team,
+        )
+        from projects.team_errors import TeamError
+
+        with transaction.atomic():
+            context_id = getattr(self, "_program_link_id", None) or getattr(
+                self.project, "_team_program_link_id", None
+            )
+            project = lock_team(self.project_id).project
+            try:
+                resolve_program_context(project, context_id)
+                require_mutable_team(project)
+                if self.user_id == project.leader_id:
+                    raise TeamError(
+                        "leader_cannot_leave",
+                        "Перед удалением участника передайте лидерство.",
+                    )
+            except TeamError as error:
+                raise ValidationError(
+                    str(error.detail["detail"]), code=str(error.detail["code"])
+                ) from error
+            return super().delete(*args, **kwargs)
 
 
 class ProjectGoal(models.Model):

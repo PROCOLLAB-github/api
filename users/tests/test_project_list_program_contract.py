@@ -46,7 +46,8 @@ class UserProjectProgramContractTests(TestCase):
         link = link_project_to_program(self.project, create_partner_program())
         for submitted in (False, True):
             link.submitted = submitted
-            link.save(update_fields=["submitted"])
+            # Историческое состояние для проверки чтения/freeze, не новый submission.
+            type(link).objects.filter(pk=link.pk).update(submitted=link.submitted)
             for endpoint in self.endpoints:
                 with self.subTest(submitted=submitted, endpoint=endpoint):
                     self.assertEqual(
@@ -70,12 +71,15 @@ class UserProjectProgramContractTests(TestCase):
             partner_program=earlier_program,
             submitted=False,
         )
-        return PartnerProgramProject.objects.create(
+        # Историческая submitted-связь неконкурсной программы.
+        link = PartnerProgramProject(
             pk=10,
             project=self.project,
             partner_program=later_program,
             submitted=True,
         )
+        PartnerProgramProject.objects.bulk_create([link])
+        return link
 
     def test_list_and_detail_choose_minimum_link_pk_not_creation_or_program_order(self):
         selected = self.create_reversed_links()

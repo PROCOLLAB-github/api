@@ -41,7 +41,8 @@ class ProgramProjectDetailAccessTests(TestCase):
         cls.superuser.is_superuser = True
         cls.superuser.save(update_fields=["is_superuser"])
         cls.invited = create_user(prefix="detail-invited")
-        Invite.objects.create(project=cls.project, user=cls.invited)
+        # Исторический invite без регистрации: проверяем только read permissions.
+        Invite.objects.bulk_create([Invite(project=cls.project, user=cls.invited)])
         cls.outsider = create_user(prefix="detail-outsider")
 
     def setUp(self):

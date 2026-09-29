@@ -4,6 +4,7 @@ from rest_framework.test import APIClient
 
 from partner_programs.tests.helpers import (
     create_partner_program,
+    create_program_member,
     create_program_project,
     create_project,
     create_user,
@@ -25,6 +26,7 @@ class PartnerProgramProjectSubmitViewTests(TestCase):
         return create_partner_program(**defaults)
 
     def create_project_link(self, program):
+        create_program_member(program, user=self.user)
         project = create_project(leader=self.user, draft=False, is_public=False)
         return create_program_project(program, project=project)
 
@@ -35,7 +37,9 @@ class PartnerProgramProjectSubmitViewTests(TestCase):
         link = self.create_project_link(program)
         self.client.force_authenticate(self.user)
 
-        response = self.client.post(f"/programs/partner-program-projects/{link.pk}/submit/")
+        response = self.client.post(
+            f"/programs/partner-program-projects/{link.pk}/submit/"
+        )
 
         self.assertEqual(response.status_code, 400)
         self.assertEqual(
@@ -50,7 +54,9 @@ class PartnerProgramProjectSubmitViewTests(TestCase):
         link = self.create_project_link(program)
         self.client.force_authenticate(self.user)
 
-        response = self.client.post(f"/programs/partner-program-projects/{link.pk}/submit/")
+        response = self.client.post(
+            f"/programs/partner-program-projects/{link.pk}/submit/"
+        )
 
         self.assertEqual(response.status_code, 200)
         link.refresh_from_db()
@@ -62,7 +68,9 @@ class PartnerProgramProjectSubmitViewTests(TestCase):
         link = self.create_project_link(program)
         self.client.force_authenticate(self.user)
 
-        response = self.client.post(f"/programs/partner-program-projects/{link.pk}/submit/")
+        response = self.client.post(
+            f"/programs/partner-program-projects/{link.pk}/submit/"
+        )
 
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.data["detail"], "Программа не является конкурсной.")
@@ -73,6 +81,8 @@ class PartnerProgramProjectSubmitViewTests(TestCase):
         outsider = create_user(prefix="submit-program-outsider")
         self.client.force_authenticate(outsider)
 
-        response = self.client.post(f"/programs/partner-program-projects/{link.pk}/submit/")
+        response = self.client.post(
+            f"/programs/partner-program-projects/{link.pk}/submit/"
+        )
 
         self.assertEqual(response.status_code, 403)

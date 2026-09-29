@@ -1,4 +1,5 @@
 from django.contrib import admin
+from projects.team_admin import TeamValidationAdminMixin
 
 from projects.models import (
     Achievement,
@@ -48,7 +49,7 @@ class ResourceInline(admin.StackedInline):
 
 
 @admin.register(Project)
-class ProjectAdmin(admin.ModelAdmin):
+class ProjectAdmin(TeamValidationAdminMixin, admin.ModelAdmin):
     list_display = (
         "id",
         "name",
@@ -171,7 +172,7 @@ class ProjectLinkAdmin(admin.ModelAdmin):
 
 
 @admin.register(Collaborator)
-class CollaboratorAdmin(admin.ModelAdmin):
+class CollaboratorAdmin(TeamValidationAdminMixin, admin.ModelAdmin):
     list_display = (
         "id",
         "user",

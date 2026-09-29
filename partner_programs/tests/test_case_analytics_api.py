@@ -129,7 +129,11 @@ class ProgramCaseAnalyticsTests(TestCase):
             (second_link.project, second),
             (second_link.project, third),
         ):
-            Collaborator.objects.get_or_create(project=project, user=user)
+            # Legacy конфликт двух команд нужен для read-only аналитики.
+            if not Collaborator.objects.filter(project=project, user=user).exists():
+                Collaborator.objects.bulk_create(
+                    [Collaborator(project=project, user=user)]
+                )
         # Only bypass validation to represent a pre-existing outsider membership.
         Collaborator.objects.bulk_create(
             [Collaborator(project=first.project, user=outsider)]

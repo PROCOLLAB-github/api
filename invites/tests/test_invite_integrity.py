@@ -98,7 +98,10 @@ class InviteIntegrityTests(TestCase):
 
     def test_database_rejects_duplicate_pending_but_allows_history(self):
         with self.assertRaises(IntegrityError), transaction.atomic():
-            create_invite(project=self.invite.project, user=self.invite.user)
+            # Проверяем именно DB guarantee, минуя более ранний model guard.
+            Invite.objects.bulk_create(
+                [Invite(project=self.invite.project, user=self.invite.user)]
+            )
         create_invite(
             project=self.invite.project, user=self.invite.user, is_accepted=False
         )
@@ -112,7 +115,9 @@ class InviteIntegrityTests(TestCase):
     def test_insert_constraint_conflict_maps_to_409(self):
         # Имитируем устаревший результат предварительного exists; INSERT и constraint реальные.
         pending = team_service._pending_invites(self.invite.project, self.invite.user_id)
-        with patch.object(pending, "exists", side_effect=[False, True]):
+        with patch.object(pending, "exists", side_effect=[False, True]), patch.object(
+            Invite, "full_clean"
+        ):
             with patch.object(team_service, "_pending_invites", return_value=pending):
                 self.client.force_authenticate(self.invite.project.leader)
                 response = self.client.post(
@@ -121,6 +126,18 @@ class InviteIntegrityTests(TestCase):
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.data["code"], "duplicate_pending_invite")
         self.assertEqual(Invite.objects.filter(pk=self.invite.pk).count(), 1)
+
+    def test_model_duplicate_conflict_maps_to_409(self):
+        pending = team_service._pending_invites(self.invite.project, self.invite.user_id)
+        with patch.object(pending, "exists", return_value=False), patch.object(
+            team_service, "_pending_invites", return_value=pending
+        ):
+            self.client.force_authenticate(self.invite.project.leader)
+            response = self.client.post(
+                "/invites/", invite_payload(self.invite.project, self.invite.user)
+            )
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.data["code"], "duplicate_pending_invite")
 
 
 @skipUnlessDBFeature("has_select_for_update")
