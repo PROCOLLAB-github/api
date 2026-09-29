@@ -234,7 +234,29 @@ class ResourceSerializer(serializers.ModelSerializer):
         return instance
 
 
-class ProjectDetailSerializer(serializers.ModelSerializer):
+class ProgramContextSerializer(serializers.Serializer):
+    program_link_id = serializers.IntegerField(
+        required=False, allow_null=True, min_value=1
+    )
+
+
+def requested_program_link(request, *, query=False):
+    serializer = ProgramContextSerializer(
+        data=request.query_params if query else request.data
+    )
+    serializer.is_valid(raise_exception=True)
+    return serializer.validated_data.get("program_link_id")
+
+
+class TeamPolicySerializerMixin:
+    def get_team_policy(self, project):
+        from projects.team_policy import policy_snapshot
+
+        return policy_snapshot(project)
+
+
+class ProjectDetailSerializer(TeamPolicySerializerMixin, serializers.ModelSerializer):
+    team_policy = serializers.SerializerMethodField()
     is_default_cover = serializers.SerializerMethodField()
     achievements = AchievementListSerializer(many=True, read_only=True)
     cover = UserFileSerializer(required=False)
@@ -308,14 +330,18 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
         return get_views_count(project)
 
     def update(self, instance, validated_data):
-        instance = super().update(instance, validated_data)
-        instance.save()
+        for field, value in validated_data.items():
+            setattr(instance, field, value)
+        # Read-only leader нельзя перезаписать устаревшим объектом после switch.
+        if validated_data:
+            instance.save(update_fields=[*validated_data, "datetime_updated"])
         return instance
 
     class Meta:
         model = Project
         fields = [
             "id",
+            "team_policy",
             "name",
             "description",
             "short_description",
@@ -359,7 +385,8 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
         ]
 
 
-class ProjectListSerializer(serializers.ModelSerializer):
+class ProjectListSerializer(TeamPolicySerializerMixin, serializers.ModelSerializer):
+    team_policy = serializers.SerializerMethodField()
     views_count = serializers.SerializerMethodField(method_name="count_views")
     short_description = serializers.SerializerMethodField()
     partner_program = serializers.SerializerMethodField()
@@ -395,6 +422,7 @@ class ProjectListSerializer(serializers.ModelSerializer):
         model = Project
         fields = [
             "id",
+            "team_policy",
             "name",
             "leader",
             "short_description",

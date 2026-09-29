@@ -20,11 +20,16 @@ class InviteSenderSerializer(serializers.ModelSerializer[CustomUser]):
 
 
 class InviteListSerializer(serializers.ModelSerializer[Invite]):
+    program_link_id = serializers.IntegerField(
+        required=False, allow_null=True, min_value=1
+    )
+
     class Meta:
         model = Invite
         fields = [
             "id",
             "project",
+            "program_link_id",
             "user",
             "motivational_letter",
             "role",
@@ -45,6 +50,9 @@ class InviteListSerializer(serializers.ModelSerializer[Invite]):
 
 
 class InviteDetailSerializer(serializers.ModelSerializer[Invite]):
+    program_link_id = serializers.IntegerField(
+        required=False, allow_null=True, min_value=1
+    )
     user = UserDetailSerializer(many=False, read_only=True)
     project = ProjectListSerializer(many=False, read_only=True)
     sender = InviteSenderSerializer(source="project.leader", read_only=True)
@@ -57,6 +65,7 @@ class InviteDetailSerializer(serializers.ModelSerializer[Invite]):
         fields = [
             "id",
             "project",
+            "program_link_id",
             "user",
             "sender",
             "motivational_letter",

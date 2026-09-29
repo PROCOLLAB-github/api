@@ -1,23 +1,17 @@
 from random import sample
 
-from django.db import transaction
-from django.utils import timezone
 from django.contrib.auth import get_user_model
 
-from rest_framework.exceptions import ValidationError
 
 from partner_programs.models import (
-    PartnerProgram,
-    PartnerProgramProject,
     PartnerProgramUserProfile,
 )
 from projects.models import Project, ProjectLink, Achievement
-from users.models import CustomUser
 
 User = get_user_model()
 
 
-def get_recommended_users(project: Project) -> list[User]:
+def get_recommended_users(project: Project, *, program_link_id=None) -> list[User]:
     """
     Searches for users by matching their skills and vacancies required_skills
     """
@@ -27,7 +21,12 @@ def get_recommended_users(project: Project) -> list[User]:
         all_needed_skills.update(set(vacancy.get_required_skills()))
 
     recommended_users = []
-    for user in User.objects.get_members():
+    from projects.team_policy import actionable_users
+
+    candidates = actionable_users(
+        project, User.objects.get_members(), program_link_id=program_link_id
+    )
+    for user in candidates:
         if user == project.leader or user.skills_count < 1:
             continue
 
@@ -95,71 +94,21 @@ def update_links(links, pk):
     )
 
 
-@transaction.atomic
-def update_partner_program(
-    program_id: int,
-    user: CustomUser,
-    instance: Project,
-) -> None:
-    """
-    According to the current logic, 1 user project can be linked to only 1 program.
-    The user cannot select a ready program, but can edit a project with a ready program
-    (if the time period allows access).
-    If he changes the program (completed), he will not be able to return it.
-    """
-    if program_id is not None:
-        # If the user removes the tag, frontend sends `int -> 0` (id == 0 cannot exist).
-        if program_id == 0:
-            clear_project_existing_from_profile(user, instance)
-            PartnerProgramProject.objects.filter(project=instance).delete()
-        else:
-            partner_program = PartnerProgram.objects.get(pk=program_id)
-            existing_program_profile = (
-                PartnerProgramUserProfile.objects.select_related("partner_program")
-                .filter(user=user, project=instance)
-                .first()
-            )
-            existing_program_id: int | None = (
-                existing_program_profile.partner_program_id
-                if existing_program_profile
-                else None
-            )
+def update_partner_program(program_id, user, instance, program_link_id=None):
+    from projects.team_service import bind_project_to_program
 
-            submission_deadline = partner_program.get_project_submission_deadline()
-            if submission_deadline and submission_deadline < timezone.now():
-                raise ValidationError({"error": "Срок подачи проектов в программу завершён."})
-
-            if (
-                partner_program.datetime_finished < timezone.now()
-                and (existing_program_id != program_id)
-            ):
-                raise ValidationError({"error": "Cannot select a completed program."})
-
-            clear_project_existing_from_profile(user, instance)
-            instance.is_public = False
-            instance.save(update_fields=["is_public"])
-
-            PartnerProgramProject.objects.filter(project=instance).exclude(
-                partner_program_id=partner_program.id
-            ).delete()
-            PartnerProgramProject.objects.get_or_create(
-                partner_program=partner_program, project=instance
-            )
-
-            partner_program_profile = PartnerProgramUserProfile.objects.filter(
-                user=user,
-                partner_program=partner_program,
-            ).first()
-            if partner_program_profile:
-                partner_program_profile.project = instance
-                partner_program_profile.save(update_fields=["project"])
+    return bind_project_to_program(
+        project_id=instance.pk,
+        program_id=program_id,
+        actor=user,
+        program_link_id=program_link_id,
+    )
 
 
 def clear_project_existing_from_profile(user, instance) -> None | int:
     """Remove project from `PartnerProgramUserProfile` instance."""
     existing_program_profile = (
-        PartnerProgramUserProfile.objects
-        .select_related("partner_program")
+        PartnerProgramUserProfile.objects.select_related("partner_program")
         .filter(user=user, project=instance)
         .first()
     )

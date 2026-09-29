@@ -76,9 +76,9 @@ def validate_case_value(field, value):
         )
 
 
-def validate_case_before_submission(program_project):
+def validate_case_before_submission(program_project, *, for_update=True):
     """Lock config inside the caller's transaction; validate this link only."""
-    field = get_program_case_field(program_project.partner_program, for_update=True)
+    field = get_program_case_field(program_project.partner_program, for_update=for_update)
     if field is None:
         return
     value = (
