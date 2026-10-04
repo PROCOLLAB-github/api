@@ -1,106 +1,53 @@
-name: DEV default project name inspection
-
+name: DEV migration permissions inspection
 on:
   workflow_dispatch:
-
 permissions:
   contents: read
-
-concurrency:
-  group: dev-default-project-name-readonly-20261004
-  cancel-in-progress: false
-
 jobs:
   inspect:
     if: github.ref == 'refs/heads/ops/dev-default-project-name-check-20261004'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Inspect DEV runtime and migration plan without changing data
+      - name: Inspect DEV table ownership without changing permissions
         uses: garygrossgarten/github-action-ssh@release
         with:
           host: ${{ secrets.DEV_SERVER_HOST }}
           username: ${{ secrets.DEV_SERVER_USER }}
           password: ${{ secrets.DEV_SERVER_PASSWORD }}
           command: |
-            bash -se 2>&1 <<'DEV_INSPECT'
+            bash -se 2>&1 <<'DEV_PERMISSIONS'
             set -Eeuo pipefail
             repo=/root/api
             test "$(readlink -f "$repo")" = "$repo"
             grep -Eq 'server_name[[:space:]]+dev\.procollab\.ru;' /etc/nginx/sites-enabled/dev.procollab.ru
-            source_sha=$(git --no-optional-locks -C "$repo" rev-parse HEAD)
-            [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]]
-            printf 'DEV_SOURCE_SHA=%s\n' "$source_sha"
-            df -h /
-            for service in web celerys; do
-              container=$(docker ps -q --no-trunc --filter "label=com.docker.compose.project.working_dir=$repo" --filter "label=com.docker.compose.service=$service")
-              [[ "$container" =~ ^[0-9a-f]{64}$ ]]
-              printf 'DEV_SERVICE=%s\n' "$service"
-              docker inspect -f '{"image_reference":{{json .Config.Image}},"image_id":{{json .Image}},"status":{{json .State.Status}},"restart_count":{{.RestartCount}}}' "$container"
-            done
-            image="procollab-dev-api:${source_sha}"
-            docker image inspect -f 'DEV_SOURCE_IMAGE={{.Id}}' "$image"
-            source_image_id=$(docker image inspect -f '{{.Id}}' "$image")
-            for service in web celerys; do
-              container=$(docker ps -q --no-trunc --filter "label=com.docker.compose.project.working_dir=$repo" --filter "label=com.docker.compose.service=$service")
-              test "$(docker inspect -f '{{.Image}}' "$container")" = "$source_image_id"
-            done
-            printf 'DEV_RUNTIME_MATCHES_SOURCE=true\n'
             cd "$repo"
-            export DEPLOY_IMAGE="$image"
-            docker compose -f docker-compose.dev-ci.yml run --rm --no-deps -T --entrypoint python web - 2>&1 <<'PY'
+            source_sha=$(git --no-optional-locks rev-parse HEAD)
+            [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]]
+            export DEPLOY_IMAGE="procollab-dev-api:${source_sha}"
+            printf 'DEV_SOURCE_SHA=%s\n' "$source_sha"
+            command -v psql || true
+            if id -u postgres >/dev/null 2>&1; then printf 'DEV_LOCAL_POSTGRES_OS_ACCOUNT=true\n'; else printf 'DEV_LOCAL_POSTGRES_OS_ACCOUNT=false\n'; fi
+            docker ps --format '{{.Names}} {{.Image}}' | grep -i postgres || true
+            docker compose -f docker-compose.dev-ci.yml run --rm --no-deps -T --entrypoint python web - <<'PY'
             import os
             os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'procollab.settings')
             import django
             django.setup()
+            from django.conf import settings
             from django.db import connection
+            host = settings.DATABASES['default']['HOST']
+            print('DEV_DB_HOST_IS_LOOPBACK=' + str(host in ('', 'localhost', '127.0.0.1', '::1')), flush=True)
             with connection.cursor() as cursor:
                 cursor.execute('SET default_transaction_read_only = on')
-            from django.db.migrations.executor import MigrationExecutor
-            from projects.models import Project
-            executor = MigrationExecutor(connection)
-            executor.loader.check_consistent_history(connection)
-            print('DEV_MIGRATION_HISTORY_CONSISTENT=True', flush=True)
-            plan = executor.migration_plan(executor.loader.graph.leaf_nodes())
-            print('DEV_PENDING_MIGRATIONS=' + repr([(m.app_label, m.name, backwards) for m, backwards in plan]), flush=True)
-            applied = ('projects', '0034_default_project_name') in executor.loader.applied_migrations
-            print('DEV_DEFAULT_NAME_MIGRATION_APPLIED=' + str(applied), flush=True)
-            print('DEV_MODEL_NAME_DEFAULT=' + repr(Project._meta.get_field('name').get_default()), flush=True)
-            from django.db.models import Q
-            pattern = '^[\t\n\v\f\r\x1c-\x1f \x85\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]*$'
-            blanks = Project.objects.filter(Q(name__isnull=True) | Q(name__regex=pattern)).count()
-            defaults = Project.objects.filter(name='Проект без названия').count()
-            print('DEV_BLANK_PROJECT_NAME_COUNT=' + str(blanks), flush=True)
-            print('DEV_DEFAULT_PROJECT_NAME_COUNT=' + str(defaults), flush=True)
-            assert applied, 'Default-name migration is not applied'
-            assert blanks == 0, 'Blank project names remain'
-            assert Project._meta.get_field('name').get_default() == 'Проект без названия'
-            from django.urls import resolve
-            from rest_framework.test import APIRequestFactory, force_authenticate
-            sample = Project.objects.filter(name='Проект без названия', leader__isnull=False).select_related('leader').first()
-            assert sample is not None, 'No migrated project is available for the leader-list check'
-            path = '/auth/users/projects/leader/'
-            request = APIRequestFactory().get(path, {'limit': 1000}, secure=True, HTTP_HOST='dev.procollab.ru')
-            force_authenticate(request, user=sample.leader)
-            response = resolve(path).func(request)
-            print('DEV_LEADER_LIST_STATUS=' + str(response.status_code), flush=True)
-            assert response.status_code == 200
-            entries = response.data['results']
-            matches = sum(item.get('name') == 'Проект без названия' for item in entries)
-            assert matches > 0
-            assert all(item.get('name') and item['name'].strip() for item in entries)
-            print('DEV_LEADER_LIST_DEFAULT_NAME_MATCH_COUNT=' + str(matches), flush=True)
-            print('DEV_LEADER_LIST_SEARCH_TEXT_MATCHES=True', flush=True)
-            from django.db.models import Count
-            from invites.models import Invite
-            duplicates = Invite.objects.filter(is_accepted__isnull=True).values('project_id', 'user_id').annotate(count=Count('pk')).filter(count__gt=1)
-            print('DEV_DUPLICATE_PENDING_INVITE_GROUP_COUNT=' + str(duplicates.count()), flush=True)
-            with connection.cursor() as cursor:
-                constraints = connection.introspection.get_constraints(cursor, Invite._meta.db_table)
-            print('DEV_PENDING_INVITE_CONSTRAINT_EXISTS=' + str('uniq_legacy_pending_invite' in constraints), flush=True)
+                cursor.execute('SELECT rolsuper, rolcreaterole FROM pg_roles WHERE rolname = current_user')
+                print('DEV_DB_ROLE_ADMIN_FLAGS=' + repr(cursor.fetchone()), flush=True)
+                cursor.execute("SELECT c.relname, pg_has_role(current_user, c.relowner, 'USAGE') FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=current_schema() AND c.relname IN ('invites_invite', 'projects_project', 'django_migrations') ORDER BY c.relname")
+                print('DEV_CAN_ALTER_TABLES=' + repr(cursor.fetchall()), flush=True)
+                cursor.execute("SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=current_schema() AND c.relkind='r' AND NOT pg_has_role(current_user, c.relowner, 'USAGE')")
+                print('DEV_NONOWNED_TABLE_COUNT=' + str(cursor.fetchone()[0]), flush=True)
+                cursor.execute("SELECT pg_has_role(current_user, relowner, 'MEMBER') FROM pg_class WHERE oid='invites_invite'::regclass")
+                print('DEV_CAN_SET_INVITE_OWNER_ROLE=' + str(cursor.fetchone()[0]), flush=True)
             PY
-            printf 'DEV_NONINTERACTIVE_MIGRATE_PLAN_BEGIN\n'
-            docker compose -f docker-compose.dev-ci.yml run --rm --no-deps -T web python manage.py migrate --plan --noinput < /dev/null 2>&1
-            printf 'DEV_NONINTERACTIVE_MIGRATE_PLAN_EXIT=0\n'
-            printf 'DEV_READONLY_INSPECTION_COMPLETE=true\n'
-            DEV_INSPECT
+            printf 'DEV_READONLY_PERMISSION_INSPECTION_COMPLETE=true\n'
+            DEV_PERMISSIONS
