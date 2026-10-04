@@ -101,8 +101,23 @@ class ProjectDefaultNameTests(TestCase):
         self.assertEqual(project.name, "  Мой проект  ")
 
     def test_migration_fills_existing_blanks_without_signals_or_timestamp_changes(self):
+        if connection.vendor == "postgresql":
+            # C collation does not classify NBSP as whitespace; migration must still fill it.
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    'ALTER TABLE projects_project ALTER COLUMN name TYPE varchar(256) COLLATE "C"'
+                )
+
         projects = []
-        for name in (None, "", " \t\r\n", "\u00a0", "\u2003", "  Название  "):
+        for name in (
+            None,
+            "",
+            " \t\r\n",
+            "\u00a0",
+            "\u2003",
+            "\x1c\x85\u2007\u202f",
+            "  Название  ",
+        ):
             project = Project.objects.create(leader=self.user, name="До миграции")
             Project.objects.filter(pk=project.pk).update(name=name)
             projects.append((project, name, project.datetime_updated))
