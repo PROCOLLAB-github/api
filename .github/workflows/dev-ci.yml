@@ -40,7 +40,9 @@ jobs:
             done
             image="procollab-dev-api:${source_sha}"
             docker image inspect -f 'DEV_SOURCE_IMAGE={{.Id}}' "$image"
-            docker run --rm -i --read-only --network host --env-file "$repo/.env" --entrypoint python "$image" - <<'PY'
+            cd "$repo"
+            export DEPLOY_IMAGE="$image"
+            docker compose -f docker-compose.dev-ci.yml run --rm --no-deps -T --entrypoint python web - 2>&1 <<'PY'
             import os
             os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'procollab.settings')
             import django
