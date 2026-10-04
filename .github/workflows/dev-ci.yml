@@ -19,6 +19,7 @@ jobs:
             password: ${{ secrets.DEV_SERVER_PASSWORD }}
             command: |
               set -eu
+              exec 2>&1
 
               cd /root/api
               git fetch --all --tags --prune
@@ -163,10 +164,10 @@ jobs:
                   raise SystemExit("Compose run detail serializer uses stale image")
               PY
 
-              docker compose -f docker-compose.dev-ci.yml run --rm web \
-                python manage.py migrate
-              docker compose -f docker-compose.dev-ci.yml run --rm web \
-                python manage.py showmigrations vacancy
+              docker compose -f docker-compose.dev-ci.yml run --rm -T web \
+                python manage.py migrate --noinput < /dev/null
+              docker compose -f docker-compose.dev-ci.yml run --rm -T web \
+                python manage.py showmigrations vacancy < /dev/null
 
               docker compose -f docker-compose.dev-ci.yml rm -sf web celerys || true
               docker compose -f docker-compose.dev-ci.yml up \
