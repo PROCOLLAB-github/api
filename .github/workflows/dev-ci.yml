@@ -62,6 +62,13 @@ jobs:
             defaults = Project.objects.filter(name='Проект без названия').count()
             print('DEV_BLANK_PROJECT_NAME_COUNT=' + str(blanks), flush=True)
             print('DEV_DEFAULT_PROJECT_NAME_COUNT=' + str(defaults), flush=True)
+            from django.db.models import Count
+            from invites.models import Invite
+            duplicates = Invite.objects.filter(is_accepted__isnull=True).values('project_id', 'user_id').annotate(count=Count('pk')).filter(count__gt=1)
+            print('DEV_DUPLICATE_PENDING_INVITE_GROUP_COUNT=' + str(duplicates.count()), flush=True)
+            with connection.cursor() as cursor:
+                constraints = connection.introspection.get_constraints(cursor, Invite._meta.db_table)
+            print('DEV_PENDING_INVITE_CONSTRAINT_EXISTS=' + str('uniq_legacy_pending_invite' in constraints), flush=True)
             PY
             printf 'DEV_READONLY_INSPECTION_COMPLETE=true\n'
             DEV_INSPECT
