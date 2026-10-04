@@ -72,12 +72,8 @@ jobs:
                 constraints = connection.introspection.get_constraints(cursor, Invite._meta.db_table)
             print('DEV_PENDING_INVITE_CONSTRAINT_EXISTS=' + str('uniq_legacy_pending_invite' in constraints), flush=True)
             PY
-            printf 'DEV_MIGRATE_PLAN_WITHOUT_TTY_BEGIN\n'
-            if docker compose -f docker-compose.dev-ci.yml run --rm --no-deps web python manage.py migrate --plan 2>&1; then
-              printf 'DEV_MIGRATE_PLAN_WITHOUT_TTY_EXIT=0\n'
-            else
-              result=$?
-              printf 'DEV_MIGRATE_PLAN_WITHOUT_TTY_EXIT=%s\n' "$result"
-            fi
+            printf 'DEV_NONINTERACTIVE_MIGRATE_PLAN_BEGIN\n'
+            docker compose -f docker-compose.dev-ci.yml run --rm --no-deps -T web python manage.py migrate --plan --noinput 2>&1
+            printf 'DEV_NONINTERACTIVE_MIGRATE_PLAN_EXIT=0\n'
             printf 'DEV_READONLY_INSPECTION_COMPLETE=true\n'
             DEV_INSPECT
