@@ -57,6 +57,31 @@ class UniversityImportTests(TestCase):
             call_command("import_universities", str(self.path), stdout=StringIO())
         self.assertFalse(University.objects.filter(source_id="test:one").exists())
 
+    def test_per_institution_source_url_and_global_fallback(self):
+        specific_url = "https://example.org/" + "source/" * 40
+        self.document["universities"][0]["source_url"] = specific_url
+        self.document["universities"].append(
+            {"source_id": "test:two", "name": "Другой вуз"}
+        )
+        self.path.write_text(json.dumps(self.document), encoding="utf-8")
+        call_command("import_universities", str(self.path), stdout=StringIO())
+        self.assertEqual(
+            University.objects.get(source_id="test:one").source_url, specific_url
+        )
+        self.assertEqual(
+            University.objects.get(source_id="test:two").source_url,
+            self.document["source_url"],
+        )
+
+    def test_invalid_per_institution_source_url_never_partially_imports(self):
+        self.document["universities"].append(
+            {"source_id": "test:bad-url", "name": "Вуз", "source_url": "broken"}
+        )
+        self.path.write_text(json.dumps(self.document), encoding="utf-8")
+        with self.assertRaises(CommandError):
+            call_command("import_universities", str(self.path), stdout=StringIO())
+        self.assertFalse(University.objects.filter(source_id="test:one").exists())
+
     def test_seed_preserves_existing_directory_and_user_education(self):
         user = build_user(email="seed-legacy@example.com")
         education = UserEducation.objects.create(

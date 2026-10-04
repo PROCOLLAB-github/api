@@ -43,7 +43,7 @@ class Command(BaseCommand):
                     full_name=row.get("full_name", row["name"]),
                     aliases=row.get("aliases", ""),
                     city=row.get("city", ""),
-                    source_url=source_url,
+                    source_url=row.get("source_url", source_url),
                     source_checked_at=checked_at,
                 )
                 university.full_clean(validate_unique=False)

@@ -618,7 +618,7 @@ class University(models.Model):
     source_id = models.CharField(
         max_length=100, unique=True, null=True, blank=True, verbose_name="Код в источнике"
     )
-    source_url = models.URLField(blank=True, verbose_name="Источник")
+    source_url = models.URLField(max_length=1000, blank=True, verbose_name="Источник")
     source_checked_at = models.DateField(
         null=True, blank=True, verbose_name="Дата проверки источника"
     )
