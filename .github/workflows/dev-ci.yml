@@ -40,6 +40,12 @@ jobs:
             done
             image="procollab-dev-api:${source_sha}"
             docker image inspect -f 'DEV_SOURCE_IMAGE={{.Id}}' "$image"
+            source_image_id=$(docker image inspect -f '{{.Id}}' "$image")
+            for service in web celerys; do
+              container=$(docker ps -q --no-trunc --filter "label=com.docker.compose.project.working_dir=$repo" --filter "label=com.docker.compose.service=$service")
+              test "$(docker inspect -f '{{.Image}}' "$container")" = "$source_image_id"
+            done
+            printf 'DEV_RUNTIME_MATCHES_SOURCE=true\n'
             cd "$repo"
             export DEPLOY_IMAGE="$image"
             docker compose -f docker-compose.dev-ci.yml run --rm --no-deps -T --entrypoint python web - 2>&1 <<'PY'
@@ -48,6 +54,8 @@ jobs:
             import django
             django.setup()
             from django.db import connection
+            with connection.cursor() as cursor:
+                cursor.execute('SET default_transaction_read_only = on')
             from django.db.migrations.executor import MigrationExecutor
             from projects.models import Project
             executor = MigrationExecutor(connection)
@@ -64,6 +72,25 @@ jobs:
             defaults = Project.objects.filter(name='Проект без названия').count()
             print('DEV_BLANK_PROJECT_NAME_COUNT=' + str(blanks), flush=True)
             print('DEV_DEFAULT_PROJECT_NAME_COUNT=' + str(defaults), flush=True)
+            assert applied, 'Default-name migration is not applied'
+            assert blanks == 0, 'Blank project names remain'
+            assert Project._meta.get_field('name').get_default() == 'Проект без названия'
+            from django.urls import resolve
+            from rest_framework.test import APIRequestFactory, force_authenticate
+            sample = Project.objects.filter(name='Проект без названия', leader__isnull=False).select_related('leader').first()
+            assert sample is not None, 'No migrated project is available for the leader-list check'
+            path = '/auth/users/projects/leader/'
+            request = APIRequestFactory().get(path, {'limit': 1000}, secure=True, HTTP_HOST='dev.procollab.ru')
+            force_authenticate(request, user=sample.leader)
+            response = resolve(path).func(request)
+            print('DEV_LEADER_LIST_STATUS=' + str(response.status_code), flush=True)
+            assert response.status_code == 200
+            entries = response.data['results']
+            matches = sum(item.get('name') == 'Проект без названия' for item in entries)
+            assert matches > 0
+            assert all(item.get('name') and item['name'].strip() for item in entries)
+            print('DEV_LEADER_LIST_DEFAULT_NAME_MATCH_COUNT=' + str(matches), flush=True)
+            print('DEV_LEADER_LIST_SEARCH_TEXT_MATCHES=True', flush=True)
             from django.db.models import Count
             from invites.models import Invite
             duplicates = Invite.objects.filter(is_accepted__isnull=True).values('project_id', 'user_id').annotate(count=Count('pk')).filter(count__gt=1)
