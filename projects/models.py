@@ -14,6 +14,7 @@ from django.db.models import UniqueConstraint
 from files.models import UserFile
 from industries.models import Industry
 from projects.managers import AchievementManager, CollaboratorManager, ProjectManager
+from projects.names import DEFAULT_PROJECT_NAME, normalize_project_name
 from projects.validators import inn_validator
 from users.models import CustomUser
 
@@ -90,7 +91,9 @@ class Project(models.Model):
         datetime_updated (DateTimeField): Дата последнего изменения проекта.
     """
 
-    name = models.CharField(max_length=256, null=True, blank=True)
+    name = models.CharField(
+        max_length=256, null=True, blank=True, default=DEFAULT_PROJECT_NAME
+    )
     description = models.TextField(null=True, blank=True)
     region = models.CharField(max_length=256, null=True, blank=True)
     hidden_score = models.PositiveSmallIntegerField(default=100)
@@ -204,7 +207,13 @@ class Project(models.Model):
         return f"Project<{self.id}> - {self.name}"
 
     def save(self, *args, **kwargs):
-        """Set random cover and avatar images if not provided."""
+        """Set a default name, cover and avatar when not provided."""
+        normalized_name = normalize_project_name(self.name)
+        if self.name != normalized_name:
+            self.name = normalized_name
+            if kwargs.get("update_fields"):
+                kwargs["update_fields"] = {*kwargs["update_fields"], "name"}
+
         if not self.cover_image_address:
             self.cover_image_address = DefaultProjectCover.get_random_file_link()
 
