@@ -94,6 +94,11 @@ def _get_participant_metrics(program_id: int) -> dict[str, int]:
             filter=participant_filter,
             distinct=True,
         ),
+        onboarded_participants=Count(
+            "user_id",
+            filter=participant_filter & Q(user__onboarding_stage__isnull=True),
+            distinct=True,
+        ),
         with_team=Count(
             "user_id",
             filter=participant_filter & team_filter,
@@ -351,6 +356,7 @@ def build_program_manager_analytics(program) -> dict:
         "participant_funnel": {
             "registrations": participants["registrations"],
             "unique_participants": participants["unique_participants"],
+            "onboarded_participants": participants["onboarded_participants"],
             "with_team": participants["with_team"],
             "project_creators": participants["project_creators"],
             "submitted_project_creators": participants["submitted_project_creators"],
