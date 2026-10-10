@@ -148,12 +148,48 @@ class ProgramManagerAnalyticsMetricsTests(TestCase):
             {
                 "registrations": 4,
                 "unique_participants": 3,
+                "onboarded_participants": 0,
                 "with_team": 2,
                 "project_creators": 1,
                 "submitted_project_creators": 1,
             },
         )
         self.assertEqual(response.data["attention"]["participants_without_team"], 1)
+
+    def test_onboarding_counts_only_registered_users_with_completed_onboarding(self):
+        completed = create_user(onboarding_stage=None, is_active=True)
+        email_verified = create_user(onboarding_stage=0, is_active=True)
+        started = create_user(onboarding_stage=2, is_active=True)
+        for user in (completed, email_verified, started):
+            create_program_member(self.program, user=user)
+        # A team can exist before onboarding is complete: do not clamp real counts.
+        for leader in (email_verified, started):
+            create_program_project(self.program, project=create_project(leader=leader))
+        # Neither other programs, unregistered leaders, nor deleted users count.
+        create_program_member(
+            create_partner_program(), user=create_user(onboarding_stage=None)
+        )
+        create_program_project(
+            self.program,
+            project=create_project(leader=create_user(onboarding_stage=None)),
+        )
+        PartnerProgramUserProfile.objects.create(
+            user=None, partner_program=self.program, partner_program_data={}
+        )
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        funnel = response.data["participant_funnel"]
+        self.assertEqual(funnel["registrations"], 4)
+        self.assertEqual(funnel["unique_participants"], 3)
+        self.assertEqual(funnel["onboarded_participants"], 1)
+        self.assertEqual(funnel["with_team"], 2)
+
+        started.onboarding_stage = None
+        started.save(update_fields=["onboarding_stage"])
+        response = self.client.get(self.url)
+        self.assertEqual(response.data["participant_funnel"]["onboarded_participants"], 2)
 
     def test_participant_regions_use_only_program_participants_and_preserve_legacy_values(
         self,
