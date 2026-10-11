@@ -355,10 +355,11 @@ def _get_activity(program_id: int) -> list[dict]:
 
 def build_program_manager_analytics(program) -> dict:
     program_id = program.id
+    now = timezone.now()
     participants = _get_participant_metrics(program_id)
     regions = _get_regions(program_id)
     participant_regions = _get_participant_regions(program_id)
-    assignment_items = build_assignments(program_id)
+    assignment_items = build_assignments(program_id, now=now)
     assignments = _get_assignment_metrics(assignment_items)
     solutions = _get_solution_metrics(program)
 
@@ -415,7 +416,11 @@ def build_program_manager_analytics(program) -> dict:
                 "total": solutions["not_submitted"] if program.is_competitive else 0,
             },
             "delayed_experts": (
-                build_delayed_experts(assignment_items)
+                build_delayed_experts(
+                    assignment_items,
+                    evaluation_ends=program.datetime_evaluation_ends,
+                    now=now,
+                )
                 if program.is_distributed_evaluation
                 else {"total": 0, "items": []}
             ),
