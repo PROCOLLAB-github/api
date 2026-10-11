@@ -76,6 +76,7 @@ from partner_programs.serializers.attention import (
     ProgramNotSubmittedProjectSerializer,
 )
 from partner_programs.services.analytics import (
+    participants_without_onboarding_rows,
     participants_without_team_rows,
     projects_awaiting_evaluation_rows,
     projects_not_submitted_rows,
@@ -490,15 +491,24 @@ class ProgramManagerParticipantsWithoutTeamAPIView(ProgramManagerAttentionListAP
 
     serializer_class = ProgramAttentionParticipantSerializer
     include_mode = False
+    participant_rows = staticmethod(participants_without_team_rows)
 
     def get_queryset(self, program, search):
         """Ищет по имени до пагинации; старые регистрации первыми с user_id tie-breaker."""
-        queryset = participants_without_team_rows(program.pk)
+        queryset = self.participant_rows(program.pk)
         if search:
             queryset = queryset.annotate(
                 search_name=Concat("user__first_name", Value(" "), "user__last_name")
             ).filter(search_name__icontains=search)
         return queryset.order_by(F("registered_at").asc(nulls_last=True), "user_id")
+
+
+class ProgramManagerParticipantsWithoutOnboardingAPIView(
+    ProgramManagerParticipantsWithoutTeamAPIView
+):
+    """Зарегистрированные участники с незавершённым онбордингом платформы."""
+
+    participant_rows = staticmethod(participants_without_onboarding_rows)
 
 
 class ProgramManagerProjectsAwaitingEvaluationAPIView(ProgramManagerAttentionListAPIView):

@@ -67,10 +67,29 @@ def participants_without_team_rows(program_id):
     Группировка сохраняет одну строку на user_id даже при исторических дублях.
     Удалённые пользователи исключены; поиск и пагинация остаются на уровне SQL.
     """
+    return _unique_participant_rows(
+        _participant_profiles(program_id).filter(_without_team_filter())
+    )
+
+
+def _without_onboarding_filter():
+    """Незавершённый онбординг у существующего пользователя программы."""
+    return Q(user_id__isnull=False, user__onboarding_stage__isnull=False)
+
+
+def participants_without_onboarding_rows(program_id):
+    """Тот же признак незавершённого онбординга, что и в счётчике внимания."""
+    return _unique_participant_rows(
+        PartnerProgramUserProfile.objects.filter(partner_program_id=program_id).filter(
+            _without_onboarding_filter()
+        )
+    )
+
+
+def _unique_participant_rows(profiles):
+    """Публичные поля уникального пользователя и его первая регистрация в программе."""
     return (
-        _participant_profiles(program_id)
-        .filter(_without_team_filter())
-        .order_by()
+        profiles.order_by()
         .values(
             "user_id",
             "user__first_name",
@@ -97,6 +116,11 @@ def _get_participant_metrics(program_id: int) -> dict[str, int]:
         onboarded_participants=Count(
             "user_id",
             filter=participant_filter & Q(user__onboarding_stage__isnull=True),
+            distinct=True,
+        ),
+        without_onboarding=Count(
+            "user_id",
+            filter=_without_onboarding_filter(),
             distinct=True,
         ),
         with_team=Count(
@@ -331,10 +355,11 @@ def _get_activity(program_id: int) -> list[dict]:
 
 def build_program_manager_analytics(program) -> dict:
     program_id = program.id
+    now = timezone.now()
     participants = _get_participant_metrics(program_id)
     regions = _get_regions(program_id)
     participant_regions = _get_participant_regions(program_id)
-    assignment_items = build_assignments(program_id)
+    assignment_items = build_assignments(program_id, now=now)
     assignments = _get_assignment_metrics(assignment_items)
     solutions = _get_solution_metrics(program)
 
@@ -383,6 +408,7 @@ def build_program_manager_analytics(program) -> dict:
             },
         },
         "attention": {
+            "participants_without_onboarding": participants["without_onboarding"],
             "participants_without_team": participants["without_team"],
             "projects_awaiting_evaluation": projects_awaiting_evaluation,
             "projects_not_submitted": {
@@ -390,7 +416,11 @@ def build_program_manager_analytics(program) -> dict:
                 "total": solutions["not_submitted"] if program.is_competitive else 0,
             },
             "delayed_experts": (
-                build_delayed_experts(assignment_items)
+                build_delayed_experts(
+                    assignment_items,
+                    evaluation_ends=program.datetime_evaluation_ends,
+                    now=now,
+                )
                 if program.is_distributed_evaluation
                 else {"total": 0, "items": []}
             ),
