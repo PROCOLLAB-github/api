@@ -2,6 +2,11 @@ name: DEV analytics credentials preflight (read-only)
 
 on:
   workflow_dispatch:
+    inputs:
+      verify_analytics:
+        description: Verify the deployed analytics API using read-only requests
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -129,6 +134,57 @@ jobs:
             finally:
                 connection.close()
             PY
+            if test '${{ inputs.verify_analytics }}' = 'true'; then
+              test "$(git rev-parse HEAD)" = 'ac9ad55aa307f5bfe25233cae0fe70771c02b0c5'
+              docker exec -i "$web" python - <<'PY'
+            import inspect
+            import os
+
+            os.environ.setdefault("DJANGO_SETTINGS_MODULE", "procollab.settings")
+            import django
+
+            django.setup()
+            from django.db import connection, transaction
+            from django.urls import reverse
+            from partner_programs.models import PartnerProgram
+            from partner_programs.services.assignment_analytics import build_delayed_experts
+            from rest_framework.test import APIClient
+
+            source = inspect.getsource(build_delayed_experts)
+            assert "evaluation_ends - timedelta(days=5)" in source
+            assert "overdue_48h\"] >= 1" not in source
+            with transaction.atomic():
+                with connection.cursor() as cursor:
+                    cursor.execute("SET TRANSACTION READ ONLY")
+                    cursor.execute("SET LOCAL statement_timeout = '10s'")
+                program = PartnerProgram.objects.filter(managers__isnull=False).order_by("-pk").first()
+                if program is None:
+                    raise SystemExit("DEV_ANALYTICS_NO_MANAGED_PROGRAM")
+                client = APIClient()
+                client.force_authenticate(program.managers.order_by("pk").first())
+                response = client.get(
+                    reverse("partner_programs:manager-overview", kwargs={"pk": program.pk}),
+                    HTTP_HOST="dev.procollab.ru",
+                )
+                assert response.status_code == 200, "DEV_ANALYTICS_OVERVIEW_FAILED"
+                overview = response.data
+                attention = overview["attention"]
+                funnel = overview["participant_funnel"]
+                unfinished = attention["participants_without_onboarding"]
+                assert unfinished == funnel["unique_participants"] - funnel["onboarded_participants"]
+                response = client.get(
+                    reverse("partner_programs:manager-overview-participants-without-onboarding", kwargs={"pk": program.pk}),
+                    {"limit": 1},
+                    HTTP_HOST="dev.procollab.ru",
+                )
+                assert response.status_code == 200, "DEV_ANALYTICS_ONBOARDING_LIST_FAILED"
+                assert response.data["count"] == unfinished
+                print(f"DEV_ANALYTICS_PROGRAM_ID={program.pk}")
+                print(f"DEV_ANALYTICS_UNFINISHED_ONBOARDING={unfinished}")
+                print(f"DEV_ANALYTICS_DELAYED_EXPERTS={attention['delayed_experts']['total']}")
+            print("DEV_ANALYTICS_API_OK")
+            PY
+            fi
             curl -fsS --max-time 15 -o /dev/null http://127.0.0.1:8000/admin/login/
             printf 'DEV_HTTP_OK\nDEV_CREDENTIALS_PREFLIGHT_OK\n'
             DEV_VERIFY
