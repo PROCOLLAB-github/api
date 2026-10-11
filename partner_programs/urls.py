@@ -12,6 +12,7 @@ from partner_programs.views import (
     ProgramManagerAssignmentsAPIView,
     ProgramManagerAssignmentScoresAPIView,
     ProgramManagerParticipantsWithoutTeamAPIView,
+    ProgramManagerParticipantsWithoutOnboardingAPIView,
     ProgramManagerProjectsAwaitingEvaluationAPIView,
     ProgramManagerProjectsNotSubmittedAPIView,
     PartnerProgramProjectApplyView,
@@ -42,6 +43,11 @@ urlpatterns = [
         "<int:pk>/manager-overview/",
         ProgramManagerAnalyticsAPIView.as_view(),
         name="manager-overview",
+    ),
+    path(
+        "<int:pk>/manager-overview/participants-without-onboarding/",
+        ProgramManagerParticipantsWithoutOnboardingAPIView.as_view(),
+        name="manager-overview-participants-without-onboarding",
     ),
     path(
         "<int:pk>/manager-overview/participants-without-team/",

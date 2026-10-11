@@ -136,6 +136,7 @@ class ProjectsNotSubmittedSerializer(AnalyticsTotalSerializer):
 
 
 class ProgramAttentionSerializer(serializers.Serializer):
+    participants_without_onboarding = serializers.IntegerField(min_value=0)
     participants_without_team = serializers.IntegerField(min_value=0)
     projects_awaiting_evaluation = serializers.IntegerField(min_value=0)
     projects_not_submitted = ProjectsNotSubmittedSerializer()

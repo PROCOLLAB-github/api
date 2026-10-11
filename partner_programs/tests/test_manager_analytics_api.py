@@ -184,12 +184,14 @@ class ProgramManagerAnalyticsMetricsTests(TestCase):
         self.assertEqual(funnel["registrations"], 4)
         self.assertEqual(funnel["unique_participants"], 3)
         self.assertEqual(funnel["onboarded_participants"], 1)
+        self.assertEqual(response.data["attention"]["participants_without_onboarding"], 2)
         self.assertEqual(funnel["with_team"], 2)
 
         started.onboarding_stage = None
         started.save(update_fields=["onboarding_stage"])
         response = self.client.get(self.url)
         self.assertEqual(response.data["participant_funnel"]["onboarded_participants"], 2)
+        self.assertEqual(response.data["attention"]["participants_without_onboarding"], 1)
 
     def test_participant_regions_use_only_program_participants_and_preserve_legacy_values(
         self,
