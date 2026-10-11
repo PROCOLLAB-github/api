@@ -164,6 +164,7 @@ jobs:
                 client.force_authenticate(program.managers.order_by("pk").first())
                 response = client.get(
                     reverse("partner_programs:manager-overview", kwargs={"pk": program.pk}),
+                    secure=True,
                     HTTP_HOST="dev.procollab.ru",
                 )
                 assert response.status_code == 200, "DEV_ANALYTICS_OVERVIEW_FAILED"
@@ -175,6 +176,7 @@ jobs:
                 response = client.get(
                     reverse("partner_programs:manager-overview-participants-without-onboarding", kwargs={"pk": program.pk}),
                     {"limit": 1},
+                    secure=True,
                     HTTP_HOST="dev.procollab.ru",
                 )
                 assert response.status_code == 200, "DEV_ANALYTICS_ONBOARDING_LIST_FAILED"
@@ -185,6 +187,6 @@ jobs:
             print("DEV_ANALYTICS_API_OK")
             PY
             fi
-            curl -fsS --max-time 15 -o /dev/null http://127.0.0.1:8000/admin/login/
+            curl -fsS --max-time 15 -H 'Host: dev.procollab.ru' -H 'X-Forwarded-Proto: https' -o /dev/null http://127.0.0.1:8000/admin/login/
             printf 'DEV_HTTP_OK\nDEV_CREDENTIALS_PREFLIGHT_OK\n'
             DEV_VERIFY
