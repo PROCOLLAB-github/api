@@ -78,17 +78,20 @@ jobs:
             config = dict(runtime)
             config.update(parameters)
             config["OPTIONS"] = {
+                **runtime.get("OPTIONS", {}),
                 "connect_timeout": 10,
-                "options": "-c default_transaction_read_only=on -c statement_timeout=10000",
             }
             connection = ConnectionHandler({"default": config})["default"]
             try:
+                connection.set_autocommit(False)
                 with connection.cursor() as cursor:
+                    cursor.execute("SET TRANSACTION READ ONLY")
+                    cursor.execute("SET LOCAL statement_timeout = '10s'")
                     cursor.execute("SELECT current_database(), current_user")
                     database, user = cursor.fetchone()
                     if (database, user) != (parameters["NAME"], parameters["USER"]):
                         raise SystemExit("DEV_DATABASE_IDENTITY_MISMATCH")
-                    cursor.execute("SHOW default_transaction_read_only")
+                    cursor.execute("SHOW transaction_read_only")
                     if cursor.fetchone()[0] != "on":
                         raise SystemExit("DEV_DATABASE_READ_ONLY_NOT_ENABLED")
                     tables = sorted({
@@ -112,6 +115,16 @@ jobs:
             except SystemExit:
                 raise
             except Exception as error:
+                message = str(error).lower()
+                reason = next((label for fragment, label in (
+                    ("password authentication failed", "authentication_failed"),
+                    ("unsupported startup parameter", "unsupported_startup_parameter"),
+                    ("permission denied", "permission_denied"),
+                    ("timeout", "timeout"),
+                    ("connection refused", "connection_refused"),
+                    ("could not translate host name", "host_name_resolution_failed"),
+                ) if fragment in message), "other")
+                print(f"DEV_DATABASE_CHECK_REASON={reason}")
                 raise SystemExit(f"DEV_DATABASE_CHECK_FAILED={type(error).__name__}") from None
             finally:
                 connection.close()
