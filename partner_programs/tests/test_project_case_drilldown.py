@@ -413,10 +413,119 @@ class ProjectCaseDrilldownTests(TestCase):
             {"offset": ""},
         ):
             self.assertEqual(self.get(**params).status_code, 400)
-        for key in ("search", "limit", "offset", "only_submitted"):
+        for key in ("limit", "offset", "only_submitted"):
             for value in ("", "1"):
                 self.assertEqual(self.get(export=True, **{key: value}).status_code, 400)
         self.assertEqual(self.page(limit=100)["count"], 1)
+
+    def test_combined_filters_search_pagination_and_export_use_same_selection(self):
+        links = []
+        for submitted in (False, True):
+            for address in (None, "", " \t\n", "https://example.org/deck.pdf"):
+                project = create_project(
+                    leader=self.manager,
+                    name=f"Keep project {len(links)}",
+                    presentation_address=address,
+                )
+                links.append(self.link("A", project=project, submitted=submitted))
+        self.link(
+            "B",
+            project=create_project(
+                leader=self.manager,
+                name="Keep foreign case",
+                presentation_address="https://example.org/deck.pdf",
+            ),
+            submitted=True,
+        )
+        self.link("A", project=create_project(leader=self.manager, name="Other name"))
+        foreign = create_partner_program(is_competitive=True)
+        foreign_field = create_case_field(foreign, options=["A"])
+        self.link("A", project=links[0].project, program=foreign, field=foreign_field)
+
+        for submission in ("all", "submitted", "not_submitted"):
+            for presentation in ("all", "present", "missing"):
+                with self.subTest(submission=submission, presentation=presentation):
+                    expected = [
+                        link
+                        for link in links
+                        if (
+                            submission == "all"
+                            or link.submitted == (submission == "submitted")
+                        )
+                        and (
+                            presentation == "all"
+                            or bool((link.project.presentation_address or "").strip())
+                            == (presentation == "present")
+                        )
+                    ]
+                    query = {
+                        "submission": submission,
+                        "presentation": presentation,
+                        "search": " kEeP ",
+                    }
+                    page = self.page(limit=1, offset=1, **query)
+                    self.assertEqual(page["count"], len(expected))
+                    self.assertEqual(page["case_metrics"]["projects_total"], 9)
+                    self.assertEqual(
+                        [row["program_project_id"] for row in page["results"]],
+                        [link.pk for link in expected[1:2]],
+                    )
+                    _, rows, _ = self.workbook(**query)
+                    self.assertEqual(
+                        [row[1] for row in rows], [link.project.name for link in expected]
+                    )
+
+    def test_filters_work_for_without_case_and_all_scopes(self):
+        selected = self.link("A", submitted=True)
+        missing = self.link(None, submitted=True)
+        self.link(None, submitted=False)
+        for scope, expected in (
+            ("without_case", [missing]),
+            ("all", [selected, missing]),
+        ):
+            page = self.page(scope, submission="submitted", presentation="missing")
+            self.assertEqual(
+                [row["program_project_id"] for row in page["results"]],
+                [link.pk for link in expected],
+            )
+            _, rows, _ = self.workbook(
+                scope, submission="submitted", presentation="missing"
+            )
+            self.assertEqual(
+                [row[1] for row in rows], [link.project.name for link in expected]
+            )
+
+    def test_invalid_filters_and_duplicate_values_are_rejected_by_list_and_export(self):
+        for export in (False, True):
+            for key in ("submission", "presentation"):
+                for value in ("", "true", "unknown"):
+                    self.assertEqual(
+                        self.get(export=export, **{key: value}).status_code, 400
+                    )
+                query = f"?view=case_analytics&case_scope=all&{key}=all&{key}=all"
+                self.assertEqual(
+                    self.client.get(self.url(export) + query).status_code, 400
+                )
+
+    def test_noncompetitive_submission_filter_is_not_applicable(self):
+        program = create_partner_program(is_competitive=False)
+        program.managers.add(self.manager)
+        self.link(program=program)
+        self.assertEqual(self.page("without_case", program=program)["count"], 1)
+        for export in (False, True):
+            for submission in ("submitted", "not_submitted"):
+                self.assertEqual(
+                    self.get(
+                        "without_case",
+                        export=export,
+                        program=program,
+                        submission=submission,
+                    ).status_code,
+                    400,
+                )
+        self.assertEqual(
+            self.page("without_case", program=program, presentation="missing")["count"], 1
+        )
 
     def test_permission_matrix_missing_program_and_read_only_methods(self):
         self.link(
