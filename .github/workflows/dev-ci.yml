@@ -11,6 +11,10 @@ on:
         description: Compare onboarding and recorded participant activity without changing data
         type: boolean
         default: false
+      expected_api_sha:
+        description: Expected deployed API commit for analytics verification
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -29,14 +33,20 @@ jobs:
           DATABASE_PASSWORD: ${{ secrets.DEV_DATABASE_PASSWORD }}
           DATABASE_HOST: ${{ secrets.DEV_DATABASE_HOST }}
           DATABASE_PORT: ${{ secrets.DEV_DATABASE_PORT }}
+          EXPECTED_API_SHA: ${{ inputs.expected_api_sha }}
+          VERIFY_ANALYTICS: ${{ inputs.verify_analytics }}
         run: |
           python - <<'PY'
           import base64
           import json
           import os
+          import re
 
           keys = ("NAME", "USER", "PASSWORD", "HOST", "PORT")
           parameters = {key: os.environ[f"DATABASE_{key}"] for key in keys}
+          expected = os.environ["EXPECTED_API_SHA"]
+          if os.environ["VERIFY_ANALYTICS"] == "true" and not re.fullmatch(r"[0-9a-f]{40}", expected):
+              raise SystemExit("EXPECTED_API_SHA_REQUIRED")
           if any(not value for value in parameters.values()):
               raise SystemExit("DEV_DATABASE_SECRET_MISSING")
           if parameters["NAME"] != "procollab_db_dev":
@@ -45,6 +55,7 @@ jobs:
           print(f"::add-mask::{payload}")
           with open(os.environ["GITHUB_OUTPUT"], "a") as output:
               output.write(f"payload={payload}\n")
+              output.write(f"expected_api_sha={expected}\n")
           PY
       - name: Verify SSH and database secrets without changing DEV
         uses: garygrossgarten/github-action-ssh@release
@@ -182,16 +193,19 @@ jobs:
             PY
             fi
             if test '${{ inputs.verify_analytics }}' = 'true'; then
-              test "$(git rev-parse HEAD)" = 'ac9ad55aa307f5bfe25233cae0fe70771c02b0c5'
+              test "$(git rev-parse HEAD)" = '${{ steps.parameters.outputs.expected_api_sha }}'
               docker exec -i "$web" python - <<'PY'
             import inspect
+            import json
             import os
 
             os.environ.setdefault("DJANGO_SETTINGS_MODULE", "procollab.settings")
             import django
 
             django.setup()
+            from django.contrib.auth import get_user_model
             from django.db import connection, transaction
+            from django.db.models import Q
             from django.urls import reverse
             from partner_programs.models import PartnerProgram
             from partner_programs.services.assignment_analytics import build_delayed_experts
@@ -202,35 +216,43 @@ jobs:
             assert "overdue_48h\"] >= 1" not in source
             with transaction.atomic():
                 with connection.cursor() as cursor:
-                    cursor.execute("SET TRANSACTION READ ONLY")
+                    cursor.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
                     cursor.execute("SET LOCAL statement_timeout = '10s'")
-                program = PartnerProgram.objects.filter(managers__isnull=False).order_by("-pk").first()
-                if program is None:
-                    raise SystemExit("DEV_ANALYTICS_NO_MANAGED_PROGRAM")
                 client = APIClient()
-                client.force_authenticate(program.managers.order_by("pk").first())
-                response = client.get(
-                    reverse("partner_programs:manager-overview", kwargs={"pk": program.pk}),
-                    secure=True,
-                    HTTP_HOST="dev.procollab.ru",
-                )
-                assert response.status_code == 200, "DEV_ANALYTICS_OVERVIEW_FAILED"
-                overview = response.data
-                attention = overview["attention"]
-                funnel = overview["participant_funnel"]
-                unfinished = attention["participants_without_onboarding"]
-                assert unfinished == funnel["unique_participants"] - funnel["onboarded_participants"]
-                response = client.get(
-                    reverse("partner_programs:manager-overview-participants-without-onboarding", kwargs={"pk": program.pk}),
-                    {"limit": 1},
-                    secure=True,
-                    HTTP_HOST="dev.procollab.ru",
-                )
-                assert response.status_code == 200, "DEV_ANALYTICS_ONBOARDING_LIST_FAILED"
-                assert response.data["count"] == unfinished
-                print(f"DEV_ANALYTICS_PROGRAM_ID={program.pk}")
-                print(f"DEV_ANALYTICS_UNFINISHED_ONBOARDING={unfinished}")
-                print(f"DEV_ANALYTICS_DELAYED_EXPERTS={attention['delayed_experts']['total']}")
+                user_model = get_user_model()
+                staff = user_model.objects.filter(Q(is_staff=True) | Q(is_superuser=True), is_active=True).first()
+                checked = []
+                for program in PartnerProgram.objects.order_by("pk"):
+                    manager = program.managers.order_by("pk").first() or staff
+                    if manager is None:
+                        continue
+                    client.force_authenticate(manager)
+                    users = user_model.objects.filter(pk__in=program.partner_program_profiles.values("user_id"))
+                    visited = users.filter(Q(last_activity__isnull=False) | Q(last_login__isnull=False)).count()
+                    never_visited = users.filter(last_activity__isnull=True, last_login__isnull=True)
+                    response = client.get(
+                        reverse("partner_programs:manager-overview", kwargs={"pk": program.pk}),
+                        secure=True, HTTP_HOST="dev.procollab.ru",
+                    )
+                    assert response.status_code == 200, "DEV_ANALYTICS_OVERVIEW_FAILED"
+                    overview = response.data
+                    attention = overview["attention"]
+                    funnel = overview["participant_funnel"]
+                    unfinished = attention["participants_without_visit"]
+                    assert funnel["visited_participants"] == visited
+                    assert unfinished == never_visited.count()
+                    assert unfinished == funnel["unique_participants"] - funnel["visited_participants"]
+                    response = client.get(
+                        reverse("partner_programs:manager-overview-participants-without-visit", kwargs={"pk": program.pk}),
+                        {"limit": 25}, secure=True, HTTP_HOST="dev.procollab.ru",
+                    )
+                    assert response.status_code == 200, "DEV_ANALYTICS_VISIT_LIST_FAILED"
+                    assert response.data["count"] == unfinished
+                    expected = set(never_visited.values_list("pk", flat=True))
+                    assert all(row["user_id"] in expected for row in response.data["results"])
+                    checked.append({"program_id": program.pk, "registered": funnel["unique_participants"], "visited": visited, "without_visit": unfinished})
+                assert checked, "DEV_ANALYTICS_NO_ACCESSIBLE_PROGRAM"
+                print("DEV_ANALYTICS_VISITS=" + json.dumps(checked))
             print("DEV_ANALYTICS_API_OK")
             PY
             fi
