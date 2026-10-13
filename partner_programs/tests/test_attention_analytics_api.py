@@ -26,6 +26,7 @@ from projects.models import Collaborator
 NOW = datetime(2026, 9, 5, 12, tzinfo=datetime_timezone.utc)
 PARTICIPANTS = "manager-overview-participants-without-team"
 ONBOARDING = "manager-overview-participants-without-onboarding"
+VISITS = "manager-overview-participants-without-visit"
 PROJECTS = "manager-overview-projects-awaiting-evaluation"
 
 
@@ -115,7 +116,7 @@ class AttentionAnalyticsTestCase(TestCase):
 
 class AttentionAnalyticsAccessAndPaginationTests(AttentionAnalyticsTestCase):
     def test_manager_has_access_to_both_lists(self):
-        for endpoint in (PARTICIPANTS, ONBOARDING, PROJECTS):
+        for endpoint in (PARTICIPANTS, ONBOARDING, VISITS, PROJECTS):
             with self.subTest(endpoint=endpoint):
                 self.assertEqual(self.get(endpoint)["results"], [])
 
@@ -123,31 +124,31 @@ class AttentionAnalyticsAccessAndPaginationTests(AttentionAnalyticsTestCase):
         for permission in ("is_staff", "is_superuser"):
             user = create_user(prefix=f"attention-{permission}", **{permission: True})
             self.client.force_authenticate(user)
-            for endpoint in (PARTICIPANTS, ONBOARDING, PROJECTS):
+            for endpoint in (PARTICIPANTS, ONBOARDING, VISITS, PROJECTS):
                 with self.subTest(permission=permission, endpoint=endpoint):
                     self.get(endpoint)
 
     def test_anonymous_get_is_unauthorized(self):
         self.client.force_authenticate(None)
-        for endpoint in (PARTICIPANTS, ONBOARDING, PROJECTS):
+        for endpoint in (PARTICIPANTS, ONBOARDING, VISITS, PROJECTS):
             with self.subTest(endpoint=endpoint):
                 self.assertEqual(self.client.get(self.url(endpoint)).status_code, 401)
 
     def test_participant_get_is_forbidden(self):
         participant = self.participant().user
         self.client.force_authenticate(participant)
-        for endpoint in (PARTICIPANTS, ONBOARDING, PROJECTS):
+        for endpoint in (PARTICIPANTS, ONBOARDING, VISITS, PROJECTS):
             with self.subTest(endpoint=endpoint):
                 self.assertEqual(self.client.get(self.url(endpoint)).status_code, 403)
 
     def test_program_expert_get_is_forbidden(self):
         self.client.force_authenticate(self.expert)
-        for endpoint in (PARTICIPANTS, ONBOARDING, PROJECTS):
+        for endpoint in (PARTICIPANTS, ONBOARDING, VISITS, PROJECTS):
             with self.subTest(endpoint=endpoint):
                 self.assertEqual(self.client.get(self.url(endpoint)).status_code, 403)
 
     def test_manager_of_another_program_cannot_access_or_search_lists(self):
-        for endpoint in (PARTICIPANTS, ONBOARDING, PROJECTS):
+        for endpoint in (PARTICIPANTS, ONBOARDING, VISITS, PROJECTS):
             with self.subTest(endpoint=endpoint):
                 response = self.client.get(
                     self.url(endpoint, self.other_program), {"search": "Program"}
@@ -155,7 +156,7 @@ class AttentionAnalyticsAccessAndPaginationTests(AttentionAnalyticsTestCase):
                 self.assertEqual(response.status_code, 403)
 
     def test_missing_program_is_not_found(self):
-        for endpoint in (PARTICIPANTS, ONBOARDING, PROJECTS):
+        for endpoint in (PARTICIPANTS, ONBOARDING, VISITS, PROJECTS):
             with self.subTest(endpoint=endpoint):
                 url = reverse("partner_programs:" + endpoint, kwargs={"pk": 99999999})
                 self.assertEqual(self.client.get(url).status_code, 404)
@@ -163,7 +164,7 @@ class AttentionAnalyticsAccessAndPaginationTests(AttentionAnalyticsTestCase):
     def test_modifying_methods_are_not_allowed_and_leave_data_unchanged(self):
         registration = self.participant()
         link = self.work()
-        for endpoint in (PARTICIPANTS, ONBOARDING, PROJECTS):
+        for endpoint in (PARTICIPANTS, ONBOARDING, VISITS, PROJECTS):
             for method in ("post", "put", "patch", "delete"):
                 with self.subTest(endpoint=endpoint, method=method):
                     response = getattr(self.client, method)(
@@ -177,7 +178,7 @@ class AttentionAnalyticsAccessAndPaginationTests(AttentionAnalyticsTestCase):
         self.assertTrue(link.submitted)
 
     def test_invalid_pagination_is_rejected_on_both_endpoints(self):
-        for endpoint in (PARTICIPANTS, ONBOARDING, PROJECTS):
+        for endpoint in (PARTICIPANTS, ONBOARDING, VISITS, PROJECTS):
             for params in (
                 {"limit": "invalid"},
                 {"limit": "1.5"},
@@ -196,7 +197,7 @@ class AttentionAnalyticsAccessAndPaginationTests(AttentionAnalyticsTestCase):
                     )
 
     def test_empty_page_has_standard_pagination_envelope(self):
-        for endpoint in (PARTICIPANTS, ONBOARDING, PROJECTS):
+        for endpoint in (PARTICIPANTS, ONBOARDING, VISITS, PROJECTS):
             with self.subTest(endpoint=endpoint):
                 data = self.get(endpoint)
                 expected = {"count", "next", "previous", "results"}
@@ -210,7 +211,7 @@ class AttentionAnalyticsAccessAndPaginationTests(AttentionAnalyticsTestCase):
     def test_offset_beyond_total_returns_empty_page_without_losing_count(self):
         self.participant()
         self.work()
-        for endpoint in (PARTICIPANTS, ONBOARDING, PROJECTS):
+        for endpoint in (PARTICIPANTS, ONBOARDING, VISITS, PROJECTS):
             with self.subTest(endpoint=endpoint):
                 data = self.get(endpoint, offset=100)
                 self.assertEqual(data["count"], 1)
@@ -219,13 +220,109 @@ class AttentionAnalyticsAccessAndPaginationTests(AttentionAnalyticsTestCase):
     def test_empty_search_matches_absent_search(self):
         self.participant()
         self.work()
-        for endpoint in (PARTICIPANTS, ONBOARDING, PROJECTS):
+        for endpoint in (PARTICIPANTS, ONBOARDING, VISITS, PROJECTS):
             for query in ("", "   ", "\t"):
                 with self.subTest(endpoint=endpoint, query=query):
                     self.assertEqual(
                         self.get(endpoint, search=query)["results"],
                         self.get(endpoint)["results"],
                     )
+
+
+class ParticipantsWithoutVisitTests(AttentionAnalyticsTestCase):
+    def test_only_both_missing_timestamps_are_included(self):
+        missing = self.participant(onboarding_stage=None, is_active=True)
+        also_missing = self.participant(onboarding_stage=0, is_active=False)
+        self.participant(last_activity=NOW)
+        self.participant(last_login=NOW)
+        self.participant(last_activity=NOW, last_login=NOW)
+        page = self.get(VISITS)
+        self.assertEqual(page["count"], 2)
+        self.assertEqual(
+            {row["user_id"] for row in page["results"]},
+            {missing.user_id, also_missing.user_id},
+        )
+        self.assert_matches_overview(VISITS, "participants_without_visit")
+
+    def test_either_recorded_timestamp_removes_participant_from_attention(self):
+        for field in ("last_activity", "last_login"):
+            with self.subTest(field=field):
+                registration = self.participant(onboarding_stage=0)
+                self.assertEqual(self.get(VISITS)["count"], 1)
+                setattr(registration.user, field, NOW)
+                registration.user.save(update_fields=[field])
+                self.assertEqual(self.get(VISITS)["count"], 0)
+                overview = self.get("manager-overview")
+                self.assertEqual(overview["attention"]["participants_without_visit"], 0)
+                self.assertEqual(
+                    overview["participant_funnel"]["visited_participants"],
+                    overview["participant_funnel"]["unique_participants"],
+                )
+
+    def test_real_login_updates_both_funnel_and_attention_without_onboarding(self):
+        registration = self.participant(onboarding_stage=0, is_active=True)
+        self.assertEqual(self.get(VISITS)["count"], 1)
+        login = APIClient().post(
+            reverse("token_obtain_pair"),
+            {"email": registration.user.email, "password": "pass"},
+            format="json",
+        )
+        self.assertEqual(login.status_code, 200)
+        registration.user.refresh_from_db()
+        self.assertIsNone(registration.user.last_activity)
+        self.assertIsNotNone(registration.user.last_login)
+        self.assertEqual(registration.user.onboarding_stage, 0)
+        self.assertEqual(self.get(VISITS)["count"], 0)
+        overview = self.get("manager-overview")
+        self.assertEqual(overview["participant_funnel"]["visited_participants"], 1)
+        self.assertEqual(overview["attention"]["participants_without_visit"], 0)
+
+    def test_activity_before_program_registration_still_counts_as_a_visit(self):
+        self.participant(last_activity=NOW - timedelta(days=100))
+        self.participant(last_login=NOW - timedelta(days=100))
+        self.assertEqual(self.get(VISITS)["count"], 0)
+        self.assertEqual(
+            self.get("manager-overview")["participant_funnel"]["visited_participants"],
+            2,
+        )
+
+    def test_team_membership_does_not_invent_a_visit(self):
+        registration = self.participant(onboarding_stage=None)
+        self.work(leader=registration.user)
+        self.assertEqual(self.get(VISITS)["count"], 1)
+        self.assertEqual(self.get(PARTICIPANTS)["count"], 0)
+
+    def test_other_program_unregistered_and_deleted_users_are_excluded(self):
+        included = self.participant()
+        self.participant(program=self.other_program)
+        create_user()
+        deleted = self.participant()
+        deleted.user.delete()
+        page = self.get(VISITS)
+        self.assertEqual(page["count"], 1)
+        self.assertEqual(page["results"][0]["user_id"], included.user_id)
+        self.assert_matches_overview(VISITS, "participants_without_visit")
+
+    def test_search_and_pagination_exclude_visited_users_before_counting(self):
+        oldest = self.participant(hours=20, first_name="Alice")
+        newest = self.participant(hours=1, first_name="Alice")
+        self.participant(hours=30, first_name="Bob")
+        self.participant(hours=40, first_name="Alice", last_activity=NOW)
+        self.participant(hours=50, first_name="Alice", last_login=NOW)
+        first = self.get(VISITS, search=" alice ", limit=1)
+        second = self.get(VISITS, search="alice", limit=1, offset=1)
+        self.assertEqual(first["count"], 2)
+        self.assertEqual(first["results"][0]["user_id"], oldest.user_id)
+        self.assertEqual(second["results"][0]["user_id"], newest.user_id)
+        self.assertIsNotNone(first["next"])
+        self.assertIsNone(second["next"])
+
+    def test_list_returns_only_safe_public_participant_fields(self):
+        self.participant(first_name="", last_name="")
+        row = self.get(VISITS)["results"][0]
+        self.assertEqual(
+            set(row), {"user_id", "full_name", "avatar", "city", "registered_at"}
+        )
 
 
 class ParticipantsWithoutOnboardingTests(AttentionAnalyticsTestCase):

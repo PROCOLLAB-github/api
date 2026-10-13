@@ -72,6 +72,31 @@ def participants_without_team_rows(program_id):
     )
 
 
+def _visited_participant_filter():
+    """Зарегистрированный пользователь с активностью или входом на платформу."""
+    return Q(user_id__isnull=False) & (
+        Q(user__last_activity__isnull=False) | Q(user__last_login__isnull=False)
+    )
+
+
+def _without_visit_filter():
+    """Оба свидетельства посещения отсутствуют; онбординг не учитывается."""
+    return Q(
+        user_id__isnull=False,
+        user__last_activity__isnull=True,
+        user__last_login__isnull=True,
+    )
+
+
+def participants_without_visit_rows(program_id):
+    """Тот же признак отсутствия посещения, что и в счётчике внимания."""
+    return _unique_participant_rows(
+        PartnerProgramUserProfile.objects.filter(partner_program_id=program_id).filter(
+            _without_visit_filter()
+        )
+    )
+
+
 def _without_onboarding_filter():
     """Незавершённый онбординг у существующего пользователя программы."""
     return Q(user_id__isnull=False, user__onboarding_stage__isnull=False)
@@ -113,6 +138,10 @@ def _get_participant_metrics(program_id: int) -> dict[str, int]:
             filter=participant_filter,
             distinct=True,
         ),
+        visited_participants=Count(
+            "user_id", filter=_visited_participant_filter(), distinct=True
+        ),
+        without_visit=Count("user_id", filter=_without_visit_filter(), distinct=True),
         onboarded_participants=Count(
             "user_id",
             filter=participant_filter & Q(user__onboarding_stage__isnull=True),
@@ -381,6 +410,7 @@ def build_program_manager_analytics(program) -> dict:
         "participant_funnel": {
             "registrations": participants["registrations"],
             "unique_participants": participants["unique_participants"],
+            "visited_participants": participants["visited_participants"],
             "onboarded_participants": participants["onboarded_participants"],
             "with_team": participants["with_team"],
             "project_creators": participants["project_creators"],
@@ -408,6 +438,7 @@ def build_program_manager_analytics(program) -> dict:
             },
         },
         "attention": {
+            "participants_without_visit": participants["without_visit"],
             "participants_without_onboarding": participants["without_onboarding"],
             "participants_without_team": participants["without_team"],
             "projects_awaiting_evaluation": projects_awaiting_evaluation,
