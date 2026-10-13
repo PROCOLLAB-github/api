@@ -18,11 +18,11 @@ Q1–Q4 закрыты, Figma section `30:1518` утверждена. Полна
 ## Запросы
 
 ```text
-GET /programs/{id}/projects/?view=case_analytics&case_scope=selected&case_name={encodedExactOption}&limit=25&offset=0&search={query}
+GET /programs/{id}/projects/?view=case_analytics&case_scope=selected&case_name={encodedExactOption}&limit=25&offset=0&search={query}&submission=submitted&presentation=missing
 GET /programs/{id}/projects/?view=case_analytics&case_scope=without_case
 GET /programs/{id}/projects/?view=case_analytics&case_scope=all
 
-GET /programs/{id}/export-projects/?view=case_analytics&case_scope=selected&case_name={encodedExactOption}
+GET /programs/{id}/export-projects/?view=case_analytics&case_scope=selected&case_name={encodedExactOption}&search={query}&submission=submitted&presentation=missing
 GET /programs/{id}/export-projects/?view=case_analytics&case_scope=without_case
 GET /programs/{id}/export-projects/?view=case_analytics&case_scope=all
 ```
@@ -34,15 +34,22 @@ GET /programs/{id}/export-projects/?view=case_analytics&case_scope=all
 - List: limit по умолчанию 25, диапазон 1–100; offset по умолчанию 0, минимум 0.
   Search ищет подстроку в имени проекта без учёта регистра; внешние пробелы удаляются.
   Порядок: `datetime_created ASC, pk ASC` связи.
-- Export не принимает search, limit, offset, only_submitted, включая пустые значения.
-  Выгружается полный bucket независимо от поиска и страницы.
+- List и export поддерживают одинаковый отбор (добавлено 13.10.2026):
+  `search` по имени проекта, `submission=all|submitted|not_submitted`,
+  `presentation=all|present|missing`. Фильтры по умолчанию `all`, сочетаются через AND.
+  Сдача определяется `PartnerProgramProject.submitted` выбранной программы.
+  Презентация есть, если `Project.presentation_address` содержит непробельный символ;
+  NULL, пустая строка и только пробелы означают отсутствие. Доступность URL не проверяется.
+  В noncompetitive программе submission, отличный от all, возвращает 400.
+- Export не принимает limit, offset, only_submitted, включая пустые значения.
+  Выгружаются все совпадения поиска и фильтров независимо от текущей страницы.
 - Без параметров нового режима прежние serializer, pagination и XLSX, включая only_submitted,
   сохраняются. Generic filter и rates export не затронуты.
 
 ## Ответ списка
 
 Поля страницы: count, next, previous, results, selection, cases_configured,
-submission_applicable, case_metrics. Count учитывает search; case_metrics описывают весь bucket:
+submission_applicable, case_metrics. Count учитывает поиск и фильтры; case_metrics описывают весь bucket:
 projects_total, participants_total, submitted, not_submitted. Для all case_metrics = null.
 Selection = `{scope, case_name}`; имя вне selected — null.
 
