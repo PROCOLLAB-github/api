@@ -196,6 +196,7 @@ jobs:
               test "$(git rev-parse HEAD)" = '${{ steps.parameters.outputs.expected_api_sha }}'
               docker exec -i "$web" python - <<'PY'
             import inspect
+            import io
             import json
             import os
 
@@ -210,6 +211,7 @@ jobs:
             from partner_programs.models import PartnerProgram
             from partner_programs.services.assignment_analytics import build_delayed_experts
             from rest_framework.test import APIClient
+            from openpyxl import load_workbook
 
             source = inspect.getsource(build_delayed_experts)
             assert "evaluation_ends - timedelta(days=5)" in source
@@ -251,6 +253,46 @@ jobs:
                     expected = set(never_visited.values_list("pk", flat=True))
                     assert all(row["user_id"] in expected for row in response.data["results"])
                     checked.append({"program_id": program.pk, "registered": funnel["unique_participants"], "visited": visited, "without_visit": unfinished})
+                    base_query = {"view": "case_analytics", "case_scope": "all"}
+                    all_rows = []
+                    while True:
+                        response = client.get(
+                            f"/programs/{program.pk}/projects/",
+                            {**base_query, "limit": 100, "offset": len(all_rows)},
+                            secure=True, HTTP_HOST="dev.procollab.ru",
+                        )
+                        assert response.status_code == 200, "DEV_CASE_LIST_FAILED"
+                        all_rows.extend(response.data["results"])
+                        if len(all_rows) >= response.data["count"]:
+                            break
+                        assert response.data["results"], "DEV_CASE_PAGINATION_STALLED"
+                    combinations = 0
+                    submissions = ("all", "submitted", "not_submitted") if program.is_competitive else ("all",)
+                    for submission in submissions:
+                        for presentation in ("all", "present", "missing"):
+                            query = {**base_query, "submission": submission, "presentation": presentation}
+                            expected = [row for row in all_rows if
+                                (submission == "all" or row["submitted"] == (submission == "submitted"))
+                                and (presentation == "all" or bool((row["project"]["presentation_address"] or "").strip()) == (presentation == "present"))
+                            ]
+                            response = client.get(
+                                f"/programs/{program.pk}/projects/", {**query, "limit": 1},
+                                secure=True, HTTP_HOST="dev.procollab.ru",
+                            )
+                            assert response.status_code == 200, "DEV_CASE_FILTER_FAILED"
+                            assert response.data["count"] == len(expected), "DEV_CASE_FILTER_COUNT_MISMATCH"
+                            assert [row["program_project_id"] for row in response.data["results"]] == [row["program_project_id"] for row in expected[:1]], "DEV_CASE_FILTER_IDS_MISMATCH"
+                            response = client.get(
+                                f"/programs/{program.pk}/export-projects/", query,
+                                secure=True, HTTP_HOST="dev.procollab.ru",
+                            )
+                            assert response.status_code == 200, "DEV_CASE_EXPORT_FAILED"
+                            book = load_workbook(io.BytesIO(response.content), read_only=True)
+                            rows = list(book.active.iter_rows(min_row=2, values_only=True))
+                            book.close()
+                            assert [row[1] or "" for row in rows] == [row["project"]["name"] or "" for row in expected], "DEV_CASE_EXPORT_SELECTION_MISMATCH"
+                            combinations += 1
+                    print(f"DEV_CASE_FILTERS_OK program_id={program.pk} projects={len(all_rows)} combinations={combinations}")
                 assert checked, "DEV_ANALYTICS_NO_ACCESSIBLE_PROGRAM"
                 print("DEV_ANALYTICS_VISITS=" + json.dumps(checked))
             print("DEV_ANALYTICS_API_OK")
