@@ -148,6 +148,7 @@ class ProgramManagerAnalyticsMetricsTests(TestCase):
             {
                 "registrations": 4,
                 "unique_participants": 3,
+                "visited_participants": 0,
                 "onboarded_participants": 0,
                 "with_team": 2,
                 "project_creators": 1,
@@ -155,6 +156,40 @@ class ProgramManagerAnalyticsMetricsTests(TestCase):
             },
         )
         self.assertEqual(response.data["attention"]["participants_without_team"], 1)
+
+    def test_visits_use_activity_or_login_and_ignore_onboarding_and_email_status(self):
+        timestamp = timezone.now() - timedelta(days=100)
+        users = (
+            create_user(last_activity=timestamp, onboarding_stage=0, is_active=False),
+            create_user(last_login=timestamp, onboarding_stage=2),
+            create_user(last_activity=timestamp, last_login=timestamp),
+            create_user(onboarding_stage=None, is_active=True),
+        )
+        for user in users:
+            create_program_member(self.program, user=user)
+        create_program_member(
+            create_partner_program(), user=create_user(last_activity=timestamp)
+        )
+        create_program_project(
+            self.program,
+            project=create_project(leader=create_user(last_login=timestamp)),
+        )
+        removed = create_program_member(
+            self.program, user=create_user(last_activity=timestamp)
+        )
+        removed.user.delete()
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        funnel = response.data["participant_funnel"]
+        self.assertEqual(funnel["unique_participants"], 4)
+        self.assertEqual(funnel["visited_participants"], 3)
+        self.assertEqual(response.data["attention"]["participants_without_visit"], 1)
+        self.assertEqual(funnel["onboarded_participants"], 1)
+        self.assertEqual(
+            funnel["unique_participants"],
+            funnel["visited_participants"]
+            + response.data["attention"]["participants_without_visit"],
+        )
 
     def test_onboarding_counts_only_registered_users_with_completed_onboarding(self):
         completed = create_user(onboarding_stage=None, is_active=True)

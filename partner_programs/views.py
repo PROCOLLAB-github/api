@@ -77,6 +77,7 @@ from partner_programs.serializers.attention import (
 )
 from partner_programs.services.analytics import (
     participants_without_onboarding_rows,
+    participants_without_visit_rows,
     participants_without_team_rows,
     projects_awaiting_evaluation_rows,
     projects_not_submitted_rows,
@@ -501,6 +502,14 @@ class ProgramManagerParticipantsWithoutTeamAPIView(ProgramManagerAttentionListAP
                 search_name=Concat("user__first_name", Value(" "), "user__last_name")
             ).filter(search_name__icontains=search)
         return queryset.order_by(F("registered_at").asc(nulls_last=True), "user_id")
+
+
+class ProgramManagerParticipantsWithoutVisitAPIView(
+    ProgramManagerParticipantsWithoutTeamAPIView
+):
+    """Участники без зафиксированной активности и входа на платформу."""
+
+    participant_rows = staticmethod(participants_without_visit_rows)
 
 
 class ProgramManagerParticipantsWithoutOnboardingAPIView(
