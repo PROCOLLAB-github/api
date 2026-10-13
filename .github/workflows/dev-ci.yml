@@ -7,6 +7,10 @@ on:
         description: Verify the deployed analytics API using read-only requests
         type: boolean
         default: false
+      audit_activity:
+        description: Compare onboarding and recorded participant activity without changing data
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -134,6 +138,49 @@ jobs:
             finally:
                 connection.close()
             PY
+            if test '${{ inputs.audit_activity }}' = 'true'; then
+              docker exec -i "$web" python - <<'PY'
+            import json
+            import os
+
+            os.environ.setdefault("DJANGO_SETTINGS_MODULE", "procollab.settings")
+            import django
+
+            django.setup()
+            from django.db import connection, transaction
+            from django.db.models import Count, F, Q
+            from partner_programs.models import PartnerProgram
+
+            activity = Q(partner_program_profiles__user__last_activity__isnull=False)
+            login = Q(partner_program_profiles__user__last_login__isnull=False)
+            onboarded = Q(partner_program_profiles__user__onboarding_stage__isnull=True)
+            participant = "partner_program_profiles__user_id"
+            with transaction.atomic():
+                with connection.cursor() as cursor:
+                    cursor.execute("SET TRANSACTION READ ONLY")
+                    cursor.execute("SET LOCAL statement_timeout = '10s'")
+                rows = PartnerProgram.objects.annotate(
+                    registered=Count(participant, distinct=True),
+                    onboarded=Count(participant, filter=onboarded, distinct=True),
+                    recorded_activity=Count(participant, filter=activity, distinct=True),
+                    recorded_login=Count(participant, filter=login, distinct=True),
+                    recorded_visit=Count(participant, filter=activity | login, distinct=True),
+                    onboarded_without_visit=Count(participant, filter=onboarded & ~activity & ~login, distinct=True),
+                    login_without_activity=Count(participant, filter=login & ~activity, distinct=True),
+                    activity_before_program_registration=Count(
+                        participant,
+                        filter=Q(partner_program_profiles__user__last_activity__lt=F("partner_program_profiles__datetime_created")),
+                        distinct=True,
+                    ),
+                ).order_by("pk").values(
+                    "id", "registered", "onboarded", "recorded_activity", "recorded_login",
+                    "recorded_visit", "onboarded_without_visit", "login_without_activity",
+                    "activity_before_program_registration",
+                )
+                print("DEV_ACTIVITY_AUDIT=" + json.dumps(list(rows)))
+            print("DEV_ACTIVITY_AUDIT_OK")
+            PY
+            fi
             if test '${{ inputs.verify_analytics }}' = 'true'; then
               test "$(git rev-parse HEAD)" = 'ac9ad55aa307f5bfe25233cae0fe70771c02b0c5'
               docker exec -i "$web" python - <<'PY'
