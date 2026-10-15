@@ -168,8 +168,18 @@ class ProgramProjectDetailAccessTests(TestCase):
 
     def test_single_link_preserves_full_nested_contract(self):
         expected = PartnerProgramProjectSerializer(self.link_a).data
+        self.assertEqual(expected["name"], self.program_a.name)
         self.assertEqual(self.detail(self.manager_a)["partner_program"], expected)
         self.assertEqual(self.detail(self.project.leader)["partner_program"], expected)
+
+    def test_program_name_is_current_after_rename(self):
+        self.program_a.name = "Обновлённое название программы"
+        self.program_a.save(update_fields=["name"])
+        for user in (self.project.leader, self.manager_a, self.expert_a):
+            with self.subTest(user=user.pk):
+                self.assertEqual(
+                    self.detail(user)["partner_program"]["name"], self.program_a.name
+                )
 
     def test_no_links_returns_null(self):
         self.link_a.delete()
@@ -187,6 +197,7 @@ class ProgramProjectDetailAccessTests(TestCase):
                 data = self.detail(user)["partner_program"]
                 self.assertEqual(data, PartnerProgramProjectSerializer(link).data)
                 self.assertEqual(data["program_id"], link.partner_program_id)
+                self.assertEqual(data["name"], link.partner_program.name)
 
     def test_program_role_scope_also_applies_to_public_published_projects(self):
         link_b = self.add_second_link()
