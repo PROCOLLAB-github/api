@@ -1,8 +1,13 @@
 from django.core.validators import RegexValidator
 from rest_framework.serializers import ValidationError
 
+from projects.names import normalize_project_name
+
 
 def validate_project(data):
+    if "name" in data:
+        data["name"] = normalize_project_name(data["name"])
+
     if not data.get("draft"):
         error = {}
         allowed_blank = {"image_address"}
