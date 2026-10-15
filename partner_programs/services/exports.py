@@ -368,7 +368,7 @@ def _literal_excel_cell(worksheet, value):
 
 
 def build_case_projects_export_file(*, program, field, selection) -> ProgramExportFile:
-    """Выгружает весь bucket; pagination/search в этот контракт не входят."""
+    """Выгружает все совпадения поиска и фильтров выбранного кейса без пагинации."""
     workbook = Workbook(write_only=True)
     worksheet = workbook.create_sheet(title="Проекты")
     worksheet.append(CASE_PROJECT_COLUMNS)
@@ -505,9 +505,7 @@ def prepare_project_scores_export_data(program_id: int) -> list[dict]:
 
         for _, expert_scores in scores_by_expert.items():
             row_data: dict[str, str] = {}
-            row_data["Название проекта"] = (
-                getattr(project, "name", "") if project else ""
-            )
+            row_data["Название проекта"] = getattr(project, "name", "") if project else ""
             row_data["Фамилия эксперта"] = (
                 expert_scores[0].user.last_name if expert_scores else ""
             )

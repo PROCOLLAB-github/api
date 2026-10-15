@@ -76,6 +76,8 @@ from partner_programs.serializers.attention import (
     ProgramNotSubmittedProjectSerializer,
 )
 from partner_programs.services.analytics import (
+    participants_without_onboarding_rows,
+    participants_without_visit_rows,
     participants_without_team_rows,
     projects_awaiting_evaluation_rows,
     projects_not_submitted_rows,
@@ -490,15 +492,32 @@ class ProgramManagerParticipantsWithoutTeamAPIView(ProgramManagerAttentionListAP
 
     serializer_class = ProgramAttentionParticipantSerializer
     include_mode = False
+    participant_rows = staticmethod(participants_without_team_rows)
 
     def get_queryset(self, program, search):
         """Ищет по имени до пагинации; старые регистрации первыми с user_id tie-breaker."""
-        queryset = participants_without_team_rows(program.pk)
+        queryset = self.participant_rows(program.pk)
         if search:
             queryset = queryset.annotate(
                 search_name=Concat("user__first_name", Value(" "), "user__last_name")
             ).filter(search_name__icontains=search)
         return queryset.order_by(F("registered_at").asc(nulls_last=True), "user_id")
+
+
+class ProgramManagerParticipantsWithoutVisitAPIView(
+    ProgramManagerParticipantsWithoutTeamAPIView
+):
+    """Участники без зафиксированной активности и входа на платформу."""
+
+    participant_rows = staticmethod(participants_without_visit_rows)
+
+
+class ProgramManagerParticipantsWithoutOnboardingAPIView(
+    ProgramManagerParticipantsWithoutTeamAPIView
+):
+    """Зарегистрированные участники с незавершённым онбордингом платформы."""
+
+    participant_rows = staticmethod(participants_without_onboarding_rows)
 
 
 class ProgramManagerProjectsAwaitingEvaluationAPIView(ProgramManagerAttentionListAPIView):
@@ -588,13 +607,14 @@ class PartnerProgramProjectsAPIView(generics.ListAPIView):
         field = get_program_case_field(program)
         query = ProjectCaseListQuerySerializer(
             data=request.query_params,
-            context={"case_options": field.get_options_list() if field else []},
+            context={
+                "case_options": field.get_options_list() if field else [],
+                "submission_applicable": program.is_competitive,
+            },
         )
         query.is_valid(raise_exception=True)
         selection = query.validated_data
         rows = case_project_rows(program, field=field, selection=selection)
-        if selection["search"]:
-            rows = rows.filter(project__name__icontains=selection["search"])
         paginator = ProgramAttentionPagination(selection)
         page = paginator.paginate_queryset(rows, request, view=self)
         response = paginator.get_paginated_response(
@@ -676,7 +696,10 @@ class PartnerProgramExportProjectsAPIView(APIView):
             field = get_program_case_field(program)
             query = ProjectCaseQuerySerializer(
                 data=request.query_params,
-                context={"case_options": field.get_options_list() if field else []},
+                context={
+                    "case_options": field.get_options_list() if field else [],
+                    "submission_applicable": program.is_competitive,
+                },
             )
             query.is_valid(raise_exception=True)
             export_file = build_case_projects_export_file(

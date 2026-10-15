@@ -1,5 +1,7 @@
 """Read-only analytics of real expert assignments; no scoring/lifecycle writes."""
 
+from datetime import timedelta
+
 from django.db.models import BooleanField, Case, Count, F, OuterRef, Subquery, Value, When
 from django.db.models.functions import Coalesce
 from django.utils import timezone
@@ -104,7 +106,7 @@ def build_assignment(row, *, now):
     submitted_at = row["project_submitted_at"] if row["project_submitted"] else None
     waiting_since = None
     waiting_seconds = None
-    # Missing historical submission timestamps cannot establish an SLA start.
+    # Missing historical submission timestamps cannot establish waiting duration.
     if status not in ("not_ready", "completed") and submitted_at is not None:
         waiting_since = max(submitted_at, row["datetime_created"])
         waiting_seconds = max(0, int((now - waiting_since).total_seconds()))
@@ -131,8 +133,8 @@ def build_assignment(row, *, now):
     }
 
 
-def build_assignments(program_id):
-    now = timezone.now()
+def build_assignments(program_id, *, now=None):
+    now = now if now is not None else timezone.now()
     return [build_assignment(row, now=now) for row in assignment_rows(program_id)]
 
 
@@ -160,8 +162,14 @@ def build_assignment_scores(program_id, assignment):
     ]
 
 
-def build_delayed_experts(assignments):
+def build_delayed_experts(assignments, *, evaluation_ends, now=None):
+    """Flag unfinished submitted work from five days before evaluation closes."""
+    now = now if now is not None else timezone.now()
+    if evaluation_ends is None or now < evaluation_ends - timedelta(days=5):
+        return {"total": 0, "items": []}
+
     experts = {}
+    unfinished_experts = set()
     for assignment in assignments:
         expert = assignment["expert"]
         item = experts.setdefault(
@@ -179,12 +187,14 @@ def build_delayed_experts(assignments):
         )
         item["assignments_total"] += 1
         item["completed" if assignment["status"] == "completed" else "pending"] += 1
+        if assignment["status"] in ("pending", "in_progress"):
+            unfinished_experts.add(expert["expert_id"])
         seconds = assignment["waiting_seconds"]
         if seconds is None:
             continue
         item["overdue_24h"] += int(seconds >= 24 * 3600)
         item["overdue_48h"] += int(seconds >= 48 * 3600)
-        if seconds > 0 and (
+        if (
             item["oldest_waiting_seconds"] is None
             or seconds > item["oldest_waiting_seconds"]
         ):
@@ -193,17 +203,14 @@ def build_delayed_experts(assignments):
 
     items = []
     for item in experts.values():
-        if item["overdue_48h"] >= 1:
-            item["severity"] = "critical"
-        elif item["overdue_24h"] >= 2:
-            item["severity"] = "warning"
-        else:
+        if item["expert_id"] not in unfinished_experts:
             continue
+        item["severity"] = "critical" if now >= evaluation_ends else "warning"
         items.append(item)
     items.sort(
         key=lambda item: (
-            item["severity"] != "critical",
-            -item["oldest_waiting_seconds"],
+            item["oldest_waiting_seconds"] is None,
+            -(item["oldest_waiting_seconds"] or 0),
             item["expert_id"],
         )
     )
