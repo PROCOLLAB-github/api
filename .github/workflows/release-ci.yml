@@ -1,14 +1,14 @@
-name: PROD guarded Docker cache cleanup for release 777
+name: PROD read-only verification for release 777
 
 on:
   workflow_dispatch:
     inputs:
       image_tag:
-        description: Release image tag to inspect
+        description: Expected release image
         required: true
         type: string
       deploy_ref:
-        description: Expected server checkout
+        description: Expected release source
         required: true
         type: string
 
@@ -23,9 +23,9 @@ jobs:
   inspect:
     if: github.ref == 'refs/heads/ops/prod-disk-pr777-20261016' && inputs.deploy_ref == '620ebf71734b33df2a63479bc870b285882215be' && inputs.image_tag == 'prod-pr777-620ebf71734b-20261016'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
-      - name: Remove four verified unused untagged images
+      - name: Verify deployed image, free space and public API contract
         uses: garygrossgarten/github-action-ssh@release
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -35,104 +35,57 @@ jobs:
             bash -se <<'WRAPPER'
             runner=(bash -se)
             if [ "$(id -u)" != 0 ]; then runner=(sudo -n bash -se); fi
-            "${runner[@]}" <<'INSPECT'
+            "${runner[@]}" <<'VERIFY'
             set -Eeuo pipefail
             test '${{ github.run_attempt }}' = 1
-            test "$(id -u)" = 0
             repo=/home/app/procollab-backend
             test "$(readlink -f "$repo")" = "$repo"
-            test -f "$repo/docker-compose.prod-ci.yml"
-            server_sha=$(sudo -n -u app git --no-optional-locks -C "$repo" rev-parse HEAD)
-            test "$server_sha" = 620ebf71734b33df2a63479bc870b285882215be
-            printf 'SERVER_GIT_SHA=%s\n' "$server_sha"
-            runtime() {
-              for service in web celerys; do
-                container=$(docker ps -q --no-trunc --filter label=com.docker.compose.project=prod --filter "label=com.docker.compose.service=$service")
-                [[ "$container" =~ ^[0-9a-f]{64}$ ]]
-                docker inspect -f '{"service":"'"$service"'","container_id":{{json .Id}},"image_reference":{{json .Config.Image}},"image_id":{{json .Image}},"status":{{json .State.Status}},"started_at":{{json .State.StartedAt}},"restart_count":{{json .RestartCount}}}' "$container"
-              done
-            }
-            before=$(runtime)
-            printf 'RUNTIME_BEFORE\n%s\nDISK\n' "$before"
+            test "$(sudo -n -u app git --no-optional-locks -C "$repo" rev-parse HEAD)" = 620ebf71734b33df2a63479bc870b285882215be
+            for service in web celerys; do
+              container=$(docker ps -q --no-trunc --filter label=com.docker.compose.project=prod --filter "label=com.docker.compose.service=$service")
+              [[ "$container" =~ ^[0-9a-f]{64}$ ]]
+              test "$(docker inspect -f '{{.Config.Image}}' "$container")" = ghcr.io/procollab-github/api:prod-pr777-620ebf71734b-20261016
+              test "$(docker inspect -f '{{.State.Status}}' "$container")" = running
+              docker inspect -f '{"service":"'"$service"'","image_reference":{{json .Config.Image}},"image_id":{{json .Image}},"status":{{json .State.Status}},"restart_count":{{json .RestartCount}}}' "$container"
+              if test "$service" = web; then web=$container; fi
+            done
+            printf 'DISK_AFTER_RELEASE\n'
             df -h / /var/lib/docker
-            df -i / /var/lib/docker
-            printf 'DOCKER_USAGE\n'
-            docker system df -v
-            printf 'ALL_IMAGES\n'
-            docker image ls -a --no-trunc --digests --format '{{.ID}} {{.Repository}}:{{.Tag}} {{.Digest}} {{.Size}}'
-            printf 'ALL_CONTAINER_IMAGE_REFERENCES\n'
-            for container in $(docker ps -aq --no-trunc); do
-              docker inspect -f '{"container_id":{{json .Id}},"name":{{json .Name}},"image_reference":{{json .Config.Image}},"image_id":{{json .Image}},"status":{{json .State.Status}}}' "$container"
-            done
-            printf 'DANGLING_IMAGES\n'
-            for image in $(docker image ls -q --no-trunc --filter dangling=true | LC_ALL=C sort -u); do
-              docker image inspect -f '{"image_id":{{json .Id}},"repo_tags":{{json .RepoTags}},"repo_digests":{{json .RepoDigests}},"size":{{json .Size}},"created":{{json .Created}}}' "$image"
-            done
-            printf 'DIRECTORY_SIZES\n'
-            for directory in /var/lib/docker /var/lib/containerd /var/log /var/cache/apt/archives /home/app/procollab-backend /var/backups/procollab-prod-analytics-cover; do
-              if test -d "$directory"; then du -xsh "$directory"; fi
-            done
-            python3 - <<'PY'
+            df -i /
+            docker exec -i "$web" python - <<'PY'
             import json
-            import re
-            import subprocess
-            from pathlib import Path
+            import os
+            import urllib.request
 
-            # Fixed candidates observed by read-only inspection run 38901180424.
-            candidates = {
-                'sha256:0c662b073220f082dd289b42840611954e0847a12b102fdf287195d57f0db3e8',
-                'sha256:1c390e3bb5cb9c724e3947b45e57c8d73f0afe2b308141261c5669d7d97a452e',
-                'sha256:beafdfed0240b5a288f98d7ddc5bcc3da007104650da1c252697e9d07c77f5d2',
-                'sha256:f67c1d840f274a20f22bcb2fea1d66d4c978dab0b5f19e0893178de44498bf9d',
-            }
+            os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'procollab.settings')
+            import django
+            django.setup()
+            from django.db import connection, transaction
+            from partner_programs.models import PartnerProgramProject
 
-            def docker(*args):
-                return subprocess.check_output(['docker', *args], text=True).strip()
-
-            def images():
-                return set(docker('image', 'ls', '-a', '--no-trunc', '--digests',
-                                  '--format', '{{.ID}} {{.Repository}} {{.Tag}} {{.Digest}}').splitlines())
-
-            def containers():
-                return {value: docker('inspect', '-f',
-                        '{{.Id}} {{.Image}} {{.State.Status}} {{.State.StartedAt}} {{.RestartCount}}', value)
-                        for value in docker('ps', '-aq', '--no-trunc').splitlines()}
-
-            rollback = set()
-            base = Path('/var/backups/procollab-prod-analytics-cover')
-            assert base.is_dir() and not base.is_symlink()
-            for name in ('web.json', 'celerys.json', 'web-after.json', 'celerys-after.json'):
-                for path in base.glob('*/' + name):
-                    assert not path.is_symlink() and not path.parent.is_symlink()
-                    assert base.resolve() in path.resolve().parents
-                    assert path.stat().st_size < 8192
-                    value = json.loads(path.read_text())['image_id']
-                    assert re.fullmatch(r'sha256:[0-9a-f]{64}', value)
-                    rollback.add(value)
-            assert rollback, 'Expected existing rollback receipts'
-            print('PROTECTED_ROLLBACK_IMAGE_COUNT=' + str(len(rollback)), flush=True)
-            before_containers = containers()
-            used = {docker('inspect', '-f', '{{.Image}}', value) for value in before_containers}
-            dangling = set(docker('image', 'ls', '-q', '--no-trunc', '--filter', 'dangling=true').splitlines())
-            assert candidates <= dangling
-            assert not candidates & (used | rollback)
-            for image in sorted(candidates):
-                assert json.loads(docker('image', 'inspect', '-f', '{{json .RepoTags}}', image)) == []
-                print('VERIFIED_UNUSED_UNTAGGED=' + image, flush=True)
-            protected_images = {line for line in images() if line.split()[0] not in candidates}
-            before_volumes = docker('volume', 'ls', '--format', '{{.Driver}} {{.Name}}')
-            for image in sorted(candidates):
-                assert not docker('ps', '-aq', '--filter', 'ancestor=' + image)
-                subprocess.run(['docker', 'image', 'rm', '--no-prune', image], check=True)
-            assert images() == protected_images
-            assert containers() == before_containers
-            assert docker('volume', 'ls', '--format', '{{.Driver}} {{.Name}}') == before_volumes
-            print('PROTECTED_IMAGES_UNCHANGED=true\nCONTAINERS_UNCHANGED=true\nVOLUMES_UNCHANGED=true', flush=True)
+            # Explicitly read-only transaction; choose an existing public published project.
+            with transaction.atomic():
+                with connection.cursor() as cursor:
+                    cursor.execute('SET TRANSACTION READ ONLY')
+                link = (PartnerProgramProject.objects
+                        .filter(project__is_public=True, project__draft=False)
+                        .select_related('partner_program').order_by('pk').first())
+                if link is None:
+                    print('PUBLIC_PROGRAM_PROJECT_UNAVAILABLE=true', flush=True)
+                else:
+                    url = 'https://api.procollab.ru/projects/' + str(link.project_id) + '/'
+                    request = urllib.request.Request(url, headers={'Accept': 'application/json'})
+                    with urllib.request.urlopen(request, timeout=30) as response:
+                        assert response.status == 200
+                        payload = json.load(response)
+                    program = payload['partner_program']
+                    assert program['program_link_id'] == link.pk
+                    assert program['program_id'] == link.partner_program_id
+                    assert program['name'] == link.partner_program.name
+                    print('PUBLIC_PROJECT_ID=' + str(link.project_id), flush=True)
+                    print('PUBLIC_PROJECT_HTTP_STATUS=200\nPARTNER_PROGRAM_NAME_MATCH=true', flush=True)
+            print('PUBLIC_API_CONTRACT_VERIFICATION_COMPLETE=true', flush=True)
             PY
-            printf 'DISK_AFTER_CLEANUP\n'
-            df -h / /var/lib/docker
-            after=$(runtime)
-            test "$after" = "$before"
-            printf 'RUNTIME_UNCHANGED=true\nPROD_CACHE_CLEANUP_COMPLETE=true\n'
-            INSPECT
+            printf 'PROD_RELEASE_VERIFICATION_COMPLETE=true\n'
+            VERIFY
             WRAPPER
