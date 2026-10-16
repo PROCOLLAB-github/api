@@ -9,7 +9,7 @@ snapshot=/var/backups/procollab-prod-university-20261016
 test "$(id -u)" = 0
 test "$(readlink -f "$repo")" = "$repo"
 [[ "$ops_sha" =~ ^[0-9a-f]{40}$ ]]
-case "$phase" in inspect|reclaim|snapshot|verify) ;; *) exit 1 ;; esac
+case "$phase" in inspect|reclaim|snapshot|plan|verify) ;; *) exit 1 ;; esac
 source_sha=$(sudo -n -u app git --no-optional-locks -C "$repo" rev-parse HEAD)
 if [ "$phase" != verify ]; then
   test "$source_sha" = 5ee91f873a9fb2d232963dc37b3905224e5665cc
@@ -58,6 +58,19 @@ fi
 if [ "$phase" = reclaim ]; then
   test "${4:-}" = true
   sudo -n -u app git -C "$repo" show "$ops_sha:.github/scripts/university-prod-reclaim.py" | python3 -
+  exit 0
+fi
+if [ "$phase" = plan ]; then
+  [[ "$expected_sha" =~ ^[0-9a-f]{40}$ ]]
+  test -f "$snapshot/COMPLETE"
+  sudo -n -u app git -C "$repo" fetch origin release/prod-university-directory
+  test "$(sudo -n -u app git -C "$repo" rev-parse origin/release/prod-university-directory)" = "$expected_sha"
+  candidate="$snapshot/candidate-$expected_sha"
+  test ! -e "$candidate"
+  install -d -m 700 "$candidate"
+  sudo -n -u app git -C "$repo" archive "$expected_sha" | tar -x -C "$candidate"
+  docker run --rm --network "container:$web" --env-file "$repo/.env" -e PGOPTIONS='-c default_transaction_read_only=on' --mount "type=bind,src=$candidate,dst=/procollab,readonly" --mount type=tmpfs,destination=/procollab/log --entrypoint python "$image_id" manage.py migrate --plan --noinput
+  printf 'PROD_READONLY_CANDIDATE_MIGRATION_PLAN_COMPLETE=true\n'
   exit 0
 fi
 if [ "$phase" = snapshot ]; then

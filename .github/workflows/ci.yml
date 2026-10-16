@@ -2,8 +2,8 @@ name: CI
 
 on:
   push:
-    branches:
-      - "**"
+    branches-ignore:
+      - "ops/prod-university-rollout-20261016"
 
 jobs:
   lint:
