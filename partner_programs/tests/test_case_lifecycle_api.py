@@ -137,6 +137,7 @@ class ProgramCaseLifecycleAPITests(TestCase):
     def test_other_program_case_does_not_satisfy_current_link_submission(self):
         link = self.link()
         program_b = create_partner_program(is_competitive=True)
+        create_program_member(program_b, user=self.user)
         field_b = create_case_field(program_b, options=["Other"])
         link_b = create_program_project(program_b, project=link.project)
         PartnerProgramFieldValue.objects.create(

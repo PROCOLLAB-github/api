@@ -3,6 +3,7 @@ import re
 import tablib
 from django import forms
 from django.contrib import admin
+from projects.team_admin import TeamValidationAdminMixin
 from django.db.models import QuerySet
 from django.http import HttpRequest
 from django.urls import path
@@ -83,6 +84,8 @@ class PartnerProgramAdmin(admin.ModelAdmin):
                     "description",
                     "city",
                     "is_competitive",
+                    "legacy_team_min_size",
+                    "legacy_team_max_size",
                     "projects_availability",
                     "publish_projects_after_finish",
                     "max_project_rates",
@@ -110,8 +113,10 @@ class PartnerProgramAdmin(admin.ModelAdmin):
     )
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[PartnerProgram]:
-        qs = super().get_queryset(request).prefetch_related(
-            "managers", "materials", "fields"
+        qs = (
+            super()
+            .get_queryset(request)
+            .prefetch_related("managers", "materials", "fields")
         )
         if "Руководитель программы" in request.user.groups.all().values_list(
             "name", flat=True
@@ -130,9 +135,7 @@ class PartnerProgramAdmin(admin.ModelAdmin):
                 "partner_programs/admin/program_manager_change_form.html"
             )
         else:
-            self.change_form_template = (
-                "partner_programs/admin/programs_change_form.html"
-            )
+            self.change_form_template = "partner_programs/admin/programs_change_form.html"
 
         return super().change_view(request, object_id, form_url, extra_context)
 
@@ -316,7 +319,7 @@ class PartnerProgramFieldValueInline(admin.TabularInline):
 
 
 @admin.register(PartnerProgramProject)
-class PartnerProgramProjectAdmin(admin.ModelAdmin):
+class PartnerProgramProjectAdmin(TeamValidationAdminMixin, admin.ModelAdmin):
     list_display = (
         "id",
         "project",

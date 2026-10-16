@@ -8,6 +8,7 @@ from invites.permissions import InviteDecisionPermission, InviteDetailPermission
 from invites.querysets import get_visible_invites_queryset
 from invites.serializers import InviteDetailSerializer, InviteListSerializer
 from projects import team_service
+from projects.serializers import requested_program_link
 
 
 class InviteList(generics.ListCreateAPIView):
@@ -50,7 +51,11 @@ class InviteAccept(generics.GenericAPIView):
 
     def post(self, request, *args, **kwargs):
         invite = self.get_object()
-        team_service.accept_invite(invite_id=invite.pk, actor=request.user)
+        team_service.accept_invite(
+            invite_id=invite.pk,
+            actor=request.user,
+            program_link_id=requested_program_link(request),
+        )
         return Response(status=status.HTTP_200_OK)
 
 

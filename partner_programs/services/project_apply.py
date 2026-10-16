@@ -61,7 +61,9 @@ def _validate_unique_program_fields(values_data: list[dict]) -> None:
         seen_field_ids.add(field_id)
     if duplicate_ids:
         raise ValidationError(
-            {"program_field_values": f"Есть повторяющиеся field_id: {sorted(duplicate_ids)}"}
+            {
+                "program_field_values": f"Есть повторяющиеся field_id: {sorted(duplicate_ids)}"
+            }
         )
 
 
@@ -84,7 +86,9 @@ def _validate_required_program_fields(
     ]
     if missing_required:
         raise ValidationError(
-            {"program_field_values": f"Не заполнены обязательные поля: {missing_required}"}
+            {
+                "program_field_values": f"Не заполнены обязательные поля: {missing_required}"
+            }
         )
 
 
@@ -103,6 +107,7 @@ def _validate_program_field_ownership(
             )
 
 
+@transaction.atomic
 def apply_project_to_program(
     *,
     program: PartnerProgram,
@@ -110,6 +115,9 @@ def apply_project_to_program(
     data,
     serializer_class,
 ) -> ProgramProjectApplicationResult:
+    from projects import team_policy
+
+    program = PartnerProgram.objects.select_for_update().get(pk=program.pk)
     require_can_apply_project_to_program(program=program, user=user)
 
     existing_link = (
@@ -119,6 +127,11 @@ def apply_project_to_program(
     )
     if existing_link:
         raise ProgramProjectAlreadyApplied(existing_link)
+
+    if program.is_competitive:
+        team_policy.validate_program_users(
+            program, project_id=None, user_ids={user.pk}, lock=True
+        )
 
     serializer = serializer_class(data=data, context={"program": program})
     serializer.is_valid(raise_exception=True)

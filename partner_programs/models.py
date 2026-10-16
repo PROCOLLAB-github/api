@@ -51,6 +51,18 @@ class PartnerProgram(models.Model):
         verbose_name="Конкурсная программа",
         help_text="Если включено, проекты участников подлежат сдаче на проверку",
     )
+    legacy_team_min_size = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Минимум участников legacy-команды",
+        help_text="NULL — без минимума. Проверяется только при сдаче проекта.",
+    )
+    legacy_team_max_size = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Максимум участников legacy-команды",
+        help_text="NULL — без максимума. Ожидающие приглашения резервируют места.",
+    )
     city = models.TextField(
         verbose_name="Город",
     )
@@ -150,6 +162,23 @@ class PartnerProgram(models.Model):
     )
     datetime_updated = models.DateTimeField(verbose_name="Дата изменения", auto_now=True)
 
+    def clean(self):
+        super().clean()
+        for field in ("legacy_team_min_size", "legacy_team_max_size"):
+            value = getattr(self, field)
+            if value is not None and value < 1:
+                raise ValidationError(
+                    {field: "Размер команды должен быть положительным."}
+                )
+        if (
+            self.legacy_team_min_size is not None
+            and self.legacy_team_max_size is not None
+            and self.legacy_team_min_size > self.legacy_team_max_size
+        ):
+            raise ValidationError(
+                {"legacy_team_max_size": "Максимум не может быть меньше минимума."}
+            )
+
     def is_manager(self, user: User) -> bool:
         """
         Возвращает True, если пользователь — менеджер этой программы.
@@ -159,6 +188,24 @@ class PartnerProgram(models.Model):
         return self.managers.filter(pk=user.pk).exists()
 
     class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(legacy_team_min_size__isnull=True)
+                | models.Q(legacy_team_min_size__gte=1),
+                name="legacy_team_min_positive",
+            ),
+            models.CheckConstraint(
+                check=models.Q(legacy_team_max_size__isnull=True)
+                | models.Q(legacy_team_max_size__gte=1),
+                name="legacy_team_max_positive",
+            ),
+            models.CheckConstraint(
+                check=models.Q(legacy_team_min_size__isnull=True)
+                | models.Q(legacy_team_max_size__isnull=True)
+                | models.Q(legacy_team_max_size__gte=models.F("legacy_team_min_size")),
+                name="legacy_team_max_gte_min",
+            ),
+        ]
         verbose_name = "Программа"
         verbose_name_plural = "Программы"
 
@@ -295,6 +342,74 @@ class PartnerProgramProject(models.Model):
     datetime_submitted = models.DateTimeField(
         null=True, blank=True, verbose_name="Дата сдачи проекта"
     )
+
+    def clean(self):
+        super().clean()
+        from projects import team_policy
+        from projects.team_errors import TeamError
+
+        if not self.project_id or not self.partner_program_id:
+            return
+        previous = type(self).objects.filter(pk=self.pk).first() if self.pk else None
+        try:
+            if previous and (
+                previous.project_id != self.project_id
+                or previous.partner_program_id != self.partner_program_id
+            ):
+                raise TeamError(
+                    "invalid_program_context",
+                    "Связь проекта с программой нельзя переназначить; создайте новую связь.",
+                )
+            if previous is None:
+                team_policy.validate_project_binding(self.project, self.partner_program)
+            if previous and previous.submitted and not self.submitted:
+                raise TeamError(
+                    "team_frozen",
+                    "Сданный проект нельзя вернуть в draft изменением связи.",
+                )
+            if self.submitted and (previous is None or not previous.submitted):
+                if not self.partner_program.is_competitive:
+                    raise TeamError(
+                        "invalid_submission", "Программа не является конкурсной."
+                    )
+                if not self.partner_program.is_project_submission_open():
+                    raise TeamError("submission_closed", "Срок подачи проектов завершён.")
+                team_policy.validate_submission_team(self.project, self)
+                from django.db import connection
+                from partner_programs.services.case_fields import (
+                    validate_case_before_submission,
+                )
+
+                validate_case_before_submission(
+                    self, for_update=connection.in_atomic_block
+                )
+                team_policy.validate_required_program_fields(self)
+        except TeamError as error:
+            raise ValidationError(
+                str(error.detail["detail"]), code=str(error.detail["code"])
+            ) from error
+
+    @transaction.atomic
+    def save(self, *args, **kwargs):
+        from projects.team_policy import lock_team
+
+        context = lock_team(self.project_id, extra_program_ids=[self.partner_program_id])
+        self.project = context.project
+        self.partner_program = context.programs[self.partner_program_id]
+        self.clean()
+        return super().save(*args, **kwargs)
+
+    @transaction.atomic
+    def delete(self, *args, **kwargs):
+        from projects.team_policy import lock_team
+
+        context = lock_team(self.project_id)
+        current = next((link for link in context.links if link.pk == self.pk), None)
+        if current and current.submitted and current.partner_program.is_competitive:
+            raise ValidationError(
+                "Сданную связь программы нельзя удалить.", code="team_frozen"
+            )
+        return super().delete(*args, **kwargs)
 
     def can_edit(self, user: User) -> bool:
         if not user or not user.is_authenticated:

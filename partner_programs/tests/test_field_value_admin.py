@@ -7,6 +7,7 @@ from django.utils import timezone
 from partner_programs.models import PartnerProgramFieldValue
 from partner_programs.tests.helpers import (
     create_partner_program,
+    create_program_member,
     create_program_field,
     create_program_project,
     create_user,
@@ -29,6 +30,7 @@ class FieldValueAdminFlow:
         self.client.force_login(self.user)
         self.program = create_partner_program(is_competitive=True)
         self.link = create_program_project(self.program)
+        create_program_member(self.program, user=self.link.project.leader)
         self.field = (
             create_case_field(self.program, options=["rgdftb", "A", "B"])
             if self.is_case

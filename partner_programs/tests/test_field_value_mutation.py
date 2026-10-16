@@ -137,7 +137,10 @@ class ProgramFieldValueMutationTests(TestCase):
         self.program.is_competitive = False
         self.program.save(update_fields=["is_competitive"])
         self.link.submitted = True
-        self.link.save(update_fields=["submitted"])
+        # Историческое состояние для проверки чтения/freeze, не новый submission.
+        type(self.link).objects.filter(pk=self.link.pk).update(
+            submitted=self.link.submitted
+        )
         for value in self.values:
             value.value_text = "B"
             value.full_clean()

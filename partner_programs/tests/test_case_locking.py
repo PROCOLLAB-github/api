@@ -18,6 +18,7 @@ from partner_programs.services.project_fields import (
 )
 from partner_programs.tests.helpers import (
     create_partner_program,
+    create_program_member,
     create_program_project,
     create_project,
     create_user,
@@ -30,6 +31,7 @@ class ProgramCaseLockingTests(TransactionTestCase):
     def setUp(self):
         self.user = create_user()
         self.program = create_partner_program(is_competitive=True)
+        create_program_member(self.program, user=self.user)
         self.link = create_program_project(
             self.program, project=create_project(leader=self.user)
         )

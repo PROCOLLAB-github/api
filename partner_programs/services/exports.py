@@ -171,18 +171,12 @@ def _leader_full_name(user):
 
 
 def _calc_team_size(project):
-    prefetched_collaborators = getattr(project, "_prefetched_collaborators", None)
-    if prefetched_collaborators is not None:
-        return 1 + len(prefetched_collaborators)
+    prefetched = getattr(project, "_prefetched_collaborators", None)
+    if prefetched is not None:
+        return len({project.leader_id} | {member.user_id for member in prefetched})
+    from projects.team_policy import accepted_user_ids
 
-    try:
-        if hasattr(project, "get_collaborators_user_list"):
-            return 1 + len(project.get_collaborators_user_list())
-        if hasattr(project, "collaborator_set"):
-            return 1 + project.collaborator_set.count()
-    except Exception:
-        pass
-    return 1
+    return len(accepted_user_ids(project))
 
 
 def _team_members(project) -> str:

@@ -185,7 +185,8 @@ class ProgramRoleWidgetTests(TestCase):
         )
         self.assertEqual(self.widget(self.member)["participant"]["stage"], "evaluated")
         link.submitted = False
-        link.save(update_fields=["submitted"])
+        # Историческое состояние для проверки чтения/freeze, не новый submission.
+        type(link).objects.filter(pk=link.pk).update(submitted=link.submitted)
         self.assertEqual(self.widget(experts[0])["expert"]["remaining"], 1)
         self.assertEqual(
             self.widget(self.member)["participant"]["stage"], "not_submitted"

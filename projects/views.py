@@ -18,7 +18,6 @@ from core.permissions import IsStaffOrReadOnly
 from core.services import add_view
 from partner_programs.models import (
     PartnerProgram,
-    PartnerProgramProject,
     PartnerProgramUserProfile,
 )
 from projects.cover_reset import reset_project_cover
@@ -64,6 +63,7 @@ from projects.serializers import (
     ProjectListSerializer,
     ProjectSubscribersListSerializer,
     ResourceSerializer,
+    requested_program_link,
 )
 from users.models import LikesOnProject
 from users.serializers import UserListSerializer
@@ -90,6 +90,7 @@ class ProjectList(generics.ListCreateAPIView):
         queryset = Project.objects.get_projects_for_list_view()
         return queryset
 
+    @transaction.atomic
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -100,7 +101,12 @@ class ProjectList(generics.ListCreateAPIView):
 
         try:
             partner_program_id = request.data.get("partner_program_id")
-            update_partner_program(partner_program_id, request.user, serializer.instance)
+            update_partner_program(
+                partner_program_id,
+                request.user,
+                serializer.instance,
+                program_link_id=requested_program_link(request),
+            )
         except PartnerProgram.DoesNotExist:
             return Response(
                 {"detail": "Partner program with this id does not exist"},
@@ -164,11 +170,17 @@ class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
+    @transaction.atomic
     def put(self, request, pk, **kwargs):
         # fixme: add partner_program_id to docs
         try:
             partner_program_id = request.data.get("partner_program_id")
-            update_partner_program(partner_program_id, request.user, self.get_object())
+            update_partner_program(
+                partner_program_id,
+                request.user,
+                self.get_object(),
+                program_link_id=requested_program_link(request),
+            )
         except PartnerProgram.DoesNotExist:
             return Response(
                 {"detail": "Partner program with this id does not exist"},
@@ -182,11 +194,17 @@ class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
         check_related_fields_update(request.data, pk)
         return super(ProjectDetail, self).put(request, pk)
 
+    @transaction.atomic
     def patch(self, request, pk, **kwargs):
         # fixme: add partner_program_id to docs
         try:
             partner_program_id = request.data.get("partner_program_id")
-            update_partner_program(partner_program_id, request.user, self.get_object())
+            update_partner_program(
+                partner_program_id,
+                request.user,
+                self.get_object(),
+                program_link_id=requested_program_link(request),
+            )
         except PartnerProgram.DoesNotExist:
             return Response(
                 {"detail": "Partner program with this id does not exist"},
@@ -223,7 +241,9 @@ class ProjectRecommendedUsers(generics.RetrieveAPIView):
 
     def get(self, request, pk, **kwargs):
         project = self.get_object()
-        recommended_users = get_recommended_users(project)
+        recommended_users = get_recommended_users(
+            project, program_link_id=requested_program_link(request, query=True)
+        )
         serializer = self.get_serializer(recommended_users, many=True)
         return Response(status=status.HTTP_200_OK, data=serializer.data)
 
@@ -290,7 +310,11 @@ class ProjectCollaborators(generics.GenericAPIView):
 
     def post(self, request, pk: int):
         project = self.get_object()
-        team_service.reject_direct_add(project_id=project.pk, actor=request.user)
+        team_service.reject_direct_add(
+            project_id=project.pk,
+            actor=request.user,
+            program_link_id=requested_program_link(request),
+        )
 
     def delete(self, request, pk: int):
         project = self.get_object()
@@ -305,7 +329,10 @@ class ProjectCollaborators(generics.GenericAPIView):
                 status_code=422,
             )
         team_service.remove_member(
-            project_id=project.pk, user_id=user_id, actor=request.user
+            project_id=project.pk,
+            user_id=user_id,
+            actor=request.user,
+            program_link_id=requested_program_link(request, query=True),
         )
         return Response(status=204)
 
@@ -454,7 +481,11 @@ class LeaveProject(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
 
     def delete(self, request, project_pk: int) -> Response:
-        team_service.leave_team(project_id=project_pk, actor=request.user)
+        team_service.leave_team(
+            project_id=project_pk,
+            actor=request.user,
+            program_link_id=requested_program_link(request, query=True),
+        )
         return Response(status=204)
 
 
@@ -475,7 +506,10 @@ class SwitchLeaderRole(generics.GenericAPIView):
     def patch(self, request, project_pk: int, user_to_leader_pk: int) -> Response:
         project = self.get_object()
         team_service.switch_leader(
-            project_id=project.pk, user_id=user_to_leader_pk, actor=request.user
+            project_id=project.pk,
+            user_id=user_to_leader_pk,
+            actor=request.user,
+            program_link_id=requested_program_link(request),
         )
         return Response(status=204)
 
@@ -538,6 +572,12 @@ class DuplicateProjectView(APIView):
         partner_program = get_object_or_404(PartnerProgram, id=data["partner_program_id"])
 
         with transaction.atomic():
+            from projects.team_policy import lock_team
+
+            original_project = lock_team(
+                original_project.pk, extra_program_ids=[partner_program.pk]
+            ).project
+            team_service.require_team_manager(original_project, request.user)
             new_project = Project.objects.create(
                 name=original_project.name,
                 description=original_project.description,
@@ -560,8 +600,10 @@ class DuplicateProjectView(APIView):
 
             self._copy_collaborators(original_project, new_project)
 
-            program_link = PartnerProgramProject.objects.create(
-                partner_program=partner_program, project=new_project
+            program_link = team_service.bind_project_to_program(
+                project_id=new_project.pk,
+                program_id=partner_program.pk,
+                actor=request.user,
             )
 
         return Response(

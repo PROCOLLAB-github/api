@@ -111,7 +111,11 @@ def update_program_link_fields(link_id, user, data):
 @transaction.atomic
 def submit_program_project(link_id, user):
     """Freeze a link only after current case validation, under the same lock as PUT."""
-    link = get_program_link(link_id, for_update=True)
+    from projects import team_policy
+
+    reference = get_object_or_404(PartnerProgramProject, pk=link_id)
+    context = team_policy.lock_team(reference.project_id)
+    link = team_policy.resolve_program_context(context.project, link_id)
     require_link_leader(link, user)
     if not link.partner_program.is_competitive:
         raise ValidationError({"detail": "Программа не является конкурсной."})
@@ -121,6 +125,11 @@ def submit_program_project(link_id, user):
         raise ValidationError({"detail": "Срок подачи проектов в программу завершён."})
     try:
         validate_case_before_submission(link)
+    except DjangoValidationError as error:
+        raise ValidationError({"detail": error.messages[0]})
+    team_policy.validate_submission_team(context.project, link)
+    try:
+        team_policy.validate_required_program_fields(link)
     except DjangoValidationError as error:
         raise ValidationError({"detail": error.messages[0]})
     link.submitted = True

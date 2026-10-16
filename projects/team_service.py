@@ -3,19 +3,16 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404
-from rest_framework.exceptions import APIException
 
-from projects.models import Collaborator, Project
+from projects.models import Collaborator
+from partner_programs.models import (
+    PartnerProgramProject,
+    PartnerProgramUserProfile,
+)
+from django.utils import timezone
 from invites.models import Invite
-from partner_programs.models import PartnerProgramUserProfile
-
-
-class TeamError(APIException):
-    status_code = 409
-
-    def __init__(self, code, detail, *, status_code=409):
-        self.status_code = status_code
-        super().__init__({"code": code, "detail": detail}, code=code)
+from projects import team_policy
+from projects.team_errors import TeamError
 
 
 def require_team_manager(project, actor):
@@ -28,7 +25,7 @@ def require_team_manager(project, actor):
 
 
 def _locked_project(project_id):
-    return get_object_or_404(Project.objects.select_for_update(), pk=project_id)
+    return team_policy.lock_team(project_id).project
 
 
 def _locked_member(project, user_id):
@@ -43,6 +40,7 @@ def _locked_member(project, user_id):
             "Пользователь не является участником проекта.",
             status_code=422,
         )
+    member.project = project
     return member
 
 
@@ -56,24 +54,29 @@ def _require_not_leader(project, user_id):
 
 
 @transaction.atomic
-def remove_member(*, project_id, user_id, actor):
+def remove_member(*, project_id, user_id, actor, program_link_id=None):
     project = _locked_project(project_id)
     require_team_manager(project, actor)
+    team_policy.resolve_program_context(project, program_link_id)
+    team_policy.require_mutable_team(project)
     _require_not_leader(project, user_id)
     _locked_member(project, user_id).delete()
 
 
 @transaction.atomic
-def leave_team(*, project_id, actor):
+def leave_team(*, project_id, actor, program_link_id=None):
     project = _locked_project(project_id)
+    team_policy.resolve_program_context(project, program_link_id)
+    team_policy.require_mutable_team(project)
     _require_not_leader(project, actor.pk)
     _locked_member(project, actor.pk).delete()
 
 
 @transaction.atomic
-def switch_leader(*, project_id, user_id, actor):
+def switch_leader(*, project_id, user_id, actor, program_link_id=None):
     project = _locked_project(project_id)
     require_team_manager(project, actor)
+    team_policy.validate_new_member(project, user_id, program_link_id=program_link_id)
     if project.leader_id == user_id:
         raise TeamError(
             "already_project_leader",
@@ -86,9 +89,11 @@ def switch_leader(*, project_id, user_id, actor):
 
 
 @transaction.atomic
-def reject_direct_add(*, project_id, actor):
+def reject_direct_add(*, project_id, actor, program_link_id=None):
     project = _locked_project(project_id)
     require_team_manager(project, actor)
+    team_policy.resolve_program_context(project, program_link_id)
+    team_policy.require_mutable_team(project)
     raise TeamError(
         "direct_member_add_unsupported",
         "Для добавления участника отправьте приглашение в проект.",
@@ -117,18 +122,6 @@ def _require_invite_eligible(project, user_id):
         )
     if Collaborator.objects.filter(project=project, user_id=user_id).exists():
         raise TeamError("already_project_member", "Пользователь уже состоит в проекте.")
-    # Сохраняем legacy-контекст до отдельного PR с явной связью программы.
-    link = project.program_links.order_by("pk").first()
-    if link:
-        membership = (
-            PartnerProgramUserProfile.objects.select_for_update()
-            .filter(partner_program_id=link.partner_program_id, user_id=user_id)
-            .first()
-        )
-        if membership is None:
-            raise TeamError(
-                "not_program_member", "Пользователь не является участником программы."
-            )
 
 
 def _lock_invite(invite_id):
@@ -139,16 +132,43 @@ def _lock_invite(invite_id):
     return project, invite
 
 
+def _invite_context(project, invite, program_link_id=None):
+    if invite.program_link_id is not None:
+        if program_link_id is not None and str(program_link_id) != str(
+            invite.program_link_id
+        ):
+            raise TeamError(
+                "invalid_program_context",
+                "Приглашение относится к другой связи программы.",
+                status_code=422,
+            )
+        program_link_id = invite.program_link_id
+    return team_policy.resolve_program_context(project, program_link_id)
+
+
 def _pending_invites(project, user_id):
     return Invite.objects.filter(
         project=project, user_id=user_id, is_accepted__isnull=True
     )
 
 
+def _model_business_error(error):
+    errors = (
+        [item for values in error.error_dict.values() for item in values]
+        if hasattr(error, "error_dict")
+        else error.error_list
+    )
+    code = next((item.code for item in errors if item.code), "invalid_invite_fields")
+    return TeamError(code, " ".join(error.messages))
+
+
 @transaction.atomic
-def create_invite(*, project_id, user_id, actor, **fields):
+def create_invite(*, project_id, user_id, actor, program_link_id=None, **fields):
     project = _locked_project(project_id)
     require_team_manager(project, actor)
+    link = team_policy.validate_new_member(
+        project, user_id, program_link_id=program_link_id
+    )
     _require_invite_eligible(project, user_id)
     pending = _pending_invites(project, user_id)
     if pending.exists():
@@ -158,7 +178,11 @@ def create_invite(*, project_id, user_id, actor, **fields):
     try:
         # Savepoint нужен, чтобы после IntegrityError внешняя транзакция оставалась рабочей.
         with transaction.atomic():
-            return Invite.objects.create(project=project, user_id=user_id, **fields)
+            return Invite.objects.create(
+                project=project, user_id=user_id, program_link=link, **fields
+            )
+    except DjangoValidationError as error:
+        raise _model_business_error(error) from error
     except IntegrityError as error:
         if pending.exists():
             raise TeamError(
@@ -169,10 +193,15 @@ def create_invite(*, project_id, user_id, actor, **fields):
 
 
 @transaction.atomic
-def edit_pending_invite(*, invite_id, actor, **fields):
+def edit_pending_invite(*, invite_id, actor, program_link_id=None, **fields):
     project, invite = _lock_invite(invite_id)
     require_team_manager(project, actor)
     _require_pending(invite)
+    link = _invite_context(project, invite, program_link_id)
+    team_policy.require_mutable_team(project)
+    team_policy.validate_new_member(
+        project, invite.user_id, program_link_id=link.pk if link else None
+    )
     allowed_fields = {"role", "specialization", "motivational_letter"}
     if fields.keys() - allowed_fields:
         raise TeamError(
@@ -180,16 +209,24 @@ def edit_pending_invite(*, invite_id, actor, **fields):
         )
     for field, value in fields.items():
         setattr(invite, field, value)
-    if fields:
-        invite.save(update_fields=[*fields, "datetime_updated"])
+    if fields or invite.program_link_id != (link.pk if link else None):
+        invite.program_link = link
+        try:
+            invite.save(update_fields=[*fields, "program_link", "datetime_updated"])
+        except DjangoValidationError as error:
+            raise _model_business_error(error) from error
     return invite
 
 
 @transaction.atomic
-def accept_invite(*, invite_id, actor):
+def accept_invite(*, invite_id, actor, program_link_id=None):
     project, invite = _lock_invite(invite_id)
     _require_recipient(invite, actor)
     _require_pending(invite)
+    link = _invite_context(project, invite, program_link_id)
+    team_policy.validate_new_member(
+        project, invite.user_id, program_link_id=link.pk if link else None
+    )
     _require_invite_eligible(project, invite.user_id)
     try:
         with transaction.atomic():
@@ -208,7 +245,8 @@ def accept_invite(*, invite_id, actor):
             ) from error
         raise
     invite.is_accepted = True
-    invite.save(update_fields=["is_accepted", "datetime_updated"])
+    invite.program_link = link
+    invite.save(update_fields=["is_accepted", "program_link", "datetime_updated"])
     return invite
 
 
@@ -229,3 +267,97 @@ def revoke_invite(*, invite_id, actor):
     _require_pending(invite)
     # Сохраняем DELETE-контракт legacy без переноса unrelated PROD lifecycle полей.
     invite.delete()
+
+
+@transaction.atomic
+def add_member(
+    *,
+    project_id,
+    user_id,
+    actor,
+    role=None,
+    specialization=None,
+    program_link_id=None,
+    allow_staff=False
+):
+    project = _locked_project(project_id)
+    if not (allow_staff and (actor.is_staff or actor.is_superuser)):
+        require_team_manager(project, actor)
+    team_policy.validate_new_member(project, user_id, program_link_id=program_link_id)
+    _require_invite_eligible(project, user_id)
+    try:
+        with transaction.atomic():
+            return Collaborator.objects.create(
+                project=project, user_id=user_id, role=role, specialization=specialization
+            )
+    except DjangoValidationError as error:
+        raise TeamError("invalid_team_member", " ".join(error.messages)) from error
+    except IntegrityError as error:
+        if Collaborator.objects.filter(project=project, user_id=user_id).exists():
+            raise TeamError(
+                "already_project_member", "Пользователь уже состоит в проекте."
+            ) from error
+        raise
+
+
+@transaction.atomic
+def bind_project_to_program(*, project_id, program_id, actor, program_link_id=None):
+    if program_id is None:
+        return
+    try:
+        program_id = int(program_id)
+    except (TypeError, ValueError):
+        raise TeamError(
+            "invalid_program_context", "Укажите корректную программу.", status_code=422
+        )
+    context = team_policy.lock_team(
+        project_id, extra_program_ids=[program_id] if program_id else []
+    )
+    project = context.project
+    require_team_manager(project, actor)
+    current_link = team_policy.resolve_program_context(project, program_link_id)
+    team_policy.require_mutable_team(project)
+    program = context.programs.get(program_id) if program_id else None
+    if program_id and program is None:
+        raise TeamError(
+            "invalid_program_context", "Программа не найдена.", status_code=422
+        )
+    if program:
+        if (
+            not program.is_project_submission_open()
+            or program.datetime_finished < timezone.now()
+        ):
+            raise TeamError(
+                "submission_closed", "Срок подачи проектов в программу завершён."
+            )
+        if (
+            not program.is_manager(actor)
+            and not PartnerProgramUserProfile.objects.filter(
+                partner_program=program, user=actor
+            ).exists()
+        ):
+            raise TeamError(
+                "not_program_member",
+                "Подача проекта доступна только участникам программы.",
+            )
+        team_policy.validate_project_binding(project, program)
+    if current_link and current_link.partner_program_id != program_id:
+        if current_link.team_invites.exists():
+            raise TeamError(
+                "program_context_in_use",
+                "Связь программы используется приглашениями; её нельзя удалить.",
+            )
+        PartnerProgramUserProfile.objects.filter(
+            project=project, partner_program_id=current_link.partner_program_id
+        ).update(project=None)
+        current_link.delete()
+    if program:
+        link, _created = PartnerProgramProject.objects.get_or_create(
+            project=project, partner_program=program
+        )
+        project.is_public = False
+        project.save(update_fields=["is_public"])
+        PartnerProgramUserProfile.objects.filter(
+            user=actor, partner_program=program
+        ).update(project=project)
+        return link

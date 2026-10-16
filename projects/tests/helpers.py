@@ -161,11 +161,14 @@ def link_project_to_program(
     *,
     submitted: bool = False,
 ) -> PartnerProgramProject:
-    return PartnerProgramProject.objects.create(
+    # Историческая связь для read-contract tests, включая конфликтные legacy данные.
+    link = PartnerProgramProject(
         project=project,
         partner_program=program,
         submitted=submitted,
     )
+    PartnerProgramProject.objects.bulk_create([link])
+    return link
 
 
 def create_company(*, name: str = "Company", inn: str | None = None) -> Company:
