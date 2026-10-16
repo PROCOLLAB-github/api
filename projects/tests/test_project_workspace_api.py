@@ -229,6 +229,8 @@ class ProjectWorkspaceAPITests(TestCase):
         project.industry = None
         project.cover_image_address = None
         project.save()
+        # Simulate legacy data: save() now assigns a name to unnamed projects.
+        Project.objects.filter(pk=project.pk).update(name=None)
         self.authenticate(self.leader)
 
         response = self.client.patch(
