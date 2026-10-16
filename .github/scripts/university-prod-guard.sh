@@ -9,8 +9,21 @@ snapshot=/var/backups/procollab-prod-university-20261016
 test "$(id -u)" = 0
 test "$(readlink -f "$repo")" = "$repo"
 [[ "$ops_sha" =~ ^[0-9a-f]{40}$ ]]
-case "$phase" in inspect|reclaim|snapshot|plan|verify) ;; *) exit 1 ;; esac
+case "$phase" in inspect|diagnose|reclaim|snapshot|plan|verify) ;; *) exit 1 ;; esac
 source_sha=$(sudo -n -u app git --no-optional-locks -C "$repo" rev-parse HEAD)
+if [ "$phase" = diagnose ]; then
+  printf 'DIAGNOSTIC_SOURCE_SHA=%s\n' "$source_sha"
+  sudo -n -u app git -C "$repo" status --short --untracked-files=no
+  sudo -n -u app git -C "$repo" diff --numstat
+  df -PB1 /
+  printf 'BACKUP_COMPLETE='; test -f "$snapshot/COMPLETE" && echo true
+  printf 'SNAPSHOT_OWNERSHIP='; stat -c '%u:%a' "$snapshot"
+  for service in web celerys; do
+    container=$(docker ps -q --no-trunc --filter label=com.docker.compose.project=prod --filter "label=com.docker.compose.service=$service")
+    docker inspect -f '{{.Config.Image}} {{.Image}} {{.State.Status}} {{.RestartCount}}' "$container"
+  done
+  exit 0
+fi
 if [ "$phase" != verify ]; then
   test "$source_sha" = 5ee91f873a9fb2d232963dc37b3905224e5665cc
 else

@@ -6,7 +6,7 @@ on:
     inputs:
       phase:
         type: choice
-        options: [inspect, reclaim, snapshot, plan, verify, release]
+        options: [inspect, diagnose, reclaim, snapshot, plan, verify, release]
         default: inspect
         required: true
       backend_sha:
