@@ -87,6 +87,7 @@ class ProjectFilter(filters.FilterSet):
             return queryset.filter(id__in=rated_projects_ids)
         return queryset.exclude(id__in=rated_projects_ids)
 
+    project_id = filters.NumberFilter(field_name="id", lookup_expr="exact")
     name__contains = filters.Filter(field_name="name", lookup_expr="contains")
     description__contains = filters.Filter(
         field_name="description", lookup_expr="contains"

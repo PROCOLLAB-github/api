@@ -30,9 +30,56 @@ from partner_programs.views import (
 
 from partner_programs.widget_views import ProgramRoleWidgetAPIView
 
+from partner_programs.management_views import (
+    ManagementView,
+    ManagementParticipantsView,
+    ManagementProjectsView,
+    ManagementTeamView,
+    ManagementEvaluationView,
+    ManagementSettingsView,
+    ManagementMaterialsView,
+    ManagementMaterialDetailView,
+)
+
 app_name = "partner_programs"
 
 urlpatterns = [
+    path("<int:pk>/management/", ManagementView.as_view(), name="management"),
+    path(
+        "<int:pk>/management/participants/",
+        ManagementParticipantsView.as_view(),
+        name="management-participants",
+    ),
+    path(
+        "<int:pk>/management/projects/",
+        ManagementProjectsView.as_view(),
+        name="management-projects",
+    ),
+    path(
+        "<int:pk>/management/projects/<int:link_id>/team/",
+        ManagementTeamView.as_view(),
+        name="management-team",
+    ),
+    path(
+        "<int:pk>/management/projects/<int:link_id>/evaluation/",
+        ManagementEvaluationView.as_view(),
+        name="management-evaluation",
+    ),
+    path(
+        "<int:pk>/management/settings/<str:section>/",
+        ManagementSettingsView.as_view(),
+        name="management-settings",
+    ),
+    path(
+        "<int:pk>/management/materials/",
+        ManagementMaterialsView.as_view(),
+        name="management-materials",
+    ),
+    path(
+        "<int:pk>/management/materials/<int:material_id>/",
+        ManagementMaterialDetailView.as_view(),
+        name="management-material",
+    ),
     path(
         "<int:pk>/analytics-widget/",
         ProgramRoleWidgetAPIView.as_view(),
