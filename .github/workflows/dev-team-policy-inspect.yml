@@ -1,0 +1,111 @@
+name: DEV team policy rollout inspection
+on:
+  push:
+    branches: [ops/dev-team-policy-rollout-check-20261016]
+permissions:
+  contents: read
+concurrency:
+  group: dev-team-policy-rollout-inspection
+  cancel-in-progress: false
+jobs:
+  inspect:
+    if: github.ref == 'refs/heads/ops/dev-team-policy-rollout-check-20261016'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Inspect DEV runtime and team data without mutation
+        uses: garygrossgarten/github-action-ssh@release
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: ${{ secrets.DEV_SERVER_USER }}
+          password: ${{ secrets.DEV_SERVER_PASSWORD }}
+          command: |
+            bash -se 2>&1 <<'DEV_INSPECT'
+            set -Eeuo pipefail
+            repo=/root/api
+            expected_sha=ccf920308d38329a6626fceee1fc1ea3d01c8550
+            phase=preflight
+            test "$(readlink -f "$repo")" = "$repo"
+            grep -Eq 'server_name[[:space:]]+dev\.procollab\.ru;' /etc/nginx/sites-enabled/dev.procollab.ru
+            test "$(git --no-optional-locks -C "$repo" rev-parse HEAD)" = "$expected_sha"
+            printf 'DEV_SOURCE_SHA=%s\nDEV_INSPECTION_PHASE=%s\n' "$expected_sha" "$phase"
+            runtime_image_id=''
+            for service in web celerys; do
+              container=$(docker ps -q --no-trunc --filter "label=com.docker.compose.project.working_dir=$repo" --filter "label=com.docker.compose.service=$service")
+              [[ "$container" =~ ^[0-9a-f]{64}$ ]]
+              ref=$(docker inspect -f '{{.Config.Image}}' "$container")
+              actual=$(docker inspect -f '{{.Image}}' "$container")
+              case "$ref" in "procollab-dev-api:${expected_sha}"*) ;; *) exit 1 ;; esac
+              if [ -n "$runtime_image_id" ]; then test "$actual" = "$runtime_image_id"; fi
+              runtime_image_id=$actual
+              printf 'DEV_SERVICE=%s IMAGE_REF=%s IMAGE_ID=%s\n' "$service" "$ref" "$actual"
+              if [ "$service" = web ]; then web_container=$container; fi
+            done
+            df -h / /var/lib/docker
+            docker exec -i -e AUDIT_PHASE="$phase" "$web_container" python - <<'PY'
+            import json
+            import os
+            os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'procollab.settings')
+            import django
+            django.setup()
+            from django.db import connection, transaction
+            from django.db.migrations.executor import MigrationExecutor
+            queries = {
+                'multiple_teams': '''WITH members AS (
+                    SELECT id AS project_id, leader_id AS user_id FROM projects_project
+                    UNION SELECT project_id, user_id FROM projects_collaborator)
+                    SELECT l.partner_program_id, m.user_id
+                    FROM members m
+                    JOIN partner_programs_partnerprogramproject l ON l.project_id=m.project_id
+                    JOIN partner_programs_partnerprogram p ON p.id=l.partner_program_id
+                    WHERE p.is_competitive AND p.datetime_finished>CURRENT_TIMESTAMP
+                    GROUP BY l.partner_program_id,m.user_id HAVING count(DISTINCT m.project_id)>1''',
+                'duplicate_pending': '''SELECT project_id,user_id FROM invites_invite
+                    WHERE is_accepted IS NULL GROUP BY project_id,user_id HAVING count(*)>1''',
+                'ambiguous_invites': '''SELECT i.id FROM invites_invite i
+                    JOIN partner_programs_partnerprogramproject l ON l.project_id=i.project_id
+                    GROUP BY i.id HAVING count(l.id)>1''',
+                'roster_without_program_membership': '''WITH members AS (
+                    SELECT id AS project_id,leader_id AS user_id FROM projects_project
+                    UNION SELECT project_id,user_id FROM projects_collaborator)
+                    SELECT l.partner_program_id,m.project_id,m.user_id FROM members m
+                    JOIN partner_programs_partnerprogramproject l ON l.project_id=m.project_id
+                    JOIN partner_programs_partnerprogram p ON p.id=l.partner_program_id
+                    LEFT JOIN partner_programs_partnerprogramuserprofile u
+                      ON u.partner_program_id=l.partner_program_id AND u.user_id=m.user_id
+                    WHERE p.is_competitive AND u.id IS NULL''',
+            }
+            with transaction.atomic():
+                with connection.cursor() as cursor:
+                    cursor.execute('SET TRANSACTION READ ONLY')
+                    cursor.execute("SET LOCAL statement_timeout='45s'")
+                    cursor.execute("SHOW transaction_read_only")
+                    assert cursor.fetchone()[0] == 'on'
+                    counts = {}
+                    for name, sql in queries.items():
+                        cursor.execute('SELECT count(*) FROM (' + sql + ') AS audit_rows')
+                        counts[name] = cursor.fetchone()[0]
+                    print('DEV_TEAM_DATA_COUNTS=' + json.dumps(counts), flush=True)
+                    assert counts['duplicate_pending'] == 0
+                    executor = MigrationExecutor(connection)
+                    executor.loader.check_consistent_history(connection)
+                    plan = executor.migration_plan(executor.loader.graph.leaf_nodes())
+                    print('DEV_PENDING_MIGRATIONS=' + repr([(m.app_label,m.name,b) for m,b in plan]), flush=True)
+                    assert not plan
+                    cursor.execute("SELECT count(*) FROM pg_indexes WHERE tablename='invites_invite' AND indexdef ILIKE '%UNIQUE%' AND indexdef ILIKE '%WHERE%'")
+                    print('DEV_PENDING_UNIQUE_INDEX_COUNT=' + str(cursor.fetchone()[0]), flush=True)
+                    if os.environ['AUDIT_PHASE'] == 'postdeploy':
+                        assert ('invites','0004_legacy_project_team_policy') in executor.loader.applied_migrations
+                        assert ('partner_programs','0019_legacy_project_team_policy') in executor.loader.applied_migrations
+                        cursor.execute('SELECT count(*) FROM partner_programs_partnerprogram WHERE legacy_team_min_size IS NOT NULL OR legacy_team_max_size IS NOT NULL')
+                        print('DEV_PROGRAMS_WITH_CONFIGURED_TEAM_BOUNDS=' + str(cursor.fetchone()[0]), flush=True)
+                        cursor.execute('SELECT count(*) FROM invites_invite i JOIN (SELECT project_id,min(id) AS link_id FROM partner_programs_partnerprogramproject GROUP BY project_id HAVING count(*)=1) l ON l.project_id=i.project_id WHERE i.program_link_id IS DISTINCT FROM l.link_id')
+                        mismatches=cursor.fetchone()[0]
+                        print('DEV_UNAMBIGUOUS_BACKFILL_MISMATCHES=' + str(mismatches), flush=True)
+                        assert mismatches == 0
+                        from projects.serializers import ProjectDetailSerializer
+                        print('DEV_PROJECT_SERIALIZER_HAS_TEAM_POLICY=' + str('team_policy' in ProjectDetailSerializer().fields), flush=True)
+                        assert 'team_policy' in ProjectDetailSerializer().fields
+            print('DEV_READONLY_INSPECTION_COMPLETE=true', flush=True)
+            PY
+            DEV_INSPECT
