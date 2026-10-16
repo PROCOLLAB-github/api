@@ -65,10 +65,11 @@ if [ "$phase" = plan ]; then
   test -f "$snapshot/COMPLETE"
   sudo -n -u app git -C "$repo" fetch origin release/prod-university-directory
   test "$(sudo -n -u app git -C "$repo" rev-parse origin/release/prod-university-directory)" = "$expected_sha"
-  candidate="$snapshot/candidate-$expected_sha"
+  candidate="$snapshot/candidate-$expected_sha-${ops_sha:0:12}"
   test ! -e "$candidate"
   install -d -m 700 "$candidate"
   sudo -n -u app git -C "$repo" archive "$expected_sha" | tar -x -C "$candidate"
+  install -d -m 700 "$candidate/log"
   docker run --rm --network "container:$web" --env-file "$repo/.env" -e PGOPTIONS='-c default_transaction_read_only=on' --mount "type=bind,src=$candidate,dst=/procollab,readonly" --mount type=tmpfs,destination=/procollab/log --entrypoint python "$image_id" manage.py migrate --plan --noinput
   printf 'PROD_READONLY_CANDIDATE_MIGRATION_PLAN_COMPLETE=true\n'
   exit 0
