@@ -25,6 +25,8 @@ class ProgramAnalyticsSummarySerializer(serializers.Serializer):
 class ProgramParticipantFunnelSerializer(serializers.Serializer):
     registrations = serializers.IntegerField(min_value=0)
     unique_participants = serializers.IntegerField(min_value=0)
+    visited_participants = serializers.IntegerField(min_value=0)
+    onboarded_participants = serializers.IntegerField(min_value=0)
     with_team = serializers.IntegerField(min_value=0)
     project_creators = serializers.IntegerField(min_value=0)
     submitted_project_creators = serializers.IntegerField(min_value=0)
@@ -119,8 +121,8 @@ class DelayedExpertSerializer(AssignmentExpertSerializer):
     pending = serializers.IntegerField(min_value=0)
     overdue_24h = serializers.IntegerField(min_value=0)
     overdue_48h = serializers.IntegerField(min_value=0)
-    oldest_waiting_since = serializers.DateTimeField()
-    oldest_waiting_seconds = serializers.IntegerField(min_value=0)
+    oldest_waiting_since = serializers.DateTimeField(allow_null=True)
+    oldest_waiting_seconds = serializers.IntegerField(min_value=0, allow_null=True)
     severity = serializers.ChoiceField(choices=("critical", "warning"))
 
 
@@ -135,6 +137,8 @@ class ProjectsNotSubmittedSerializer(AnalyticsTotalSerializer):
 
 
 class ProgramAttentionSerializer(serializers.Serializer):
+    participants_without_visit = serializers.IntegerField(min_value=0)
+    participants_without_onboarding = serializers.IntegerField(min_value=0)
     participants_without_team = serializers.IntegerField(min_value=0)
     projects_awaiting_evaluation = serializers.IntegerField(min_value=0)
     projects_not_submitted = ProjectsNotSubmittedSerializer()

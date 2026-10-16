@@ -603,6 +603,48 @@ class AbstractUserExperience(models.Model):
         super().save(*args, **kwargs)
 
 
+class University(models.Model):
+    """Editable suggestions, deliberately not linked to existing education records."""
+
+    name = models.CharField(max_length=255, verbose_name="Название для выбора")
+    full_name = models.TextField(blank=True, verbose_name="Полное официальное название")
+    aliases = models.TextField(
+        blank=True,
+        verbose_name="Сокращения и другие названия",
+        help_text="Например: МГУ, МГУ имени Ломоносова. Используются при поиске.",
+    )
+    city = models.CharField(max_length=100, blank=True, verbose_name="Город")
+    is_active = models.BooleanField(default=True, verbose_name="Показывать в списке")
+    source_id = models.CharField(
+        max_length=100, unique=True, null=True, blank=True, verbose_name="Код в источнике"
+    )
+    source_url = models.URLField(max_length=1000, blank=True, verbose_name="Источник")
+    source_checked_at = models.DateField(
+        null=True, blank=True, verbose_name="Дата проверки источника"
+    )
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Изменено")
+    search_text = models.TextField(editable=False, blank=True)
+
+    class Meta:
+        verbose_name = "Вуз (справочник)"
+        verbose_name_plural = "Вузы (справочник)"
+        ordering = ("name", "city", "id")
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        from users.universities import normalize_university_search
+
+        self.source_id = self.source_id or None
+        self.search_text = normalize_university_search(
+            " ".join((self.name, self.full_name, self.aliases, self.city))
+        )
+        if kwargs.get("update_fields") is not None:
+            kwargs["update_fields"] = set(kwargs["update_fields"]) | {"search_text"}
+        super().save(*args, **kwargs)
+
+
 class UserEducation(AbstractUserExperience):
     """
     User education model

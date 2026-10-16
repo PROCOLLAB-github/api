@@ -406,6 +406,14 @@ class UserExperienceMixin:
 
 
 class UserEducationSerializer(UserExperienceMixin, serializers.ModelSerializer):
+    # A profile round-trip must not normalize an existing free-text institution name.
+    organization_name = serializers.CharField(max_length=255, trim_whitespace=False)
+
+    def validate_organization_name(self, value):
+        if not value.strip():
+            raise serializers.ValidationError("Укажите название учреждения.")
+        return value
+
     class Meta:
         model = UserEducation
         fields = [

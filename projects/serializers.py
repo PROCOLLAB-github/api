@@ -88,6 +88,7 @@ class ProjectCollaboratorSerializer(serializers.ModelSerializer):
 
 
 class PartnerProgramProjectSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(source="partner_program.name", read_only=True)
     program_link_id = serializers.IntegerField(source="pk", read_only=True)
     program_id = serializers.IntegerField(source="partner_program.id", read_only=True)
     is_submitted = serializers.BooleanField(source="submitted", read_only=True)
@@ -98,6 +99,7 @@ class PartnerProgramProjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = PartnerProgramProject
         fields = [
+            "name",
             "program_link_id",
             "program_id",
             "is_submitted",

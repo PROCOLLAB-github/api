@@ -1,7 +1,9 @@
 # Конкурсная legacy-команда (PR C)
 
 Основание — утверждённое ТЗ hardening и уточнения пользователя от 29.09.2026.
-База: PR B `3a513846c81dd36e5f3393957ec3450c9fcfb2f7`.
+Актуальная база: `dev ccf920308d38329a6626fceee1fc1ea3d01c8550` (16.10.2026),
+с merged PR A #763 и replacement PR B #767. Исходная реализация C:
+`88f114b63b954e3faa578420175f598b63022e9b` поверх B `3a513846…`.
 
 ## Current / target, роли и правила
 
@@ -110,14 +112,17 @@ exclusivity по нескольким таблицам и времени гар�
 
 ## Verification / review
 
-115 targeted PostgreSQL tests PASS: competitive policy (29 cases), все Invite tests,
+На исходном C `88f114b…` прошли 115 targeted PostgreSQL tests: competitive policy
+(29 cases), все Invite tests,
 forward/backward migrations, admin field mutations и case locking. Среди новых
 проверок — real HTTP races: accept A/B, invite capacity, submit/accept, submit/remove;
 clone/bind rollback, model/API required fields, independent NULL bounds, DB bound
 check, membership removal, explicit foreign context и any-submitted-link freeze.
 
-Black/Flake8 изменённых/new Python файлов, Django check, migration consistency и
-diff check PASS. Полный suite и GitHub PostgreSQL CI фиксируются в PR description.
+Результаты повторной проверки на актуальном dev: targeted tests (включая security A,
+integrity B, новые default project names и user-project contract), полный backend suite,
+Black/Flake8, Django checks, migration consistency и GitHub PostgreSQL CI фиксируются
+в PR description. Результат исходной версии не заменяет проверку обновлённого head.
 UI/browser, live DEV/PROD mutations и deploy здесь не проверялись/не выполнялись.
 
 Старые tests чтения сохраняют намеренно конфликтные historical fixtures через
@@ -126,9 +131,10 @@ tests вызывают реальные API/service/model save и проверя
 
 ## Rollout
 
-1. A → dev; затем B → dev после смены base B; затем C → dev после смены base C.
-2. До B/C на целевой БД прочитать `legacy-team-data-audit.sql`. Здесь live production
-   audit не выполнялся. При duplicates migration B остановится, данные сохранятся.
+1. A #763 и B #767 уже merged в dev. C #765 направляется в dev после интеграции
+   актуальной базы; published history сохраняется, force-push не требуется.
+2. До C на целевой БД прочитать `legacy-team-data-audit.sql`. Здесь live production
+   audit не выполнялся. Pending constraint B не дублируется и его migration не меняется.
 3. C schema/backfill не удаляет конфликтные команды, не задаёт product min/max,
    ambiguous Invite оставляет NULL. Existing conflicts требуют отдельного решения
    владельца данных; до решения новые conflict-sensitive mutations возвращают 409.
@@ -136,5 +142,11 @@ tests вызывают реальные API/service/model save и проверя
 5. PROD имеет другой migration graph и nextgen lifecycle. Прямой cherry-pick
    migrations без согласования графа не является production release plan.
 
-Review AC C1–C15: source и targeted assertions проверены; full-suite evidence
-добавляется в описание PR после окончания проверки. Merge/deploy выполняет владелец.
+При обновлении от dev разрешены конфликты в семи файлах. В шести Invite/service/test
+файлах dev совпадал с исходным B: сохранены расширения C, включая historical migration
+models и mapping model validation. В `Project.save()` объединены team locks/leader guard
+и актуальная нормализация имени; изменения аналитики/университетов из dev сохранены.
+Итоговый diff к dev содержит только C и его совместимость с актуальными contracts.
+
+Review AC C1–C15 и актуальное test evidence приводятся в описании PR.
+Merge/deploy выполняет владелец.

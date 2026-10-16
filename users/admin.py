@@ -25,6 +25,7 @@ from .models import (
     Mentor,
     UserAchievement,
     UserEducation,
+    University,
     UserLanguages,
     UserLink,
     UserSkillConfirmation,
@@ -434,6 +435,15 @@ class ExpertAdmin(admin.ModelAdmin):
     search_fields = ("user__first_name", "user__last_name", "user__email")
     list_filter = ("user__partner_program_profiles__partner_program",)
     list_select_related = ("user",)
+
+
+@admin.register(University)
+class UniversityAdmin(admin.ModelAdmin):
+    list_display = ("name", "city", "is_active", "source_checked_at", "updated_at")
+    list_editable = ("is_active",)
+    list_filter = ("is_active", "source_checked_at")
+    search_fields = ("name", "full_name", "aliases", "city", "source_id")
+    readonly_fields = ("updated_at",)
 
 
 @admin.register(UserEducation)
