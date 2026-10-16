@@ -1,0 +1,45 @@
+name: University DEV rollout guard
+
+on:
+  push:
+    branches: [ops/dev-university-rollout-20261016]
+  workflow_dispatch:
+    inputs:
+      phase:
+        type: choice
+        options: [snapshot, verify]
+        default: snapshot
+        required: true
+      backend_sha:
+        type: string
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: university-dev-rollout-guard-20261016
+  cancel-in-progress: false
+
+jobs:
+  guard:
+    if: github.ref == 'refs/heads/ops/dev-university-rollout-20261016'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Preserve or verify existing DEV education records
+        uses: garygrossgarten/github-action-ssh@release
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: ${{ secrets.DEV_SERVER_USER }}
+          password: ${{ secrets.DEV_SERVER_PASSWORD }}
+          command: |
+            set -eu
+            exec 2>&1
+            cd /root/api
+            test "$(readlink -f /root/api)" = /root/api
+            grep -Eq 'server_name[[:space:]]+dev\.procollab\.ru;' /etc/nginx/sites-enabled/dev.procollab.ru
+            git fetch origin ops/dev-university-rollout-20261016
+            git show '${{ github.sha }}:.github/scripts/university-dev-guard.sh' |
+              bash -se -- '${{ github.event.inputs.phase || 'snapshot' }}' '${{ github.event.inputs.backend_sha }}' '${{ github.sha }}'
