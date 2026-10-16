@@ -1,4 +1,4 @@
-name: PROD default project name preflight
+name: PROD default project name verification
 on:
   workflow_dispatch:
   push:
@@ -14,14 +14,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Inspect production runtime and project names without changing data
+      - name: Verify production migration and invitation project list read-only
         uses: garygrossgarten/github-action-ssh@release
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASSWORD }}
           command: |
-            bash -se 2>&1 <<'PROD_INSPECT'
+            bash -se 2>&1 <<'PROD_VERIFY'
             set -Eeuo pipefail
             repo=/home/app/procollab-backend
             test "$(readlink -f "$repo")" = "$repo"
@@ -30,24 +30,23 @@ jobs:
             else
               source_sha=$(sudo -n -u app git --no-optional-locks -C "$repo" rev-parse HEAD)
             fi
-            test "$source_sha" = '620ebf71734b33df2a63479bc870b285882215be'
+            test "$source_sha" = '5ee91f873a9fb2d232963dc37b3905224e5665cc'
             printf 'PROD_SOURCE_SHA=%s\n' "$source_sha"
-            df -h / /var/lib/docker
-            python3 - <<'PY'
-            import os
-            available = os.statvfs('/').f_bavail * os.statvfs('/').f_frsize
-            print('PROD_DISK_AVAILABLE_BYTES=' + str(available), flush=True)
-            assert available >= 1610612736, 'Less than 1.5 GiB free before release'
-            PY
+            expected_image='ghcr.io/procollab-github/api:prod-pr769-5ee91f873a9f-20261016'
+            expected_id=$(docker image inspect -f '{{.Id}}' "$expected_image")
+            test "$(docker image inspect -f '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$expected_image")" = "$source_sha"
             web=''
             for service in web celerys; do
               container=$(docker ps -q --no-trunc --filter label=com.docker.compose.project=prod --filter "label=com.docker.compose.service=$service")
               [[ "$container" =~ ^[0-9a-f]{64}$ ]]
               test "$(docker inspect -f '{{index .Config.Labels "com.docker.compose.project.working_dir"}}' "$container")" = "$repo"
+              test "$(docker inspect -f '{{.Config.Image}}' "$container")" = "$expected_image"
+              test "$(docker inspect -f '{{.Image}}' "$container")" = "$expected_id"
               printf 'PROD_SERVICE=%s\n' "$service"
               docker inspect -f '{"image_reference":{{json .Config.Image}},"image_id":{{json .Image}},"status":{{json .State.Status}},"restart_count":{{.RestartCount}}}' "$container"
               if [ "$service" = web ]; then web="$container"; fi
             done
+            printf 'PROD_RUNTIME_MATCHES_RELEASE=true\n'
             docker exec -i "$web" python - <<'PY'
             import os
             os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'procollab.settings')
@@ -62,18 +61,49 @@ jobs:
             plan = executor.migration_plan(executor.loader.graph.leaf_nodes())
             print('PROD_PENDING_MIGRATIONS=' + repr([(m.app_label, m.name) for m, _ in plan]), flush=True)
             assert not plan
+            applied = ('projects', '0034_default_project_name') in executor.loader.applied_migrations
+            print('PROD_DEFAULT_NAME_MIGRATION_APPLIED=' + str(applied), flush=True)
+            assert applied
             from projects.models import Project
             from django.db.models import Q
             pattern = '^[\t\n\v\f\r\x1c-\x1f \x85\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]*$'
-            print('PROD_PROJECT_COUNT=' + str(Project.objects.count()), flush=True)
-            print('PROD_BLANK_PROJECT_NAME_COUNT=' + str(Project.objects.filter(Q(name__isnull=True) | Q(name__regex=pattern)).count()), flush=True)
-            print('PROD_DEFAULT_PROJECT_NAME_COUNT=' + str(Project.objects.filter(name='Проект без названия').count()), flush=True)
-            print('PROD_DEFAULT_NAME_MIGRATION_APPLIED=' + str(('projects', '0034_default_project_name') in executor.loader.applied_migrations), flush=True)
+            blanks = Project.objects.filter(Q(name__isnull=True) | Q(name__regex=pattern)).count()
+            defaults = Project.objects.filter(name='Проект без названия').count()
+            print('PROD_BLANK_PROJECT_NAME_COUNT=' + str(blanks), flush=True)
+            print('PROD_DEFAULT_PROJECT_NAME_COUNT=' + str(defaults), flush=True)
+            assert blanks == 0
+            assert defaults > 0
+            assert Project._meta.get_field('name').get_default() == 'Проект без названия'
+            from django.contrib.auth import get_user_model
+            from django.urls import resolve
+            from rest_framework.test import APIRequestFactory, force_authenticate
+            # Current production browser account; only read its project list.
+            leader = get_user_model().objects.get(pk=417)
+            path = '/auth/users/projects/leader/'
+            request = APIRequestFactory().get(path, secure=True, HTTP_HOST='api.procollab.ru')
+            force_authenticate(request, user=leader)
+            response = resolve(path).func(request)
+            print('PROD_LEADER_LIST_STATUS=' + str(response.status_code), flush=True)
+            assert response.status_code == 200
+            entries = response.data['results']
+            matches = sum(item.get('name') == 'Проект без названия' for item in entries)
+            print('PROD_LEADER_TOTAL_PROJECT_COUNT=' + str(response.data['count']), flush=True)
+            print('PROD_LEADER_RETURNED_PROJECT_COUNT=' + str(len(entries)), flush=True)
+            print('PROD_LEADER_LIST_DEFAULT_NAME_MATCH_COUNT=' + str(matches), flush=True)
+            assert matches > 0
+            assert all(item.get('name') and item['name'].strip() for item in entries)
+            print('PROD_LEADER_LIST_ALL_NAMES_PERSISTED=True', flush=True)
+            PY
+            df -h / /var/lib/docker
+            python3 - <<'PY'
+            import os
+            available = os.statvfs('/').f_bavail * os.statvfs('/').f_frsize
+            print('PROD_DISK_AVAILABLE_BYTES=' + str(available), flush=True)
             PY
             root_status=$(curl -s -o /dev/null -w '%{http_code}' https://api.procollab.ru/)
             admin_status=$(curl -s -o /dev/null -w '%{http_code}' https://api.procollab.ru/admin/login/)
             printf 'PROD_ROOT_HTTP=%s\nPROD_ADMIN_HTTP=%s\n' "$root_status" "$admin_status"
             test "$root_status" = 401
             test "$admin_status" = 200
-            printf 'PROD_BASELINE_READONLY_COMPLETE=true\n'
-            PROD_INSPECT
+            printf 'PROD_READONLY_VERIFICATION_COMPLETE=true\n'
+            PROD_VERIFY
