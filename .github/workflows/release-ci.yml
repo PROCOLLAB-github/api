@@ -163,6 +163,7 @@ jobs:
             password: ${{ secrets.SERVER_PASSWORD }}
             command: |
               set -eu
+              umask 077
 
               snapshot=/var/backups/procollab-prod-university-20261016
               test -f "$snapshot/COMPLETE"
@@ -192,8 +193,11 @@ jobs:
               docker compose -f docker-compose.prod-ci.yml -p prod config >/dev/null
               docker compose -f docker-compose.prod-ci.yml -p prod pull web celerys
 
+              sudo -n -u app git -C /home/app/procollab-backend show '${{ github.sha }}:.github/scripts/university-prod-checkpoint.sh' |
+                bash -se -- "$running" '${{ github.sha }}' '${{ github.run_id }}' '${{ github.run_attempt }}'
+
               docker compose -f docker-compose.prod-ci.yml -p prod run --rm -T web python manage.py migrate --noinput
-              docker compose -f docker-compose.prod-ci.yml -p prod up -d --force-recreate
+              docker compose -f docker-compose.prod-ci.yml -p prod up -d --no-deps --force-recreate web celerys
               expected_image="ghcr.io/procollab-github/api:${IMAGE_TAG}"
               for service in web celerys; do
                 container="$(docker compose -f docker-compose.prod-ci.yml -p prod ps -q "$service")"

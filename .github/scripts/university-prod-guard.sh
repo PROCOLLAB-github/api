@@ -132,7 +132,10 @@ PY
   touch "$snapshot/COMPLETE"
   printf 'PROD_PRIVATE_EDUCATION_BACKUP_COMPLETE=true\n'
 else
-  docker cp "$snapshot/education-before.json" "$web:/tmp/university-education-before-20261016.json"
+  baseline=$(cat "$snapshot/education-checkpoint.txt")
+  [[ "$baseline" =~ ^/var/backups/procollab-prod-university-20261016/education-before-deploy-[0-9]+-[0-9]+\.json$ ]]
+  test -s "$baseline"
+  docker cp "$baseline" "$web:/tmp/university-education-before-20261016.json"
   docker exec "$web" chmod 600 /tmp/university-education-before-20261016.json
   sudo -n -u app git -C "$repo" show "$ops_sha:.github/scripts/university-prod-check.py" |
     docker exec -i "$web" python - verify
