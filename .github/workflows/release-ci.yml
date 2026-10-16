@@ -173,7 +173,6 @@ jobs:
 
               snapshot=/var/backups/procollab-prod-university-20261016
               test -f "$snapshot/COMPLETE"
-              test -z "$(sudo -n -u app git -C /home/app/procollab-backend status --porcelain --untracked-files=no)"
               test -s "$snapshot/database-before.dump"
               test -s "$snapshot/education-before.json"
               test "$(sudo -n -u app git --no-optional-locks -C /home/app/procollab-backend rev-parse HEAD)" = "$(cat "$snapshot/backend-source-before.txt")"
@@ -185,15 +184,13 @@ jobs:
               export DEPLOY_REF="${{ needs.prepare.outputs.deploy_ref }}"
               echo "Deploying IMAGE_TAG=${IMAGE_TAG} from DEPLOY_REF=${DEPLOY_REF}"
 
-              if [ "$(id -un)" = "app" ]; then
-                git -C /home/app/procollab-backend fetch --all --tags --prune
-                git -C /home/app/procollab-backend checkout --detach "${DEPLOY_REF}"
-                git -C /home/app/procollab-backend rev-parse HEAD
-              else
-                sudo -u app git -C /home/app/procollab-backend fetch --all --tags --prune
-                sudo -u app git -C /home/app/procollab-backend checkout --detach "${DEPLOY_REF}"
-                sudo -u app git -C /home/app/procollab-backend rev-parse HEAD
-              fi
+              sudo -n -u app git -C /home/app/procollab-backend fetch --all --tags --prune
+              sudo -n -u app git -C /home/app/procollab-backend show '${{ github.sha }}:.github/scripts/university-prod-preserve-worktree.py' |
+                python3 - before "$DEPLOY_REF"
+              sudo -n -u app git -C /home/app/procollab-backend checkout --detach "$DEPLOY_REF"
+              sudo -n -u app git -C /home/app/procollab-backend show '${{ github.sha }}:.github/scripts/university-prod-preserve-worktree.py' |
+                python3 - after "$DEPLOY_REF"
+              sudo -n -u app git -C /home/app/procollab-backend rev-parse HEAD
 
               cd /home/app/procollab-backend
               chmod 600 .env
