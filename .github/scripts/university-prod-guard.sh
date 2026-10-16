@@ -40,6 +40,18 @@ if [ "$phase" = inspect ]; then
   docker exec "$web" sh -c 'command -v pg_dump || true'
   docker exec "$web" python -c 'import os; os.environ.setdefault("DJANGO_SETTINGS_MODULE","procollab.settings"); import django; django.setup(); from django.db import connection; c=connection.cursor(); c.execute("SET default_transaction_read_only = on"); c.execute("SHOW server_version"); print("PROD_DB_VERSION="+c.fetchone()[0]); c.execute("SELECT pg_database_size(current_database())"); print("PROD_DATABASE_BYTES="+str(c.fetchone()[0]))'
   docker system df
+  printf 'PROD_IMAGE_INVENTORY\n'
+  docker image ls -a --no-trunc --digests --format '{{.ID}} {{.Repository}}:{{.Tag}} {{.Digest}} {{.Size}}'
+  printf 'PROD_CONTAINER_IMAGE_REFERENCES\n'
+  for id in $(docker ps -aq --no-trunc); do
+    docker inspect -f '{{.Image}} {{.Config.Image}}' "$id"
+  done
+  printf 'PG_CLIENT_LOCATIONS\n'
+  for base in /usr/lib/postgresql/14/bin /usr/lib/postgresql/15/bin /usr/bin /bin; do
+    for client in pg_dump pg_restore psql; do
+      if test -x "$base/$client"; then printf '%s\n' "$base/$client"; fi
+    done
+  done
   printf 'PROD_INSPECTION_COMPLETE=true\n'
   exit 0
 fi
