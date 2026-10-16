@@ -14,6 +14,7 @@ on:
 
 permissions:
   contents: read
+  packages: read
 
 concurrency:
   group: prod-disk-pr777-20261016
@@ -25,7 +26,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Reclaim two recoverable unused image caches and verify release
+      - name: Authenticate read-only package lookup
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify immutable June image manifest before any eviction
+        run: |
+          docker manifest inspect ghcr.io/procollab-github/api@sha256:8917865465dce08c7648c6067f829824581538095c12389f3792dfff6a87f9a5 >/dev/null
+          echo 'REMOTE_IMMUTABLE_MANIFEST_AVAILABLE=true'
+      - name: Reclaim one recoverable unused image cache and verify release
         uses: garygrossgarten/github-action-ssh@release
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -56,14 +67,11 @@ jobs:
             import subprocess
             from pathlib import Path
 
-            # Exact unused images from diagnostic run 38901180424; retain June image whose remote manifest is absent.
+            # Exact unused June image; immutable remote manifest verified by prior authenticated runner step.
             candidates = [
-                ('sha256:7b784401ba594496a4c621afaf07d4a763871adc57eff817292ad1e1fb3acbb5',
-                 'ghcr.io/procollab-github/api:prod-20260918-analytics-cover-83f2ac8-r2',
-                 'ghcr.io/procollab-github/api@sha256:f8a00fb5f7c5c0ed33e4c445959ffdd314adcb16bdcfd7eee53a438faec8c949'),
-                ('sha256:6a8d9cef0bf1c22660db83207c58b935eba44d9b2aaf6cb025fd188612eafa81',
-                 'grafana/grafana:latest',
-                 'grafana/grafana@sha256:83749231c3835e390a3144e5e940203e42b9589761f20ef3169c716e734ad505'),
+                ('sha256:8a08cdbfccc54c150ada6589a03adafe3135c756e5d427e2da6601422dfd06b8',
+                 'ghcr.io/procollab-github/api:2c6e31a52331b2841d3d5a536a7ba361874beacf',
+                 'ghcr.io/procollab-github/api@sha256:8917865465dce08c7648c6067f829824581538095c12389f3792dfff6a87f9a5'),
             ]
             candidate_ids = {image for image, tag, digest in candidates}
 
@@ -94,19 +102,13 @@ jobs:
             before_containers = containers()
             used = {docker('inspect', '-f', '{{.Image}}', value) for value in before_containers}
             assert not candidate_ids & used
-            # Verify every immutable remote manifest before any cache eviction.
+            # Match the local immutable digest to the manifest verified on the authenticated runner.
             for image, tag, digest in candidates:
                 assert docker('image', 'inspect', '-f', '{{.Id}}', tag) == image
                 assert json.loads(docker('image', 'inspect', '-f', '{{json .RepoTags}}', image)) == [tag]
                 assert digest in json.loads(docker('image', 'inspect', '-f', '{{json .RepoDigests}}', image))
                 assert not docker('ps', '-aq', '--filter', 'ancestor=' + image)
-                manifest = subprocess.run(['docker', 'manifest', 'inspect', digest],
-                                          stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=120)
-                if manifest.returncode:
-                    error = manifest.stderr.decode(errors='replace').strip().splitlines()
-                    print('REMOTE_MANIFEST_CHECK_FAILED=' + (error[0][:300] if error else 'unknown'), flush=True)
-                    raise RuntimeError('Remote image availability unconfirmed; local images retained')
-                print('REMOTE_MANIFEST_AVAILABLE=' + digest, flush=True)
+                print('LOCAL_IMAGE_MATCHES_VERIFIED_REMOTE_DIGEST=' + digest, flush=True)
             protected_images = {line for line in images() if line.split()[0] not in candidate_ids}
             before_volumes = docker('volume', 'ls', '--format', '{{.Driver}} {{.Name}}')
             for image, tag, digest in candidates:
