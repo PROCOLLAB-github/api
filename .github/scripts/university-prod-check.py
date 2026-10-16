@@ -21,7 +21,7 @@ from rest_framework.test import APIRequestFactory
 from users.models import UserEducation
 
 phase = sys.argv[1]
-assert phase in ("snapshot", "verify")
+assert phase in ("snapshot", "verify", "education")
 assert connection.vendor == "postgresql"
 with connection.cursor() as cursor:
     cursor.execute("SET default_transaction_read_only = on")
@@ -79,6 +79,8 @@ assert before_digest == after_digest
 print(f"EDUCATION_BEFORE_SHA256={before_digest}")
 print(f"EDUCATION_PRESERVED_SHA256={after_digest}")
 print("EDUCATION_ALL_EXISTING_FIELDS_PRESERVED=true")
+if phase == "education":
+    sys.exit(0)
 
 from users.models import University
 

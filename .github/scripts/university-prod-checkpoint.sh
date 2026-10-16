@@ -13,6 +13,14 @@ attempt=$4
 test "$(id -u)" = 0
 test -f "$snapshot/COMPLETE"
 test "$(docker inspect -f '{{.Image}}' "$web")" = "$(cat "$snapshot/backend-image-id-before.txt")"
+if [ -f "$snapshot/education-checkpoint.txt" ]; then
+  previous=$(cat "$snapshot/education-checkpoint.txt")
+  [[ "$previous" =~ ^/var/backups/procollab-prod-university-20261016/education-before-deploy-[0-9]+-[0-9]+\.json$ ]]
+  docker cp "$previous" "$web:/tmp/university-education-before-20261016.json"
+  docker exec "$web" chmod 600 /tmp/university-education-before-20261016.json
+  sudo -n -u app git -C "$repo" show "$ops_sha:.github/scripts/university-prod-check.py" |
+    docker exec -i "$web" python - education
+fi
 baseline="$snapshot/education-before-deploy-$run_id-$attempt.json"
 test ! -e "$baseline"
 sudo -n -u app git -C "$repo" show "$ops_sha:.github/scripts/university-prod-check.py" |

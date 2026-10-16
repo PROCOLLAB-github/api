@@ -38,7 +38,7 @@ patch = git("diff", "HEAD", "--binary", "--full-index", "--no-ext-diff")
 receipt = backup / "server-notification-edits-before.patch"
 digest = hashlib.sha256(patch).hexdigest()
 if phase == "before":
-    assert git("rev-parse", "HEAD").decode().strip() == original
+    assert git("rev-parse", "HEAD").decode().strip() in (original, target)
     if receipt.exists():
         assert receipt.read_bytes() == patch, "Server edits changed after preservation"
     else:
