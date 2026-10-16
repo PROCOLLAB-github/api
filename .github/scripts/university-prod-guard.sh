@@ -9,7 +9,7 @@ snapshot=/var/backups/procollab-prod-university-20261016
 test "$(id -u)" = 0
 test "$(readlink -f "$repo")" = "$repo"
 [[ "$ops_sha" =~ ^[0-9a-f]{40}$ ]]
-case "$phase" in inspect|snapshot|verify) ;; *) exit 1 ;; esac
+case "$phase" in inspect|reclaim|snapshot|verify) ;; *) exit 1 ;; esac
 source_sha=$(sudo -n -u app git --no-optional-locks -C "$repo" rev-parse HEAD)
 if [ "$phase" != verify ]; then
   test "$source_sha" = 5ee91f873a9fb2d232963dc37b3905224e5665cc
@@ -55,6 +55,11 @@ if [ "$phase" = inspect ]; then
   printf 'PROD_INSPECTION_COMPLETE=true\n'
   exit 0
 fi
+if [ "$phase" = reclaim ]; then
+  test "${4:-}" = true
+  sudo -n -u app git -C "$repo" show "$ops_sha:.github/scripts/university-prod-reclaim.py" | python3 -
+  exit 0
+fi
 if [ "$phase" = snapshot ]; then
   test ! -e "$snapshot"
   test "$available" -gt 1073741824
@@ -64,6 +69,39 @@ if [ "$phase" = snapshot ]; then
   printf '%s\n' "$image_id" > "$snapshot/backend-image-id-before.txt"
   cp -p "$repo/.env" "$snapshot/backend.env.before"
   cp -p "$repo/docker-compose.prod-ci.yml" "$snapshot/docker-compose.prod-ci.yml"
+  client=postgres:14-alpine
+  had_client=false
+  if docker image inspect "$client" >/dev/null 2>&1; then had_client=true; fi
+  docker pull "$client"
+  client_id=$(docker image inspect -f '{{.Id}}' "$client")
+  docker exec -i "$web" python - <<'PY' > "$snapshot/pg-backup.env"
+import os
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'procollab.settings')
+import django
+django.setup()
+from django.conf import settings
+db = settings.DATABASES['default']
+values = {'PGHOST': db['HOST'], 'PGPORT': str(db['PORT'] or 5432), 'PGDATABASE': db['NAME'], 'PGUSER': db['USER'], 'PGPASSWORD': db['PASSWORD'], 'PGSSLMODE': db.get('OPTIONS', {}).get('sslmode', 'prefer')}
+assert all('\n' not in value and '\r' not in value for value in values.values())
+for key, value in values.items():
+    print(key + '=' + value)
+PY
+  docker run --rm --network "container:$web" --env-file "$snapshot/pg-backup.env" --entrypoint pg_dump "$client_id" --format=custom --no-owner --no-acl > "$snapshot/database-before.dump"
+  test -s "$snapshot/database-before.dump"
+  docker run --rm -i --entrypoint pg_restore "$client_id" --list < "$snapshot/database-before.dump" > "$snapshot/database-before.toc"
+  docker run --rm -i --entrypoint pg_restore "$client_id" --file=/dev/null < "$snapshot/database-before.dump"
+  python3 - "$snapshot/pg-backup.env" <<'PY'
+import sys
+from pathlib import Path
+Path(sys.argv[1]).unlink()
+PY
+  sha256sum "$snapshot/database-before.dump"
+  printf 'PROD_DATABASE_BACKUP_VALIDATED=true\n'
+  if [ "$had_client" = false ]; then
+    test -z "$(docker ps -aq --filter "ancestor=$client_id")"
+    test "$(docker image inspect -f '{{.Id}}' "$client")" = "$client_id"
+    docker image rm --no-prune "$client"
+  fi
   sudo -n -u app git -C "$repo" show "$ops_sha:.github/scripts/university-prod-check.py" |
     docker exec -i "$web" python - snapshot > "$snapshot/education-before.json"
   python3 - "$snapshot/education-before.json" <<'PY'

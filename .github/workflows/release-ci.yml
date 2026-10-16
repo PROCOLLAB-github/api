@@ -6,7 +6,7 @@ on:
     inputs:
       phase:
         type: choice
-        options: [inspect, snapshot, verify]
+        options: [inspect, reclaim, snapshot, verify]
         default: inspect
         required: true
       backend_sha:
@@ -15,6 +15,7 @@ on:
         default: ''
 permissions:
   contents: read
+  packages: read
 concurrency:
   group: university-prod-rollout-20261016
   cancel-in-progress: false
@@ -24,6 +25,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      - name: Verify immutable rollback cache manifests remain recoverable
+        id: registry
+        if: inputs.phase == 'reclaim'
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -Eeuo pipefail
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u '${{ github.actor }}' --password-stdin
+          docker buildx imagetools inspect ghcr.io/procollab-github/api@sha256:510365cd95106933532ea44f958f7062833c2db1d06ad8f16c9aa543942e321b >/dev/null
+          docker buildx imagetools inspect ghcr.io/procollab-github/api@sha256:f1fc114ece6330e8a6ce6f2b1a18a5329339205480a53d7b92887b9e28bf0af0 >/dev/null
+          echo 'verified=true' >> "$GITHUB_OUTPUT"
       - name: Inspect, preserve or verify production education
         uses: garygrossgarten/github-action-ssh@release
         with:
@@ -40,6 +52,6 @@ jobs:
             test "$(readlink -f "$repo")" = "$repo"
             sudo -n -u app git -C "$repo" fetch origin ops/prod-university-rollout-20261016
             sudo -n -u app git -C "$repo" show '${{ github.sha }}:.github/scripts/university-prod-guard.sh' |
-              bash -se -- '${{ github.event.inputs.phase || 'inspect' }}' '${{ github.event.inputs.backend_sha }}' '${{ github.sha }}'
+              bash -se -- '${{ github.event.inputs.phase || 'inspect' }}' '${{ github.event.inputs.backend_sha }}' '${{ github.sha }}' '${{ steps.registry.outputs.verified }}'
             REMOTE
             WRAPPER
