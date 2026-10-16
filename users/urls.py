@@ -35,9 +35,12 @@ from users.views import (
 )
 from users.public_profile_views import PublicProfileDetailView, PublicProfileListView
 
+from users.views_universities import UniversityListView
+
 app_name = "users"
 
 urlpatterns = [
+    path("universities/", UniversityListView.as_view(), name="universities"),
     path(
         "specialists/", SpecialistsList.as_view()
     ),  # this url actually returns  mentors, experts and investors

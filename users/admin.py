@@ -25,6 +25,7 @@ from .models import (
     Mentor,
     UserAchievement,
     UserEducation,
+    University,
     UserLanguages,
     UserLink,
     UserSkillConfirmation,
@@ -437,6 +438,15 @@ class ExpertAdmin(admin.ModelAdmin):
     @admin.display(description="Email")
     def email(self, obj):
         return obj.user.email
+
+
+@admin.register(University)
+class UniversityAdmin(admin.ModelAdmin):
+    list_display = ("name", "city", "is_active", "source_checked_at", "updated_at")
+    list_editable = ("is_active",)
+    list_filter = ("is_active", "source_checked_at")
+    search_fields = ("name", "full_name", "aliases", "city", "source_id")
+    readonly_fields = ("updated_at",)
 
 
 @admin.register(UserEducation)
