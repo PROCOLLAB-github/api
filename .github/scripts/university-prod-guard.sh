@@ -70,7 +70,8 @@ if [ "$phase" = plan ]; then
   install -d -m 700 "$candidate"
   sudo -n -u app git -C "$repo" archive "$expected_sha" | tar -x -C "$candidate"
   install -d -m 700 "$candidate/log"
-  docker run --rm --network "container:$web" --env-file "$repo/.env" -e PGOPTIONS='-c default_transaction_read_only=on' --mount "type=bind,src=$candidate,dst=/procollab,readonly" --mount type=tmpfs,destination=/procollab/log --entrypoint python "$image_id" manage.py migrate --plan --noinput
+  sudo -n -u app git -C "$repo" show "$ops_sha:.github/scripts/university-prod-plan.py" |
+    docker run --rm -i --network "container:$web" --env-file "$repo/.env" --mount "type=bind,src=$candidate,dst=/procollab,readonly" --mount type=tmpfs,destination=/procollab/log --entrypoint python "$image_id" -
   printf 'PROD_READONLY_CANDIDATE_MIGRATION_PLAN_COMPLETE=true\n'
   exit 0
 fi
