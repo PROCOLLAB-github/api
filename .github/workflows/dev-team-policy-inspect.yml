@@ -23,8 +23,9 @@ jobs:
             bash -se 2>&1 <<'DEV_INSPECT'
             set -Eeuo pipefail
             repo=/root/api
-            expected_sha=ccf920308d38329a6626fceee1fc1ea3d01c8550
-            phase=preflight
+            expected_sha=742f6df0995198b05322acc551b2b07f7929767a
+            expected_runtime_sha=ccf920308d38329a6626fceee1fc1ea3d01c8550
+            phase=failed-rollout
             test "$(readlink -f "$repo")" = "$repo"
             grep -Eq 'server_name[[:space:]]+dev\.procollab\.ru;' /etc/nginx/sites-enabled/dev.procollab.ru
             test "$(git --no-optional-locks -C "$repo" rev-parse HEAD)" = "$expected_sha"
@@ -35,12 +36,20 @@ jobs:
               [[ "$container" =~ ^[0-9a-f]{64}$ ]]
               ref=$(docker inspect -f '{{.Config.Image}}' "$container")
               actual=$(docker inspect -f '{{.Image}}' "$container")
-              case "$ref" in "procollab-dev-api:${expected_sha}"*) ;; *) exit 1 ;; esac
+              case "$ref" in "procollab-dev-api:${expected_runtime_sha}"*) ;; *) exit 1 ;; esac
               if [ -n "$runtime_image_id" ]; then test "$actual" = "$runtime_image_id"; fi
               runtime_image_id=$actual
               printf 'DEV_SERVICE=%s IMAGE_REF=%s IMAGE_ID=%s\n' "$service" "$ref" "$actual"
               if [ "$service" = web ]; then web_container=$container; fi
             done
+            if [ "$phase" = postdeploy ]; then
+              for file in projects/team_policy.py projects/team_service.py invites/models.py; do
+                source_hash=$(sha256sum "$repo/$file" | awk '{print $1}')
+                runtime_hash=$(docker exec "$web_container" sha256sum "/procollab/$file" | awk '{print $1}')
+                test "$source_hash" = "$runtime_hash"
+                printf 'DEV_RUNTIME_SOURCE_MATCH=%s SHA256=%s\n' "$file" "$runtime_hash"
+              done
+            fi
             df -h / /var/lib/docker
             docker exec -i -e AUDIT_PHASE="$phase" "$web_container" python - <<'PY'
             import json
@@ -94,6 +103,15 @@ jobs:
                     assert not plan
                     cursor.execute("SELECT count(*) FROM pg_indexes WHERE tablename='invites_invite' AND indexdef ILIKE '%UNIQUE%' AND indexdef ILIKE '%WHERE%'")
                     print('DEV_PENDING_UNIQUE_INDEX_COUNT=' + str(cursor.fetchone()[0]), flush=True)
+                    if os.environ['AUDIT_PHASE'] == 'failed-rollout':
+                        applied=executor.loader.applied_migrations
+                        assert ('invites','0004_legacy_project_team_policy') not in applied
+                        assert ('partner_programs','0019_legacy_project_team_policy') not in applied
+                        cursor.execute("SELECT table_name,column_name FROM information_schema.columns WHERE (table_name='partner_programs_partnerprogram' AND column_name IN ('legacy_team_min_size','legacy_team_max_size')) OR (table_name='invites_invite' AND column_name='program_link_id')")
+                        assert not cursor.fetchall()
+                        print('DEV_FAILED_MIGRATION_FULLY_ROLLED_BACK=true', flush=True)
+                        cursor.execute("SELECT current_user,c.relname,pg_get_userbyid(c.relowner),pg_has_role(current_user,c.relowner,'MEMBER') FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relname IN ('partner_programs_partnerprogram','invites_invite','django_migrations') ORDER BY c.relname")
+                        print('DEV_MIGRATION_OWNERSHIP=' + json.dumps(cursor.fetchall()), flush=True)
                     if os.environ['AUDIT_PHASE'] == 'postdeploy':
                         assert ('invites','0004_legacy_project_team_policy') in executor.loader.applied_migrations
                         assert ('partner_programs','0019_legacy_project_team_policy') in executor.loader.applied_migrations
@@ -106,6 +124,20 @@ jobs:
                         from projects.serializers import ProjectDetailSerializer
                         print('DEV_PROJECT_SERIALIZER_HAS_TEAM_POLICY=' + str('team_policy' in ProjectDetailSerializer().fields), flush=True)
                         assert 'team_policy' in ProjectDetailSerializer().fields
+                        from projects.models import Project
+                        from django.urls import resolve
+                        from rest_framework.test import APIRequestFactory, force_authenticate
+                        sample = Project.objects.select_related('leader').order_by('pk').first()
+                        assert sample is not None
+                        for path in ('/projects/?limit=1', '/auth/users/projects/', '/auth/users/projects/leader/'):
+                            request = APIRequestFactory().get(path, secure=True, HTTP_HOST='dev.procollab.ru')
+                            force_authenticate(request, user=sample.leader)
+                            response = resolve(path.split('?')[0]).func(request)
+                            assert response.status_code == 200, (path,response.status_code)
+                            data=response.data
+                            entries=data.get('results',[]) if isinstance(data,dict) else data
+                            assert entries and all('team_policy' in row for row in entries)
+                            print('DEV_READONLY_AUTHENTICATED_VIEW=' + path + ' STATUS=200 TEAM_POLICY=true', flush=True)
             print('DEV_READONLY_INSPECTION_COMPLETE=true', flush=True)
             PY
             DEV_INSPECT
