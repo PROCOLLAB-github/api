@@ -185,7 +185,16 @@ class ProjectDetailProgramLinkTests(TestCase):
             data = self.detail()["partner_program"]
             self.assertEqual(data, PartnerProgramProjectSerializer(first).data)
             self.assertEqual(data["program_id"], self.first_link_program.pk)
+            self.assertEqual(data["name"], self.first_link_program.name)
             self.assertFalse(data["is_submitted"])
+
+    def test_detail_returns_current_program_name_after_rename(self):
+        link_project_to_program(self.project, self.first_link_program)
+        self.first_link_program.name = "Новое название программы"
+        self.first_link_program.save(update_fields=["name"])
+        self.assertEqual(
+            self.detail()["partner_program"]["name"], "Новое название программы"
+        )
 
     def test_single_link_serializer_uses_one_join_and_existing_field_queries(self):
         link_project_to_program(self.project, self.first_link_program)

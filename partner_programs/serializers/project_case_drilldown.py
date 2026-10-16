@@ -17,6 +17,13 @@ class ProjectCaseQuerySerializer(serializers.Serializer):
     view = serializers.ChoiceField(choices=("case_analytics",))
     case_scope = serializers.ChoiceField(choices=("all", "selected", "without_case"))
     case_name = serializers.CharField(required=False, trim_whitespace=False)
+    search = serializers.CharField(allow_blank=True, default="", trim_whitespace=True)
+    submission = serializers.ChoiceField(
+        choices=("all", "submitted", "not_submitted"), default="all"
+    )
+    presentation = serializers.ChoiceField(
+        choices=("all", "present", "missing"), default="all"
+    )
 
     def to_internal_value(self, data):
         errors = {
@@ -34,6 +41,13 @@ class ProjectCaseQuerySerializer(serializers.Serializer):
         return super().to_internal_value({key: data[key] for key in data})
 
     def validate(self, attrs):
+        if (
+            attrs["submission"] != "all"
+            and self.context.get("submission_applicable") is False
+        ):
+            raise serializers.ValidationError(
+                {"submission": "В этой программе сдача решений не требуется."}
+            )
         if attrs["case_scope"] == "selected":
             if attrs.get("case_name") not in self.context["case_options"]:
                 raise serializers.ValidationError(
@@ -49,7 +63,6 @@ class ProjectCaseQuerySerializer(serializers.Serializer):
 class ProjectCaseListQuerySerializer(ProjectCaseQuerySerializer):
     limit = serializers.IntegerField(min_value=1, max_value=100, default=25)
     offset = serializers.IntegerField(min_value=0, default=0)
-    search = serializers.CharField(allow_blank=True, default="", trim_whitespace=True)
 
 
 class CaseProjectSerializer(serializers.Serializer):

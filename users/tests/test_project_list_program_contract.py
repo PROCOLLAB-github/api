@@ -131,7 +131,7 @@ class UserProjectProgramContractTests(TestCase):
         self.assertEqual(self.list_program(self.endpoints[0]), leader_metadata)
         detail = self.client.get(f"/projects/{self.project.pk}/")
         self.assertEqual(detail.status_code, 200)
-        for field in ("program_link_id", "program_id", "is_submitted"):
+        for field in ("name", "program_link_id", "program_id", "is_submitted"):
             self.assertEqual(
                 detail.data["partner_program"][field], leader_metadata[field]
             )
