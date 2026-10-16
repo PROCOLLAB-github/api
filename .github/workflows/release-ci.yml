@@ -1,4 +1,4 @@
-name: PROD read-only verification for release 777
+name: PROD guarded disk headroom recovery for release 777
 
 on:
   workflow_dispatch:
@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Verify deployed image, free space and public API contract
+      - name: Reclaim one obsolete cached image and verify release
         uses: garygrossgarten/github-action-ssh@release
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -49,6 +49,61 @@ jobs:
               docker inspect -f '{"service":"'"$service"'","image_reference":{{json .Config.Image}},"image_id":{{json .Image}},"status":{{json .State.Status}},"restart_count":{{json .RestartCount}}}' "$container"
               if test "$service" = web; then web=$container; fi
             done
+            python3 - <<'CACHE'
+            import json
+            import re
+            import shutil
+            import subprocess
+            from pathlib import Path
+
+            # Exact unused June image from diagnostic run 38901180424.
+            image = 'sha256:8a08cdbfccc54c150ada6589a03adafe3135c756e5d427e2da6601422dfd06b8'
+            tag = 'ghcr.io/procollab-github/api:2c6e31a52331b2841d3d5a536a7ba361874beacf'
+            digest = 'ghcr.io/procollab-github/api@sha256:8917865465dce08c7648c6067f829824581538095c12389f3792dfff6a87f9a5'
+
+            def docker(*args):
+                return subprocess.check_output(['docker', *args], text=True).strip()
+
+            def images():
+                return set(docker('image', 'ls', '-a', '--no-trunc', '--digests',
+                                  '--format', '{{.ID}} {{.Repository}} {{.Tag}} {{.Digest}}').splitlines())
+
+            def containers():
+                return {value: docker('inspect', '-f',
+                        '{{.Id}} {{.Image}} {{.State.Status}} {{.State.StartedAt}} {{.RestartCount}}', value)
+                        for value in docker('ps', '-aq', '--no-trunc').splitlines()}
+
+            rollback = set()
+            base = Path('/var/backups/procollab-prod-analytics-cover')
+            assert base.is_dir() and not base.is_symlink()
+            for name in ('web.json', 'celerys.json', 'web-after.json', 'celerys-after.json'):
+                for path in base.glob('*/' + name):
+                    assert not path.is_symlink() and not path.parent.is_symlink()
+                    assert base.resolve() in path.resolve().parents and path.stat().st_size < 8192
+                    value = json.loads(path.read_text())['image_id']
+                    assert re.fullmatch(r'sha256:[0-9a-f]{64}', value)
+                    rollback.add(value)
+            assert rollback and image not in rollback
+            assert docker('image', 'inspect', '-f', '{{.Id}}', tag) == image
+            assert json.loads(docker('image', 'inspect', '-f', '{{json .RepoTags}}', image)) == [tag]
+            assert digest in json.loads(docker('image', 'inspect', '-f', '{{json .RepoDigests}}', image))
+            before_containers = containers()
+            assert all(docker('inspect', '-f', '{{.Image}}', value) != image for value in before_containers)
+            assert not docker('ps', '-aq', '--filter', 'ancestor=' + image)
+            # Verify the exact immutable remote manifest is still available before evicting its local cache.
+            subprocess.run(['docker', 'manifest', 'inspect', digest], check=True,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=120)
+            print('OBSOLETE_IMAGE_REMOTE_MANIFEST_AVAILABLE=true', flush=True)
+            protected_images = {line for line in images() if line.split()[0] != image}
+            before_volumes = docker('volume', 'ls', '--format', '{{.Driver}} {{.Name}}')
+            subprocess.run(['docker', 'image', 'rm', '--no-prune', tag], check=True)
+            assert images() == protected_images
+            assert containers() == before_containers
+            assert docker('volume', 'ls', '--format', '{{.Driver}} {{.Name}}') == before_volumes
+            assert shutil.disk_usage('/').free >= 1536 * 1024 * 1024
+            print('PROTECTED_IMAGES_UNCHANGED=true\nCONTAINERS_UNCHANGED=true\nVOLUMES_UNCHANGED=true', flush=True)
+            print('DISK_HEADROOM_AT_LEAST_1_5_GIB=true', flush=True)
+            CACHE
             printf 'DISK_AFTER_RELEASE\n'
             df -h / /var/lib/docker
             df -i /
