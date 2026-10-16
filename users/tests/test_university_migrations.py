@@ -1,3 +1,5 @@
+from datetime import date
+
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 from django.test import TransactionTestCase
@@ -13,7 +15,9 @@ class UniversityProductionMigrationTests(TransactionTestCase):
         try:
             apps = executor.loader.project_state(self.before).apps
             user = apps.get_model("users", "CustomUser").objects.create(
-                email="university-migration@example.com", password="!"
+                email="university-migration@example.com",
+                password="!",
+                birthday=date(2000, 1, 1),
             )
             education = apps.get_model("users", "UserEducation")
             for name in ("  Старое название Ё-вуза  ", "Школа №42", "Колледж"):
