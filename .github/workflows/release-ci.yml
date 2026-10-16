@@ -49,6 +49,10 @@ jobs:
               docker inspect -f '{"service":"'"$service"'","image_reference":{{json .Config.Image}},"image_id":{{json .Image}},"status":{{json .State.Status}},"restart_count":{{json .RestartCount}}}' "$container"
               if test "$service" = web; then web=$container; fi
             done
+            printf 'HOST_LOG_STORAGE\n'
+            journalctl --disk-usage
+            du -xh --max-depth=1 /var/log
+            find /var/log -maxdepth 1 -type f -printf '%s %f\n' | sort -nr | head -15
             python3 - <<'CACHE'
             import json
             import re
@@ -91,8 +95,12 @@ jobs:
             assert all(docker('inspect', '-f', '{{.Image}}', value) != image for value in before_containers)
             assert not docker('ps', '-aq', '--filter', 'ancestor=' + image)
             # Verify the exact immutable remote manifest is still available before evicting its local cache.
-            subprocess.run(['docker', 'manifest', 'inspect', digest], check=True,
-                           stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=120)
+            manifest = subprocess.run(['docker', 'manifest', 'inspect', digest],
+                                      stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=120)
+            if manifest.returncode:
+                error = manifest.stderr.decode(errors='replace').strip().splitlines()
+                print('REMOTE_MANIFEST_CHECK_FAILED=' + (error[0][:300] if error else 'unknown'), flush=True)
+                raise RuntimeError('Remote image availability unconfirmed; local image retained')
             print('OBSOLETE_IMAGE_REMOTE_MANIFEST_AVAILABLE=true', flush=True)
             protected_images = {line for line in images() if line.split()[0] != image}
             before_volumes = docker('volume', 'ls', '--format', '{{.Driver}} {{.Name}}')
