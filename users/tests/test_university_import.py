@@ -100,7 +100,7 @@ class UniversityImportTests(TestCase):
         university.is_active = False
         university.save()
         migration = importlib.import_module(
-            "users.migrations.0063_seed_university_directory"
+            "users.migrations.0064_seed_university_directory"
         )
         migration.seed_universities(apps, SimpleNamespace(connection=connection))
         university.refresh_from_db()
