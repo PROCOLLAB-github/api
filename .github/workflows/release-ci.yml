@@ -1,4 +1,4 @@
-name: PROD disk inspection for release 777 (read-only)
+name: PROD guarded Docker cache cleanup for release 777
 
 on:
   workflow_dispatch:
@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Read-only production disk and Docker inspection
+      - name: Remove four verified unused untagged images
         uses: garygrossgarten/github-action-ssh@release
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -72,8 +72,67 @@ jobs:
             for directory in /var/lib/docker /var/lib/containerd /var/log /var/cache/apt/archives /home/app/procollab-backend /var/backups/procollab-prod-analytics-cover; do
               if test -d "$directory"; then du -xsh "$directory"; fi
             done
+            python3 - <<'PY'
+            import json
+            import re
+            import subprocess
+            from pathlib import Path
+
+            # Fixed candidates observed by read-only inspection run 38901180424.
+            candidates = {
+                'sha256:0c662b073220f082dd289b42840611954e0847a12b102fdf287195d57f0db3e8',
+                'sha256:1c390e3bb5cb9c724e3947b45e57c8d73f0afe2b308141261c5669d7d97a452e',
+                'sha256:beafdfed0240b5a288f98d7ddc5bcc3da007104650da1c252697e9d07c77f5d2',
+                'sha256:f67c1d840f274a20f22bcb2fea1d66d4c978dab0b5f19e0893178de44498bf9d',
+            }
+
+            def docker(*args):
+                return subprocess.check_output(['docker', *args], text=True).strip()
+
+            def images():
+                return set(docker('image', 'ls', '-a', '--no-trunc', '--digests',
+                                  '--format', '{{.ID}} {{.Repository}} {{.Tag}} {{.Digest}}').splitlines())
+
+            def containers():
+                return {value: docker('inspect', '-f',
+                        '{{.Id}} {{.Image}} {{.State.Status}} {{.State.StartedAt}} {{.RestartCount}}', value)
+                        for value in docker('ps', '-aq', '--no-trunc').splitlines()}
+
+            rollback = set()
+            base = Path('/var/backups/procollab-prod-analytics-cover')
+            assert base.is_dir() and not base.is_symlink()
+            for name in ('web.json', 'celerys.json', 'web-after.json', 'celerys-after.json'):
+                for path in base.glob('*/' + name):
+                    assert not path.is_symlink() and not path.parent.is_symlink()
+                    assert base.resolve() in path.resolve().parents
+                    assert path.stat().st_size < 8192
+                    value = json.loads(path.read_text())['image_id']
+                    assert re.fullmatch(r'sha256:[0-9a-f]{64}', value)
+                    rollback.add(value)
+            assert rollback, 'Expected existing rollback receipts'
+            print('PROTECTED_ROLLBACK_IMAGE_COUNT=' + str(len(rollback)), flush=True)
+            before_containers = containers()
+            used = {docker('inspect', '-f', '{{.Image}}', value) for value in before_containers}
+            dangling = set(docker('image', 'ls', '-q', '--no-trunc', '--filter', 'dangling=true').splitlines())
+            assert candidates <= dangling
+            assert not candidates & (used | rollback)
+            for image in sorted(candidates):
+                assert json.loads(docker('image', 'inspect', '-f', '{{json .RepoTags}}', image)) == []
+                print('VERIFIED_UNUSED_UNTAGGED=' + image, flush=True)
+            protected_images = {line for line in images() if line.split()[0] not in candidates}
+            before_volumes = docker('volume', 'ls', '--format', '{{.Driver}} {{.Name}}')
+            for image in sorted(candidates):
+                assert not docker('ps', '-aq', '--filter', 'ancestor=' + image)
+                subprocess.run(['docker', 'image', 'rm', '--no-prune', image], check=True)
+            assert images() == protected_images
+            assert containers() == before_containers
+            assert docker('volume', 'ls', '--format', '{{.Driver}} {{.Name}}') == before_volumes
+            print('PROTECTED_IMAGES_UNCHANGED=true\nCONTAINERS_UNCHANGED=true\nVOLUMES_UNCHANGED=true', flush=True)
+            PY
+            printf 'DISK_AFTER_CLEANUP\n'
+            df -h / /var/lib/docker
             after=$(runtime)
             test "$after" = "$before"
-            printf 'RUNTIME_UNCHANGED=true\nPROD_DISK_INSPECTION_COMPLETE=true\n'
+            printf 'RUNTIME_UNCHANGED=true\nPROD_CACHE_CLEANUP_COMPLETE=true\n'
             INSPECT
             WRAPPER
