@@ -233,14 +233,15 @@ def projects_not_submitted_rows(program):
     )
 
 
-def _solution_rows(program):
+def _solution_rows(program, *, rows=None):
     """Общая SQL-классификация работ программы для overview и детализации.
 
     В distributed учитываются только реальные назначения и общая проверка
     завершённости каждого назначения. В open достаточно первой оценки по
     критериям программы; прогресс назначений в этом режиме неприменим (null).
     """
-    rows = PartnerProgramProject.objects.filter(partner_program_id=program.pk)
+    if rows is None:
+        rows = PartnerProgramProject.objects.filter(partner_program_id=program.pk)
     if program.is_distributed_evaluation:
         assignment_totals = (
             annotated_assignment_queryset(program.pk)

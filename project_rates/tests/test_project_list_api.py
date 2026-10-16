@@ -39,6 +39,25 @@ class ProjectListForRateAPITests(TestCase):
     def _projects_url(self) -> str:
         return f"/rate-project/{self.program.id}"
 
+    def test_exact_project_deep_link_still_uses_expert_queryset(self):
+        self.client.force_authenticate(self.expert)
+        response = self.client.get(
+            self._projects_url(), {"project_id": self.project_2.pk}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([p["id"] for p in response.data["results"]], [self.project_2.pk])
+        foreign = create_rate_project(leader=self.leader, name="Foreign program")
+        response = self.client.get(self._projects_url(), {"project_id": foreign.pk})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["results"], [])
+        self.client.force_authenticate(self.leader)
+        self.assertEqual(
+            self.client.get(
+                self._projects_url(), {"project_id": self.project_2.pk}
+            ).status_code,
+            403,
+        )
+
     def test_post_filters_projects_by_program_field_values(self):
         field = PartnerProgramField.objects.create(
             partner_program=self.program,
