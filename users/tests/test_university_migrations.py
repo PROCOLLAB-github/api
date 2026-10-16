@@ -32,11 +32,17 @@ class UniversityProductionMigrationTests(TransactionTestCase):
             executor.migrate(self.after)
             apps = executor.loader.project_state(self.after).apps
             self.assertEqual(
-                list(apps.get_model("users", "UserEducation").objects.order_by("pk").values()),
+                list(
+                    apps.get_model("users", "UserEducation")
+                    .objects.order_by("pk")
+                    .values()
+                ),
                 original,
             )
             self.assertEqual(
-                apps.get_model("users", "University").objects.filter(is_active=True).count(),
+                apps.get_model("users", "University")
+                .objects.filter(is_active=True)
+                .count(),
                 1337,
             )
         finally:
