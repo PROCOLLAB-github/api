@@ -74,12 +74,56 @@ def participants_without_team_rows(program_id):
     )
 
 
+def _visited_participant_filter():
+    """Зарегистрированный пользователь с активностью или входом на платформу."""
+    return Q(user_id__isnull=False) & (
+        Q(user__last_activity__isnull=False) | Q(user__last_login__isnull=False)
+    )
+
+
+def _without_visit_filter():
+    """Оба свидетельства посещения отсутствуют; онбординг не учитывается."""
+    return Q(
+        user_id__isnull=False,
+        user__last_activity__isnull=True,
+        user__last_login__isnull=True,
+    )
+
+
+def participants_without_visit_rows(program_id):
+    """Тот же признак отсутствия посещения, что и в счётчике внимания."""
+    return _unique_participant_rows(
+        PartnerProgramUserProfile.objects.filter(partner_program_id=program_id).filter(
+            _without_visit_filter()
+        )
+    )
+
+
+def _unique_participant_rows(profiles):
+    """Публичные поля уникального пользователя и его первая регистрация в программе."""
+    return (
+        profiles.order_by()
+        .values(
+            "user_id",
+            "user__first_name",
+            "user__last_name",
+            "user__avatar",
+            "user__city",
+        )
+        .annotate(registered_at=Min("datetime_created"))
+    )
+
+
 def _participant_metrics(program_id):
     profiles = _participant_profiles(program_id)
     participant = Q(user_id__isnull=False)
     return profiles.aggregate(
         registrations=Count("pk"),
         unique_participants=Count("user_id", filter=participant, distinct=True),
+        visited_participants=Count(
+            "user_id", filter=_visited_participant_filter(), distinct=True
+        ),
+        without_visit=Count("user_id", filter=_without_visit_filter(), distinct=True),
         with_team=Count(
             "user_id",
             filter=participant & (Q(is_leader=True) | Q(is_collaborator=True)),
@@ -309,9 +353,10 @@ def _activity(program_id):
     ]
 
 
-def build_project_analytics(program) -> dict:
+def build_project_analytics(program, *, now=None) -> dict:
+    now = now if now is not None else timezone.now()
     participants = _participant_metrics(program.pk)
-    assignment_details = build_assignments(program.pk)
+    assignment_details = build_assignments(program.pk, now=now)
     assignments, by_project = _assignment_metrics(assignment_details)
     solutions = _solution_metrics(program, by_project)
     cases = build_project_case_analytics(program)
@@ -353,6 +398,7 @@ def build_project_analytics(program) -> dict:
             },
         },
         "attention": {
+            "participants_without_visit": participants["without_visit"],
             "participants_without_team": (
                 participants["unique_participants"] - participants["with_team"]
             ),
@@ -364,7 +410,11 @@ def build_project_analytics(program) -> dict:
                 "total": solutions["not_submitted"] if program.is_competitive else 0,
             },
             "delayed_experts": (
-                build_delayed_experts(assignment_details)
+                build_delayed_experts(
+                    assignment_details,
+                    evaluation_ends=program.datetime_evaluation_ends,
+                    now=now,
+                )
                 if program.is_distributed_evaluation
                 else {"total": 0, "items": []}
             ),

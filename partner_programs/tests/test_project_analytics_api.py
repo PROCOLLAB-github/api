@@ -151,6 +151,7 @@ class ProjectAnalyticsMetricsTests(ProjectAnalyticsFixture, TestCase):
             {
                 "registrations": 0,
                 "unique_participants": 0,
+                "visited_participants": 0,
                 "with_team": 0,
                 "project_creators": 0,
                 "submitted_project_creators": 0,
@@ -164,6 +165,7 @@ class ProjectAnalyticsMetricsTests(ProjectAnalyticsFixture, TestCase):
             payload["attention"],
             {
                 "participants_without_team": 0,
+                "participants_without_visit": 0,
                 "projects_awaiting_evaluation": 0,
                 "projects_not_submitted": {"applicable": False, "total": 0},
                 "delayed_experts": {"total": 0, "items": []},
@@ -219,6 +221,7 @@ class ProjectAnalyticsMetricsTests(ProjectAnalyticsFixture, TestCase):
             {
                 "registrations": 5,
                 "unique_participants": 3,
+                "visited_participants": 0,
                 "with_team": 2,
                 "project_creators": 1,
                 "submitted_project_creators": 1,

@@ -15,6 +15,17 @@ def case_project_rows(program, *, field, selection):
     elif selection["case_scope"] == "without_case":
         links = links.filter(case_name__isnull=True)
 
+    if selection.get("search"):
+        links = links.filter(project__name__icontains=selection["search"])
+    submission = selection.get("submission", "all")
+    if submission != "all":
+        links = links.filter(submitted=submission == "submitted")
+    presentation = selection.get("presentation", "all")
+    if presentation == "present":
+        links = links.filter(project__presentation_address__regex=r"\S")
+    elif presentation == "missing":
+        links = links.exclude(project__presentation_address__regex=r"\S")
+
     collaborators = (
         Collaborator.objects.filter(project_id=OuterRef("project_id"))
         .order_by()
