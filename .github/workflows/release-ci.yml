@@ -56,9 +56,9 @@ jobs:
                     cursor.execute("SET LOCAL statement_timeout = '15s'")
                     cursor.execute('SHOW transaction_read_only')
                     assert cursor.fetchone()[0] == 'on'
-                # Only a bounded sample of programs with recent project links, not a scan of all programs.
-                recent = PartnerProgramProject.objects.order_by('-pk').values_list('partner_program_id', flat=True)[:100]
-                ids = list(dict.fromkeys(recent))[:3]
+                # The indexed program foreign key gives at most three distinct programs with projects.
+                ids = list(PartnerProgramProject.objects.order_by('-partner_program_id')
+                           .values_list('partner_program_id', flat=True).distinct()[:3])
                 assert ids, 'No programs with project links found for the read-only sample'
                 results = []
                 for program in PartnerProgram.objects.filter(pk__in=ids).order_by('pk'):
@@ -114,6 +114,7 @@ jobs:
                                     'visited': metrics['visits'], 'without_visit': metrics['missing'],
                                     'projects': counts['all', 'all'], 'filter_combinations': len(counts),
                                     'serializer_valid': True})
+                assert results, 'No existing programs found for the read-only sample'
                 print(json.dumps({'read_only': True, 'sample_programs': results}, sort_keys=True))
             print('PROD_CHAT_ANALYTICS_READONLY_OK')
 
