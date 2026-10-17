@@ -61,7 +61,7 @@ class ProgramCaseLifecycleAPITests(TestCase):
         self.assertEqual(PartnerProgramFieldValue.objects.get().value_text, "B")
 
     def test_apply_explicit_invalid_case_does_not_create_project(self):
-        for value in (None, "", "unknown"):
+        for value in ("unknown",):
             self.assertEqual(
                 self.apply(
                     [{"field_id": self.field.pk, "value_text": value}]
@@ -70,12 +70,57 @@ class ProgramCaseLifecycleAPITests(TestCase):
             )
         self.assertFalse(PartnerProgramProject.objects.exists())
 
-    def test_other_required_fields_remain_required_on_apply(self):
+    def test_required_fields_and_explicit_empty_case_allow_draft_but_not_submit(self):
         field = create_program_field(self.program, name="track", is_required=True)
-        self.assertEqual(self.apply().status_code, 400)
-        self.assertEqual(
-            self.apply([{"field_id": field.pk, "value_text": "answer"}]).status_code, 201
+        response = self.apply(
+            [
+                {"field_id": self.field.pk, "value_text": ""},
+                {"field_id": field.pk, "value_text": ""},
+            ]
         )
+        self.assertEqual(response.status_code, 201, response.data)
+        link = PartnerProgramProject.objects.get(pk=response.data["program_link_id"])
+        fields_url = f"/programs/partner-program-projects/{link.pk}/fields/"
+        self.assertEqual(self.submit(link).status_code, 400)
+        self.assertEqual(
+            self.client.put(
+                fields_url,
+                [
+                    {"field_id": self.field.pk, "value_text": "A"},
+                    {"field_id": field.pk, "value_text": ""},
+                ],
+                format="json",
+            ).status_code,
+            200,
+        )
+        self.assertEqual(self.submit(link).status_code, 400)
+        self.assert_not_submitted(link)
+        self.assertEqual(
+            self.client.put(
+                fields_url,
+                [
+                    {"field_id": field.pk, "value_text": "Complete"},
+                ],
+                format="json",
+            ).status_code,
+            200,
+        )
+        self.assertEqual(self.submit(link).status_code, 200)
+
+    def test_draft_case_can_be_cleared(self):
+        link = self.link()
+        PartnerProgramFieldValue.objects.create(
+            program_project=link, field=self.field, value_text="A"
+        )
+        response = self.client.put(
+            f"/programs/partner-program-projects/{link.pk}/fields/",
+            [
+                {"field_id": self.field.pk, "value_text": ""},
+            ],
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(link.field_values.exists())
 
     def test_submit_missing_case_has_controlled_error_without_date_change(self):
         link = self.link()

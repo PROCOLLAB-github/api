@@ -32,6 +32,7 @@ from partner_programs.widget_views import ProgramRoleWidgetAPIView
 
 from partner_programs.management_views import (
     ManagementView,
+    ManagementProjectFormView,
     ManagementParticipantsView,
     ManagementProjectsView,
     ManagementTeamView,
@@ -44,6 +45,11 @@ from partner_programs.management_views import (
 app_name = "partner_programs"
 
 urlpatterns = [
+    path(
+        "<int:pk>/management/project-form/",
+        ManagementProjectFormView.as_view(),
+        name="management-project-form",
+    ),
     path("<int:pk>/management/", ManagementView.as_view(), name="management"),
     path(
         "<int:pk>/management/participants/",
