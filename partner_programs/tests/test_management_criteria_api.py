@@ -100,6 +100,7 @@ class ManagementCriteriaTests(TestCase):
 
     def test_admin_guards_and_historical_score_backfill(self):
         from importlib import import_module
+        from types import SimpleNamespace
         from django.apps import apps
         from django.contrib.admin.sites import AdminSite
         from django.db import connection
@@ -121,8 +122,9 @@ class ManagementCriteriaTests(TestCase):
         migration = import_module(
             "partner_programs.migrations.0021_evaluation_criteria_lock"
         )
-        with connection.schema_editor() as editor:
-            migration.freeze_existing(apps, editor)
+        # The data backfill uses only the connection alias, not schema DDL.
+        # Opening SQLite's schema editor inside TestCase.atomic is unsupported.
+        migration.freeze_existing(apps, SimpleNamespace(connection=connection))
         self.program.refresh_from_db()
         self.assertIsNotNone(self.program.evaluation_criteria_locked_at)
         self.manager.is_staff = True
