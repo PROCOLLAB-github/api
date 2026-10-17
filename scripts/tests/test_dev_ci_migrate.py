@@ -341,6 +341,15 @@ class PostgreSQLMigrationTests(unittest.TestCase):
         repeated = self.run_helper()
         self.assertEqual(repeated.returncode, 0, repeated.stderr)
         self.assertIn("pending=0", repeated.stdout)
+        runtime_check = subprocess.run(
+            [sys.executable, "-m", "django", "migrate", "--check"],
+            env=self.environment,
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=45,
+        )
+        self.assertEqual(runtime_check.returncode, 0, runtime_check.stderr)
 
     def test_mixed_ownership_fails_before_ddl_and_default_privileges(self):
         with self.database.cursor() as cursor:
@@ -408,6 +417,39 @@ class PostgreSQLMigrationTests(unittest.TestCase):
                 self.assertEqual(cursor.fetchone()[0], 2)
         result = self.run_helper()
         self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_wrong_database_is_rejected_before_connecting(self):
+        result = subprocess.run(
+            [sys.executable, str(HELPER)],
+            input=payload(),
+            env=dict(
+                self.environment, DATABASE_NAME="not_dev", DATABASE_HOST="invalid.example"
+            ),
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Expected DEV database", result.stderr)
+        self.assert_still_pending()
+
+    def test_normalizer_refuses_non_dev_database(self):
+        import psycopg2
+
+        with self.admin.cursor() as cursor:
+            try:
+                with self.assertRaises(psycopg2.Error) as captured:
+                    cursor.execute(
+                        (
+                            ROOT
+                            / "docs/operations/dev-migration-role-university-owner.sql"
+                        ).read_text(encoding="utf-8")
+                    )
+                self.assertIn("Only procollab_db_dev", str(captured.exception))
+            finally:
+                cursor.execute("ROLLBACK")
+        self.assert_still_pending()
 
 
 if __name__ == "__main__":
