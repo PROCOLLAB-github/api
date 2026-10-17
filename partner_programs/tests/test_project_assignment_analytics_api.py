@@ -57,7 +57,9 @@ class ProjectAssignmentAnalyticsFixture:
         super().setUpTestData()
         cls.manager = create_user(password=None)
         cls.program = create_partner_program(
-            is_distributed_evaluation=True, max_project_rates=3
+            is_distributed_evaluation=True,
+            max_project_rates=3,
+            datetime_evaluation_ends=NOW + timedelta(days=5),
         )
         cls.program.managers.add(cls.manager)
         cls.expert = create_rate_expert(program=cls.program)
@@ -411,7 +413,7 @@ class ProjectAssignmentWaitingTests(ProjectAssignmentAnalyticsFixture, TestCase)
                     item["waiting_seconds"], min(assigned_hours, submitted_hours) * 3600
                 )
 
-    def test_missing_timestamp_completed_and_not_ready_do_not_trigger_waiting_or_sla(
+    def test_missing_timestamp_does_not_invent_waiting_or_hide_pending_work(
         self,
     ):
         self.score(self.assignment(hours=100))
@@ -423,7 +425,7 @@ class ProjectAssignmentWaitingTests(ProjectAssignmentAnalyticsFixture, TestCase)
         for item in self.get():
             self.assertIsNone(item["waiting_since"])
             self.assertIsNone(item["waiting_seconds"])
-        self.assertEqual(self.delayed(), {"total": 0, "items": []})
+        self.assertEqual(self.delayed()["total"], 1)
 
     def test_future_waiting_is_clamped_to_zero(self):
         self.assignment(hours=-5)
@@ -432,15 +434,15 @@ class ProjectAssignmentWaitingTests(ProjectAssignmentAnalyticsFixture, TestCase)
         self.assertEqual(
             datetime.fromisoformat(item["waiting_since"]), NOW + timedelta(hours=5)
         )
-        self.assertEqual(self.delayed(), {"total": 0, "items": []})
+        self.assertEqual(self.delayed()["total"], 1)
 
-    def test_exact_sla_thresholds(self):
+    def test_waiting_durations_are_diagnostics_within_the_deadline_window(self):
         cases = (
-            (1, 24, None),
+            (1, 24, "warning"),
             (2, 24, "warning"),
-            (1, 48, "critical"),
-            (2, 24 - 1 / 3600, None),
-            (1, 48 - 1 / 3600, None),
+            (1, 48, "warning"),
+            (2, 24 - 1 / 3600, "warning"),
+            (1, 48 - 1 / 3600, "warning"),
         )
         for count, hours, severity in cases:
             expert = create_rate_expert(program=self.program)
@@ -459,7 +461,7 @@ class ProjectAssignmentWaitingTests(ProjectAssignmentAnalyticsFixture, TestCase)
                     self.assertEqual(item["assignments_total"], count)
                     self.assertEqual(item["pending"], count)
                     self.assertEqual(item["completed"], 0)
-                    self.assertEqual(item["overdue_24h"], count)
+                    self.assertEqual(item["overdue_24h"], count if hours >= 24 else 0)
                     self.assertEqual(item["overdue_48h"], count if hours >= 48 else 0)
                     self.assertEqual(item["oldest_waiting_seconds"], int(hours * 3600))
 
@@ -657,6 +659,8 @@ class ProjectAssignmentContractTests(ProjectAssignmentAnalyticsFixture, TestCase
             self.assertIn("delayed_experts", payload["attention"])
             del payload["attention"]["delayed_experts"]
             del payload["attention"]["projects_not_submitted"]
+            del payload["attention"]["participants_without_visit"]
+            del payload["participant_funnel"]["visited_participants"]
             del payload["cases"]
             evaluated = 1 if distributed else 2
             self.assertEqual(
@@ -776,7 +780,12 @@ class ProjectAssignmentContractTests(ProjectAssignmentAnalyticsFixture, TestCase
                 self.assertNotIn("criteria_total", public)
                 self.assertNotIn("criteria_scored", public)
         with self.assertNumQueries(0):
-            self.assertEqual(build_delayed_experts(assignments)["total"], 1)
+            self.assertEqual(
+                build_delayed_experts(
+                    assignments, evaluation_ends=self.program.datetime_evaluation_ends
+                )["total"],
+                1,
+            )
 
     def test_strict_status_severity_and_nonnegative_counts(self):
         self.assignment(hours=49)

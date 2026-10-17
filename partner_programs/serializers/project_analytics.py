@@ -31,6 +31,7 @@ class ProjectAnalyticsSummarySerializer(serializers.Serializer):
 class ProjectAnalyticsParticipantFunnelSerializer(serializers.Serializer):
     registrations = serializers.IntegerField(min_value=0)
     unique_participants = serializers.IntegerField(min_value=0)
+    visited_participants = serializers.IntegerField(min_value=0)
     with_team = serializers.IntegerField(min_value=0)
     project_creators = serializers.IntegerField(min_value=0)
     submitted_project_creators = serializers.IntegerField(min_value=0)
@@ -69,6 +70,7 @@ class ProjectAnalyticsNotSubmittedCountSerializer(serializers.Serializer):
 
 
 class ProjectAnalyticsAttentionSerializer(serializers.Serializer):
+    participants_without_visit = serializers.IntegerField(min_value=0)
     participants_without_team = serializers.IntegerField(min_value=0)
     projects_awaiting_evaluation = serializers.IntegerField(min_value=0)
     projects_not_submitted = ProjectAnalyticsNotSubmittedCountSerializer()

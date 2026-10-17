@@ -25,6 +25,7 @@ from partner_programs.serializers.project_assignment_analytics import (
 from partner_programs.services.project_analytics import (
     build_project_analytics,
     participants_without_team_rows,
+    participants_without_visit_rows,
     projects_awaiting_evaluation_rows,
     projects_not_submitted_rows,
 )
@@ -120,6 +121,20 @@ class ProjectAnalyticsParticipantsWithoutTeamAPIView(
 
     def get_queryset(self, search):
         queryset = participants_without_team_rows(self.program.pk)
+        if search:
+            queryset = queryset.annotate(
+                search_name=Concat("user__first_name", Value(" "), "user__last_name")
+            ).filter(search_name__icontains=search)
+        return queryset.order_by(F("registered_at").asc(nulls_last=True), "user_id")
+
+
+class ProjectAnalyticsParticipantsWithoutVisitAPIView(
+    ProjectAnalyticsAttentionListAPIView
+):
+    serializer_class = ProjectAnalyticsParticipantSerializer
+
+    def get_queryset(self, search):
+        queryset = participants_without_visit_rows(self.program.pk)
         if search:
             queryset = queryset.annotate(
                 search_name=Concat("user__first_name", Value(" "), "user__last_name")

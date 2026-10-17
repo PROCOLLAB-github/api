@@ -368,7 +368,7 @@ def _literal_excel_cell(worksheet, value):
 
 
 def build_case_projects_export_file(*, program, field, selection) -> ProgramExportFile:
-    """Выгружаем весь bucket; поиск и пагинация не входят в этот контракт."""
+    """Выгружаем все совпадения поиска и фильтров выбранного кейса без пагинации."""
     workbook = Workbook(write_only=True)
     worksheet = workbook.create_sheet(title="Проекты")
     worksheet.append(CASE_PROJECT_COLUMNS)

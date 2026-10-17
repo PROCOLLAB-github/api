@@ -21,6 +21,7 @@ from partner_programs.project_analytics_views import (
     ProjectAnalyticsAssignmentsAPIView,
     ProjectAnalyticsAssignmentScoresAPIView,
     ProjectAnalyticsParticipantsWithoutTeamAPIView,
+    ProjectAnalyticsParticipantsWithoutVisitAPIView,
     ProjectAnalyticsProjectsAwaitingEvaluationAPIView,
     ProjectAnalyticsProjectsNotSubmittedAPIView,
 )
@@ -71,6 +72,11 @@ urlpatterns = [
         "<int:program_id>/project-analytics/assignments/<int:assignment_id>/scores/",
         ProjectAnalyticsAssignmentScoresAPIView.as_view(),
         name="project-analytics-assignment-scores",
+    ),
+    path(
+        "<int:program_id>/project-analytics/participants-without-visit/",
+        ProjectAnalyticsParticipantsWithoutVisitAPIView.as_view(),
+        name="project-analytics-participants-without-visit",
     ),
     path(
         "<int:program_id>/project-analytics/participants-without-team/",
