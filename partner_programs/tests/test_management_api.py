@@ -158,7 +158,7 @@ class ManagementAPITests(TestCase):
         )
 
     def test_team_is_read_only_and_scoped_to_link(self):
-        member = create_user()
+        member = create_user(avatar="https://example.com/member-avatar.png")
         Collaborator.objects.bulk_create(
             [Collaborator(project=self.project, user=member, role="Разработчик")]
         )
@@ -168,6 +168,12 @@ class ManagementAPITests(TestCase):
             [m["id"] for m in response.data["members"]],
             [self.project.leader_id, member.pk],
         )
+        leader, teammate = response.data["members"]
+        self.assertEqual(leader["email"], self.project.leader.email)
+        self.assertEqual(leader["avatar"], self.project.leader.avatar or None)
+        self.assertEqual(teammate["email"], member.email)
+        self.assertEqual(teammate["avatar"], member.avatar)
+        self.assertEqual(teammate["role"], "Разработчик")
         self.assertEqual(
             self.client.get(
                 self.url("management-team", link_id=self.foreign_link.pk)

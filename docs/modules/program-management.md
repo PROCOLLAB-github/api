@@ -14,7 +14,7 @@
 | пустой путь | GET | Основное, даты, режим программы, `updated_at`, материалы |
 | `participants/` | GET | DRF `count/next/previous/results`, ФИО, почта, город, регистрация именно в программе |
 | `projects/` | GET | Связи Project × Program, руководитель, сдача, оценивание, кейс и презентация |
-| `projects/:link_id/team/` | GET | Руководитель и действующие Collaborator, без приглашений и изменений команды |
+| `projects/:link_id/team/` | GET | Руководитель и действующие Collaborator: id, имя, роль, почта и nullable avatar; без приглашений и изменений команды |
 | `projects/:link_id/evaluation/` | GET | Оценки критериев этой программы, реальные назначения и `can_rate` |
 | `settings/basic/` | PATCH | Только поля содержания и изображений из макета |
 | `settings/dates/` | PATCH | Только пять календарных полей из макета |

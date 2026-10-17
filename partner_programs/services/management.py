@@ -153,6 +153,8 @@ def team_data(link):
             "id": project.leader_id,
             "name": person_name(project.leader),
             "role": "Руководитель",
+            "email": project.leader.email or None,
+            "avatar": project.leader.avatar or None,
         }
     ]
     people.extend(
@@ -160,6 +162,8 @@ def team_data(link):
             "id": member.user_id,
             "name": person_name(member.user),
             "role": member.role or "Участник команды",
+            "email": member.user.email or None,
+            "avatar": member.user.avatar or None,
         }
         for member in project.collaborator_set.select_related("user")
         .exclude(user_id=project.leader_id)
