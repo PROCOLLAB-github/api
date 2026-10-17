@@ -1,3 +1,5 @@
+import math
+
 from project_rates.constants import ValidatableTypesNames, NumericTypes
 
 
@@ -19,7 +21,11 @@ class ProjectScoreValidator:
     def _validate_data_type(criteria_type: str, value: str):
         if criteria_type in NumericTypes:
             try:
-                float(value)
+                number = float(value)
+                if not math.isfinite(number) or (
+                    criteria_type == "int" and not number.is_integer()
+                ):
+                    raise ValueError("Требуется конечное число подходящего типа.")
             except ValueError:
                 raise ValueError("Введённое значение не соответствует формату!")
             except TypeError:

@@ -116,6 +116,8 @@ class PartnerProgram(models.Model):
             "Если включено, проекты для оценки доступны только назначенным экспертам"
         ),
     )
+    evaluation_criteria_locked_at = models.DateTimeField(null=True, editable=False)
+    evaluation_criteria_version = models.PositiveIntegerField(default=0, editable=False)
     data_schema = models.JSONField(
         verbose_name="Схема данных в формате JSON",
         help_text="Ключи - имена полей, значения - тип поля ввода",
