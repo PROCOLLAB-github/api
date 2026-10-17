@@ -1,0 +1,69 @@
+name: DEV migration role CI
+on:
+  pull_request:
+    branches: [dev]
+    paths:
+      - .github/workflows/dev-ci.yml
+      - .github/workflows/dev-migration-role-ci.yml
+      - scripts/dev_ci_migrate.py
+      - scripts/tests/test_dev_ci_migrate.py
+      - docs/operations/dev-migration-role-university-owner.sql
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  role-tests:
+    name: DEV migration role / PostgreSQL ${{ matrix.postgres }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        postgres: ["14", "18"]
+    services:
+      postgres:
+        image: postgres:${{ matrix.postgres }}-alpine
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: dev_ci_test_admin
+          POSTGRES_PASSWORD: ci-only-disposable-password
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U dev_ci_test_admin -d postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      RUN_DEV_MIGRATION_PG_TESTS: "1"
+      MIGRATION_TEST_PORT: "5432"
+      MIGRATION_TEST_ADMIN_USER: dev_ci_test_admin
+      MIGRATION_TEST_ADMIN_PASSWORD: ci-only-disposable-password
+      PYTHONIOENCODING: utf-8
+      DEV_DATABASE_NAME: procollab_db_dev
+      DEV_DATABASE_USER: procollab_api_dev
+      DEV_MIGRATION_DATABASE_USER: procollab_api
+      DEV_MIGRATION_DATABASE_PASSWORD: |
+        ci-only 'quoted' "$()" `literal`
+        second-line
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install Django==4.2.11 psycopg2-binary==2.9.9
+      - name: Prepare masked transport fixture
+        id: credentials_fixture
+        run: python scripts/dev_ci_migrate.py --prepare-payload
+      - name: Verify same-job masked output transport
+        env:
+          TRANSPORT_PAYLOAD: ${{ steps.credentials_fixture.outputs.payload }}
+        run: |
+          python - <<'PY'
+          import importlib.util
+          import os
+          spec = importlib.util.spec_from_file_location("migration", "scripts/dev_ci_migrate.py")
+          helper = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(helper)
+          credentials = helper.decode_payload(os.environ["TRANSPORT_PAYLOAD"])
+          assert credentials["password"] == os.environ["DEV_MIGRATION_DATABASE_PASSWORD"]
+          assert credentials["username"] == os.environ["DEV_MIGRATION_DATABASE_USER"]
+          PY
+      - run: python -m unittest discover -s scripts/tests -p 'test_dev_ci_migrate.py' -v
