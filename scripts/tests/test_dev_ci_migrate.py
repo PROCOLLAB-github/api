@@ -18,6 +18,11 @@ HELPER = ROOT / "scripts" / "dev_ci_migrate.py"
 SPEC = importlib.util.spec_from_file_location("dev_ci_migrate", HELPER)
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
+PREP_SPEC = importlib.util.spec_from_file_location(
+    "dev_ci_prepare_owner", ROOT / "scripts/dev_ci_prepare_owner.py"
+)
+PREPARATION = importlib.util.module_from_spec(PREP_SPEC)
+PREP_SPEC.loader.exec_module(PREPARATION)
 RUNTIME = "procollab_api_dev"
 MIGRATOR = "procollab_api"
 PASSWORD = "ci-only 'quoted' \"double\" $() `literal` \\ newline\nпароль"
@@ -30,6 +35,34 @@ def payload(username=MIGRATOR, password=PASSWORD):
 
 
 class CredentialsTests(unittest.TestCase):
+    def test_owner_preparation_rejects_non_dev_before_connecting(self):
+        with mock.patch.dict(
+            os.environ, DATABASE_NAME="not_dev", DATABASE_USER=RUNTIME
+        ), mock.patch("psycopg2.connect") as connect:
+            with self.assertRaises(PREPARATION.PreparationError):
+                PREPARATION.prepare_owner("", PASSWORD)
+        connect.assert_not_called()
+
+    def test_owner_preparation_error_redacts_both_passwords(self):
+        output = io.StringIO()
+        with mock.patch.dict(
+            os.environ,
+            DATABASE_NAME="procollab_db_dev",
+            DATABASE_USER=RUNTIME,
+            DATABASE_PASSWORD="runtime-secret",
+        ), mock.patch.object(sys, "argv", ["prepare", "SQL"]), mock.patch(
+            "getpass.getpass", return_value=PASSWORD
+        ), mock.patch.object(
+            PREPARATION,
+            "prepare_owner",
+            side_effect=RuntimeError(PASSWORD + " runtime-secret"),
+        ), mock.patch.object(
+            sys, "stderr", output
+        ):
+            self.assertEqual(PREPARATION.main(), 1)
+        self.assertNotIn(PASSWORD, output.getvalue())
+        self.assertNotIn("runtime-secret", output.getvalue())
+
     def test_special_characters_round_trip_and_masked_output(self):
         with tempfile.TemporaryDirectory() as directory:
             target = Path(directory) / "github-output"
@@ -450,6 +483,143 @@ class PostgreSQLMigrationTests(unittest.TestCase):
             finally:
                 cursor.execute("ROLLBACK")
         self.assert_still_pending()
+
+    def seed_runtime_university(self):
+        with self.database.cursor() as cursor:
+            cursor.execute(
+                "CREATE TABLE users_university(id SERIAL PRIMARY KEY,name TEXT)"
+            )
+            cursor.execute(
+                "INSERT INTO users_university(name) VALUES('preserve this row')"
+            )
+            cursor.execute("ALTER TABLE users_university OWNER TO procollab_api_dev")
+
+    def prepare_with_existing_logins(self, sql_text=None):
+        import psycopg2
+
+        connect = psycopg2.connect
+
+        def fixture_connect(**kwargs):
+            self.assertEqual(kwargs["host"], "127.0.0.1")
+            self.assertEqual(str(kwargs["port"]), str(self.port))
+            self.assertEqual(kwargs["dbname"], "procollab_db_dev")
+            kwargs["sslmode"] = "disable"  # Disposable loopback fixture only.
+            return connect(**kwargs)
+
+        if sql_text is None:
+            sql_text = (
+                ROOT / "docs/operations/dev-migration-role-university-owner.sql"
+            ).read_text(encoding="utf-8")
+        with mock.patch.dict(
+            os.environ,
+            DATABASE_NAME="procollab_db_dev",
+            DATABASE_USER=RUNTIME,
+            DATABASE_PASSWORD=PASSWORD,
+            DATABASE_HOST="127.0.0.1",
+            DATABASE_PORT=str(self.port),
+        ), mock.patch("psycopg2.connect", side_effect=fixture_connect):
+            PREPARATION.prepare_owner(sql_text, PASSWORD)
+
+    def require_postgres14(self):
+        if self.database.server_version // 10000 != 14:
+            self.skipTest("Self-role grant is a PostgreSQL 14 one-time procedure")
+
+    def assert_no_temporary_membership(self):
+        with self.database.cursor() as cursor:
+            cursor.execute(
+                "SELECT pg_has_role('procollab_api','procollab_api_dev','MEMBER')"
+            )
+            self.assertFalse(cursor.fetchone()[0])
+            cursor.execute(
+                "SELECT pg_has_role('procollab_api_dev','procollab_api','MEMBER')"
+            )
+            self.assertFalse(cursor.fetchone()[0])
+
+    def test_pg14_existing_logins_prepare_owner_then_remove_membership(self):
+        import psycopg2
+
+        self.require_postgres14()
+        self.seed_runtime_university()
+        self.prepare_with_existing_logins()
+        self.assert_no_temporary_membership()
+        with self.database.cursor() as cursor:
+            cursor.execute(
+                "SELECT pg_get_userbyid(relowner) FROM pg_class WHERE oid='users_university'::regclass"
+            )
+            self.assertEqual(cursor.fetchone()[0], MIGRATOR)
+        with psycopg2.connect(
+            host="127.0.0.1",
+            port=self.port,
+            dbname="procollab_db_dev",
+            user=RUNTIME,
+            password=PASSWORD,
+        ) as runtime:
+            with runtime.cursor() as cursor:
+                cursor.execute("SELECT name FROM users_university")
+                self.assertEqual(cursor.fetchall(), [("preserve this row",)])
+                cursor.execute(
+                    "INSERT INTO users_university(name) VALUES('runtime still works') RETURNING id"
+                )
+                self.assertEqual(cursor.fetchone()[0], 2)
+        self.prepare_with_existing_logins()  # Idempotent; no new membership is necessary.
+        self.assert_no_temporary_membership()
+        result = self.run_helper()
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_pg14_injected_failure_rolls_back_owner_and_revokes_membership(self):
+        import psycopg2
+
+        self.require_postgres14()
+        self.seed_runtime_university()
+        with self.assertRaises(psycopg2.errors.DivisionByZero):
+            self.prepare_with_existing_logins(
+                "BEGIN; ALTER TABLE users_university OWNER TO procollab_api; SELECT 1/0; COMMIT;"
+            )
+        self.assert_no_temporary_membership()
+        with self.database.cursor() as cursor:
+            cursor.execute(
+                "SELECT pg_get_userbyid(relowner) FROM pg_class WHERE oid='users_university'::regclass"
+            )
+            self.assertEqual(cursor.fetchone()[0], RUNTIME)
+            cursor.execute("SELECT name FROM users_university")
+            self.assertEqual(cursor.fetchall(), [("preserve this row",)])
+
+    def test_pg14_preexisting_membership_is_preserved(self):
+        import psycopg2
+
+        self.require_postgres14()
+        self.seed_runtime_university()
+        runtime = psycopg2.connect(
+            host="127.0.0.1",
+            port=self.port,
+            dbname="procollab_db_dev",
+            user=RUNTIME,
+            password=PASSWORD,
+        )
+        runtime.autocommit = True
+        try:
+            with runtime.cursor() as cursor:
+                cursor.execute("GRANT procollab_api_dev TO procollab_api")
+            self.prepare_with_existing_logins()
+            with self.database.cursor() as cursor:
+                cursor.execute(
+                    "SELECT pg_has_role('procollab_api','procollab_api_dev','MEMBER')"
+                )
+                self.assertTrue(cursor.fetchone()[0])
+        finally:
+            with runtime.cursor() as cursor:
+                cursor.execute("REVOKE procollab_api_dev FROM procollab_api")
+            runtime.close()
+
+    def test_owner_preparation_rejects_unverified_postgres_major_before_grant(self):
+        if self.database.server_version // 10000 == 14:
+            self.skipTest("This server supports the verified PostgreSQL 14 procedure")
+        self.seed_runtime_university()
+        with self.assertRaisesRegex(
+            PREPARATION.PreparationError, "verified only on PostgreSQL 14"
+        ):
+            self.prepare_with_existing_logins()
+        self.assert_no_temporary_membership()
 
 
 if __name__ == "__main__":

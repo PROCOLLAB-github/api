@@ -1,4 +1,4 @@
--- Одноразовая подготовка DEV администратором PostgreSQL, не часть deploy workflow.
+-- Одноразовая подготовка DEV с правами владельца, не часть deploy workflow.
 -- Нет REASSIGN OWNED / ALTER ROLE / изменений владельцев БД или схем.
 BEGIN;
 SET LOCAL lock_timeout = '10s';

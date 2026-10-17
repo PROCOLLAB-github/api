@@ -6,6 +6,7 @@ on:
       - .github/workflows/dev-ci.yml
       - .github/workflows/dev-migration-role-ci.yml
       - scripts/dev_ci_migrate.py
+      - scripts/dev_ci_prepare_owner.py
       - scripts/dev_ci_ssh.cjs
       - scripts/tests/test_dev_ci_migrate.py
       - scripts/tests/test_dev_ci_ssh.cjs

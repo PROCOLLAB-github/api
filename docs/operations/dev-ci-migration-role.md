@@ -8,8 +8,9 @@ Deploy Dev применял миграции под runtime login из `.env`, �
 API, UI, модели, numbered migrations, PROD workflow и production secrets не меняются.
 
 Под migration-role здесь понимается существующий владелец `procollab_api` в отдельном
-CI-подключении. Новый PostgreSQL login или cluster-wide membership не создаётся.
-CI жёстко ограничивает database name и runtime user; production credentials не используются.
+CI-подключении. Новый PostgreSQL login не создаётся. Одноразовая подготовка ниже
+использует временное членство DEV role → migration role с последующим отзывом.
+CI жёстко ограничивает database name и runtime user; secrets PROD workflow не читаются.
 
 ## Согласованная схема DEV / PROD, 18.10.2026
 
@@ -97,12 +98,34 @@ pending migrations и доступ runtime к relations. Отдельный cont
 
 ## Одноразовая подготовка ownership
 
-До merge/активации администратор PostgreSQL должен выполнить
-[dev-migration-role-university-owner.sql](dev-migration-role-university-owner.sql)
+До merge/активации нужно выполнить [dev-migration-role-university-owner.sql](dev-migration-role-university-owner.sql)
 только в `procollab_db_dev`. Транзакция переносит ровно university table и проверяет
 её owned sequence, сохраняя runtime privileges и данные. Это не повторяемый шаг CI.
 
-Нужны права фактического владельца и возможность передать ownership целевой роли;
+На фактической PostgreSQL 14 отдельный администратор не обязателен:
+[GRANT PostgreSQL 14](https://www.postgresql.org/docs/14/sql-grant.html) разрешает
+session_user выдавать членство в собственной роли. Это отдельно проверено на
+[disposable PostgreSQL 14.24](https://github.com/PROCOLLAB-github/api/actions/runs/39075480886).
+Поведение PostgreSQL 18 отличается; helper отказывается применять эту процедуру к другим major versions.
+
+`scripts/dev_ci_prepare_owner.py` использует два существующих login:
+
+1. Спрашивает только скрытый пароль `procollab_api`; runtime credentials берёт из environment контейнера.
+2. Подключается к DEV под `procollab_api_dev` и `procollab_api`, проверяет обе identity и PostgreSQL 14.
+3. При необходимости временно делает `GRANT procollab_api_dev TO procollab_api`.
+4. Под `procollab_api` выполняет проверенный SQL смены владельца и runtime grants.
+5. В `finally` отзывает только добавленное членство; существующее членство не удаляет.
+
+Направление grant — DEV role → migration role. Runtime DEV не становится членом
+PROD owner-role. Членство действует на кластер, поэтому временно расширяются права
+общей `procollab_api` на DEV; PROD objects и grants не меняются. Advisory lock не
+позволяет двум экземплярам helper конкурировать. Ошибки SQL откатывают незавершённую
+транзакцию перед отзывом членства; SIGINT/SIGTERM/SIGHUP выполняют cleanup.
+При принудительном убийстве процесса или недоступности БД cleanup нельзя гарантировать:
+перед продолжением проверить членство и при необходимости под `procollab_api_dev`
+выполнить `REVOKE procollab_api_dev FROM procollab_api`.
+
+Для самого SQL нужны права фактического владельца и возможность передать ownership целевой роли;
 server root или обычного GRANT ALL недостаточно для этого
 ([PostgreSQL 14 ALTER TABLE](https://www.postgresql.org/docs/14/sql-altertable.html)).
 При недостатке прав или неожиданной identity транзакция откатится целиком.
