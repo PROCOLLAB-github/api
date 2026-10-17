@@ -1,264 +1,120 @@
-name: Release Prod
-
+name: Analytics PROD read-only verification
 on:
-  release:
-    types: [ published ]
   workflow_dispatch:
-    inputs:
-      image_tag:
-        description: Docker image tag to build and deploy
-        required: true
-        type: string
-      deploy_ref:
-        description: Git ref or tag to checkout on the server
-        required: true
-        type: string
-
+permissions:
+  contents: read
+concurrency:
+  group: prod-chat-analytics-readonly-20261017
+  cancel-in-progress: false
 jobs:
-  prepare:
-    name: Resolve Release Ref
+  verify:
+    if: github.ref == 'refs/heads/ops/prod-chat-analytics-readonly-20261017'
     runs-on: ubuntu-latest
-    outputs:
-      image_tag: ${{ steps.vars.outputs.image_tag }}
-      deploy_ref: ${{ steps.vars.outputs.deploy_ref }}
+    timeout-minutes: 10
     steps:
-      - name: Resolve image tag and deploy ref
-        id: vars
-        run: |
-          if [ "${{ github.event_name }}" = "release" ]; then
-            image_tag='${{ github.event.release.tag_name }}'
-            deploy_ref='${{ github.event.release.tag_name }}'
-          else
-            image_tag='${{ github.event.inputs.image_tag }}'
-            deploy_ref='${{ github.event.inputs.deploy_ref }}'
-          fi
-
-          if [ -z "$image_tag" ]; then
-            echo "IMAGE_TAG is empty" >&2
-            exit 1
-          fi
-
-          if [ -z "$deploy_ref" ]; then
-            echo "DEPLOY_REF is empty" >&2
-            exit 1
-          fi
-
-          echo "image_tag=$image_tag" >> "$GITHUB_OUTPUT"
-          echo "deploy_ref=$deploy_ref" >> "$GITHUB_OUTPUT"
-
-  test:
-    name: Tests
-    runs-on: ubuntu-latest
-    needs: [ prepare ]
-    steps:
-      - uses: actions/checkout@v3
+      - name: Verify exact analytics release and real counters without DB writes
+        uses: garygrossgarten/github-action-ssh@release
         with:
-          ref: ${{ needs.prepare.outputs.deploy_ref }}
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          command: |
+            set -eu
+            repo=/home/app/procollab-backend
+            if [ "$(id -un)" = app ]; then
+              actual_ref="$(git -C "$repo" rev-parse HEAD)"
+            else
+              actual_ref="$(sudo -n -u app git -C "$repo" rev-parse HEAD)"
+            fi
+            test "$actual_ref" = 923c769b00b6ca4a906496fa526a5d9bdd54213b
+            export IMAGE_TAG=prod-analytics-20261017-923c769b00b6
+            cd "$repo"
+            container="$(docker compose -f docker-compose.prod-ci.yml -p prod ps -q web)"
+            test -n "$container"
+            actual_image="$(docker inspect -f '{{.Config.Image}}' "$container")"
+            test "$actual_image" = ghcr.io/procollab-github/api:prod-analytics-20261017-923c769b00b6
+            echo PROD_ANALYTICS_IMAGE_AND_REF_OK
+            docker exec -i -e PYTHONDONTWRITEBYTECODE=1 "$container" python manage.py shell <<'READONLY_ANALYTICS_PY'
+            """Bounded verification of real analytics, in a read-only database transaction."""
+            from datetime import timedelta
+            import json
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v4
-        with:
-          python-version: 3.11
+            from django.db import connection, transaction
+            from django.db.models import Count, Q
+            from django.utils import timezone
+            from partner_programs.models import PartnerProgram, PartnerProgramProject, PartnerProgramUserProfile
+            from partner_programs.serializers.project_analytics import ProjectAnalyticsSerializer
+            from partner_programs.serializers.project_case_drilldown import ProjectCaseQuerySerializer
+            from partner_programs.services.project_analytics import build_project_analytics, participants_without_visit_rows
+            from partner_programs.services.project_assignment_analytics import build_assignments, build_delayed_experts
+            from partner_programs.services.project_case_analytics import get_program_case_field
+            from partner_programs.services.project_case_drilldown import case_project_rows
 
-      - name: cache poetry install
-        uses: actions/cache@v4
-        with:
-          path: ~/.local
-          key: poetry-1.2.2-0
+            with transaction.atomic():
+                with connection.cursor() as cursor:
+                    cursor.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY')
+                    cursor.execute("SET LOCAL statement_timeout = '15s'")
+                    cursor.execute('SHOW transaction_read_only')
+                    assert cursor.fetchone()[0] == 'on'
+                # Only a bounded sample of programs with recent project links, not a scan of all programs.
+                recent = PartnerProgramProject.objects.order_by('-pk').values_list('partner_program_id', flat=True)[:100]
+                ids = list(dict.fromkeys(recent))[:3]
+                assert ids, 'No programs with project links found for the read-only sample'
+                results = []
+                for program in PartnerProgram.objects.filter(pk__in=ids).order_by('pk'):
+                    now = timezone.now()
+                    overview = build_project_analytics(program, now=now)
+                    serializer = ProjectAnalyticsSerializer(data=overview)
+                    serializer.is_valid(raise_exception=True)
+                    profiles = PartnerProgramUserProfile.objects.filter(partner_program_id=program.pk, user_id__isnull=False)
+                    metrics = profiles.aggregate(
+                        total=Count('user_id', distinct=True),
+                        visits=Count('user_id', filter=Q(user__last_activity__isnull=False) | Q(user__last_login__isnull=False), distinct=True),
+                        missing=Count('user_id', filter=Q(user__last_activity__isnull=True, user__last_login__isnull=True), distinct=True),
+                    )
+                    funnel, attention = overview['participant_funnel'], overview['attention']
+                    assert metrics['total'] == metrics['visits'] + metrics['missing']
+                    assert funnel['unique_participants'] == metrics['total']
+                    assert funnel['visited_participants'] == metrics['visits']
+                    assert attention['participants_without_visit'] == metrics['missing']
+                    assert participants_without_visit_rows(program.pk).count() == metrics['missing']
 
-      - uses: snok/install-poetry@v1
-        with:
-          version: 1.2.2
-          virtualenvs-create: true
-          virtualenvs-in-project: true
+                    field = get_program_case_field(program)
+                    context = {'case_options': field.get_options_list() if field else [],
+                               'submission_applicable': program.is_competitive}
+                    counts = {}
+                    submissions = ('all', 'submitted', 'not_submitted') if program.is_competitive else ('all',)
+                    for submission in submissions:
+                        for presentation in ('all', 'present', 'missing'):
+                            query = ProjectCaseQuerySerializer(data={
+                                'view': 'case_analytics', 'case_scope': 'all',
+                                'submission': submission, 'presentation': presentation,
+                            }, context=context)
+                            query.is_valid(raise_exception=True)
+                            counts[submission, presentation] = case_project_rows(
+                                program, field=field, selection=query.validated_data).count()
+                        assert counts[submission, 'all'] == counts[submission, 'present'] + counts[submission, 'missing']
+                    if program.is_competitive:
+                        for presentation in ('all', 'present', 'missing'):
+                            assert counts['all', presentation] == counts['submitted', presentation] + counts['not_submitted', presentation]
+                    assert counts['all', 'all'] == overview['solution_funnel']['created']
 
-      - name: cache deps
-        id: cache-deps
-        uses: actions/cache@v4
-        with:
-          path: .venv
-          key: pydeps-${{ hashFiles('**/poetry.lock') }}
+                    if program.datetime_evaluation_ends and program.is_distributed_evaluation:
+                        assignments = build_assignments(program.pk, now=now)
+                        cutoff = program.datetime_evaluation_ends - timedelta(days=5)
+                        early = build_delayed_experts(assignments, evaluation_ends=program.datetime_evaluation_ends,
+                                                     now=cutoff - timedelta(seconds=1))
+                        assert early['total'] == 0
+                        at_cutoff = build_delayed_experts(assignments, evaluation_ends=program.datetime_evaluation_ends,
+                                                         now=cutoff)
+                        pending = {row['expert']['expert_id'] for row in assignments
+                                   if row['status'] in ('pending', 'in_progress') and row['project_submitted']}
+                        assert at_cutoff['total'] == len(pending)
+                    results.append({'program_id': program.pk, 'participants': metrics['total'],
+                                    'visited': metrics['visits'], 'without_visit': metrics['missing'],
+                                    'projects': counts['all', 'all'], 'filter_combinations': len(counts),
+                                    'serializer_valid': True})
+                print(json.dumps({'read_only': True, 'sample_programs': results}, sort_keys=True))
+            print('PROD_CHAT_ANALYTICS_READONLY_OK')
 
-      - run: poetry install
-
-      - run: poetry run pip install setuptools
-
-      - name: Run tests
-        run: poetry run python manage.py test
-        env:
-          DEBUG: True
-          NEXTGEN_SURFACE_ENABLED: True
-
-  build:
-    name: Build Image
-    runs-on: ubuntu-latest
-    needs: [ prepare, test ]
-    outputs:
-      image_tag: ${{ needs.prepare.outputs.image_tag }}
-      deploy_ref: ${{ needs.prepare.outputs.deploy_ref }}
-    steps:
-      - name: "Checkout repository"
-        uses: actions/checkout@v3
-        with:
-          ref: ${{ needs.prepare.outputs.deploy_ref }}
-
-      - name: "Set up QEMU"
-        uses: docker/setup-qemu-action@v3
-
-      - name: "Set up Docker Buildx"
-        uses: docker/setup-buildx-action@v3
-
-      - name: "Login to GitHub Registry"
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/procollab-github/api
-          tags: |
-            type=raw,value=${{ needs.prepare.outputs.image_tag }}
-      - name: Build and push container
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: Dockerfile
-          push: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-  deploy:
-      name: Deploy
-      runs-on: ubuntu-latest
-      needs: [ prepare, build ]
-      steps:
-        - name: Deploy to server
-          uses: garygrossgarten/github-action-ssh@release
-          with:
-            host: ${{ secrets.SERVER_HOST }}
-            username: ${{ secrets.SERVER_USER }}
-            password: ${{ secrets.SERVER_PASSWORD }}
-            command: |
-              set -eu
-
-              export IMAGE_TAG="${{ needs.prepare.outputs.image_tag }}"
-              export DEPLOY_REF="${{ needs.prepare.outputs.deploy_ref }}"
-              echo "Deploying IMAGE_TAG=${IMAGE_TAG} from DEPLOY_REF=${DEPLOY_REF}"
-
-              if [ "$(id -un)" = "app" ]; then
-                git -C /home/app/procollab-backend fetch --all --tags --prune
-                git -C /home/app/procollab-backend checkout --detach "${DEPLOY_REF}"
-                git -C /home/app/procollab-backend rev-parse HEAD
-              else
-                sudo -u app git -C /home/app/procollab-backend fetch --all --tags --prune
-                sudo -u app git -C /home/app/procollab-backend checkout --detach "${DEPLOY_REF}"
-                sudo -u app git -C /home/app/procollab-backend rev-parse HEAD
-              fi
-
-              cd /home/app/procollab-backend
-              rm -f .env
-              touch .env
-
-              echo "DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" >> .env
-
-              echo "DATABASE_NAME=${{ secrets.DATABASE_NAME }}" >> .env
-              echo "DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}" >> .env
-              echo "DATABASE_USER=${{ secrets.DATABASE_USER }}" >> .env
-              echo "DATABASE_HOST=${{ secrets.DATABASE_HOST }}" >> .env
-              echo "DATABASE_PORT=${{ secrets.DATABASE_PORT }}" >> .env
-
-              echo "SELECTEL_ACCOUNT_ID=${{ secrets.SELECTEL_ACCOUNT_ID }}" >> .env
-              echo "SELECTEL_CONTAINER_NAME=${{ secrets.SELECTEL_CONTAINER_NAME }}" >> .env
-              echo "SELECTEL_CONTAINER_PASSWORD=${{ secrets.SELECTEL_CONTAINER_PASSWORD }}" >> .env
-              echo "SELECTEL_CONTAINER_USERNAME=${{ secrets.SELECTEL_CONTAINER_USERNAME }}" >> .env
-
-              echo "EMAIL_USER=${{ secrets.EMAIL_USER }}" >> .env
-              echo "UNISENDER_GO_API_KEY=${{ secrets.UNISENDER_GO_API_KEY }}" >> .env
-
-              chmod 600 .env
-              docker compose -f docker-compose.prod-ci.yml -p prod config >/dev/null
-              docker compose -f docker-compose.prod-ci.yml -p prod pull web celerys
-
-              docker compose -f docker-compose.prod-ci.yml -p prod run --rm web python manage.py migrate
-              docker compose -f docker-compose.prod-ci.yml -p prod up -d --force-recreate
-              expected_image="ghcr.io/procollab-github/api:${IMAGE_TAG}"
-              for service in web celerys; do
-                container="$(docker compose -f docker-compose.prod-ci.yml -p prod ps -q "$service")"
-                if [ -z "$container" ]; then
-                  echo "Service ${service} has no running container" >&2
-                  docker compose -f docker-compose.prod-ci.yml -p prod ps >&2 || true
-                  exit 1
-                fi
-
-                actual_image="$(docker inspect -f '{{.Config.Image}}' "$container")"
-                echo "Service ${service}: container=${container} image=${actual_image}"
-                if [ "$actual_image" != "$expected_image" ]; then
-                  echo "Service ${service} uses unexpected image: ${actual_image}, expected ${expected_image}" >&2
-                  docker compose -f docker-compose.prod-ci.yml -p prod ps >&2 || true
-                  exit 1
-                fi
-              done
-              if [ "$(id -u)" -eq 0 ]; then
-                nginx -t
-                systemctl reload nginx
-              else
-                sudo nginx -t
-                sudo systemctl reload nginx
-              fi
-
-              for attempt in $(seq 1 24); do
-                root_status="$(curl -s -o /dev/null -w '%{http_code}' https://api.procollab.ru/ || true)"
-                admin_status="$(curl -s -o /dev/null -w '%{http_code}' https://api.procollab.ru/admin/login/ || true)"
-
-                if [ "$root_status" = "401" ] && [ "$admin_status" = "200" ]; then
-                  echo "Smoke check passed on attempt ${attempt}"
-                  break
-                fi
-
-                sleep 5
-              done
-
-              if [ "$root_status" != "401" ] || [ "$admin_status" != "200" ]; then
-                echo "Smoke check failed: /=${root_status} /admin/login/=${admin_status}" >&2
-                exit 1
-              fi
-
-              docker compose -f docker-compose.prod-ci.yml -p prod ps
-
-              celery_status=""
-              celery_ping=""
-              celery_container=""
-              for attempt in $(seq 1 12); do
-                celery_container="$(docker compose -f docker-compose.prod-ci.yml -p prod ps -q celerys 2>/dev/null || true)"
-                if [ -n "$celery_container" ]; then
-                  celery_status="$(docker inspect -f '{{.State.Status}}' "$celery_container" 2>/dev/null || true)"
-                else
-                  celery_status="missing"
-                fi
-
-                echo "Celery check attempt ${attempt}: container=${celery_container:-missing} status=${celery_status}"
-                if [ "$celery_status" = "running" ]; then
-                  celery_ping="$(docker compose -f docker-compose.prod-ci.yml -p prod exec -T celerys sh -lc 'celery -A procollab inspect ping --timeout=15' 2>&1 || true)"
-                  printf '%s\n' "$celery_ping"
-                  if printf '%s\n' "$celery_ping" | grep -q 'pong'; then
-                    echo "Celery check passed on attempt ${attempt}"
-                    break
-                  fi
-                fi
-
-                sleep 5
-              done
-
-              if [ "$celery_status" != "running" ] || ! printf '%s\n' "$celery_ping" | grep -q 'pong'; then
-                echo "Celery check failed: status=${celery_status}" >&2
-                docker compose -f docker-compose.prod-ci.yml -p prod ps >&2 || true
-                docker compose -f docker-compose.prod-ci.yml -p prod logs --tail=200 celerys >&2 || true
-                docker compose -f docker-compose.prod-ci.yml -p prod logs --tail=100 redis >&2 || true
-                docker compose -f docker-compose.prod-ci.yml -p prod logs --tail=100 web >&2 || true
-                exit 1
-              fi
+            READONLY_ANALYTICS_PY
