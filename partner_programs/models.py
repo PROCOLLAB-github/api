@@ -76,6 +76,16 @@ class PartnerProgram(models.Model):
         blank=True,
         verbose_name="Ссылка на обложку",
     )
+    mobile_cover_image_address = models.URLField(
+        null=True,
+        blank=True,
+        verbose_name="Ссылка на мобильную обложку",
+    )
+    image_framing = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name="Кадрирование изображений программы",
+    )
     advertisement_image_address = models.URLField(
         null=True,
         blank=True,
