@@ -11,11 +11,28 @@ from projects.models import Project
 from users.models import Expert
 
 from .models import Criteria, ProjectExpertAssignment, ProjectScore
+from .criteria_policy import locked
+
+
+class CriteriaAdminForm(forms.ModelForm):
+    class Meta:
+        model = Criteria
+        fields = "__all__"
+
+    def clean(self):
+        data = super().clean()
+        program = data.get("partner_program")
+        if program and locked(program):
+            raise forms.ValidationError(
+                "После первой оценки критерии программы зафиксированы."
+            )
+        return data
 
 
 # Register your models here.
 @admin.register(Criteria)
 class CriteriaAdmin(admin.ModelAdmin):
+    form = CriteriaAdminForm
     list_display = ("id", "name", "type", "get_program_name")
     list_display_links = (
         "id",
@@ -24,6 +41,22 @@ class CriteriaAdmin(admin.ModelAdmin):
 
     def get_program_name(self, obj):
         return obj.partner_program.name
+
+    def has_change_permission(self, request, obj=None):
+        return super().has_change_permission(request, obj) and (
+            obj is None or not locked(obj.partner_program)
+        )
+
+    def has_delete_permission(self, request, obj=None):
+        return super().has_delete_permission(request, obj) and (
+            obj is None or not locked(obj.partner_program)
+        )
+
+    def get_actions(self, request):
+        actions = super().get_actions(request)
+        # Single-object deletion has a program-specific permission check.
+        actions.pop("delete_selected", None)
+        return actions
 
 
 @admin.register(ProjectScore)

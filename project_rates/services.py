@@ -9,6 +9,7 @@ from partner_programs.utils import filter_program_projects_by_field_name
 from projects.models import Project
 from project_rates.models import Criteria, ProjectExpertAssignment, ProjectScore
 from project_rates.serializers import ProjectScoreCreateSerializer
+from project_rates.criteria_policy import CriteriaConflict, mark_locked, revision
 from users.models import Expert
 from vacancy.mapping import ProjectRatedParams, MessageTypeEnum
 from vacancy.tasks import send_email
@@ -73,8 +74,7 @@ def get_projects_for_rate_queryset(
         )
 
     return (
-        projects_qs
-        .annotate(
+        projects_qs.annotate(
             rated_count=Count(
                 "scores__user",
                 filter=Q(scores__criteria__partner_program=program),
@@ -86,7 +86,43 @@ def get_projects_for_rate_queryset(
     )
 
 
+@transaction.atomic
 def submit_project_scores(*, user, project_id: int, data) -> None:
+    expected_revision = None
+    if isinstance(data, dict):
+        expected_revision = data.get("expected_revision")
+        data = data.get("scores")
+    if (
+        not isinstance(data, list)
+        or not data
+        or any(not isinstance(row, dict) for row in data)
+    ):
+        raise ValidationError("Передайте непустой список оценок.")
+    # Determine scope before locking; re-read all definitions and validate under the
+    # same program lock used by organizer saves. Never validate against a stale scale.
+    ids = [row.get("criterion_id") for row in data]
+    if any(not isinstance(pk, int) or isinstance(pk, bool) for pk in ids) or len(
+        set(ids)
+    ) != len(ids):
+        raise ValidationError("Некорректные ID критериев.")
+    programs = set(
+        Criteria.objects.filter(pk__in=ids).values_list("partner_program_id", flat=True)
+    )
+    if len(programs) != 1:
+        if expected_revision:
+            raise CriteriaConflict(
+                "criteria_changed", "Критерии изменились. Обновите форму оценки."
+            )
+        raise ValueError("All criteria must belong to the same program")
+    program = PartnerProgram.objects.select_for_update().get(pk=programs.pop())
+    Expert.objects.get(user__id=user.id, programs=program)
+    if (
+        expected_revision is not None or program.evaluation_criteria_version
+    ) and expected_revision != revision(program):
+        raise CriteriaConflict(
+            "criteria_changed",
+            "Критерии изменились. Обновите форму оценки; введённые ответы сохранены в форме.",
+        )
     rating_data, criteria_ids, program = _prepare_project_score_data(
         user=user,
         project_id=project_id,
@@ -119,20 +155,24 @@ def submit_project_scores(*, user, project_id: int, data) -> None:
             unique_fields=["criteria", "user", "project"],
         )
 
+    mark_locked(program)
+
     project = Project.objects.select_related("leader").get(id=project_id)
     _send_project_rated_email(project=project, program=program)
 
 
-def _prepare_project_score_data(*, user, project_id: int, data) -> tuple[list, list, PartnerProgram]:
+def _prepare_project_score_data(
+    *, user, project_id: int, data
+) -> tuple[list, list, PartnerProgram]:
     rating_data = [dict(criterion) for criterion in data]
     criteria_ids = [criterion["criterion_id"] for criterion in rating_data]
 
     criteria_qs = Criteria.objects.filter(id__in=criteria_ids).select_related(
         "partner_program"
     )
-    partner_program_ids = (
-        criteria_qs.values_list("partner_program_id", flat=True).distinct()
-    )
+    partner_program_ids = criteria_qs.values_list(
+        "partner_program_id", flat=True
+    ).distinct()
     if not criteria_qs.exists():
         raise ValueError("Criteria not found")
     if partner_program_ids.count() != 1:
@@ -152,11 +192,14 @@ def _prepare_project_score_data(*, user, project_id: int, data) -> tuple[list, l
     ).exists():
         raise ValueError("Project is not linked to the program")
 
-    if program.is_distributed_evaluation and not ProjectExpertAssignment.objects.filter(
-        partner_program=program,
-        project_id=project_id,
-        expert__user_id=user.id,
-    ).exists():
+    if (
+        program.is_distributed_evaluation
+        and not ProjectExpertAssignment.objects.filter(
+            partner_program=program,
+            project_id=project_id,
+            expert__user_id=user.id,
+        ).exists()
+    ):
         raise ValueError("you are not assigned to rate this project")
 
     return rating_data, criteria_ids, program

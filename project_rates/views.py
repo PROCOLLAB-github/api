@@ -1,5 +1,6 @@
 from rest_framework import generics, status
 from rest_framework.response import Response
+from rest_framework.exceptions import APIException
 
 from django_filters import rest_framework as filters
 
@@ -47,6 +48,8 @@ class RateProject(generics.CreateAPIView):
             )
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except APIException as e:
+            return Response(e.detail, status=e.status_code)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -78,6 +81,9 @@ class ProjectListForRate(generics.ListAPIView):
         )
 
     def get_serializer_context(self):
+        from project_rates.criteria_policy import revision
+
         context = super().get_serializer_context()
         context["program_max_rates"] = self._get_program().max_project_rates
+        context["criteria_revision"] = revision(self._get_program())
         return context
