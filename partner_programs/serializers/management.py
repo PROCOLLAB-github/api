@@ -1,5 +1,6 @@
 """Контракты панели организатора; поля ролей и жизненного цикла не редактируются."""
 
+import math
 from urllib.parse import urlsplit
 
 from rest_framework import serializers
@@ -24,6 +25,39 @@ class HttpURLField(serializers.URLField):
         if urlsplit(value).scheme.lower() not in ("http", "https"):
             raise serializers.ValidationError("Укажите ссылку http или https.")
         return value
+
+
+class ImageFramingField(serializers.JSONField):
+    """Full framing document; empty object restores legacy center/100% defaults."""
+
+    def to_internal_value(self, data):
+        data = super().to_internal_value(data)
+        if not isinstance(data, dict):
+            raise serializers.ValidationError("Укажите объект настроек кадра.")
+        if not data:
+            return {}
+        if set(data) != {"cover", "mobile_cover", "logo"}:
+            raise serializers.ValidationError(
+                "Укажите только cover, mobile_cover и logo."
+            )
+        for frame in data.values():
+            if not isinstance(frame, dict) or set(frame) != {"x", "y", "zoom"}:
+                raise serializers.ValidationError(
+                    "Каждый кадр должен содержать x, y, zoom."
+                )
+            for key, maximum in (("x", 100), ("y", 100), ("zoom", 3)):
+                value = frame[key]
+                minimum = 1 if key == "zoom" else 0
+                if (
+                    isinstance(value, bool)
+                    or not isinstance(value, (int, float))
+                    or not minimum <= value <= maximum
+                    or not math.isfinite(value)
+                ):
+                    raise serializers.ValidationError(
+                        f"{key}: укажите число от {minimum} до {maximum}."
+                    )
+        return data
 
 
 class ManagementListQuery(StrictFieldsMixin, serializers.Serializer):
@@ -63,6 +97,8 @@ BASIC_FIELDS = (
     "description",
     "image_address",
     "cover_image_address",
+    "mobile_cover_image_address",
+    "image_framing",
     "advertisement_image_address",
     "registration_link",
     "presentation_address",
@@ -77,6 +113,7 @@ DATE_FIELDS = (
 
 
 class ManagementSettingsSerializer(StrictFieldsMixin, serializers.ModelSerializer):
+    image_framing = ImageFramingField(required=False)
     expected_updated_at = serializers.DateTimeField(write_only=True)
     confirm_reopen = serializers.BooleanField(
         write_only=True, required=False, default=False
