@@ -23,9 +23,9 @@ jobs:
             bash -se 2>&1 <<'DEV_INSPECT'
             set -Eeuo pipefail
             repo=/root/api
-            expected_sha=742f6df0995198b05322acc551b2b07f7929767a
-            expected_runtime_sha=ccf920308d38329a6626fceee1fc1ea3d01c8550
-            phase=failed-rollout
+            expected_sha=09b29bf59155b9cda1a70d8959a6dc5de140ee17
+            expected_runtime_sha=09b29bf59155b9cda1a70d8959a6dc5de140ee17
+            phase=postdeploy
             test "$(readlink -f "$repo")" = "$repo"
             grep -Eq 'server_name[[:space:]]+dev\.procollab\.ru;' /etc/nginx/sites-enabled/dev.procollab.ru
             test "$(git --no-optional-locks -C "$repo" rev-parse HEAD)" = "$expected_sha"
@@ -115,6 +115,7 @@ jobs:
                     if os.environ['AUDIT_PHASE'] == 'postdeploy':
                         assert ('invites','0004_legacy_project_team_policy') in executor.loader.applied_migrations
                         assert ('partner_programs','0019_legacy_project_team_policy') in executor.loader.applied_migrations
+                        print('DEV_C_MIGRATIONS_APPLIED=invites.0004,partner_programs.0019', flush=True)
                         cursor.execute('SELECT count(*) FROM partner_programs_partnerprogram WHERE legacy_team_min_size IS NOT NULL OR legacy_team_max_size IS NOT NULL')
                         print('DEV_PROGRAMS_WITH_CONFIGURED_TEAM_BOUNDS=' + str(cursor.fetchone()[0]), flush=True)
                         cursor.execute('SELECT count(*) FROM invites_invite i JOIN (SELECT project_id,min(id) AS link_id FROM partner_programs_partnerprogramproject GROUP BY project_id HAVING count(*)=1) l ON l.project_id=i.project_id WHERE i.program_link_id IS DISTINCT FROM l.link_id')
@@ -141,3 +142,4 @@ jobs:
             print('DEV_READONLY_INSPECTION_COMPLETE=true', flush=True)
             PY
             DEV_INSPECT
+
