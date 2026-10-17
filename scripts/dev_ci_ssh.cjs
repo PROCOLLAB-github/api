@@ -48,7 +48,10 @@ async function deploy(config, stdout = process.stdout, stderr = process.stderr) 
           if (code === 0 && !signal) finish();
           else finish(new Error('DEV remote deployment failed; inspect masked command output'));
         });
-        stream.end(config.script.endsWith('\n') ? config.script : `${config.script}\n`);
+        // Bash разбирает весь блок до запуска: дочерние процессы получают EOF,
+        // поэтому docker exec не может прочитать оставшиеся команды из SSH stdin.
+        const script = config.script.endsWith('\n') ? config.script : `${config.script}\n`;
+        stream.end(`{\n${script}} </dev/null\n`);
       });
     });
     try {
