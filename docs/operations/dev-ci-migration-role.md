@@ -89,6 +89,11 @@ transport, не шифрование. В payload нет host/database overrides.
 и запускает только фиксированный `bash -se`. Весь deploy script передаётся через
 SSH stdin: secret-bearing script не попадает в argv удалённого shell и не
 записывается во временный файл. Старый SSH action заменён только в DEV workflow.
+Скрипт передаётся единым Bash-блоком с stdin `/dev/null`: Bash разбирает его целиком
+до выполнения, поэтому `docker exec` не может поглотить последующие checks из SSH stdin.
+Явные heredoc payload/Python продолжают работать. Regression tests запускают настоящий
+Bash через loopback SSH: stdin-consuming child не пропускает завершающие checks,
+а ошибка последующего check завершает deployment с ошибкой.
 
 Helper проверяет фактическую identity, schema CREATE/USAGE, отсутствие admin flags,
 ownership tables/sequences и текущие runtime grants внутри READ ONLY transaction.

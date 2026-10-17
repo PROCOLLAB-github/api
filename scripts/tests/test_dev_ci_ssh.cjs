@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict');
 const { once } = require('node:events');
 const { PassThrough } = require('node:stream');
+const { spawn } = require('node:child_process');
 const { test } = require('node:test');
 const { Server, utils } = require('ssh2');
 const { deploy, fingerprint } = require('../dev_ci_ssh.cjs');
@@ -30,6 +31,15 @@ async function fixture(context, options = {}) {
         observed.commands.push(info.command);
         const stream = acceptCommand();
         stream.on('data', (chunk) => { observed.input += chunk.toString(); });
+        if (options.bash) {
+          const child = spawn(options.bash, ['-se'], { stdio: ['pipe', 'pipe', 'pipe'] });
+          child.stdout.pipe(stream, { end: false });
+          child.stderr.pipe(stream.stderr, { end: false });
+          stream.pipe(child.stdin);
+          child.on('error', () => { stream.exit(127); stream.end(); });
+          child.on('close', (code) => { stream.exit(code); stream.end(); });
+          return;
+        }
         stream.on('end', () => {
           if (options.hang) return;
           stream.write('remote stdout\n');
@@ -61,7 +71,7 @@ test('exec argv is fixed; full secret-bearing script is delivered only on stdin'
   const f = await fixture(context);
   await deploy(f.config, f.stdout, f.stderr);
   assert.deepEqual(f.observed.commands, ['bash -se']);
-  assert.equal(f.observed.input, script);
+  assert.equal(f.observed.input, `{\n${script}} </dev/null\n`);
   assert.equal(f.output(), 'remote stdout\nremote stderr\n');
   assert.ok(!f.output().includes('fixture $()'));
 });
@@ -93,4 +103,18 @@ test('remote failure propagates without including the script or credentials', as
 test('deployment timeout closes the SSH connection', async (context) => {
   const f = await fixture(context, { hang: true });
   await assert.rejects(deploy({ ...f.config, timeoutMs: 1000 }, f.stdout, f.stderr), /timed out/);
+});
+
+const bash = process.platform === 'win32' ? process.env.MIGRATION_TEST_BASH : '/bin/bash';
+
+test('real shell: stdin-consuming child cannot swallow later checks or heredocs', { skip: !bash }, async (context) => {
+  const f = await fixture(context, { bash });
+  await deploy({ ...f.config, script: "printf 'before\\n'\ncat >/dev/null\nprintf 'after\\n'\ncat <<'PAYLOAD'\nliteral $() `text`\nPAYLOAD\nprintf 'final-smoke-check\\n'\n" }, f.stdout, f.stderr);
+  assert.equal(f.output(), 'before\nafter\nliteral $() `text`\nfinal-smoke-check\n');
+});
+
+test('real shell: failed check after stdin-consuming child fails deployment', { skip: !bash }, async (context) => {
+  const f = await fixture(context, { bash });
+  await assert.rejects(deploy({ ...f.config, script: "cat >/dev/null\nfalse\nprintf 'must-not-run\\n'\n" }, f.stdout, f.stderr), /remote deployment failed/);
+  assert.ok(!f.output().includes('must-not-run'));
 });
