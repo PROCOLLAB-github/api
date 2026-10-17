@@ -44,6 +44,18 @@ class ManagementView(ManagementBase):
         return Response(management_data(managed_program(pk, request.user)))
 
 
+class ManagementProjectFormView(ManagementBase):
+    def get(self, request, pk):
+        from partner_programs.services.management_form import form_data
+
+        return Response(form_data(managed_program(pk, request.user)))
+
+    def put(self, request, pk):
+        from partner_programs.services.management_form import save_form
+
+        return Response(save_form(pk, request.user, request.data))
+
+
 class ManagementParticipantsView(ManagementBase):
     def get(self, request, pk):
         program = managed_program(pk, request.user)

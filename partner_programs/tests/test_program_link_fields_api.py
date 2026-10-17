@@ -241,15 +241,19 @@ class ProgramLinkFieldsAPITests(TestCase):
         self.assertEqual(self.link.field_values.get(field=extra).value_text, "before")
         self.assertFalse(self.link.field_values.filter(field=self.field).exists())
 
-    def test_case_cannot_be_explicitly_empty(self):
-        for value in (None, "", " ", "missing"):
+    def test_case_can_be_cleared_in_draft_but_unknown_choice_is_invalid(self):
+        for value in (None, "", " "):
             with self.subTest(value=value):
                 self.assertEqual(
                     self.put(
                         [{"field_id": self.field.pk, "value_text": value}]
                     ).status_code,
-                    400,
+                    200,
                 )
+        self.assertEqual(
+            self.put([{"field_id": self.field.pk, "value_text": "missing"}]).status_code,
+            400,
+        )
         self.assertFalse(self.link.field_values.exists())
 
     def test_model_validation_error_rolls_back_an_earlier_write(self):

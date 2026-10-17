@@ -36,6 +36,25 @@ class PartnerProgramFieldValueBulkUpdateAPITests(TestCase):
         )
         self.assertEqual(value.value_text, "ai")
 
+    def test_file_answer_remains_readable_in_project_detail(self):
+        field = create_program_field(self.program, name="document", field_type="file")
+        self.client.force_authenticate(self.leader)
+        url = "https://example.com/model.pdf"
+        self.assertEqual(
+            self.client.put(
+                f"/programs/partner-program-projects/{self.program_link.pk}/fields/",
+                [{"field_id": field.pk, "value_text": url}],
+                format="json",
+            ).status_code,
+            200,
+        )
+        response = self.client.get(f"/projects/{self.project.pk}/")
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertIn(
+            {"field_name": "document", "value": url},
+            response.data["partner_program"]["program_field_values"],
+        )
+
     def test_non_leader_cannot_update_program_field_values(self):
         outsider = create_user(prefix="program-fields-outsider")
         self.client.force_authenticate(outsider)

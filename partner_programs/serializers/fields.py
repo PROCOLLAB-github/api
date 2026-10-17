@@ -32,6 +32,12 @@ class PartnerProgramFieldValueUpdateSerializer(serializers.Serializer):
         field = attrs.get("field")
         value_text = attrs.get("value_text")
 
+        if self.context.get("allow_incomplete") and (
+            value_text is None or not str(value_text).strip()
+        ):
+            attrs["value_text"] = ""
+            return attrs
+
         validator = self._get_validator(field)
         validator(field, value_text, attrs)
 
