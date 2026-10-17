@@ -45,7 +45,7 @@ def prepare_payload(environ, output):
     output_path = environ.get("GITHUB_OUTPUT")
     if not output_path:
         raise MigrationSetupError("GITHUB_OUTPUT is required")
-    # GitHub маскирует также производное значение до передачи его SSH action.
+    # GitHub маскирует также производное значение до передачи его SSH transport.
     output.write(f"::add-mask::{payload}\n")
     output.flush()
     with open(output_path, "a", encoding="utf-8") as output_file:

@@ -6,7 +6,9 @@ on:
       - .github/workflows/dev-ci.yml
       - .github/workflows/dev-migration-role-ci.yml
       - scripts/dev_ci_migrate.py
+      - scripts/dev_ci_ssh.cjs
       - scripts/tests/test_dev_ci_migrate.py
+      - scripts/tests/test_dev_ci_ssh.cjs
       - docs/operations/dev-migration-role-university-owner.sql
   workflow_dispatch:
 permissions:
@@ -45,6 +47,15 @@ jobs:
         second-line
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install DEV SSH transport
+        run: npm install --prefix "$RUNNER_TEMP/dev-migration-ssh" --ignore-scripts --no-package-lock --no-audit --no-fund ssh2@1.16.0
+      - name: Verify SSH stdin transport and host pinning
+        env:
+          NODE_PATH: ${{ runner.temp }}/dev-migration-ssh/node_modules
+        run: node --test scripts/tests/test_dev_ci_ssh.cjs
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"

@@ -29,13 +29,19 @@ jobs:
             DEV_MIGRATION_DATABASE_USER: ${{ secrets.DEV_MIGRATION_DATABASE_USER }}
             DEV_MIGRATION_DATABASE_PASSWORD: ${{ secrets.DEV_MIGRATION_DATABASE_PASSWORD }}
           run: python3 scripts/dev_ci_migrate.py --prepare-payload
-        - name: Deploy to server
-          uses: garygrossgarten/github-action-ssh@release
+        - uses: actions/setup-node@v4
           with:
-            host: ${{ secrets.DEV_SERVER_HOST }}
-            username: ${{ secrets.DEV_SERVER_USER }}
-            password: ${{ secrets.DEV_SERVER_PASSWORD }}
-            command: |
+            node-version: "24"
+        - name: Install DEV SSH transport
+          run: npm install --prefix "$RUNNER_TEMP/dev-migration-ssh" --ignore-scripts --no-package-lock --no-audit --no-fund ssh2@1.16.0
+        - name: Deploy to server
+          env:
+            NODE_PATH: ${{ runner.temp }}/dev-migration-ssh/node_modules
+            DEV_SERVER_HOST: ${{ secrets.DEV_SERVER_HOST }}
+            DEV_SERVER_USER: ${{ secrets.DEV_SERVER_USER }}
+            DEV_SERVER_PASSWORD: ${{ secrets.DEV_SERVER_PASSWORD }}
+            DEV_SSH_HOST_KEY_SHA256: ${{ vars.DEV_SSH_HOST_KEY_SHA256 }}
+            DEV_DEPLOY_SCRIPT: |
               set +x
               set -eu
               exec 2>&1
@@ -51,7 +57,6 @@ jobs:
                 git status --short --untracked-files=no >&2
                 exit 1
               fi
-
               expected_serializer_blob="$(git rev-parse HEAD:vacancy/serializers.py)"
               actual_serializer_blob="$(git hash-object vacancy/serializers.py)"
               if [ "$actual_serializer_blob" != "$expected_serializer_blob" ]; then
@@ -345,3 +350,4 @@ jobs:
                 docker compose -f docker-compose.dev-ci.yml logs --tail=100 web >&2 || true
                 exit 1
               fi
+          run: node scripts/dev_ci_ssh.cjs

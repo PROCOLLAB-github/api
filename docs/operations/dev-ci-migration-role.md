@@ -45,6 +45,11 @@ manual reviewers. В нём используются отдельные secrets:
 - `DEV_MIGRATION_DATABASE_USER`: `procollab_api`.
 - `DEV_MIGRATION_DATABASE_PASSWORD`: актуальный пароль этого login из Selectel.
 
+Environment variable `DEV_SSH_HOST_KEY_SHA256` содержит публичный ED25519 fingerprint
+DEV-сервера, проверенный отдельной read-only inspection. Это не пароль. При ротации
+host key сначала независимо проверяется новый публичный ключ, затем обновляется
+эта переменная; отключать host verification нельзя.
+
 Пароль добавляется владельцем через GitHub Environment secrets; в чат, issue, PR
 или repository file его передавать нельзя. GitHub API не позволяет прочитать
 ранее сохранённое значение секрета. Обычные DEV_DATABASE_* остаются без изменения.
@@ -53,6 +58,11 @@ manual reviewers. В нём используются отдельные secrets:
 через [add-mask](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands#masking-a-value-in-a-log)
 и передаёт как step output в stdin helper. Base64 обеспечивает только безопасный
 transport, не шифрование. В payload нет host/database overrides.
+
+`scripts/dev_ci_ssh.cjs` использует pinned `ssh2@1.16.0`, проверяет host fingerprint
+и запускает только фиксированный `bash -se`. Весь deploy script передаётся через
+SSH stdin: secret-bearing script не попадает в argv удалённого shell и не
+записывается во временный файл. Старый SSH action заменён только в DEV workflow.
 
 Helper проверяет фактическую identity, schema CREATE/USAGE, отсутствие admin flags,
 ownership tables/sequences и текущие runtime grants внутри READ ONLY transaction.
@@ -84,6 +94,10 @@ objects ([PostgreSQL](https://www.postgresql.org/docs/16/role-removal.html)).
 credentials tests. Реальные PostgreSQL tests требуют disposable instance и
 `RUN_DEV_MIGRATION_PG_TESTS=1`; они отказываются заменять существующую тестовую БД
 или роли. Матрица GitHub CI покрывает PostgreSQL 14 (версия DEV) и 18.
+
+`node --test scripts/tests/test_dev_ci_ssh.cjs` с установленным `ssh2@1.16.0`
+проверяет реальное loopback SSH соединение: stdin вместо argv, отказ чужому host
+key до authentication, missing config, controlled remote failure и timeout.
 
 Проверяются исходный ownership failure, успешные ALTER/CREATE migrations, runtime
 CRUD/sequence на новой таблице, сохранность `.env`, idempotency, READ ONLY check,
