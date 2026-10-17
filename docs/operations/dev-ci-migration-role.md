@@ -9,8 +9,33 @@ API, UI, модели, numbered migrations, PROD workflow и production secrets 
 
 Под migration-role здесь понимается существующий владелец `procollab_api` в отдельном
 CI-подключении. Новый PostgreSQL login или cluster-wide membership не создаётся.
-Не утверждается, что этот login доступен исключительно в DEV: проверена только DEV-база.
 CI жёстко ограничивает database name и runtime user; production credentials не используются.
+
+## Согласованная схема DEV / PROD, 18.10.2026
+
+Пользователь выбрал `procollab_api` для миграций обоих контуров, сохранив
+существующие подключения web/Celery. [Read-only preflight обоих контуров](https://github.com/PROCOLLAB-github/api/actions/runs/39072746180)
+проверил actual connection identity, ownership и role flags в READ ONLY transaction:
+
+| Контур | Фактическая БД | Web/Celery сейчас | Миграции сейчас | Целевая роль миграций |
+| --- | --- | --- | --- | --- |
+| DEV | `procollab_db_dev` | `procollab_api_dev` | `procollab_api_dev` | `procollab_api` |
+| PROD | `procollab_db_test` | `procollab_api` | `procollab_api` | `procollab_api` — уже используется |
+
+Название `procollab_db_test` здесь относится к фактическому deployed PROD:
+контур установлен по серверному checkout и работающему production image, а не по имени БД.
+Одинаковый `pg_control_system().system_identifier` подтвердил общий PostgreSQL-кластер.
+Следовательно, `procollab_api` — одна существующая cluster-wide роль, а не два
+независимых login с одинаковым названием. Её пароль не ротируется в рамках задачи.
+
+В PROD все 107 tables / 100 sequences принадлежат `procollab_api`; не принадлежащих
+ей relations нет. Для выбранной роли изменения PROD workflow, ownership и grants
+не требуются. Существующий PROD runtime тоже использует эту роль; разделение
+runtime/migration прав в PROD не заявляется и в scope не входит.
+
+В DEV остаётся одноразовая подготовка university table/sequence, описанная ниже.
+Секрет `DEV_MIGRATION_DATABASE_PASSWORD` добавлен пользователем; наличие подтверждено
+по metadata, значение не читалось и live owner authentication пока не проверена.
 
 ## Фактическое состояние до активации, 17.10.2026
 
