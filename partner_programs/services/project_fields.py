@@ -91,7 +91,9 @@ def update_program_link_fields(link_id, user, data):
     # Lock definitions before validation, so removing an option cannot race a choice.
     list(link.partner_program.fields.select_for_update().order_by("pk"))
     serializer = PartnerProgramFieldValueUpdateSerializer(
-        data=data, many=True, context={"program": link.partner_program}
+        data=data,
+        many=True,
+        context={"program": link.partner_program, "allow_incomplete": True},
     )
     serializer.is_valid(raise_exception=True)
     field_ids = [item["field"].pk for item in serializer.validated_data]
@@ -99,6 +101,9 @@ def update_program_link_fields(link_id, user, data):
         raise ValidationError({"detail": "В запросе не должны повторяться field_id."})
     try:
         for item in serializer.validated_data:
+            if not item.get("value_text"):
+                link.field_values.filter(field=item["field"]).delete()
+                continue
             PartnerProgramFieldValue.objects.update_or_create(
                 program_project=link,
                 field=item["field"],
@@ -131,7 +136,9 @@ def submit_program_project(link_id, user):
     try:
         team_policy.validate_required_program_fields(link)
     except DjangoValidationError as error:
-        raise ValidationError({"detail": error.messages[0]})
+        raise ValidationError(
+            {"code": "required_program_fields", "detail": error.messages[0]}
+        )
     link.submitted = True
     link.datetime_submitted = timezone.now()
     link.save(update_fields=["submitted", "datetime_submitted", "datetime_updated"])

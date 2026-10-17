@@ -7,6 +7,8 @@ from project_rates.models import Criteria
 
 @receiver(post_save, sender=PartnerProgram)
 def create_comment(sender, instance, created, **kwargs):
+    if not created:
+        return
     Criteria.objects.get_or_create(
         name="Комментарий",
         description="Доп. поле для впечатлений о проекте",

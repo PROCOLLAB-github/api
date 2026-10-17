@@ -5,7 +5,6 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
-from partner_programs.constants import PROGRAM_CASE_FIELD_NAME
 from partner_programs.models import (
     PartnerProgram,
     PartnerProgramFieldValue,
@@ -67,31 +66,6 @@ def _validate_unique_program_fields(values_data: list[dict]) -> None:
         )
 
 
-def _validate_required_program_fields(
-    *,
-    program: PartnerProgram,
-    values_data: list[dict],
-) -> None:
-    """Only reserved case is deferred to submission; generic required fields remain."""
-    required_fields = list(
-        program.fields.filter(is_required=True)
-        .exclude(name=PROGRAM_CASE_FIELD_NAME)
-        .values("id", "label")
-    )
-    provided_field_ids = {item["field"].id for item in values_data}
-    missing_required = [
-        field["label"]
-        for field in required_fields
-        if field["id"] not in provided_field_ids
-    ]
-    if missing_required:
-        raise ValidationError(
-            {
-                "program_field_values": f"Не заполнены обязательные поля: {missing_required}"
-            }
-        )
-
-
 def _validate_program_field_ownership(
     *,
     program: PartnerProgram,
@@ -133,7 +107,9 @@ def apply_project_to_program(
             program, project_id=None, user_ids={user.pk}, lock=True
         )
 
-    serializer = serializer_class(data=data, context={"program": program})
+    serializer = serializer_class(
+        data=data, context={"program": program, "allow_incomplete": True}
+    )
     serializer.is_valid(raise_exception=True)
     validated_data = serializer.validated_data
 
@@ -141,7 +117,6 @@ def apply_project_to_program(
     values_data = validated_data.get("program_field_values") or []
 
     _validate_unique_program_fields(values_data)
-    _validate_required_program_fields(program=program, values_data=values_data)
     _validate_program_field_ownership(program=program, values_data=values_data)
 
     with transaction.atomic():
@@ -150,7 +125,7 @@ def apply_project_to_program(
         case_field = get_program_case_field(program, for_update=True)
         if case_field is not None:
             for item in values_data:
-                if item["field"].pk == case_field.pk:
+                if item["field"].pk == case_field.pk and item.get("value_text"):
                     try:
                         validate_case_value(case_field, item.get("value_text"))
                     except DjangoValidationError as error:
@@ -181,6 +156,7 @@ def apply_project_to_program(
                 value_text=item.get("value_text") or "",
             )
             for item in values_data
+            if item.get("value_text")
         ]
         if value_objs:
             PartnerProgramFieldValue.objects.bulk_create(value_objs)

@@ -60,6 +60,7 @@ class ProjectScoreSerializer(serializers.ModelSerializer):
 
 
 class ProjectListForRateSerializer(serializers.ModelSerializer):
+    criteria_revision = serializers.SerializerMethodField()
     views_count = serializers.SerializerMethodField()
     criterias = serializers.SerializerMethodField()
     scored = serializers.SerializerMethodField()
@@ -84,7 +85,11 @@ class ProjectListForRateSerializer(serializers.ModelSerializer):
             "rated_count",
             "max_rates",
             "criterias",
+            "criteria_revision",
         ]
+
+    def get_criteria_revision(self, obj):
+        return self.context.get("criteria_revision")
 
     def get_views_count(self, obj) -> int:
         return get_views_count(obj)

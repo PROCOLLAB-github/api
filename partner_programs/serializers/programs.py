@@ -279,8 +279,7 @@ class PartnerProgramFieldValueSerializer(serializers.ModelSerializer):
         ]
 
     def get_value(self, obj):
-        if obj.field.field_type == "file":
-            return obj.value_file.link if obj.value_file else None
+        # File fields use the same URL-in-value_text contract as canonical link GET/PUT.
         return obj.value_text
 
 

@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 from .constants import VERBOSE_TYPES
 
 from partner_programs.models import PartnerProgram, PartnerProgramProject
@@ -8,6 +8,22 @@ from projects.models import Project
 from .validators import ProjectScoreValidator
 
 User = get_user_model()
+
+
+class CriteriaQuerySet(models.QuerySet):
+    def delete(self):
+        from .criteria_policy import locked
+
+        with transaction.atomic():
+            ids = self.values_list("partner_program_id", flat=True).distinct()
+            programs = (
+                PartnerProgram.objects.select_for_update()
+                .filter(pk__in=ids)
+                .order_by("pk")
+            )
+            if any(locked(p) for p in programs):
+                raise ValidationError("После первой оценки критерии нельзя удалять.")
+            return super().delete()
 
 
 class Criteria(models.Model):
@@ -46,6 +62,39 @@ class Criteria(models.Model):
         related_name="criterias",
     )
 
+    objects = CriteriaQuerySet.as_manager()
+
+    def save(self, *args, **kwargs):
+        from .criteria_policy import locked
+
+        with transaction.atomic():
+            old = type(self).objects.filter(pk=self.pk).first() if self.pk else None
+            ids = {self.partner_program_id}
+            if old:
+                ids.add(old.partner_program_id)
+            programs = list(
+                PartnerProgram.objects.select_for_update()
+                .filter(pk__in=ids)
+                .order_by("pk")
+            )
+            changed = old is None or any(
+                getattr(old, field) != getattr(self, field)
+                for field in (
+                    "name",
+                    "description",
+                    "type",
+                    "min_value",
+                    "max_value",
+                    "partner_program_id",
+                )
+            )
+            if changed and any(locked(p) for p in programs):
+                raise ValidationError("После первой оценки критерии нельзя менять.")
+            return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        return type(self).objects.filter(pk=self.pk).delete()
+
     def __str__(self):
         return f"Criteria<{self.id}> - {self.name} {self.partner_program.name}"
 
@@ -81,14 +130,22 @@ class ProjectScore(models.Model):
         return f"ProjectScore<{self.id}> - {self.criteria.name}"
 
     def save(self, *args, **kwargs):
-        data_to_validate = {
-            "criteria_type": self.criteria.type,
-            "value": self.value,
-            "criteria_min_value": self.criteria.min_value,
-            "criteria_max_value": self.criteria.max_value,
-        }
-        ProjectScoreValidator.validate(**data_to_validate)
-        super().save(*args, **kwargs)
+        from .criteria_policy import mark_locked
+
+        program_id = Criteria.objects.values_list("partner_program_id", flat=True).get(
+            pk=self.criteria_id
+        )
+        with transaction.atomic():
+            program = PartnerProgram.objects.select_for_update().get(pk=program_id)
+            self.criteria = Criteria.objects.get(pk=self.criteria_id)
+            ProjectScoreValidator.validate(
+                criteria_type=self.criteria.type,
+                value=self.value,
+                criteria_min_value=self.criteria.min_value,
+                criteria_max_value=self.criteria.max_value,
+            )
+            super().save(*args, **kwargs)
+            mark_locked(program)
 
     class Meta:
         verbose_name = "Оценка проекта"
@@ -140,15 +197,21 @@ class ProjectExpertAssignment(models.Model):
     def clean(self):
         errors = {}
 
-        if self.expert_id and self.partner_program_id and not self.expert.programs.filter(
-            id=self.partner_program_id
-        ).exists():
+        if (
+            self.expert_id
+            and self.partner_program_id
+            and not self.expert.programs.filter(id=self.partner_program_id).exists()
+        ):
             errors["expert"] = "Эксперт не состоит в указанной программе."
 
-        if self.project_id and self.partner_program_id and not PartnerProgramProject.objects.filter(
-            partner_program_id=self.partner_program_id,
-            project_id=self.project_id,
-        ).exists():
+        if (
+            self.project_id
+            and self.partner_program_id
+            and not PartnerProgramProject.objects.filter(
+                partner_program_id=self.partner_program_id,
+                project_id=self.project_id,
+            ).exists()
+        ):
             errors["project"] = "Проект не привязан к указанной программе."
 
         if self.partner_program_id and self.project_id:

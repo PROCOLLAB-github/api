@@ -153,7 +153,7 @@ class PartnerProgramProjectApplyAPITests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertFalse(PartnerProgramProject.objects.exists())
 
-    def test_apply_project_rejects_missing_required_program_fields(self):
+    def test_apply_project_allows_missing_required_program_fields(self):
         create_program_member(self.program, user=self.user)
         create_program_field(
             self.program,
@@ -169,8 +169,8 @@ class PartnerProgramProjectApplyAPITests(TestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, 400)
-        self.assertFalse(PartnerProgramProject.objects.exists())
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(PartnerProgramProject.objects.get().project.draft)
 
     def test_apply_project_rejects_field_from_another_program(self):
         create_program_member(self.program, user=self.user)
