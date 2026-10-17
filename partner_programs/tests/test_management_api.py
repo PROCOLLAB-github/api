@@ -114,6 +114,21 @@ class ManagementAPITests(TestCase):
         )
         self.assertEqual(by_email.data["count"], 1)
 
+    def test_participants_last_activity_is_nullable_and_uses_tracked_activity(self):
+        timestamp = timezone.now().replace(microsecond=0)
+        for activity in (timestamp, None):
+            with self.subTest(last_activity=activity):
+                self.member.user.__class__.objects.filter(pk=self.member.user_id).update(
+                    last_activity=activity, last_login=timestamp + timedelta(minutes=1)
+                )
+                response = self.client.get(self.url("management-participants"))
+                self.assertEqual(response.status_code, 200)
+                row = response.json()["results"][0]
+                expected = (
+                    activity.isoformat().replace("+00:00", "Z") if activity else None
+                )
+                self.assertEqual(row["last_activity"], expected)
+
     def test_bad_query_is_not_silently_defaulted(self):
         for query in [
             {"limit": 101},

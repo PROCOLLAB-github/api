@@ -101,6 +101,7 @@ def participant_data(profile):
         "email": profile.user.email,
         "city": profile.user.city,
         "registered_at": profile.datetime_created,
+        "last_activity": profile.user.last_activity,
     }
 
 
