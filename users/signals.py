@@ -60,7 +60,7 @@ def password_reset_token_created(sender, instance, reset_password_token, *args, 
         from urllib.parse import urlencode
 
         try:
-            invitation = token_invitation(invitation_token)
+            invitation = token_invitation(invitation_token, allow_accepted=True)
         except (APIException, Http404):
             invitation = None
         if invitation and invitation.email == reset_password_token.user.email.lower():

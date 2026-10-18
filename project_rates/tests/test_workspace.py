@@ -392,6 +392,15 @@ class WorkspaceTests(TestCase):
             "https://dev.procollab.ru/auth/reset_password/?", mail.outbox[0].body
         )
         self.assertIn("expert_invitation=" + token, mail.outbox[0].body)
+        self.client.force_authenticate(self.expert)
+        self.post(f"/evaluation/invitations/{token}/accept/", {})
+        self.client.force_authenticate(None)
+        response = self.post(
+            "/auth/reset_password/",
+            {"email": invitation.email, "expert_invitation_token": token},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("expert_invitation=" + token, mail.outbox[-1].body)
 
     def test_shortage_is_read_only_and_direct_apply_is_rejected(self):
         self.enable(3)
