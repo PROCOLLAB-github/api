@@ -26,8 +26,6 @@ class IsExpert(BasePermission):
             raise PermissionDenied("Authentication credentials were not provided.")
         program_id = view.kwargs.get("program_id")
 
-        if not user.user_type == 3:
-            raise PermissionDenied("User is not an expert")
         if not Expert.objects.filter(programs__id=program_id, user=user).exists():
             raise PermissionDenied("You don't have permission to rate this program")
         return True
@@ -42,7 +40,7 @@ class IsExpertPost(BasePermission):
         user = request.user
         if not getattr(user, "is_authenticated", False):
             raise PermissionDenied("Authentication credentials were not provided.")
-        if getattr(user, "user_type", None) != 3:
+        if not Expert.objects.filter(user=user).exists():
             raise PermissionDenied("User is not an expert")
         return True
 

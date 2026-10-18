@@ -32,7 +32,9 @@ def update_dataset_migration_applied(sender, instance, **kwargs):
     """Update the `dataset_migration_applied` attribute based on the presence of `v2_speciality` and `skills`."""
 
     def update_migration():
-        dataset_migration_applied = bool(instance.v2_speciality and instance.skills.exists())
+        dataset_migration_applied = bool(
+            instance.v2_speciality and instance.skills.exists()
+        )
         if instance.dataset_migration_applied != dataset_migration_applied:
             CustomUser.objects.filter(pk=instance.pk).update(
                 dataset_migration_applied=dataset_migration_applied
@@ -47,6 +49,31 @@ def password_reset_token_created(sender, instance, reset_password_token, *args, 
     reset_password_url = (
         f"https://app.procollab.ru/auth/reset_password/?token={reset_password_token.key}"
     )
+    # Invitation-specific return context; never accept an arbitrary redirect origin.
+    invitation_token = getattr(getattr(instance, "request", None), "data", {}).get(
+        "expert_invitation_token"
+    )
+    if invitation_token:
+        from project_rates.workspace import token_invitation
+        from rest_framework.exceptions import APIException
+        from django.http import Http404
+        from urllib.parse import urlencode
+
+        try:
+            invitation = token_invitation(invitation_token, allow_accepted=True)
+        except (APIException, Http404):
+            invitation = None
+        if invitation and invitation.email == reset_password_token.user.email.lower():
+            reset_password_url = (
+                settings.EXPERT_WORKSPACE_FRONTEND_URL.rstrip("/")
+                + "/expert-password-reset/?"
+                + urlencode(
+                    {
+                        "token": reset_password_token.key,
+                        "expert_invitation": invitation_token,
+                    }
+                )
+            )
     context = {
         "user": reset_password_token.user,
         "email": reset_password_token.user.email,

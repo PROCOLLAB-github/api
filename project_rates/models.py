@@ -216,7 +216,7 @@ class ProjectExpertAssignment(models.Model):
 
         if self.partner_program_id and self.project_id:
             max_rates = self.partner_program.max_project_rates
-            if max_rates:
+            if max_rates and self.partner_program.required_evaluators is None:
                 assignments_qs = ProjectExpertAssignment.objects.filter(
                     partner_program_id=self.partner_program_id,
                     project_id=self.project_id,
@@ -242,3 +242,45 @@ class ProjectExpertAssignment(models.Model):
                 "Нельзя удалить назначение: эксперт уже оценил этот проект."
             )
         return super().delete(*args, **kwargs)
+
+
+class ExpertInvitation(models.Model):
+    """Email invitation; only a digest of the bearer credential is stored."""
+
+    partner_program = models.ForeignKey(
+        PartnerProgram, on_delete=models.CASCADE, related_name="expert_invitations"
+    )
+    email = models.EmailField()
+    token_digest = models.CharField(max_length=64, unique=True)
+    status = models.CharField(
+        max_length=12,
+        default="pending",
+        choices=[(v, v) for v in ("pending", "accepted", "revoked")],
+    )
+    delivery_status = models.CharField(
+        max_length=12,
+        default="queued",
+        choices=[(v, v) for v in ("queued", "sent", "failed")],
+    )
+    invited_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, related_name="sent_expert_invitations"
+    )
+    accepted_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="accepted_expert_invitations",
+    )
+    expires_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["partner_program", "email"],
+                condition=models.Q(status="pending"),
+                name="unique_pending_expert_program_email",
+            )
+        ]
+        indexes = [models.Index(fields=["email", "status"])]

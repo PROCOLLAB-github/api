@@ -467,6 +467,39 @@ class UserProgramsSerializer(serializers.ModelSerializer):
 class UserDetailSerializer(
     serializers.ModelSerializer[CustomUser], SkillsWriteSerializerMixin
 ):
+    birthday = serializers.DateField(
+        required=True,
+        allow_null=True,
+        validators=CustomUser._meta.get_field("birthday").validators,
+    )
+
+    def validate_birthday(self, value):
+        from project_rates.models import ExpertInvitation
+
+        omitted_on_invitation = (
+            self.instance is not None
+            and self.instance.birthday is None
+            and ExpertInvitation.objects.filter(accepted_by=self.instance).exists()
+        )
+        if value is None and not omitted_on_invitation:
+            raise ValidationError("Дата рождения обязательна.")
+        return value
+
+    has_evaluation_access = serializers.SerializerMethodField()
+
+    def get_has_evaluation_access(self, user):
+        from project_rates.models import ExpertInvitation
+
+        request_user = getattr(self.context.get("request"), "user", None)
+        if not request_user or request_user.pk != user.pk or not user.is_active:
+            return False
+        return (
+            Expert.objects.filter(user=user, programs__isnull=False).exists()
+            or ExpertInvitation.objects.filter(
+                email__iexact=user.email, status="pending", expires_at__gt=timezone.now()
+            ).exists()
+        )
+
     verification_notice_acknowledged_at = serializers.DateTimeField(read_only=True)
     profile_fill_prompt_acknowledged_at = serializers.DateTimeField(read_only=True)
     member = MemberSerializer(required=False)
@@ -551,6 +584,7 @@ class UserDetailSerializer(
             "verification_date",
             "verification_notice_acknowledged_at",
             "profile_fill_prompt_acknowledged_at",
+            "has_evaluation_access",
             "onboarding_stage",
             "projects",
             "programs",
@@ -796,6 +830,12 @@ class UserChatSerializer(serializers.ModelSerializer[CustomUser]):
 class UserListSerializer(
     serializers.ModelSerializer[CustomUser], SkillsWriteSerializerMixin
 ):
+    # Nullable storage supports invited experts only; public signup still requires DOB.
+    birthday = serializers.DateField(
+        required=True,
+        allow_null=False,
+        validators=CustomUser._meta.get_field("birthday").validators,
+    )
     email = serializers.EmailField(
         validators=[
             UniqueValidator(
