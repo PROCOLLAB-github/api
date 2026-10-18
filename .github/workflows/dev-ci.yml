@@ -316,6 +316,8 @@ jobs:
                 exit 1
               fi &&
 
+              python3 scripts/check_dev_routes.py https://dev.procollab.ru &&
+
               docker compose -f docker-compose.dev-ci.yml ps
 
               celery_status=""

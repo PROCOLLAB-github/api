@@ -27,6 +27,16 @@ server {
 
     client_max_body_size 100M;
 
+    # Angular auth pages share /auth with Django API endpoints. Only page reads
+    # go to the SPA; POST password reset requests must still reach Django.
+    # Keep this allowlist before the broader API regex (first regex wins).
+    location ~ ^/auth(/(login|register|verification(/email)?|reset_password(/(send_email|confirm))?))?/?$ {
+        if ($request_method ~ ^(GET|HEAD)$) {
+            rewrite ^ /index.html last;
+        }
+        include /etc/nginx/procollab/includes/proxy_app.inc;
+    }
+
     location ~ ^/(admin|api-auth|files|industries|news|projects|vacancies|core|invites|auth|chats|events|programs|courses|rate-project|evaluation|feed|api|anymail|ws)(/|$) {
         include /etc/nginx/procollab/includes/proxy_app.inc;
     }
