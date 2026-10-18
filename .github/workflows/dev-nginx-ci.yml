@@ -1,0 +1,27 @@
+name: DEV Nginx routing
+
+on:
+  pull_request:
+    branches: [dev]
+    paths:
+      - deploy/nginx/host/dev/**
+      - deploy/nginx/host/includes/**
+      - scripts/check_dev_routes.py
+      - scripts/tests/test_dev_nginx_routes.py
+      - .github/workflows/dev-nginx-ci.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  routing:
+    name: SPA and API routes / Nginx
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Nginx
+        run: sudo apt-get update -qq && sudo apt-get install -y nginx
+      - name: Test actual DEV Nginx config with disposable SPA and API
+        run: python3 -m unittest discover -s scripts/tests -p test_dev_nginx_routes.py -v
