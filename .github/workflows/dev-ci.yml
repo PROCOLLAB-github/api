@@ -316,7 +316,10 @@ jobs:
                 exit 1
               fi &&
 
-              python3 scripts/check_dev_routes.py https://dev.procollab.ru &&
+              if ! python3 scripts/check_dev_routes.py https://dev.procollab.ru; then
+                echo "Frontend/API routing smoke check failed" >&2
+                exit 1
+              fi &&
 
               docker compose -f docker-compose.dev-ci.yml ps
 
