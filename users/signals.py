@@ -66,7 +66,7 @@ def password_reset_token_created(sender, instance, reset_password_token, *args, 
         if invitation and invitation.email == reset_password_token.user.email.lower():
             reset_password_url = (
                 settings.EXPERT_WORKSPACE_FRONTEND_URL.rstrip("/")
-                + "/auth/reset_password/?"
+                + "/expert-password-reset/?"
                 + urlencode(
                     {
                         "token": reset_password_token.key,

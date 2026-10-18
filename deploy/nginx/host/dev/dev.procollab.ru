@@ -27,7 +27,7 @@ server {
 
     client_max_body_size 100M;
 
-    location ~ ^/(admin|api-auth|files|industries|news|projects|vacancies|core|invites|auth|chats|events|programs|courses|rate-project|feed|api|anymail|ws)(/|$) {
+    location ~ ^/(admin|api-auth|files|industries|news|projects|vacancies|core|invites|auth|chats|events|programs|courses|rate-project|evaluation|feed|api|anymail|ws)(/|$) {
         include /etc/nginx/procollab/includes/proxy_app.inc;
     }
 

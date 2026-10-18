@@ -389,7 +389,7 @@ class WorkspaceTests(TestCase):
         )
         self.assertEqual(response.status_code, 200, response.data)
         self.assertIn(
-            "https://dev.procollab.ru/auth/reset_password/?", mail.outbox[0].body
+            "https://dev.procollab.ru/expert-password-reset/?", mail.outbox[0].body
         )
         self.assertIn("expert_invitation=" + token, mail.outbox[0].body)
         self.client.force_authenticate(self.expert)

@@ -86,9 +86,13 @@ frontend origin (DEV: `https://dev.procollab.ru`) для Web и Celery. Нель
 а не подтверждение доставки в inbox. Используется существующий Celery/mail provider.
 
 В `/auth/reset_password/` можно передать `expert_invitation_token`. Для действующей
-ссылки, соответствующей email, reset email ведёт на настроенный frontend с контекстом
+ссылки, соответствующей email, reset email ведёт на `/expert-password-reset/` настроенного frontend с контекстом
 приглашения. После смены пароля — вход и отдельное acceptance. Общий reset не менялся.
 Private ответы не кешируются; invitation token скрывается application HTTP logger.
+
+На DEV Nginx направляет `/evaluation/` в API. `/expert-invitation/` и
+`/expert-password-reset/` остаются SPA routes; отдельный reset route обходит
+server-side `/auth/`, который на совмещённом DEV-host принадлежит API.
 
 ## Проверяемые требования
 
