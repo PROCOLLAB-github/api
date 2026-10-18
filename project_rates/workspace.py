@@ -122,6 +122,21 @@ def check_revision(program, expected):
         )
 
 
+def check_assignment_limit(program, additions, removals=()):
+    """Preserve historical surplus, but never create a new over-quota assignment."""
+    present = set(
+        program.project_expert_assignments.values_list("project_id", "expert_id")
+    ) - set(removals)
+    new = set(additions) - present
+    counts = Counter(project_id for project_id, _ in present | new)
+    if any(counts[project_id] > target(program) for project_id, _ in new):
+        raise WorkspaceConflict(
+            "expert_limit_reached",
+            "Нельзя назначить больше экспертов, чем требуется оценок на проект. "
+            "Для замены снимите назначение эксперта без оценки.",
+        )
+
+
 def enable_workspace(program):
     """Explicit organizer action opts in; preserve assignments behind historical scores."""
     if program.required_evaluators is not None:
@@ -359,6 +374,7 @@ def save_case_scope(program_id, user, expert_id, data):
 def save_project_experts(program_id, user, data):
     program = managed_program(program_id, user, lock=True)
     check_revision(program, data["revision"])
+    enable_workspace(program)
     ids, wanted = set(data["project_ids"]), set(data["expert_ids"])
     projects = {p["id"]: p for p in distribution_projects(program)}
     experts = {e.pk: e for e in expert_rows(program)}
@@ -400,7 +416,11 @@ def save_project_experts(program_id, user, data):
                             "Нельзя снять эксперта с сохранённой оценкой.",
                         )
                     removals.append(assignment.pk)
-    enable_workspace(program)
+    check_assignment_limit(
+        program,
+        [(a.project_id, a.expert_id) for a in additions],
+        [(pid, eid) for (pid, eid), a in existing.items() if a.pk in removals],
+    )
     program.project_expert_assignments.filter(pk__in=removals).delete()
     ProjectExpertAssignment.objects.bulk_create(additions, ignore_conflicts=True)
     return workspace_data(program)
@@ -607,6 +627,7 @@ def assignment_options(program, expert_id):
 def save_assignments(program_id, user, expert_id, data):
     program = managed_program(program_id, user, lock=True)
     check_revision(program, data["revision"])
+    enable_workspace(program)
     expert = get_object_or_404(program.experts.filter(user__is_active=True), pk=expert_id)
     wanted = set(data["project_ids"])
     options = {p["id"]: p for p in assignment_options(program, expert.pk)["projects"]}
@@ -635,7 +656,7 @@ def save_assignments(program_id, user, expert_id, data):
         raise WorkspaceConflict(
             "scores_protected", "Нельзя снять назначение с сохранёнными оценками."
         )
-    enable_workspace(program)
+    check_assignment_limit(program, [(pid, expert.pk) for pid in wanted - existing])
     program.project_expert_assignments.filter(
         expert=expert, project_id__in=existing - wanted
     ).delete()
@@ -778,6 +799,9 @@ def apply_allocation(program_id, user, token):
             "expert_shortage", "Не хватает экспертов. Измените параметры распределения."
         )
     enable_workspace(program)
+    check_assignment_limit(
+        program, [(row["project_id"], row["expert_id"]) for row in plan["additions"]]
+    )
     ProjectExpertAssignment.objects.bulk_create(
         [
             ProjectExpertAssignment(partner_program=program, **row)

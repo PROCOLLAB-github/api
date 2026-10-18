@@ -190,6 +190,146 @@ class CaseDistributionTests(TestCase):
         )
         self.assertEqual(ProjectExpertAssignment.objects.count(), 1)
 
+    def test_manual_add_rejects_expert_beyond_quota(self):
+        self.assertEqual(
+            self.write(self.projects[:1], [self.sber, self.universal]).status_code, 200
+        )
+        extra = create_rate_expert(program=self.program)
+        response = self.write(self.projects[:1], [extra])
+        self.assertEqual(response.status_code, 409, response.data)
+        self.assertEqual(response.data["code"], "expert_limit_reached")
+        self.assertEqual(ProjectExpertAssignment.objects.count(), 2)
+
+    def test_replace_unscored_at_quota_preserves_other_experts_grade(self):
+        self.write(self.projects[:1], [self.sber, self.universal])
+        score = ProjectScore.objects.create(
+            criteria=create_rate_criteria(self.program),
+            project=self.projects[0],
+            user=self.sber,
+            value="1",
+        )
+        extra = create_rate_expert(program=self.program)
+        rejected = self.write(
+            self.projects[:1], [self.sber, self.universal, extra], mode="replace"
+        )
+        self.assertEqual(rejected.status_code, 409, rejected.data)
+        result = self.write(self.projects[:1], [self.sber, extra], mode="replace")
+        self.assertEqual(result.status_code, 200, result.data)
+        self.assertEqual(
+            set(ProjectExpertAssignment.objects.values_list("expert_id", flat=True)),
+            {self.sber.expert.pk, extra.expert.pk},
+        )
+        score.refresh_from_db()
+        self.assertEqual(score.value, "1")
+
+    def test_bulk_exceeding_one_projects_limit_is_fully_rolled_back(self):
+        self.write(self.projects[:1], [self.sber, self.universal])
+        extra = create_rate_expert(program=self.program)
+        response = self.write(self.projects[:2], [extra])
+        self.assertEqual(response.status_code, 409, response.data)
+        self.assertEqual(ProjectExpertAssignment.objects.count(), 2)
+        self.assertFalse(
+            ProjectExpertAssignment.objects.filter(project=self.projects[1]).exists()
+        )
+
+    def test_legacy_manual_endpoint_cannot_bypass_project_limit(self):
+        self.write(self.projects[:1], [self.sber, self.universal])
+        extra = create_rate_expert(program=self.program)
+        response = self.client.put(
+            self.root + f"experts/{extra.expert.pk}/assignments/",
+            {"revision": self.state()["revision"], "project_ids": [self.projects[0].pk]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 409, response.data)
+        self.assertEqual(response.data["code"], "expert_limit_reached")
+        self.assertEqual(ProjectExpertAssignment.objects.count(), 2)
+
+    def test_lower_quota_preserves_surplus_and_allows_only_unscored_removals(self):
+        self.write(self.projects[:1], [self.sber, self.universal])
+        score = ProjectScore.objects.create(
+            criteria=create_rate_criteria(self.program),
+            project=self.projects[0],
+            user=self.sber,
+            value="1",
+        )
+        response = self.client.put(
+            self.root + "evaluators/",
+            {"revision": self.state()["revision"], "required_evaluators": 1},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(ProjectExpertAssignment.objects.count(), 2)
+        self.assertEqual(
+            self.write(
+                self.projects[:1], [self.sber, self.universal], mode="replace"
+            ).status_code,
+            200,
+        )
+        extra = create_rate_expert(program=self.program)
+        self.assertEqual(
+            self.write(self.projects[:1], [self.sber, extra], mode="replace").status_code,
+            409,
+        )
+        self.assertEqual(
+            self.write(self.projects[:1], [self.universal], mode="replace").status_code,
+            409,
+        )
+        self.assertEqual(
+            self.write(self.projects[:1], [self.sber], mode="replace").status_code, 200
+        )
+        self.assertEqual(ProjectExpertAssignment.objects.count(), 1)
+        self.assertTrue(ProjectScore.objects.filter(pk=score.pk).exists())
+
+    def test_historical_grade_counts_towards_limit_when_enabling_workspace(self):
+        self.program.required_evaluators = None
+        self.program.max_project_rates = 1
+        self.program.save()
+        score = ProjectScore.objects.create(
+            criteria=create_rate_criteria(self.program),
+            project=self.projects[0],
+            user=self.sber,
+            value="1",
+        )
+        response = self.write(self.projects[:1], [self.universal])
+        self.assertEqual(response.status_code, 409, response.data)
+        self.program.refresh_from_db()
+        self.assertIsNone(self.program.required_evaluators)
+        self.assertFalse(ProjectExpertAssignment.objects.exists())
+        self.assertTrue(ProjectScore.objects.filter(pk=score.pk).exists())
+
+    def test_auto_does_not_add_to_project_at_quota(self):
+        self.write(self.projects[:1], [self.sber, self.universal])
+        response = self.plan(project_ids=[self.projects[0].pk])
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data["assignments"], [])
+        applied = self.client.post(
+            self.root + "expert-allocation/apply/",
+            {"plan_token": response.data["plan_token"]},
+            format="json",
+        )
+        self.assertEqual(applied.status_code, 200, applied.data)
+        self.assertEqual(ProjectExpertAssignment.objects.count(), 2)
+
+    def test_auto_apply_rechecks_limit_after_restoring_historical_assignments(self):
+        self.program.required_evaluators = None
+        self.program.max_project_rates = 1
+        self.program.save()
+        ProjectScore.objects.create(
+            criteria=create_rate_criteria(self.program),
+            project=self.projects[0],
+            user=self.sber,
+            value="1",
+        )
+        response = self.plan(project_ids=[self.projects[0].pk])
+        self.assertEqual(response.status_code, 200, response.data)
+        applied = self.client.post(
+            self.root + "expert-allocation/apply/",
+            {"plan_token": response.data["plan_token"]},
+            format="json",
+        )
+        self.assertEqual(applied.status_code, 409, applied.data)
+        self.assertFalse(ProjectExpertAssignment.objects.exists())
+
     def test_changed_case_scope_preserves_assignments_and_invalidates_plan(self):
         self.assertEqual(self.write(self.projects[:1], [self.sber]).status_code, 200)
         plan = self.plan().data
