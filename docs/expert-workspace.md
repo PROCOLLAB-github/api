@@ -12,12 +12,14 @@
 | Метод и путь относительно `/programs/{id}/management/` | Назначение |
 | --- | --- |
 | GET `experts/` | Состав, приглашения, нагрузка, N, нехватка и revision |
+| PUT `experts/{expert_id}/cases/` | Кейсы эксперта `{revision, all_cases, case_names}` |
+| POST `project-experts/` | Атомарное назначение `{revision, project_ids, expert_ids, mode}` |
 | POST `experts/` | Пригласить `{email}` |
 | POST `expert-invitations/{id}/resend/` | Новая ссылка, прежняя недействительна |
 | POST `expert-invitations/{id}/revoke/` | Отозвать непринятое приглашение |
 | GET `experts/{expert_id}/assignments/` | Проекты с assigned/protected/own_team |
 | PUT `experts/{expert_id}/assignments/` | Заменить набор `{revision, project_ids}` |
-| POST `expert-allocation/` | Предпросмотр `{expert_ids, project_ids?}` |
+| POST `expert-allocation/` | Предпросмотр `{expert_ids, project_ids?, case_pools?, revision?}` |
 | POST `expert-allocation/apply/` | Применить подписанный `{plan_token}` |
 | POST `evaluators/` | Предпросмотр `{required_evaluators}` |
 | PUT `evaluators/` | Подтвердить `{required_evaluators, revision}` |
@@ -60,6 +62,24 @@ repeat_password, accept_policy, accept_age и атомарно создаёт а
 
 ## Правила
 
+`GET experts/` также возвращает `cases`, сданные опубликованные `projects` с
+экспертами/статусами оценок и `all_cases`/`case_names` для каждого участника состава.
+Без отдельной записи `ExpertCaseScope` эксперт доступен во всех текущих и будущих
+кейсах. Можно выбрать несколько кейсов; списки пересекаются. Эти правила одинаковы
+для ручного и автоматического назначения. Смена состава кейсов не удаляет назначения.
+
+`project-experts/`: `mode=replace` меняет состав одного проекта с защитой оценок;
+`mode=add` добавляет экспертов одному или нескольким проектам одного кейса без снятия
+существующих. Весь запрос атомарен, включая проверку собственной команды, членства,
+доступности кейса, сдачи/публикации и revision. Недоступного эксперта можно сохранить
+в прежнем составе, но нельзя назначить новому проекту.
+
+`case_pools` — массив `{case_name, expert_ids}`, где null означает проекты без кейса.
+Нагрузка общего эксперта учитывается один раз по всей программе. Без поля сохраняется
+старый контракт общего выбора; ограничения кейсов действуют и в нём. Отсутствующий или
+пустой состав нужного кейса приводит к нехватке и блокирует применение плана.
+Revision учитывает определения/значения кейсов и доступность экспертов по кейсам.
+
 - Pending не является экспертом и не участвует в распределении.
 - Новые назначения — только принявшим приглашение активным экспертам, на сданные
   проекты своей программы; собственная команда исключена.
@@ -78,6 +98,10 @@ repeat_password, accept_policy, accept_age и атомарно создаёт а
 - Первая сохранённая оценка продолжает блокировать критерии.
 
 ## Совместимость и rollout
+
+Для вкладок v2 нужна `project_rates.0005_expertcasescope_and_more` (новая таблица,
+без изменения оценок и назначений). Сначала backend и миграция, затем Angular.
+Существующие API-поля и endpoints сохранены; старый frontend совместим.
 
 Добавлены `PartnerProgram.required_evaluators`, `ExpertInvitation` и nullable
 `CustomUser.birthday`: migrations partner_programs.0022, project_rates.0004,
