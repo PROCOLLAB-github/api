@@ -197,17 +197,14 @@ class PublicInvitationView(PrivateView):
 
     def get(self, request, token):
         invitation = service.token_invitation(token, allow_accepted=True)
-        login_email = (
-            CustomUser.objects.filter(email__iexact=invitation.email)
-            .values_list("email", flat=True)
-            .first()
-        )
+        accounts = list(CustomUser.objects.filter(email__iexact=invitation.email))
+        account = service.invited_account(accounts)
         return Response(
             {
                 **service.invitation_data(invitation),
                 "program": service.program_card(invitation.partner_program),
-                "account_exists": login_email is not None,
-                "login_email": login_email or invitation.email,
+                "account_exists": bool(accounts),
+                "login_email": account.email if account else invitation.email,
                 "matches_account": bool(
                     request.user.is_authenticated
                     and request.user.email.lower() == invitation.email

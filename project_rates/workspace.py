@@ -164,6 +164,35 @@ def program_card(program):
     }
 
 
+def invited_account(accounts):
+    # В legacy-базе регистр email мог породить неподтверждённый дубль аккаунта.
+    # Принять приглашение может только активный пользователь; выбираем его,
+    # если он единственный. Неоднозначные активные аккаунты не угадываем.
+    active = [account for account in accounts if account.is_active]
+    candidates = active or accounts
+    return candidates[0] if len(candidates) == 1 else None
+
+
+def submitted_links(program):
+    return list(
+        PartnerProgramProject.objects.filter(partner_program=program, submitted=True)
+        .select_related("project")
+        .order_by("project_id")
+    )
+
+
+def unavailable_projects(links):
+    return [
+        {
+            "project_id": link.project_id,
+            "project_name": link.project.name,
+            "reason": "draft",
+        }
+        for link in links
+        if link.project.draft
+    ]
+
+
 def workspace_data(program):
     assignments = assignment_snapshot(program)
     counts = Counter(a.expert_id for a in assignments)
@@ -196,8 +225,7 @@ def workspace_data(program):
         if invitation.email in joined_emails:
             continue
         matches = users.get(invitation.email.lower(), [])
-        # Старые аккаунты могут отличаться только регистром email: не выбираем чужое имя.
-        user = matches[0] if len(matches) == 1 else None
+        user = invited_account(matches)
         rows.append(
             {
                 **invitation_data(invitation),
@@ -210,11 +238,8 @@ def workspace_data(program):
                 "remaining": None,
             }
         )
-    submitted = list(
-        PartnerProgramProject.objects.filter(partner_program=program, submitted=True)
-        .values_list("project_id", flat=True)
-        .distinct()
-    )
+    links = submitted_links(program)
+    submitted = {link.project_id for link in links}
     per_project = Counter(a.project_id for a in assignments)
     complete_project = Counter(a.project_id for a in assignments if a.is_completed)
     return {
@@ -222,6 +247,7 @@ def workspace_data(program):
         "required_evaluators": target(program),
         "managed_evaluation": program.required_evaluators is not None,
         "submitted_projects": len(submitted),
+        "unavailable_projects": unavailable_projects(links),
         "projects_missing_experts": sum(
             per_project[p] < target(program) for p in submitted
         ),
@@ -475,13 +501,9 @@ def allocation(program, data):
     if not selected or selected - {e.pk for e in experts}:
         raise ValidationError("Выберите принявших приглашение экспертов этой программы.")
     experts = [e for e in experts if e.pk in selected]
-    links = list(
-        PartnerProgramProject.objects.filter(
-            partner_program=program, submitted=True, project__draft=False
-        )
-        .select_related("project")
-        .order_by("project_id")
-    )
+    submitted = submitted_links(program)
+    excluded = unavailable_projects(submitted) if "project_ids" not in data else []
+    links = [link for link in submitted if not link.project.draft]
     if "project_ids" in data:
         ids = set(data["project_ids"])
         if ids - {p.project_id for p in links}:
@@ -547,6 +569,7 @@ def allocation(program, data):
         "plan_token": token,
         "assignments": additions,
         "shortages": shortages,
+        "unavailable_projects": excluded,
         "load": [
             {
                 "expert_id": e.pk,
