@@ -33,6 +33,71 @@ from users.serializers import UserListSerializer
     PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"],
 )
 class WorkspaceTests(TestCase):
+    def test_pending_names_match_only_invited_email_case_insensitively(self):
+        self.manager.first_name, self.manager.last_name = "Sender", "Organizer"
+        self.manager.save()
+        invited = create_rate_user(prefix="invited-person")
+        invited.email = "Play_Station399@example.com"
+        invited.first_name, invited.last_name = "Yaya", "Aya"
+        invited.save()
+        self.invitation(self.manager.email.lower(), "sender-invitation-token-0123456789")
+        self.invitation(invited.email.lower(), "other-invitation-token-0123456789")
+        self.invitation("new@example.com", "new-person-invitation-token-0123456789")
+        response = self.client.get(self.root + "experts/")
+        self.assertEqual(response.status_code, 200)
+        rows = {row["email"]: row for row in response.data["experts"]}
+        self.assertEqual(rows[invited.email.lower()]["name"], "Yaya Aya")
+        self.assertEqual(rows[self.manager.email.lower()]["name"], "Sender Organizer")
+        self.assertIsNone(rows["new@example.com"]["name"])
+        invited.refresh_from_db()
+        self.assertEqual(invited.first_name, "Yaya")
+
+    def test_ambiguous_legacy_email_does_not_guess_invited_person(self):
+        one = create_rate_user(prefix="one-invited")
+        two = create_rate_user(prefix="two-invited")
+        CustomUser.objects.filter(pk=one.pk).update(email="Legacy@example.com")
+        CustomUser.objects.filter(pk=two.pk).update(email="legacy@example.com")
+        self.invitation("legacy@example.com")
+        rows = self.client.get(self.root + "experts/").data["experts"]
+        row = next(row for row in rows if row["email"] == "legacy@example.com")
+        self.assertIsNone(row["name"])
+        self.assertIsNone(row["avatar"])
+
+    def test_quota_and_analytics_share_required_count_and_missing_project_count(self):
+        self.enable(3)
+        self.program.max_project_rates = 3
+        self.program.save()
+        other = create_rate_project()
+        self.program.users.add(
+            other.leader, through_defaults={"partner_program_data": {}}
+        )
+        other_link = link_project_to_program(self.program, other)
+        other_link.submitted = True
+        other_link.save()
+        ProjectExpertAssignment.objects.create(
+            partner_program=self.program, project=self.project, expert=self.expert.expert
+        )
+        before = self.client.get(self.root + "experts/").data
+        self.assertEqual(before["projects_missing_experts"], 2)
+        self.assertEqual(before["missing_assignments"], 5)
+        preview = self.post(self.root + "evaluators/", {"required_evaluators": 1}).data
+        self.assertEqual(preview["projects_missing_experts"], 1)
+        self.assertEqual(preview["submitted_projects"], 2)
+        self.assertEqual(preview["missing_assignments"], 1)
+        updated = self.client.put(
+            self.root + "evaluators/",
+            {"required_evaluators": 1, "revision": preview["revision"]},
+            format="json",
+        )
+        self.assertEqual(updated.status_code, 200)
+        self.assertEqual(updated.data["projects_missing_experts"], 1)
+        analytics = self.client.get(f"/programs/{self.program.pk}/manager-overview/")
+        self.assertEqual(analytics.status_code, 200)
+        self.assertEqual(analytics.data["evaluation_status"]["required_evaluators"], 1)
+        self.assertEqual(
+            analytics.data["evaluation_status"]["max_evaluations_per_project"], 3
+        )
+
     def test_regular_profile_cannot_clear_birthday(self):
         response = self.client.patch(
             f"/auth/users/{self.manager.pk}/", {"birthday": None}, format="json"
