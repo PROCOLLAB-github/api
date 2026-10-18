@@ -133,6 +133,36 @@ class WorkspaceTests(TestCase):
         self.manager.refresh_from_db()
         self.assertIsNotNone(self.manager.birthday)
 
+    def test_submitted_draft_is_explained_and_not_silently_distributed(self):
+        self.enable(1)
+        type(self.project).objects.filter(pk=self.project.pk).update(draft=True)
+        excluded = [
+            {
+                "project_id": self.project.pk,
+                "project_name": self.project.name,
+                "reason": "draft",
+            }
+        ]
+        snapshot = self.client.get(self.root + "experts/").data
+        self.assertEqual(snapshot["submitted_projects"], 1)
+        self.assertEqual(snapshot["projects_missing_experts"], 1)
+        self.assertEqual(snapshot["unavailable_projects"], excluded)
+        plan = self.post(
+            self.root + "expert-allocation/", {"expert_ids": [self.expert.expert.pk]}
+        ).data
+        self.assertEqual(plan["assignments"], [])
+        self.assertEqual(plan["unavailable_projects"], excluded)
+        self.assertEqual(plan["shortages"], [])
+        self.project.refresh_from_db()
+        self.assertTrue(self.project.draft)
+        self.assertFalse(ProjectExpertAssignment.objects.exists())
+        type(self.project).objects.filter(pk=self.project.pk).update(draft=False)
+        plan = self.post(
+            self.root + "expert-allocation/", {"expert_ids": [self.expert.expert.pk]}
+        ).data
+        self.assertEqual(plan["unavailable_projects"], [])
+        self.assertEqual(len(plan["assignments"]), 1)
+
     @patch("project_rates.services.send_email.delay")
     def test_managed_scoring_respects_submission_own_team_and_deadline(self, send):
         self.enable(1)
