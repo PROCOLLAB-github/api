@@ -36,13 +36,39 @@ class AssignmentWrite(RevisionWrite):
     )
 
 
+class CasePoolWrite(serializers.Serializer):
+    case_name = serializers.CharField(allow_null=True, max_length=1000)
+    expert_ids = serializers.ListField(
+        child=serializers.IntegerField(min_value=1), max_length=1000
+    )
+
+
+class CaseScopeWrite(RevisionWrite):
+    all_cases = serializers.BooleanField()
+    case_names = serializers.ListField(
+        child=serializers.CharField(allow_null=True, max_length=1000), max_length=1000
+    )
+
+
+class ProjectExpertsWrite(RevisionWrite):
+    project_ids = serializers.ListField(
+        child=serializers.IntegerField(min_value=1), allow_empty=False, max_length=10000
+    )
+    expert_ids = serializers.ListField(
+        child=serializers.IntegerField(min_value=1), max_length=1000
+    )
+    mode = serializers.ChoiceField(choices=["add", "replace"], default="add")
+
+
 class AllocationWrite(serializers.Serializer):
     expert_ids = serializers.ListField(
-        child=serializers.IntegerField(min_value=1), allow_empty=False, max_length=1000
+        child=serializers.IntegerField(min_value=1), max_length=1000
     )
     project_ids = serializers.ListField(
         child=serializers.IntegerField(min_value=1), required=False, max_length=10000
     )
+    case_pools = CasePoolWrite(many=True, required=False, max_length=1000)
+    revision = serializers.CharField(max_length=64, required=False)
 
 
 class QuotaWrite(serializers.Serializer):
@@ -100,6 +126,24 @@ class ExpertAssignmentsView(PrivateView):
     def put(self, request, pk, expert_id):
         data = validated(AssignmentWrite, request.data)
         return Response(service.save_assignments(pk, request.user, expert_id, data))
+
+
+class ExpertCaseScopeView(PrivateView):
+    def put(self, request, pk, expert_id):
+        return Response(
+            service.save_case_scope(
+                pk, request.user, expert_id, validated(CaseScopeWrite, request.data)
+            )
+        )
+
+
+class ProjectExpertsView(PrivateView):
+    def post(self, request, pk):
+        return Response(
+            service.save_project_experts(
+                pk, request.user, validated(ProjectExpertsWrite, request.data)
+            )
+        )
 
 
 class AllocationView(PrivateView):

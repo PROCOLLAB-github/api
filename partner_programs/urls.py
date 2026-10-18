@@ -47,6 +47,8 @@ from project_rates.workspace_views import (
     ExpertsView,
     InvitationActionView,
     ExpertAssignmentsView,
+    ExpertCaseScopeView,
+    ProjectExpertsView,
     AllocationView,
     AllocationApplyView,
     EvaluatorsView,
@@ -56,6 +58,11 @@ app_name = "partner_programs"
 
 urlpatterns = [
     path("<int:pk>/management/experts/", ExpertsView.as_view()),
+    path(
+        "<int:pk>/management/experts/<int:expert_id>/cases/",
+        ExpertCaseScopeView.as_view(),
+    ),
+    path("<int:pk>/management/project-experts/", ProjectExpertsView.as_view()),
     path(
         "<int:pk>/management/expert-invitations/<int:invitation_id>/<str:action>/",
         InvitationActionView.as_view(),

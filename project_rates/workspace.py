@@ -18,7 +18,12 @@ from partner_programs.services.assignment_analytics import annotated_assignment_
 from partner_programs.services.case_analytics import project_case_links
 from partner_programs.services.case_fields import get_program_case_field
 from partner_programs.services.management import managed_program, person_name
-from project_rates.models import ExpertInvitation, ProjectExpertAssignment, ProjectScore
+from project_rates.models import (
+    ExpertCaseScope,
+    ExpertInvitation,
+    ProjectExpertAssignment,
+    ProjectScore,
+)
 from projects.models import Collaborator
 from users.models import CustomUser, Expert
 
@@ -94,6 +99,17 @@ def revision(program):
             .values_list("pk", "project_id", "user_id", "criteria_id", "value")
         ),
         list(program.criterias.order_by("pk").values_list("pk", "type")),
+        list(
+            program.expert_case_scopes.order_by("expert_id").values_list(
+                "expert_id", "all_cases", "case_names"
+            )
+        ),
+        list(program.fields.filter(name="case").values_list("pk", "options")),
+        list(
+            project_case_links(program, field=get_program_case_field(program))
+            .order_by("project_id")
+            .values_list("project_id", "case_name")
+        ),
     ]
     return digest(json.dumps(data, ensure_ascii=False, default=str))
 
@@ -206,6 +222,8 @@ def workspace_data(program):
     ):
         users[account.invitation_email].append(account)
     members = expert_rows(program)
+    scopes = {s.expert_id: s for s in program.expert_case_scopes.all()}
+    valid_cases = {None, *program_cases(program)}
     rows = [
         {
             "id": e.pk,
@@ -217,6 +235,12 @@ def workspace_data(program):
             "assigned": counts[e.pk],
             "completed": completed[e.pk],
             "remaining": counts[e.pk] - completed[e.pk],
+            "all_cases": e.pk not in scopes or scopes[e.pk].all_cases,
+            "case_names": [
+                name for name in scopes[e.pk].case_names if name in valid_cases
+            ]
+            if e.pk in scopes
+            else [],
         }
         for e in members
     ]
@@ -256,7 +280,130 @@ def workspace_data(program):
         ),
         "ready_projects": sum(complete_project[p] >= target(program) for p in submitted),
         "experts": rows,
+        "cases": program_cases(program),
+        "projects": distribution_projects(program, assignments),
     }
+
+
+def program_cases(program):
+    field = get_program_case_field(program)
+    return field.get_options_list() if field else []
+
+
+def eligible(scope, case_name):
+    return scope is None or scope.all_cases or case_name in scope.case_names
+
+
+def distribution_projects(program, assignments=None):
+    assignments = assignment_snapshot(program) if assignments is None else assignments
+    protected = set(
+        ProjectScore.objects.filter(criteria__partner_program=program).values_list(
+            "project_id", "user_id"
+        )
+    )
+    teams = defaultdict(list)
+    for pid, uid in Collaborator.objects.filter(
+        project_id__in=PartnerProgramProject.objects.filter(
+            partner_program=program
+        ).values("project_id")
+    ).values_list("project_id", "user_id"):
+        teams[pid].append(uid)
+    by_project = defaultdict(list)
+    for assignment in assignments:
+        by_project[assignment.project_id].append(
+            {
+                "expert_id": assignment.expert_id,
+                "name": person_name(assignment.expert.user),
+                "email": assignment.expert.user.email,
+                "completed": bool(assignment.is_completed),
+                "protected": (assignment.project_id, assignment.expert.user_id)
+                in protected,
+            }
+        )
+    links = project_case_links(program, field=get_program_case_field(program))
+    return [
+        {
+            "id": link.project_id,
+            "name": link.project.name,
+            "case_name": link.case_name,
+            "leader_id": link.project.leader_id,
+            "team_user_ids": teams[link.project_id],
+            "experts": by_project[link.project_id],
+        }
+        for link in links.filter(submitted=True, project__draft=False)
+        .select_related("project")
+        .order_by("project_id")
+    ]
+
+
+@transaction.atomic
+def save_case_scope(program_id, user, expert_id, data):
+    program = managed_program(program_id, user, lock=True)
+    check_revision(program, data["revision"])
+    expert = get_object_or_404(program.experts.filter(user__is_active=True), pk=expert_id)
+    names = data["case_names"]
+    if any(name is not None and name not in program_cases(program) for name in names):
+        raise ValidationError("Выберите кейсы этой программы.")
+    ExpertCaseScope.objects.update_or_create(
+        partner_program=program,
+        expert=expert,
+        defaults={
+            "all_cases": data["all_cases"],
+            "case_names": list(dict.fromkeys(names)),
+        },
+    )
+    return workspace_data(program)
+
+
+@transaction.atomic
+def save_project_experts(program_id, user, data):
+    program = managed_program(program_id, user, lock=True)
+    check_revision(program, data["revision"])
+    ids, wanted = set(data["project_ids"]), set(data["expert_ids"])
+    projects = {p["id"]: p for p in distribution_projects(program)}
+    experts = {e.pk: e for e in expert_rows(program)}
+    existing = {(a.project_id, a.expert_id): a for a in assignment_snapshot(program)}
+    unavailable = wanted - experts.keys()
+    keep_historical = all((pid, eid) in existing for pid in ids for eid in unavailable)
+    if not ids or ids - projects.keys() or not keep_historical:
+        raise ValidationError(
+            "Выберите сданные проекты и активных экспертов этой программы."
+        )
+    if len(ids) > 1 and len({projects[p]["case_name"] for p in ids}) > 1:
+        raise ValidationError("Для массового назначения выберите проекты одного кейса.")
+    replace = data["mode"] == "replace"
+    if replace and len(ids) != 1:
+        raise ValidationError("Замена состава доступна только для одного проекта.")
+    scopes = {s.expert_id: s for s in program.expert_case_scopes.all()}
+    additions, removals = [], []
+    for project_id in ids:
+        project = projects[project_id]
+        for expert_id in wanted:
+            if (project_id, expert_id) in existing:
+                continue
+            expert = experts[expert_id]
+            if not eligible(scopes.get(expert_id), project["case_name"]):
+                raise ValidationError("Эксперт не выбран для кейса этого проекта.")
+            if expert.user_id in {project["leader_id"], *project["team_user_ids"]}:
+                raise ValidationError("Эксперт не может оценивать проект своей команды.")
+            additions.append(
+                ProjectExpertAssignment(
+                    partner_program=program, project_id=project_id, expert_id=expert_id
+                )
+            )
+        if replace:
+            for (pid, eid), assignment in existing.items():
+                if pid == project_id and eid not in wanted:
+                    if assignment.has_scores():
+                        raise WorkspaceConflict(
+                            "scores_protected",
+                            "Нельзя снять эксперта с сохранённой оценкой.",
+                        )
+                    removals.append(assignment.pk)
+    enable_workspace(program)
+    program.project_expert_assignments.filter(pk__in=removals).delete()
+    ProjectExpertAssignment.objects.bulk_create(additions, ignore_conflicts=True)
+    return workspace_data(program)
 
 
 def token_invitation(token, *, lock=False, allow_accepted=False):
@@ -433,6 +580,7 @@ def assignment_options(program, expert_id):
         ).values_list("project_id", flat=True)
     )
     own = own_projects(expert.user_id, [p.project_id for p in links])
+    scope = program.expert_case_scopes.filter(expert=expert).first()
     return {
         "revision": revision(program),
         "projects": [
@@ -448,6 +596,7 @@ def assignment_options(program, expert_id):
                     and assignments[p.project_id].is_completed
                 ),
                 "own_team": p.project_id in own,
+                "eligible": eligible(scope, p.case_name),
             }
             for p in links
         ],
@@ -468,7 +617,12 @@ def save_assignments(program_id, user, expert_id, data):
     )
     for project_id in wanted - existing:
         option = options.get(project_id)
-        if not option or not option["submitted"] or option["own_team"]:
+        if (
+            not option
+            or not option["submitted"]
+            or option["own_team"]
+            or not option["eligible"]
+        ):
             raise ValidationError(
                 "Можно назначить только сданный проект этой программы, кроме своей команды."
             )
@@ -498,10 +652,30 @@ def save_assignments(program_id, user, expert_id, data):
 def allocation(program, data):
     experts = expert_rows(program)
     selected = set(data["expert_ids"])
-    if not selected or selected - {e.pk for e in experts}:
+    if (not selected and "case_pools" not in data) or selected - {e.pk for e in experts}:
         raise ValidationError("Выберите принявших приглашение экспертов этой программы.")
+    if "revision" in data:
+        check_revision(program, data["revision"])
+    scopes = {s.expert_id: s for s in program.expert_case_scopes.all()}
+    pools = None
+    if "case_pools" in data:
+        pools = {}
+        for pool in data["case_pools"]:
+            name, members = pool["case_name"], set(pool["expert_ids"])
+            if name in pools or (name is not None and name not in program_cases(program)):
+                raise ValidationError("Проверьте список кейсов распределения.")
+            if members - selected or any(
+                not eligible(scopes.get(eid), name) for eid in members
+            ):
+                raise ValidationError("Выберите подходящих экспертов для каждого кейса.")
+            pools[name] = members
     experts = [e for e in experts if e.pk in selected]
-    submitted = submitted_links(program)
+    submitted = list(
+        project_case_links(program, field=get_program_case_field(program))
+        .filter(submitted=True)
+        .select_related("project")
+        .order_by("project_id")
+    )
     excluded = unavailable_projects(submitted) if "project_ids" not in data else []
     links = [link for link in submitted if not link.project.draft]
     if "project_ids" in data:
@@ -529,7 +703,10 @@ def allocation(program, data):
         candidates = [
             e
             for e in experts
-            if (link.project_id, e.pk) not in present and link.project_id not in own[e.pk]
+            if (link.project_id, e.pk) not in present
+            and link.project_id not in own[e.pk]
+            and eligible(scopes.get(e.pk), link.case_name)
+            and (pools is None or e.pk in pools.get(link.case_name, set()))
         ]
         candidates.sort(key=lambda e: (remaining[e.pk], e.pk))
         for expert in candidates[:needed]:
@@ -539,6 +716,7 @@ def allocation(program, data):
                     "project_name": link.project.name,
                     "expert_id": expert.pk,
                     "expert_name": person_name(expert.user),
+                    "case_name": link.case_name,
                 }
             )
             remaining[expert.pk] += 1
@@ -548,6 +726,7 @@ def allocation(program, data):
                     "project_id": link.project_id,
                     "project_name": link.project.name,
                     "missing": needed - len(candidates),
+                    "case_name": link.case_name,
                 }
             )
     rev = revision(program)

@@ -244,6 +244,27 @@ class ProjectExpertAssignment(models.Model):
         return super().delete(*args, **kwargs)
 
 
+class ExpertCaseScope(models.Model):
+    """Program-specific eligibility; no row means all current and future cases."""
+
+    partner_program = models.ForeignKey(
+        PartnerProgram, on_delete=models.CASCADE, related_name="expert_case_scopes"
+    )
+    expert = models.ForeignKey(
+        "users.Expert", on_delete=models.CASCADE, related_name="case_scopes"
+    )
+    all_cases = models.BooleanField(default=True)
+    case_names = models.JSONField(default=list, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["partner_program", "expert"],
+                name="unique_program_expert_case_scope",
+            )
+        ]
+
+
 class ExpertInvitation(models.Model):
     """Email invitation; only a digest of the bearer credential is stored."""
 
