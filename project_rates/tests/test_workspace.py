@@ -63,6 +63,33 @@ class WorkspaceTests(TestCase):
         self.assertIsNone(row["name"])
         self.assertIsNone(row["avatar"])
 
+    def test_inactive_lowercase_duplicate_does_not_hide_active_invited_account(self):
+        active = create_rate_user(prefix="active-invited")
+        inactive = create_rate_user(prefix="inactive-invited")
+        CustomUser.objects.filter(pk=active.pk).update(
+            email="Play_Station399@example.com", first_name="Yaya", last_name="Aya"
+        )
+        CustomUser.objects.filter(pk=inactive.pk).update(
+            email="play_station399@example.com",
+            first_name="Fedor",
+            last_name="Evseev",
+            is_active=False,
+        )
+        invitation, token = self.invitation("play_station399@example.com")
+        rows = self.client.get(self.root + "experts/").data["experts"]
+        row = next(row for row in rows if row["email"] == invitation.email)
+        self.assertEqual(row["name"], "Yaya Aya")
+        self.client.force_authenticate(None)
+        preview = self.client.get(f"/evaluation/invitations/{token}/").data
+        self.assertTrue(preview["account_exists"])
+        self.assertEqual(preview["login_email"], "Play_Station399@example.com")
+        login = self.post(
+            "/api/token/", {"email": preview["login_email"], "password": "pass"}
+        )
+        self.assertEqual(login.status_code, 200)
+        inactive.refresh_from_db()
+        self.assertFalse(inactive.is_active)
+
     def test_quota_and_analytics_share_required_count_and_missing_project_count(self):
         self.enable(3)
         self.program.max_project_rates = 3

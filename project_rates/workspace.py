@@ -164,6 +164,15 @@ def program_card(program):
     }
 
 
+def invited_account(accounts):
+    # В legacy-базе регистр email мог породить неподтверждённый дубль аккаунта.
+    # Принять приглашение может только активный пользователь; выбираем его,
+    # если он единственный. Неоднозначные активные аккаунты не угадываем.
+    active = [account for account in accounts if account.is_active]
+    candidates = active or accounts
+    return candidates[0] if len(candidates) == 1 else None
+
+
 def workspace_data(program):
     assignments = assignment_snapshot(program)
     counts = Counter(a.expert_id for a in assignments)
@@ -196,8 +205,7 @@ def workspace_data(program):
         if invitation.email in joined_emails:
             continue
         matches = users.get(invitation.email.lower(), [])
-        # Старые аккаунты могут отличаться только регистром email: не выбираем чужое имя.
-        user = matches[0] if len(matches) == 1 else None
+        user = invited_account(matches)
         rows.append(
             {
                 **invitation_data(invitation),
