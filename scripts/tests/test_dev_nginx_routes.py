@@ -49,6 +49,7 @@ class DevRoutingTests(unittest.TestCase):
         repo = Path(__file__).resolve().parents[2]
         with TemporaryDirectory(prefix="dev-nginx-routing-") as directory:
             root = Path(directory)
+            (root / "logs").mkdir()
             (root / "index.html").write_text("<!doctype html><app-root></app-root>")
             (root / "asset.js").write_text("window.fixture = true;")
             subprocess.run([
@@ -79,7 +80,7 @@ class DevRoutingTests(unittest.TestCase):
             config_path = root / "nginx.conf"
             config_path.write_text(config)
             command = ["nginx", "-p", root.as_posix() + "/", "-c", str(config_path)]
-            subprocess.run([*command, "-t"], check=True, capture_output=True)
+            subprocess.run([*command, "-t"], check=True)
             with (root / "nginx.log").open("w+") as log:
                 nginx = subprocess.Popen([*command, "-g", "daemon off;"], stdout=log, stderr=log)
                 try:
