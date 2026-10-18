@@ -57,6 +57,7 @@ urlpatterns = [
     path("programs/", include("partner_programs.urls", namespace="partner_programs")),
     path("courses/", include("courses.urls", namespace="courses")),
     path("rate-project/", include(("project_rates.urls", "rate_projects"))),
+    path("evaluation/", include("project_rates.workspace_urls")),
     path("feed/", include("feed.urls", namespace="feed")),
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),

@@ -96,11 +96,37 @@ class PartnerProgramBaseSerializerMixin(serializers.ModelSerializer):
 
     materials = serializers.SerializerMethodField()
     is_user_manager = serializers.SerializerMethodField()
+    is_user_expert = serializers.SerializerMethodField()
+    pending_expert_invitation_id = serializers.SerializerMethodField()
     courses = serializers.SerializerMethodField()
 
     def get_materials(self, program: PartnerProgram):
         materials = program.materials.all()
         return PartnerProgramMaterialSerializer(materials, many=True).data
+
+    def get_is_user_expert(self, program):
+        user = self.context.get("user") or getattr(
+            self.context.get("request"), "user", None
+        )
+        return bool(
+            user and user.is_authenticated and program.experts.filter(user=user).exists()
+        )
+
+    def get_pending_expert_invitation_id(self, program):
+        from django.utils import timezone
+
+        user = self.context.get("user") or getattr(
+            self.context.get("request"), "user", None
+        )
+        if not user or not user.is_authenticated or not user.is_active:
+            return None
+        return (
+            program.expert_invitations.filter(
+                email__iexact=user.email, status="pending", expires_at__gt=timezone.now()
+            )
+            .values_list("pk", flat=True)
+            .first()
+        )
 
     def get_is_user_manager(self, program: PartnerProgram) -> bool:
         user = self.context.get("user")
@@ -193,6 +219,8 @@ class PartnerProgramForMemberSerializer(PartnerProgramBaseSerializerMixin):
             "legacy_team_max_size",
             "is_user_manager",
             "welcome_acknowledged_at",
+            "is_user_expert",
+            "pending_expert_invitation_id",
             "courses",
         )
 
@@ -222,6 +250,8 @@ class PartnerProgramForUnregisteredUserSerializer(PartnerProgramBaseSerializerMi
             "legacy_team_min_size",
             "legacy_team_max_size",
             "is_user_manager",
+            "is_user_expert",
+            "pending_expert_invitation_id",
             "courses",
         )
 

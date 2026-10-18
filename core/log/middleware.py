@@ -4,7 +4,7 @@ import logging
 from django.conf import settings
 from loguru import logger
 
-from core.log.utils import InterceptHandler
+from core.log.utils import InterceptHandler, redact_expert_invitation_token
 
 
 def _add_logger_handler(path: str, level: str) -> None:
@@ -32,8 +32,14 @@ class CustomLoguruMiddleware:
 
     def __call__(self, request):
         response = self.get_response(request)
-        logger.info(f"{request.method} {request.get_full_path()}")
+        logger.info(
+            redact_expert_invitation_token(f"{request.method} {request.get_full_path()}")
+        )
         return response
 
     def process_exception(self, request, exception):
-        logger.warning(f"{exception} http_path={request.get_full_path()}")
+        logger.warning(
+            redact_expert_invitation_token(
+                f"{exception} http_path={request.get_full_path()}"
+            )
+        )

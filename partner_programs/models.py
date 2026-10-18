@@ -116,6 +116,12 @@ class PartnerProgram(models.Model):
             "Если включено, проекты для оценки доступны только назначенным экспертам"
         ),
     )
+    required_evaluators = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Обязательное число оценщиков на проект",
+        help_text="Минимум полных оценок. NULL сохраняет прежний режим оценивания.",
+    )
     evaluation_criteria_locked_at = models.DateTimeField(null=True, editable=False)
     evaluation_criteria_version = models.PositiveIntegerField(default=0, editable=False)
     data_schema = models.JSONField(

@@ -1,5 +1,6 @@
 from django.db import transaction
 from django.db.models import Count, Prefetch, Q, QuerySet
+from django.utils import timezone
 
 from rest_framework.exceptions import ValidationError
 
@@ -67,7 +68,7 @@ def get_projects_for_rate_queryset(
     )
 
     projects_qs = Project.objects.filter(draft=False, id__in=project_ids)
-    if program.is_distributed_evaluation:
+    if program.is_distributed_evaluation or getattr(program, "assigned_only", False):
         projects_qs = projects_qs.filter(
             expert_assignments__partner_program=program,
             expert_assignments__expert__user=user,
@@ -142,7 +143,7 @@ def submit_project_scores(*, user, project_id: int, data) -> None:
     )
     user_has_scores = scores_qs.filter(user_id=user.id).exists()
 
-    if program.max_project_rates:
+    if program.max_project_rates and program.required_evaluators is None:
         distinct_raters = scores_qs.values("user_id").distinct().count()
         if not user_has_scores and distinct_raters >= program.max_project_rates:
             raise MaxProjectRatesReached(program.max_project_rates)
@@ -180,6 +181,35 @@ def _prepare_project_score_data(
 
     program = criteria_qs.first().partner_program
     Expert.objects.get(user__id=user.id, programs=program)
+
+    if program.required_evaluators is not None:
+        from projects.models import Collaborator
+
+        if (
+            program.datetime_evaluation_ends
+            and timezone.now() > program.datetime_evaluation_ends
+        ):
+            raise ValidationError("Срок оценивания завершён.")
+
+        required = set(program.criterias.exclude(type="str").values_list("pk", flat=True))
+        if not required.issubset(criteria_ids):
+            raise ValidationError(
+                "Заполните все обязательные критерии и сохраните оценку целиком."
+            )
+        if not PartnerProgramProject.objects.filter(
+            partner_program=program, project_id=project_id, submitted=True
+        ).exists():
+            raise ValidationError("Сначала нужно сдать решение.")
+        if (
+            Project.objects.filter(pk=project_id, leader=user).exists()
+            or Collaborator.objects.filter(project_id=project_id, user=user).exists()
+        ):
+            raise ValidationError("Нельзя оценивать проект своей команды.")
+        # Optional comments are stored too, keeping completion and legacy analytics consistent.
+        present = set(criteria_ids)
+        for criterion in program.criterias.filter(type="str").exclude(pk__in=present):
+            rating_data.append({"criterion_id": criterion.pk, "value": ""})
+            criteria_ids.append(criterion.pk)
 
     for criterion in rating_data:
         criterion["user"] = user.id

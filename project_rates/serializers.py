@@ -60,6 +60,7 @@ class ProjectScoreSerializer(serializers.ModelSerializer):
 
 
 class ProjectListForRateSerializer(serializers.ModelSerializer):
+    managed_evaluation = serializers.SerializerMethodField()
     criteria_revision = serializers.SerializerMethodField()
     views_count = serializers.SerializerMethodField()
     criterias = serializers.SerializerMethodField()
@@ -86,10 +87,14 @@ class ProjectListForRateSerializer(serializers.ModelSerializer):
             "max_rates",
             "criterias",
             "criteria_revision",
+            "managed_evaluation",
         ]
 
     def get_criteria_revision(self, obj):
         return self.context.get("criteria_revision")
+
+    def get_managed_evaluation(self, obj):
+        return bool(self.context.get("managed_evaluation"))
 
     def get_views_count(self, obj) -> int:
         return get_views_count(obj)
@@ -111,6 +116,18 @@ class ProjectListForRateSerializer(serializers.ModelSerializer):
 
     def get_criterias(self, obj) -> CriteriasResponse | ProjectScoresResponse:
         user_scores = self._get_user_scores(obj)
+        if self.context.get("managed_evaluation"):
+            program_id = self.context["view"].kwargs.get("program_id")
+            scores = {score.criteria_id: score for score in user_scores}
+            return [
+                {
+                    **CriteriaSerializer(c).data,
+                    **({"value": scores[c.pk].value} if c.pk in scores else {}),
+                }
+                for c in Criteria.objects.filter(partner_program_id=program_id).order_by(
+                    "pk"
+                )
+            ]
         if user_scores:
             serializer = ProjectScoreSerializer(user_scores, many=True)
             return serializer.data
@@ -121,13 +138,41 @@ class ProjectListForRateSerializer(serializers.ModelSerializer):
 
     def get_scored(self, obj) -> bool:
         user_scores = self._get_user_scores(obj)
+        if self.context.get("managed_evaluation"):
+            program_id = self.context["view"].kwargs.get("program_id")
+            required = set(
+                Criteria.objects.filter(partner_program_id=program_id).values_list(
+                    "pk", flat=True
+                )
+            )
+            return bool(required) and required.issubset(
+                {score.criteria_id for score in user_scores}
+            )
         return bool(user_scores)
 
     def get_rated_experts(self, obj) -> list[int]:
         program_scores = self._get_program_scores(obj)
+        if self.context.get("managed_evaluation"):
+            from collections import defaultdict
+
+            required = set(
+                Criteria.objects.filter(
+                    partner_program_id=self.context["view"].kwargs["program_id"]
+                ).values_list("pk", flat=True)
+            )
+            scored = defaultdict(set)
+            for score in program_scores:
+                scored[score.user_id].add(score.criteria_id)
+            return [
+                user_id
+                for user_id, ids in scored.items()
+                if required and required.issubset(ids)
+            ]
         return list({score.user_id for score in program_scores})
 
     def get_rated_count(self, obj) -> int:
+        if self.context.get("managed_evaluation"):
+            return len(self.get_rated_experts(obj))
         rated_attr = getattr(obj, "rated_count", None)
         if rated_attr is not None:
             return rated_attr

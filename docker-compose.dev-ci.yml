@@ -13,6 +13,7 @@ services:
       - .env
     environment:
       HOST: 0.0.0.0
+      EXPERT_WORKSPACE_FRONTEND_URL: https://dev.procollab.ru
     ports:
       - "127.0.0.1:8000:8000" 
 
@@ -31,6 +32,8 @@ services:
     image: ${DEPLOY_IMAGE:-procollab-dev-api:dev}
     env_file:
       - .env
+    environment:
+      EXPERT_WORKSPACE_FRONTEND_URL: https://dev.procollab.ru
     command: bash ./scripts/celery.sh
     depends_on:
       - redis

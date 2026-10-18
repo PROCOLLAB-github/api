@@ -43,9 +43,30 @@ from partner_programs.management_views import (
     ManagementMaterialDetailView,
 )
 
+from project_rates.workspace_views import (
+    ExpertsView,
+    InvitationActionView,
+    ExpertAssignmentsView,
+    AllocationView,
+    AllocationApplyView,
+    EvaluatorsView,
+)
+
 app_name = "partner_programs"
 
 urlpatterns = [
+    path("<int:pk>/management/experts/", ExpertsView.as_view()),
+    path(
+        "<int:pk>/management/expert-invitations/<int:invitation_id>/<str:action>/",
+        InvitationActionView.as_view(),
+    ),
+    path(
+        "<int:pk>/management/experts/<int:expert_id>/assignments/",
+        ExpertAssignmentsView.as_view(),
+    ),
+    path("<int:pk>/management/expert-allocation/", AllocationView.as_view()),
+    path("<int:pk>/management/expert-allocation/apply/", AllocationApplyView.as_view()),
+    path("<int:pk>/management/evaluators/", EvaluatorsView.as_view()),
     path(
         "<int:pk>/management/criteria/",
         ManagementCriteriaView.as_view(),

@@ -110,6 +110,7 @@ class CustomUser(AbstractUser):
     )
     birthday = models.DateField(
         validators=[user_birthday_validator],
+        null=True,
     )
     about_me = models.TextField(null=True, blank=True)
     status = models.CharField(max_length=255, null=True, blank=True)

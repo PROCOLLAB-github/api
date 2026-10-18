@@ -267,7 +267,9 @@ def _solution_rows(program, *, rows=None):
                 then=Value("awaiting_evaluation"),
             ),
             When(
-                assignments_completed__lt=F("assignments_total"),
+                assignments_completed__lt=(
+                    program.required_evaluators or F("assignments_total")
+                ),
                 then=Value("partially_evaluated"),
             ),
             default=Value("evaluated"),

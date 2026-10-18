@@ -68,6 +68,9 @@ class ProjectListForRate(generics.ListAPIView):
     def _get_program(self):
         if not hasattr(self, "_program"):
             self._program = get_rate_program(self.kwargs.get("program_id"))
+            self._program.assigned_only = (
+                self.request.query_params.get("assigned_only") == "1"
+            )
         return self._program
 
     def get_queryset(self):
@@ -86,4 +89,9 @@ class ProjectListForRate(generics.ListAPIView):
         context = super().get_serializer_context()
         context["program_max_rates"] = self._get_program().max_project_rates
         context["criteria_revision"] = revision(self._get_program())
+        context["managed_evaluation"] = (
+            self._get_program().required_evaluators is not None
+        )
+        if context["managed_evaluation"]:
+            context["program_max_rates"] = self._get_program().required_evaluators
         return context

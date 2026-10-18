@@ -15,6 +15,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config("DJANGO_SECRET_KEY", default="django-default-secret-key", cast=str)
 
 DEBUG = config("DEBUG", default=False, cast=bool)
+EXPERT_WORKSPACE_FRONTEND_URL = config(
+    "EXPERT_WORKSPACE_FRONTEND_URL", default="https://app.procollab.ru"
+)
 
 AUTOPOSTING_ON = config("AUTOPOSTING_ON", default=False, cast=bool)
 
