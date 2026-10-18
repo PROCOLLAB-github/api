@@ -337,6 +337,7 @@ class ProgramManagerAnalyticsMetricsTests(TestCase):
             response.data["evaluation_status"],
             {
                 "mode": "open",
+                "required_evaluators": None,
                 "max_evaluations_per_project": 2,
                 # Open project evaluation still needs any score, but the real
                 # assignments also require the automatically created Comment.

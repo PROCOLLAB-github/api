@@ -8,6 +8,7 @@ from datetime import timedelta
 
 from django.core import signing
 from django.db import transaction
+from django.db.models.functions import Lower
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework.exceptions import APIException, PermissionDenied, ValidationError
@@ -170,10 +171,11 @@ def workspace_data(program):
     invitations = list(
         program.expert_invitations.exclude(status="accepted").order_by("pk")
     )
-    users = {
-        u.email.lower(): u
-        for u in CustomUser.objects.filter(email__in=[i.email for i in invitations])
-    }
+    users = defaultdict(list)
+    for account in CustomUser.objects.annotate(invitation_email=Lower("email")).filter(
+        invitation_email__in=[i.email.lower() for i in invitations]
+    ):
+        users[account.invitation_email].append(account)
     members = expert_rows(program)
     rows = [
         {
@@ -193,7 +195,9 @@ def workspace_data(program):
     for invitation in invitations:
         if invitation.email in joined_emails:
             continue
-        user = users.get(invitation.email)
+        matches = users.get(invitation.email.lower(), [])
+        # Старые аккаунты могут отличаться только регистром email: не выбираем чужое имя.
+        user = matches[0] if len(matches) == 1 else None
         rows.append(
             {
                 **invitation_data(invitation),
@@ -218,6 +222,9 @@ def workspace_data(program):
         "required_evaluators": target(program),
         "managed_evaluation": program.required_evaluators is not None,
         "submitted_projects": len(submitted),
+        "projects_missing_experts": sum(
+            per_project[p] < target(program) for p in submitted
+        ),
         "missing_assignments": sum(
             max(0, target(program) - per_project[p]) for p in submitted
         ),
@@ -591,6 +598,8 @@ def quota_preview(program, number):
     return {
         "revision": revision(program),
         "required_evaluators": number,
+        "submitted_projects": len(ids),
+        "projects_missing_experts": sum(counts[p] < number for p in ids),
         "ready_before": sum(completed[p] >= target(program) for p in ids),
         "ready_after": sum(completed[p] >= number for p in ids),
         "missing_assignments": sum(max(0, number - counts[p]) for p in ids),

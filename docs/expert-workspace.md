@@ -22,6 +22,21 @@
 | POST `evaluators/` | Предпросмотр `{required_evaluators}` |
 | PUT `evaluators/` | Подтвердить `{required_evaluators, revision}` |
 
+`GET experts/` и предпросмотр `POST evaluators/` возвращают
+`projects_missing_experts` — число сданных проектов, для которых выбрано меньше N
+экспертов. Это отличается от `missing_assignments` (сумма незаполненных мест для
+экспертов по всем проектам) и `ready_projects` (достаточно полных оценок).
+Предпросмотр также возвращает `submitted_projects`.
+В `/programs/{id}/manager-overview/` поле `evaluation_status.required_evaluators`
+задаёт тот же N; null означает legacy-режим со старым `max_evaluations_per_project`.
+Старое поле сохранено для совместимости и не является N нового режима.
+
+Имя приглашённого берётся только из аккаунта с соответствующим email, без учёта
+регистра. При неоднозначных legacy-аккаунтах имя/аватар не угадываются.
+`delivery_status` — отправка письма (`queued`/`sent`/`failed`), а `status` — состояние
+самого приглашения. `sent` означает успешную передачу почтовому backend, не принятие
+приглашения и не подтверждение доставки во входящие.
+
 `GET /evaluation/programs/` возвращает только программы пользователя, его счётчики
 assigned/completed/remaining и действующие приглашения на его email.
 `POST /evaluation/own-invitations/{id}/accept/` явно принимает своё приглашение.

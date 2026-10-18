@@ -428,6 +428,7 @@ def build_program_manager_analytics(program) -> dict:
         "evaluation_status": {
             "mode": ("distributed" if program.is_distributed_evaluation else "open"),
             "max_evaluations_per_project": program.max_project_rates,
+            "required_evaluators": program.required_evaluators,
             "assignments": {
                 "total": assignments["total"],
                 "pending": assignments["pending"],

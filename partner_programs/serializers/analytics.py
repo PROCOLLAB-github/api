@@ -54,6 +54,7 @@ class ProgramProjectEvaluationSerializer(serializers.Serializer):
 
 class ProgramEvaluationStatusSerializer(serializers.Serializer):
     mode = serializers.ChoiceField(choices=("open", "distributed"))
+    required_evaluators = serializers.IntegerField(min_value=1, allow_null=True)
     max_evaluations_per_project = serializers.IntegerField(
         min_value=1,
         allow_null=True,
