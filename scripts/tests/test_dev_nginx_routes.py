@@ -50,6 +50,10 @@ class DevRoutingTests(unittest.TestCase):
         with TemporaryDirectory(prefix="dev-nginx-routing-") as directory:
             root = Path(directory)
             (root / "logs").mkdir()
+            temp_paths = "".join(
+                f"{name}_temp_path {root}/{name};\n"
+                for name in ("client_body", "proxy", "fastcgi", "uwsgi", "scgi")
+            )
             (root / "index.html").write_text("<!doctype html><app-root></app-root>")
             (root / "asset.js").write_text("window.fixture = true;")
             subprocess.run([
@@ -76,7 +80,10 @@ class DevRoutingTests(unittest.TestCase):
             }
             for source, target in replacements.items():
                 config = config.replace(source, target)
-            config = f"pid {root}/nginx.pid;\nerror_log stderr;\nevents {{}}\nhttp {{\n{config}\n}}\n"
+            config = (
+                f"pid {root}/nginx.pid;\nerror_log stderr;\nevents {{}}\n"
+                f"http {{\naccess_log off;\n{temp_paths}{config}\n}}\n"
+            )
             config_path = root / "nginx.conf"
             config_path.write_text(config)
             command = ["nginx", "-p", root.as_posix() + "/", "-c", str(config_path)]
