@@ -1,4 +1,11 @@
 from django.urls import path
+from partner_programs.organizer_views import (
+    OrganizersView,
+    OrganizerAccessView,
+    OrganizerInvitationActionView,
+    PublicOrganizerInvitationView,
+    PublicOrganizerInvitationActionView,
+)
 
 from news.views import NewsDetail, NewsDetailSetLiked, NewsDetailSetViewed, NewsList
 from partner_programs.views import (
@@ -62,6 +69,20 @@ from partner_programs.results_views import (
 app_name = "partner_programs"
 
 urlpatterns = [
+    path("organizer-invitations/<str:token>/", PublicOrganizerInvitationView.as_view()),
+    path(
+        "organizer-invitations/<str:token>/<str:action>/",
+        PublicOrganizerInvitationActionView.as_view(),
+    ),
+    path("<int:pk>/management/organizers/", OrganizersView.as_view()),
+    path(
+        "<int:pk>/management/organizers/<int:user_id>/remove/",
+        OrganizerAccessView.as_view(),
+    ),
+    path(
+        "<int:pk>/management/organizer-invitations/<int:invitation_id>/<str:action>/",
+        OrganizerInvitationActionView.as_view(),
+    ),
     path(
         "<int:pk>/management/results/",
         ManagementResultsView.as_view(),

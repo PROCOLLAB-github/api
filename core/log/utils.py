@@ -6,7 +6,9 @@ from loguru import logger
 
 def redact_expert_invitation_token(message):
     return re.sub(
-        r"(/evaluation/invitations/)[A-Za-z0-9_-]{20,100}", r"\1[redacted]", message
+        r"(/(?:evaluation/invitations|programs/organizer-invitations)/)[A-Za-z0-9_-]{20,100}",
+        r"\1[redacted]",
+        message,
     )
 
 
