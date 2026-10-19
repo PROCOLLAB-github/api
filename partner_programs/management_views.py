@@ -18,6 +18,7 @@ from partner_programs.serializers.management import (
     ManagementMaterialWrite,
 )
 from partner_programs.services.case_fields import get_program_case_field
+from partner_programs.services.case_analytics import project_case_links
 from partner_programs.services.management import (
     managed_program,
     management_data,
@@ -140,7 +141,11 @@ class ManagementProjectsView(ManagementBase):
             [project_data(p, program) for p in page]
         )
         response.data.update(
-            {"case_options": options, "is_competitive": program.is_competitive}
+            {
+                "case_options": options,
+                "is_competitive": program.is_competitive,
+                "total_count": project_case_links(program, field=field).count(),
+            }
         )
         return response
 

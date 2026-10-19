@@ -272,6 +272,8 @@ class ExpertInvitation(models.Model):
         PartnerProgram, on_delete=models.CASCADE, related_name="expert_invitations"
     )
     email = models.EmailField()
+    all_cases = models.BooleanField(default=True)
+    case_names = models.JSONField(default=list, blank=True)
     token_digest = models.CharField(max_length=64, unique=True)
     status = models.CharField(
         max_length=12,

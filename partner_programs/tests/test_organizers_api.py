@@ -102,6 +102,8 @@ class OrganizersApiTests(TestCase):
         self.assertEqual(self.program.managers.count(), 1)
         preview = self.client.get(f"/programs/organizer-invitations/{token}/")
         self.assertEqual(preview.data["purpose"], "organizer")
+        self.assertNotIn("all_cases", preview.data)
+        self.assertNotIn("case_names", preview.data)
         self.assertFalse(preview.data["account_exists"])
         self.assertNotIn("token_digest", str(preview.data))
         self.assertEqual(preview["Referrer-Policy"], "no-referrer")
