@@ -49,6 +49,28 @@ def password_reset_token_created(sender, instance, reset_password_token, *args, 
     reset_password_url = (
         f"https://app.procollab.ru/auth/reset_password/?token={reset_password_token.key}"
     )
+    registration_program = getattr(getattr(instance, "request", None), "data", {}).get(
+        "registration_program_id"
+    )
+    if str(registration_program).isdigit() and len(str(registration_program)) <= 10:
+        from partner_programs.models import PartnerProgram
+        from urllib.parse import urlencode
+
+        if PartnerProgram.objects.filter(
+            pk=int(registration_program),
+            draft=False,
+            registration_config__published__mode="native",
+        ).exists():
+            reset_password_url = (
+                settings.EXPERT_WORKSPACE_FRONTEND_URL.rstrip("/")
+                + "/program-password-reset/?"
+                + urlencode(
+                    {
+                        "token": reset_password_token.key,
+                        "registration_program": registration_program,
+                    }
+                )
+            )
     # Invitation-specific return context; never accept an arbitrary redirect origin.
     invitation_token = getattr(getattr(instance, "request", None), "data", {}).get(
         "expert_invitation_token"

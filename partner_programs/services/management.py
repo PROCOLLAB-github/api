@@ -86,6 +86,7 @@ def participant_rows(program, search="", query=None):
         # The profile's region picker writes to the historical `city` field.
         .annotate(
             participant_region=Coalesce(
+                NullIf(Trim("registration_region"), Value("")),
                 NullIf(Trim("user__city"), Value("")),
                 NullIf(Trim("user__region"), Value("")),
                 Value(""),
@@ -133,6 +134,13 @@ def participant_data(profile):
         "region": profile.participant_region or None,
         "registered_at": profile.datetime_created,
         "last_activity": profile.user.last_activity,
+        "registration_answers": [
+            {
+                "label": field["label"],
+                "value": profile.partner_program_data.get(field["id"]),
+            }
+            for field in profile.registration_schema.get("fields", [])
+        ],
     }
 
 

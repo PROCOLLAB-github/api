@@ -1,4 +1,12 @@
 from django.urls import path
+from partner_programs.registration_views import (
+    RegistrationSettingsView,
+    RegistrationPublishView,
+    RegistrationImportView,
+    RegistrationConnectionView,
+    PublicRegistrationView,
+    PublicRegistrationActionView,
+)
 from partner_programs.organizer_views import (
     OrganizersView,
     OrganizerAccessView,
@@ -70,6 +78,15 @@ from partner_programs.results_views import (
 app_name = "partner_programs"
 
 urlpatterns = [
+    path("<int:pk>/management/registration/", RegistrationSettingsView.as_view()),
+    path("<int:pk>/management/registration/publish/", RegistrationPublishView.as_view()),
+    path("<int:pk>/management/registration/import/", RegistrationImportView.as_view()),
+    path(
+        "<int:pk>/management/registration/connection/",
+        RegistrationConnectionView.as_view(),
+    ),
+    path("<int:pk>/registration/", PublicRegistrationView.as_view()),
+    path("<int:pk>/registration/<str:action>/", PublicRegistrationActionView.as_view()),
     path("organizer-invitations/<str:token>/", PublicOrganizerInvitationView.as_view()),
     path(
         "organizer-invitations/<str:token>/<str:action>/",

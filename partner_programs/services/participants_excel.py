@@ -61,6 +61,26 @@ def export_participants(rows):
             cells.append(cell)
         sheet.append(cells)
     sheet.auto_filter.ref = f"A1:F{number + 1}"
+    answers_sheet = workbook.create_sheet("Анкеты")
+    answers_sheet.append(["Участник", "Почта", "Поле анкеты", "Ответ"])
+    for profile in rows.iterator(chunk_size=500):
+        for field in profile.registration_schema.get("fields", []):
+            value = profile.partner_program_data.get(field["id"])
+            values = [
+                person_name(profile.user),
+                profile.user.email,
+                field["label"],
+                ", ".join(map(str, value)) if isinstance(value, list) else value,
+            ]
+            cells = []
+            for item in values:
+                cell = WriteOnlyCell(
+                    answers_sheet,
+                    ILLEGAL_CHARACTERS_RE.sub("", str(item if item is not None else "—")),
+                )
+                cell.data_type = "s"
+                cells.append(cell)
+            answers_sheet.append(cells)
     stream = BytesIO()
     workbook.save(stream)
     return stream.getvalue()

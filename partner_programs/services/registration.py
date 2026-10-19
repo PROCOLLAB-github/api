@@ -41,6 +41,13 @@ def register_user_to_program(
     user: User,
     data,
 ) -> PartnerProgramUserProfile:
+    from partner_programs.services.native_registration import config_for
+
+    config = config_for(program)
+    if config and config.published and config.published["mode"] == "native":
+        raise ProgramRegistrationError(
+            "Используйте опубликованную анкету регистрации программы."
+        )
     if program.datetime_registration_ends < timezone.now():
         raise ProgramRegistrationError("Registration period has ended.")
 
@@ -62,6 +69,19 @@ def create_user_and_register_to_program(
     program: PartnerProgram,
     data,
 ) -> PartnerProgramUserProfile:
+    from partner_programs.services.native_registration import config_for
+
+    config = config_for(program)
+    if (
+        config
+        and config.published
+        and (
+            config.published["mode"] == "native" or config.external_status != "connected"
+        )
+    ):
+        raise ProgramRegistrationError(
+            "Используйте действующий способ регистрации программы."
+        )
     email = data.get("email") if data.get("email") else data.get("email_")
     if not email:
         raise ProgramRegistrationError("You need to pass an email address.")
@@ -99,9 +119,7 @@ def create_user_and_register_to_program(
             partner_program=program,
         )
     except IntegrityError:
-        raise ProgramRegistrationError(
-            "User has already registered in this program."
-        )
+        raise ProgramRegistrationError("User has already registered in this program.")
 
     _send_program_registration_email(user, program)
     return user_profile
