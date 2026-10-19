@@ -1,6 +1,10 @@
 """Program-scoped чтение для организатора без изменений участников и проектов."""
 
-from django.db.models import Q
+from datetime import datetime, time
+from zoneinfo import ZoneInfo
+
+from django.db.models import Q, Value
+from django.db.models.functions import Coalesce, NullIf, Trim
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import PermissionDenied
 
@@ -73,12 +77,20 @@ def management_data(program):
     }
 
 
-def participant_rows(program, search):
+def participant_rows(program, search="", query=None):
     rows = (
         PartnerProgramUserProfile.objects.filter(
             partner_program=program, user__isnull=False
         )
         .select_related("user")
+        # The profile's region picker writes to the historical `city` field.
+        .annotate(
+            participant_region=Coalesce(
+                NullIf(Trim("user__city"), Value("")),
+                NullIf(Trim("user__region"), Value("")),
+                Value(""),
+            )
+        )
         .order_by("datetime_created", "pk")
     )
     if search:
@@ -90,6 +102,24 @@ def participant_rows(program, search):
                 | Q(user__patronymic__icontains=part)
                 | Q(user__email__icontains=part)
             )
+    if query:
+        if query["region_scope"] == "selected":
+            rows = rows.filter(participant_region=query["region"])
+        elif query["region_scope"] == "without_region":
+            rows = rows.filter(participant_region="")
+        if query["activity"] == "never":
+            rows = rows.filter(user__last_activity__isnull=True)
+        elif query["activity"] == "period":
+            zone = ZoneInfo("Europe/Moscow")
+            if query.get("activity_from"):
+                rows = rows.filter(
+                    user__last_activity__gte=datetime.combine(
+                        query["activity_from"], time.min, zone
+                    )
+                )
+            if query.get("activity_to"):
+                end = datetime.combine(query["activity_to"], time.max, zone)
+                rows = rows.filter(user__last_activity__lte=end)
     return rows
 
 
@@ -100,6 +130,7 @@ def participant_data(profile):
         "name": person_name(profile.user),
         "email": profile.user.email,
         "city": profile.user.city,
+        "region": profile.participant_region or None,
         "registered_at": profile.datetime_created,
         "last_activity": profile.user.last_activity,
     }

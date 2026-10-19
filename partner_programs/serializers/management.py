@@ -68,6 +68,39 @@ class ManagementListQuery(StrictFieldsMixin, serializers.Serializer):
     offset = serializers.IntegerField(min_value=0, default=0)
 
 
+class ManagementParticipantQuery(ManagementListQuery):
+    region_scope = serializers.ChoiceField(
+        choices=("all", "selected", "without_region"), default="all"
+    )
+    region = serializers.CharField(required=False, max_length=255)
+    activity = serializers.ChoiceField(choices=("all", "period", "never"), default="all")
+    activity_from = serializers.DateField(required=False)
+    activity_to = serializers.DateField(required=False)
+
+    def validate(self, attrs):
+        if attrs["region_scope"] == "selected" and not attrs.get("region"):
+            raise serializers.ValidationError({"region": "Выберите регион."})
+        if attrs["region_scope"] != "selected" and attrs.get("region"):
+            raise serializers.ValidationError(
+                {"region": "Регион задан без selected scope."}
+            )
+        start, end = attrs.get("activity_from"), attrs.get("activity_to")
+        if attrs["activity"] == "period":
+            if not (start or end):
+                raise serializers.ValidationError(
+                    {"activity_from": "Укажите начало или конец периода."}
+                )
+            if start and end and start > end:
+                raise serializers.ValidationError(
+                    {"activity_to": "Конец периода раньше начала."}
+                )
+        elif start or end:
+            raise serializers.ValidationError(
+                {"activity": "Даты доступны только для периода."}
+            )
+        return attrs
+
+
 class ManagementProjectQuery(ManagementListQuery):
     submission = serializers.ChoiceField(
         choices=("all", "submitted", "not_submitted"), default="all"

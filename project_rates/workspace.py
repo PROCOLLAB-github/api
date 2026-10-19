@@ -529,6 +529,9 @@ def accept_invitation(invitation, user):
     invitation.status = "accepted"
     invitation.accepted_by = user
     invitation.save(update_fields=["status", "accepted_by", "updated_at"])
+    from project_rates.notifications import notify_expert_joined
+
+    notify_expert_joined(invitation, user)
 
 
 def my_programs(user):
