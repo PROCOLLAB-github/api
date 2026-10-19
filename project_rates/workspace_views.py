@@ -24,6 +24,13 @@ class InvitationThrottle(AnonRateThrottle):
 
 class InvitationEmail(serializers.Serializer):
     email = serializers.EmailField(max_length=254)
+    all_cases = serializers.BooleanField(required=False)
+    case_names = serializers.ListField(
+        child=serializers.CharField(allow_null=True, max_length=1000),
+        max_length=1000,
+        required=False,
+        default=list,
+    )
 
 
 class RevisionWrite(serializers.Serializer):
@@ -98,11 +105,27 @@ class ExpertsView(PrivateView):
 
     def post(self, request, pk):
         data = validated(InvitationEmail, request.data)
-        return Response(service.invite(pk, request.user, data["email"]), status=201)
+        scope = (
+            {"all_cases": data["all_cases"], "case_names": data["case_names"]}
+            if "all_cases" in data
+            else None
+        )
+        return Response(
+            service.invite(pk, request.user, data["email"], scope=scope), status=201
+        )
 
 
 class InvitationActionView(PrivateView):
     def post(self, request, pk, invitation_id, action):
+        if action == "cases":
+            return Response(
+                service.save_invitation_case_scope(
+                    pk,
+                    request.user,
+                    invitation_id,
+                    validated(CaseScopeWrite, request.data),
+                )
+            )
         if action == "revoke":
             service.revoke(pk, request.user, invitation_id)
             return Response(status=204)

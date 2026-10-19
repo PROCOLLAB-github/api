@@ -106,6 +106,11 @@ def revision(program):
         ),
         list(program.fields.filter(name="case").values_list("pk", "options")),
         list(
+            program.expert_invitations.order_by("pk").values_list(
+                "pk", "status", "all_cases", "case_names"
+            )
+        ),
+        list(
             project_case_links(program, field=get_program_case_field(program))
             .order_by("project_id")
             .values_list("project_id", "case_name")
@@ -182,6 +187,8 @@ def invitation_data(invitation):
         "delivery_status": invitation.delivery_status,
         "expires_at": invitation.expires_at,
         "created_at": invitation.created_at,
+        "all_cases": invitation.all_cases,
+        "case_names": invitation.case_names,
     }
 
 
@@ -356,17 +363,37 @@ def save_case_scope(program_id, user, expert_id, data):
     program = managed_program(program_id, user, lock=True)
     check_revision(program, data["revision"])
     expert = get_object_or_404(program.experts.filter(user__is_active=True), pk=expert_id)
+    scope = validated_case_scope(program, data)
+    ExpertCaseScope.objects.update_or_create(
+        partner_program=program, expert=expert, defaults=scope
+    )
+    return workspace_data(program)
+
+
+def validated_case_scope(program, data, *, require_selection=False):
     names = data["case_names"]
     if any(name is not None and name not in program_cases(program) for name in names):
         raise ValidationError("Выберите кейсы этой программы.")
-    ExpertCaseScope.objects.update_or_create(
-        partner_program=program,
-        expert=expert,
-        defaults={
-            "all_cases": data["all_cases"],
-            "case_names": list(dict.fromkeys(names)),
-        },
-    )
+    if require_selection and not data["all_cases"] and not names:
+        raise ValidationError("Выберите хотя бы один кейс или все кейсы.")
+    return {
+        "all_cases": data["all_cases"],
+        "case_names": [] if data["all_cases"] else list(dict.fromkeys(names)),
+    }
+
+
+@transaction.atomic
+def save_invitation_case_scope(program_id, user, invitation_id, data):
+    program = managed_program(program_id, user, lock=True)
+    check_revision(program, data["revision"])
+    invitation = get_object_or_404(program.expert_invitations, pk=invitation_id)
+    if invitation.status == "accepted":
+        raise WorkspaceConflict(
+            "already_accepted", "Приглашение уже принято. Обновите список экспертов."
+        )
+    scope = validated_case_scope(program, data, require_selection=True)
+    invitation.all_cases, invitation.case_names = scope["all_cases"], scope["case_names"]
+    invitation.save(update_fields=["all_cases", "case_names", "updated_at"])
     return workspace_data(program)
 
 
@@ -445,12 +472,17 @@ def token_invitation(token, *, lock=False, allow_accepted=False):
 
 
 @transaction.atomic
-def invite(program_id, user, email, *, invitation_id=None):
+def invite(program_id, user, email, *, invitation_id=None, scope=None):
     program = managed_program(program_id, user, lock=True)
     email = email.strip().lower()
     if program.experts.filter(user__email__iexact=email).exists():
         raise WorkspaceConflict("already_expert", "Этот эксперт уже в программе.")
     if invitation_id is None:
+        if scope is None:
+            if program_cases(program):
+                raise ValidationError("Выберите кейсы эксперта перед приглашением.")
+            scope = {"all_cases": True, "case_names": []}
+        scope = validated_case_scope(program, scope, require_selection=True)
         previous = program.expert_invitations.filter(
             email=email, status="pending"
         ).first()
@@ -462,7 +494,7 @@ def invite(program_id, user, email, *, invitation_id=None):
             previous.status = "revoked"
             previous.save(update_fields=["status", "updated_at"])
         invitation = ExpertInvitation(
-            partner_program=program, email=email, invited_by=user
+            partner_program=program, email=email, invited_by=user, **scope
         )
     else:
         invitation = get_object_or_404(program.expert_invitations, pk=invitation_id)
@@ -526,6 +558,11 @@ def accept_invitation(invitation, user):
         raise InvitationGone()
     expert, _ = Expert.objects.get_or_create(user=user)
     expert.programs.add(invitation.partner_program)
+    ExpertCaseScope.objects.update_or_create(
+        partner_program=invitation.partner_program,
+        expert=expert,
+        defaults={"all_cases": invitation.all_cases, "case_names": invitation.case_names},
+    )
     invitation.status = "accepted"
     invitation.accepted_by = user
     invitation.save(update_fields=["status", "accepted_by", "updated_at"])
