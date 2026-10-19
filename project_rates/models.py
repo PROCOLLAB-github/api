@@ -305,3 +305,26 @@ class ExpertInvitation(models.Model):
             )
         ]
         indexes = [models.Index(fields=["email", "status"])]
+
+
+class ExpertJoinedNotification(models.Model):
+    """One durable organizer receipt for an authenticated invitation acceptance."""
+
+    invitation = models.ForeignKey(
+        ExpertInvitation, on_delete=models.CASCADE, related_name="joined_notifications"
+    )
+    recipient = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="expert_joined_notifications"
+    )
+    expert_name = models.CharField(max_length=800)
+    expert_email = models.EmailField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    read_at = models.DateTimeField(null=True, blank=True)
+    emailed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["invitation", "recipient"], name="unique_expert_joined_recipient"
+            )
+        ]

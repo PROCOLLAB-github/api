@@ -1,6 +1,7 @@
 """Панель организатора поверх существующей модели программ."""
 
 from django.db import transaction
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import serializers, status
@@ -11,7 +12,7 @@ from rest_framework.views import APIView
 from partner_programs.models import PartnerProgramMaterial
 from partner_programs.pagination import ProgramAttentionPagination
 from partner_programs.serializers.management import (
-    ManagementListQuery,
+    ManagementParticipantQuery,
     ManagementProjectQuery,
     ManagementSettingsSerializer,
     ManagementMaterialWrite,
@@ -37,6 +38,11 @@ def conflict(code, detail):
 
 class ManagementBase(APIView):
     permission_classes = [IsAuthenticated]
+
+    def finalize_response(self, request, response, *args, **kwargs):
+        response = super().finalize_response(request, response, *args, **kwargs)
+        response["Cache-Control"] = "private, no-store"
+        return response
 
 
 class ManagementView(ManagementBase):
@@ -71,13 +77,48 @@ class ManagementCriteriaView(ManagementBase):
 class ManagementParticipantsView(ManagementBase):
     def get(self, request, pk):
         program = managed_program(pk, request.user)
-        query = ManagementListQuery(data=request.query_params)
+        query = ManagementParticipantQuery(data=request.query_params)
         query.is_valid(raise_exception=True)
         paginator = ProgramAttentionPagination(query.validated_data)
         page = paginator.paginate_queryset(
-            participant_rows(program, query.validated_data["search"]), request, view=self
+            participant_rows(
+                program, query.validated_data["search"], query.validated_data
+            ),
+            request,
+            view=self,
         )
-        return paginator.get_paginated_response([participant_data(p) for p in page])
+        response = paginator.get_paginated_response([participant_data(p) for p in page])
+        all_rows = participant_rows(program)
+        response.data.update(
+            total_count=all_rows.count(),
+            region_options=list(
+                all_rows.exclude(participant_region="")
+                .order_by("participant_region")
+                .values_list("participant_region", flat=True)
+                .distinct()
+            ),
+        )
+        return response
+
+
+class ManagementParticipantsExportView(ManagementBase):
+    def get(self, request, pk):
+        from partner_programs.services.participants_excel import export_participants
+
+        program = managed_program(pk, request.user)
+        query = ManagementParticipantQuery(data=request.query_params)
+        query.is_valid(raise_exception=True)
+        rows = participant_rows(
+            program, query.validated_data["search"], query.validated_data
+        )
+        response = HttpResponse(
+            export_participants(rows),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        response[
+            "Content-Disposition"
+        ] = f'attachment; filename="program-{pk}-participants.xlsx"'
+        return response
 
 
 class ManagementProjectsView(ManagementBase):
