@@ -3,7 +3,7 @@ from datetime import timedelta
 from unittest.mock import patch
 
 from django.core import mail
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -12,6 +12,16 @@ from project_rates.tests.helpers import create_rate_program, create_rate_user
 from users.models import CustomUser, Expert
 
 
+@override_settings(
+    EXPERT_WORKSPACE_FRONTEND_URL="https://dev.procollab.ru",
+    EMAIL_USER="no-reply@example.com",
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+    CELERY_TASK_ALWAYS_EAGER=True,
+    CELERY_TASK_EAGER_PROPAGATES=True,
+    CELERY_BROKER_URL="memory://",
+    CELERY_RESULT_BACKEND="cache+memory://",
+    PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"],
+)
 class OrganizersApiTests(TestCase):
     @classmethod
     def setUpTestData(cls):

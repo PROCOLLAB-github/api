@@ -3,7 +3,7 @@ from datetime import timedelta
 from threading import Barrier
 
 from django.db import connections
-from django.test import TransactionTestCase, skipUnlessDBFeature
+from django.test import TransactionTestCase, override_settings, skipUnlessDBFeature
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -13,6 +13,7 @@ from project_rates.tests.helpers import create_rate_program, create_rate_user
 from project_rates.workspace import digest
 
 
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
 @skipUnlessDBFeature("has_select_for_update")
 class OrganizerConcurrencyTests(TransactionTestCase):
     def setUp(self):
