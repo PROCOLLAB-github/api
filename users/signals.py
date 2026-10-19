@@ -74,6 +74,33 @@ def password_reset_token_created(sender, instance, reset_password_token, *args, 
                     }
                 )
             )
+    organizer_token = getattr(getattr(instance, "request", None), "data", {}).get(
+        "organizer_invitation_token"
+    )
+    if organizer_token:
+        from partner_programs.services.organizers import token_invitation
+        from rest_framework.exceptions import APIException
+        from django.http import Http404
+        from urllib.parse import urlencode
+
+        try:
+            invitation = token_invitation(organizer_token, allow_accepted=True)
+        except (APIException, Http404):
+            invitation = None
+        if (
+            invitation
+            and invitation.email.lower() == reset_password_token.user.email.lower()
+        ):
+            reset_password_url = (
+                settings.EXPERT_WORKSPACE_FRONTEND_URL.rstrip("/")
+                + "/organizer-password-reset/?"
+                + urlencode(
+                    {
+                        "token": reset_password_token.key,
+                        "organizer_invitation": organizer_token,
+                    }
+                )
+            )
     context = {
         "user": reset_password_token.user,
         "email": reset_password_token.user.email,

@@ -10,6 +10,51 @@ from projects.models import Project
 User = get_user_model()
 
 
+class OrganizerInvitation(models.Model):
+    """Program management invitation, independent of expert membership."""
+
+    partner_program = models.ForeignKey(
+        "PartnerProgram", on_delete=models.CASCADE, related_name="organizer_invitations"
+    )
+    email = models.EmailField()
+    token_digest = models.CharField(max_length=64, unique=True)
+    status = models.CharField(
+        max_length=12,
+        default="pending",
+        choices=[(v, v) for v in ("pending", "accepted", "revoked")],
+    )
+    delivery_status = models.CharField(
+        max_length=12,
+        default="queued",
+        choices=[(v, v) for v in ("queued", "sent", "failed")],
+    )
+    invited_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="sent_organizer_invitations",
+    )
+    accepted_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="accepted_organizer_invitations",
+    )
+    expires_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["partner_program", "email"],
+                condition=models.Q(status="pending"),
+                name="unique_pending_org_program_email",
+            )
+        ]
+        indexes = [models.Index(fields=["email", "status"])]
+
+
 class PartnerProgram(models.Model):
     """
     PartnerProgram model
