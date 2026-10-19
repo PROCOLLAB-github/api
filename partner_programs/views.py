@@ -108,7 +108,9 @@ User = get_user_model()
 
 
 class PartnerProgramList(generics.ListCreateAPIView):
-    queryset = PartnerProgram.objects.filter(draft=False)
+    queryset = PartnerProgram.objects.filter(draft=False).select_related(
+        "registration_config"
+    )
     serializer_class = PartnerProgramListSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     pagination_class = PartnerProgramPagination
@@ -139,11 +141,15 @@ class PartnerProgramList(generics.ListCreateAPIView):
 
 
 class PartnerProgramDetail(generics.RetrieveAPIView):
-    queryset = PartnerProgram.objects.prefetch_related(
-        "materials",
-        "managers",
-        "courses",
-    ).all()
+    queryset = (
+        PartnerProgram.objects.select_related("registration_config")
+        .prefetch_related(
+            "materials",
+            "managers",
+            "courses",
+        )
+        .all()
+    )
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     serializer_class = PartnerProgramForUnregisteredUserSerializer
 

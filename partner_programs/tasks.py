@@ -6,6 +6,48 @@ from partner_programs.services import publish_finished_program_projects
 logger = logging.getLogger(__name__)
 
 
+@app.task(autoretry_for=(Exception,), retry_backoff=True, max_retries=3)
+def send_program_registration_confirmation(pending_id, generation):
+    from django.conf import settings
+    from django.core.mail import EmailMultiAlternatives
+    from django.template.loader import render_to_string
+    from urllib.parse import urlencode
+    from partner_programs.models import PendingProgramRegistration
+    from partner_programs.services.native_registration import (
+        confirmation_token,
+        frontend_url,
+    )
+
+    rows = PendingProgramRegistration.objects.filter(
+        pk=pending_id, generation=generation, confirmed_at__isnull=True
+    )
+    pending = rows.select_related("program", "user").first()
+    if not pending:
+        return
+    context = {
+        "program_name": pending.program.name,
+        "first_name": pending.user.first_name,
+        "confirmation_url": f"{frontend_url()}/program-registration/{pending.program_id}#"
+        + urlencode({"confirmation": confirmation_token(pending)}),
+    }
+    try:
+        message = EmailMultiAlternatives(
+            "Подтвердите регистрацию в программе | PROCOLLAB",
+            render_to_string("email/program_registration.txt", context),
+            settings.EMAIL_USER,
+            [pending.user.email],
+        )
+        message.attach_alternative(
+            render_to_string("email/program_registration.html", context), "text/html"
+        )
+        if not message.send():
+            raise RuntimeError("Email delivery did not complete")
+        rows.update(delivery_status="sent")
+    except Exception:
+        rows.update(delivery_status="failed")
+        raise
+
+
 @app.task
 def publish_finished_program_projects_task() -> int:
     updated_count = publish_finished_program_projects()

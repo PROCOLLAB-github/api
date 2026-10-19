@@ -6,6 +6,10 @@ from django.utils import timezone
 from files.models import UserFile
 from partner_programs.constants import get_default_data_schema
 from projects.models import Project
+from partner_programs.registration_models import (  # noqa: F401
+    ProgramRegistration,
+    PendingProgramRegistration,
+)
 
 User = get_user_model()
 
@@ -294,6 +298,11 @@ class PartnerProgramUserProfile(models.Model):
         datetime_created: A DateTimeField indicating date of creation.
         datetime_updated: A DateTimeField indicating date of update.
     """
+
+    registration_schema = models.JSONField(default=dict, blank=True, editable=False)
+    registration_region = models.CharField(
+        max_length=255, blank=True, default="", editable=False
+    )
 
     user = models.ForeignKey(
         User,

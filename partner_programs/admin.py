@@ -1,4 +1,5 @@
 import re
+from partner_programs.registration_models import ProgramRegistration
 
 import tablib
 from django import forms
@@ -357,3 +358,26 @@ class PartnerProgramFieldAdmin(admin.ModelAdmin):
     )
     list_filter = ("partner_program",)
     search_fields = ("name", "label", "help_text")
+
+
+@admin.register(ProgramRegistration)
+class ProgramRegistrationAdmin(admin.ModelAdmin):
+    list_display = ("program", "external_status", "requested_at", "published_at")
+    list_filter = ("external_status",)
+    search_fields = ("program__name", "external_url")
+    readonly_fields = (
+        "program",
+        "draft",
+        "published",
+        "revision",
+        "published_version",
+        "published_at",
+        "requested_by",
+        "requested_at",
+    )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

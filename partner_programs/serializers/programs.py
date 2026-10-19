@@ -28,6 +28,20 @@ class PartnerProgramListSerializer(serializers.ModelSerializer):
     )
     is_user_liked = serializers.SerializerMethodField(method_name="get_is_user_liked")
     is_user_member = serializers.SerializerMethodField(method_name="get_is_user_member")
+    registration_managed = serializers.SerializerMethodField()
+
+    def get_registration_managed(self, program):
+        from partner_programs.services.native_registration import config_for
+
+        config = config_for(program)
+        return bool(config and config.published)
+
+    def to_representation(self, program):
+        from partner_programs.services.native_registration import public_link
+
+        data = super().to_representation(program)
+        data["registration_link"] = public_link(program)
+        return data
 
     def _get_user(self):
         user = self.context.get("user")
@@ -73,6 +87,7 @@ class PartnerProgramListSerializer(serializers.ModelSerializer):
             "image_framing",
             "short_description",
             "registration_link",
+            "registration_managed",
             "datetime_registration_ends",
             "datetime_project_submission_ends",
             "datetime_evaluation_ends",
@@ -99,6 +114,20 @@ class PartnerProgramBaseSerializerMixin(serializers.ModelSerializer):
     is_user_expert = serializers.SerializerMethodField()
     pending_expert_invitation_id = serializers.SerializerMethodField()
     courses = serializers.SerializerMethodField()
+    registration_managed = serializers.SerializerMethodField()
+
+    def get_registration_managed(self, program):
+        from partner_programs.services.native_registration import config_for
+
+        config = config_for(program)
+        return bool(config and config.published)
+
+    def to_representation(self, program):
+        from partner_programs.services.native_registration import public_link
+
+        data = super().to_representation(program)
+        data["registration_link"] = public_link(program)
+        return data
 
     def get_materials(self, program: PartnerProgram):
         materials = program.materials.all()
@@ -210,6 +239,7 @@ class PartnerProgramForMemberSerializer(PartnerProgramBaseSerializerMixin):
             "image_framing",
             "presentation_address",
             "registration_link",
+            "registration_managed",
             "views_count",
             "datetime_registration_ends",
             "datetime_project_submission_ends",
@@ -243,6 +273,7 @@ class PartnerProgramForUnregisteredUserSerializer(PartnerProgramBaseSerializerMi
             "advertisement_image_address",
             "presentation_address",
             "registration_link",
+            "registration_managed",
             "datetime_registration_ends",
             "datetime_project_submission_ends",
             "datetime_evaluation_ends",
