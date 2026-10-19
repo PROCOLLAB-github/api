@@ -1,0 +1,85 @@
+name: DEV Results disk diagnostics and build cache recovery
+
+on:
+  push:
+    branches: [dev]
+    paths: [.github/workflows/dev-results-disk-recovery.yml]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Read-only inspection or unused build cache only
+        type: choice
+        options: [inspect, cache-only]
+        default: inspect
+        required: true
+      confirmation:
+        description: RESULTS_DEV_CACHE
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: api-deploy-dev
+  cancel-in-progress: false
+
+jobs:
+  recovery:
+    if: github.ref == 'refs/heads/dev' && (github.event_name == 'push' || (inputs.confirmation == 'RESULTS_DEV_CACHE' && (inputs.mode == 'inspect' || inputs.mode == 'cache-only')))
+    environment: dev
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install existing verified SSH transport
+        run: npm install --prefix "$RUNNER_TEMP/dev-migration-ssh" --ignore-scripts --no-package-lock --no-audit --no-fund ssh2@1.16.0
+      - name: Inspect DEV or remove unused build cache only
+        env:
+          NODE_PATH: ${{ runner.temp }}/dev-migration-ssh/node_modules
+          DEV_SERVER_HOST: ${{ secrets.DEV_SERVER_HOST }}
+          DEV_SERVER_USER: ${{ secrets.DEV_SERVER_USER }}
+          DEV_SERVER_PASSWORD: ${{ secrets.DEV_SERVER_PASSWORD }}
+          DEV_SSH_HOST_KEY_SHA256: ${{ vars.DEV_SSH_HOST_KEY_SHA256 }}
+          DEV_DEPLOY_SCRIPT: |
+            set +x
+            set -euo pipefail
+            exec 2>&1
+            test "$(id -u)" = 0
+            test "$(readlink -f /root/api)" = /root/api
+            git -C /root/api merge-base --is-ancestor beef71645567128398d0afa5a2eb80dc6bc8dac7 HEAD
+            grep -Eq 'server_name[[:space:]]+dev\.procollab\.ru;' /etc/nginx/sites-enabled/dev.procollab.ru
+            container=$(docker ps -q --no-trunc --filter 'label=com.docker.compose.project.working_dir=/root/api' --filter 'label=com.docker.compose.service=web')
+            test -n "$container"
+            test "$(docker inspect -f '{{.Image}}' "$container")" = sha256:471421701ce5fe4741eded480dfd94aa628398f307791fd78c59547d768a1e81
+            mode='${{ github.event_name == 'push' && 'inspect' || inputs.mode }}'
+            case "$mode" in inspect|cache-only) ;; *) exit 1;; esac
+            containers() {
+              for id in $(docker ps -aq --no-trunc); do
+                docker inspect -f '{{.Id}} {{.Image}} {{.State.Status}} {{.State.StartedAt}} {{.RestartCount}}' "$id"
+              done | LC_ALL=C sort | sha256sum
+            }
+            images() { docker image ls -a --no-trunc --digests --format '{{.ID}} {{.Repository}} {{.Tag}} {{.Digest}}' | LC_ALL=C sort | sha256sum; }
+            volumes() { docker volume ls --format '{{.Driver}} {{.Name}}' | LC_ALL=C sort | sha256sum; }
+            before_containers=$(containers)
+            before_images=$(images)
+            before_volumes=$(volumes)
+            printf 'DISK_BEFORE\n'
+            df -h / /home/front/app
+            df -i /
+            docker system df
+            du -xsh /var/lib/docker /var/log /root/api /home/front/app
+            if test "$mode" = cache-only; then
+              docker builder prune --all --force
+            fi
+            test "$(containers)" = "$before_containers"
+            test "$(images)" = "$before_images"
+            test "$(volumes)" = "$before_volumes"
+            git -C /root/api merge-base --is-ancestor beef71645567128398d0afa5a2eb80dc6bc8dac7 HEAD
+            printf 'CONTAINERS_UNCHANGED=true\nIMAGES_UNCHANGED=true\nVOLUMES_UNCHANGED=true\nDISK_AFTER\n'
+            df -h /
+            docker system df
+        run: node scripts/dev_ci_ssh.cjs
