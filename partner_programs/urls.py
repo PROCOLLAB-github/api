@@ -54,9 +54,24 @@ from project_rates.workspace_views import (
     EvaluatorsView,
 )
 
+from partner_programs.results_views import (
+    ManagementResultsView,
+    ManagementResultsExportView,
+)
+
 app_name = "partner_programs"
 
 urlpatterns = [
+    path(
+        "<int:pk>/management/results/",
+        ManagementResultsView.as_view(),
+        name="management-results",
+    ),
+    path(
+        "<int:pk>/management/results/export/",
+        ManagementResultsExportView.as_view(),
+        name="management-results-export",
+    ),
     path("<int:pk>/management/experts/", ExpertsView.as_view()),
     path(
         "<int:pk>/management/experts/<int:expert_id>/cases/",
