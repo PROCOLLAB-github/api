@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 from openpyxl import Workbook, load_workbook
 from rest_framework.test import APIClient
@@ -24,6 +24,18 @@ from partner_programs.services.native_registration import confirmation_token
 from users.models import CustomUser
 
 
+TEST_REGISTRATION_SETTINGS = {
+    "EMAIL_BACKEND": "django.core.mail.backends.locmem.EmailBackend",
+    "EMAIL_USER": "no-reply@example.test",
+    "CELERY_TASK_ALWAYS_EAGER": True,
+    "CELERY_TASK_EAGER_PROPAGATES": True,
+    "CELERY_BROKER_URL": "memory://",
+    "CELERY_RESULT_BACKEND": "cache+memory://",
+    "PASSWORD_HASHERS": ["django.contrib.auth.hashers.MD5PasswordHasher"],
+}
+
+
+@override_settings(**TEST_REGISTRATION_SETTINGS)
 class NativeRegistrationTests(TestCase):
     def setUp(self):
         from django.core.cache import cache
@@ -471,6 +483,7 @@ class NativeRegistrationTests(TestCase):
 
 
 @skipUnlessDBFeature("has_select_for_update")
+@override_settings(**TEST_REGISTRATION_SETTINGS)
 class NativeRegistrationConcurrencyTests(TransactionTestCase):
     setUp = NativeRegistrationTests.setUp
     data = NativeRegistrationTests.data
