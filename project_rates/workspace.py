@@ -187,6 +187,12 @@ def invitation_data(invitation):
         "delivery_status": invitation.delivery_status,
         "expires_at": invitation.expires_at,
         "created_at": invitation.created_at,
+    }
+
+
+def expert_invitation_data(invitation):
+    return {
+        **invitation_data(invitation),
         "all_cases": invitation.all_cases,
         "case_names": invitation.case_names,
     }
@@ -274,7 +280,7 @@ def workspace_data(program):
         user = invited_account(matches)
         rows.append(
             {
-                **invitation_data(invitation),
+                **expert_invitation_data(invitation),
                 "id": f"invite-{invitation.pk}",
                 "invitation_id": invitation.pk,
                 "name": person_name(user) if user else None,
@@ -526,7 +532,7 @@ def invite(program_id, user, email, *, invitation_id=None, scope=None):
             ).update(delivery_status="failed")
 
     transaction.on_commit(enqueue)
-    return invitation_data(invitation)
+    return expert_invitation_data(invitation)
 
 
 @transaction.atomic

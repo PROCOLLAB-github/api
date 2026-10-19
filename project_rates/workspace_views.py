@@ -24,6 +24,9 @@ class InvitationThrottle(AnonRateThrottle):
 
 class InvitationEmail(serializers.Serializer):
     email = serializers.EmailField(max_length=254)
+
+
+class ExpertInvitationWrite(InvitationEmail):
     all_cases = serializers.BooleanField(required=False)
     case_names = serializers.ListField(
         child=serializers.CharField(allow_null=True, max_length=1000),
@@ -104,7 +107,7 @@ class ExpertsView(PrivateView):
         return Response(service.workspace_data(managed_program(pk, request.user)))
 
     def post(self, request, pk):
-        data = validated(InvitationEmail, request.data)
+        data = validated(ExpertInvitationWrite, request.data)
         scope = (
             {"all_cases": data["all_cases"], "case_names": data["case_names"]}
             if "all_cases" in data
@@ -268,7 +271,7 @@ class PublicInvitationView(PrivateView):
         account = service.invited_account(accounts)
         return Response(
             {
-                **service.invitation_data(invitation),
+                **service.expert_invitation_data(invitation),
                 "program": service.program_card(invitation.partner_program),
                 "account_exists": bool(accounts),
                 "login_email": account.email if account else invitation.email,
