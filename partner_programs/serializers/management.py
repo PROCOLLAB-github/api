@@ -64,7 +64,7 @@ class ManagementListQuery(StrictFieldsMixin, serializers.Serializer):
     search = serializers.CharField(
         required=False, allow_blank=True, max_length=200, default=""
     )
-    limit = serializers.IntegerField(min_value=1, max_value=100, default=25)
+    limit = serializers.IntegerField(min_value=1, max_value=100, default=20)
     offset = serializers.IntegerField(min_value=0, default=0)
 
 
@@ -102,6 +102,9 @@ class ManagementParticipantQuery(ManagementListQuery):
 
 
 class ManagementProjectQuery(ManagementListQuery):
+    evaluation = serializers.ChoiceField(
+        choices=("all", "evaluated", "not_evaluated"), default="all"
+    )
     submission = serializers.ChoiceField(
         choices=("all", "submitted", "not_submitted"), default="all"
     )
@@ -121,6 +124,19 @@ class ManagementProjectQuery(ManagementListQuery):
                 {"case_name": "Кейс задан без selected scope."}
             )
         return attrs
+
+
+class ManagementIdsWrite(StrictFieldsMixin, serializers.Serializer):
+    ids = serializers.ListField(
+        child=serializers.IntegerField(min_value=1), allow_empty=False, max_length=10000
+    )
+
+    def validate_ids(self, values):
+        return sorted(set(values))
+
+
+class ManagementRemovalWrite(ManagementIdsWrite):
+    preview_token = serializers.CharField(max_length=200000)
 
 
 BASIC_FIELDS = (

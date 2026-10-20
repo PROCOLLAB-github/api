@@ -16,6 +16,8 @@ from partner_programs.serializers.management import (
     ManagementProjectQuery,
     ManagementSettingsSerializer,
     ManagementMaterialWrite,
+    ManagementIdsWrite,
+    ManagementRemovalWrite,
 )
 from partner_programs.services.case_fields import get_program_case_field
 from partner_programs.services.case_analytics import project_case_links
@@ -103,6 +105,27 @@ class ManagementParticipantsView(ManagementBase):
 
 
 class ManagementParticipantsExportView(ManagementBase):
+    def post(self, request, pk):
+        from partner_programs.services.participants_excel import export_participants
+
+        program = managed_program(pk, request.user)
+        body = ManagementIdsWrite(data=request.data)
+        body.is_valid(raise_exception=True)
+        ids = body.validated_data["ids"]
+        rows = participant_rows(program).filter(pk__in=ids)
+        if rows.count() != len(ids):
+            return conflict(
+                "selection_changed", "Состав участников изменился. Обновите выбор."
+            )
+        response = HttpResponse(
+            export_participants(rows),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        response[
+            "Content-Disposition"
+        ] = f'attachment; filename="program-{pk}-participants.xlsx"'
+        return response
+
     def get(self, request, pk):
         from partner_programs.services.participants_excel import export_participants
 
@@ -120,6 +143,75 @@ class ManagementParticipantsExportView(ManagementBase):
             "Content-Disposition"
         ] = f'attachment; filename="program-{pk}-participants.xlsx"'
         return response
+
+
+class ManagementSelectionView(ManagementBase):
+    def get(self, request, pk, kind):
+        program = managed_program(pk, request.user)
+        field = get_program_case_field(program)
+        schema = (
+            ManagementParticipantQuery
+            if kind == "participants"
+            else ManagementProjectQuery
+        )
+        query = schema(
+            data=request.query_params,
+            context={"case_options": field.get_options_list() if field else []},
+        )
+        query.is_valid(raise_exception=True)
+        if kind == "participants":
+            ids = list(
+                participant_rows(
+                    program, query.validated_data["search"], query.validated_data
+                ).values_list("pk", flat=True)
+            )
+            return Response({"ids": ids})
+        rows = management_project_rows(program, query.validated_data, field)
+        projects = list(
+            rows.values("id", "project_id", "submitted", "case_name", "project__draft")
+        )
+        return Response(
+            {
+                "ids": [p["id"] for p in projects],
+                "projects": [
+                    {
+                        "id": p["id"],
+                        "project_id": p["project_id"],
+                        "submitted": p["submitted"],
+                        "case_name": p["case_name"],
+                        "draft": p["project__draft"],
+                    }
+                    for p in projects
+                ],
+            }
+        )
+
+
+class ManagementParticipantsRemovalPreviewView(ManagementBase):
+    def post(self, request, pk):
+        from partner_programs.services.participant_removal import preview_removal
+
+        managed_program(pk, request.user)
+        body = ManagementIdsWrite(data=request.data)
+        body.is_valid(raise_exception=True)
+        return Response(preview_removal(pk, request.user, body.validated_data["ids"]))
+
+
+class ManagementParticipantsRemovalView(ManagementBase):
+    def post(self, request, pk):
+        from partner_programs.services.participant_removal import remove_participants
+
+        managed_program(pk, request.user)
+        body = ManagementRemovalWrite(data=request.data)
+        body.is_valid(raise_exception=True)
+        return Response(
+            remove_participants(
+                pk,
+                request.user,
+                body.validated_data["ids"],
+                body.validated_data["preview_token"],
+            )
+        )
 
 
 class ManagementProjectsView(ManagementBase):

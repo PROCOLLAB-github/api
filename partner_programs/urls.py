@@ -51,6 +51,9 @@ from partner_programs.management_views import (
     ManagementCriteriaView,
     ManagementParticipantsView,
     ManagementParticipantsExportView,
+    ManagementSelectionView,
+    ManagementParticipantsRemovalPreviewView,
+    ManagementParticipantsRemovalView,
     ManagementProjectsView,
     ManagementTeamView,
     ManagementEvaluationView,
@@ -61,6 +64,7 @@ from partner_programs.management_views import (
 
 from project_rates.workspace_views import (
     ExpertsView,
+    ExpertsBulkView,
     InvitationActionView,
     ExpertAssignmentsView,
     ExpertCaseScopeView,
@@ -112,6 +116,7 @@ urlpatterns = [
         name="management-results-export",
     ),
     path("<int:pk>/management/experts/", ExpertsView.as_view()),
+    path("<int:pk>/management/experts/bulk/", ExpertsBulkView.as_view()),
     path(
         "<int:pk>/management/experts/<int:expert_id>/cases/",
         ExpertCaseScopeView.as_view(),
@@ -139,6 +144,24 @@ urlpatterns = [
         name="management-project-form",
     ),
     path("<int:pk>/management/", ManagementView.as_view(), name="management"),
+    path(
+        "<int:pk>/management/participants/selection/",
+        ManagementSelectionView.as_view(),
+        {"kind": "participants"},
+    ),
+    path(
+        "<int:pk>/management/participants/remove-preview/",
+        ManagementParticipantsRemovalPreviewView.as_view(),
+    ),
+    path(
+        "<int:pk>/management/participants/remove/",
+        ManagementParticipantsRemovalView.as_view(),
+    ),
+    path(
+        "<int:pk>/management/projects/selection/",
+        ManagementSelectionView.as_view(),
+        {"kind": "projects"},
+    ),
     path(
         "<int:pk>/management/participants/export/",
         ManagementParticipantsExportView.as_view(),
