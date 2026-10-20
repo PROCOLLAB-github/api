@@ -15,7 +15,9 @@ def send_registration_connection_notification(notification_id):
 
 @app.task
 def dispatch_registration_connection_notifications():
-    from partner_programs.services.registration_notifications import dispatch_pending_notifications
+    from partner_programs.services.registration_notifications import (
+        dispatch_pending_notifications,
+    )
 
     return dispatch_pending_notifications()
 
@@ -60,6 +62,20 @@ def send_program_registration_confirmation(pending_id, generation):
     except Exception:
         rows.update(delivery_status="failed")
         raise
+
+
+@app.task(autoretry_for=(Exception,), retry_backoff=True, max_retries=3)
+def send_attention_reminder(notification_id):
+    from partner_programs.services.attention_actions import deliver_reminder
+
+    deliver_reminder(notification_id)
+
+
+@app.task
+def dispatch_attention_reminders(batch_id=None):
+    from partner_programs.services.attention_actions import dispatch_pending_reminders
+
+    return dispatch_pending_reminders(batch_id)
 
 
 @app.task
