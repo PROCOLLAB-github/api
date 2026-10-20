@@ -38,7 +38,7 @@ def require_can_apply_project_to_program(
     user: User,
 ) -> None:
     if not program.is_project_submission_open():
-        raise ValidationError("Срок подачи проектов в программу завершён.")
+        raise ValidationError("Срок подачи проектов в программу завершен.")
 
     if program.is_manager(user):
         return

@@ -156,7 +156,7 @@ def save_form(program_id, user, payload):
         if pk not in ids:
             if field.values.filter(value_text__regex=r"\S").exists():
                 raise ValidationError(
-                    {"fields": "Нельзя удалить поле с сохранёнными ответами."}
+                    {"fields": "Нельзя удалить поле с сохраненными ответами."}
                 )
             field.delete()
     for item in data["fields"]:

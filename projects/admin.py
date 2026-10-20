@@ -28,8 +28,8 @@ class ProjectCompanyInline(admin.TabularInline):
     extra = 1
     autocomplete_fields = ("company", "decision_maker")
     fields = ("company", "contribution", "decision_maker")
-    verbose_name = "Партнёр проекта"
-    verbose_name_plural = "Партнёры проекта"
+    verbose_name = "Партнер проекта"
+    verbose_name_plural = "Партнеры проекта"
 
 
 class ResourceInline(admin.StackedInline):

@@ -60,7 +60,7 @@ class ExpertNotificationsView(APIView):
                     {
                         "id": row.pk,
                         "text": (
-                            f"Эксперт {row.expert_name} ({row.expert_email}) вошёл на платформу "
+                            f"Эксперт {row.expert_name} ({row.expert_email}) вошел на платформу "
                             f"и принял приглашение в программу «{row.invitation.partner_program.name}»."
                         ),
                         "program_id": row.invitation.partner_program_id,

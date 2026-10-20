@@ -265,7 +265,7 @@ class IsProjectLeaderOrReadOnly(BasePermission):
 
 
 class CanBindProjectToProgram(BasePermission):
-    message = "Привязать проект к программе может только её участник (или менеджер)."
+    message = "Привязать проект к программе может только ее участник (или менеджер)."
 
     def has_permission(self, request, view):
         program_id = (request.data or {}).get("partner_program_id")
@@ -280,12 +280,12 @@ class CanBindProjectToProgram(BasePermission):
         submission_deadline = program.get_project_submission_deadline()
         if submission_deadline and submission_deadline < timezone.now():
             raise ValidationError(
-                {"partner_program_id": "Срок подачи проектов в программу завершён."}
+                {"partner_program_id": "Срок подачи проектов в программу завершен."}
             )
 
         if program.datetime_finished < timezone.now():
             raise ValidationError(
-                {"partner_program_id": "Нельзя выбрать завершённую программу."}
+                {"partner_program_id": "Нельзя выбрать завершенную программу."}
             )
 
         if program.is_manager(request.user):

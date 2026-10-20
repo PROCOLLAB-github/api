@@ -446,7 +446,7 @@ def save_project_experts(program_id, user, data):
                     if assignment.has_scores():
                         raise WorkspaceConflict(
                             "scores_protected",
-                            "Нельзя снять эксперта с сохранённой оценкой.",
+                            "Нельзя снять эксперта с сохраненной оценкой.",
                         )
                     removals.append(assignment.pk)
     check_assignment_limit(
@@ -700,7 +700,7 @@ def save_assignments(program_id, user, expert_id, data):
     )
     if protected - wanted:
         raise WorkspaceConflict(
-            "scores_protected", "Нельзя снять назначение с сохранёнными оценками."
+            "scores_protected", "Нельзя снять назначение с сохраненными оценками."
         )
     check_assignment_limit(program, [(pid, expert.pk) for pid in wanted - existing])
     program.project_expert_assignments.filter(

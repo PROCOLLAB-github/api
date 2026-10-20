@@ -127,7 +127,7 @@ def submit_program_project(link_id, user):
     if link.submitted:
         raise ValidationError({"detail": "Проект уже был сдан на проверку."})
     if not link.partner_program.is_project_submission_open():
-        raise ValidationError({"detail": "Срок подачи проектов в программу завершён."})
+        raise ValidationError({"detail": "Срок подачи проектов в программу завершен."})
     try:
         validate_case_before_submission(link)
     except DjangoValidationError as error:

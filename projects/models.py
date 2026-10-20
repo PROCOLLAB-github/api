@@ -519,7 +519,7 @@ class Resource(models.Model):
         null=True,
         blank=True,
         related_name="resources",
-        help_text="Если не указано — ресурс в поиске партнёра.",
+        help_text="Если не указано — ресурс в поиске партнера.",
     )
 
     class Meta:
@@ -536,7 +536,7 @@ class Resource(models.Model):
         return (
             self.partner_company.name
             if self.partner_company
-            else "в поиске партнёра для данного ресурса"
+            else "в поиске партнера для данного ресурса"
         )
 
     def clean(self):
@@ -552,8 +552,8 @@ class Resource(models.Model):
                 raise ValidationError(
                     {
                         "partner_company": (
-                            "Эта компания не является партнёром данного проекта. "
-                            "Сначала добавьте её в партнёры проекта."
+                            "Эта компания не является партнером данного проекта. "
+                            "Сначала добавьте ее в партнеры проекта."
                         )
                     }
                 )

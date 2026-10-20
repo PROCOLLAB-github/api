@@ -170,7 +170,7 @@ class ManagementSettingsSerializer(StrictFieldsMixin, serializers.ModelSerialize
     def validate(self, attrs):
         editable = BASIC_FIELDS if self.context["section"] == "basic" else DATE_FIELDS
         if not any(key in attrs for key in editable):
-            raise serializers.ValidationError("Нет изменённых полей.")
+            raise serializers.ValidationError("Нет измененных полей.")
         return attrs
 
     class Meta:

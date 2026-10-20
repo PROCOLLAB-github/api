@@ -598,7 +598,7 @@ class ProjectsAwaitingEvaluationTests(AttentionAnalyticsTestCase):
         self.assignment(self.work())
         item = self.get(PROJECTS)["results"][0]
         self.assertEqual(item["reason"], "no_completed_evaluations")
-        self.assertEqual(item["reason_label"], "Нет завершённых оценок")
+        self.assertEqual(item["reason_label"], "Нет завершенных оценок")
         self.assertEqual(item["assignments_total"], 1)
         self.assertEqual(item["assignments_completed"], 0)
 

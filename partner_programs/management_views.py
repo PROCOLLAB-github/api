@@ -203,7 +203,7 @@ class ManagementSettingsView(ManagementBase):
         ):
             return conflict(
                 "reopen_confirmation_required",
-                "Изменение срока снова откроет приём или оценивание. Подтвердите сохранение.",
+                "Изменение срока снова откроет прием или оценивание. Подтвердите сохранение.",
             )
         program.save(update_fields=[*values, "datetime_updated"])
         return Response(management_data(program))
@@ -243,7 +243,7 @@ class ManagementMaterialDetailView(ManagementBase):
         if values.pop("expected_updated_at") != material.datetime_updated:
             return conflict(
                 "stale_material",
-                "Материал изменён другим организатором. Обновите список.",
+                "Материал изменен другим организатором. Обновите список.",
             )
         for key, value in values.items():
             setattr(material, key, value)
@@ -258,7 +258,7 @@ class ManagementMaterialDetailView(ManagementBase):
         if expected != material.datetime_updated:
             return conflict(
                 "stale_material",
-                "Материал изменён другим организатором. Обновите список.",
+                "Материал изменен другим организатором. Обновите список.",
             )
         # Удаляется только материал программы; исходный UserFile остаётся доступен владельцу.
         material.delete()

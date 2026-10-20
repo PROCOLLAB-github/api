@@ -328,7 +328,7 @@ def bind_project_to_program(*, project_id, program_id, actor, program_link_id=No
             or program.datetime_finished < timezone.now()
         ):
             raise TeamError(
-                "submission_closed", "Срок подачи проектов в программу завершён."
+                "submission_closed", "Срок подачи проектов в программу завершен."
             )
         if (
             not program.is_manager(actor)
@@ -345,7 +345,7 @@ def bind_project_to_program(*, project_id, program_id, actor, program_link_id=No
         if current_link.team_invites.exists():
             raise TeamError(
                 "program_context_in_use",
-                "Связь программы используется приглашениями; её нельзя удалить.",
+                "Связь программы используется приглашениями; ее нельзя удалить.",
             )
         PartnerProgramUserProfile.objects.filter(
             project=project, partner_program_id=current_link.partner_program_id

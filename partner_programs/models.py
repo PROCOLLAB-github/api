@@ -373,7 +373,7 @@ class PartnerProgramMaterial(models.Model):
         blank=True,
         null=True,
         verbose_name="Файл",
-        help_text="Если указан файл, ссылка берётся из него",
+        help_text="Если указан файл, ссылка берется из него",
     )
 
     datetime_created = models.DateTimeField(auto_now_add=True)
@@ -445,7 +445,7 @@ class PartnerProgramProject(models.Model):
                         "invalid_submission", "Программа не является конкурсной."
                     )
                 if not self.partner_program.is_project_submission_open():
-                    raise TeamError("submission_closed", "Срок подачи проектов завершён.")
+                    raise TeamError("submission_closed", "Срок подачи проектов завершен.")
                 team_policy.validate_submission_team(self.project, self)
                 from django.db import connection
                 from partner_programs.services.case_fields import (

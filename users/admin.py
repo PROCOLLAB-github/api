@@ -68,7 +68,7 @@ class UserLanguagesInline(admin.TabularInline):
     verbose_name_plural = "Знание языков"
 
 
-@admin.action(description="Сделать выбранных пользователей подтверждёнными")
+@admin.action(description="Сделать выбранных пользователей подтвержденными")
 def make_active(modeladmin, request, queryset):
     queryset.update(is_active=True, verification_date=now().date())
 

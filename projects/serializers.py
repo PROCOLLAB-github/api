@@ -211,7 +211,7 @@ class ResourceSerializer(serializers.ModelSerializer):
             if not exists:
                 raise serializers.ValidationError(
                     {
-                        "partner_company": "Эта компания не является партнёром данного проекта."
+                        "partner_company": "Эта компания не является партнером данного проекта."
                     }
                 )
         return attrs
@@ -523,7 +523,7 @@ class ProjectDuplicateRequestSerializer(serializers.Serializer):
             partner_program = PartnerProgram.objects.get(pk=partner_program_id)
         except PartnerProgram.DoesNotExist:
             raise serializers.ValidationError(
-                "Партнёрская программа с указанным ID не найдена."
+                "Партнерская программа с указанным ID не найдена."
             )
 
         exists = PartnerProgramProject.objects.filter(
@@ -532,7 +532,7 @@ class ProjectDuplicateRequestSerializer(serializers.Serializer):
 
         if exists:
             raise serializers.ValidationError(
-                f"Проект с именем '{project.name}' уже привязан к партнёрской программе '{partner_program.name}'."
+                f"Проект с именем '{project.name}' уже привязан к партнерской программе '{partner_program.name}'."
             )
 
         return data
