@@ -3,7 +3,7 @@
 from datetime import datetime, time
 from zoneinfo import ZoneInfo
 
-from django.db.models import Q, Value
+from django.db.models import F, Q, Value
 from django.db.models.functions import Coalesce, NullIf, Trim
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import PermissionDenied
@@ -108,8 +108,10 @@ def participant_rows(program, search="", query=None):
             rows = rows.filter(participant_region=query["region"])
         elif query["region_scope"] == "without_region":
             rows = rows.filter(participant_region="")
-        if query["activity"] == "never":
+        if query["activity"] in ("inactive", "never"):
             rows = rows.filter(user__last_activity__isnull=True)
+        elif query["activity"] == "active":
+            rows = rows.filter(user__last_activity__isnull=False)
         elif query["activity"] == "period":
             zone = ZoneInfo("Europe/Moscow")
             if query.get("activity_from"):
@@ -121,6 +123,15 @@ def participant_rows(program, search="", query=None):
             if query.get("activity_to"):
                 end = datetime.combine(query["activity_to"], time.max, zone)
                 rows = rows.filter(user__last_activity__lte=end)
+        order = query.get("order", "registration")
+        if order in ("activity_asc", "activity_desc"):
+            activity = F("user__last_activity")
+            rows = rows.order_by(
+                activity.asc(nulls_last=True)
+                if order == "activity_asc"
+                else activity.desc(nulls_last=True),
+                "pk",
+            )
     return rows
 
 

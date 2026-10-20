@@ -89,12 +89,74 @@ class ManagementParticipantsTests(TestCase):
             {"region_scope": "selected"},
             {"region_scope": "wrong"},
             {"region": "Москва"},
+            {"activity": "active", "activity_to": "2026-10-19"},
+            {"activity": "wrong"},
+            {"order": "user__email"},
         ]:
             for suffix in ("", "export/"):
                 with self.subTest(query=query, suffix=suffix):
                     self.assertEqual(
                         self.client.get(self.root + suffix, query).status_code, 400
                     )
+
+    def test_activity_presence_filters_match_selection_and_export(self):
+        selection = self.root + "selection/"
+        for mode, expected in [
+            ("active", self.rows[:4]),
+            ("inactive", self.rows[4:]),
+            ("never", self.rows[4:]),
+        ]:
+            with self.subTest(mode=mode):
+                query = {"activity": mode, "limit": 1, "offset": 1}
+                response = self.client.get(self.root, query)
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.data["count"], len(expected))
+                selected = self.client.get(selection, query)
+                self.assertEqual(selected.status_code, 200)
+                self.assertEqual(selected.data["ids"], [p.pk for p in expected])
+                sheet = load_workbook(
+                    BytesIO(self.client.get(self.root + "export/", query).content)
+                ).active
+                self.assertEqual(sheet.max_row, len(expected) + 1)
+                for row in range(2, sheet.max_row + 1):
+                    self.assertEqual(
+                        isinstance(sheet.cell(row, 6).value, datetime), mode == "active"
+                    )
+
+    def test_activity_sort_is_global_stable_and_nulls_always_last(self):
+        # Одинаковые даты сортируются по id, отсутствие активности идет в конце.
+        user = self.rows[3].user
+        user.last_activity = datetime.fromisoformat("2026-10-19T20:59:59+00:00")
+        user.save(update_fields=["last_activity"])
+        for order, indices in [
+            ("activity_asc", [0, 1, 3, 2, 4, 5]),
+            ("activity_desc", [2, 1, 3, 0, 4, 5]),
+        ]:
+            with self.subTest(order=order):
+                expected = [self.rows[i].pk for i in indices]
+                full = self.client.get(self.root, {"order": order})
+                self.assertEqual([p["id"] for p in full.data["results"]], expected)
+                page = self.client.get(
+                    self.root, {"order": order, "limit": 2, "offset": 2}
+                )
+                self.assertEqual([p["id"] for p in page.data["results"]], expected[2:4])
+                filtered = self.client.get(
+                    self.root,
+                    {"order": order, "region_scope": "selected", "region": "Москва"},
+                )
+                self.assertEqual(
+                    [p["id"] for p in filtered.data["results"]],
+                    [pk for pk in expected if pk in [p.pk for p in self.rows[:3]]],
+                )
+                sheet = load_workbook(
+                    BytesIO(
+                        self.client.get(self.root + "export/", {"order": order}).content
+                    )
+                ).active
+                self.assertEqual(
+                    [sheet.cell(i, 3).value for i in range(2, 8)],
+                    [self.rows[i].user.email for i in indices],
+                )
 
     def test_export_uses_all_filtered_rows_ignoring_pagination_and_keeps_typed_dates(
         self,

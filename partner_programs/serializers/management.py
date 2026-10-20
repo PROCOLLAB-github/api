@@ -73,7 +73,12 @@ class ManagementParticipantQuery(ManagementListQuery):
         choices=("all", "selected", "without_region"), default="all"
     )
     region = serializers.CharField(required=False, max_length=255)
-    activity = serializers.ChoiceField(choices=("all", "period", "never"), default="all")
+    activity = serializers.ChoiceField(
+        choices=("all", "period", "active", "inactive", "never"), default="all"
+    )
+    order = serializers.ChoiceField(
+        choices=("registration", "activity_asc", "activity_desc"), default="registration"
+    )
     activity_from = serializers.DateField(required=False)
     activity_to = serializers.DateField(required=False)
 
