@@ -24,7 +24,11 @@ class ProgramRegistration(models.Model):
         choices=[(v, v) for v in ("not_connected", "requested", "connected")],
     )
     external_url = models.URLField(blank=True)
+    connection_website_url = models.URLField("Сайт мероприятия", blank=True)
     connection_comment = models.TextField(blank=True)
+    connection_contact = models.CharField(
+        "Контакт для связи", max_length=500, blank=True
+    )
     requested_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL
     )

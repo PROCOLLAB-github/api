@@ -123,7 +123,12 @@ class RegistrationImportView(ManagementBase):
 
 class ConnectionWrite(RegistrationInput):
     url = HttpURLField(max_length=200)
-    comment = serializers.CharField(max_length=2000, allow_blank=True)
+    comment = serializers.CharField(
+        max_length=2000, allow_blank=True, required=False, default=""
+    )
+    contact = serializers.CharField(
+        max_length=500, allow_blank=True, required=False, default=""
+    )
 
 
 class RegistrationConnectionView(ManagementBase):
@@ -133,8 +138,9 @@ class RegistrationConnectionView(ManagementBase):
         program = managed_program(pk, request.user, lock=True)
         config = service.locked_config(program)
         if config.external_status != "connected":
-            config.external_url = data["url"]
+            config.connection_website_url = data["url"]
             config.connection_comment = data["comment"]
+            config.connection_contact = data["contact"]
             config.requested_by = request.user
             config.requested_at = timezone.now()
             config.external_status = "requested"
