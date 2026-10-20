@@ -377,7 +377,6 @@ class ProgramRegistrationAdmin(admin.ModelAdmin):
         "requested_by",
         "requested_at",
         "connection_website_url",
-        "connection_comment",
         "connection_contact",
     )
 
