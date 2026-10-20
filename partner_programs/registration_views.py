@@ -138,6 +138,15 @@ class RegistrationConnectionView(ManagementBase):
         program = managed_program(pk, request.user, lock=True)
         config = service.locked_config(program)
         if config.external_status != "connected":
+            duplicate = (
+                config.external_status == "requested"
+                and config.connection_website_url == data["url"]
+                and config.connection_comment == data["comment"]
+                and config.connection_contact == data["contact"]
+                and config.connection_requests.exists()
+            )
+            if duplicate:
+                return Response(service.settings_data(program))
             config.connection_website_url = data["url"]
             config.connection_comment = data["comment"]
             config.connection_contact = data["contact"]
@@ -146,6 +155,9 @@ class RegistrationConnectionView(ManagementBase):
             config.external_status = "requested"
             config.revision += 1
             config.save()
+            from partner_programs.services.registration_notifications import record_request
+
+            record_request(config, request.user)
         return Response(service.settings_data(program))
 
 

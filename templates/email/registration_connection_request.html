@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><title>Запрос на подключение сайта мероприятия</title></head>
+<body style="font-family:Arial,sans-serif;color:#222;line-height:1.5;max-width:600px;margin:32px auto;padding:0 20px">
+<h1 style="font-size:22px">Запрос на подключение сайта мероприятия</h1>
+<p><strong>Программа:</strong> {{ program_name }}</p>
+<p><strong>Сайт мероприятия:</strong> <a href="{{ website_url }}">{{ website_url }}</a></p>
+<p><strong>Автор запроса:</strong> {{ requester_name }} ({{ requester_email }})</p>
+<p><strong>Дата:</strong> {{ created_at|date:"d.m.Y H:i" }} МСК</p>
+<p><strong>Контакт для связи:</strong> {{ contact|default:"Не указан" }}</p>
+<p><strong>Комментарий:</strong><br>{{ comment|default:"Не указан"|linebreaksbr }}</p>
+<p><a href="{{ admin_url }}">Открыть запрос</a></p>
+<p>Подключение сайта подтверждает администратор после настройки интеграции.</p>
+</body></html>

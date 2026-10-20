@@ -5,6 +5,7 @@ import uuid
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils import timezone
 
 
 class ProgramRegistration(models.Model):
@@ -26,9 +27,7 @@ class ProgramRegistration(models.Model):
     external_url = models.URLField(blank=True)
     connection_website_url = models.URLField("Сайт мероприятия", blank=True)
     connection_comment = models.TextField(blank=True)
-    connection_contact = models.CharField(
-        "Контакт для связи", max_length=500, blank=True
-    )
+    connection_contact = models.CharField("Контакт для связи", max_length=500, blank=True)
     requested_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL
     )
@@ -63,3 +62,62 @@ class PendingProgramRegistration(models.Model):
                 fields=["program", "user"], name="unique_pending_program_registration"
             )
         ]
+
+
+class RegistrationConnectionRequest(models.Model):
+    """Снимок запроса; изменения анкеты не переписывают отправленные детали."""
+
+    registration = models.ForeignKey(
+        ProgramRegistration, on_delete=models.CASCADE, related_name="connection_requests"
+    )
+    revision = models.PositiveIntegerField()
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="registration_connection_requests",
+    )
+    requester_name = models.CharField(max_length=800)
+    requester_email = models.EmailField()
+    website_url = models.URLField()
+    comment = models.TextField(blank=True)
+    contact = models.CharField(max_length=500, blank=True)
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["registration", "revision"],
+                name="unique_connection_request_revision",
+            )
+        ]
+
+
+class RegistrationConnectionNotification(models.Model):
+    request = models.ForeignKey(
+        RegistrationConnectionRequest,
+        on_delete=models.CASCADE,
+        related_name="notifications",
+    )
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="registration_connection_notifications",
+    )
+    read_at = models.DateTimeField(null=True, blank=True)
+    emailed_at = models.DateTimeField(null=True, blank=True)
+    delivery_status = models.CharField(
+        max_length=12,
+        default="queued",
+        choices=[(value, value) for value in ("queued", "sent", "failed", "cancelled")],
+    )
+    attempts = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["request", "recipient"],
+                name="unique_connection_request_recipient",
+            )
+        ]
+        indexes = [models.Index(fields=["delivery_status", "id"])]
