@@ -376,6 +376,51 @@ def save_case_scope(program_id, user, expert_id, data):
     return workspace_data(program)
 
 
+@transaction.atomic
+def bulk_experts(program_id, user, data):
+    program = managed_program(program_id, user, lock=True)
+    check_revision(program, data["revision"])
+    expert_ids, invitation_ids = set(data["expert_ids"]), set(data["invitation_ids"])
+    experts = list(
+        program.experts.filter(pk__in=expert_ids, user__is_active=True).order_by("pk")
+    )
+    invitations = list(
+        program.expert_invitations.select_for_update()
+        .filter(pk__in=invitation_ids)
+        .order_by("pk")
+    )
+    if len(experts) != len(expert_ids) or len(invitations) != len(invitation_ids):
+        raise ValidationError(
+            "Выбор содержит экспертов другой программы или удаленные записи."
+        )
+    if any(i.status == "accepted" for i in invitations):
+        raise WorkspaceConflict(
+            "already_accepted", "Одно из приглашений уже принято. Обновите список."
+        )
+    action = data["action"]
+    if action == "cases":
+        scope = validated_case_scope(program, data, require_selection=True)
+        for expert in experts:
+            ExpertCaseScope.objects.update_or_create(
+                partner_program=program, expert=expert, defaults=scope
+            )
+        for invitation in invitations:
+            invitation.all_cases, invitation.case_names = (
+                scope["all_cases"],
+                scope["case_names"],
+            )
+            invitation.save(update_fields=["all_cases", "case_names", "updated_at"])
+    elif expert_ids:
+        raise ValidationError("Выберите только приглашения.")
+    elif action == "revoke":
+        for invitation in invitations:
+            revoke(program_id, user, invitation.pk)
+    else:
+        for invitation in invitations:
+            invite(program_id, user, invitation.email, invitation_id=invitation.pk)
+    return workspace_data(program)
+
+
 def validated_case_scope(program, data, *, require_selection=False):
     names = data["case_names"]
     if any(name is not None and name not in program_cases(program) for name in names):

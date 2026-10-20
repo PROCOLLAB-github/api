@@ -152,6 +152,10 @@ def management_project_rows(program, query, field):
         rows = rows.filter(project__name__icontains=query["search"])
     if query["submission"] != "all":
         rows = rows.filter(submitted=query["submission"] == "submitted")
+    if query.get("evaluation", "all") == "evaluated":
+        rows = rows.filter(status="evaluated")
+    elif query.get("evaluation") == "not_evaluated":
+        rows = rows.exclude(status="evaluated")
     if query["case_scope"] == "selected":
         rows = rows.filter(case_name=query["case_name"])
     elif query["case_scope"] == "without_case":
@@ -170,6 +174,7 @@ def project_data(link, program):
             "name": person_name(link.project.leader),
         },
         "submitted": link.submitted,
+        "draft": link.project.draft,
         "evaluation_status": status,
         "assignments_total": link.assignments_total,
         "assignments_completed": link.assignments_completed,

@@ -70,6 +70,29 @@ class ProjectExpertsWrite(RevisionWrite):
     mode = serializers.ChoiceField(choices=["add", "replace"], default="add")
 
 
+class ExpertsBulkWrite(CaseScopeWrite):
+    action = serializers.ChoiceField(choices=("cases", "resend", "revoke"))
+    expert_ids = serializers.ListField(
+        child=serializers.IntegerField(min_value=1), max_length=10000, default=list
+    )
+    invitation_ids = serializers.ListField(
+        child=serializers.IntegerField(min_value=1), max_length=10000, default=list
+    )
+    all_cases = serializers.BooleanField(default=True)
+    case_names = serializers.ListField(
+        child=serializers.CharField(allow_null=True, max_length=1000),
+        max_length=1000,
+        default=list,
+    )
+
+    def validate(self, attrs):
+        if not attrs["expert_ids"] and not attrs["invitation_ids"]:
+            raise serializers.ValidationError("Выберите экспертов.")
+        if attrs["action"] != "cases" and attrs["expert_ids"]:
+            raise serializers.ValidationError("Выберите только приглашения.")
+        return attrs
+
+
 class AllocationWrite(serializers.Serializer):
     expert_ids = serializers.ListField(
         child=serializers.IntegerField(min_value=1), max_length=1000
@@ -115,6 +138,16 @@ class ExpertsView(PrivateView):
         )
         return Response(
             service.invite(pk, request.user, data["email"], scope=scope), status=201
+        )
+
+
+class ExpertsBulkView(PrivateView):
+    def post(self, request, pk):
+        managed_program(pk, request.user)
+        return Response(
+            service.bulk_experts(
+                pk, request.user, validated(ExpertsBulkWrite, request.data)
+            )
         )
 
 
