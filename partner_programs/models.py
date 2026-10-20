@@ -6,6 +6,10 @@ from django.utils import timezone
 from files.models import UserFile
 from partner_programs.constants import get_default_data_schema
 from projects.models import Project
+from partner_programs.attention_models import (  # noqa: F401
+    ProgramAttentionReminder,
+    ProgramAttentionReminderBatch,
+)
 from partner_programs.registration_models import (  # noqa: F401
     ProgramRegistration,
     PendingProgramRegistration,

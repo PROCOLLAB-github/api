@@ -12,6 +12,7 @@ from rest_framework.views import APIView
 from partner_programs.services.registration_notifications import (
     visible_request_notifications,
 )
+from partner_programs.services.attention_actions import visible_reminders
 from project_rates.notifications import (
     visible_notifications as visible_expert_notifications,
 )
@@ -21,6 +22,7 @@ def unread_count(user):
     return (
         visible_expert_notifications(user).filter(read_at__isnull=True).count()
         + visible_request_notifications(user).filter(read_at__isnull=True).count()
+        + visible_reminders(user).filter(read_at__isnull=True).count()
     )
 
 
@@ -37,6 +39,7 @@ class NotificationsView(APIView):
             return Response(status=405)
         experts = visible_expert_notifications(request.user)
         connections = visible_request_notifications(request.user)
+        reminders = visible_reminders(request.user)
         results = [
             {
                 "id": f"expert_joined:{row.pk}",
@@ -66,6 +69,18 @@ class NotificationsView(APIView):
             }
             for row in connections[:100]
         )
+        results.extend(
+            {
+                "id": f"program_attention:{row.pk}",
+                "kind": "program_attention",
+                "text": row.text,
+                "program_id": row.batch.program_id,
+                "category": row.batch.category,
+                "created_at": row.created_at,
+                "read_at": row.read_at,
+            }
+            for row in reminders[:100]
+        )
         results.sort(key=lambda item: (item["created_at"], item["id"]), reverse=True)
         return Response(
             {"unread_count": unread_count(request.user), "results": results[:100]}
@@ -75,15 +90,20 @@ class NotificationsView(APIView):
         if notification_id is None:
             return Response(status=405)
         match = re.fullmatch(
-            r"(expert_joined|registration_connection):([1-9][0-9]{0,18})", notification_id
+            r"(expert_joined|registration_connection|program_attention):([1-9][0-9]{0,18})",
+            notification_id,
         )
         if not match or int(match[2]) > 2**63 - 1:
             raise Http404
         kind, pk = match[1], int(match[2])
         rows = (
-            visible_expert_notifications(request.user)
-            if kind == "expert_joined"
-            else visible_request_notifications(request.user)
+            visible_reminders(request.user)
+            if kind == "program_attention"
+            else (
+                visible_expert_notifications(request.user)
+                if kind == "expert_joined"
+                else visible_request_notifications(request.user)
+            )
         )
         notice = get_object_or_404(rows, pk=pk)
         if notice.read_at is None:
