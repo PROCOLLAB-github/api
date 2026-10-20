@@ -7,6 +7,20 @@ logger = logging.getLogger(__name__)
 
 
 @app.task(autoretry_for=(Exception,), retry_backoff=True, max_retries=3)
+def send_registration_connection_notification(notification_id):
+    from partner_programs.services.registration_notifications import deliver_notification
+
+    deliver_notification(notification_id)
+
+
+@app.task
+def dispatch_registration_connection_notifications():
+    from partner_programs.services.registration_notifications import dispatch_pending_notifications
+
+    return dispatch_pending_notifications()
+
+
+@app.task(autoretry_for=(Exception,), retry_backoff=True, max_retries=3)
 def send_program_registration_confirmation(pending_id, generation):
     from django.conf import settings
     from django.core.mail import EmailMultiAlternatives

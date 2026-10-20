@@ -13,6 +13,10 @@ app.autodiscover_tasks()
 
 app.conf.task_serializer = "json"
 app.conf.beat_schedule = {
+    "registration_connection_notifications": {
+        "task": "partner_programs.tasks.dispatch_registration_connection_notifications",
+        "schedule": crontab(minute="*"),
+    },
     "outdate_vacancy": {
         "task": "vacancy.tasks.email_notificate_vacancy_outdated",
         # "schedule": crontab(minute=0, hour=0),

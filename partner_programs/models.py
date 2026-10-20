@@ -9,6 +9,8 @@ from projects.models import Project
 from partner_programs.registration_models import (  # noqa: F401
     ProgramRegistration,
     PendingProgramRegistration,
+    RegistrationConnectionRequest,
+    RegistrationConnectionNotification,
 )
 
 User = get_user_model()
