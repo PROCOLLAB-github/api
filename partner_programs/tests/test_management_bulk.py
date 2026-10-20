@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
 
 from django.db import close_old_connections
-from django.test import TestCase, TransactionTestCase
+from django.test import TestCase, TransactionTestCase, skipUnlessDBFeature
 from django.utils import timezone
 from openpyxl import load_workbook
 from rest_framework.test import APIClient
@@ -29,6 +29,7 @@ from projects.models import Collaborator, Project
 
 
 class ParticipantRemovalConcurrencyTests(TransactionTestCase):
+    @skipUnlessDBFeature("has_select_for_update")
     def test_same_preview_can_remove_registration_only_once(self):
         from partner_programs.services.participant_removal import (
             RemovalConflict,
