@@ -141,7 +141,13 @@ def remove_participants(program_id, actor, ids, token):
     )
     # Тот же порядок, что у lock_team: сначала Project, затем программы и профили.
     # Все проекты блокируются до программ, чтобы массовая операция не меняла порядок.
-    list(Project.objects.select_for_update().filter(pk__in=project_ids).order_by("pk"))
+    # FK-проверка новой оценки берет KEY SHARE проекта при commit. Разрешаем ее,
+    # пока ожидаем программу: оценка завершится, а измененный preview даст 409.
+    list(
+        Project.objects.select_for_update(no_key=True)
+        .filter(pk__in=project_ids)
+        .order_by("pk")
+    )
     program_ids = set(
         PartnerProgramProject.objects.filter(project_id__in=project_ids).values_list(
             "partner_program_id", flat=True

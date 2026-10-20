@@ -1,15 +1,19 @@
 from datetime import timedelta
 from io import BytesIO
 from concurrent.futures import ThreadPoolExecutor
-from threading import Barrier
+from threading import Barrier, Event
 
-from django.db import close_old_connections
+from django.db import close_old_connections, connection, transaction
 from django.test import TestCase, TransactionTestCase, skipUnlessDBFeature
 from django.utils import timezone
 from openpyxl import load_workbook
 from rest_framework.test import APIClient
 
-from partner_programs.models import PartnerProgramProject, PartnerProgramUserProfile
+from partner_programs.models import (
+    PartnerProgram,
+    PartnerProgramProject,
+    PartnerProgramUserProfile,
+)
 from partner_programs.tests.helpers import (
     create_partner_program,
     create_program_member,
@@ -29,6 +33,78 @@ from projects.models import Collaborator, Project
 
 
 class ParticipantRemovalConcurrencyTests(TransactionTestCase):
+    @skipUnlessDBFeature("has_select_for_no_key_update")
+    def test_new_score_commits_while_leader_removal_requires_fresh_preview(self):
+        from partner_programs.services.participant_removal import (
+            RemovalConflict,
+            preview_removal,
+            remove_participants,
+        )
+
+        manager = create_user()
+        program = create_partner_program(is_competitive=True)
+        program.managers.add(manager)
+        leader = create_program_member(program)
+        project = create_project(leader=leader.user)
+        create_program_project(program, project=project, submitted=True)
+        expert = create_rate_expert(program=program)
+        criterion = Criteria.objects.create(
+            partner_program=program,
+            name="Результат",
+            type="int",
+            min_value=0,
+            max_value=10,
+        )
+        preview = preview_removal(program.pk, manager, [leader.pk])
+        program_locked, project_locked = Event(), Event()
+
+        def score():
+            close_old_connections()
+            try:
+                with transaction.atomic():
+                    with connection.cursor() as cursor:
+                        cursor.execute("SET LOCAL lock_timeout = '3s'")
+                    PartnerProgram.objects.select_for_update().get(pk=program.pk)
+                    program_locked.set()
+                    self.assertTrue(project_locked.wait(timeout=5))
+                    ProjectScore.objects.create(
+                        project=project, criteria=criterion, user=expert, value="3"
+                    )
+                return "score committed"
+            finally:
+                close_old_connections()
+
+        def remove():
+            close_old_connections()
+
+            def notice_lock(execute, sql, params, many, context):
+                result = execute(sql, params, many, context)
+                if 'FROM "projects_project"' in sql and " FOR " in sql:
+                    project_locked.set()
+                return result
+
+            try:
+                self.assertTrue(program_locked.wait(timeout=5))
+                with connection.execute_wrapper(notice_lock):
+                    try:
+                        remove_participants(
+                            program.pk, manager, [leader.pk], preview["preview_token"]
+                        )
+                        return "removed"
+                    except RemovalConflict:
+                        return "fresh preview required"
+            finally:
+                close_old_connections()
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            scoring, removal = pool.submit(score), pool.submit(remove)
+            self.assertEqual(scoring.result(timeout=10), "score committed")
+            self.assertEqual(removal.result(timeout=10), "fresh preview required")
+        self.assertTrue(PartnerProgramUserProfile.objects.filter(pk=leader.pk).exists())
+        self.assertTrue(
+            ProjectScore.objects.filter(project=project, user=expert).exists()
+        )
+
     @skipUnlessDBFeature("has_select_for_update")
     def test_same_preview_can_remove_registration_only_once(self):
         from partner_programs.services.participant_removal import (
