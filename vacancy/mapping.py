@@ -56,10 +56,10 @@ message_type_to_button_text: dict[Annotated[str, EmailTextTypes], str] = {
 message_type_to_title: dict[Annotated[str, EmailTextTypes], str] = {
     MessageTypeEnum.ACCEPTED.value: "На ваш отклик ответили",
     MessageTypeEnum.RESPONDED.value: "На вашу вакансию откликнулись",
-    MessageTypeEnum.OUTDATED.value: "У вашей вакансии истёк срок годности",
+    MessageTypeEnum.OUTDATED.value: "У вашей вакансии истек срок годности",
     MessageTypeEnum.REJECTED.value: "На ваш отклик ответили отказом",
     MessageTypeEnum.REGISTERED_PROGRAM_USER.value: "Вы зарегистрировались на программу",
-    MessageTypeEnum.PROJECT_RATED.value: "Ваш проект был оценён",
+    MessageTypeEnum.PROJECT_RATED.value: "Ваш проект был оценен",
 }
 
 
@@ -94,7 +94,7 @@ def create_text_for_email(data: EmailParamsType) -> str:
             return f"На вакансию {data['vacancy_role']} для проекта '{data['project_name']}' оставили отклик."
         case MessageTypeEnum.OUTDATED.value:
             return f"""
-            У вакансии {data["vacancy_role"]} для проекта '{data["project_name"]}' истёк срок годности.\n
+            У вакансии {data["vacancy_role"]} для проекта '{data["project_name"]}' истек срок годности.\n
             Она более не будет показываться в поиске.
     """
         case MessageTypeEnum.REJECTED.value:
@@ -108,6 +108,6 @@ def create_text_for_email(data: EmailParamsType) -> str:
     """
         case MessageTypeEnum.PROJECT_RATED.value:
             return f"""
-                Ваш проект '{data["project_name"]}' был оценён экспертом по программе '{data["program_name"]}'!
+                Ваш проект '{data["project_name"]}' был оценен экспертом по программе '{data["program_name"]}'!
                 Скоро будут результаты.
     """

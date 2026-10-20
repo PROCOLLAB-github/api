@@ -175,7 +175,7 @@ def _format_stage(
     published_lessons: list[CourseLesson],
 ) -> str:
     if course_progress.status == ProgressStatus.COMPLETED:
-        return "Курс завершён"
+        return "Курс завершен"
 
     lesson_progress_by_lesson_id = {
         progress.lesson_id: progress for progress in lesson_progresses
@@ -212,7 +212,7 @@ def _format_stage(
             return _task_header(published_tasks[0])
         return _lesson_stage_header(lesson)
 
-    return "Этап не определён"
+    return "Этап не определен"
 
 
 def _format_answer_cell(answer: UserTaskAnswer | None) -> str:

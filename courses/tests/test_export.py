@@ -204,7 +204,7 @@ class CourseResultsExportTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(rows), 2)
         self.assertEqual(rows[1][2], 100)
-        self.assertEqual(rows[1][5], "Курс завершён")
+        self.assertEqual(rows[1][5], "Курс завершен")
         self.assertEqual(rows[1][6], "Retention отражает возврат пользователей.")
 
     def test_course_admin_export_resolves_next_stage_for_not_started_next_module(self):
@@ -375,7 +375,7 @@ class CourseResultsExportTests(TestCase):
             percent=100,
         )
 
-        self.assertEqual(self._stage_from_export(course), "Этап не определён")
+        self.assertEqual(self._stage_from_export(course), "Этап не определен")
 
     def test_course_admin_export_is_undefined_when_course_has_no_published_lessons(self):
         course = create_course(title="Экспорт без опубликованных уроков")
@@ -395,7 +395,7 @@ class CourseResultsExportTests(TestCase):
 
         self._mark_course_started(student, course)
 
-        self.assertEqual(self._stage_from_export(course), "Этап не определён")
+        self.assertEqual(self._stage_from_export(course), "Этап не определен")
 
     def test_course_admin_export_skips_draft_modules_in_stage_fallback(self):
         course = create_course(title="Экспорт пропуска draft модуля")

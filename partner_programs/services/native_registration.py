@@ -207,7 +207,7 @@ def open_program(pk, *, lock=False):
 def published_config(program):
     config = config_for(program)
     if not config or not config.published or config.published["mode"] != "native":
-        raise ValidationError("Встроенная регистрация ещё не опубликована.")
+        raise ValidationError("Встроенная регистрация еще не опубликована.")
     return config
 
 
@@ -315,7 +315,7 @@ def current_answers(program, data):
     config = published_config(program)
     if config.published_version != data["version"]:
         raise WorkspaceConflict(
-            "form_changed", "Анкета обновлена. Проверьте ответы и отправьте её ещё раз."
+            "form_changed", "Анкета обновлена. Проверьте ответы и отправьте ее еще раз."
         )
     return config, validate_answers(config.published, data["answers"])
 
@@ -346,7 +346,7 @@ def create_enrollment(program, user, answers, schema):
 @transaction.atomic
 def enroll(pk, user, data):
     if not user.is_authenticated or not user.is_active:
-        raise PermissionDenied("Войдите в подтверждённый аккаунт.")
+        raise PermissionDenied("Войдите в подтвержденный аккаунт.")
     program = open_program(pk, lock=True)
     if PartnerProgramUserProfile.objects.filter(
         partner_program=program, user=user
@@ -422,7 +422,7 @@ def confirm(pk, token):
     except signing.BadSignature:
         raise WorkspaceConflict(
             "confirmation_expired",
-            "Ссылка недействительна или истекла. Отправьте письмо ещё раз.",
+            "Ссылка недействительна или истекла. Отправьте письмо еще раз.",
         )
     program = open_program(pk, lock=True)
     pending = get_object_or_404(

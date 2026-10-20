@@ -208,5 +208,5 @@ class PartnerProgramProjectApplyAPITests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(
             response.data[0],
-            "Срок подачи проектов в программу завершён.",
+            "Срок подачи проектов в программу завершен.",
         )

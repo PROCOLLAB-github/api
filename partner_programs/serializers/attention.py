@@ -80,7 +80,7 @@ class ProgramNotSubmittedMetadataSerializer(serializers.Serializer):
 
 WAITING_REASONS = {
     "no_assignments": "Эксперты не назначены",
-    "no_completed_evaluations": "Нет завершённых оценок",
+    "no_completed_evaluations": "Нет завершенных оценок",
     "partially_evaluated": "Частично оценено",
     "awaiting_first_evaluation": "Ожидает первой оценки",
 }

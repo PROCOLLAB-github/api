@@ -57,7 +57,7 @@ def validate_program_case_configuration(field):
     elif len({value.casefold() for value in options}) != len(options):
         errors[
             "options"
-        ] = "Варианты кейсов не должны повторяться (без учёта регистра и внешних пробелов)."
+        ] = "Варианты кейсов не должны повторяться (без учета регистра и внешних пробелов)."
     if field.pk:
         used = set(field.values.values_list("value_text", flat=True).distinct())
         if used - set(options):

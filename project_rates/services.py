@@ -122,7 +122,7 @@ def submit_project_scores(*, user, project_id: int, data) -> None:
     ) and expected_revision != revision(program):
         raise CriteriaConflict(
             "criteria_changed",
-            "Критерии изменились. Обновите форму оценки; введённые ответы сохранены в форме.",
+            "Критерии изменились. Обновите форму оценки; введенные ответы сохранены в форме.",
         )
     rating_data, criteria_ids, program = _prepare_project_score_data(
         user=user,
@@ -189,7 +189,7 @@ def _prepare_project_score_data(
             program.datetime_evaluation_ends
             and timezone.now() > program.datetime_evaluation_ends
         ):
-            raise ValidationError("Срок оценивания завершён.")
+            raise ValidationError("Срок оценивания завершен.")
 
         required = set(program.criterias.exclude(type="str").values_list("pk", flat=True))
         if not required.issubset(criteria_ids):

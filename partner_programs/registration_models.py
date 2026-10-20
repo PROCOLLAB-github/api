@@ -37,7 +37,7 @@ class ProgramRegistration(models.Model):
     def clean(self):
         super().clean()
         if self.external_status == "connected" and not self.external_url:
-            raise ValidationError({"external_url": "Укажите адрес подключённой формы."})
+            raise ValidationError({"external_url": "Укажите адрес подключенной формы."})
 
     def __str__(self):
         return f"Регистрация программы {self.program_id}"

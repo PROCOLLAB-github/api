@@ -559,7 +559,7 @@ class DuplicateProjectView(APIView):
     @swagger_auto_schema(
         request_body=ProjectDuplicateRequestSerializer,
         responses={201: ProjectDuplicateRequestSerializer(), 400: "Validation error"},
-        operation_description="Дублирует проект и привязывает его к указанной партнёрской программе",
+        operation_description="Дублирует проект и привязывает его к указанной партнерской программе",
     )
     def post(self, request):
         serializer = ProjectDuplicateRequestSerializer(
@@ -651,14 +651,14 @@ class GoalViewSet(viewsets.ModelViewSet):
     def update(self, request, *args, **kwargs):
         if isinstance(request.data, list):
             return Response(
-                {"detail": "Обновление выполняется для одной цели по её ID."}, status=400
+                {"detail": "Обновление выполняется для одной цели по ее ID."}, status=400
             )
         return super().update(request, *args, **kwargs)
 
     def partial_update(self, request, *args, **kwargs):
         if isinstance(request.data, list):
             return Response(
-                {"detail": "Частичное обновление выполняется для одной цели по её ID."},
+                {"detail": "Частичное обновление выполняется для одной цели по ее ID."},
                 status=400,
             )
         return super().partial_update(request, *args, **kwargs)
@@ -710,7 +710,7 @@ class ProjectCompanyUpsertView(APIView):
         request_body=ProjectCompanyUpsertSerializer,
         responses={201: ProjectCompanySerializer},
         operation_summary="Создать или привязать компанию к проекту (upsert)",
-        operation_description="Если компания с таким ИНН уже есть — создаёт/обновляет связь. Если нет — создаёт.",
+        operation_description="Если компания с таким ИНН уже есть — создает/обновляет связь. Если нет — создает.",
         tags=["Projects • Companies"],
     )
     def post(self, request, project_id: int):
@@ -742,7 +742,7 @@ class ProjectCompaniesListView(ListAPIView):
     permission_classes = (ProjectVisibilityPermission, IsProjectLeaderOrReadOnly)
 
     @swagger_auto_schema(
-        operation_summary="Список партнёров проекта",
+        operation_summary="Список партнеров проекта",
         operation_description="Возвращает связи ProjectCompany с вложенными данными компании для указанного проекта.",
         responses={200: ProjectCompanySerializer(many=True)},
         tags=["Projects • Companies"],
@@ -822,7 +822,7 @@ class ProjectCompanyDetailView(APIView):
         operation_summary="Обновить вклад и/или ответственного компании в проекте",
         operation_description=(
             "Позволяет изменить поля связи `ProjectCompany`, такие как `contribution` "
-            "и `decision_maker`. Компания остаётся без изменений."
+            "и `decision_maker`. Компания остается без изменений."
         ),
         manual_parameters=[project_id_param, company_id_param],
         request_body=ProjectCompanyUpdateSerializer,
@@ -866,7 +866,7 @@ class ProjectCompanyDetailView(APIView):
         operation_summary="Удалить связь проекта с компанией",
         operation_description=(
             "Удаляет запись `ProjectCompany`, связывающую проект и компанию. "
-            "Сама компания при этом остаётся в базе данных."
+            "Сама компания при этом остается в базе данных."
         ),
         manual_parameters=[project_id_param, company_id_param],
         responses={

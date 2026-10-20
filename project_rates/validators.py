@@ -27,12 +27,12 @@ class ProjectScoreValidator:
                 ):
                     raise ValueError("Требуется конечное число подходящего типа.")
             except ValueError:
-                raise ValueError("Введённое значение не соответствует формату!")
+                raise ValueError("Введенное значение не соответствует формату!")
             except TypeError:
                 raise TypeError("Вы не ввели никакие данные!")
 
         elif (criteria_type == "bool") and (value not in ["True", "False"]):
-            raise TypeError("Введённое значение не соответствует формату!")
+            raise TypeError("Введенное значение не соответствует формату!")
 
     @staticmethod
     def _validate_numeric_limits(

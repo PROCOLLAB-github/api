@@ -379,7 +379,7 @@ class ProgramProjectFilterRequestSerializer(serializers.Serializer):
     def validate_filters(self, value):
         if not isinstance(value, dict):
             raise serializers.ValidationError(
-                "Поле filters должно быть объектом (словарём ключ-значение)"
+                "Поле filters должно быть объектом (словарем ключ-значение)"
             )
 
         if len(value) > self.MAX_FILTERS:
