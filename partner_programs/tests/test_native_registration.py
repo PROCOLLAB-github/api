@@ -360,6 +360,11 @@ class NativeRegistrationTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["external_status"], "requested")
+        self.config.refresh_from_db()
+        self.assertEqual(
+            self.config.connection_website_url, "https://example.test/registration"
+        )
+        self.assertEqual(self.config.external_url, "")
         self.assertEqual(
             self.post(
                 "/management/registration/publish/",
@@ -378,6 +383,93 @@ class NativeRegistrationTests(TestCase):
             ).status_code,
             400,
         )
+
+    def test_external_request_optional_comment_and_contact_are_saved_for_admin(self):
+        self.client.force_authenticate(self.manager)
+        response = self.post(
+            "/management/registration/connection/", {"url": "https://event.example.test"}
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data["connection_comment"], "")
+        self.assertEqual(response.data["connection_contact"], "")
+        response = self.post(
+            "/management/registration/connection/",
+            {
+                "url": "https://event.example.test",
+                "comment": "Нужна регистрация на чемпионат",
+                "contact": "@event_organizer",
+            },
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        self.config.refresh_from_db()
+        self.assertEqual(self.config.connection_website_url, "https://event.example.test")
+        self.assertEqual(self.config.connection_contact, "@event_organizer")
+        self.assertEqual(self.config.connection_comment, "Нужна регистрация на чемпионат")
+        self.assertEqual(self.config.external_url, "")
+        self.assertEqual(response.data["connection_contact"], "@event_organizer")
+        self.assertEqual(response.data["connection_website_url"], "https://event.example.test")
+        self.assertEqual(self.config.requested_by, self.manager)
+
+    def test_external_request_invalid_details_do_not_write(self):
+        self.client.force_authenticate(self.manager)
+        for data in (
+            {"url": "not-a-website"},
+            {"url": "https://example.test", "contact": "x" * 501},
+            {"url": "https://example.test", "comment": "x" * 2001},
+        ):
+            with self.subTest(data=list(data)):
+                response = self.post("/management/registration/connection/", data)
+                self.assertEqual(response.status_code, 400, response.data)
+        self.config.refresh_from_db()
+        self.assertEqual(self.config.revision, 0)
+        self.assertEqual(self.config.connection_website_url, "")
+        self.assertEqual(self.config.connection_contact, "")
+
+    def test_connection_details_migration_preserves_old_request_and_form_url(self):
+        import importlib
+        from django.apps import apps
+        from django.db import connection
+        from types import SimpleNamespace
+
+        self.config.external_status = "requested"
+        self.config.external_url = "https://previous.example.test/form"
+        self.config.save()
+        migration = importlib.import_module(
+            "partner_programs.migrations.0025_registration_connection_details"
+        )
+        migration.preserve_requested_websites(
+            apps, SimpleNamespace(connection=connection)
+        )
+        self.config.refresh_from_db()
+        self.assertEqual(
+            self.config.connection_website_url, "https://previous.example.test/form"
+        )
+        self.assertEqual(self.config.external_url, "https://previous.example.test/form")
+        self.config.connection_website_url = "https://event.example.test"
+        self.config.save()
+        migration.preserve_requested_websites(
+            apps, SimpleNamespace(connection=connection)
+        )
+        self.config.refresh_from_db()
+        self.assertEqual(self.config.connection_website_url, "https://event.example.test")
+
+    def test_external_request_requires_manager_and_does_not_change_connected_form(self):
+        data = {"url": "https://event.example.test", "contact": "@event_organizer"}
+        self.client.force_authenticate(self.participant)
+        self.assertEqual(
+            self.post("/management/registration/connection/", data).status_code, 403
+        )
+        self.config.external_status = "connected"
+        self.config.external_url = "https://forms.example.test/register"
+        self.config.save()
+        self.client.force_authenticate(self.manager)
+        response = self.post("/management/registration/connection/", data)
+        self.assertEqual(response.status_code, 200, response.data)
+        self.config.refresh_from_db()
+        self.assertEqual(self.config.external_status, "connected")
+        self.assertEqual(self.config.external_url, "https://forms.example.test/register")
+        self.assertEqual(self.config.connection_website_url, "")
+        self.assertEqual(self.config.connection_contact, "")
 
     def test_legacy_registration_cannot_bypass_published_native_schema(self):
         self.client.force_authenticate(self.participant)

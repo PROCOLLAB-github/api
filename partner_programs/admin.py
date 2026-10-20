@@ -364,7 +364,9 @@ class PartnerProgramFieldAdmin(admin.ModelAdmin):
 class ProgramRegistrationAdmin(admin.ModelAdmin):
     list_display = ("program", "external_status", "requested_at", "published_at")
     list_filter = ("external_status",)
-    search_fields = ("program__name", "external_url")
+    search_fields = (
+        "program__name", "external_url", "connection_website_url", "connection_contact"
+    )
     readonly_fields = (
         "program",
         "draft",
@@ -374,6 +376,8 @@ class ProgramRegistrationAdmin(admin.ModelAdmin):
         "published_at",
         "requested_by",
         "requested_at",
+        "connection_website_url",
+        "connection_contact",
     )
 
     def has_add_permission(self, request):

@@ -147,6 +147,8 @@ def settings_data(program):
         if config
         else program.registration_link or "",
         "connection_comment": config.connection_comment if config else "",
+        "connection_website_url": config.connection_website_url if config else "",
+        "connection_contact": config.connection_contact if config else "",
         "answered_field_ids": list(
             {
                 k
