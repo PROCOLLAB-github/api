@@ -1,5 +1,6 @@
 from django.urls import path
 from partner_programs.attention_views import AttentionActionView
+from partner_programs.report_views import ProgramReportView
 from partner_programs.registration_views import (
     RegistrationSettingsView,
     RegistrationPublishView,
@@ -83,6 +84,7 @@ from partner_programs.results_views import (
 app_name = "partner_programs"
 
 urlpatterns = [
+    path("<int:pk>/manager-overview/export/", ProgramReportView.as_view()),
     path(
         "<int:pk>/manager-overview/attention/<str:category>/<str:action>/",
         AttentionActionView.as_view(),
