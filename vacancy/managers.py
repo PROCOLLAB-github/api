@@ -22,10 +22,11 @@ class VacancyManager(Manager):
                 )
             )
             .annotate(
+                all_response_count=Count("vacancy_requests"),
                 pending_response_count=Count(
                     "vacancy_requests",
                     filter=Q(vacancy_requests__is_approved__isnull=True),
-                )
+                ),
             )
             .filter(datetime_created__gte=expiration_check)
             .only(

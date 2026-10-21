@@ -1,5 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
+from django.db import transaction
+from django.db.models import Count, Q
 from django.utils import timezone
 from rest_framework import serializers
 
@@ -94,12 +96,26 @@ class AbstractVacancyReadOnlyFields(serializers.Serializer):
 
     datetime_closed = serializers.DateTimeField(read_only=True)
     response_count = serializers.SerializerMethodField(read_only=True)
+    total_response_count = serializers.SerializerMethodField(read_only=True)
+
+    def get_total_response_count(self, obj):
+        """Полная история; response_count сохраняет прежний смысл ожидающих откликов."""
+        if hasattr(obj, "all_response_count"):
+            return obj.all_response_count
+        if hasattr(obj, "_response_history_counts"):
+            return obj._response_history_counts["total"]
+        return obj.vacancy_requests.count()
 
     def get_response_count(self, obj):
         """Возвращает число откликов, которые ещё ожидают решения."""
         if hasattr(obj, "pending_response_count"):
             return obj.pending_response_count
-        return obj.vacancy_requests.filter(is_approved=None).count()
+        counts = obj.vacancy_requests.aggregate(
+            pending=Count("pk", filter=Q(is_approved__isnull=True)),
+            total=Count("pk"),
+        )
+        obj._response_history_counts = counts
+        return counts["pending"]
 
 
 def _format_datetime_with_seconds(value):
@@ -196,6 +212,7 @@ class ProjectVacancyListSerializer(
             "is_active",
             "datetime_closed",
             "response_count",
+            "total_response_count",
             "date_create_time",
             "required_experience",
             "work_schedule",
@@ -251,6 +268,7 @@ class VacancyDetailSerializer(
             "datetime_updated",
             "datetime_closed",
             "response_count",
+            "total_response_count",
             "date_create_time",
             "required_experience",
             "work_schedule",
@@ -288,6 +306,7 @@ class VacancyListSerializer(
             "is_active",
             "datetime_closed",
             "response_count",
+            "total_response_count",
             "date_create_time",
             "city",
         ]
@@ -341,17 +360,17 @@ class ProjectVacancyCreateListSerializer(
     AbstractVacancyEnumFields,
     RequiredSkillsWriteSerializerMixin[Vacancy],
 ):
+    @transaction.atomic
     def create(self, validated_data):
-        project = validated_data["project"]
+        project = Project.objects.select_for_update().get(pk=validated_data["project"].pk)
+        validated_data["project"] = project
         if project.leader != self.context["request"].user:
             raise serializers.ValidationError("You are not the leader of the project")
 
         required_skills_ids = validated_data.pop("required_skills_ids")
 
-        if validated_data["project"].draft:
-            validated_data["is_active"] = False
-        else:
-            validated_data["is_active"] = True
+        validated_data["is_active"] = not project.draft
+        validated_data["resume_on_publish"] = project.draft
 
         vacancy = Vacancy.objects.create(**validated_data)
 
@@ -389,6 +408,7 @@ class ProjectVacancyCreateListSerializer(
             "is_active",
             "datetime_closed",
             "response_count",
+            "total_response_count",
             "date_create_time",
             "datetime_created",
             "datetime_updated",
@@ -592,6 +612,7 @@ class VacancyResponseVacancySerializer(
             "datetime_updated",
             "datetime_closed",
             "response_count",
+            "total_response_count",
             "date_create_time",
             "required_experience",
             "work_schedule",

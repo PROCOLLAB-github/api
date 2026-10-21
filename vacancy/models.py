@@ -92,6 +92,11 @@ class Vacancy(models.Model):
         verbose_name="Дата закрытия",
     )
     is_active = models.BooleanField(blank=False, default=True)
+    resume_on_publish = models.BooleanField(
+        default=False,
+        editable=False,
+        help_text="Временно скрыта вместе с черновиком проекта, а не перенесена в архив.",
+    )
 
     objects = VacancyManager()
 

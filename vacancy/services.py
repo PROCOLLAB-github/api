@@ -1,16 +1,14 @@
 from django.contrib.contenttypes.models import ContentType
 from rest_framework import status
+from rest_framework.response import Response
 
 from core.models import Skill, SkillToObject
-from rest_framework.response import Response
 
 from vacancy.models import Vacancy
 
 
 def update_vacancy_skills(request, vacancy: Vacancy):
     if "required_skills_ids" in request.data and request.data.get("required_skills_ids"):
-        vacancy.required_skills.all().delete()
-
         needed_skills: list[int] = Skill.objects.filter(
             id__in=request.data["required_skills_ids"]
         ).values_list("id", flat=True)
@@ -22,6 +20,7 @@ def update_vacancy_skills(request, vacancy: Vacancy):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        vacancy.required_skills.all().delete()
         vacancy_content_type = ContentType.objects.get_for_model(Vacancy)
         to_create = [
             SkillToObject(

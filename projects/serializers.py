@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
+from django.db.models import Count, Q
 from rest_framework import serializers
 
 from core.serializers import SkillToObjectSerializer
@@ -265,7 +266,7 @@ class ProjectDetailSerializer(TeamPolicySerializerMixin, serializers.ModelSerial
     collaborators = CollaboratorSerializer(
         source="collaborator_set", many=True, read_only=True
     )
-    vacancies = ProjectVacancyListSerializer(many=True, read_only=True)
+    vacancies = serializers.SerializerMethodField()
     goals = ProjectGoalSerializer(many=True, read_only=True)
     partners = ProjectCompanySerializer(
         source="project_companies", many=True, read_only=True
@@ -284,6 +285,22 @@ class ProjectDetailSerializer(TeamPolicySerializerMixin, serializers.ModelSerial
     )
     implementation_deadline = serializers.DateField(required=False, allow_null=True)
     trl = serializers.IntegerField(required=False, allow_null=True)
+
+    def get_vacancies(self, project):
+        from vacancy.selectors import can_manage_project
+
+        request = self.context.get("request")
+        vacancies = project.vacancies.annotate(
+            all_response_count=Count("vacancy_requests"),
+            pending_response_count=Count(
+                "vacancy_requests", filter=Q(vacancy_requests__is_approved__isnull=True)
+            ),
+        ).prefetch_related("required_skills__skill__category")
+        if not can_manage_project(getattr(request, "user", None), project):
+            vacancies = [vacancy for vacancy in vacancies if vacancy.is_active]
+        return ProjectVacancyListSerializer(
+            vacancies, many=True, context=self.context
+        ).data
 
     def get_is_default_cover(self, project):
         """Сверяет URL с системными обложками, а не с владельцем или доменом.

@@ -1,4 +1,3 @@
-from django.db.models import Q
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.utils import timezone
@@ -47,29 +46,23 @@ def update_vacancy(sender, instance, created, raw=False, **kwargs):
     if raw or created or previous_draft is None or previous_draft == instance.draft:
         return
 
-    vacancies = list(Vacancy.objects.filter(project=instance))
     target_is_active = not instance.draft
-    changed_vacancies = [
-        vacancy for vacancy in vacancies if vacancy.is_active != target_is_active
-    ]
+    # Only vacancies suspended by the project lifecycle can resume automatically.
+    # Inactive legacy rows and explicitly archived vacancies keep their history.
+    queryset = Vacancy.objects.filter(project=instance)
+    if target_is_active:
+        queryset = queryset.filter(is_active=False, resume_on_publish=True)
+    else:
+        queryset = queryset.filter(is_active=True)
+    changed_vacancies = list(queryset)
     now = timezone.now()
 
-    if target_is_active:
-        Vacancy.objects.filter(project=instance).filter(
-            Q(is_active=False) | Q(datetime_closed__isnull=False)
-        ).update(
-            is_active=True,
-            datetime_closed=None,
-            datetime_updated=now,
-        )
-    else:
-        Vacancy.objects.filter(project=instance).filter(
-            Q(is_active=True) | Q(datetime_closed__isnull=True)
-        ).update(
-            is_active=False,
-            datetime_closed=now,
-            datetime_updated=now,
-        )
+    queryset.update(
+        is_active=target_is_active,
+        resume_on_publish=not target_is_active,
+        datetime_closed=None if target_is_active else now,
+        datetime_updated=now,
+    )
 
     for vacancy in changed_vacancies:
         vacancy.is_active = target_is_active
