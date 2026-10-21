@@ -46,19 +46,20 @@ def valid_score(criterion, value):
         return False
 
 
-def results_data(program, query):
+def results_data(program, query, *, project_link_id=None):
     criteria = list(Criteria.objects.filter(partner_program=program).order_by("pk"))
     numeric_criteria = [c for c in criteria if c.type in ("int", "float")]
     field = get_program_case_field(program)
     options = field.get_options_list() if field else []
     if query["case_scope"] == "selected" and query.get("case_name") not in options:
         raise serializers.ValidationError({"case_name": "Выберите существующий кейс."})
-    links = list(
-        project_case_links(program, field=field)
-        .filter(submitted=True)
-        .select_related("project")
-        .order_by("pk")
+    links_query = project_case_links(program, field=field)
+    links_query = (
+        links_query.filter(submitted=True)
+        if project_link_id is None
+        else links_query.filter(pk=project_link_id)
     )
+    links = list(links_query.select_related("project").order_by("pk"))
     project_ids = [link.project_id for link in links]
     values, people = defaultdict(dict), defaultdict(dict)
     for score in ProjectScore.objects.filter(
@@ -130,7 +131,9 @@ def results_data(program, query):
                 "case_name": link.case_name,
                 "completed": len(completed),
                 "required": required,
-                "ready": len(completed) >= required and score is not None,
+                "ready": link.submitted
+                and len(completed) >= required
+                and score is not None,
                 "score": numeric(score),
                 "place": None,
                 "averages": averages,
@@ -144,7 +147,8 @@ def results_data(program, query):
             key=lambda p: (-p["score"], p["name"].lower(), p["id"]),
         )
         last_score, place = None, 0
-        for index, project in enumerate(ready, 1):
+        # A single-project projection cannot determine a place among its peers.
+        for index, project in enumerate(ready if project_link_id is None else [], 1):
             if project["score"] != last_score:
                 place = index
             project["place"] = place

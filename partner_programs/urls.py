@@ -57,6 +57,7 @@ from partner_programs.management_views import (
     ManagementParticipantsRemovalPreviewView,
     ManagementParticipantsRemovalView,
     ManagementProjectsView,
+    ManagementProjectsExportView,
     ManagementTeamView,
     ManagementEvaluationView,
     ManagementSettingsView,
@@ -183,6 +184,11 @@ urlpatterns = [
         "<int:pk>/management/projects/",
         ManagementProjectsView.as_view(),
         name="management-projects",
+    ),
+    path(
+        "<int:pk>/management/projects/export/",
+        ManagementProjectsExportView.as_view(),
+        name="management-projects-export",
     ),
     path(
         "<int:pk>/management/projects/<int:link_id>/team/",
