@@ -397,4 +397,3 @@ class AttentionReminderConcurrencyTests(TransactionTestCase):
         self.assertEqual(results, [{"created_count": 1, "skipped_count": 0}] * 2)
         self.assertEqual(ProgramAttentionReminderBatch.objects.count(), 1)
         self.assertEqual(ProgramAttentionReminder.objects.count(), 1)
-
