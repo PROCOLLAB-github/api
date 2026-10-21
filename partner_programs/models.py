@@ -1415,3 +1415,9 @@ class PartnerProgramFieldValue(models.Model):
                 return super().save(*args, **kwargs)
         self.full_clean()
         super().save(*args, **kwargs)
+
+
+from .attention_models import (  # noqa: E402,F401
+    ProgramAttentionReminder,
+    ProgramAttentionReminderBatch,
+)

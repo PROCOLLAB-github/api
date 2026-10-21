@@ -28,5 +28,10 @@ app.conf.beat_schedule = {
     },
 }
 
+app.conf.beat_schedule["retry_attention_reminders"] = {
+    "task": "partner_programs.tasks.dispatch_attention_reminders",
+    "schedule": crontab(minute="*/5"),
+}
+
 if __name__ == "__main__":
     app.start()
