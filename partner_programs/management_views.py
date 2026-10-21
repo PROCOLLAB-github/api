@@ -271,6 +271,28 @@ class ManagementTeamView(ManagementBase):
         return Response(team_data(managed_project(program, link_id)))
 
 
+class ManagementProjectActionPreviewView(ManagementBase):
+    def post(self, request, pk):
+        from partner_programs.serializers.management import ManagementProjectActionWrite
+        from partner_programs.services.management_project_actions import preview_action
+
+        managed_program(pk, request.user)
+        body = ManagementProjectActionWrite(data=request.data)
+        body.is_valid(raise_exception=True)
+        return Response(preview_action(pk, request.user, body.validated_data))
+
+
+class ManagementProjectActionApplyView(ManagementBase):
+    def post(self, request, pk):
+        from partner_programs.serializers.management import ManagementProjectActionApply
+        from partner_programs.services.management_project_actions import apply_action
+
+        managed_program(pk, request.user)
+        body = ManagementProjectActionApply(data=request.data)
+        body.is_valid(raise_exception=True)
+        return Response(apply_action(pk, request.user, body.validated_data))
+
+
 class ManagementEvaluationView(ManagementBase):
     def get(self, request, pk, link_id):
         program = managed_program(pk, request.user)

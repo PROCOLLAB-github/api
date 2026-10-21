@@ -58,6 +58,8 @@ from partner_programs.management_views import (
     ManagementParticipantsRemovalView,
     ManagementProjectsView,
     ManagementProjectsExportView,
+    ManagementProjectActionPreviewView,
+    ManagementProjectActionApplyView,
     ManagementTeamView,
     ManagementEvaluationView,
     ManagementSettingsView,
@@ -85,6 +87,14 @@ from partner_programs.results_views import (
 app_name = "partner_programs"
 
 urlpatterns = [
+    path(
+        "<int:pk>/management/projects/actions/preview/",
+        ManagementProjectActionPreviewView.as_view(),
+    ),
+    path(
+        "<int:pk>/management/projects/actions/apply/",
+        ManagementProjectActionApplyView.as_view(),
+    ),
     path("<int:pk>/manager-overview/export/", ProgramReportView.as_view()),
     path(
         "<int:pk>/manager-overview/attention/<str:category>/<str:action>/",
