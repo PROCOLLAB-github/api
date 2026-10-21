@@ -4,6 +4,7 @@ from notifications.models import Notification
 
 
 ANGULAR_NOTIFICATION_TYPES = (
+    Notification.Type.PROGRAM_ATTENTION_REMINDER,
     Notification.Type.PROJECT_INVITE_CREATED,
     Notification.Type.PROJECT_INVITE_ACCEPTED,
     Notification.Type.PROJECT_INVITE_DECLINED,

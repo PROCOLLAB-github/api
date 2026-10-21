@@ -49,9 +49,22 @@ from partner_programs.views import (
 
 from partner_programs.widget_views import ProgramRoleWidgetAPIView
 
+from partner_programs.attention_views import AttentionActionView
+from partner_programs.report_views import ProgramReportView
+
 app_name = "partner_programs"
 
 urlpatterns = [
+    path(
+        "<int:pk>/project-analytics/export/",
+        ProgramReportView.as_view(),
+        name="project-analytics-export",
+    ),
+    path(
+        "<int:pk>/project-analytics/attention/<str:category>/<str:action>/",
+        AttentionActionView.as_view(),
+        name="project-analytics-attention-action",
+    ),
     path(
         "<int:pk>/analytics-widget/",
         ProgramRoleWidgetAPIView.as_view(),

@@ -4,6 +4,10 @@ from django.db import models
 
 class Notification(models.Model):
     class Type(models.TextChoices):
+        PROGRAM_ATTENTION_REMINDER = (
+            "program_attention_reminder",
+            "Напоминание по программе",
+        )
         PROJECT_INVITE_CREATED = "project_invite_created", "Приглашение в проект"
         PROJECT_INVITE_ACCEPTED = (
             "project_invite_accepted",
@@ -48,6 +52,7 @@ class Notification(models.Model):
         SYSTEM = "system", "Система"
 
     TYPE_CATEGORY = {
+        Type.PROGRAM_ATTENTION_REMINDER: Category.PROGRAM,
         Type.PROJECT_INVITE_CREATED: Category.PROJECT,
         Type.PROJECT_INVITE_ACCEPTED: Category.PROJECT,
         Type.PROJECT_INVITE_DECLINED: Category.PROJECT,
