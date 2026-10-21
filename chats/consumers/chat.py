@@ -8,6 +8,7 @@ from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from django.conf import settings
 from django.core.cache import cache
+from django.db.models import Q
 from django.utils import timezone
 
 from chats.exceptions import ChatException
@@ -25,13 +26,26 @@ from projects.models import Collaborator
 from users.models import CustomUser
 from chats.consumers.event_types import DirectEvent, ProjectEvent
 from chats.utils import get_chat_and_user_ids_from_content
-from chats.models import DirectChat
+from chats.models import DirectChat, ProjectChat
 
 
 @database_sync_to_async
 def get_user_project_ids(user_id: int) -> list[int]:
     return list(
         Collaborator.objects.filter(user_id=user_id).values_list("project", flat=True)
+    )
+
+
+@database_sync_to_async
+def can_access_project_chat(user_id, chat_id):
+    try:
+        chat_id = int(chat_id)
+    except (TypeError, ValueError):
+        return False
+    return (
+        ProjectChat.objects.filter(pk=chat_id)
+        .filter(Q(project__leader_id=user_id) | Q(project__collaborator__user_id=user_id))
+        .exists()
     )
 
 
@@ -88,10 +102,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         )
         # Confirm selected subprotocol so browser clients finish handshake.
         subprotocol = None
-        if (
-            self.scope.get("subprotocols")
-            and len(self.scope["subprotocols"]) >= 1
-        ):
+        if self.scope.get("subprotocols") and len(self.scope["subprotocols"]) >= 1:
             subprotocol = self.scope["subprotocols"][0]
 
         await self.accept(subprotocol=subprotocol)
@@ -138,6 +149,11 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             if event.content["chat_type"] == ChatType.DIRECT:
                 self.event = DirectEvent(self.user, self.channel_layer, self.channel_name)
             elif event.content["chat_type"] == ChatType.PROJECT:
+                if not await can_access_project_chat(
+                    self.user.pk, event.content.get("chat_id")
+                ):
+                    await self.send_json({"error": "У вас нет доступа к чату проекта."})
+                    return
                 self.event = ProjectEvent(
                     self.user, self.channel_layer, self.channel_name
                 )
@@ -188,6 +204,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             },
         }
 
+        if event.content["chat_type"] == ChatType.PROJECT:
+            event_data["_project_chat_id"] = event.content["chat_id"]
+
         if event.content["chat_type"] == ChatType.DIRECT:
             # fixme: need to move this to func
             chat_id, other_user = await get_chat_and_user_ids_from_content(
@@ -217,17 +236,33 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             event_data,
         )
 
+    async def _send_chat_event(self, event):
+        chat_id = event.get("_project_chat_id")
+        if chat_id is not None:
+            if not self.user or not await can_access_project_chat(self.user.pk, chat_id):
+                room_name = f"{EventGroupType.CHATS_RELATED}_{chat_id}"
+                await self.channel_layer.group_discard(room_name, self.channel_name)
+                self.joined_rooms.discard(room_name)
+                return
+        # Служебный контекст нужен для проверки уже открытых сокетов,
+        # клиентский формат сообщений остается прежним.
+        await self.send(
+            json.dumps(
+                {key: value for key, value in event.items() if key != "_project_chat_id"}
+            )
+        )
+
     async def message_read(self, event: Event):
-        await self.send(json.dumps(event))
+        await self._send_chat_event(event)
 
     async def user_typing(self, event: Event):
-        await self.send(json.dumps(event))
+        await self._send_chat_event(event)
 
     async def new_message(self, event: Event):
-        await self.send(json.dumps(event))
+        await self._send_chat_event(event)
 
     async def delete_message(self, event: Event):
-        await self.send(json.dumps(event))
+        await self._send_chat_event(event)
 
     async def set_online(self, event: Event):
         await self.send(json.dumps(event))
@@ -236,7 +271,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         await self.send(json.dumps(event))
 
     async def edit_message(self, event: Event):
-        await self.send(json.dumps(event))
+        await self._send_chat_event(event)
 
     async def __process_general_event(self, event: Event, room_name: str):
         cache_key = get_user_online_cache_key(self.user)

@@ -66,9 +66,9 @@ class ProjectEvent:
         await match_files_and_messages(event.content["file_urls"], messages)
 
         serialized_message = await orm_get(
-            ProjectChatMessage.objects.select_related("author", "reply_to__author").prefetch_related(
-                "file_to_message__file"
-            ),
+            ProjectChatMessage.objects.select_related(
+                "author", "reply_to__author"
+            ).prefetch_related("file_to_message__file"),
             pk=msg.pk,
         )
         message_data = ProjectChatMessageListSerializer(serialized_message).data
@@ -77,7 +77,11 @@ class ProjectEvent:
             "message": message_data,
         }
 
-        event_data = {"type": EventType.NEW_MESSAGE, "content": content}
+        event_data = {
+            "type": EventType.NEW_MESSAGE,
+            "content": content,
+            "_project_chat_id": chat_id,
+        }
 
         await self.channel_layer.group_send(room_name, event_data)
 
@@ -111,6 +115,7 @@ class ProjectEvent:
                     "user_id": self.user.id,
                     "message_id": event.content["message_id"],
                 },
+                "_project_chat_id": event.content["chat_id"],
             },
         )
 
@@ -130,7 +135,9 @@ class ProjectEvent:
                 f"User {self.user.id} is not in project chat {chat_id}"
             )
 
-        message = await orm_get(ProjectChatMessage.objects, pk=event.content["message_id"])
+        message = await orm_get(
+            ProjectChatMessage.objects, pk=event.content["message_id"]
+        )
 
         if self.user.id != message.author_id:
             raise UserIsNotAuthor(f"User {self.user.id} is not author {chat_id}")
@@ -142,6 +149,7 @@ class ProjectEvent:
             {
                 "type": EventType.DELETE_MESSAGE,
                 "content": {"message_id": event.content["message_id"]},
+                "_project_chat_id": event.content["chat_id"],
             },
         )
 
@@ -161,7 +169,9 @@ class ProjectEvent:
                 f"User {self.user.id} is not in project chat {chat_id}"
             )
 
-        message = await orm_get(ProjectChatMessage.objects, pk=event.content["message_id"])
+        message = await orm_get(
+            ProjectChatMessage.objects, pk=event.content["message_id"]
+        )
 
         if message.author_id != self.user.id:
             raise UserNotMessageAuthorException(
@@ -172,9 +182,9 @@ class ProjectEvent:
         await orm_save(message, update_fields=["text", "is_edited"])
 
         serialized_message = await orm_get(
-            ProjectChatMessage.objects.select_related("author", "reply_to__author").prefetch_related(
-                "file_to_message__file"
-            ),
+            ProjectChatMessage.objects.select_related(
+                "author", "reply_to__author"
+            ).prefetch_related("file_to_message__file"),
             pk=message.pk,
         )
         message_data = ProjectChatMessageListSerializer(serialized_message).data
@@ -183,6 +193,10 @@ class ProjectEvent:
             "message": message_data,
         }
 
-        event_data = {"type": EventType.EDIT_MESSAGE, "content": content}
+        event_data = {
+            "type": EventType.EDIT_MESSAGE,
+            "content": content,
+            "_project_chat_id": chat_id,
+        }
 
         await self.channel_layer.group_send(room_name, event_data)

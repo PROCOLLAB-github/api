@@ -142,6 +142,16 @@ class ManagementIdsWrite(StrictFieldsMixin, serializers.Serializer):
 
 class ManagementRemovalWrite(ManagementIdsWrite):
     preview_token = serializers.CharField(max_length=200000)
+    confirmation_version = serializers.IntegerField(required=False)
+
+    def validate(self, attrs):
+        if attrs.get("confirmation_version") != 2:
+            raise serializers.ValidationError(
+                {
+                    "detail": "Обновите страницу и заново подтвердите удаление участников из команд заявок."
+                }
+            )
+        return attrs
 
 
 BASIC_FIELDS = (
