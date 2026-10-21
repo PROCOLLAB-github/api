@@ -1,13 +1,13 @@
-name: Inspect Prod Analytics Checkout
+name: Preserve Blocked Prod Analytics File
 
 on:
   workflow_dispatch:
 
 jobs:
-  inspect:
+  preserve:
     runs-on: ubuntu-latest
     steps:
-      - name: Inspect production checkout without mutations
+      - name: Preserve only conflicting local file
         uses: garygrossgarten/github-action-ssh@release
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -22,12 +22,12 @@ jobs:
                 sudo -u app git -C /home/app/procollab-backend "$@"
               fi
             }
-            echo PROD_CHECKOUT_HEAD
-            appgit rev-parse HEAD
-            echo PROD_CHECKOUT_STATUS
-            appgit status --short
-            echo PROD_NOTIFICATION_PATCH
-            appgit diff HEAD -- notifications/models.py
-            echo PROD_RUNTIME_IMAGES
-            docker ps --format '{{.Names}} {{.Image}} {{.Status}}'
-            echo PROD_INSPECTION_OK
+            test "$(appgit rev-parse HEAD)" = 923c769b00b6ca4a906496fa526a5d9bdd54213b
+            test -f /home/app/procollab-backend/notifications/models.py
+            test ! -s /home/app/procollab-backend/notifications/models.py
+            appgit diff --cached --quiet
+            appgit stash push -m 'prod-analytics-20261021-preserve-empty-notification-model' -- notifications/models.py
+            echo PROD_CONFLICT_BACKUP_COMMIT
+            appgit rev-parse refs/stash
+            appgit diff --quiet HEAD -- notifications/models.py
+            echo PROD_CHECKOUT_UNBLOCKED
