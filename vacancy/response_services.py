@@ -138,7 +138,15 @@ def accept_vacancy_response(
     response.is_approved = True
     response.save(update_fields=("is_approved", "datetime_updated"))
     vacancy.is_active = False
-    vacancy.save(update_fields=("is_active", "datetime_closed", "datetime_updated"))
+    vacancy.resume_on_publish = False
+    vacancy.save(
+        update_fields=(
+            "is_active",
+            "resume_on_publish",
+            "datetime_closed",
+            "datetime_updated",
+        )
+    )
 
     rejected = list(
         VacancyResponse.objects.select_for_update()

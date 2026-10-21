@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
+from django.db import transaction
 from django.db.models import Count, Q
 from django.utils import timezone
 from rest_framework import serializers
@@ -359,17 +360,17 @@ class ProjectVacancyCreateListSerializer(
     AbstractVacancyEnumFields,
     RequiredSkillsWriteSerializerMixin[Vacancy],
 ):
+    @transaction.atomic
     def create(self, validated_data):
-        project = validated_data["project"]
+        project = Project.objects.select_for_update().get(pk=validated_data["project"].pk)
+        validated_data["project"] = project
         if project.leader != self.context["request"].user:
             raise serializers.ValidationError("You are not the leader of the project")
 
         required_skills_ids = validated_data.pop("required_skills_ids")
 
-        if validated_data["project"].draft:
-            validated_data["is_active"] = False
-        else:
-            validated_data["is_active"] = True
+        validated_data["is_active"] = not project.draft
+        validated_data["resume_on_publish"] = project.draft
 
         vacancy = Vacancy.objects.create(**validated_data)
 

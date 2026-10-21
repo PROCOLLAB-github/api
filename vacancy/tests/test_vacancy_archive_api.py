@@ -66,8 +66,6 @@ class VacancyArchiveAPITests(TestCase):
             self.project.draft = draft
             self.project.is_public = public
             self.project.save()
-            self.vacancy.is_active = False
-            self.vacancy.save()
             response = self.client.patch(self.url, {"is_active": True}, format="json")
             self.assertEqual(response.status_code, 400)
             self.vacancy.refresh_from_db()
@@ -156,3 +154,88 @@ class VacancyArchiveAPITests(TestCase):
         self.vacancy.refresh_from_db()
         self.assertTrue(self.vacancy.is_active)
         self.assertEqual(self.vacancy.required_skills.get().skill_id, skill.pk)
+
+    def test_archive_survives_republish_until_manual_restore(self):
+        rejected = create_vacancy_response(vacancy=self.vacancy, is_approved=False)
+        archived = self.client.patch(self.url, {"is_active": False}, format="json")
+        self.assertEqual(archived.status_code, 200)
+        self.project.draft = True
+        self.project.save()
+        self.project.draft = False
+        self.project.save()
+
+        self.vacancy.refresh_from_db()
+        self.assertFalse(self.vacancy.is_active)
+        self.assertFalse(self.vacancy.resume_on_publish)
+        self.assertEqual(
+            self.client.get(self.url).data["datetime_closed"],
+            archived.data["datetime_closed"],
+        )
+        restored = self.client.patch(self.url, {"is_active": True}, format="json")
+        self.assertEqual(restored.status_code, 200)
+        self.assertTrue(restored.data["is_active"])
+        rejected.refresh_from_db()
+        self.assertFalse(rejected.is_approved)
+
+    @patch("vacancy.lifecycle.send_email.delay")
+    def test_explicit_archive_of_suspended_vacancy_cancels_automatic_resume(self, email):
+        pending = create_vacancy_response(vacancy=self.vacancy)
+        self.project.draft = True
+        self.project.save()
+        with self.captureOnCommitCallbacks(execute=True):
+            archived = self.client.patch(self.url, {"is_active": False}, format="json")
+        self.assertEqual(archived.status_code, 200)
+        pending.refresh_from_db()
+        self.assertFalse(pending.is_approved)
+        email.assert_called_once()
+
+        self.project.draft = False
+        self.project.save()
+        self.vacancy.refresh_from_db()
+        self.assertFalse(self.vacancy.is_active)
+        self.assertFalse(self.vacancy.resume_on_publish)
+
+    def test_new_draft_vacancy_publishes_with_project(self):
+        self.project.draft = True
+        self.project.save()
+        result = self.client.post(
+            "/vacancies/", vacancy_payload(self.project), format="json"
+        )
+        self.assertEqual(result.status_code, 201)
+        vacancy = Vacancy.objects.get(pk=result.data["id"])
+        self.assertFalse(vacancy.is_active)
+        self.assertTrue(vacancy.resume_on_publish)
+
+        self.project.draft = False
+        self.project.save()
+        vacancy.refresh_from_db()
+        self.assertTrue(vacancy.is_active)
+        self.assertFalse(vacancy.resume_on_publish)
+        self.assertIsNone(vacancy.datetime_closed)
+
+    def test_accepting_response_in_suspended_project_keeps_vacancy_archived(self):
+        from vacancy.response_services import accept_vacancy_response
+
+        pending = create_vacancy_response(vacancy=self.vacancy)
+        self.project.draft = True
+        self.project.save()
+        accept_vacancy_response(pending.pk, actor=self.project.leader)
+        self.project.draft = False
+        self.project.save()
+
+        self.vacancy.refresh_from_db()
+        pending.refresh_from_db()
+        self.assertFalse(self.vacancy.is_active)
+        self.assertFalse(self.vacancy.resume_on_publish)
+        self.assertTrue(pending.is_approved)
+
+    def test_editing_suspended_vacancy_does_not_cancel_project_publication(self):
+        self.project.draft = True
+        self.project.save()
+        response = self.client.patch(self.url, {"role": "Новая роль"}, format="json")
+        self.assertEqual(response.status_code, 200)
+        self.project.draft = False
+        self.project.save()
+        self.vacancy.refresh_from_db()
+        self.assertTrue(self.vacancy.is_active)
+        self.assertEqual(self.vacancy.role, "Новая роль")

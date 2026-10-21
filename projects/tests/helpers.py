@@ -238,10 +238,12 @@ def create_vacancy(
     *,
     role: str = "Backend developer",
     is_active: bool = True,
+    resume_on_publish: bool = False,
 ) -> Vacancy:
     return Vacancy.objects.create(
         project=project,
         role=f"{role} {unique_suffix()}",
         description="Vacancy description",
         is_active=is_active,
+        resume_on_publish=resume_on_publish,
     )

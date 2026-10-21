@@ -91,6 +91,12 @@ class VacancyDetail(generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         return with_applicant_state(super().get_queryset(), self.request.user)
 
+    def perform_update(self, serializer):
+        if "is_active" in serializer.validated_data:
+            serializer.save(resume_on_publish=False)
+        else:
+            serializer.save()
+
     @transaction.atomic
     def update(self, request, *args, **kwargs):
         visible = self.get_object()
@@ -101,12 +107,11 @@ class VacancyDetail(generics.RetrieveUpdateDestroyAPIView):
         serializer.is_valid(raise_exception=True)
         target_active = serializer.validated_data.get("is_active", vacancy.is_active)
         validate_reopening(vacancy, target_active)
-        was_active = vacancy.is_active
         skills_error = update_vacancy_skills(request, vacancy)
         if skills_error is not None:
             raise serializers.ValidationError(skills_error.data)
         self.perform_update(serializer)
-        if was_active and not target_active:
+        if "is_active" in serializer.validated_data and not target_active:
             resolve_pending_responses(vacancy)
         return Response(self.get_serializer(self.get_object()).data)
 
