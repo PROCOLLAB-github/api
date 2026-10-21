@@ -34,6 +34,12 @@ from vacancy.selectors import (
     with_applicant_state,
 )
 from vacancy.services import update_vacancy_skills
+from vacancy.lifecycle import (
+    ensure_no_responses,
+    lock_managed_vacancy,
+    resolve_pending_responses,
+    validate_reopening,
+)
 
 
 @swagger_auto_schema(
@@ -85,23 +91,32 @@ class VacancyDetail(generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         return with_applicant_state(super().get_queryset(), self.request.user)
 
-    def patch(self, request, *args, **kwargs):
-        update_vacancy_skills(request, self.get_object())
-        return self.partial_update(request, *args, **kwargs)
+    @transaction.atomic
+    def update(self, request, *args, **kwargs):
+        visible = self.get_object()
+        vacancy = lock_managed_vacancy(visible.pk, request.user)
+        serializer = self.get_serializer(
+            vacancy, data=request.data, partial=kwargs.pop("partial", False)
+        )
+        serializer.is_valid(raise_exception=True)
+        target_active = serializer.validated_data.get("is_active", vacancy.is_active)
+        validate_reopening(vacancy, target_active)
+        was_active = vacancy.is_active
+        skills_error = update_vacancy_skills(request, vacancy)
+        if skills_error is not None:
+            raise serializers.ValidationError(skills_error.data)
+        self.perform_update(serializer)
+        if was_active and not target_active:
+            resolve_pending_responses(vacancy)
+        return Response(self.get_serializer(self.get_object()).data)
 
-    def put(self, request, *args, **kwargs):
-        """updating the vacancy"""
-        vacancy = self.get_object()
-
-        if not request.data.get("is_active"):
-            # automatically declining every vacancy response if the vacancy is not active
-            VacancyResponse.objects.filter(vacancy=vacancy, is_approved=None).update(
-                is_approved=False
-            )
-
-        update_vacancy_skills(request, vacancy)
-
-        return self.update(request, *args, **kwargs)
+    @transaction.atomic
+    def destroy(self, request, *args, **kwargs):
+        visible = self.get_object()
+        vacancy = lock_managed_vacancy(visible.pk, request.user)
+        ensure_no_responses(vacancy)
+        vacancy.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class VacancyResponseList(mixins.ListModelMixin, mixins.CreateModelMixin, GenericAPIView):
