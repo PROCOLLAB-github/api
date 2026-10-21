@@ -154,6 +154,37 @@ class ManagementRemovalWrite(ManagementIdsWrite):
         return attrs
 
 
+class ManagementProjectActionWrite(ManagementIdsWrite):
+    action = serializers.ChoiceField(choices=("change_case", "detach", "submit"))
+    case_name = serializers.CharField(
+        required=False, max_length=1000, trim_whitespace=False
+    )
+
+    def to_internal_value(self, data):
+        from collections.abc import Mapping
+
+        if not isinstance(data, Mapping):
+            raise serializers.ValidationError(
+                {"detail": "Ожидается объект с параметрами действия."}
+            )
+        return super().to_internal_value(data)
+
+    def validate(self, attrs):
+        if attrs["action"] != "submit" and len(attrs["ids"]) != 1:
+            raise serializers.ValidationError({"ids": "Выберите один проект."})
+        if attrs["action"] == "change_case" and not attrs.get("case_name"):
+            raise serializers.ValidationError({"case_name": "Выберите кейс."})
+        if attrs["action"] != "change_case" and "case_name" in attrs:
+            raise serializers.ValidationError(
+                {"case_name": "Кейс не используется в этом действии."}
+            )
+        return attrs
+
+
+class ManagementProjectActionApply(ManagementProjectActionWrite):
+    preview_token = serializers.CharField(max_length=200000)
+
+
 BASIC_FIELDS = (
     "name",
     "city",
