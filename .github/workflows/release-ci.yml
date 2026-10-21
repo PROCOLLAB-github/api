@@ -1,264 +1,33 @@
-name: Release Prod
+name: Inspect Prod Analytics Checkout
 
 on:
-  release:
-    types: [ published ]
   workflow_dispatch:
-    inputs:
-      image_tag:
-        description: Docker image tag to build and deploy
-        required: true
-        type: string
-      deploy_ref:
-        description: Git ref or tag to checkout on the server
-        required: true
-        type: string
 
 jobs:
-  prepare:
-    name: Resolve Release Ref
+  inspect:
     runs-on: ubuntu-latest
-    outputs:
-      image_tag: ${{ steps.vars.outputs.image_tag }}
-      deploy_ref: ${{ steps.vars.outputs.deploy_ref }}
     steps:
-      - name: Resolve image tag and deploy ref
-        id: vars
-        run: |
-          if [ "${{ github.event_name }}" = "release" ]; then
-            image_tag='${{ github.event.release.tag_name }}'
-            deploy_ref='${{ github.event.release.tag_name }}'
-          else
-            image_tag='${{ github.event.inputs.image_tag }}'
-            deploy_ref='${{ github.event.inputs.deploy_ref }}'
-          fi
-
-          if [ -z "$image_tag" ]; then
-            echo "IMAGE_TAG is empty" >&2
-            exit 1
-          fi
-
-          if [ -z "$deploy_ref" ]; then
-            echo "DEPLOY_REF is empty" >&2
-            exit 1
-          fi
-
-          echo "image_tag=$image_tag" >> "$GITHUB_OUTPUT"
-          echo "deploy_ref=$deploy_ref" >> "$GITHUB_OUTPUT"
-
-  test:
-    name: Tests
-    runs-on: ubuntu-latest
-    needs: [ prepare ]
-    steps:
-      - uses: actions/checkout@v3
+      - name: Inspect production checkout without mutations
+        uses: garygrossgarten/github-action-ssh@release
         with:
-          ref: ${{ needs.prepare.outputs.deploy_ref }}
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v4
-        with:
-          python-version: 3.11
-
-      - name: cache poetry install
-        uses: actions/cache@v4
-        with:
-          path: ~/.local
-          key: poetry-1.2.2-0
-
-      - uses: snok/install-poetry@v1
-        with:
-          version: 1.2.2
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-
-      - name: cache deps
-        id: cache-deps
-        uses: actions/cache@v4
-        with:
-          path: .venv
-          key: pydeps-${{ hashFiles('**/poetry.lock') }}
-
-      - run: poetry install
-
-      - run: poetry run pip install setuptools
-
-      - name: Run tests
-        run: poetry run python manage.py test
-        env:
-          DEBUG: True
-          NEXTGEN_SURFACE_ENABLED: True
-
-  build:
-    name: Build Image
-    runs-on: ubuntu-latest
-    needs: [ prepare, test ]
-    outputs:
-      image_tag: ${{ needs.prepare.outputs.image_tag }}
-      deploy_ref: ${{ needs.prepare.outputs.deploy_ref }}
-    steps:
-      - name: "Checkout repository"
-        uses: actions/checkout@v3
-        with:
-          ref: ${{ needs.prepare.outputs.deploy_ref }}
-
-      - name: "Set up QEMU"
-        uses: docker/setup-qemu-action@v3
-
-      - name: "Set up Docker Buildx"
-        uses: docker/setup-buildx-action@v3
-
-      - name: "Login to GitHub Registry"
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/procollab-github/api
-          tags: |
-            type=raw,value=${{ needs.prepare.outputs.image_tag }}
-      - name: Build and push container
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: Dockerfile
-          push: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-  deploy:
-      name: Deploy
-      runs-on: ubuntu-latest
-      needs: [ prepare, build ]
-      steps:
-        - name: Deploy to server
-          uses: garygrossgarten/github-action-ssh@release
-          with:
-            host: ${{ secrets.SERVER_HOST }}
-            username: ${{ secrets.SERVER_USER }}
-            password: ${{ secrets.SERVER_PASSWORD }}
-            command: |
-              set -eu
-
-              export IMAGE_TAG="${{ needs.prepare.outputs.image_tag }}"
-              export DEPLOY_REF="${{ needs.prepare.outputs.deploy_ref }}"
-              echo "Deploying IMAGE_TAG=${IMAGE_TAG} from DEPLOY_REF=${DEPLOY_REF}"
-
-              if [ "$(id -un)" = "app" ]; then
-                git -C /home/app/procollab-backend fetch --all --tags --prune
-                git -C /home/app/procollab-backend checkout --detach "${DEPLOY_REF}"
-                git -C /home/app/procollab-backend rev-parse HEAD
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          command: |
+            set -eu
+            appgit() {
+              if [ "$(id -un)" = app ]; then
+                git -C /home/app/procollab-backend "$@"
               else
-                sudo -u app git -C /home/app/procollab-backend fetch --all --tags --prune
-                sudo -u app git -C /home/app/procollab-backend checkout --detach "${DEPLOY_REF}"
-                sudo -u app git -C /home/app/procollab-backend rev-parse HEAD
+                sudo -u app git -C /home/app/procollab-backend "$@"
               fi
-
-              cd /home/app/procollab-backend
-              rm -f .env
-              touch .env
-
-              echo "DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" >> .env
-
-              echo "DATABASE_NAME=${{ secrets.DATABASE_NAME }}" >> .env
-              echo "DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}" >> .env
-              echo "DATABASE_USER=${{ secrets.DATABASE_USER }}" >> .env
-              echo "DATABASE_HOST=${{ secrets.DATABASE_HOST }}" >> .env
-              echo "DATABASE_PORT=${{ secrets.DATABASE_PORT }}" >> .env
-
-              echo "SELECTEL_ACCOUNT_ID=${{ secrets.SELECTEL_ACCOUNT_ID }}" >> .env
-              echo "SELECTEL_CONTAINER_NAME=${{ secrets.SELECTEL_CONTAINER_NAME }}" >> .env
-              echo "SELECTEL_CONTAINER_PASSWORD=${{ secrets.SELECTEL_CONTAINER_PASSWORD }}" >> .env
-              echo "SELECTEL_CONTAINER_USERNAME=${{ secrets.SELECTEL_CONTAINER_USERNAME }}" >> .env
-
-              echo "EMAIL_USER=${{ secrets.EMAIL_USER }}" >> .env
-              echo "UNISENDER_GO_API_KEY=${{ secrets.UNISENDER_GO_API_KEY }}" >> .env
-
-              chmod 600 .env
-              docker compose -f docker-compose.prod-ci.yml -p prod config >/dev/null
-              docker compose -f docker-compose.prod-ci.yml -p prod pull web celerys
-
-              docker compose -f docker-compose.prod-ci.yml -p prod run --rm web python manage.py migrate
-              docker compose -f docker-compose.prod-ci.yml -p prod up -d --force-recreate
-              expected_image="ghcr.io/procollab-github/api:${IMAGE_TAG}"
-              for service in web celerys; do
-                container="$(docker compose -f docker-compose.prod-ci.yml -p prod ps -q "$service")"
-                if [ -z "$container" ]; then
-                  echo "Service ${service} has no running container" >&2
-                  docker compose -f docker-compose.prod-ci.yml -p prod ps >&2 || true
-                  exit 1
-                fi
-
-                actual_image="$(docker inspect -f '{{.Config.Image}}' "$container")"
-                echo "Service ${service}: container=${container} image=${actual_image}"
-                if [ "$actual_image" != "$expected_image" ]; then
-                  echo "Service ${service} uses unexpected image: ${actual_image}, expected ${expected_image}" >&2
-                  docker compose -f docker-compose.prod-ci.yml -p prod ps >&2 || true
-                  exit 1
-                fi
-              done
-              if [ "$(id -u)" -eq 0 ]; then
-                nginx -t
-                systemctl reload nginx
-              else
-                sudo nginx -t
-                sudo systemctl reload nginx
-              fi
-
-              for attempt in $(seq 1 24); do
-                root_status="$(curl -s -o /dev/null -w '%{http_code}' https://api.procollab.ru/ || true)"
-                admin_status="$(curl -s -o /dev/null -w '%{http_code}' https://api.procollab.ru/admin/login/ || true)"
-
-                if [ "$root_status" = "401" ] && [ "$admin_status" = "200" ]; then
-                  echo "Smoke check passed on attempt ${attempt}"
-                  break
-                fi
-
-                sleep 5
-              done
-
-              if [ "$root_status" != "401" ] || [ "$admin_status" != "200" ]; then
-                echo "Smoke check failed: /=${root_status} /admin/login/=${admin_status}" >&2
-                exit 1
-              fi
-
-              docker compose -f docker-compose.prod-ci.yml -p prod ps
-
-              celery_status=""
-              celery_ping=""
-              celery_container=""
-              for attempt in $(seq 1 12); do
-                celery_container="$(docker compose -f docker-compose.prod-ci.yml -p prod ps -q celerys 2>/dev/null || true)"
-                if [ -n "$celery_container" ]; then
-                  celery_status="$(docker inspect -f '{{.State.Status}}' "$celery_container" 2>/dev/null || true)"
-                else
-                  celery_status="missing"
-                fi
-
-                echo "Celery check attempt ${attempt}: container=${celery_container:-missing} status=${celery_status}"
-                if [ "$celery_status" = "running" ]; then
-                  celery_ping="$(docker compose -f docker-compose.prod-ci.yml -p prod exec -T celerys sh -lc 'celery -A procollab inspect ping --timeout=15' 2>&1 || true)"
-                  printf '%s\n' "$celery_ping"
-                  if printf '%s\n' "$celery_ping" | grep -q 'pong'; then
-                    echo "Celery check passed on attempt ${attempt}"
-                    break
-                  fi
-                fi
-
-                sleep 5
-              done
-
-              if [ "$celery_status" != "running" ] || ! printf '%s\n' "$celery_ping" | grep -q 'pong'; then
-                echo "Celery check failed: status=${celery_status}" >&2
-                docker compose -f docker-compose.prod-ci.yml -p prod ps >&2 || true
-                docker compose -f docker-compose.prod-ci.yml -p prod logs --tail=200 celerys >&2 || true
-                docker compose -f docker-compose.prod-ci.yml -p prod logs --tail=100 redis >&2 || true
-                docker compose -f docker-compose.prod-ci.yml -p prod logs --tail=100 web >&2 || true
-                exit 1
-              fi
+            }
+            echo PROD_CHECKOUT_HEAD
+            appgit rev-parse HEAD
+            echo PROD_CHECKOUT_STATUS
+            appgit status --short
+            echo PROD_NOTIFICATION_PATCH
+            appgit diff HEAD -- notifications/models.py
+            echo PROD_RUNTIME_IMAGES
+            docker ps --format '{{.Names}} {{.Image}} {{.Status}}'
+            echo PROD_INSPECTION_OK
