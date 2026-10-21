@@ -102,7 +102,7 @@ class ManagementParticipantsTests(TestCase):
     def test_activity_presence_filters_match_selection_and_export(self):
         selection = self.root + "selection/"
         for mode, expected in [
-            ("active", self.rows[:4]),
+            ("active", [self.rows[i] for i in (2, 1, 3, 0)]),
             ("inactive", self.rows[4:]),
             ("never", self.rows[4:]),
         ]:
@@ -123,19 +123,21 @@ class ManagementParticipantsTests(TestCase):
                         isinstance(sheet.cell(row, 6).value, datetime), mode == "active"
                     )
 
-    def test_activity_sort_is_global_stable_and_nulls_always_last(self):
-        # Одинаковые даты сортируются по id, отсутствие активности идет в конце.
+    def test_activity_sort_is_global_stable_and_missing_activity_is_least_active(self):
+        # Одинаковые даты и отсутствие активности сортируются стабильно по id.
         user = self.rows[3].user
         user.last_activity = datetime.fromisoformat("2026-10-19T20:59:59+00:00")
         user.save(update_fields=["last_activity"])
         for order, indices in [
-            ("activity_asc", [0, 1, 3, 2, 4, 5]),
+            ("activity_asc", [4, 5, 0, 1, 3, 2]),
             ("activity_desc", [2, 1, 3, 0, 4, 5]),
         ]:
             with self.subTest(order=order):
                 expected = [self.rows[i].pk for i in indices]
                 full = self.client.get(self.root, {"order": order})
                 self.assertEqual([p["id"] for p in full.data["results"]], expected)
+                selected = self.client.get(self.root + "selection/", {"order": order})
+                self.assertEqual(selected.data["ids"], expected)
                 page = self.client.get(
                     self.root, {"order": order, "limit": 2, "offset": 2}
                 )
@@ -158,6 +160,26 @@ class ManagementParticipantsTests(TestCase):
                     [self.rows[i].user.email for i in indices],
                 )
 
+    def test_default_is_recent_activity_first_with_legacy_registration_order_supported(
+        self,
+    ):
+        expected = [self.rows[i].pk for i in (2, 1, 3, 0, 4, 5)]
+        response = self.client.get(self.root)
+        self.assertEqual([p["id"] for p in response.data["results"]], expected)
+        selected = self.client.get(self.root + "selection/")
+        self.assertEqual(selected.data["ids"], expected)
+        sheet = load_workbook(
+            BytesIO(self.client.get(self.root + "export/").content)
+        ).active
+        self.assertEqual(
+            [sheet.cell(i, 3).value for i in range(2, 8)],
+            [self.rows[i].user.email for i in (2, 1, 3, 0, 4, 5)],
+        )
+        legacy = self.client.get(self.root, {"order": "registration"})
+        self.assertEqual(
+            [p["id"] for p in legacy.data["results"]], [p.pk for p in self.rows]
+        )
+
     def test_export_uses_all_filtered_rows_ignoring_pagination_and_keeps_typed_dates(
         self,
     ):
@@ -170,7 +192,7 @@ class ManagementParticipantsTests(TestCase):
         sheet = load_workbook(BytesIO(response.content)).active
         self.assertEqual(sheet.max_row, 4)
         self.assertEqual([sheet.cell(row, 1).value for row in range(2, 5)], [1, 2, 3])
-        self.assertEqual(sheet.cell(2, 6).value, datetime(2026, 10, 19))
+        self.assertEqual(sheet.cell(2, 6).value, datetime(2026, 10, 20))
         self.assertEqual(sheet.cell(2, 6).data_type, "d")
 
     def test_region_matches_profile_picker_city_with_legacy_region_fallback(self):
@@ -190,7 +212,9 @@ class ManagementParticipantsTests(TestCase):
         user.first_name = '=HYPERLINK("bad")'
         user.save(update_fields=["first_name"])
         sheet = load_workbook(
-            BytesIO(self.client.get(self.root + "export/").content)
+            BytesIO(
+                self.client.get(self.root + "export/", {"search": user.email}).content
+            )
         ).active
         self.assertTrue(sheet.cell(2, 2).value.startswith("="))
         self.assertEqual(sheet.cell(2, 2).data_type, "s")

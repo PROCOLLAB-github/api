@@ -123,11 +123,11 @@ def participant_rows(program, search="", query=None):
             if query.get("activity_to"):
                 end = datetime.combine(query["activity_to"], time.max, zone)
                 rows = rows.filter(user__last_activity__lte=end)
-        order = query.get("order", "registration")
+        order = query.get("order", "activity_desc")
         if order in ("activity_asc", "activity_desc"):
             activity = F("user__last_activity")
             rows = rows.order_by(
-                activity.asc(nulls_last=True)
+                activity.asc(nulls_first=True)
                 if order == "activity_asc"
                 else activity.desc(nulls_last=True),
                 "pk",

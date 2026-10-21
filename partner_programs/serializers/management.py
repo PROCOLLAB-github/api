@@ -77,7 +77,7 @@ class ManagementParticipantQuery(ManagementListQuery):
         choices=("all", "period", "active", "inactive", "never"), default="all"
     )
     order = serializers.ChoiceField(
-        choices=("registration", "activity_asc", "activity_desc"), default="registration"
+        choices=("registration", "activity_asc", "activity_desc"), default="activity_desc"
     )
     activity_from = serializers.DateField(required=False)
     activity_to = serializers.DateField(required=False)
