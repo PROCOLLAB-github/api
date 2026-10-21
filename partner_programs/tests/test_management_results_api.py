@@ -108,6 +108,42 @@ class ManagementResultsTests(TestCase):
         self.assertEqual(response.status_code, 200, response.data)
         return [p for g in response.data["groups"] for p in g["projects"]]
 
+    def test_evaluation_detail_uses_same_canonical_scores_as_results(self):
+        from partner_programs.models import PartnerProgramProject
+
+        snapshot = self.client.get(self.url()).data
+        for expected in self.rows():
+            response = self.client.get(
+                f'/programs/{self.program.pk}/management/projects/{expected["id"]}/evaluation/'
+            )
+            self.assertEqual(response.status_code, 200, response.data)
+            actual = response.data["result"]
+            self.assertIsNone(actual["place"])
+            for key in (
+                "project_id",
+                "name",
+                "completed",
+                "required",
+                "ready",
+                "score",
+                "averages",
+                "experts",
+            ):
+                self.assertEqual(actual[key], expected[key], key)
+            self.assertEqual(response.data["criteria"], snapshot["criteria"])
+            self.assertIn("can_rate", response.data)
+            self.assertIn("experts", response.data)
+        link = PartnerProgramProject.objects.get(
+            project=self.projects[-1], partner_program=self.program
+        )
+        response = self.client.get(
+            f"/programs/{self.program.pk}/management/projects/{link.pk}/evaluation/"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.data["submitted"])
+        self.assertFalse(response.data["result"]["ready"])
+        self.assertIsNone(response.data["result"]["place"])
+
     def test_rounding_ties_case_ranks_and_pending(self):
         rows = {p["name"]: p for p in self.rows()}
         self.assertEqual((rows["Город"]["score"], rows["Город"]["place"]), (24, 1))

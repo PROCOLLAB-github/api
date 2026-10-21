@@ -242,6 +242,29 @@ class ManagementProjectsView(ManagementBase):
         return response
 
 
+class ManagementProjectsExportView(ManagementBase):
+    def get(self, request, pk):
+        from partner_programs.services.management_projects_excel import export_projects
+
+        program = managed_program(pk, request.user)
+        field = get_program_case_field(program)
+        query = ManagementProjectQuery(
+            data=request.query_params,
+            context={"case_options": field.get_options_list() if field else []},
+        )
+        query.is_valid(raise_exception=True)
+        response = HttpResponse(
+            export_projects(
+                management_project_rows(program, query.validated_data, field), program
+            ),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        response[
+            "Content-Disposition"
+        ] = f'attachment; filename="program-{pk}-projects.xlsx"'
+        return response
+
+
 class ManagementTeamView(ManagementBase):
     def get(self, request, pk, link_id):
         program = managed_program(pk, request.user)

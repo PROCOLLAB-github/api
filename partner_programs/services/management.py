@@ -234,6 +234,13 @@ def team_data(link):
 
 
 def evaluation_data(program, link, user):
+    from partner_programs.services.results import results_data
+
+    result_snapshot = results_data(
+        program,
+        {"search": "", "case_scope": "all", "order": "desc", "scope": "all"},
+        project_link_id=link.pk,
+    )
     criteria = list(Criteria.objects.filter(partner_program=program).order_by("pk"))
     scores = list(
         ProjectScore.objects.filter(
@@ -294,4 +301,8 @@ def evaluation_data(program, link, user):
         "submitted": link.submitted,
         "can_rate": can_rate,
         "experts": list(experts.values()),
+        "criteria": result_snapshot["criteria"],
+        "result": next(
+            (p for g in result_snapshot["groups"] for p in g["projects"]), None
+        ),
     }
