@@ -187,6 +187,8 @@ class ManagementBulkTests(TestCase):
         self.client.force_authenticate(self.manager)
 
     def post(self, suffix, data):
+        if suffix == "participants/remove":
+            data = {"confirmation_version": 2, **data}
         return self.client.post(self.root + suffix + "/", data, format="json")
 
     def preview(self, ids):
@@ -254,15 +256,11 @@ class ManagementBulkTests(TestCase):
             409,
         )
 
-    def test_member_removal_preserves_shared_team_project_account_and_other_program(self):
-        preview = self.preview([self.member.pk])
-        self.assertEqual(preview["applications"], [])
-        response = self.post(
-            "participants/remove",
-            {"ids": [self.member.pk], "preview_token": preview["preview_token"]},
-        )
-        self.assertEqual(response.status_code, 200, response.data)
-        self.assertFalse(
+    def test_shared_project_team_cannot_be_changed_for_one_program(self):
+        response = self.post("participants/remove-preview", {"ids": [self.member.pk]})
+        self.assertEqual(response.status_code, 409, response.data)
+        self.assertEqual(response.data["code"], "shared_application_team")
+        self.assertTrue(
             PartnerProgramUserProfile.objects.filter(pk=self.member.pk).exists()
         )
         self.assertTrue(
