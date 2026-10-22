@@ -809,6 +809,14 @@ def allocation(program, data):
     ).values_list("project_id", "user_id"):
         teams[user_id].add(project_id)
     own = {e.pk: teams[e.user_id] for e in experts}
+    overrides = {}
+    project_ids = {link.project_id for link in links}
+    for row in data.get("assignment_overrides", []):
+        pid, ids = row["project_id"], row["expert_ids"]
+        if pid not in project_ids or pid in overrides or len(set(ids)) != len(ids):
+            raise ValidationError("Проверьте проекты и экспертов в предпросмотре.")
+        overrides[pid] = set(ids)
+    seed = data.get("seed")
     additions, shortages = [], []
     for link in links:
         needed = max(0, target(program) - counts[link.project_id])
@@ -820,8 +828,24 @@ def allocation(program, data):
             and eligible(scopes.get(e.pk), link.case_name)
             and (pools is None or e.pk in pools.get(link.case_name, set()))
         ]
-        candidates.sort(key=lambda e: (remaining[e.pk], e.pk))
-        for expert in candidates[:needed]:
+        candidates.sort(
+            key=lambda e: (
+                remaining[e.pk],
+                e.pk
+                if seed is None
+                else hashlib.sha256(f"{seed}:{link.project_id}:{e.pk}".encode()).digest(),
+            )
+        )
+        if link.project_id in overrides:
+            chosen = overrides[link.project_id]
+            if chosen - {e.pk for e in candidates} or len(chosen) > needed:
+                raise ValidationError(
+                    "Выберите доступных экспертов в пределах числа оценок проекта."
+                )
+            proposed = [e for e in candidates if e.pk in chosen]
+        else:
+            proposed = candidates[:needed]
+        for expert in proposed:
             additions.append(
                 {
                     "project_id": link.project_id,
@@ -832,12 +856,12 @@ def allocation(program, data):
                 }
             )
             remaining[expert.pk] += 1
-        if len(candidates) < needed:
+        if len(proposed) < needed:
             shortages.append(
                 {
                     "project_id": link.project_id,
                     "project_name": link.project.name,
-                    "missing": needed - len(candidates),
+                    "missing": needed - len(proposed),
                     "case_name": link.case_name,
                 }
             )

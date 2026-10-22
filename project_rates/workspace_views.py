@@ -93,6 +93,13 @@ class ExpertsBulkWrite(CaseScopeWrite):
         return attrs
 
 
+class AllocationOverrideWrite(serializers.Serializer):
+    project_id = serializers.IntegerField(min_value=1)
+    expert_ids = serializers.ListField(
+        child=serializers.IntegerField(min_value=1), max_length=1000
+    )
+
+
 class AllocationWrite(serializers.Serializer):
     expert_ids = serializers.ListField(
         child=serializers.IntegerField(min_value=1), max_length=1000
@@ -102,6 +109,10 @@ class AllocationWrite(serializers.Serializer):
     )
     case_pools = CasePoolWrite(many=True, required=False, max_length=1000)
     revision = serializers.CharField(max_length=64, required=False)
+    seed = serializers.IntegerField(min_value=0, max_value=2147483647, required=False)
+    assignment_overrides = AllocationOverrideWrite(
+        many=True, required=False, max_length=10000
+    )
 
 
 class QuotaWrite(serializers.Serializer):
