@@ -16,6 +16,107 @@ from project_rates.tests.helpers import (
 
 
 class CaseDistributionTests(TestCase):
+    def test_seed_varies_equal_load_choices_without_changing_existing_assignments(self):
+        self.write(self.projects[:1], [self.universal])
+        extra = [create_rate_expert(program=self.program) for _ in range(3)]
+        ids = [u.expert.pk for u in [self.universal, *extra]]
+        variants = set()
+        for seed in range(8):
+            response = self.plan(
+                expert_ids=ids,
+                project_ids=[self.projects[0].pk],
+                case_pools=[{"case_name": "Сбер", "expert_ids": ids}],
+                seed=seed,
+            )
+            self.assertEqual(response.status_code, 200, response.data)
+            rows = response.data["assignments"]
+            self.assertEqual(len(rows), 1)  # one existing + one proposed = two
+            self.assertNotEqual(rows[0]["expert_id"], self.universal.expert.pk)
+            variants.add(rows[0]["expert_id"])
+        self.assertGreater(len(variants), 1)
+        self.assertEqual(ProjectExpertAssignment.objects.count(), 1)
+
+    def test_override_is_preview_only_then_applies_with_the_signed_plan(self):
+        ids = [self.sber.expert.pk, self.universal.expert.pk]
+        response = self.plan(
+            assignment_overrides=[{"project_id": self.projects[0].pk, "expert_ids": ids}]
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(
+            {
+                r["expert_id"]
+                for r in response.data["assignments"]
+                if r["project_id"] == self.projects[0].pk
+            },
+            set(ids),
+        )
+        self.assertFalse(ProjectExpertAssignment.objects.exists())
+        applied = self.client.post(
+            self.root + "expert-allocation/apply/",
+            {"plan_token": response.data["plan_token"]},
+            format="json",
+        )
+        self.assertEqual(applied.status_code, 200, applied.data)
+        self.assertEqual(ProjectExpertAssignment.objects.count(), 8)
+
+    def test_override_rejects_wrong_pool_own_team_duplicates_and_foreign_project(self):
+        own = self.project("Сбер", leader=self.universal)
+        foreign = create_rate_project()
+        rows = [
+            [{"project_id": self.projects[0].pk, "expert_ids": [self.bank.expert.pk]}],
+            [{"project_id": own.pk, "expert_ids": [self.universal.expert.pk]}],
+            [{"project_id": foreign.pk, "expert_ids": []}],
+            [
+                {
+                    "project_id": self.projects[0].pk,
+                    "expert_ids": [self.sber.expert.pk] * 2,
+                }
+            ],
+            [{"project_id": self.projects[0].pk, "expert_ids": []}] * 2,
+        ]
+        for overrides in rows:
+            with self.subTest(overrides=overrides):
+                self.assertEqual(
+                    self.plan(assignment_overrides=overrides).status_code, 400
+                )
+        self.assertFalse(ProjectExpertAssignment.objects.exists())
+
+    def test_override_cannot_exceed_free_slots_or_repeat_an_existing_expert(self):
+        self.write(self.projects[:1], [self.universal])
+        for ids in [
+            [self.universal.expert.pk],
+            [self.sber.expert.pk, self.universal.expert.pk],
+        ]:
+            self.assertEqual(
+                self.plan(
+                    assignment_overrides=[
+                        {"project_id": self.projects[0].pk, "expert_ids": ids}
+                    ]
+                ).status_code,
+                400,
+            )
+        self.assertEqual(ProjectExpertAssignment.objects.count(), 1)
+
+    def test_underfilled_override_blocks_apply_and_stale_override_is_rejected(self):
+        old = self.state()["revision"]
+        response = self.plan(
+            assignment_overrides=[{"project_id": self.projects[0].pk, "expert_ids": []}]
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["shortages"])
+        self.assertEqual(
+            self.client.post(
+                self.root + "expert-allocation/apply/",
+                {"plan_token": response.data["plan_token"]},
+                format="json",
+            ).status_code,
+            409,
+        )
+        self.write(self.projects[:1], [self.sber])
+        self.assertEqual(
+            self.plan(revision=old, assignment_overrides=[]).status_code, 409
+        )
+
     def test_inactive_existing_expert_can_be_kept_but_not_newly_assigned(self):
         self.assertEqual(self.write(self.projects[:1], [self.universal]).status_code, 200)
         type(self.universal).objects.filter(pk=self.universal.pk).update(is_active=False)
