@@ -23,6 +23,9 @@ class ResultsQuery(serializers.Serializer):
     case_name = serializers.CharField(required=False, allow_blank=True, max_length=500)
     order = serializers.ChoiceField(choices=["asc", "desc"], default="desc")
     scope = serializers.ChoiceField(choices=["current", "all"], default="current")
+    status = serializers.ChoiceField(
+        choices=["all", "complete", "pending"], default="all"
+    )
 
 
 def rounded(value):
@@ -131,6 +134,7 @@ def results_data(program, query, *, project_link_id=None):
                 "case_name": link.case_name,
                 "completed": len(completed),
                 "required": required,
+                "evaluation_complete": link.submitted and len(completed) >= required,
                 "ready": link.submitted
                 and len(completed) >= required
                 and score is not None,
@@ -161,10 +165,17 @@ def results_data(program, query, *, project_link_id=None):
             projects = [
                 p for p in projects if query["search"].lower() in p["name"].lower()
             ]
+            status = query.get("status", "all")
+            if status != "all":
+                projects = [
+                    p
+                    for p in projects
+                    if p["evaluation_complete"] == (status == "complete")
+                ]
         sign = -1 if query["order"] == "desc" else 1
         projects.sort(
             key=lambda p: (
-                not p["ready"],
+                not p["evaluation_complete"],
                 p["score"] is None,
                 sign * (p["score"] or 0),
                 p["name"].lower(),

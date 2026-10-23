@@ -125,6 +125,7 @@ class ManagementResultsTests(TestCase):
                 "completed",
                 "required",
                 "ready",
+                "evaluation_complete",
                 "score",
                 "averages",
                 "experts",
@@ -234,6 +235,92 @@ class ManagementResultsTests(TestCase):
         row = data["groups"][0]["projects"][0]
         self.assertIsNone(row["score"])
         self.assertIsNone(row["place"])
+        self.assertTrue(row["evaluation_complete"])
+        self.assertFalse(row["ready"])
+        self.assertEqual(row["completed"], 1)
+        filtered = self.client.get(self.url(pk=program.pk), {"status": "complete"}).data
+        self.assertEqual(len(filtered["groups"][0]["projects"]), 1)
+        self.assertEqual(
+            self.client.get(self.url(pk=program.pk), {"status": "pending"}).data[
+                "groups"
+            ],
+            [],
+        )
+        response = self.client.get(self.url(True, pk=program.pk))
+        book = load_workbook(BytesIO(response.content))
+        self.assertEqual(book["Рейтинг"]["G2"].value, "Оценивание завершено")
+        self.assertIsNone(book["Рейтинг"]["A2"].value)
+        self.assertIsNone(book["Рейтинг"]["F2"].value)
+        type(program).objects.filter(pk=program.pk).update(required_evaluators=2)
+        row = self.client.get(self.url(pk=program.pk)).data["groups"][0]["projects"][0]
+        self.assertFalse(row["evaluation_complete"])
+        self.assertIsNone(row["score"])
+        response = self.client.get(self.url(True, pk=program.pk))
+        self.assertEqual(
+            load_workbook(BytesIO(response.content))["Рейтинг"]["G2"].value,
+            "Ожидает оценок",
+        )
+
+    def test_status_filter_and_export_keep_original_ranks_and_all_scope(self):
+        complete = self.rows(status="complete")
+        pending = self.rows(status="pending")
+        self.assertEqual(len(complete), 5)
+        self.assertEqual({p["name"] for p in pending}, {"Район", "Без оценок"})
+        self.assertTrue(all(p["evaluation_complete"] for p in complete))
+        self.assertFalse(any(p["evaluation_complete"] for p in pending))
+        self.assertEqual(self.rows(status="complete", search="Река")[0]["place"], 4)
+        for export in (False, True):
+            self.assertEqual(
+                self.client.get(self.url(export), {"status": "bad"}).status_code, 400
+            )
+        response = self.client.get(self.url(True), {"status": "pending"})
+        self.assertEqual(load_workbook(BytesIO(response.content))["Рейтинг"].max_row, 3)
+        response = self.client.get(
+            self.url(True), {"status": "pending", "search": "nothing", "scope": "all"}
+        )
+        self.assertEqual(load_workbook(BytesIO(response.content))["Рейтинг"].max_row, 8)
+
+    def test_comment_only_no_criteria_and_invalid_values_do_not_fake_completion(self):
+        self.program = create_rate_program(required_evaluators=3)
+        self.program.managers.add(self.manager)
+        self.program.criterias.all().delete()
+        project = create_rate_project()
+        self.program.users.add(
+            project.leader, through_defaults={"partner_program_data": {}}
+        )
+        link = link_project_to_program(self.program, project)
+        type(link).objects.filter(pk=link.pk).update(submitted=True)
+        row = self.rows()[0]
+        self.assertFalse(row["evaluation_complete"])
+        criterion = Criteria.objects.create(
+            partner_program=self.program, name="Комментарий", type="str"
+        )
+        for expert in self.experts[:3]:
+            ProjectScore.objects.create(
+                criteria=criterion, project=project, user=expert, value=""
+            )
+        row = self.rows()[0]
+        self.assertTrue(row["evaluation_complete"])
+        self.assertIsNone(row["score"])
+        self.assertIsNone(row["place"])
+        self.assertFalse(row["ready"])
+        self.program = create_rate_program(required_evaluators=1)
+        self.program.managers.add(self.manager)
+        self.program.criterias.all().delete()
+        criterion = Criteria.objects.create(
+            partner_program=self.program, name="Условия", type="bool"
+        )
+        project = create_rate_project()
+        self.program.users.add(
+            project.leader, through_defaults={"partner_program_data": {}}
+        )
+        link = link_project_to_program(self.program, project)
+        type(link).objects.filter(pk=link.pk).update(submitted=True)
+        historical = ProjectScore.objects.create(
+            criteria=criterion, project=project, user=self.experts[0], value="False"
+        )
+        ProjectScore.objects.filter(pk=historical.pk).update(value="")
+        self.assertFalse(self.rows()[0]["evaluation_complete"])
 
     def test_invalid_historical_value_does_not_break_export(self):
         ProjectScore.objects.filter(

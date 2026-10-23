@@ -119,7 +119,11 @@ def export_results(data):
                     formula = f"ROUND({formula},2)"
                 rating.cell(row, col, "=" + formula).number_format = "0.00"
             status = (
-                "Нет балльных критериев"
+                (
+                    "Оценивание завершено"
+                    if project["evaluation_complete"]
+                    else "Ожидает оценок"
+                )
                 if not numeric
                 else "В рейтинге"
                 if project["ready"]
