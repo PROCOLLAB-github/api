@@ -4,7 +4,13 @@ from unittest.mock import patch
 
 from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase, override_settings, tag
+from django.test import (
+    TestCase,
+    TransactionTestCase,
+    override_settings,
+    tag,
+    skipUnlessDBFeature,
+)
 from django.utils import timezone
 from PIL import Image
 from rest_framework.test import APIClient
@@ -388,3 +394,57 @@ class CertificateTests(TestCase):
         row.refresh_from_db()
         self.assertEqual(row.status, "failed")
         task.assert_not_called()
+
+
+class CertificateConcurrencyTests(TransactionTestCase):
+    def setUp(self):
+        self.program = create_partner_program()
+        self.user = create_user()
+        create_program_member(self.program, user=self.user)
+        draft = service.default_draft()
+        draft["audience"] = "all"
+        self.batch = ProgramCertificateBatch.objects.create(
+            program=self.program,
+            snapshot=draft,
+            issue_at=timezone.now(),
+            public_base_url="https://dev.procollab.ru",
+        )
+
+    def parallel(self, operation):
+        from concurrent.futures import ThreadPoolExecutor
+        from threading import Barrier
+        from django.db import close_old_connections
+
+        barrier = Barrier(2)
+
+        def run():
+            close_old_connections()
+            try:
+                barrier.wait(timeout=10)
+                operation()
+            finally:
+                close_old_connections()
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            futures = [executor.submit(run) for _ in range(2)]
+            for future in futures:
+                future.result(timeout=20)
+
+    @skipUnlessDBFeature("has_select_for_update")
+    def test_concurrent_initialization_has_one_certificate_per_participant(self):
+        self.parallel(lambda: service.initialize_batch(self.batch.pk))
+        self.assertEqual(
+            ProgramCertificate.objects.filter(program=self.program).count(), 1
+        )
+
+    @skipUnlessDBFeature("has_select_for_update")
+    @patch("partner_programs.services.certificates.render_pdf", return_value=b"%PDF")
+    @patch("partner_programs.services.certificates.send_certificate")
+    def test_concurrent_workers_send_once(self, send, render):
+        service.initialize_batch(self.batch.pk)
+        row = ProgramCertificate.objects.get(program=self.program)
+        self.parallel(lambda: service.process(str(row.pk)))
+        row.refresh_from_db()
+        self.assertEqual(row.status, "sent")
+        send.assert_called_once()
+        render.assert_called_once()
