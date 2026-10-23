@@ -13,6 +13,10 @@ app.autodiscover_tasks()
 
 app.conf.task_serializer = "json"
 app.conf.beat_schedule = {
+    "program_certificates": {
+        "task": "partner_programs.tasks.dispatch_program_certificates",
+        "schedule": crontab(minute="*"),
+    },
     "program_attention_reminders": {
         "task": "partner_programs.tasks.dispatch_attention_reminders",
         "schedule": crontab(minute="*"),

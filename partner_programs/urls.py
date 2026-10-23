@@ -86,7 +86,49 @@ from partner_programs.results_views import (
 
 app_name = "partner_programs"
 
+from partner_programs.certificate_views import (
+    CertificateSettingsView,
+    CertificateAssetView,
+    CertificatePreviewView,
+    CertificateTestView,
+    CertificateActivateView,
+    CertificateQueueView,
+    CertificateJournalView,
+    CertificateRetryView,
+    CertificateDownloadView,
+    CertificateArchiveView,
+    MyCertificatesView,
+    PublicCertificateDownloadView,
+)
+
 urlpatterns = [
+    path("<int:pk>/management/certificates/", CertificateSettingsView.as_view()),
+    path("<int:pk>/management/certificates/assets/", CertificateAssetView.as_view()),
+    path(
+        "<int:pk>/management/certificates/assets/<int:asset_id>/",
+        CertificateAssetView.as_view(),
+    ),
+    path("<int:pk>/management/certificates/preview/", CertificatePreviewView.as_view()),
+    path("<int:pk>/management/certificates/test/", CertificateTestView.as_view()),
+    path("<int:pk>/management/certificates/activate/", CertificateActivateView.as_view()),
+    path(
+        "<int:pk>/management/certificates/queue/<str:action>/",
+        CertificateQueueView.as_view(),
+    ),
+    path(
+        "<int:pk>/management/certificates/deliveries/", CertificateJournalView.as_view()
+    ),
+    path("<int:pk>/management/certificates/retry/", CertificateRetryView.as_view()),
+    path(
+        "<int:pk>/management/certificates/deliveries/<uuid:certificate_id>/pdf/",
+        CertificateDownloadView.as_view(),
+    ),
+    path("<int:pk>/management/certificates/archive/", CertificateArchiveView.as_view()),
+    path("<int:pk>/certificates/me/", MyCertificatesView.as_view()),
+    path(
+        "<int:pk>/certificates/download/<uuid:token>/",
+        PublicCertificateDownloadView.as_view(),
+    ),
     path(
         "<int:pk>/management/projects/actions/preview/",
         ManagementProjectActionPreviewView.as_view(),
