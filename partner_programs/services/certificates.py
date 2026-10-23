@@ -353,7 +353,10 @@ def send_certificate(certificate, *, test=False):
             "certificate-preview.pdf", bytes(certificate.pdf), "application/pdf"
         )
     else:
-        link = f"{certificate.batch.public_base_url}/programs/{certificate.program_id}/certificates/download/{certificate.download_token}/"
+        link = (
+            f"{certificate.batch.public_base_url}/programs/{certificate.program_id}"
+            f"/certificates/download/{certificate.download_token}/"
+        )
         message.body += "\n\nСкачать сертификат: " + link
     if not message.send():
         raise RuntimeError("Mail provider did not accept certificate")

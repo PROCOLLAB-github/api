@@ -84,8 +84,6 @@ from partner_programs.results_views import (
     ManagementResultsExportView,
 )
 
-app_name = "partner_programs"
-
 from partner_programs.certificate_views import (
     CertificateSettingsView,
     CertificateAssetView,
@@ -100,6 +98,8 @@ from partner_programs.certificate_views import (
     MyCertificatesView,
     PublicCertificateDownloadView,
 )
+
+app_name = "partner_programs"
 
 urlpatterns = [
     path("<int:pk>/management/certificates/", CertificateSettingsView.as_view()),

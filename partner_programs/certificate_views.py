@@ -210,6 +210,8 @@ class CertificateJournalView(ManagementBase):
             sent=Count("pk", filter=Q(status="sent")),
             failed=Count("pk", filter=Q(status="failed")),
         )
+        offset = query["offset"]
+        end = offset + query["limit"]
         result = [
             {
                 "id": row.pk,
@@ -220,9 +222,7 @@ class CertificateJournalView(ManagementBase):
                 "error": row.error,
                 "sent_at": row.sent_at,
             }
-            for row in rows.annotate(pdf_ready=~Q(pdf__isnull=True))[
-                query["offset"] : query["offset"] + query["limit"]
-            ]
+            for row in rows.annotate(pdf_ready=~Q(pdf__isnull=True))[offset:end]
         ]
         return Response({"count": rows.count(), "summary": summary, "results": result})
 
