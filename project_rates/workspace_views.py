@@ -110,6 +110,7 @@ class AllocationWrite(serializers.Serializer):
     case_pools = CasePoolWrite(many=True, required=False, max_length=1000)
     revision = serializers.CharField(max_length=64, required=False)
     seed = serializers.IntegerField(min_value=0, max_value=2147483647, required=False)
+    previous_plan_token = serializers.CharField(max_length=500000, required=False)
     assignment_overrides = AllocationOverrideWrite(
         many=True, required=False, max_length=10000
     )
