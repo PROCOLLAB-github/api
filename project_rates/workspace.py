@@ -24,6 +24,7 @@ from project_rates.models import (
     ProjectExpertAssignment,
     ProjectScore,
 )
+from project_rates.allocation_alternatives import alternative_pairs
 from projects.models import Collaborator
 from users.models import CustomUser, Expert
 
@@ -762,7 +763,8 @@ def save_assignments(program_id, user, expert_id, data):
 
 
 def allocation(program, data):
-    experts = expert_rows(program)
+    all_experts = expert_rows(program)
+    experts = all_experts
     selected = set(data["expert_ids"])
     if (not selected and "case_pools" not in data) or selected - {e.pk for e in experts}:
         raise ValidationError("Выберите принявших приглашение экспертов этой программы.")
@@ -800,6 +802,7 @@ def allocation(program, data):
     counts = Counter(a.project_id for a in assignments)
     remaining = Counter(a.expert_id for a in assignments if not a.is_completed)
     before = remaining.copy()
+    assigned_before = Counter(a.expert_id for a in assignments)
     teams = defaultdict(set)
     for link in links:
         teams[link.project.leader_id].add(link.project_id)
@@ -817,7 +820,7 @@ def allocation(program, data):
             raise ValidationError("Проверьте проекты и экспертов в предпросмотре.")
         overrides[pid] = set(ids)
     seed = data.get("seed")
-    additions, shortages = [], []
+    additions, shortages, candidate_ids = [], [], {}
     for link in links:
         needed = max(0, target(program) - counts[link.project_id])
         candidates = [
@@ -836,6 +839,7 @@ def allocation(program, data):
                 else hashlib.sha256(f"{seed}:{link.project_id}:{e.pk}".encode()).digest(),
             )
         )
+        candidate_ids[link.project_id] = {e.pk for e in candidates}
         if link.project_id in overrides:
             chosen = overrides[link.project_id]
             if chosen - {e.pk for e in candidates} or len(chosen) > needed:
@@ -866,6 +870,64 @@ def allocation(program, data):
                 }
             )
     rev = revision(program)
+    if "previous_plan_token" in data:
+        if overrides:
+            raise ValidationError("Обновите предпросмотр после изменения состава.")
+        try:
+            previous = signing.loads(
+                data["previous_plan_token"], salt="expert-allocation", max_age=900
+            )
+        except signing.BadSignature:
+            raise WorkspaceConflict("stale_plan", "Предпросмотр устарел. Обновите его.")
+        if previous.get("program_id") != program.pk:
+            raise ValidationError("План принадлежит другой программе.")
+        check_revision(program, previous["revision"])
+        previous_pairs = {
+            (a["project_id"], a["expert_id"]) for a in previous["additions"]
+        }
+        grouped = defaultdict(set)
+        for pid, eid in previous_pairs:
+            grouped[pid].add(eid)
+        if (
+            set(grouped) - set(candidate_ids)
+            or previous.get("has_shortages")
+            or any(
+                grouped[link.project_id] - candidate_ids[link.project_id]
+                or len(grouped[link.project_id])
+                != max(0, target(program) - counts[link.project_id])
+                for link in links
+            )
+        ):
+            raise ValidationError(
+                "Параметры распределения изменились. Обновите предпросмотр."
+            )
+        previous_load = before + Counter(eid for _, eid in previous_pairs)
+        different = alternative_pairs(
+            previous_pairs, candidate_ids, previous_load, seed or 0
+        )
+        if different is None:
+            raise WorkspaceConflict(
+                "no_alternative", "Другого сбалансированного варианта нет."
+            )
+        link_by_id = {link.project_id: link for link in links}
+        expert_by_id = {e.pk: e for e in experts}
+        additions = [
+            {
+                "project_id": pid,
+                "project_name": link_by_id[pid].project.name,
+                "expert_id": eid,
+                "expert_name": person_name(expert_by_id[eid].user),
+                "case_name": link_by_id[pid].case_name,
+            }
+            for pid, eid in sorted(different)
+        ]
+        shortages = []
+    pairs = {(a["project_id"], a["expert_id"]) for a in additions}
+    added = Counter(eid for _, eid in pairs)
+    remaining = before + added
+    can_reroll = (
+        not shortages and alternative_pairs(pairs, candidate_ids, remaining) is not None
+    )
     token = signing.dumps(
         {
             "program_id": program.pk,
@@ -885,14 +947,17 @@ def allocation(program, data):
         "assignments": additions,
         "shortages": shortages,
         "unavailable_projects": excluded,
+        "can_reroll": can_reroll,
         "load": [
             {
                 "expert_id": e.pk,
                 "name": person_name(e.user),
                 "before": before[e.pk],
                 "after": remaining[e.pk],
+                "assigned_before": assigned_before[e.pk],
+                "assigned_after": assigned_before[e.pk] + added[e.pk],
             }
-            for e in experts
+            for e in all_experts
         ],
     }
 

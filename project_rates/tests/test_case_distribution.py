@@ -1,10 +1,18 @@
 """Case eligibility, universal workload and atomic project-centric assignment."""
 
 from django.test import TestCase
+from django.core import signing
+from unittest.mock import patch
+import time
 from rest_framework.test import APIClient
 
 from partner_programs.models import PartnerProgramField, PartnerProgramFieldValue
-from project_rates.models import ExpertCaseScope, ProjectExpertAssignment, ProjectScore
+from project_rates.models import (
+    Criteria,
+    ExpertCaseScope,
+    ProjectExpertAssignment,
+    ProjectScore,
+)
 from project_rates.tests.helpers import (
     create_rate_program,
     create_rate_user,
@@ -16,6 +24,93 @@ from project_rates.tests.helpers import (
 
 
 class CaseDistributionTests(TestCase):
+    def test_load_separates_assigned_projects_from_completed_work(self):
+        self.write(self.projects[:1], [self.universal, self.sber])
+        create_rate_criteria(self.program)
+        for criterion in Criteria.objects.filter(partner_program=self.program):
+            ProjectScore.objects.create(
+                criteria=criterion,
+                project=self.projects[0],
+                user=self.universal,
+                value="1",
+            )
+        result = self.plan(project_ids=[self.projects[0].pk])
+        self.assertEqual(result.status_code, 200, result.data)
+        row = next(
+            r for r in result.data["load"] if r["expert_id"] == self.universal.expert.pk
+        )
+        self.assertEqual((row["assigned_before"], row["assigned_after"]), (1, 1))
+        self.assertEqual((row["before"], row["after"]), (0, 0))
+
+    def test_repeated_alternative_never_repeats_previous_even_with_same_seed(self):
+        users = [self.universal] + [
+            create_rate_expert(program=self.program) for _ in range(3)
+        ]
+        ids = [u.expert.pk for u in users]
+        query = {
+            "expert_ids": ids,
+            "case_pools": [
+                {"case_name": c, "expert_ids": ids} for c in ["Сбер", "Т-Банк"]
+            ],
+            "seed": 0,
+        }
+        response = self.plan(**query)
+        self.assertEqual(response.status_code, 200)
+        for _ in range(6):
+            previous = response.data
+            self.assertTrue(previous["can_reroll"])
+            response = self.plan(**query, previous_plan_token=previous["plan_token"])
+            self.assertEqual(response.status_code, 200, response.data)
+            previous_pairs = {
+                (r["project_id"], r["expert_id"]) for r in previous["assignments"]
+            }
+            current_pairs = {
+                (r["project_id"], r["expert_id"]) for r in response.data["assignments"]
+            }
+            self.assertNotEqual(previous_pairs, current_pairs)
+            self.assertEqual(len(current_pairs), 8)
+            self.assertLessEqual(
+                sum(r["after"] ** 2 for r in response.data["load"]),
+                sum(r["after"] ** 2 for r in previous["load"]),
+            )
+        self.assertFalse(ProjectExpertAssignment.objects.exists())
+
+    def test_unique_plan_does_not_offer_alternative(self):
+        first = self.plan().data
+        self.assertFalse(first["can_reroll"])
+        response = self.plan(previous_plan_token=first["plan_token"])
+        self.assertEqual(response.status_code, 409)
+        self.assertFalse(ProjectExpertAssignment.objects.exists())
+
+    def test_previous_plan_rejects_tampering_foreign_program_expiry_and_changed_pools(
+        self,
+    ):
+        first = self.plan().data
+        payload = signing.loads(first["plan_token"], salt="expert-allocation")
+        foreign = signing.dumps(
+            {**payload, "program_id": self.program.pk + 1000}, salt="expert-allocation"
+        )
+        self.assertEqual(self.plan(previous_plan_token=foreign).status_code, 400)
+        self.assertEqual(
+            self.plan(previous_plan_token=first["plan_token"] + "broken").status_code, 409
+        )
+        later = time.time() + 901
+        with patch("django.core.signing.time.time", return_value=later):
+            self.assertEqual(
+                self.plan(previous_plan_token=first["plan_token"]).status_code, 409
+            )
+        self.assertEqual(
+            self.plan(
+                previous_plan_token=first["plan_token"],
+                case_pools=[{"case_name": "Сбер", "expert_ids": []}],
+            ).status_code,
+            400,
+        )
+        self.write(self.projects[:1], [self.sber])
+        self.assertEqual(
+            self.plan(previous_plan_token=first["plan_token"]).status_code, 409
+        )
+
     def test_seed_varies_equal_load_choices_without_changing_existing_assignments(self):
         self.write(self.projects[:1], [self.universal])
         extra = [create_rate_expert(program=self.program) for _ in range(3)]
