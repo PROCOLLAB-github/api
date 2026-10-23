@@ -204,8 +204,8 @@ def validate_draft(program, draft):
     from rest_framework import serializers
 
     class Element(serializers.Serializer):
-        x = serializers.FloatField(min_value=0, max_value=100)
-        y = serializers.FloatField(min_value=0, max_value=100)
+        x = serializers.FloatField(min_value=0, max_value=100)  # noqa: VNE001
+        y = serializers.FloatField(min_value=0, max_value=100)  # noqa: VNE001
         width = serializers.FloatField(min_value=2, max_value=100)
         height = serializers.FloatField(min_value=1, max_value=100)
         font_size = serializers.FloatField(min_value=8, max_value=72)
@@ -230,6 +230,10 @@ def validate_draft(program, draft):
     if set(data["layout"]) != set(ELEMENTS):
         raise ValidationError("Состав элементов шаблона изменен. Обновите страницу.")
     for element in data["layout"].values():
+        import math
+
+        if not all(math.isfinite(value) for value in element.values()):
+            raise ValidationError("Размеры и положение должны быть конечными числами.")
         if (
             element["x"] + element["width"] > 100.01
             or element["y"] + element["height"] > 100.01
@@ -337,10 +341,11 @@ def send_certificate(certificate, *, test=False):
     values = {
         "name": certificate.name,
         "program": snapshot.get("program_name", certificate.program.name),
-        "date": certificate.created_at.strftime("%d.%m.%Y"),
+        "date": timezone.localtime(certificate.created_at).strftime("%d.%m.%Y"),
         "number": str(certificate.pk).upper(),
     }
     subject = substitute(snapshot["subject"], values)
+    subject = subject.replace("\r", " ").replace("\n", " ")
     body = substitute(snapshot["message"], values)
     message = EmailMultiAlternatives(
         ("Пробный сертификат · " if test else "") + subject,

@@ -31,13 +31,13 @@ class ProgramCertificateBatch(models.Model):
     background = models.ForeignKey(
         ProgramCertificateAsset,
         null=True,
-        on_delete=models.PROTECT,
+        on_delete=models.RESTRICT,
         related_name="background_batches",
     )
     signature = models.ForeignKey(
         ProgramCertificateAsset,
         null=True,
-        on_delete=models.PROTECT,
+        on_delete=models.RESTRICT,
         related_name="signature_batches",
     )
     active = models.BooleanField(default=True)
@@ -52,7 +52,7 @@ class ProgramCertificate(models.Model):
     download_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     program = models.ForeignKey("PartnerProgram", on_delete=models.CASCADE)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    batch = models.ForeignKey(ProgramCertificateBatch, on_delete=models.PROTECT)
+    batch = models.ForeignKey(ProgramCertificateBatch, on_delete=models.RESTRICT)
     name = models.CharField(max_length=500)
     email = models.EmailField()
     pdf = models.BinaryField(null=True)

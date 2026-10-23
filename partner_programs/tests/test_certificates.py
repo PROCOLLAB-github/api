@@ -331,3 +331,60 @@ class CertificateTests(TestCase):
         )
         self.assertTrue(content.startswith(b"%PDF"))
         self.assertGreater(len(content), 5000)
+        import shutil
+        import subprocess
+        import tempfile
+        from pathlib import Path
+
+        if shutil.which("pdftotext"):
+            with tempfile.TemporaryDirectory() as folder:
+                pdf = Path(folder) / "certificate.pdf"
+                pdf.write_bytes(content)
+                text = subprocess.check_output(
+                    ["pdftotext", str(pdf), "-"], encoding="utf-8"
+                )
+                for word in (
+                    "Александра",
+                    "Константиновна",
+                    "Добровольская",
+                    "Программа",
+                    "развития",
+                ):
+                    self.assertIn(word, text)
+                info = subprocess.check_output(["pdfinfo", str(pdf)], encoding="utf-8")
+                self.assertRegex(info, r"Pages:\s+1\b")
+                self.assertRegex(info, r"Page size:\s+841\.\d+ x 595\.\d+")
+
+    def test_program_deletion_still_cascades_its_certificates_and_assets(self):
+        asset = service.upload_asset(self.program, "signature", self.image())
+        batch = self.batch(signature=asset)
+        self.row(batch=batch)
+        self.program.delete()
+        self.assertFalse(ProgramCertificate.objects.exists())
+
+    @patch(
+        "partner_programs.tasks.process_program_certificate.delay",
+        side_effect=RuntimeError("broker offline"),
+    )
+    def test_dispatch_recovers_broker_failure_without_losing_work(self, task):
+        row = self.row()
+        row.batch.initialized_at = timezone.now()
+        row.batch.save()
+        service.dispatch()
+        row.refresh_from_db()
+        self.assertEqual(row.status, "pending")
+        self.assertIsNone(row.queued_at)
+
+    @patch("partner_programs.tasks.process_program_certificate.delay")
+    def test_ambiguous_send_is_not_automatically_resent(self, task):
+        row = self.row(
+            status="sending",
+            claimed_at=timezone.now() - timedelta(minutes=20),
+            pdf=b"%PDF",
+        )
+        row.batch.initialized_at = timezone.now()
+        row.batch.save()
+        service.dispatch()
+        row.refresh_from_db()
+        self.assertEqual(row.status, "failed")
+        task.assert_not_called()
