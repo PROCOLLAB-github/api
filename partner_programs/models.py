@@ -4,6 +4,12 @@ from django.db import models, transaction
 from django.utils import timezone
 
 from files.models import UserFile
+from partner_programs.certificate_models import (  # noqa: F401
+    ProgramCertificate,
+    ProgramCertificateAsset,
+    ProgramCertificateBatch,
+    ProgramCertificateConfig,
+)
 from partner_programs.constants import get_default_data_schema
 from projects.models import Project
 from partner_programs.attention_models import (  # noqa: F401

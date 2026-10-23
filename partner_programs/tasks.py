@@ -6,6 +6,58 @@ from partner_programs.services import publish_finished_program_projects
 logger = logging.getLogger(__name__)
 
 
+@app.task
+def dispatch_program_certificates():
+    from partner_programs.services.certificates import dispatch
+
+    return dispatch()
+
+
+@app.task
+def process_program_certificate(certificate_id):
+    from partner_programs.services.certificates import process
+
+    return process(certificate_id)
+
+
+@app.task
+def send_test_program_certificate(program_id, user_id, snapshot):
+    from django.contrib.auth import get_user_model
+    from django.utils import timezone
+    from partner_programs.models import PartnerProgram
+    from partner_programs.certificate_models import (
+        ProgramCertificate,
+        ProgramCertificateBatch,
+    )
+    from partner_programs.services.certificates import (
+        render_pdf,
+        send_certificate,
+        assets_for,
+    )
+    from partner_programs.services.management import person_name
+
+    program = PartnerProgram.objects.get(pk=program_id)
+    user = get_user_model().objects.get(pk=user_id)
+    batch = ProgramCertificateBatch(program=program, snapshot=snapshot)
+    row = ProgramCertificate(
+        program=program,
+        user=user,
+        batch=batch,
+        name=person_name(user),
+        email=user.email,
+        created_at=timezone.now(),
+    )
+    row.pdf = render_pdf(
+        snapshot,
+        assets_for(program, snapshot),
+        row.name,
+        program.name,
+        "ПРОБНЫЙ",
+        row.created_at,
+    )
+    send_certificate(row, test=True)
+
+
 @app.task(autoretry_for=(Exception,), retry_backoff=True, max_retries=3)
 def send_registration_connection_notification(notification_id):
     from partner_programs.services.registration_notifications import deliver_notification
