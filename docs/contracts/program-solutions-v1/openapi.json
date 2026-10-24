@@ -4,7 +4,7 @@
   "info": {
     "title": "PROCOLLAB Program Solutions C00",
     "version": "1.1.0",
-    "description": "Контракт для реализации и моков. Новые endpoints пока не реализованы. API base URL задается окружением. snake_case на проводе. Старые API не меняются."
+    "description": "Контракт решений в программах для реализации и моков. Endpoints подключаются поэтапно по BE01–BE06. API base URL задается окружением. snake_case на проводе. Старые API не меняются."
   },
   "servers": [
     {

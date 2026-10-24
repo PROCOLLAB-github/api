@@ -343,7 +343,12 @@ class PartnerProgramFieldAdmin(admin.ModelAdmin):
             objs, request
         )
         for obj in objs:
-            if case_field_has_values(obj):
+            from partner_programs.solution_forms import answer_count
+
+            if case_field_has_values(obj) or (
+                obj.partner_program.solution_storage_mode == "solution"
+                and answer_count(obj)
+            ):
                 protected.append(f"Используемое поле кейса: {obj}")
         return deleted, counts, permissions_needed, protected
 
@@ -365,7 +370,10 @@ class ProgramRegistrationAdmin(admin.ModelAdmin):
     list_display = ("program", "external_status", "requested_at", "published_at")
     list_filter = ("external_status",)
     search_fields = (
-        "program__name", "external_url", "connection_website_url", "connection_contact"
+        "program__name",
+        "external_url",
+        "connection_website_url",
+        "connection_contact",
     )
     readonly_fields = (
         "program",

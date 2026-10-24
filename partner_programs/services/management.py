@@ -70,6 +70,7 @@ def management_data(program):
         "updated_at": program.datetime_updated,
         "is_competitive": program.is_competitive,
         "is_distributed_evaluation": program.is_distributed_evaluation,
+        "solution_storage_mode": program.solution_storage_mode,
         "materials": [
             material_data(m)
             for m in program.materials.select_related("file").order_by("pk")

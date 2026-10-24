@@ -1,7 +1,4 @@
-"""C00: контекст, создание, чтение и команды состава. BE03–BE06 еще закрыты."""
-
-import hashlib
-import json
+"""C00: контекст, создание, чтение и команды состава решения."""
 
 from django.db import transaction
 from django.db.models import Q
@@ -16,17 +13,9 @@ from partner_programs.models import PartnerProgramUserProfile
 from partner_programs.services.role_analytics import participant_project_links
 from partner_programs.solution_models import ProgramSolution, ProgramSolutionMember
 from partner_programs.solution_errors import MAX_ID, SolutionError, issue
+from partner_programs.solution_schema import form_data
 from partner_programs import solution_team
 from partner_programs.solution_team import program_for, visible_solutions
-
-VALIDATION_DEFAULTS = dict(
-    min_length=None,
-    max_length=None,
-    minimum=None,
-    maximum=None,
-    allowed_extensions=[],
-    max_file_size_bytes=None,
-)
 
 
 def iso(value):
@@ -73,47 +62,6 @@ def current_application(program, user):
             name=obj.project.name,
         )
     return None
-
-
-def form_data(program):
-    fields = [
-        dict(
-            id=f.pk,
-            type=f.field_type,
-            purpose="case" if f.name == "case" else f.purpose,
-            label=f.label,
-            help_text=f.help_text or "",
-            required=f.is_required,
-            position=f.position,
-            options=f.get_options_list(),
-            validation={
-                key: f.validation.get(key, default)
-                for key, default in VALIDATION_DEFAULTS.items()
-            },
-        )
-        for f in program.fields.order_by("position", "pk")
-    ]
-    definition = dict(template=program.solution_template, fields=fields)
-    revision = hashlib.sha256(
-        json.dumps(
-            definition, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-        ).encode()
-    ).hexdigest()
-    configured = program.solution_template in ("case_championship", "hackathon") and any(
-        f["purpose"] == "case"
-        and f["type"] == "select"
-        and f["required"]
-        and f["options"]
-        for f in fields
-    )
-    return dict(
-        program_id=program.pk,
-        revision=revision,
-        template=program.solution_template,
-        is_configured=bool(configured),
-        is_snapshot=False,
-        fields=fields,
-    )
 
 
 def context_data(program, user):

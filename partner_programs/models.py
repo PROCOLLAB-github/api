@@ -262,6 +262,7 @@ class PartnerProgram(models.Model):
 
     def clean(self):
         super().clean()
+        self.validate_solution_template_change()
         for field in ("legacy_team_min_size", "legacy_team_max_size"):
             value = getattr(self, field)
             if value is not None and value < 1:
@@ -276,6 +277,30 @@ class PartnerProgram(models.Model):
             raise ValidationError(
                 {"legacy_team_max_size": "Максимум не может быть меньше минимума."}
             )
+
+    def validate_solution_template_change(self, previous=None):
+        if not self.pk:
+            return
+        if previous is None:
+            previous = type(self).objects.filter(pk=self.pk).first()
+        if previous and previous.solution_template != self.solution_template:
+            from partner_programs.solution_forms import has_answers
+
+            if has_answers(self):
+                raise ValidationError(
+                    {"solution_template": "После появления ответов шаблон нельзя менять."}
+                )
+
+    def save(self, *args, **kwargs):
+        fields = kwargs.get("update_fields")
+        if self.pk and (fields is None or "solution_template" in fields):
+            with transaction.atomic():
+                previous = (
+                    type(self).objects.select_for_update().filter(pk=self.pk).first()
+                )
+                self.validate_solution_template_change(previous)
+                return super().save(*args, **kwargs)
+        return super().save(*args, **kwargs)
 
     def is_manager(self, user: User) -> bool:
         """
@@ -567,6 +592,7 @@ class PartnerProgramField(models.Model):
     options = models.TextField(
         blank=True, null=True, help_text="Опции через | (для select/radio/checkbox)"
     )
+    solution_options = models.JSONField(null=True, blank=True, default=None)
 
     def __str__(self):
         return f"{self.partner_program.name} — {self.label} ({self.name})"
@@ -577,6 +603,8 @@ class PartnerProgramField(models.Model):
         unique_together = ("partner_program", "name")
 
     def get_options_list(self) -> list[str]:
+        if self.solution_options is not None:
+            return list(self.solution_options)
         opts = self.options.split("|") if self.options else []
         return [opt.strip() for opt in opts if opt.strip()]
 
@@ -588,19 +616,87 @@ class PartnerProgramField(models.Model):
         )
 
         validate_program_case_configuration(self)
+        previous = type(self).objects.filter(pk=self.pk).first() if self.pk else None
+        program = PartnerProgram.objects.filter(pk=self.partner_program_id).first()
+        if self.partner_program_id and (
+            program
+            and program.solution_storage_mode == "solution"
+            or previous
+            and previous.solution_answers.exists()
+        ):
+            from partner_programs.solution_form_api import FieldWriteSerializer
+            from partner_programs.solution_forms import check_evolution, answer_count
+            from partner_programs.solution_schema import field_data, validate_definition
+            from partner_programs.solution_schema import VALIDATION_DEFAULTS
+            from partner_programs.solution_errors import SolutionError
+
+            if self.solution_options is not None and not isinstance(
+                self.solution_options, list
+            ):
+                raise ValidationError({"solution_options": "Ожидается список вариантов."})
+            if not isinstance(self.validation, dict) or set(self.validation) - set(
+                VALIDATION_DEFAULTS
+            ):
+                raise ValidationError(
+                    {"validation": "Ожидается объект поддерживаемых ограничений."}
+                )
+            candidate = field_data(self)
+            serializer = FieldWriteSerializer(data=candidate)
+            if not serializer.is_valid():
+                raise ValidationError({"validation": str(serializer.errors)})
+            try:
+                validate_definition(candidate)
+                purpose = candidate["purpose"]
+                if purpose != "other" and program:
+                    others = program.fields.exclude(pk=self.pk)
+                    if purpose == "case":
+                        from django.db.models import Q
+
+                        duplicate = others.filter(
+                            Q(name="case") | Q(purpose=purpose)
+                        ).exists()
+                    else:
+                        duplicate = others.filter(purpose=purpose).exists()
+                    if duplicate:
+                        raise ValidationError(
+                            {"purpose": "Такое назначение уже есть в форме."}
+                        )
+                if previous:
+                    if (
+                        previous.partner_program_id != self.partner_program_id
+                        and answer_count(previous)
+                    ):
+                        raise ValidationError(
+                            "Нельзя переносить поле с ответами в другую программу."
+                        )
+                    check_evolution(previous, candidate)
+            except SolutionError as error:
+                raise ValidationError(error.payload["detail"]) from error
 
     def save(self, *args, **kwargs):
         """Serialize case definition edits with case value writes; no schema changes."""
         from partner_programs.services.case_fields import is_program_case_field
 
         with transaction.atomic():
+            program = (
+                PartnerProgram.objects.select_for_update()
+                .filter(pk=self.partner_program_id)
+                .first()
+            )
+            if program is None:
+                raise ValidationError({"partner_program": "Программа не найдена."})
+            self.partner_program = program
             previous = (
                 type(self).objects.select_for_update().filter(pk=self.pk).first()
                 if self.pk
                 else None
             )
-            if is_program_case_field(self) or (
-                previous and is_program_case_field(previous)
+            if (
+                self.partner_program.solution_storage_mode == "solution"
+                or is_program_case_field(self)
+                or (previous and is_program_case_field(previous))
+                or previous
+                and previous.solution_answers.exists()
             ):
                 self.full_clean()
             return super().save(*args, **kwargs)

@@ -51,10 +51,19 @@ def validate_program_case_configuration(field):
         errors["is_required"] = "Кейс обязателен перед сдачей проекта."
     if not field.show_filter:
         errors["show_filter"] = "Системный кейс должен быть доступен для фильтрации."
-    options = [value.strip() for value in (field.options or "").split("|")]
-    if not all(options):
+    options = (
+        field.solution_options
+        if field.solution_options is not None
+        else [value.strip() for value in (field.options or "").split("|")]
+    )
+    if (
+        not isinstance(options, list)
+        or not options
+        or not all(isinstance(value, str) and value.strip() for value in options)
+    ):
         errors["options"] = "Укажите хотя бы один кейс без пустых вариантов."
-    elif len({value.casefold() for value in options}) != len(options):
+        options = []
+    elif len({value.strip().casefold() for value in options}) != len(options):
         errors[
             "options"
         ] = "Варианты кейсов не должны повторяться (без учета регистра и внешних пробелов)."
