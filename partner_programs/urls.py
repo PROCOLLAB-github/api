@@ -1,8 +1,11 @@
 from django.urls import path
 from partner_programs.solution_api import (
+    SolutionCaptainView,
     SolutionContextView,
     SolutionDetailView,
+    SolutionLeaveView,
     SolutionListCreateView,
+    SolutionMemberView,
 )
 from partner_programs.attention_views import AttentionActionView
 from partner_programs.report_views import ProgramReportView
@@ -110,6 +113,12 @@ urlpatterns = [
     path("<int:pk>/solution-context/", SolutionContextView.as_view()),
     path("<int:pk>/solutions/", SolutionListCreateView.as_view()),
     path("<int:pk>/solutions/<int:solution_id>/", SolutionDetailView.as_view()),
+    path(
+        "<int:pk>/solutions/<int:solution_id>/members/<int:user_id>/",
+        SolutionMemberView.as_view(),
+    ),
+    path("<int:pk>/solutions/<int:solution_id>/leave/", SolutionLeaveView.as_view()),
+    path("<int:pk>/solutions/<int:solution_id>/captain/", SolutionCaptainView.as_view()),
     path("<int:pk>/management/certificates/", CertificateSettingsView.as_view()),
     path("<int:pk>/management/certificates/assets/", CertificateAssetView.as_view()),
     path(
