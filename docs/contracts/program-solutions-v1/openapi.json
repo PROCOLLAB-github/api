@@ -3,8 +3,8 @@
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "info": {
     "title": "PROCOLLAB Program Solutions C00",
-    "version": "1.4.0",
-    "description": "Контракт решений в программах для реализации и моков BE01–BE07. API base URL задается окружением. snake_case на проводе. Старые API не меняются."
+    "version": "1.5.0",
+    "description": "Контракт решений в программах для реализации и моков BE01–BE09. API base URL задается окружением. snake_case на проводе. Старые API не меняются."
   },
   "servers": [
     {
@@ -6958,6 +6958,177 @@
           }
         },
         "description": "Одна общая пагинация после фильтрации. pending/completed/unavailable считаются до q и program_id. Сортировка: deadline (null в конце), program_id, название без учета регистра, assignment_id, kind."
+      }
+    },
+    "/programs/{program_id}/management/solution-results/export/": {
+      "get": {
+        "operationId": "exportSolutionResults",
+        "summary": "Выгрузка результатов решений в XLSX",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "case_scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "selected",
+                "without_case"
+              ]
+            }
+          },
+          {
+            "name": "case_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "complete",
+                "pending"
+              ]
+            }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "current",
+                "all"
+              ],
+              "default": "current"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Два листа с результатами одной программы",
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "attachment; filename=\"program-12-solution-results.xlsx\""
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "private, no-store"
+                }
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                }
+              }
+            },
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "description": "Только организатор этой программы в режиме solution. Тот же расчет и порядок, что GET solution-results: места вычисляются до фильтрации, средние только по полным оценкам. scope=current (по умолчанию) применяет search, case_scope/case_name и status; scope=all выгружает все сданные решения, сохраняя order. Некорректный selected case_name остается ошибкой при обоих scope, как в действующей выгрузке проектов. Два листа: Рейтинг и Оценки экспертов. Столбец ID решения содержит ProgramSolution.id; Project и program_link_id не используются. Числа и формулы имеют прежнюю семантику; пользовательские строки остаются текстом, включая строки, начинающиеся с =. Черновики и чужие программы исключены. Оценки не публикуются участникам. Успешный ответ является бинарным XLSX; JSON возвращается только для ошибок C00."
       }
     }
   },

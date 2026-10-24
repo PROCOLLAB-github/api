@@ -7,6 +7,7 @@ from project_rates.solution_evaluation_api import (
     SolutionAllocationApplyView,
     SolutionQuotaView,
     SolutionResultsView,
+    SolutionResultsExportView,
 )
 from partner_programs.solution_submission_api import SolutionSubmitView
 from partner_programs.solution_form_api import ManagedSolutionFormView, SolutionFormView
@@ -132,6 +133,10 @@ urlpatterns = [
     ),
     path("<int:pk>/management/solution-evaluation/quota/", SolutionQuotaView.as_view()),
     path("<int:pk>/management/solution-results/", SolutionResultsView.as_view()),
+    path(
+        "<int:pk>/management/solution-results/export/",
+        SolutionResultsExportView.as_view(),
+    ),
     path("<int:pk>/solution-evaluation/", SolutionRatingsView.as_view()),
     path(
         "<int:pk>/solutions/<int:solution_id>/evaluation/", SolutionRatingView.as_view()

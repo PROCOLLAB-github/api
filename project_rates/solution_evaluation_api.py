@@ -1,5 +1,5 @@
 from django.db import transaction
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from rest_framework import serializers
 from rest_framework.response import Response
 
@@ -117,7 +117,7 @@ class SolutionRatingView(EvaluationAPIView):
             program_id=pk,
             solution_id=solution_id,
             actor=request.user,
-            **serializer.validated_data
+            **serializer.validated_data,
         )
         return Response(solution_evaluation.rating_frame(solution, request.user))
 
@@ -213,6 +213,10 @@ class ResultsQuery(StrictSerializer):
     )
 
 
+class ResultsExportQuery(ResultsQuery):
+    scope = serializers.ChoiceField(choices=["current", "all"], default="current")
+
+
 class SolutionAllocationView(EvaluationAPIView):
     def post(self, request, pk):
         no_query(request)
@@ -272,3 +276,23 @@ class SolutionResultsView(EvaluationAPIView):
         )
         data["generated_at"] = iso(data["generated_at"])
         return Response(data)
+
+
+class SolutionResultsExportView(EvaluationAPIView):
+    def get(self, request, pk):
+        from partner_programs.services.results_excel import export_solution_results
+
+        serializer = ResultsExportQuery(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        program = program_for(pk)
+        require_manager(program, request.user)
+        solution_allocation.require_mode(program)
+        data = solution_results.results_data(program, serializer.validated_data)
+        response = HttpResponse(
+            export_solution_results(data),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        response[
+            "Content-Disposition"
+        ] = f'attachment; filename="program-{pk}-solution-results.xlsx"'
+        return response

@@ -1,5 +1,5 @@
 {
-  "contract_version": "1.4.0",
+  "contract_version": "1.5.0",
   "description": "Независимые примеры, не последовательность операций; фиктивные данные.",
   "scenarios": [
     {
@@ -4938,6 +4938,24 @@
             "blocked_reason": null
           }
         ]
+      }
+    },
+    {
+      "name": "solution_results_export_invalid_scope",
+      "operation_id": "exportSolutionResults",
+      "status": 400,
+      "response": {
+        "code": "validation_error",
+        "detail": "Проверьте данные запроса.",
+        "errors": [
+          {
+            "path": "scope",
+            "code": "invalid_choice",
+            "detail": "Выберите current или all.",
+            "field_id": null
+          }
+        ],
+        "meta": {}
       }
     }
   ]
