@@ -153,6 +153,20 @@ class CertificateTests(TestCase):
         box = draft["layout"]["name"]
         self.assertEqual(box["x"] + box["width"] / 2, 50)
         self.assertEqual(box["y"] + box["height"] / 2, 50)
+        rows = [
+            draft["layout"][key]
+            for key in (
+                "title",
+                "subtitle",
+                "name",
+                "program",
+                "signature",
+                "director",
+                "position",
+            )
+        ]
+        for upper, lower in zip(rows, rows[1:]):
+            self.assertLessEqual(upper["y"] + upper["height"], lower["y"])
 
     def test_optional_elements_can_be_hidden_independently_but_name_cannot(self):
         for key in service.ELEMENTS:
