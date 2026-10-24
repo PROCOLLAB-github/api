@@ -185,7 +185,11 @@ def solution_data(solution, user):
         ),
         # Редактирование и сдача подключаются только вместе с BE05–BE06.
         permissions=dict(
-            can_edit=False,
+            can_edit=(
+                solution.captain_id == user.pk
+                and program.solution_storage_mode == "solution"
+                and not submitted
+            ),
             can_manage_team=(
                 solution.captain_id == user.pk
                 and program.solution_storage_mode == "solution"
@@ -440,6 +444,11 @@ class SolutionListCreateView(SolutionAPIView):
 
 
 class SolutionDetailView(SolutionAPIView):
+    def patch(self, request, pk, solution_id):
+        from partner_programs.solution_answer_api import patch_solution
+
+        return patch_solution(request, pk, solution_id)
+
     def get(self, request, pk, solution_id):
         program = program_for(pk)
         if not 0 < solution_id <= MAX_ID:

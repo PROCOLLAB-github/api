@@ -23,7 +23,9 @@ from partner_programs.solution_team import program_for
 def require_manager(program, actor):
     if not can_manage_program(actor, program):
         raise SolutionError(
-            "forbidden", "Настройка формы доступна организатору программы.", status=403
+            "permission_denied",
+            "Настройка формы доступна организатору программы.",
+            status=403,
         )
 
 
@@ -35,7 +37,7 @@ def require_reader(program, actor):
         ).exists()
     ):
         raise SolutionError(
-            "forbidden", "Форма доступна участникам этой программы.", status=403
+            "permission_denied", "Форма доступна участникам этой программы.", status=403
         )
 
 
@@ -187,7 +189,7 @@ def save_form(*, program_id, actor, expected_revision, template, fields):
     used = any(answer_count(row) for row in existing.values())
     if program.solution_template != template and used:
         raise SolutionError(
-            "template_in_use", "После появления ответов шаблон нельзя менять."
+            "template_locked", "После появления ответов шаблон нельзя менять."
         )
     ids = [row["id"] for row in fields if row["id"] is not None]
     if len(ids) != len(set(ids)) or set(ids) - set(existing):

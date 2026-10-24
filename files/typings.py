@@ -11,3 +11,4 @@ class FileInfo:
     name: str
     extension: str
     mime_type: str
+    detected_mime_type: str = ""

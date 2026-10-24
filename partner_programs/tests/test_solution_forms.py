@@ -111,10 +111,12 @@ class SolutionFormTests(FormFixture, TestCase):
         other_program = solution_program()
         other_program.managers.add(other_manager)
         for actor in (outsider, other_manager):
-            self.assert_error(call(actor, "get", self.read_root), "forbidden", 403)
-            self.assert_error(call(actor, "get", self.root), "forbidden", 403)
+            self.assert_error(
+                call(actor, "get", self.read_root), "permission_denied", 403
+            )
+            self.assert_error(call(actor, "get", self.root), "permission_denied", 403)
         self.assertEqual(call(self.captain, "get", self.read_root).status_code, 200)
-        self.assert_error(call(self.captain, "get", self.root), "forbidden", 403)
+        self.assert_error(call(self.captain, "get", self.root), "permission_denied", 403)
         staff = create_user(is_staff=True)
         self.assertEqual(call(staff, "get", self.root).status_code, 200)
         spec = json.loads(
@@ -303,7 +305,7 @@ class SolutionFormTests(FormFixture, TestCase):
         self.answer(case["id"], "Задача 1")
         self.assert_error(
             self.put(self.payload(fields=[{**case, "options": ["Новое имя"]}])),
-            "option_in_use",
+            "field_in_use",
         )
         response = self.put(
             self.payload(fields=[{**case, "options": ["Задача 1", "Новый трек"]}])
@@ -318,7 +320,7 @@ class SolutionFormTests(FormFixture, TestCase):
         invalid = {**target, "validation": {**VALIDATION_DEFAULTS, "max_length": 2}}
         self.assert_error(
             self.put(self.payload(fields=[self.payload()["fields"][0], invalid])),
-            "constraint_in_use",
+            "field_in_use",
         )
         valid = {**target, "validation": {**VALIDATION_DEFAULTS, "max_length": 100}}
         self.assertEqual(
@@ -332,7 +334,7 @@ class SolutionFormTests(FormFixture, TestCase):
         case = self.payload()["fields"][0]
         self.answer(case["id"], "Задача 1")
         self.assert_error(
-            self.put(self.payload(template="case_championship")), "template_in_use"
+            self.put(self.payload(template="case_championship")), "template_locked"
         )
         self.program.solution_template = "case_championship"
         with self.assertRaises(ValidationError):

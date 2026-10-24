@@ -1,6 +1,10 @@
+<!-- @format -->
+
 # C00 Контракт решения в программе
 
-Версия 1.1.0 от 24 октября 2026 года. Контракт фиксирует поведение для реализации BE01–BE06 и FE01–FE06. В BE01 реализованы модели и четыре операции контекста, создания, чтения и списка; BE02 добавляет удаление участника, выход и передачу капитанства, BE03 — цикл приглашений, BE04 — чтение/изменение формы и стартовые шаблоны. Сохранение ответов и сдача остаются задачами BE05–BE06. Новый режим выключен по умолчанию. Контракт описывает JSON на проводе в snake_case; преобразование в camelCase выполняет frontend adapter.
+Версия 1.2.0 от 24 октября 2026 года. Контракт фиксирует поведение для реализации BE01–BE06 и FE01–FE06. В BE01 реализованы модели и четыре операции контекста, создания, чтения и списка; BE02 добавляет удаление участника, выход и передачу капитанства, BE03 — цикл приглашений, BE04 — чтение/изменение формы и стартовые шаблоны, BE05 — частичное сохранение ответов и привязку файлов. Сдача остается задачей BE06. Новый режим выключен по умолчанию. Контракт описывает JSON на проводе в snake_case; преобразование в camelCase выполняет frontend adapter.
+
+Изменение 1.2.0: общий POST `/files/` принимает необязательный query-параметр `preserve_original=true`. Он сохраняет исходные байты и формат изображения для материалов решения. Без параметра остается прежнее преобразование изображений в WebP. Multipart содержит только `file`, успешный ответ по-прежнему `{url}`. Сервер хранит фактический тип содержимого внутри UserFile и проверяет его при привязке к решению; новые публичные поля ответа не добавляются. Клиент с опцией оригинала внедряется после backend с ее поддержкой.
 
 Изменение 1.1.0: добавлен необязательный `permissions.can_leave`, вычисляемый сервером для собственного выхода принятого участника. При отсутствии поля клиент считает его false. Существующие поля, URL и payload команд не меняются; C00 1.0.0 остается совместимым подмножеством. Капитан, сданная заявка и выключенный режим дают false.
 
@@ -25,15 +29,15 @@ C00 фиксирует техническую основу. D00 v3 явно со
 
 ## Модель хранения
 
-| Объект | Данные и связи |
-| --- | --- |
-| ProgramSolution | id, program FK, captain FK User, name, version bigint, status draft/submitted, submitted_at nullable, submission_snapshot JSON nullable, created_at, updated_at |
-| ProgramSolutionMember | solution FK, user FK, role nullable, specialization nullable, joined_at |
-| SolutionInvitation | solution FK, recipient FK User, role nullable, specialization nullable, motivational_letter nullable, status pending/accepted/declined, version bigint, created_at, updated_at |
-| ProgramSolutionAnswer | solution FK, field FK PartnerProgramField, value JSON; одна запись на пару |
-| Конфигурация формы программы | template nullable до настройки; определения PartnerProgramField расширяются type, purpose, position, validation; revision считается по всей конфигурации |
-| Профиль участника программы | Существующая регистрация сохраняется. Текущая заявка определяется по принятому составу или капитанству, не только по старому profile.project |
-| UserFile | Существующий файл с первичным ключом link. Новый File ID не изобретается |
+| Объект                       | Данные и связи                                                                                                                                                                 |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| ProgramSolution              | id, program FK, captain FK User, name, version bigint, status draft/submitted, submitted_at nullable, submission_snapshot JSON nullable, created_at, updated_at                |
+| ProgramSolutionMember        | solution FK, user FK, role nullable, specialization nullable, joined_at                                                                                                        |
+| SolutionInvitation           | solution FK, recipient FK User, role nullable, specialization nullable, motivational_letter nullable, status pending/accepted/declined, version bigint, created_at, updated_at |
+| ProgramSolutionAnswer        | solution FK, field FK PartnerProgramField, value JSON; одна запись на пару                                                                                                     |
+| Конфигурация формы программы | template nullable до настройки; определения PartnerProgramField расширяются type, purpose, position, validation; revision считается по всей конфигурации                       |
+| Профиль участника программы  | Существующая регистрация сохраняется. Текущая заявка определяется по принятому составу или капитанству, не только по старому profile.project                                   |
+| UserFile                     | Существующий файл с первичным ключом link. Новый File ID не изобретается                                                                                                       |
 
 Капитан также имеет одну запись ProgramSolutionMember. При создании она добавляется в той же транзакции. При передаче капитанства меняется captain FK на уже принятого участника; прежний капитан остается участником. is_captain вычисляется сравнением user.id и captain_id. Дублировать капитана в численности нельзя.
 
@@ -75,27 +79,27 @@ JWT Bearer и текущие правила аутентификации сох�
 
 ## Endpoints
 
-| Метод и путь | Назначение |
-| --- | --- |
-| GET /programs/{program_id}/solution-context/ | Режим программы, сроки, доступность создания и текущая заявка |
-| GET /programs/{program_id}/solutions/ | Доступный пользователю список решений |
-| POST /programs/{program_id}/solutions/ | Создать решение с начальным названием либо вернуть существующее |
-| GET /programs/{program_id}/solutions/{solution_id}/ | Полная разрешенная заявка: team, form, answers, submission, permissions, readiness |
-| PATCH /programs/{program_id}/solutions/{solution_id}/ | Частично сохранить название и ответы черновика |
-| POST /programs/{program_id}/solutions/{solution_id}/submit/ | Сдать сохраненную заявку |
-| DELETE /programs/{program_id}/solutions/{solution_id}/members/{user_id}/ | Капитан удаляет участника |
-| POST /programs/{program_id}/solutions/{solution_id}/leave/ | Участник выходит |
-| POST /programs/{program_id}/solutions/{solution_id}/captain/ | Передача капитанства |
-| GET и POST /programs/{program_id}/solutions/{solution_id}/invitations/ | Капитан читает приглашения заявки или создает приглашение |
-| GET /solution-invitations/ | Входящие приглашения текущего пользователя |
-| GET /solution-invitations/{invitation_id}/ | Безопасное представление для капитана и получателя |
-| PATCH и DELETE /solution-invitations/{invitation_id}/ | Изменить или отозвать pending приглашение капитаном |
-| POST /solution-invitations/{invitation_id}/accept/ | Получатель принимает приглашение |
-| POST /solution-invitations/{invitation_id}/decline/ | Получатель отклоняет приглашение |
-| GET /programs/{program_id}/solution-form/ | Текущая форма, доступная участнику программы |
-| GET и PUT /programs/{program_id}/management/solution-form/ | Организатор читает или атомарно меняет форму |
-| GET /solution-form-templates/ | Прототипы двух шаблонов |
-| POST /files/ | Существующая multipart загрузка, ответ 201 {url} |
+| Метод и путь                                                             | Назначение                                                                         |
+| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| GET /programs/{program_id}/solution-context/                             | Режим программы, сроки, доступность создания и текущая заявка                      |
+| GET /programs/{program_id}/solutions/                                    | Доступный пользователю список решений                                              |
+| POST /programs/{program_id}/solutions/                                   | Создать решение с начальным названием либо вернуть существующее                    |
+| GET /programs/{program_id}/solutions/{solution_id}/                      | Полная разрешенная заявка: team, form, answers, submission, permissions, readiness |
+| PATCH /programs/{program_id}/solutions/{solution_id}/                    | Частично сохранить название и ответы черновика                                     |
+| POST /programs/{program_id}/solutions/{solution_id}/submit/              | Сдать сохраненную заявку                                                           |
+| DELETE /programs/{program_id}/solutions/{solution_id}/members/{user_id}/ | Капитан удаляет участника                                                          |
+| POST /programs/{program_id}/solutions/{solution_id}/leave/               | Участник выходит                                                                   |
+| POST /programs/{program_id}/solutions/{solution_id}/captain/             | Передача капитанства                                                               |
+| GET и POST /programs/{program_id}/solutions/{solution_id}/invitations/   | Капитан читает приглашения заявки или создает приглашение                          |
+| GET /solution-invitations/                                               | Входящие приглашения текущего пользователя                                         |
+| GET /solution-invitations/{invitation_id}/                               | Безопасное представление для капитана и получателя                                 |
+| PATCH и DELETE /solution-invitations/{invitation_id}/                    | Изменить или отозвать pending приглашение капитаном                                |
+| POST /solution-invitations/{invitation_id}/accept/                       | Получатель принимает приглашение                                                   |
+| POST /solution-invitations/{invitation_id}/decline/                      | Получатель отклоняет приглашение                                                   |
+| GET /programs/{program_id}/solution-form/                                | Текущая форма, доступная участнику программы                                       |
+| GET и PUT /programs/{program_id}/management/solution-form/               | Организатор читает или атомарно меняет форму                                       |
+| GET /solution-form-templates/                                            | Прототипы двух шаблонов                                                            |
+| POST /files/                                                             | Существующая multipart загрузка, ответ 201 {url}                                   |
 
 Списки solutions используют search и submission=all/submitted/not_submitted. В неконкурсной программе submission, отличный от all, возвращает 400. Списки приглашений используют status=pending/accepted/declined, default pending. Общие списки и контекст сортируются детерминированно по created_at и ID согласно текущему интерфейсу, без случайного выбора первой заявки.
 
@@ -149,13 +153,13 @@ remove и transfer возвращают MutationReceipt с новой solution_v
 
 Ответ представлен как {field_id,value}. Тип берется из определения поля, а не из переданного клиентом type:
 
-| Тип | JSON value |
-| --- | --- |
-| text, textarea, url | string |
-| select, radio | Точная строка из options |
-| number | JSON number, включая 0 |
-| checkbox | boolean, включая false |
-| file | {url: URL существующего UserFile} |
+| Тип                 | JSON value                        |
+| ------------------- | --------------------------------- |
+| text, textarea, url | string                            |
+| select, radio       | Точная строка из options          |
+| number              | JSON number, включая 0            |
+| checkbox            | boolean, включая false            |
+| file                | {url: URL существующего UserFile} |
 
 PATCH с value:null очищает ответ. Пустая строка и строка из пробелов также очищают текст, ссылку и выбор в черновике. В ответе GET очищенные поля отсутствуют в answers, не содержат null. Дубликат field_id в запросе отклоняется целиком. Сохраненный текст не меняется автоматически, кроме нормализации, предусмотренной текущим полем; проверка пустоты использует trim.
 
@@ -211,16 +215,16 @@ PATCH и submit — две отдельные транзакции. Если sub
 
 Новый Error содержит обязательные code, detail, errors и meta. errors — массив {path,code,field_id,detail}; field_id:null для системной ошибки. meta несет current_version или current_form_revision только при наличии права чтения.
 
-| HTTP | Коды |
-| --- | --- |
-| 400 | validation_error, invalid_answers, required_program_fields, case_required, case_unavailable, invalid_form |
-| 401 | authentication_required |
-| 403 | not_program_member, not_solution_captain, not_invite_recipient, permission_denied |
-| 404 | not_found |
-| 409 | solution_mode_unavailable, form_not_configured, version_conflict, form_revision_conflict, already_in_program_team, ambiguous_application |
-| 409 | team_frozen, team_min_size, team_max_size, already_solution_member, duplicate_pending_invite, invite_already_processed |
-| 409 | captain_cannot_leave, captain_cannot_be_removed, captain_already_selected, not_solution_member |
-| 409 | submission_closed, already_submitted, not_competitive, field_in_use, template_locked |
+| HTTP | Коды                                                                                                                                     |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| 400  | validation_error, invalid_answers, required_program_fields, case_required, case_unavailable, invalid_form                                |
+| 401  | authentication_required                                                                                                                  |
+| 403  | not_program_member, not_solution_captain, not_invite_recipient, permission_denied                                                        |
+| 404  | not_found                                                                                                                                |
+| 409  | solution_mode_unavailable, form_not_configured, version_conflict, form_revision_conflict, already_in_program_team, ambiguous_application |
+| 409  | team_frozen, team_min_size, team_max_size, already_solution_member, duplicate_pending_invite, invite_already_processed                   |
+| 409  | captain_cannot_leave, captain_cannot_be_removed, captain_already_selected, not_solution_member                                           |
+| 409  | submission_closed, already_submitted, not_competitive, field_in_use, template_locked                                                     |
 
 Это HTTP контракты новых endpoints. Существующие статусы старых /projects/, /invites/ и submit связи не меняются. Повторное действие с удаленным приглашением дает 404. Повтор accept/decline сохраненной обработанной строки — 409 invite_already_processed.
 
@@ -238,19 +242,19 @@ Legacy порядок Project → Program → program links не меняетс�
 
 ## Карта потребителей
 
-| Текущий участок | Изменение | Задача |
-| --- | --- | --- |
-| Project и PartnerProgramProject, profile.project | Владение данными переносится в ProgramSolution; профиль регистрации сохраняется | BE01, BE08, FE01 |
-| Collaborator и projects.team_policy/team_service | Общая policy, новый владелец участников; счетчики без дубля капитана | BE02, FE04 |
-| Invite и текущий inbox | Новые приглашения через SolutionInvitation и /solution-invitations/; старые /invites/ работают прежним способом | BE03, BE08, FE05 |
-| PartnerProgramField и program field values | Definitions переиспользуются; ответы нового решения — typed JSON | BE04, BE05, FE02, FE03 |
-| files.UserFile и /files/ | Текущий upload, проверка привязки и защита использования после сдачи | BE05, BE06, FE03 |
-| Link-scoped submit | Новая команда submit с теми же правилами и снимком | BE06, FE06 |
-| ProjectExpertAssignment, ProjectScore и результаты | Привязка к решению без смены критериев и формул | BE07, FE07 |
-| Management, role widgets, case analytics, exports | Чтение решения; признак материала через purpose; нет двойного учета | BE08, BE09, FE08 |
-| Уведомления и глубокие ссылки | Явная ссылка kind:solution с program_id и solution_id | BE08, FE05, FE08 |
-| История программ | legacy adapter и таблица old link → new solution | BE10 |
-| Чаты и вакансии программного Project | Не создаются автоматически для нового решения; сохраненный доступ к существующим связанным объектам проверяется до переноса | C00 карта, BE08, BE10 |
+| Текущий участок                                    | Изменение                                                                                                                   | Задача                 |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| Project и PartnerProgramProject, profile.project   | Владение данными переносится в ProgramSolution; профиль регистрации сохраняется                                             | BE01, BE08, FE01       |
+| Collaborator и projects.team_policy/team_service   | Общая policy, новый владелец участников; счетчики без дубля капитана                                                        | BE02, FE04             |
+| Invite и текущий inbox                             | Новые приглашения через SolutionInvitation и /solution-invitations/; старые /invites/ работают прежним способом             | BE03, BE08, FE05       |
+| PartnerProgramField и program field values         | Definitions переиспользуются; ответы нового решения — typed JSON                                                            | BE04, BE05, FE02, FE03 |
+| files.UserFile и /files/                           | Текущий upload, проверка привязки и защита использования после сдачи                                                        | BE05, BE06, FE03       |
+| Link-scoped submit                                 | Новая команда submit с теми же правилами и снимком                                                                          | BE06, FE06             |
+| ProjectExpertAssignment, ProjectScore и результаты | Привязка к решению без смены критериев и формул                                                                             | BE07, FE07             |
+| Management, role widgets, case analytics, exports  | Чтение решения; признак материала через purpose; нет двойного учета                                                         | BE08, BE09, FE08       |
+| Уведомления и глубокие ссылки                      | Явная ссылка kind:solution с program_id и solution_id                                                                       | BE08, FE05, FE08       |
+| История программ                                   | legacy adapter и таблица old link → new solution                                                                            | BE10                   |
+| Чаты и вакансии программного Project               | Не создаются автоматически для нового решения; сохраненный доступ к существующим связанным объектам проверяется до переноса | C00 карта, BE08, BE10  |
 
 Чаты и вакансии не являются зависимостью формы, приглашения и submit нового решения. Полный перенос их функциональности на новую сущность оформляется отдельно; существующие объекты старых программ не удаляются и не теряют маршрут. Если пилотной программе нужны эти функции, их готовность проверяется до выбора этой программы для REL01.
 

@@ -70,7 +70,7 @@ class SolutionFoundationTests(TestCase):
         self.assertEqual(obj.captain_id, self.user.pk)
         self.assertEqual(response.data["team"]["accepted_count"], 1)
         self.assertTrue(response.data["permissions"]["can_manage_team"])
-        self.assertFalse(response.data["permissions"]["can_edit"])
+        self.assertTrue(response.data["permissions"]["can_edit"])
         self.assertTrue(response.data["permissions"]["can_invite"])
         self.assertFalse(response.data["permissions"]["can_submit"])
         self.assertEqual(response.data["answers"], [])
@@ -356,7 +356,7 @@ class SolutionFoundationTests(TestCase):
             self.client.patch(
                 f"{self.url}{solution_id}/", {"name": "X"}, format="json"
             ).status_code,
-            405,
+            400,
         )
         for suffix in ["members/", "submit/"]:
             self.assertEqual(

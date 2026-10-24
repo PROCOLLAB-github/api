@@ -1,6 +1,8 @@
 import reprlib
 
 from django.contrib import admin
+from django.db import transaction
+from django.core.exceptions import PermissionDenied
 from django.forms import ModelForm, FileField
 from django.db.models import QuerySet
 
@@ -19,6 +21,19 @@ class UserFileForm(ModelForm):
 @admin.register(UserFile)
 class UserFileAdmin(admin.ModelAdmin):
     form = UserFileForm
+    readonly_fields = ("detected_mime_type",)
+
+    def get_deleted_objects(self, objs, request):
+        from partner_programs.solution_files import used_by_submitted_solution
+
+        deleted, counts, permissions_needed, protected = super().get_deleted_objects(
+            objs, request
+        )
+        for obj in objs:
+            if used_by_submitted_solution(obj.pk):
+                protected.append(f"Файл сданного решения: {obj}")
+        return deleted, counts, permissions_needed, protected
+
     list_display = (
         "short_link",
         "filename",
@@ -72,14 +87,27 @@ class UserFileAdmin(admin.ModelAdmin):
         obj.size = info.size
         obj.extension = info.extension
         obj.mime_type = info.mime_type
+        obj.detected_mime_type = info.detected_mime_type
         super().save_model(request, obj, form, change)
 
+    @transaction.atomic
     def delete_model(self, request, obj):
+        from partner_programs.solution_files import used_by_submitted_solution
+
+        obj = UserFile.objects.select_for_update().get(pk=obj.pk)
+        if used_by_submitted_solution(obj.pk):
+            raise PermissionDenied("Файл используется в сданном решении.")
         self.cdn.delete(obj.link)
         obj.delete()
 
+    @transaction.atomic
     def delete_queryset(self, request, queryset):
-        for obj in queryset:
+        from partner_programs.solution_files import used_by_submitted_solution
+
+        rows = list(queryset.select_for_update().order_by("pk"))
+        if any(used_by_submitted_solution(obj.pk) for obj in rows):
+            raise PermissionDenied("Файл используется в сданном решении.")
+        for obj in rows:
             self.cdn.delete(obj.link)
         queryset.delete()
 

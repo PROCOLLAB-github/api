@@ -80,7 +80,7 @@ def form_data(program):
 
 def definition_error(path, detail, field_id=None, *, code="invalid", status=400):
     raise SolutionError(
-        "validation_error" if status == 400 else code,
+        "validation_error" if status == 400 else "field_in_use",
         detail,
         status=status,
         errors=[issue(path, code, detail, field_id)],
