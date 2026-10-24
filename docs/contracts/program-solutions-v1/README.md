@@ -2,7 +2,7 @@
 
 # C00 Контракт решения в программе
 
-Версия 1.2.0 от 24 октября 2026 года. Контракт фиксирует поведение для реализации BE01–BE06 и FE01–FE06. В BE01 реализованы модели и четыре операции контекста, создания, чтения и списка; BE02 добавляет удаление участника, выход и передачу капитанства, BE03 — цикл приглашений, BE04 — чтение/изменение формы и стартовые шаблоны, BE05 — частичное сохранение ответов и привязку файлов. Сдача остается задачей BE06. Новый режим выключен по умолчанию. Контракт описывает JSON на проводе в snake_case; преобразование в camelCase выполняет frontend adapter.
+Версия 1.2.0 от 24 октября 2026 года. Контракт фиксирует поведение для реализации BE01–BE06 и FE01–FE06. В BE01 реализованы модели и четыре операции контекста, создания, чтения и списка; BE02 добавляет удаление участника, выход и передачу капитанства, BE03 — цикл приглашений, BE04 — чтение/изменение формы и стартовые шаблоны, BE05 — частичное сохранение ответов и привязку файлов, BE06 — атомарную сдачу со снимком. Новый режим выключен по умолчанию. Контракт описывает JSON на проводе в snake_case; преобразование в camelCase выполняет frontend adapter.
 
 Изменение 1.2.0: общий POST `/files/` принимает необязательный query-параметр `preserve_original=true`. Он сохраняет исходные байты и формат изображения для материалов решения. Без параметра остается прежнее преобразование изображений в WebP. Multipart содержит только `file`, успешный ответ по-прежнему `{url}`. Сервер хранит фактический тип содержимого внутри UserFile и проверяет его при привязке к решению; новые публичные поля ответа не добавляются. Клиент с опцией оригинала внедряется после backend с ее поддержкой.
 
@@ -224,7 +224,7 @@ PATCH и submit — две отдельные транзакции. Если sub
 | 409  | solution_mode_unavailable, form_not_configured, version_conflict, form_revision_conflict, already_in_program_team, ambiguous_application |
 | 409  | team_frozen, team_min_size, team_max_size, already_solution_member, duplicate_pending_invite, invite_already_processed                   |
 | 409  | captain_cannot_leave, captain_cannot_be_removed, captain_already_selected, not_solution_member                                           |
-| 409  | submission_closed, already_submitted, not_competitive, field_in_use, template_locked                                                     |
+| 409  | submission_closed, already_submitted, not_competitive, field_in_use, template_locked, file_in_use                                        |
 
 Это HTTP контракты новых endpoints. Существующие статусы старых /projects/, /invites/ и submit связи не меняются. Повторное действие с удаленным приглашением дает 404. Повтор accept/decline сохраненной обработанной строки — 409 invite_already_processed.
 

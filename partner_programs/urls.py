@@ -1,4 +1,5 @@
 from django.urls import path
+from partner_programs.solution_submission_api import SolutionSubmitView
 from partner_programs.solution_form_api import ManagedSolutionFormView, SolutionFormView
 from partner_programs.solution_invitation_api import SolutionInvitationsView
 from partner_programs.solution_api import (
@@ -117,6 +118,7 @@ urlpatterns = [
     path("<int:pk>/solution-context/", SolutionContextView.as_view()),
     path("<int:pk>/solutions/", SolutionListCreateView.as_view()),
     path("<int:pk>/solutions/<int:solution_id>/", SolutionDetailView.as_view()),
+    path("<int:pk>/solutions/<int:solution_id>/submit/", SolutionSubmitView.as_view()),
     path(
         "<int:pk>/solutions/<int:solution_id>/members/<int:user_id>/",
         SolutionMemberView.as_view(),

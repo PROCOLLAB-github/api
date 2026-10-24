@@ -14,6 +14,7 @@ from partner_programs.services.role_analytics import participant_project_links
 from partner_programs.solution_models import ProgramSolution, ProgramSolutionMember
 from partner_programs.solution_errors import MAX_ID, SolutionError, issue
 from partner_programs.solution_schema import form_data
+from partner_programs.solution_submission import readiness_issues
 from partner_programs import solution_team
 from partner_programs.solution_team import program_for, visible_solutions
 
@@ -130,33 +131,8 @@ def solution_data(solution, user):
         )
         accepted = {member["user"]["id"] for member in member_data}
     problems = []
-    if program.is_competitive and own:
-        if not name.strip():
-            problems.append(issue("name", "required", "Укажите название решения."))
-        if program.legacy_team_min_size and len(accepted) < program.legacy_team_min_size:
-            problems.append(
-                issue(
-                    "team", "team_min_size", "В команде недостаточно принятых участников."
-                )
-            )
-        if program.legacy_team_max_size and len(accepted) > program.legacy_team_max_size:
-            problems.append(
-                issue("team", "team_max_size", "Превышен максимальный размер команды.")
-            )
-        values = {a["field_id"]: a["value"] for a in answers}
-        for field in form["fields"]:
-            value = values.get(field["id"])
-            if field["required"] and (
-                value is None or isinstance(value, str) and not value.strip()
-            ):
-                problems.append(
-                    issue(
-                        f"answers.{field['id']}",
-                        "required",
-                        "Заполните обязательное поле.",
-                        field["id"],
-                    )
-                )
+    if program.is_competitive and own and not submitted:
+        problems = readiness_issues(solution, form, answers, accepted)
     return dict(
         id=solution.pk,
         program_id=program.pk,
@@ -183,7 +159,6 @@ def solution_data(solution, user):
             deadline=iso(program.get_project_submission_deadline()),
             submitted_at=iso(solution.submitted_at),
         ),
-        # Редактирование и сдача подключаются только вместе с BE05–BE06.
         permissions=dict(
             can_edit=(
                 solution.captain_id == user.pk
@@ -200,7 +175,13 @@ def solution_data(solution, user):
                 and program.solution_storage_mode == "solution"
                 and not submitted
             ),
-            can_submit=False,
+            can_submit=(
+                solution.captain_id == user.pk
+                and program.solution_storage_mode == "solution"
+                and not submitted
+                and program.is_competitive
+                and program.is_project_submission_open()
+            ),
             can_leave=(
                 user.pk in accepted
                 and solution.captain_id != user.pk

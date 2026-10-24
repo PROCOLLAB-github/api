@@ -507,7 +507,10 @@ class SolutionAnswerTests(AnswerFixture, TestCase):
         self.solution.submission_snapshot["answers"] = [
             {"field_id": self.fields["file"]["id"], "value": {"url": protected.link}}
         ]
-        self.solution.save()
+        # Deliberately emulate historical import data outside supported model writes.
+        type(self.solution).objects.filter(pk=self.solution.pk).update(
+            submission_snapshot=self.solution.submission_snapshot
+        )
         self.assertFalse(self.solution.answers.exists())
         admin = UserFileAdmin(UserFile, AdminSite())
         with patch.object(admin.cdn, "delete") as cdn:

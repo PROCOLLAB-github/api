@@ -72,7 +72,7 @@ class SolutionFoundationTests(TestCase):
         self.assertTrue(response.data["permissions"]["can_manage_team"])
         self.assertTrue(response.data["permissions"]["can_edit"])
         self.assertTrue(response.data["permissions"]["can_invite"])
-        self.assertFalse(response.data["permissions"]["can_submit"])
+        self.assertTrue(response.data["permissions"]["can_submit"])
         self.assertEqual(response.data["answers"], [])
         self.assertEqual(response.data["submission"]["status"], "draft")
         self.assertEqual(self.client.get(f"{self.url}{obj.pk}/").data, response.data)
@@ -358,12 +358,12 @@ class SolutionFoundationTests(TestCase):
             ).status_code,
             400,
         )
-        for suffix in ["members/", "submit/"]:
+        for suffix, expected_status in [("members/", 404), ("submit/", 400)]:
             self.assertEqual(
                 self.client.post(
                     f"{self.url}{solution_id}/{suffix}", {}, format="json"
                 ).status_code,
-                404,
+                expected_status,
             )
 
     def test_anonymous_api_uses_contract_error_envelope(self):
