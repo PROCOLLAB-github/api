@@ -37,3 +37,24 @@
 - Checked in browser: новый продуктовый UI выгрузки не реализован; согласование дизайна не пройдено. Полный Linux CI нового commit запускается после push. Формулы сохранены и проверены как формулы; пересчет книги в Excel отдельно не запускался, как и прежде writer использует fullCalcOnLoad.
 
 EXP01–EXP08: PASS для API/выгрузки и API-слоя frontend. Review не выявил незакрытых дефектов этого блока. Это не приемка всей BE09 или общей feature; PR остается draft.
+
+## Следующий блок: ролевой виджет решения
+
+Current: GET /programs/{id}/analytics-widget/ правильно проверяет роль и считает участников через общие selectors, но работу/назначения/этапы по-прежнему читает из PartnerProgramProject/ProjectExpertAssignment. Маршрутизация экспертных входов исправляется отдельно через публичное read-only solution_storage_mode detail. Это не исправляет старые нулевые счетчики виджета.
+
+Target: сохранить endpoint, role priority organizer → expert → participant, отсутствие polling/записей, геометрию и controls. Legacy ответ остается прежним. Solution ответ получает явный storage_mode=solution и настоящие ссылки/показатели решения, без fake Project полей. До runtime реализации описать в C00 независимую схему ветки solution и сценарии всех трех ролей; frontend читает discriminated union. Сначала backend и frontend без включения реальных программ, затем общий QA.
+
+Источники правил: role_analytics.py; analytics.\_solution_rows (distributed требует завершенных реальных назначений, open отмечает evaluated по первой оценке); project_rates.evaluation_math.complete_values и solution_evaluation.snapshot_name/snapshot_case; selectors принятого состава BE08. Новый independent stage machine не вводится. Баллы, личности экспертов и регистрационные ответы в виджет не входят.
+
+| AC    | Наблюдаемое требование                                                                                                                                                                                                 |
+| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| WID01 | Приоритет и программа роли прежние; outsider/foreign Expert IDs/клиентские role claims не дают доступа                                                                                                                 |
+| WID02 | Команда определяется капитаном/принятым составом своей заявки, pending не дает членство; неоднозначность возвращает 409 вместо первой строки                                                                           |
+| WID03 | Участник получает SolutionRef и название/кейс сданного snapshot; чужая программа, Project и действующий live label не подменяют работу                                                                                 |
+| WID04 | Стадии none/not_submitted/submitted/review/evaluated и not_applicable сохраняют смысл; неконкурсной не требуется искусственная сдача                                                                                   |
+| WID05 | Expert assigned/remaining основаны на его реальных SolutionExpertAssignment; незавершенные/not_ready остаются в остатке, 0/False завершают критерии, open/noncompetitive counters null; deadline не меняет факт оценки |
+| WID06 | Organizer считает ProgramSolution, submitted и уникальных зарегистрированных людей без принятой команды; неприменимое submitted в noncompetitive null                                                                  |
+| WID07 | GET не записывает данные, число запросов ограничено и не растет на каждую работу; legacy regression и private payload checks проходят                                                                                  |
+| WID08 | Три прежние UI-роли показывают корректные подписи/ссылки/нулевые и неприменимые состояния; browser обеих форм/mobile, source/tests/build/review фиксируются отдельно                                                   |
+
+Этот блок еще не реализован и не принят. Основная аналитика/attention/другие экспорты остаются в полном BE09 scope.
