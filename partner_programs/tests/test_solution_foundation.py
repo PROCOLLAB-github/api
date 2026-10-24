@@ -5,7 +5,7 @@ from threading import Barrier
 
 from django.db import IntegrityError, close_old_connections, transaction
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.test import TestCase, TransactionTestCase
+from django.test import TestCase, TransactionTestCase, skipUnlessDBFeature
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -371,6 +371,7 @@ class SolutionFoundationTests(TestCase):
             self.assertEqual(set(result.data), {"code", "detail", "errors", "meta"})
 
 
+@skipUnlessDBFeature("has_select_for_update")
 class SolutionCreationConcurrencyTests(TransactionTestCase):
     def test_concurrent_create_serializes_on_program_and_returns_one_solution(self):
         program = solution_program()
