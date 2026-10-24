@@ -137,6 +137,8 @@ class ProjectListForRateSerializer(serializers.ModelSerializer):
         return serializer.data
 
     def get_scored(self, obj) -> bool:
+        if hasattr(obj, "_own_completed"):
+            return obj._own_completed
         user_scores = self._get_user_scores(obj)
         if self.context.get("managed_evaluation"):
             program_id = self.context["view"].kwargs.get("program_id")

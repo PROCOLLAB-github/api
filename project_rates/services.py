@@ -1,5 +1,16 @@
 from django.db import transaction
-from django.db.models import Count, Prefetch, Q, QuerySet
+from django.db.models import (
+    BooleanField,
+    Case,
+    Count,
+    Exists,
+    OuterRef,
+    Prefetch,
+    Q,
+    QuerySet,
+    Value,
+    When,
+)
 from django.utils import timezone
 
 from rest_framework.exceptions import ValidationError
@@ -74,12 +85,40 @@ def get_projects_for_rate_queryset(
             expert_assignments__expert__user=user,
         )
 
+    required_count = Criteria.objects.filter(partner_program=program).count()
+    submitted = PartnerProgramProject.objects.filter(
+        partner_program=program, project_id=OuterRef("pk"), submitted=True
+    )
+    completed = Q(_own_score_count__gt=0)
+    if program.required_evaluators is not None:
+        completed = (
+            Q(
+                _own_score_count__gte=required_count,
+                _program_submitted=True,
+            )
+            if required_count
+            else Q(pk__isnull=True)
+        )
+
     return (
         projects_qs.annotate(
+            _own_score_count=Count(
+                "scores__criteria",
+                filter=Q(scores__criteria__partner_program=program, scores__user=user),
+                distinct=True,
+            ),
+            _program_submitted=Exists(submitted),
             rated_count=Count(
                 "scores__user",
                 filter=Q(scores__criteria__partner_program=program),
                 distinct=True,
+            ),
+        )
+        .annotate(
+            _own_completed=Case(
+                When(completed, then=Value(True)),
+                default=Value(False),
+                output_field=BooleanField(),
             )
         )
         .prefetch_related(scores_prefetch)
