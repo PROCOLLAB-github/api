@@ -1,6 +1,7 @@
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.exceptions import APIException
+from rest_framework.exceptions import ValidationError
 
 from django_filters import rest_framework as filters
 
@@ -60,6 +61,27 @@ class ProjectListForRate(generics.ListAPIView):
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = ProjectFilter
     pagination_class = RateProjectsPagination
+
+    def filter_queryset(self, queryset):
+        queryset = super().filter_queryset(queryset)
+        # Counts describe the filtered list, before own-status and pagination.
+        completed = queryset.filter(_own_completed=True).count()
+        self.evaluation_counts = {
+            "pending": queryset.count() - completed,
+            "completed": completed,
+        }
+        selected = self.request.query_params.get("evaluation_status")
+        if selected not in (None, "pending", "completed"):
+            raise ValidationError({"evaluation_status": "Выберите статус оценки."})
+        if selected:
+            queryset = queryset.filter(_own_completed=selected == "completed")
+        return queryset.order_by("pk")
+
+    def get_paginated_response(self, data):
+        response = super().get_paginated_response(data)
+        response.data["evaluation_counts"] = self.evaluation_counts
+        response["Cache-Control"] = "no-store"
+        return response
 
     def post(self, request, *args, **kwargs):
         """Allow POST with filters in JSON body."""

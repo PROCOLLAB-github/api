@@ -123,7 +123,7 @@ class ProjectScore(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="scores")
 
     value = models.CharField(
-        verbose_name="Значение", max_length=50, null=True, blank=True
+        verbose_name="Значение", max_length=1000, null=True, blank=True
     )
 
     def __str__(self):
