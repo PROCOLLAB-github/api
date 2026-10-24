@@ -21,7 +21,7 @@ class SolutionScore(models.Model):
         on_delete=models.CASCADE,
         related_name="scores",
     )
-    value = models.CharField(max_length=50, null=True, blank=True)
+    value = models.CharField(max_length=1000, null=True, blank=True)
 
     class Meta:
         verbose_name = "Оценка решения"

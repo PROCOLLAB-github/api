@@ -200,9 +200,10 @@ def list_ratings(program, actor, query):
     )
     criteria = list(Criteria.objects.filter(partner_program=program).order_by("pk"))
     states = metrics(program, solutions, actor, criteria)
+    field = program.fields.filter(name="case").first()
+    case_options = field.get_options_list() if field else []
     if query["case_scope"] == "selected":
-        field = program.fields.filter(name="case").first()
-        if not field or query.get("case_name") not in field.get_options_list():
+        if query.get("case_name") not in case_options:
             raise SolutionError(
                 "invalid_filter", "Выберите кейс этой программы.", status=400
             )
@@ -213,10 +214,6 @@ def list_ratings(program, actor, query):
             continue
         if query["assigned_only"] and not row["assigned"]:
             continue
-        if query["status"] != "all" and row["is_completed"] != (
-            query["status"] == "completed"
-        ):
-            continue
         if query["case_scope"] == "selected" and row["case_name"] != query.get(
             "case_name"
         ):
@@ -224,6 +221,12 @@ def list_ratings(program, actor, query):
         if query["case_scope"] == "without_case" and row["case_name"] is not None:
             continue
         rows.append(row)
+    completed = sum(row["is_completed"] for row in rows)
+    counts = dict(pending=len(rows) - completed, completed=completed)
+    if query["status"] != "all":
+        rows = [
+            row for row in rows if row["is_completed"] == (query["status"] == "completed")
+        ]
     rows.sort(
         key=lambda row: (
             row["application"]["name"].casefold(),
@@ -231,7 +234,7 @@ def list_ratings(program, actor, query):
         )
     )
     offset, limit = query["offset"], query["limit"]
-    return len(rows), rows[offset : offset + limit]  # noqa: E203 (black slice formatting)
+    return len(rows), rows[offset : offset + limit], counts, case_options  # noqa: E203
 
 
 def score_issue(criterion_id, code, detail):
@@ -303,7 +306,7 @@ def rate_solution(*, program_id, solution_id, actor, expected_criteria_revision,
             )
             continue
         if (
-            value is not None and (not isinstance(value, str) or len(value) > 50)
+            value is not None and (not isinstance(value, str) or len(value) > 1000)
         ) or not valid_value(definitions[pk], value):
             problems.append(
                 score_issue(

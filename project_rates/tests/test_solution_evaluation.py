@@ -199,14 +199,74 @@ class SolutionEvaluationTests(EvaluationFixture, TestCase):
             self.assertEqual(response.data["errors"][0]["code"], code)
             self.assertFalse(SolutionScore.objects.exists())
 
+    def test_comment_matches_current_shared_form_limit_and_rejects_1001_atomically(self):
+        comment = "А" * 1000
+        scores = [
+            *self.scores()["scores"],
+            dict(criterion_id=self.criteria[2].pk, value=comment),
+        ]
+        response = self.rate(scores=scores)
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assert_schema("RatingFrame", response.data)
+        self.assertEqual(response.data["criteria"][2]["value"], comment)
+        self.assertTrue(response.data["is_completed"])
+        before = list(
+            SolutionScore.objects.order_by("pk").values_list("criteria_id", "value")
+        )
+        scores[0]["value"] = "10"
+        scores[2]["value"] = comment + "А"
+        invalid = self.rate(scores=scores)
+        self.assertEqual(invalid.status_code, 400)
+        self.assert_schema("Error", invalid.data)
+        with self.assertRaises(SolutionError):
+            solution_evaluation.rate_solution(
+                program_id=self.program.pk,
+                solution_id=self.solution.pk,
+                actor=self.expert,
+                **self.scores(scores=scores),
+            )
+        self.assertEqual(
+            list(
+                SolutionScore.objects.order_by("pk").values_list("criteria_id", "value")
+            ),
+            before,
+        )
+        stored = SolutionScore.objects.get(
+            solution=self.solution, user=self.expert, criteria=self.criteria[2]
+        )
+        stored.value += "А"
+        with self.assertRaises(ValidationError):
+            stored.save()
+        stored.refresh_from_db()
+        self.assertEqual(stored.value, comment)
+
     def test_strict_wire_values_and_long_comment_do_not_coerce_or_write(self):
-        for value in [0, False, {}, "x" * 51]:
+        for value in [0, False, {}, "x" * 1001]:
             response = self.rate(
                 scores=[dict(criterion_id=self.criteria[2].pk, value=value)]
             )
             self.assertEqual(response.status_code, 400, response.data)
             self.assertFalse(SolutionScore.objects.exists())
         self.assertEqual(self.rate(scores=[]).status_code, 400)
+
+    def test_list_own_counts_apply_filters_before_status_and_pagination(self):
+        self.rate()
+        second = self.another_solution()
+        response = self.assign([self.solution.pk, second.pk])
+        self.assertEqual(response.status_code, 200, response.data)
+        response = call(self.expert, "get", self.list_url + "?status=pending&limit=1")
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assert_schema("RatingPage", response.data)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(response.data["evaluation_counts"], dict(pending=1, completed=1))
+        self.assertEqual(
+            response.data["results"][0]["application"]["solution_id"], second.pk
+        )
+        response = call(
+            self.expert, "get", self.list_url + "?status=completed&search=Вторая"
+        )
+        self.assertEqual(response.data["count"], 0)
+        self.assertEqual(response.data["evaluation_counts"], dict(pending=1, completed=0))
 
     def test_criteria_revision_conflict_and_deadline(self):
         response = self.rate(expected_criteria_revision="0" * 64)

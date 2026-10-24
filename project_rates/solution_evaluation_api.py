@@ -40,7 +40,7 @@ class RatingListQuery(StrictSerializer):
 class RatingValueSerializer(StrictSerializer):
     criterion_id = CommandInteger(min_value=1, max_value=MAX_ID)
     value = NameField(
-        allow_null=True, allow_blank=True, max_length=50, trim_whitespace=False
+        allow_null=True, allow_blank=True, max_length=1000, trim_whitespace=False
     )
 
 
@@ -76,7 +76,7 @@ class SolutionRatingsView(EvaluationAPIView):
         query = RatingListQuery(data=request.query_params)
         query.is_valid(raise_exception=True)
         values = query.validated_data
-        count, rows = solution_evaluation.list_ratings(
+        count, rows, counts, case_options = solution_evaluation.list_ratings(
             program_for(pk), request.user, values
         )
         limit, offset = values["limit"], values["offset"]
@@ -92,6 +92,8 @@ class SolutionRatingsView(EvaluationAPIView):
                 next=link(offset + limit) if offset + limit < count else None,
                 previous=link(max(0, offset - limit)) if offset > 0 else None,
                 results=rows,
+                evaluation_counts=counts,
+                case_options=case_options,
             )
         )
 

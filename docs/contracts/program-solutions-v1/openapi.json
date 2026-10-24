@@ -3,7 +3,7 @@
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "info": {
     "title": "PROCOLLAB Program Solutions C00",
-    "version": "1.5.0",
+    "version": "1.6.0",
     "description": "Контракт решений в программах для реализации и моков BE01–BE09. API base URL задается окружением. snake_case на проводе. Старые API не меняются."
   },
   "servers": [
@@ -5963,7 +5963,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Сданные решения в текущей видимости эксперта. evaluation_counts содержит собственные pending/completed после search/case_scope/assigned_only, до status и limit/offset, как действующий список оценивания проектов. Счетчики не вычисляются из загруженной страницы."
       }
     },
     "/programs/{program_id}/solutions/{solution_id}/evaluation/": {
@@ -8824,7 +8825,8 @@
               "string",
               "null"
             ],
-            "maxLength": 50
+            "maxLength": 1000,
+            "description": "Строка/null по прежнему типу критерия. Текстовый комментарий допускает до 1000 символов, как текущий ProjectScore; числовой диапазон и True/False продолжают проверяться отдельно."
           }
         },
         "required": [
@@ -8851,7 +8853,8 @@
               "string",
               "null"
             ],
-            "maxLength": 50
+            "maxLength": 1000,
+            "description": "Строка/null по прежнему типу критерия. Текстовый комментарий допускает до 1000 символов, как текущий ProjectScore; числовой диапазон и True/False продолжают проверяться отдельно."
           }
         },
         "required": [
@@ -8945,6 +8948,32 @@
             "items": {
               "$ref": "#/components/schemas/RatingSummary"
             }
+          },
+          "evaluation_counts": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "pending": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "completed": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "pending",
+              "completed"
+            ],
+            "description": "Собственные оценки текущего эксперта после search/case/assigned_only, до status и пагинации. Значение возвращает актуальный backend; optional для совместимости старых моков и клиентов."
+          },
+          "case_options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Текущие точные варианты кейса для фильтра эксперта этой программы. Без полей/ответов закрытой формы; optional для совместимости старых клиентов."
           }
         },
         "required": [

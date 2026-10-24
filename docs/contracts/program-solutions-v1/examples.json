@@ -1,5 +1,5 @@
 {
-  "contract_version": "1.5.0",
+  "contract_version": "1.6.0",
   "description": "Независимые примеры, не последовательность операций; фиктивные данные.",
   "scenarios": [
     {
@@ -4956,6 +4956,306 @@
           }
         ],
         "meta": {}
+      }
+    },
+    {
+      "name": "solution_rating_long_comment",
+      "operation_id": "rateSolution",
+      "status": 200,
+      "request": {
+        "expected_criteria_revision": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "scores": [
+          {
+            "criterion_id": 21,
+            "value": "0"
+          },
+          {
+            "criterion_id": 22,
+            "value": "4.5"
+          },
+          {
+            "criterion_id": 23,
+            "value": "False"
+          },
+          {
+            "criterion_id": 24,
+            "value": "АААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААА"
+          }
+        ]
+      },
+      "response": {
+        "program": {
+          "id": 12,
+          "name": "Кейс-чемпионат PROCOLLAB"
+        },
+        "solution": {
+          "id": 301,
+          "program_id": 12,
+          "version": 10,
+          "name": "Сервис для студентов",
+          "captain_id": 7,
+          "created_at": "2026-10-23T09:00:00Z",
+          "updated_at": "2026-10-23T10:05:00Z",
+          "team": {
+            "members": [
+              {
+                "user": {
+                  "id": 7,
+                  "first_name": "Иван",
+                  "last_name": "Петров",
+                  "avatar_url": null
+                },
+                "role": null,
+                "specialization": null,
+                "joined_at": "2026-10-23T09:00:00Z",
+                "is_captain": true
+              },
+              {
+                "user": {
+                  "id": 8,
+                  "first_name": "Анна",
+                  "last_name": "Смирнова",
+                  "avatar_url": null
+                },
+                "role": null,
+                "specialization": null,
+                "joined_at": "2026-10-23T09:00:00Z",
+                "is_captain": false
+              }
+            ],
+            "accepted_count": 2,
+            "pending_count": 1,
+            "reserved_count": 3,
+            "min_size": 2,
+            "max_size": 4,
+            "is_frozen": true
+          },
+          "form": {
+            "program_id": 12,
+            "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "template": "case_championship",
+            "is_configured": true,
+            "is_snapshot": true,
+            "fields": [
+              {
+                "id": 1001,
+                "type": "select",
+                "purpose": "case",
+                "label": "Кейс",
+                "help_text": "",
+                "required": true,
+                "position": 0,
+                "options": [
+                  "Цифровой сервис",
+                  "Операционная эффективность"
+                ],
+                "validation": {
+                  "min_length": null,
+                  "max_length": null,
+                  "minimum": null,
+                  "maximum": null,
+                  "allowed_extensions": [],
+                  "max_file_size_bytes": null
+                }
+              },
+              {
+                "id": 1002,
+                "type": "textarea",
+                "purpose": "other",
+                "label": "Краткое описание",
+                "help_text": "",
+                "required": true,
+                "position": 1,
+                "options": [],
+                "validation": {
+                  "min_length": null,
+                  "max_length": 3000,
+                  "minimum": null,
+                  "maximum": null,
+                  "allowed_extensions": [],
+                  "max_file_size_bytes": null
+                }
+              },
+              {
+                "id": 1003,
+                "type": "file",
+                "purpose": "presentation",
+                "label": "Презентация PDF",
+                "help_text": "",
+                "required": true,
+                "position": 2,
+                "options": [],
+                "validation": {
+                  "min_length": null,
+                  "max_length": null,
+                  "minimum": null,
+                  "maximum": null,
+                  "allowed_extensions": [
+                    "pdf"
+                  ],
+                  "max_file_size_bytes": 20971520
+                }
+              },
+              {
+                "id": 1004,
+                "type": "number",
+                "purpose": "other",
+                "label": "Ожидаемый эффект",
+                "help_text": "",
+                "required": false,
+                "position": 3,
+                "options": [],
+                "validation": {
+                  "min_length": null,
+                  "max_length": null,
+                  "minimum": 0,
+                  "maximum": null,
+                  "allowed_extensions": [],
+                  "max_file_size_bytes": null
+                }
+              },
+              {
+                "id": 1005,
+                "type": "checkbox",
+                "purpose": "other",
+                "label": "Приложены расчеты",
+                "help_text": "",
+                "required": false,
+                "position": 4,
+                "options": [],
+                "validation": {
+                  "min_length": null,
+                  "max_length": null,
+                  "minimum": null,
+                  "maximum": null,
+                  "allowed_extensions": [],
+                  "max_file_size_bytes": null
+                }
+              }
+            ]
+          },
+          "answers": [
+            {
+              "field_id": 1001,
+              "value": "Цифровой сервис"
+            },
+            {
+              "field_id": 1002,
+              "value": "Единый сервис поддержки студентов."
+            },
+            {
+              "field_id": 1004,
+              "value": 0
+            },
+            {
+              "field_id": 1005,
+              "value": false
+            },
+            {
+              "field_id": 1003,
+              "value": {
+                "url": "https://cdn.example.test/solutions/301/presentation.pdf"
+              }
+            }
+          ],
+          "submission": {
+            "required": true,
+            "status": "submitted",
+            "submission_open": true,
+            "deadline": "2026-10-30T18:00:00Z",
+            "submitted_at": "2026-10-23T10:05:00Z"
+          },
+          "permissions": {
+            "can_edit": false,
+            "can_manage_team": false,
+            "can_invite": false,
+            "can_submit": false,
+            "can_leave": false
+          },
+          "readiness": {
+            "is_ready": true,
+            "issues": []
+          }
+        },
+        "criteria_revision": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "criteria": [
+          {
+            "id": 21,
+            "name": "Практическая ценность",
+            "description": "Польза аудитории",
+            "type": "int",
+            "min_value": 0,
+            "max_value": 10,
+            "value": "0"
+          },
+          {
+            "id": 22,
+            "name": "Проработанность",
+            "description": null,
+            "type": "float",
+            "min_value": 0,
+            "max_value": 5,
+            "value": "4.5"
+          },
+          {
+            "id": 23,
+            "name": "Показан прототип",
+            "description": null,
+            "type": "bool",
+            "min_value": null,
+            "max_value": null,
+            "value": "False"
+          },
+          {
+            "id": 24,
+            "name": "Рекомендация",
+            "description": null,
+            "type": "str",
+            "min_value": null,
+            "max_value": null,
+            "value": "АААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААААА"
+          }
+        ],
+        "managed_evaluation": true,
+        "can_rate": true,
+        "blocked_reason": null,
+        "is_completed": true,
+        "rated_count": 1,
+        "max_rates": 3,
+        "required_evaluators": 2,
+        "deadline": "2026-10-30T18:00:00Z"
+      }
+    },
+    {
+      "name": "solution_rating_counts_before_status_and_page",
+      "operation_id": "getSolutionRatings",
+      "status": 200,
+      "response": {
+        "count": 1,
+        "next": null,
+        "previous": null,
+        "results": [
+          {
+            "application": {
+              "kind": "solution",
+              "program_id": 12,
+              "solution_id": 301,
+              "name": "Сервис для студентов"
+            },
+            "case_name": "Цифровой сервис",
+            "assigned": true,
+            "is_completed": false,
+            "can_rate": true,
+            "blocked_reason": null
+          }
+        ],
+        "evaluation_counts": {
+          "pending": 1,
+          "completed": 0
+        },
+        "case_options": [
+          "Цифровой сервис"
+        ]
       }
     }
   ]
