@@ -269,4 +269,3 @@ python validate_contract.py
 ```
 
 Скрипт проверяет корректность OpenAPI, все локальные refs и схемы, примеры request/response, уникальность operationId, базовые инварианты состава и snapshot. Реальные ответы BE01 дополнительно проверяются JSON Schema в `partner_programs.tests.test_solution_foundation`.
-
