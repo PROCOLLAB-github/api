@@ -24,10 +24,16 @@ def program_for(pk, *, lock=False):
 
 def visible_solutions(program, user):
     query = ProgramSolution.objects.filter(program=program)
-    # Экспертные назначения и публикация подключаются в BE07/BE08; до этого закрыты.
+    # Эксперт получает сданные работы своей программы в пределах режима назначений.
     if can_manage_program(user, program):
         return query
-    return query.filter(Q(captain=user) | Q(members__user=user)).distinct()
+    from project_rates.solution_evaluation import expert_visible_solutions
+
+    return query.filter(
+        Q(captain=user)
+        | Q(members__user=user)
+        | Q(pk__in=expert_visible_solutions(program, user).order_by().values("pk"))
+    ).distinct()
 
 
 def lock_solution(program_id, solution_id, actor):

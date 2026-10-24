@@ -67,6 +67,10 @@ def assignment_snapshot(program):
 
 def revision(program):
     """Includes team, membership, submission and score changes invalidating a plan."""
+    if program.solution_storage_mode == "solution":
+        from project_rates.solution_assignments import revision as solution_revision
+
+        return solution_revision(program)
     data = [
         program.pk,
         program.required_evaluators,
@@ -145,6 +149,12 @@ def check_assignment_limit(program, additions, removals=()):
 
 def enable_workspace(program):
     """Explicit organizer action opts in; preserve assignments behind historical scores."""
+    if program.solution_storage_mode == "solution":
+        from project_rates.solution_assignments import (
+            enable_workspace as enable_solution_workspace,
+        )
+
+        return enable_solution_workspace(program)
     if program.required_evaluators is not None:
         return
     program.required_evaluators = target(program)

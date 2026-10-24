@@ -1,4 +1,13 @@
 from django.urls import path
+from project_rates.solution_evaluation_api import (
+    SolutionRatingsView,
+    SolutionRatingView,
+    SolutionExpertAssignmentsView,
+    SolutionAllocationView,
+    SolutionAllocationApplyView,
+    SolutionQuotaView,
+    SolutionResultsView,
+)
 from partner_programs.solution_submission_api import SolutionSubmitView
 from partner_programs.solution_form_api import ManagedSolutionFormView, SolutionFormView
 from partner_programs.solution_invitation_api import SolutionInvitationsView
@@ -113,6 +122,24 @@ from partner_programs.certificate_views import (
 app_name = "partner_programs"
 
 urlpatterns = [
+    path(
+        "<int:pk>/management/solution-evaluation/allocation/",
+        SolutionAllocationView.as_view(),
+    ),
+    path(
+        "<int:pk>/management/solution-evaluation/allocation/apply/",
+        SolutionAllocationApplyView.as_view(),
+    ),
+    path("<int:pk>/management/solution-evaluation/quota/", SolutionQuotaView.as_view()),
+    path("<int:pk>/management/solution-results/", SolutionResultsView.as_view()),
+    path("<int:pk>/solution-evaluation/", SolutionRatingsView.as_view()),
+    path(
+        "<int:pk>/solutions/<int:solution_id>/evaluation/", SolutionRatingView.as_view()
+    ),
+    path(
+        "<int:pk>/management/solution-evaluation/experts/<int:expert_id>/assignments/",
+        SolutionExpertAssignmentsView.as_view(),
+    ),
     path("<int:pk>/solution-form/", SolutionFormView.as_view()),
     path("<int:pk>/management/solution-form/", ManagedSolutionFormView.as_view()),
     path("<int:pk>/solution-context/", SolutionContextView.as_view()),

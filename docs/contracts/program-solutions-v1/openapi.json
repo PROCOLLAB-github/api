@@ -3,8 +3,8 @@
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "info": {
     "title": "PROCOLLAB Program Solutions C00",
-    "version": "1.2.0",
-    "description": "Контракт решений в программах для реализации и моков. Endpoints подключаются поэтапно по BE01–BE06. API base URL задается окружением. snake_case на проводе. Старые API не меняются."
+    "version": "1.3.0",
+    "description": "Контракт решений в программах для реализации и моков BE01–BE07. API base URL задается окружением. snake_case на проводе. Старые API не меняются."
   },
   "servers": [
     {
@@ -5809,6 +5809,1032 @@
           }
         ]
       }
+    },
+    "/programs/{program_id}/solution-evaluation/": {
+      "get": {
+        "operationId": "getSolutionRatings",
+        "summary": "Работы для оценки экспертом",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "case_scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "selected",
+                "without_case"
+              ],
+              "default": "all"
+            }
+          },
+          {
+            "name": "case_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "pending",
+                "completed"
+              ],
+              "default": "all"
+            }
+          },
+          {
+            "name": "assigned_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успех",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RatingPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/programs/{program_id}/solutions/{solution_id}/evaluation/": {
+      "get": {
+        "operationId": "getSolutionRating",
+        "summary": "Сданное решение и собственная оценка",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "solution_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успех",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RatingFrame"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "rateSolution",
+        "summary": "Сохранить собственную оценку решения",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "solution_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успех",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RatingFrame"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RateSolution"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/programs/{program_id}/management/solution-evaluation/experts/{expert_id}/assignments/": {
+      "get": {
+        "operationId": "getSolutionExpertAssignments",
+        "summary": "Варианты назначений решений",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "expert_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успех",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssignmentOptions"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "saveSolutionExpertAssignments",
+        "summary": "Сохранить назначения решений эксперту",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "expert_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успех",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssignmentOptions"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolutionAssignmentsWrite"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/programs/{program_id}/management/solution-evaluation/allocation/": {
+      "post": {
+        "operationId": "previewSolutionAllocation",
+        "summary": "Предпросмотр распределения решений",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успех",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SolutionAllocationPlan"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolutionAllocationWrite"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/programs/{program_id}/management/solution-evaluation/allocation/apply/": {
+      "post": {
+        "operationId": "applySolutionAllocation",
+        "summary": "Применить распределение решений",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успех",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SolutionAssignmentReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolutionAllocationApply"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/programs/{program_id}/management/solution-evaluation/quota/": {
+      "get": {
+        "operationId": "previewSolutionQuota",
+        "summary": "Последствия изменения числа экспертов",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "required_evaluators",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успех",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SolutionQuota"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "saveSolutionQuota",
+        "summary": "Сохранить число экспертов без удаления оценок",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успех",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SolutionQuota"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolutionQuotaWrite"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/programs/{program_id}/management/solution-results/": {
+      "get": {
+        "operationId": "getSolutionResults",
+        "summary": "Результаты решений для организатора",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "case_scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "selected",
+                "without_case"
+              ]
+            }
+          },
+          {
+            "name": "case_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "complete",
+                "pending"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успех",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SolutionResults"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5968,6 +6994,15 @@
           },
           "detail": {
             "type": "string"
+          },
+          "criterion_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "ID критерия оценки; не подменяет field_id поля решения. Необязательное расширение 1.3.0."
           }
         },
         "required": [
@@ -7450,6 +8485,970 @@
             "format": "date-time"
           }
         }
+      },
+      "RatingCriterion": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "int",
+              "float",
+              "bool",
+              "str"
+            ]
+          },
+          "min_value": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "max_value": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "value": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 50
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "type",
+          "min_value",
+          "max_value",
+          "value"
+        ],
+        "additionalProperties": false
+      },
+      "RatingValue": {
+        "type": "object",
+        "properties": {
+          "criterion_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "value": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 50
+          }
+        },
+        "required": [
+          "criterion_id",
+          "value"
+        ],
+        "additionalProperties": false
+      },
+      "RateSolution": {
+        "type": "object",
+        "properties": {
+          "expected_criteria_revision": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "scores": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RatingValue"
+            },
+            "minItems": 1
+          }
+        },
+        "required": [
+          "expected_criteria_revision",
+          "scores"
+        ],
+        "additionalProperties": false
+      },
+      "RatingSummary": {
+        "type": "object",
+        "properties": {
+          "application": {
+            "$ref": "#/components/schemas/SolutionRef"
+          },
+          "case_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "assigned": {
+            "type": "boolean"
+          },
+          "is_completed": {
+            "type": "boolean"
+          },
+          "can_rate": {
+            "type": "boolean"
+          },
+          "blocked_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "application",
+          "case_name",
+          "assigned",
+          "is_completed",
+          "can_rate",
+          "blocked_reason"
+        ],
+        "additionalProperties": false
+      },
+      "RatingPage": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "next": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uri"
+          },
+          "previous": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uri"
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RatingSummary"
+            }
+          }
+        },
+        "required": [
+          "count",
+          "next",
+          "previous",
+          "results"
+        ],
+        "additionalProperties": false
+      },
+      "RatingFrame": {
+        "type": "object",
+        "properties": {
+          "program": {
+            "$ref": "#/components/schemas/ProgramRef"
+          },
+          "solution": {
+            "$ref": "#/components/schemas/Solution"
+          },
+          "criteria_revision": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "criteria": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RatingCriterion"
+            }
+          },
+          "managed_evaluation": {
+            "type": "boolean"
+          },
+          "can_rate": {
+            "type": "boolean"
+          },
+          "blocked_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "is_completed": {
+            "type": "boolean"
+          },
+          "rated_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "max_rates": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "required_evaluators": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "deadline": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "program",
+          "solution",
+          "criteria_revision",
+          "criteria",
+          "managed_evaluation",
+          "can_rate",
+          "blocked_reason",
+          "is_completed",
+          "rated_count",
+          "max_rates",
+          "required_evaluators",
+          "deadline"
+        ],
+        "additionalProperties": false
+      },
+      "AssignmentOption": {
+        "type": "object",
+        "properties": {
+          "solution_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "name": {
+            "type": "string"
+          },
+          "case_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "submitted": {
+            "type": "boolean"
+          },
+          "assigned": {
+            "type": "boolean"
+          },
+          "protected": {
+            "type": "boolean"
+          },
+          "is_completed": {
+            "type": "boolean"
+          },
+          "own_team": {
+            "type": "boolean"
+          },
+          "eligible": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "solution_id",
+          "name",
+          "case_name",
+          "submitted",
+          "assigned",
+          "protected",
+          "is_completed",
+          "own_team",
+          "eligible"
+        ],
+        "additionalProperties": false
+      },
+      "AssignmentOptions": {
+        "type": "object",
+        "properties": {
+          "program_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "expert_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "revision": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "solutions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssignmentOption"
+            }
+          }
+        },
+        "required": [
+          "program_id",
+          "expert_id",
+          "revision",
+          "solutions"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionAssignmentsWrite": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "solution_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "revision",
+          "solution_ids"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionCasePool": {
+        "type": "object",
+        "properties": {
+          "case_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "expert_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "uniqueItems": true,
+            "maxItems": 1000
+          }
+        },
+        "required": [
+          "case_name",
+          "expert_ids"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionAssignmentOverride": {
+        "type": "object",
+        "properties": {
+          "solution_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "expert_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "uniqueItems": true,
+            "maxItems": 1000
+          }
+        },
+        "required": [
+          "solution_id",
+          "expert_ids"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionAllocationWrite": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "expert_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "uniqueItems": true,
+            "maxItems": 1000
+          },
+          "solution_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "uniqueItems": true,
+            "maxItems": 10000
+          },
+          "case_pools": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SolutionCasePool"
+            },
+            "maxItems": 1000
+          },
+          "seed": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647
+          },
+          "previous_plan_token": {
+            "type": "string",
+            "maxLength": 500000
+          },
+          "assignment_overrides": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SolutionAssignmentOverride"
+            },
+            "maxItems": 10000
+          }
+        },
+        "required": [
+          "revision",
+          "expert_ids"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionPlannedAssignment": {
+        "type": "object",
+        "properties": {
+          "solution_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "solution_name": {
+            "type": "string"
+          },
+          "expert_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "expert_name": {
+            "type": "string"
+          },
+          "case_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "solution_id",
+          "solution_name",
+          "expert_id",
+          "expert_name",
+          "case_name"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionAssignmentShortage": {
+        "type": "object",
+        "properties": {
+          "solution_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "solution_name": {
+            "type": "string"
+          },
+          "missing": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "case_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "solution_id",
+          "solution_name",
+          "missing",
+          "case_name"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionExpertLoad": {
+        "type": "object",
+        "properties": {
+          "expert_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "name": {
+            "type": "string"
+          },
+          "before": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "after": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "assigned_before": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "assigned_after": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "expert_id",
+          "name",
+          "before",
+          "after",
+          "assigned_before",
+          "assigned_after"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionAllocationPlan": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "plan_token": {
+            "type": "string",
+            "maxLength": 500000
+          },
+          "assignments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SolutionPlannedAssignment"
+            }
+          },
+          "shortages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SolutionAssignmentShortage"
+            }
+          },
+          "can_reroll": {
+            "type": "boolean"
+          },
+          "load": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SolutionExpertLoad"
+            }
+          }
+        },
+        "required": [
+          "revision",
+          "plan_token",
+          "assignments",
+          "shortages",
+          "can_reroll",
+          "load"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionAllocationApply": {
+        "type": "object",
+        "properties": {
+          "plan_token": {
+            "type": "string",
+            "maxLength": 500000
+          }
+        },
+        "required": [
+          "plan_token"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionAssignmentReceipt": {
+        "type": "object",
+        "properties": {
+          "program_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "revision": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "created": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "program_id",
+          "revision",
+          "created"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionQuotaWrite": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "required_evaluators": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000
+          }
+        },
+        "required": [
+          "revision",
+          "required_evaluators"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionQuota": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "required_evaluators": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000
+          },
+          "submitted_solutions": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "solutions_missing_experts": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "ready_before": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "ready_after": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "missing_assignments": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "surplus_assignments": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "revision",
+          "required_evaluators",
+          "submitted_solutions",
+          "solutions_missing_experts",
+          "ready_before",
+          "ready_after",
+          "missing_assignments",
+          "surplus_assignments"
+        ],
+        "additionalProperties": false
+      },
+      "ResultCriterion": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "int",
+              "float",
+              "bool",
+              "str"
+            ]
+          },
+          "min_value": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "max_value": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "type",
+          "min_value",
+          "max_value"
+        ],
+        "additionalProperties": false
+      },
+      "ResultExpert": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "avatar": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "complete": {
+            "type": "boolean"
+          },
+          "total": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RatingValue"
+            }
+          }
+        },
+        "required": [
+          "user_id",
+          "name",
+          "email",
+          "avatar",
+          "complete",
+          "total",
+          "values"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionResult": {
+        "type": "object",
+        "properties": {
+          "application": {
+            "$ref": "#/components/schemas/SolutionRef"
+          },
+          "solution_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "name": {
+            "type": "string"
+          },
+          "case_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "completed": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "required": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "evaluation_complete": {
+            "type": "boolean"
+          },
+          "ready": {
+            "type": "boolean"
+          },
+          "score": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "place": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          },
+          "averages": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          },
+          "experts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResultExpert"
+            }
+          }
+        },
+        "required": [
+          "application",
+          "solution_id",
+          "name",
+          "case_name",
+          "completed",
+          "required",
+          "evaluation_complete",
+          "ready",
+          "score",
+          "place",
+          "averages",
+          "experts"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionResultGroup": {
+        "type": "object",
+        "properties": {
+          "case_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "solutions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SolutionResult"
+            }
+          }
+        },
+        "required": [
+          "case_name",
+          "solutions"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionResults": {
+        "type": "object",
+        "properties": {
+          "program_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "program_name": {
+            "type": "string"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "required_evaluators": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "maximum": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "has_numeric_criteria": {
+            "type": "boolean"
+          },
+          "case_options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SolutionResultGroup"
+            }
+          },
+          "criteria": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResultCriterion"
+            }
+          }
+        },
+        "required": [
+          "program_id",
+          "program_name",
+          "generated_at",
+          "required_evaluators",
+          "maximum",
+          "has_numeric_criteria",
+          "case_options",
+          "groups",
+          "criteria"
+        ],
+        "additionalProperties": false
       }
     }
   }

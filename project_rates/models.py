@@ -330,3 +330,6 @@ class ExpertJoinedNotification(models.Model):
                 fields=["invitation", "recipient"], name="unique_expert_joined_recipient"
             )
         ]
+
+
+from .solution_models import SolutionScore, SolutionExpertAssignment  # noqa: E402,F401
