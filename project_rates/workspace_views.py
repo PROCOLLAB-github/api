@@ -255,9 +255,26 @@ class EvaluatorsView(PrivateView):
         return Response(service.save_quota(pk, request.user, data))
 
 
+class CabinetQuery(serializers.Serializer):
+    status = serializers.ChoiceField(choices=("pending", "completed"), default="pending")
+    q = serializers.CharField(  # noqa: VNE001
+        max_length=200, required=False, allow_blank=True
+    )
+    program_id = serializers.IntegerField(min_value=1, required=False)
+    limit = serializers.IntegerField(min_value=1, max_value=100, default=20)
+    offset = serializers.IntegerField(min_value=0, default=0)
+
+
 class MyProgramsView(PrivateView):
     def get(self, request):
-        return Response(service.my_programs(request.user))
+        data = service.my_programs(request.user)
+        if request.query_params.get("include") == "projects":
+            from project_rates.expert_cabinet import cabinet_projects
+
+            query = validated(CabinetQuery, request.query_params)
+            joined = [row["id"] for row in data["results"] if row["status"] == "joined"]
+            data["projects"] = cabinet_projects(request.user, query, joined)
+        return Response(data)
 
 
 class AcceptOwnInvitationView(PrivateView):

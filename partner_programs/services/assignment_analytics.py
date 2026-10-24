@@ -10,22 +10,23 @@ from partner_programs.models import PartnerProgramProject
 from project_rates.models import Criteria, ProjectExpertAssignment, ProjectScore
 
 
-def annotated_assignment_queryset(program_id):
+def annotated_assignment_queryset(program_id=None):
     """Общая SQL-проверка завершённости реального назначения в программе.
 
     Завершённое назначение требует сданного решения и оценок по всем критериям
     этой программы; отсутствие критериев никогда не означает завершённость.
     Аннотации пригодны и для списка назначений, и для агрегации работ без N+1.
     """
+    scope = program_id if program_id is not None else OuterRef("partner_program_id")
     criteria = (
-        Criteria.objects.filter(partner_program_id=program_id)
+        Criteria.objects.filter(partner_program_id=scope)
         .order_by()
         .values("partner_program_id")
         .annotate(total=Count("pk"))
     )
     scores = (
         ProjectScore.objects.filter(
-            criteria__partner_program_id=program_id,
+            criteria__partner_program_id=scope,
             project_id=OuterRef("project_id"),
             user_id=OuterRef("expert__user_id"),
         )
@@ -34,10 +35,14 @@ def annotated_assignment_queryset(program_id):
         .annotate(total=Count("criteria_id", distinct=True))
     )
     link = PartnerProgramProject.objects.filter(
-        partner_program_id=program_id, project_id=OuterRef("project_id")
+        partner_program_id=scope, project_id=OuterRef("project_id")
     ).order_by("pk")
     return (
-        ProjectExpertAssignment.objects.filter(partner_program_id=program_id)
+        (
+            ProjectExpertAssignment.objects.filter(partner_program_id=program_id)
+            if program_id is not None
+            else ProjectExpertAssignment.objects.all()
+        )
         .annotate(
             criteria_total=Coalesce(Subquery(criteria.values("total")[:1]), 0),
             criteria_scored=Coalesce(Subquery(scores.values("total")[:1]), 0),
