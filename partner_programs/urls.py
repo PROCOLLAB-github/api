@@ -1,4 +1,5 @@
 from django.urls import path
+from partner_programs.solution_invitation_api import SolutionInvitationsView
 from partner_programs.solution_api import (
     SolutionCaptainView,
     SolutionContextView,
@@ -119,6 +120,10 @@ urlpatterns = [
     ),
     path("<int:pk>/solutions/<int:solution_id>/leave/", SolutionLeaveView.as_view()),
     path("<int:pk>/solutions/<int:solution_id>/captain/", SolutionCaptainView.as_view()),
+    path(
+        "<int:pk>/solutions/<int:solution_id>/invitations/",
+        SolutionInvitationsView.as_view(),
+    ),
     path("<int:pk>/management/certificates/", CertificateSettingsView.as_view()),
     path("<int:pk>/management/certificates/assets/", CertificateAssetView.as_view()),
     path(

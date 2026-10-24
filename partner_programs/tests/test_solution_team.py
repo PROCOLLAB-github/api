@@ -173,6 +173,7 @@ class SolutionTeamTests(TeamFixture, TestCase):
         for actor, can_manage in [(self.captain, False), (self.user, True)]:
             detail = self.request(actor, "get", "").data
             self.assertEqual(detail["permissions"]["can_manage_team"], can_manage)
+            self.assertEqual(detail["permissions"]["can_leave"], not can_manage)
             self.assertEqual(sum(m["is_captain"] for m in detail["team"]["members"]), 1)
             self.assertEqual(detail["team"]["accepted_count"], 2)
         self.assert_error(self.remove(version=2), 403, "not_solution_captain")
@@ -242,6 +243,9 @@ class SolutionTeamTests(TeamFixture, TestCase):
             self.assert_error(response, 409, "team_frozen")
         self.assertFalse(
             self.request(self.captain, "get", "").data["permissions"]["can_manage_team"]
+        )
+        self.assertFalse(
+            self.request(self.user, "get", "").data["permissions"]["can_leave"]
         )
         self.assertEqual(self.solution.members.count(), 2)
 

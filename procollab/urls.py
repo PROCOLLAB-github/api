@@ -49,6 +49,7 @@ urlpatterns = [
     path("vacancies/", include("vacancy.urls", namespace="vacancies")),
     path("core/", include("core.urls", namespace="core")),
     path("invites/", include("invites.urls", namespace="invites")),
+    path("solution-invitations/", include("partner_programs.solution_invitation_urls")),
     path("auth/", include(("users.urls", "users"), namespace="users")),
     path("chats/", include("chats.urls", namespace="chats")),
     # Модуль мероприятий сейчас отложен, поэтому публичные /events/ endpoints

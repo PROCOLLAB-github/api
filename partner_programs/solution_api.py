@@ -235,7 +235,7 @@ def solution_data(solution, user):
             deadline=iso(program.get_project_submission_deadline()),
             submitted_at=iso(solution.submitted_at),
         ),
-        # Остальные изменяющие команды подключаются только вместе с BE03–BE06.
+        # Редактирование и сдача подключаются только вместе с BE05–BE06.
         permissions=dict(
             can_edit=False,
             can_manage_team=(
@@ -243,8 +243,18 @@ def solution_data(solution, user):
                 and program.solution_storage_mode == "solution"
                 and not submitted
             ),
-            can_invite=False,
+            can_invite=(
+                solution.captain_id == user.pk
+                and program.solution_storage_mode == "solution"
+                and not submitted
+            ),
             can_submit=False,
+            can_leave=(
+                user.pk in accepted
+                and solution.captain_id != user.pk
+                and program.solution_storage_mode == "solution"
+                and not submitted
+            ),
         ),
         readiness=dict(is_ready=not problems, issues=problems)
         if program.is_competitive and own

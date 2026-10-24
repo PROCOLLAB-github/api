@@ -71,7 +71,7 @@ class SolutionFoundationTests(TestCase):
         self.assertEqual(response.data["team"]["accepted_count"], 1)
         self.assertTrue(response.data["permissions"]["can_manage_team"])
         self.assertFalse(response.data["permissions"]["can_edit"])
-        self.assertFalse(response.data["permissions"]["can_invite"])
+        self.assertTrue(response.data["permissions"]["can_invite"])
         self.assertFalse(response.data["permissions"]["can_submit"])
         self.assertEqual(response.data["answers"], [])
         self.assertEqual(response.data["submission"]["status"], "draft")
@@ -358,7 +358,7 @@ class SolutionFoundationTests(TestCase):
             ).status_code,
             405,
         )
-        for suffix in ["members/", "invitations/", "submit/"]:
+        for suffix in ["members/", "submit/"]:
             self.assertEqual(
                 self.client.post(
                     f"{self.url}{solution_id}/{suffix}", {}, format="json"

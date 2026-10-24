@@ -1,5 +1,5 @@
 {
-  "contract_version": "1.0.0",
+  "contract_version": "1.1.0",
   "description": "Независимые примеры, не последовательность операций; фиктивные данные.",
   "scenarios": [
     {
@@ -224,7 +224,8 @@
           "can_edit": true,
           "can_manage_team": true,
           "can_invite": true,
-          "can_submit": true
+          "can_submit": true,
+          "can_leave": false
         },
         "readiness": {
           "is_ready": false,
@@ -424,7 +425,8 @@
           "can_edit": true,
           "can_manage_team": true,
           "can_invite": true,
-          "can_submit": true
+          "can_submit": true,
+          "can_leave": false
         },
         "readiness": {
           "is_ready": true,
@@ -617,7 +619,8 @@
           "can_edit": false,
           "can_manage_team": false,
           "can_invite": false,
-          "can_submit": false
+          "can_submit": false,
+          "can_leave": false
         },
         "readiness": {
           "is_ready": true,
@@ -804,7 +807,8 @@
           "can_edit": true,
           "can_manage_team": true,
           "can_invite": true,
-          "can_submit": false
+          "can_submit": false,
+          "can_leave": false
         },
         "readiness": null
       }
@@ -988,7 +992,8 @@
           "can_edit": true,
           "can_manage_team": true,
           "can_invite": true,
-          "can_submit": false
+          "can_submit": false,
+          "can_leave": false
         },
         "readiness": {
           "is_ready": false,
@@ -1154,7 +1159,8 @@
           "can_edit": true,
           "can_manage_team": true,
           "can_invite": true,
-          "can_submit": true
+          "can_submit": true,
+          "can_leave": false
         },
         "readiness": {
           "is_ready": false,
@@ -1367,7 +1373,8 @@
           "can_edit": true,
           "can_manage_team": true,
           "can_invite": true,
-          "can_submit": true
+          "can_submit": true,
+          "can_leave": false
         },
         "readiness": {
           "is_ready": false,
@@ -1587,7 +1594,8 @@
           "can_edit": true,
           "can_manage_team": true,
           "can_invite": true,
-          "can_submit": true
+          "can_submit": true,
+          "can_leave": false
         },
         "readiness": {
           "is_ready": true,
@@ -1784,7 +1792,8 @@
           "can_edit": true,
           "can_manage_team": true,
           "can_invite": true,
-          "can_submit": true
+          "can_submit": true,
+          "can_leave": false
         },
         "readiness": {
           "is_ready": false,
@@ -1988,7 +1997,8 @@
           "can_edit": false,
           "can_manage_team": false,
           "can_invite": false,
-          "can_submit": false
+          "can_submit": false,
+          "can_leave": false
         },
         "readiness": {
           "is_ready": true,
@@ -3218,7 +3228,8 @@
           "can_edit": true,
           "can_manage_team": true,
           "can_invite": true,
-          "can_submit": true
+          "can_submit": true,
+          "can_leave": false
         },
         "readiness": {
           "is_ready": true,
@@ -3811,7 +3822,8 @@
           "can_edit": false,
           "can_manage_team": false,
           "can_invite": false,
-          "can_submit": false
+          "can_submit": false,
+          "can_leave": true
         },
         "readiness": {
           "is_ready": false,
@@ -4011,7 +4023,8 @@
           "can_edit": false,
           "can_manage_team": false,
           "can_invite": false,
-          "can_submit": false
+          "can_submit": false,
+          "can_leave": false
         },
         "readiness": null
       }
