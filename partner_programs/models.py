@@ -11,6 +11,12 @@ from partner_programs.certificate_models import (  # noqa: F401
     ProgramCertificateConfig,
 )
 from partner_programs.constants import get_default_data_schema
+from partner_programs.solution_models import (  # noqa: F401
+    ProgramSolution,
+    ProgramSolutionMember,
+    SolutionInvitation,
+    ProgramSolutionAnswer,
+)
 from projects.models import Project
 from partner_programs.attention_models import (  # noqa: F401
     ProgramAttentionReminder,
@@ -111,6 +117,19 @@ class PartnerProgram(models.Model):
         default=False,
         verbose_name="Конкурсная программа",
         help_text="Если включено, проекты участников подлежат сдаче на проверку",
+    )
+    solution_storage_mode = models.CharField(
+        max_length=20,
+        choices=[("legacy_project", "Проект"), ("solution", "Решение")],
+        default="legacy_project",
+        verbose_name="Технический режим заявки",
+    )
+    solution_template = models.CharField(
+        max_length=24,
+        choices=[("case_championship", "Кейс-чемпионат"), ("hackathon", "Хакатон")],
+        null=True,
+        blank=True,
+        verbose_name="Шаблон формы решения",
     )
     legacy_team_min_size = models.PositiveIntegerField(
         null=True,
@@ -445,6 +464,11 @@ class PartnerProgramProject(models.Model):
                     "Связь проекта с программой нельзя переназначить; создайте новую связь.",
                 )
             if previous is None:
+                if self.partner_program.solution_storage_mode == "solution":
+                    raise TeamError(
+                        "solution_mode_unavailable",
+                        "В этой программе заявка создается как решение.",
+                    )
                 team_policy.validate_project_binding(self.project, self.partner_program)
             if previous and previous.submitted and not self.submitted:
                 raise TeamError(
@@ -524,6 +548,8 @@ class PartnerProgramField(models.Model):
         ("select", "Выпадающий список"),
         ("radio", "Радио-кнопка"),
         ("file", "Файл"),
+        ("url", "Ссылка"),
+        ("number", "Число"),
     ]
 
     partner_program = models.ForeignKey(
@@ -533,6 +559,9 @@ class PartnerProgramField(models.Model):
     label = models.CharField(max_length=256, verbose_name="Отображаемое название")
     field_type = models.CharField(max_length=20, choices=FIELD_TYPES)
     is_required = models.BooleanField(default=False)
+    purpose = models.CharField(max_length=24, default="other")
+    position = models.PositiveIntegerField(default=0)
+    validation = models.JSONField(default=dict, blank=True)
     help_text = models.TextField(blank=True, null=True)
     show_filter = models.BooleanField(default=False)
     options = models.TextField(

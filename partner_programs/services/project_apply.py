@@ -92,6 +92,8 @@ def apply_project_to_program(
     from projects import team_policy
 
     program = PartnerProgram.objects.select_for_update().get(pk=program.pk)
+    if program.solution_storage_mode == "solution":
+        raise PermissionDenied("В этой программе заявка создается как решение.")
     require_can_apply_project_to_program(program=program, user=user)
 
     existing_link = (
