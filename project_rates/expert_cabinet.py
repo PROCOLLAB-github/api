@@ -11,7 +11,7 @@ from project_rates.models import ProjectScore
 from projects.models import Collaborator
 
 
-def cabinet_projects(user, query, program_ids):
+def cabinet_projects(user, query, program_ids, *, paginate=True, as_applications=False):
     own = annotated_assignment_queryset().filter(
         expert__user=user,
         partner_program__experts__user=user,
@@ -46,6 +46,7 @@ def cabinet_projects(user, query, program_ids):
         user_id=user.pk,
     )
     selected = selected.annotate(
+        cabinet_program_link_id=Subquery(linked.values("pk")[:1]),
         cabinet_rated_count=Subquery(scores.values("total")[:1]),
         cabinet_has_scores=Exists(own_scores),
         cabinet_own_team=Exists(
@@ -56,14 +57,13 @@ def cabinet_projects(user, query, program_ids):
     ).select_related("partner_program", "project")
     offset, limit = query["offset"], query["limit"]
     end = offset + limit
-    assignments = list(
-        selected.order_by(
-            F("partner_program__datetime_evaluation_ends").asc(nulls_last=True),
-            "partner_program_id",
-            "project__name",
-            "pk",
-        )[offset:end]
+    selected = selected.order_by(
+        F("partner_program__datetime_evaluation_ends").asc(nulls_last=True),
+        "partner_program_id",
+        "project__name",
+        "pk",
     )
+    assignments = list(selected[offset:end] if paginate else selected)
     programs = {a.partner_program_id: a.partner_program for a in assignments}
     cases = {}
     for program in programs.values():
@@ -109,6 +109,26 @@ def cabinet_projects(user, query, program_ids):
                 "blocked_reason": reason,
             }
         )
+        if as_applications:
+            from partner_programs.solution_api import iso
+
+            row = rows[-1]
+            rows[-1] = dict(
+                application=dict(
+                    kind="legacy_project",
+                    program_id=program.pk,
+                    project_id=project.pk,
+                    program_link_id=assignment.cabinet_program_link_id,
+                    name=project.name,
+                ),
+                assignment_id=assignment.pk,
+                program=dict(id=program.pk, name=program.name),
+                deadline=iso(program.datetime_evaluation_ends),
+                case_name=row["case_name"],
+                is_completed=row["is_completed"],
+                can_rate=row["can_rate"],
+                blocked_reason=row["blocked_reason"],
+            )
     return {
         "count": count,
         "limit": limit,

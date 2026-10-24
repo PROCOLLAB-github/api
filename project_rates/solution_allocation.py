@@ -29,7 +29,7 @@ def require_mode(program):
         )
 
 
-def assignment_snapshot(program):
+def assignment_snapshot(program, *, include_historical=True):
     pairs = set(
         program.solution_expert_assignments.values_list("solution_id", "expert_id")
     )
@@ -42,7 +42,7 @@ def assignment_snapshot(program):
             pair = (solution_id, members[user_id])
             values[pair][criterion_id] = value
             # Предпросмотр учитывает те же исторические назначения, что явный opt-in.
-            if program.required_evaluators is None:
+            if include_historical and program.required_evaluators is None:
                 pairs.add(pair)
     criteria = list(Criteria.objects.filter(partner_program=program).order_by("pk"))
     return [

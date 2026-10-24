@@ -1,4 +1,5 @@
 from django.urls import path
+from .solution_cabinet_api import CabinetApplicationsView
 from .notifications import ExpertNotificationsView
 from .workspace_views import (
     MyProgramsView,
@@ -8,6 +9,7 @@ from .workspace_views import (
 )
 
 urlpatterns = [
+    path("applications/", CabinetApplicationsView.as_view()),
     path("notifications/", ExpertNotificationsView.as_view()),
     path("notifications/<int:notification_id>/read/", ExpertNotificationsView.as_view()),
     path("programs/", MyProgramsView.as_view()),

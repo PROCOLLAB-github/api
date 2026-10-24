@@ -336,4 +336,7 @@ def rate_solution(*, program_id, solution_id, actor, expected_criteria_revision,
         unique_fields=["criteria", "user", "solution"],
     )
     mark_locked(program)
+    from project_rates.solution_notifications import notify_solution_rated
+
+    notify_solution_rated(solution)
     return solution

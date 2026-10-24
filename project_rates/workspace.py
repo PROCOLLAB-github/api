@@ -641,10 +641,23 @@ def my_programs(user):
     )
     rows = []
     for program in programs:
-        assignments = list(
-            annotated_assignment_queryset(program.pk).filter(expert__user=user)
-        )
-        done = sum(a.is_completed for a in assignments)
+        if program.solution_storage_mode == "solution":
+            from project_rates.solution_allocation import (
+                assignment_snapshot as solution_assignments,
+            )
+
+            expert_id = program.experts.get(user=user).pk
+            assignments = [
+                row
+                for row in solution_assignments(program, include_historical=False)
+                if row["expert_id"] == expert_id
+            ]
+            done = sum(row["is_completed"] for row in assignments)
+        else:
+            assignments = list(
+                annotated_assignment_queryset(program.pk).filter(expert__user=user)
+            )
+            done = sum(a.is_completed for a in assignments)
         rows.append(
             {
                 **program_card(program),

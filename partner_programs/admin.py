@@ -4,6 +4,7 @@ from partner_programs.registration_models import ProgramRegistration
 import tablib
 from django import forms
 from django.contrib import admin
+from . import solution_admin  # noqa: F401
 from projects.team_admin import TeamValidationAdminMixin
 from django.db.models import QuerySet
 from django.http import HttpRequest

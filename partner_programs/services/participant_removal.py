@@ -43,6 +43,14 @@ def selected_profiles(program, ids, *, lock=False):
     return profiles
 
 
+def require_legacy_removal(program):
+    if program.solution_storage_mode == "solution":
+        raise RemovalConflict(
+            "solution_mode_unavailable",
+            "Нельзя удалять регистрации отдельно от заявки решения.",
+        )
+
+
 def applications(program, profiles):
     return list(
         PartnerProgramProject.objects.filter(
@@ -162,6 +170,7 @@ def normalized_snapshot(program, profiles, links, team_links):
 
 def preview_removal(program_id, actor, ids):
     program = managed_program(program_id, actor)
+    require_legacy_removal(program)
     profiles = selected_profiles(program, ids)
     links, team_links = application_effects(program, profiles)
     state = normalized_snapshot(program, profiles, links, team_links)
@@ -224,6 +233,7 @@ def preview_removal(program_id, actor, ids):
 @transaction.atomic
 def remove_participants(program_id, actor, ids, token):
     program = managed_program(program_id, actor)
+    require_legacy_removal(program)
     try:
         proof = signing.loads(token, salt=SALT, max_age=900)
     except signing.BadSignature:
@@ -261,6 +271,7 @@ def remove_participants(program_id, actor, ids, token):
         .order_by("pk")
     )
     program = managed_program(program_id, actor)
+    require_legacy_removal(program)
     profiles = selected_profiles(program, ids, lock=True)
     links, team_links = application_effects(program, profiles)
     if affected_project_ids(links, team_links) != project_ids or normalized_snapshot(

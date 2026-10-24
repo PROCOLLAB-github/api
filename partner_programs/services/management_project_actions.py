@@ -45,6 +45,10 @@ class ActionConflict(APIException):
 
 
 def load_links(program, ids):
+    if program.solution_storage_mode == "solution":
+        raise ActionConflict(
+            "Для заявки решения нельзя выполнять действия со связью проекта."
+        )
     links = list(
         PartnerProgramProject.objects.filter(partner_program=program, pk__in=ids)
         .select_related("project")

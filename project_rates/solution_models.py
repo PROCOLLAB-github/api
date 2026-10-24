@@ -24,6 +24,8 @@ class SolutionScore(models.Model):
     value = models.CharField(max_length=50, null=True, blank=True)
 
     class Meta:
+        verbose_name = "Оценка решения"
+        verbose_name_plural = "Оценки решений"
         constraints = [
             models.UniqueConstraint(
                 fields=["criteria", "user", "solution"],
@@ -64,6 +66,11 @@ class SolutionScore(models.Model):
         program = PartnerProgram.objects.select_for_update().get(
             pk=criterion.partner_program_id
         )
+        if Criteria.objects.get(pk=self.criteria_id).partner_program_id != program.pk:
+            raise ValidationError(
+                {"criteria": "Критерии изменились. Обновите форму оценки."},
+                code="criteria_changed",
+            )
         self.full_clean()
         result = super().save(*args, **kwargs)
         mark_locked(program)
@@ -107,6 +114,8 @@ class SolutionExpertAssignment(models.Model):
     objects = SolutionAssignmentQuerySet.as_manager()
 
     class Meta:
+        verbose_name = "Назначение эксперта на решение"
+        verbose_name_plural = "Назначения экспертов на решения"
         constraints = [
             models.UniqueConstraint(
                 fields=["partner_program", "solution", "expert"],
@@ -136,6 +145,9 @@ class SolutionExpertAssignment(models.Model):
         from users.models import Expert
         from project_rates.models import ExpertCaseScope
         from project_rates.workspace import eligible, target
+
+        if not self.partner_program_id or not self.solution_id or not self.expert_id:
+            return
 
         solution = ProgramSolution.objects.filter(pk=self.solution_id).first()
         expert = Expert.objects.filter(

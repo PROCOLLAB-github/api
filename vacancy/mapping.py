@@ -2,7 +2,13 @@ from enum import Enum
 from typing import Literal, TypeAlias, TypedDict, Annotated
 
 EmailTextTypes: TypeAlias = Literal[
-    "accepted", "outdated", "responded", "rejected", "registered_program", "project_rated"
+    "accepted",
+    "outdated",
+    "responded",
+    "rejected",
+    "registered_program",
+    "project_rated",
+    "solution_rated",
 ]
 
 
@@ -15,6 +21,7 @@ class MessageTypeEnum(Enum):
     REGISTERED_PROGRAM_USER = "registered_program"
 
     PROJECT_RATED = "project_rated"
+    SOLUTION_RATED = "solution_rated"
 
 
 class BaseEmailCeleryParams(TypedDict):
@@ -40,8 +47,18 @@ class ProjectRatedParams(BaseEmailCeleryParams):
     project_id: int
 
 
+class SolutionRatedParams(BaseEmailCeleryParams):
+    program_name: str
+    program_id: int
+    solution_name: str
+    solution_id: int
+
+
 EmailParamsType: TypeAlias = (
-    CeleryEmailParams | ProjectRatedParams | UserProgramRegisterParams
+    CeleryEmailParams
+    | ProjectRatedParams
+    | UserProgramRegisterParams
+    | SolutionRatedParams
 )
 
 message_type_to_button_text: dict[Annotated[str, EmailTextTypes], str] = {
@@ -51,6 +68,7 @@ message_type_to_button_text: dict[Annotated[str, EmailTextTypes], str] = {
     MessageTypeEnum.REJECTED.value: "Посмотреть на проект",
     MessageTypeEnum.REGISTERED_PROGRAM_USER.value: "Посмотреть на программу",
     MessageTypeEnum.PROJECT_RATED.value: "Посмотреть на проект",
+    MessageTypeEnum.SOLUTION_RATED.value: "Открыть решение",
 }
 
 message_type_to_title: dict[Annotated[str, EmailTextTypes], str] = {
@@ -60,6 +78,7 @@ message_type_to_title: dict[Annotated[str, EmailTextTypes], str] = {
     MessageTypeEnum.REJECTED.value: "На ваш отклик ответили отказом",
     MessageTypeEnum.REGISTERED_PROGRAM_USER.value: "Вы зарегистрировались на программу",
     MessageTypeEnum.PROJECT_RATED.value: "Ваш проект был оценен",
+    MessageTypeEnum.SOLUTION_RATED.value: "Ваше решение оценено",
 }
 
 
@@ -81,6 +100,11 @@ def get_link(data: EmailParamsType):
 
         case MessageTypeEnum.PROJECT_RATED.value:
             return f"https://app.procollab.ru/office/projects/{data['project_id']}"
+        case MessageTypeEnum.SOLUTION_RATED.value:
+            from django.conf import settings
+
+            base = settings.EXPERT_WORKSPACE_FRONTEND_URL.rstrip("/")
+            return f"{base}/office/program/{data['program_id']}/solutions/{data['solution_id']}"
 
 
 def create_text_for_email(data: EmailParamsType) -> str:
@@ -111,3 +135,8 @@ def create_text_for_email(data: EmailParamsType) -> str:
                 Ваш проект '{data["project_name"]}' был оценен экспертом по программе '{data["program_name"]}'!
                 Скоро будут результаты.
     """
+        case MessageTypeEnum.SOLUTION_RATED.value:
+            return (
+                f"Ваше решение '{data['solution_name']}' оценено экспертом программы "
+                f"'{data['program_name']}'. Скоро будут результаты."
+            )

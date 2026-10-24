@@ -374,6 +374,11 @@ class SolutionEvaluationTests(EvaluationFixture, TestCase):
 @override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
 class SolutionEvaluationRaceTests(EvaluationFixture, TransactionTestCase):
     def setUp(self):
+        from unittest.mock import patch
+
+        delivery = patch("project_rates.solution_notifications.send_email.delay")
+        delivery.start()
+        self.addCleanup(delivery.stop)
         self.seed_evaluation()
 
     def race(self, *actions):

@@ -1,6 +1,15 @@
 from datetime import timedelta
 
-from django.db.models import Case, CharField, Count, Exists, F, IntegerField, Min
+from django.db.models import (
+    BooleanField,
+    Case,
+    CharField,
+    Count,
+    Exists,
+    F,
+    IntegerField,
+    Min,
+)
 from django.db.models import OuterRef, Q, Subquery, Value, When
 from django.db.models.functions import Coalesce, TruncDate, Trim
 from django.utils import timezone
@@ -24,6 +33,8 @@ def _participant_profiles(program_id):
     Руководитель считается участником команды и без записи Collaborator.
     Поле project регистрационной анкеты не заменяет фактические связи команды.
     """
+    from partner_programs.solution_participants import membership_expressions
+
     leader_exists = Exists(
         PartnerProgramProject.objects.filter(
             partner_program_id=program_id,
@@ -43,12 +54,25 @@ def _participant_profiles(program_id):
             project__program_links__partner_program_id=program_id,
         )
     )
-    return PartnerProgramUserProfile.objects.filter(
-        partner_program_id=program_id
-    ).annotate(
+    legacy = dict(
         is_project_leader=leader_exists,
         is_submitted_project_leader=submitted_leader_exists,
         is_project_collaborator=collaborator_exists,
+    )
+    solutions = membership_expressions(program_id)
+    return PartnerProgramUserProfile.objects.filter(
+        partner_program_id=program_id
+    ).annotate(
+        **{
+            key: Case(
+                When(
+                    partner_program__solution_storage_mode="solution", then=solutions[key]
+                ),
+                default=value,
+                output_field=BooleanField(),
+            )
+            for key, value in legacy.items()
+        }
     )
 
 

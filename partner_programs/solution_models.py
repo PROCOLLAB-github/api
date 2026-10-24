@@ -59,6 +59,8 @@ class ProgramSolution(models.Model):
         return super().save(*args, **kwargs)
 
     class Meta:
+        verbose_name = "Решение программы"
+        verbose_name_plural = "Решения программ"
         ordering = ["created_at", "pk"]
         constraints = [
             models.UniqueConstraint(
