@@ -74,3 +74,7 @@ phonenumbers = "^8.13.47"
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "setuptools.build_meta"
+
+[tool.poetry.group.dev.dependencies]
+jsonschema = "4.26.0"
+openapi-spec-validator = "0.7.2"
