@@ -53,7 +53,9 @@ class CertificateSettingsView(ManagementBase):
         service.config_for(program)
         config = ProgramCertificateConfig.objects.select_for_update().get(program=program)
         revision_check(config, request.data)
-        config.draft = service.validate_draft(program, request.data.get("draft"))
+        config.draft = service.validate_draft(
+            program, request.data.get("draft"), config.draft
+        )
         config.revision += 1
         config.save(update_fields=["revision", "draft"])
         return Response(service.state(program))
