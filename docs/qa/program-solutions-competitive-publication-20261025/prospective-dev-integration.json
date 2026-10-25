@@ -1,0 +1,22 @@
+{
+  "status": "PROSPECTIVE_INTEGRATION_CONFLICT",
+  "currentCheckoutGraphConflicts": {},
+  "overlayWithObservedDevMigration": {
+    "partner_programs": [
+      "0031_programcertificate_rendered_batch",
+      "0038_solution_registration_removal_audit"
+    ]
+  },
+  "readOnlyPreview": true,
+  "noMigrationsApplied": true,
+  "upstreamMigrationSHA256": "2fe9364b189b5f7db866d67a77eb3d171a131f250215a621ac7bb280ec005e66",
+  "backendDev": "587a9155b9f53d9e50981a9939a7007c19fd6ecc",
+  "frontendDev": "08414b794dd5b34de5471dddaa19cd0af7f4a167",
+  "backendSourceBase": "c68a004e858fd181dd513d01641dc841746178fe",
+  "frontendSourceBase": "1590518422749a19f375c4de0d781748beaf2f3a",
+  "gitMergeTreePreview": {
+    "backend": "dc7cd12561372bdac6e42f7e7f7426932568ed5a",
+    "frontend": "39b8c405f1408eb7e160aa03f2069dd6f10be49c"
+  },
+  "requiredNext": "Reconcile observed dev certificate migration and model compatibility; preserve all existing migration names/data; no branch merge/rebase/force-push performed"
+}
