@@ -1,0 +1,706 @@
+{
+  "status": "PASS",
+  "acceptance": [
+    "AC20",
+    "AC22"
+  ],
+  "fullQaComplete": false,
+  "backendRuntime": "db7ffe4d6124b16232685fb49f77105f1436bacf",
+  "backendBeforeDocs": "04637f6b87ca8790893bffe58b80d464f002adee",
+  "frontendBefore": "f6f1ba96f369d06d502b250b98f3fbcf0963309c",
+  "frontendFix": "d0b7ba6ea2087f979ca51fb0f6cb03e28d3c7845",
+  "c00": {
+    "version": "1.16.0",
+    "schemas": 128,
+    "operations": 49,
+    "scenarios": 217,
+    "sharedFilesByteIdentical": {
+      "openapi.json": "7f242056497fe6c0792c299f688573213d2b9c491710b5d3f9812f994d994c6a",
+      "examples.json": "94917c80ec36279bf654258887e97c288ee41603de8592db7405991b98c4c22f",
+      "README.md": "0ba64f08670737c52865bd3667cc0a914ff07722b366faac7c465020abd54306"
+    }
+  },
+  "http": {
+    "responses": 39,
+    "c00ValidatedResponses": 27,
+    "validatedValidBodies": 2,
+    "newSolutionDomainWrites": 0
+  },
+  "browser": {
+    "status": "PASS",
+    "attempts": 11,
+    "projects": {
+      "3": {
+        "kind": "ordinary",
+        "nameSaved": true,
+        "memberInvite": 1,
+        "memberAccepted": true,
+        "declineInvite": 2,
+        "declined": true,
+        "revokeInvite": 3,
+        "revoked": true,
+        "published": true,
+        "complete": true
+      },
+      "4": {
+        "kind": "legacy",
+        "nameSaved": true,
+        "memberInvite": 4,
+        "memberAccepted": true,
+        "declineInvite": 5,
+        "declined": true,
+        "revokeInvite": 6,
+        "revoked": true,
+        "fieldsSaved": true,
+        "confirmationCancelled": true,
+        "submitted": true,
+        "complete": true
+      }
+    },
+    "checks": [
+      {
+        "project": 3,
+        "kind": "ordinary",
+        "check": "actual edit/save/team/invite/accept/role edit/decline/revoke/publish",
+        "member": 10
+      },
+      {
+        "project": 3,
+        "check": "resumed completed project read only"
+      },
+      {
+        "project": 3,
+        "check": "resumed completed project read only"
+      },
+      {
+        "project": 3,
+        "check": "resumed completed project read only"
+      },
+      {
+        "project": 3,
+        "check": "resumed completed project read only"
+      },
+      {
+        "project": 3,
+        "check": "resumed completed project read only"
+      },
+      {
+        "project": 4,
+        "kind": "legacy",
+        "check": "actual edit/save/team/invite/accept/role edit/decline/revoke/cancel-confirm-submit",
+        "member": 10
+      }
+    ],
+    "responses": 340,
+    "commands": 22,
+    "methodCounts": {
+      "GET": 318,
+      "POST": 11,
+      "PATCH": 2,
+      "PUT": 7,
+      "DELETE": 2
+    },
+    "javascriptErrorsThisAttempt": [],
+    "historicalJavascriptErrors": [
+      {
+        "role": "captain",
+        "message": "Failed to fetch dynamically imported module: http://127.0.0.1:8886/chunk-N4OPMJMV.js"
+      }
+    ],
+    "commandLog": [
+      {
+        "role": "captain",
+        "method": "PUT",
+        "path": "/projects/3/",
+        "status": 200,
+        "request": {
+          "name": "Обычный проект qa01l-20261025-c6c0e219 сохранен",
+          "region": "Москва",
+          "links": [],
+          "industry_id": 1,
+          "description": "Проверка прежнего сценария проекта",
+          "cover_image_address": "http://127.0.0.1:8886/assets/images/shared/logo.svg",
+          "actuality": "Проверяем совместимость",
+          "target_audience": "Участники программ",
+          "problem": "Сохраняем существующий сценарий",
+          "achievements": [],
+          "draft": true
+        }
+      },
+      {
+        "role": "captain",
+        "method": "POST",
+        "path": "/invites/",
+        "status": 201,
+        "request": {
+          "user": 10,
+          "project": 3,
+          "role": "Аналитик совместимости"
+        }
+      },
+      {
+        "role": "member",
+        "method": "POST",
+        "path": "/invites/1/accept/",
+        "status": 200,
+        "request": {}
+      },
+      {
+        "role": "captain",
+        "method": "POST",
+        "path": "/invites/",
+        "status": 201,
+        "request": {
+          "user": 11,
+          "project": 3,
+          "role": "Черновая роль"
+        }
+      },
+      {
+        "role": "captain",
+        "method": "PATCH",
+        "path": "/invites/2/",
+        "status": 200,
+        "request": {
+          "role": "Проверенная роль",
+          "specialization": ""
+        }
+      },
+      {
+        "role": "pending_a",
+        "method": "POST",
+        "path": "/invites/2/decline/",
+        "status": 200,
+        "request": {}
+      },
+      {
+        "role": "captain",
+        "method": "POST",
+        "path": "/invites/",
+        "status": 201,
+        "request": {
+          "user": 12,
+          "project": 3,
+          "role": "Проверка отзыва"
+        }
+      },
+      {
+        "role": "captain",
+        "method": "DELETE",
+        "path": "/invites/3/",
+        "status": 204,
+        "request": null
+      },
+      {
+        "role": "captain",
+        "method": "PUT",
+        "path": "/projects/3/",
+        "status": 200,
+        "request": {
+          "name": "Обычный проект qa01l-20261025-c6c0e219 сохранен",
+          "region": "Москва",
+          "links": [],
+          "industry_id": 1,
+          "description": "Проверка прежнего сценария проекта",
+          "cover_image_address": "http://127.0.0.1:8886/assets/images/shared/logo.svg",
+          "actuality": "Проверяем совместимость",
+          "target_audience": "Участники программ",
+          "problem": "Сохраняем существующий сценарий",
+          "achievements": [],
+          "draft": false
+        }
+      },
+      {
+        "role": "captain",
+        "method": "PUT",
+        "path": "/programs/partner-program-projects/3/fields/",
+        "status": 200,
+        "request": [
+          {
+            "field_id": 255,
+            "value_text": ""
+          },
+          {
+            "field_id": 256,
+            "value_text": ""
+          }
+        ]
+      },
+      {
+        "role": "captain",
+        "method": "PUT",
+        "path": "/projects/4/",
+        "status": 200,
+        "request": {
+          "name": "Заявка проекта qa01l-20261025-c6c0e219 сохранен",
+          "region": "Москва",
+          "links": [],
+          "industry_id": 1,
+          "description": "Проверка прежнего сценария проекта",
+          "cover_image_address": "http://127.0.0.1:8886/assets/images/shared/logo.svg",
+          "actuality": "Проверяем совместимость",
+          "target_audience": "Участники программ",
+          "problem": "Сохраняем существующий сценарий",
+          "achievements": [],
+          "draft": true
+        }
+      },
+      {
+        "role": "captain",
+        "method": "POST",
+        "path": "/invites/",
+        "status": 201,
+        "request": {
+          "user": 10,
+          "project": 4,
+          "role": "Аналитик совместимости",
+          "program_link_id": 3
+        }
+      },
+      {
+        "role": "member",
+        "method": "POST",
+        "path": "/invites/4/accept/",
+        "status": 200,
+        "request": {}
+      },
+      {
+        "role": "captain",
+        "method": "POST",
+        "path": "/invites/",
+        "status": 201,
+        "request": {
+          "user": 11,
+          "project": 4,
+          "role": "Черновая роль",
+          "program_link_id": 3
+        }
+      },
+      {
+        "role": "captain",
+        "method": "PATCH",
+        "path": "/invites/5/",
+        "status": 200,
+        "request": {
+          "role": "Проверенная роль",
+          "specialization": ""
+        }
+      },
+      {
+        "role": "pending_a",
+        "method": "POST",
+        "path": "/invites/5/decline/",
+        "status": 200,
+        "request": {}
+      },
+      {
+        "role": "captain",
+        "method": "POST",
+        "path": "/invites/",
+        "status": 201,
+        "request": {
+          "user": 12,
+          "project": 4,
+          "role": "Проверка отзыва",
+          "program_link_id": 3
+        }
+      },
+      {
+        "role": "captain",
+        "method": "DELETE",
+        "path": "/invites/6/",
+        "status": 204,
+        "request": null
+      },
+      {
+        "role": "captain",
+        "method": "PUT",
+        "path": "/programs/partner-program-projects/3/fields/",
+        "status": 200,
+        "request": [
+          {
+            "field_id": 255,
+            "value_text": "Город"
+          },
+          {
+            "field_id": 256,
+            "value_text": "Старая заявка qa01l-20261025-c6c0e219"
+          }
+        ]
+      },
+      {
+        "role": "captain",
+        "method": "PUT",
+        "path": "/projects/4/",
+        "status": 200,
+        "request": {
+          "name": "Заявка проекта qa01l-20261025-c6c0e219 сохранен",
+          "region": "Москва",
+          "links": [],
+          "industry_id": 1,
+          "description": "Проверка прежнего сценария проекта",
+          "cover_image_address": "http://127.0.0.1:8886/assets/images/shared/logo.svg",
+          "actuality": "Проверяем совместимость",
+          "target_audience": "Участники программ",
+          "problem": "Сохраняем существующий сценарий",
+          "achievements": [],
+          "draft": true
+        }
+      },
+      {
+        "role": "captain",
+        "method": "PUT",
+        "path": "/programs/partner-program-projects/3/fields/",
+        "status": 200,
+        "request": [
+          {
+            "field_id": 255,
+            "value_text": "Город"
+          },
+          {
+            "field_id": 256,
+            "value_text": "Старая заявка qa01l-20261025-c6c0e219"
+          }
+        ]
+      },
+      {
+        "role": "captain",
+        "method": "POST",
+        "path": "/programs/partner-program-projects/3/submit/",
+        "status": 200,
+        "request": {}
+      }
+    ],
+    "curation": "Complete command requests/statuses retained; nested legacy response bodies remain in raw browser-evidence.json with SHA256. Diagnostic resources/auth/welcome activity are outside this response counter."
+  },
+  "final": {
+    "status": "PASS",
+    "prefix": "qa01l-20261025-c6c0e219",
+    "checks": [
+      {
+        "project": 3,
+        "kind": "ordinary",
+        "nameSaved": true,
+        "accepted": 1,
+        "declined": 2,
+        "revoked": 3,
+        "members": 2,
+        "submitted": false,
+        "projectNamespacePreserved": true
+      },
+      {
+        "project": 4,
+        "kind": "legacy",
+        "nameSaved": true,
+        "accepted": 4,
+        "declined": 5,
+        "revoked": 6,
+        "members": 2,
+        "submitted": true,
+        "projectNamespacePreserved": true
+      }
+    ],
+    "responses": 9,
+    "old22ModelsUnchanged": true,
+    "protectedBaselineHash": "e508ed645c913db00de6d7318605a03cc7884f9a183ed7a6fb8b15da306b6b1b",
+    "newSolutions": 0,
+    "intentionalNewProjects": 2,
+    "domainVerifierWrites": 0,
+    "notes": "View/auth activity on fresh fixtures may be updated by ordinary GET/login; all selected preexisting domain rows remain byte-equal by canonical digest."
+  },
+  "multiProgram": {
+    "status": "PASS",
+    "c00": "1.16.0",
+    "checks": [
+      {
+        "program": 30,
+        "solution": 45,
+        "kind": "solution",
+        "captain": 9,
+        "invitation": 51,
+        "answersAndPermissionsScoped": true
+      },
+      {
+        "program": 31,
+        "solution": 47,
+        "kind": "solution",
+        "captain": 9,
+        "invitation": 52,
+        "answersAndPermissionsScoped": true
+      },
+      {
+        "program": 34,
+        "project": 4,
+        "programLink": 3,
+        "kind": "legacy_project",
+        "captain": 9,
+        "currentApplicationCorrect": true
+      },
+      {
+        "project": 3,
+        "solutionWithSameId": 3,
+        "solutionProgram": 4,
+        "sameIdSolutionStatus": 404,
+        "projectNamespaceCorrect": true
+      },
+      {
+        "project": 4,
+        "solutionWithSameId": 4,
+        "solutionProgram": 6,
+        "sameIdSolutionStatus": 404,
+        "projectNamespaceCorrect": true
+      },
+      {
+        "program": 23,
+        "solution": 34,
+        "expert": 15,
+        "criterionIds": [
+          39,
+          40,
+          45,
+          46
+        ],
+        "ownScoreCount": 4,
+        "ownScoresScoped": true,
+        "captainCannotAcquireExpertRole": true
+      },
+      {
+        "program": 24,
+        "solution": 36,
+        "expert": 15,
+        "criterionIds": [
+          42,
+          43,
+          47,
+          48
+        ],
+        "ownScoreCount": 4,
+        "ownScoresScoped": true,
+        "captainCannotAcquireExpertRole": true
+      }
+    ],
+    "responses": 23,
+    "validation": {
+      "responses": 21,
+      "validRequests": 2
+    },
+    "protectedModels": [
+      "partner_programs.PartnerProgram",
+      "partner_programs.PartnerProgramField",
+      "partner_programs.PartnerProgramUserProfile",
+      "partner_programs.PartnerProgramProject",
+      "partner_programs.PartnerProgramFieldValue",
+      "partner_programs.ProgramSolution",
+      "partner_programs.ProgramSolutionAnswer",
+      "partner_programs.ProgramSolutionMember",
+      "partner_programs.SolutionInvitation",
+      "project_rates.SolutionScore",
+      "project_rates.SolutionExpertAssignment",
+      "project_rates.Criteria",
+      "users.Expert",
+      "files.UserFile",
+      "projects.Project",
+      "projects.Collaborator",
+      "invites.Invite",
+      "project_rates.ProjectScore",
+      "project_rates.ProjectExpertAssignment",
+      "industries.Industry",
+      "users.Expert_programs",
+      "partner_programs.PartnerProgram_managers"
+    ],
+    "protectedBefore": "e508ed645c913db00de6d7318605a03cc7884f9a183ed7a6fb8b15da306b6b1b",
+    "protectedAfter": "e508ed645c913db00de6d7318605a03cc7884f9a183ed7a6fb8b15da306b6b1b",
+    "protectedRowsUnchanged": true,
+    "verifierDomainMutations": 0,
+    "newSolutions": 0,
+    "scope": "Read-only and rejected wrong-program commands over existing solution fixtures plus the new legacy context; browser separately mutates only fresh projects/program34."
+  },
+  "dualRole": {
+    "status": "PASS",
+    "responses": 7,
+    "validation": {
+      "responses": 6,
+      "validRequests": 0
+    },
+    "checks": [
+      {
+        "actor": 15,
+        "program": 23,
+        "role": "manager",
+        "status": 200,
+        "programScoped": true
+      },
+      {
+        "actor": 15,
+        "program": 24,
+        "role": "manager",
+        "status": 200,
+        "programScoped": true
+      },
+      {
+        "actor": 15,
+        "program": 34,
+        "role": "expert",
+        "legacyEvaluationStatus": 200,
+        "managerStatus": 403,
+        "currentApplication": null
+      }
+    ],
+    "old22ModelsUnchanged": true,
+    "domainWrites": 0
+  },
+  "tests": {
+    "legacyPostgres": 148,
+    "frontend": 2844,
+    "frontendFiles": 480,
+    "newParentTest": 1,
+    "strictTypes": true,
+    "developmentBuild": true,
+    "scopedEslint": true,
+    "lockedFormat": {
+      "version": "3.8.3",
+      "sourceFilesBeforeReport": 2017,
+      "failures": []
+    }
+  },
+  "ci": {
+    "backendProductHead": "db7ffe4d6124b16232685fb49f77105f1436bacf",
+    "postgres": {
+      "run": 40186181126,
+      "locking": 39,
+      "full": 1717,
+      "skipped": 0,
+      "status": "success"
+    },
+    "general": {
+      "run": 40186177144,
+      "full": 1717,
+      "skipped": 59,
+      "status": "success"
+    },
+    "notProofForLaterDocsCommits": true
+  },
+  "initialBuild": {
+    "frontend": "f6f1ba96f369d06d502b250b98f3fbcf0963309c",
+    "sourceBuild": "Current role-contract development build; no subsequent product source changes",
+    "target": "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-legacy-angular",
+    "changes": [
+      {
+        "name": "chunk-HYHMJF3H.js",
+        "before": "4f800d7385e186870ceaa53d2c933b989bbc4ea2b9cab02c69d94ba8bb221eb8",
+        "after": "5b11f6d62c68f4bfb450ce7e1e054996865dafa61bd84756b141c067977919f2"
+      }
+    ]
+  },
+  "fixedBuild": {
+    "baseHead": "f6f1ba96f369d06d502b250b98f3fbcf0963309c",
+    "sourceBuild": "Development build with selected additional step deferred on immediate; two uncommitted source files",
+    "target": "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-legacy-immediate-angular",
+    "sourceHashes": {
+      "projects/social_platform/src/app/ui/pages/projects/edit/edit.component.html": "e537f45cddea44a1b5b6a24888e09f3ef5cfb2279d665c883ef9171190c30b8f",
+      "projects/social_platform/src/app/ui/pages/projects/edit/edit.component.spec.ts": "027e42b9b6cc0887b86e1535caf8c65b4fe50a16c513d177b21acac04fb6d9f9"
+    },
+    "changes": [
+      {
+        "name": "chunk-HCU4IA5Y.js",
+        "before": "093f0640ee59c7795f20bc822d5261b88825d79ce68465c938f9ebb93cf141d5",
+        "after": "dcbd637c62428b2061d98c02a492563190035268551d561d39d557d393133ef8"
+      }
+    ]
+  },
+  "rawRoot": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-legacy",
+  "rawArtifacts": {
+    "additional-probe-navigation.json": "e0aa7a477eacf028b2479b23259e26fb26ec1230ffc5778e87463f61e164b72f",
+    "additional-probe.json": "500008aaad00a5ee00cf0f4139f6a854ecf2443ce6d73d31aaf529c7b7a78f43",
+    "browser-attempt-1792927488667.json": "a97ca46f0d9eedb77e0c8d2ac245f9869e54fe9a9cb01f06a074a01b0effad02",
+    "browser-attempt-1792927674419.json": "bf2aeacbb5d94938768f4a29572cd6b882ce45ddb1917dd70bf2b46b7272dfd5",
+    "browser-attempt-1792927716611.json": "de396579036e17679ff6a26f65e4dfc48ec826fd32e5ce26c809530faac3082a",
+    "browser-attempt-1792927833067.json": "8263558efcdd6d0e988962c452c4f69b38e22b10f0fb0c65d67a8c6111256291",
+    "browser-attempt-1792928512169.json": "22535bc2265f32757e73661f8bdf89489e8b3bf2592e77934bea01c2f9ca7f07",
+    "browser-attempt-1792928584468.json": "043dbb794b2e7d1b460b9e244e3ae6996a6a3cd36983f8659321fda0d9348496",
+    "browser-attempt-1792928652202.json": "3157a1a79f9560c882f2551f62ec4fa7a9a31d7828717a172a8d5ebfeb8031ea",
+    "browser-attempt-1792928736607.json": "febfd2bfa4ef72092549e7e2d6c822c7be452fede635262bfafbd05aedd7f8de",
+    "browser-attempt-1792929263078.json": "8e992ac8ddfcfe77423b456dc9cd98d7ea778eb65a8cae4094098532cc1ce050",
+    "browser-attempt-1792929451588.json": "cf53fcbb78f8bba6d6635f38292d48211fbb48d83518ccd3f3a64814aee02044",
+    "browser-error-1792927674424.png": "676a09e1de362e0fdd8aa856312cbf9f5005309cf47aaa4cdab12d16adcdc264",
+    "browser-error-1792927716617.png": "d7c99a78c767abc72a52e2e025f45585686c9b4f99ecf458ca6ef918cd4f82db",
+    "browser-error-1792927833071.png": "69187a2adc3a200015331b42b09f8b6bfe3c91745d0341667d9be71255b182f1",
+    "browser-error-1792928512174.png": "bff7d0e191fdfb85f409fdd2dc127d69c373451b501b0deeb953d6d32dd54ab0",
+    "browser-error-1792928584475.png": "36178e888824413f4795ccfc3ad206ff0e906da4ad688457aad4fee0b1296d9e",
+    "browser-error-1792928652210.png": "cb9c3b8047859412e8abcaed51ad9ecefb4bd820c8849af4992e593d500d1836",
+    "browser-error-1792928736615.png": "57ae02707e4e00d8a90ccf8437e4ed27e0794e3ee92d99496b6bcac755da5335",
+    "browser-error-1792929263092.png": "a1bc28b62f3afd0e31947ce03e83068f38167ad25791fc22de9947b2686e2be1",
+    "browser-error-1792929451626.png": "adc9289d2e397bbbe47f1824617aa36cc19193bf480ef9581fd8288197bf65d7",
+    "browser-evidence.json": "a0dd101be83893d8a55300fbcab855786281d3189c9b95d97198ead049ec08b2",
+    "browser-state.json": "7f2d24c6e116b7ff7de2e3c98f1855c2f9edfa4e7d957bbf40c10747b730a9db",
+    "dual-role-evidence.json": "2be2469319f65c9e2ba2d02205fea02e8e2b9cfc756a785a96ee1bc6fe8697d2",
+    "dual-role-wire.json": "821ca1d48394544c5b0d79e40b7a33cd1f8049a55b08cfa90f6ea0e689073dcd",
+    "final-evidence.json": "8004139f14ea42f667a43d2ebfdfa57151bc49b389dd1f02656af58bc4f24b6d",
+    "final-http-wire.json": "bee1b59f5692a1ca468474677fb112b01f616489fe94416177608f21b9e798c5",
+    "legacy-complete.png": "186979c8f69f5d96c5fb42b470abf03bd54131470e6ccd1294333c3bd6328bf3",
+    "legacy-detail-complete.png": "dc338ecabe949a0f09433d6d15a66a014b9cb0ba865919453c36e8ceeebc7659",
+    "legacy-detail-readback.json": "7ff97664622a6ab4c514e0db78f4e3b523447fa4d0386782afcd2ccd8d68f421",
+    "legacy-team.png": "e6611f2c008c29aceed84d8be5dc0814779e7537531e3a3b6f46041748cf4a3f",
+    "multi-program-evidence.json": "cb62e1196c2188fa1e2bcb8a3a900246f5b8fdb7c99f31e550c11a096a0d24f2",
+    "multi-program-wire.json": "34c6ca6fc74933878c68bad72058257a058b4e770270490bea9b6cf8792eee9e",
+    "ordinary-complete.png": "ae61798cc7e3a71daac9a02744294a5e31edc666a88d0511b8d1efdb9c1b98cc",
+    "ordinary-team.png": "e6611f2c008c29aceed84d8be5dc0814779e7537531e3a3b6f46041748cf4a3f",
+    "procollab-dual-role-http.log": "047b156f5a5ea9d3cb4c724593cc1290338f7fa7705e13e7ca2196618b3ec610",
+    "procollab-legacy-additional-probe-postfix.log": "cbddd5589bd0c826f32a1eb01c1e990ddad4de18f0a6335b5b21e644cb0e1e9e",
+    "procollab-legacy-browser-attempt10.log": "f9707af48e3f4c3baaca3cb0fbb6aa5f31a8a03f015d4f26a419b7ca5116d67f",
+    "procollab-legacy-browser-attempt11.log": "7dd6ebb2c2a01715ff243d04b5cee630ef732e5c41e31001433324372426e28f",
+    "procollab-legacy-browser-attempt2.log": "58178436beeeec783286013eba9c80a6ae2d2376bd7b0787626f466f7977face",
+    "procollab-legacy-browser-attempt3.log": "4e999b1ab9fdb094dbb1ae17d89681f8521fe1436372499b7d0b1bf7b014892b",
+    "procollab-legacy-browser-attempt4.log": "0dfce58d2e2ed1f1a2c400a9d1001ad2bb314ba2db95d4e691aef2ab4171c1ad",
+    "procollab-legacy-browser-attempt5.log": "830b0d89a41497b1460b22695a1cfbb1f1ba12ec83884e2d86062042cbedb2d0",
+    "procollab-legacy-browser-attempt6.log": "3b02c3850a7fe4dfbc2c09085da13dee8928aaa72d18df6619d8faad045b9571",
+    "procollab-legacy-browser-attempt7.log": "927b3ee229e9bfa0a72f73fe742cf47dc6c249deb6996b0c98d13bc6bea5da28",
+    "procollab-legacy-browser-attempt8.log": "1a3238f3df2134e5ed63931cfbfc0d15cf64e0ce1e71ad20883f21a97bbb1b54",
+    "procollab-legacy-browser-attempt9.log": "dd108945f39867f91aeeb0b12e06d8cc82f1e3208f1b58799ca139e8ad032dc5",
+    "procollab-legacy-browser.log": "afd790adec2d0e198229ed4045c356262e9815def0ba2b5ff3d90aec88efe75a",
+    "procollab-legacy-build.json": "1da25202d37cb5863035995aa6013f288b8581979fead80c1aed95bab6a25de3",
+    "procollab-legacy-defer-before.log": "d881941b54a06ee797c503e6ecabdeb2b4d3ac39d664f30c9d16950783655dfa",
+    "procollab-legacy-defer-build.log": "2a3374db9fbf0cc7339ab93ff1004880a2512be128198a69b14e6234746b73d5",
+    "procollab-legacy-defer-green.log": "933d6415f2063cc2f4351fc683774542ffb1184ba113ab29dec39b910e49eda3",
+    "procollab-legacy-defer-red.log": "349eb123be0082bb3f7c7b97b21c98d196df3ae27a2192be4203d774b0cbe439",
+    "procollab-legacy-final-corrected.log": "831e42f9abfbdf3d430b51166fc1ccfedaeeb133699260296bf8dc8e09cf357a",
+    "procollab-legacy-final.log": "77bd594b8af28de54f299a8c0e70d74b4e524996cc1030755309fe56e13d3c00",
+    "procollab-legacy-format.log": "d7285bc2c3c8e7627b262407c486fd5087d35b5208fad89de12cbf31cd354408",
+    "procollab-legacy-frontend-suite.log": "320ee2613c9360a3a3090e426376aa83bf1e73df69491a88dbde75cc9d849b27",
+    "procollab-legacy-immediate-build.json": "1fbcb167745565ea671cbfdacdfc22336599d3b2a238cd023ea4d626ed8146c5",
+    "procollab-legacy-regression.log": "b7264b0409d95c4e37c0464614c61d8070e3dc32acea376979a1a9b399888c66",
+    "procollab-legacy-seed-final.log": "920398727ab35f760b48098deda6c9f437e752249171fc81afe674c9bf0e587d",
+    "procollab-legacy-seed.log": "664983ad4a57ca3d17dc6865a8da00538beed86aea4a8bca427ab3d56fa7ae7d",
+    "procollab-multi-program-http.log": "31a34fd7492941a4f07cfb150f80b51462e9053e41b52ccab0cf2d4cad7c0e35"
+  },
+  "helpers": {
+    "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-legacy-seed-before-idfix.py": "3cad3822be1882403ccc77ada1f57d1d7c73f70a76223c1f3bbff7e59b2602f1",
+    "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-legacy-seed.py": "3d21ab859e1eae5455a4e683cf7a0604ef8e3d709ffd16b5d213ad586da3c6c4",
+    "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-legacy-setup-recovery.py": "106b1b9f4265ad7f2dea7d8fdf48e543e6a41fde659694cb436acef0e96058d5",
+    "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-legacy-browser.cjs": "9f765447b78104a7e65cf5393ab8b870eb6f30e0546a4975145a0ec9be4b2bd4",
+    "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-legacy-browser-before-reload.cjs": "8aca51d4141c119a0c1115f548e3c704f461106a5b870217b86f78eabfdd0760",
+    "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-legacy-browser-before-navfix.cjs": "087073213f3aa2c835882a928d3b8e6ca9dd57216610227a0321ddc385c36796",
+    "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-legacy-browser-before-attempt-errors.cjs": "5aa22f2cacc033e0c41aca697ea7c9e53091bfd2c4db35595959d22fa5e1350b",
+    "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-legacy-browser-before-draft-return.cjs": "c64dc49d6b3376854947e304e631c4a740bf8f83e284313ee919fa939bebd64a",
+    "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-legacy-browser-before-confirm-locator.cjs": "35e430024597bb5adc5c113275cc219cef7d4270fe853730c8918cec739db2f2",
+    "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-multi-program-http.py": "e062da8c685159f13e8551c7a53f2609f1e8addbcb53cfbb1015afb310f59fd3",
+    "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-dual-role-http.py": "4c6769390764fca77cdb410269e2b28b2f84a4f8aab8f00456afb54b8982983c",
+    "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-legacy-final.py": "5c24d4ac94aa80d1564f2c867096db6e613f1375980b98701050446410417485",
+    "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-legacy-final-before-pending-filter.cjs.py": "ac7ca354a46075acdb50083ab8fe6b9f0eb5b824a86b5091949b97f429375689",
+    "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-legacy-spa.py": "af79f65408d5b0ff402ab7b11a4e457baf1a8780dc901a4a85f9a78d129e7055",
+    "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-legacy-spa-before-backlog.py": "47c2bf7e27fc508073ef9b900b1533c4ba2a5bf941f94de5d80d7796ad11713b",
+    "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-legacy-build.cjs": "2e96026cca7be5abd539c71c80bad9843bcdb7c85e6064149f1a23243331d74e",
+    "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-legacy-immediate-build.cjs": "cb6455c73735d46c3a83c4c43e80046cb2bc9b234f11dc3f1a03228917999c2f",
+    "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-legacy-additional-probe-initial.cjs": "1960cde63cd35bf70f531c1d76ba05d6a2bb2815c9ce4fe319cffb1802a0ee8a",
+    "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-legacy-additional-probe.cjs": "148138eefee350262b77cf21b1e9a7fd2a662fc00783dc1394447fac9ee5c6d7",
+    "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-legacy-additional-probe-postfix.cjs": "cc79ca7dab9f2347fb3b19ca79096974e0a432c3ce45206b0219d489014fbde2",
+    "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-legacy-detail-readback.cjs": "ad7988e0e546ff71850b1c054dae39a58080722af78c52cfeb247625f41883ba"
+  },
+  "limitations": [
+    "Resumed phases across11 invocations; historical module error retained",
+    "Local network guard blocks remote avatars",
+    "No merge/deploy/real-program switch/automatic migration",
+    "Admin exceptions approved; implementation not yet extended",
+    "D02/D03 and competitive draft publication remain pending"
+  ]
+}

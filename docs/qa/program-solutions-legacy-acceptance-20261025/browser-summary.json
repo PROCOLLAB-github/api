@@ -1,0 +1,347 @@
+{
+  "status": "PASS",
+  "attempts": 11,
+  "projects": {
+    "3": {
+      "kind": "ordinary",
+      "nameSaved": true,
+      "memberInvite": 1,
+      "memberAccepted": true,
+      "declineInvite": 2,
+      "declined": true,
+      "revokeInvite": 3,
+      "revoked": true,
+      "published": true,
+      "complete": true
+    },
+    "4": {
+      "kind": "legacy",
+      "nameSaved": true,
+      "memberInvite": 4,
+      "memberAccepted": true,
+      "declineInvite": 5,
+      "declined": true,
+      "revokeInvite": 6,
+      "revoked": true,
+      "fieldsSaved": true,
+      "confirmationCancelled": true,
+      "submitted": true,
+      "complete": true
+    }
+  },
+  "checks": [
+    {
+      "project": 3,
+      "kind": "ordinary",
+      "check": "actual edit/save/team/invite/accept/role edit/decline/revoke/publish",
+      "member": 10
+    },
+    {
+      "project": 3,
+      "check": "resumed completed project read only"
+    },
+    {
+      "project": 3,
+      "check": "resumed completed project read only"
+    },
+    {
+      "project": 3,
+      "check": "resumed completed project read only"
+    },
+    {
+      "project": 3,
+      "check": "resumed completed project read only"
+    },
+    {
+      "project": 3,
+      "check": "resumed completed project read only"
+    },
+    {
+      "project": 4,
+      "kind": "legacy",
+      "check": "actual edit/save/team/invite/accept/role edit/decline/revoke/cancel-confirm-submit",
+      "member": 10
+    }
+  ],
+  "responses": 340,
+  "commands": 22,
+  "methodCounts": {
+    "GET": 318,
+    "POST": 11,
+    "PATCH": 2,
+    "PUT": 7,
+    "DELETE": 2
+  },
+  "javascriptErrorsThisAttempt": [],
+  "historicalJavascriptErrors": [
+    {
+      "role": "captain",
+      "message": "Failed to fetch dynamically imported module: http://127.0.0.1:8886/chunk-N4OPMJMV.js"
+    }
+  ],
+  "commandLog": [
+    {
+      "role": "captain",
+      "method": "PUT",
+      "path": "/projects/3/",
+      "status": 200,
+      "request": {
+        "name": "Обычный проект qa01l-20261025-c6c0e219 сохранен",
+        "region": "Москва",
+        "links": [],
+        "industry_id": 1,
+        "description": "Проверка прежнего сценария проекта",
+        "cover_image_address": "http://127.0.0.1:8886/assets/images/shared/logo.svg",
+        "actuality": "Проверяем совместимость",
+        "target_audience": "Участники программ",
+        "problem": "Сохраняем существующий сценарий",
+        "achievements": [],
+        "draft": true
+      }
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/invites/",
+      "status": 201,
+      "request": {
+        "user": 10,
+        "project": 3,
+        "role": "Аналитик совместимости"
+      }
+    },
+    {
+      "role": "member",
+      "method": "POST",
+      "path": "/invites/1/accept/",
+      "status": 200,
+      "request": {}
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/invites/",
+      "status": 201,
+      "request": {
+        "user": 11,
+        "project": 3,
+        "role": "Черновая роль"
+      }
+    },
+    {
+      "role": "captain",
+      "method": "PATCH",
+      "path": "/invites/2/",
+      "status": 200,
+      "request": {
+        "role": "Проверенная роль",
+        "specialization": ""
+      }
+    },
+    {
+      "role": "pending_a",
+      "method": "POST",
+      "path": "/invites/2/decline/",
+      "status": 200,
+      "request": {}
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/invites/",
+      "status": 201,
+      "request": {
+        "user": 12,
+        "project": 3,
+        "role": "Проверка отзыва"
+      }
+    },
+    {
+      "role": "captain",
+      "method": "DELETE",
+      "path": "/invites/3/",
+      "status": 204,
+      "request": null
+    },
+    {
+      "role": "captain",
+      "method": "PUT",
+      "path": "/projects/3/",
+      "status": 200,
+      "request": {
+        "name": "Обычный проект qa01l-20261025-c6c0e219 сохранен",
+        "region": "Москва",
+        "links": [],
+        "industry_id": 1,
+        "description": "Проверка прежнего сценария проекта",
+        "cover_image_address": "http://127.0.0.1:8886/assets/images/shared/logo.svg",
+        "actuality": "Проверяем совместимость",
+        "target_audience": "Участники программ",
+        "problem": "Сохраняем существующий сценарий",
+        "achievements": [],
+        "draft": false
+      }
+    },
+    {
+      "role": "captain",
+      "method": "PUT",
+      "path": "/programs/partner-program-projects/3/fields/",
+      "status": 200,
+      "request": [
+        {
+          "field_id": 255,
+          "value_text": ""
+        },
+        {
+          "field_id": 256,
+          "value_text": ""
+        }
+      ]
+    },
+    {
+      "role": "captain",
+      "method": "PUT",
+      "path": "/projects/4/",
+      "status": 200,
+      "request": {
+        "name": "Заявка проекта qa01l-20261025-c6c0e219 сохранен",
+        "region": "Москва",
+        "links": [],
+        "industry_id": 1,
+        "description": "Проверка прежнего сценария проекта",
+        "cover_image_address": "http://127.0.0.1:8886/assets/images/shared/logo.svg",
+        "actuality": "Проверяем совместимость",
+        "target_audience": "Участники программ",
+        "problem": "Сохраняем существующий сценарий",
+        "achievements": [],
+        "draft": true
+      }
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/invites/",
+      "status": 201,
+      "request": {
+        "user": 10,
+        "project": 4,
+        "role": "Аналитик совместимости",
+        "program_link_id": 3
+      }
+    },
+    {
+      "role": "member",
+      "method": "POST",
+      "path": "/invites/4/accept/",
+      "status": 200,
+      "request": {}
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/invites/",
+      "status": 201,
+      "request": {
+        "user": 11,
+        "project": 4,
+        "role": "Черновая роль",
+        "program_link_id": 3
+      }
+    },
+    {
+      "role": "captain",
+      "method": "PATCH",
+      "path": "/invites/5/",
+      "status": 200,
+      "request": {
+        "role": "Проверенная роль",
+        "specialization": ""
+      }
+    },
+    {
+      "role": "pending_a",
+      "method": "POST",
+      "path": "/invites/5/decline/",
+      "status": 200,
+      "request": {}
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/invites/",
+      "status": 201,
+      "request": {
+        "user": 12,
+        "project": 4,
+        "role": "Проверка отзыва",
+        "program_link_id": 3
+      }
+    },
+    {
+      "role": "captain",
+      "method": "DELETE",
+      "path": "/invites/6/",
+      "status": 204,
+      "request": null
+    },
+    {
+      "role": "captain",
+      "method": "PUT",
+      "path": "/programs/partner-program-projects/3/fields/",
+      "status": 200,
+      "request": [
+        {
+          "field_id": 255,
+          "value_text": "Город"
+        },
+        {
+          "field_id": 256,
+          "value_text": "Старая заявка qa01l-20261025-c6c0e219"
+        }
+      ]
+    },
+    {
+      "role": "captain",
+      "method": "PUT",
+      "path": "/projects/4/",
+      "status": 200,
+      "request": {
+        "name": "Заявка проекта qa01l-20261025-c6c0e219 сохранен",
+        "region": "Москва",
+        "links": [],
+        "industry_id": 1,
+        "description": "Проверка прежнего сценария проекта",
+        "cover_image_address": "http://127.0.0.1:8886/assets/images/shared/logo.svg",
+        "actuality": "Проверяем совместимость",
+        "target_audience": "Участники программ",
+        "problem": "Сохраняем существующий сценарий",
+        "achievements": [],
+        "draft": true
+      }
+    },
+    {
+      "role": "captain",
+      "method": "PUT",
+      "path": "/programs/partner-program-projects/3/fields/",
+      "status": 200,
+      "request": [
+        {
+          "field_id": 255,
+          "value_text": "Город"
+        },
+        {
+          "field_id": 256,
+          "value_text": "Старая заявка qa01l-20261025-c6c0e219"
+        }
+      ]
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/programs/partner-program-projects/3/submit/",
+      "status": 200,
+      "request": {}
+    }
+  ],
+  "curation": "Complete command requests/statuses retained; nested legacy response bodies remain in raw browser-evidence.json with SHA256. Diagnostic resources/auth/welcome activity are outside this response counter."
+}

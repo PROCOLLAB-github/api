@@ -1,0 +1,3873 @@
+{
+  "multiProgram": [
+    {
+      "actor": "captain",
+      "method": "GET",
+      "path": "/programs/30/solution-context/",
+      "status": 200,
+      "request": null,
+      "response": {
+        "program_id": 30,
+        "storage_mode": "solution",
+        "is_registered": true,
+        "is_competitive": true,
+        "submission_open": false,
+        "submission_deadline": "2026-10-24T09:35:57.603032Z",
+        "can_create": false,
+        "blocked_reason": "already_has_application",
+        "current_application": {
+          "kind": "solution",
+          "program_id": 30,
+          "solution_id": 45,
+          "name": "Сохраненная правка case_championship"
+        }
+      },
+      "cacheControl": null,
+      "c00": true
+    },
+    {
+      "actor": "captain",
+      "method": "GET",
+      "path": "/programs/30/solutions/45/",
+      "status": 200,
+      "request": null,
+      "response": {
+        "id": 45,
+        "program_id": 30,
+        "version": 5,
+        "name": "Сохраненная правка case_championship",
+        "captain_id": 9,
+        "created_at": "2026-10-25T09:35:57.016759Z",
+        "updated_at": "2026-10-25T09:35:58.271208Z",
+        "team": {
+          "members": [
+            {
+              "user": {
+                "id": 9,
+                "first_name": "Илья",
+                "last_name": "Сквозной",
+                "avatar_url": null
+              },
+              "role": null,
+              "specialization": null,
+              "joined_at": "2026-10-25T09:35:57.020289Z",
+              "is_captain": true
+            }
+          ],
+          "accepted_count": 1,
+          "pending_count": 1,
+          "reserved_count": 2,
+          "min_size": 1,
+          "max_size": 4,
+          "is_frozen": false
+        },
+        "form": {
+          "program_id": 30,
+          "revision": "003d81d4fe4cd4146f701876ee6e9a9c837cf50baa91073330296d7265429e2f",
+          "template": "case_championship",
+          "is_configured": true,
+          "is_snapshot": false,
+          "fields": [
+            {
+              "id": 230,
+              "type": "select",
+              "purpose": "case",
+              "label": "Кейс",
+              "help_text": "",
+              "required": true,
+              "position": 0,
+              "options": [
+                "Город",
+                "  Образование | наука  ",
+                "Медицина"
+              ],
+              "validation": {
+                "min_length": null,
+                "max_length": null,
+                "minimum": null,
+                "maximum": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 231,
+              "type": "textarea",
+              "purpose": "other",
+              "label": "Краткое описание",
+              "help_text": "",
+              "required": false,
+              "position": 1,
+              "options": [],
+              "validation": {
+                "min_length": null,
+                "max_length": 3000,
+                "minimum": null,
+                "maximum": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 232,
+              "type": "file",
+              "purpose": "presentation",
+              "label": "Презентация PDF",
+              "help_text": "",
+              "required": false,
+              "position": 2,
+              "options": [],
+              "validation": {
+                "min_length": null,
+                "max_length": null,
+                "minimum": null,
+                "maximum": null,
+                "allowed_extensions": [
+                  "pdf"
+                ],
+                "max_file_size_bytes": 20971520
+              }
+            },
+            {
+              "id": 233,
+              "type": "url",
+              "purpose": "video",
+              "label": "Видео",
+              "help_text": "",
+              "required": false,
+              "position": 3,
+              "options": [],
+              "validation": {
+                "min_length": null,
+                "max_length": null,
+                "minimum": null,
+                "maximum": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 234,
+              "type": "file",
+              "purpose": "other",
+              "label": "Дополнительные материалы",
+              "help_text": "",
+              "required": false,
+              "position": 4,
+              "options": [],
+              "validation": {
+                "min_length": null,
+                "max_length": null,
+                "minimum": null,
+                "maximum": null,
+                "allowed_extensions": [
+                  "pdf",
+                  "zip"
+                ],
+                "max_file_size_bytes": 52428800
+              }
+            },
+            {
+              "id": 235,
+              "type": "number",
+              "purpose": "other",
+              "label": "Ноль",
+              "help_text": "",
+              "required": false,
+              "position": 5,
+              "options": [],
+              "validation": {
+                "min_length": null,
+                "max_length": null,
+                "minimum": null,
+                "maximum": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 236,
+              "type": "checkbox",
+              "purpose": "other",
+              "label": "Подтверждение",
+              "help_text": "",
+              "required": false,
+              "position": 6,
+              "options": [],
+              "validation": {
+                "min_length": null,
+                "max_length": null,
+                "minimum": null,
+                "maximum": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            }
+          ]
+        },
+        "answers": [
+          {
+            "field_id": 230,
+            "value": "  Образование | наука  "
+          },
+          {
+            "field_id": 235,
+            "value": 0
+          },
+          {
+            "field_id": 236,
+            "value": false
+          }
+        ],
+        "submission": {
+          "required": true,
+          "status": "draft",
+          "submission_open": false,
+          "deadline": "2026-10-24T09:35:57.603032Z",
+          "submitted_at": null
+        },
+        "permissions": {
+          "can_edit": true,
+          "can_manage_team": true,
+          "can_invite": true,
+          "can_submit": false,
+          "can_leave": false
+        },
+        "readiness": {
+          "is_ready": true,
+          "issues": []
+        }
+      },
+      "cacheControl": null,
+      "c00": true
+    },
+    {
+      "actor": "captain",
+      "method": "GET",
+      "path": "/programs/30/solutions/45/invitations/?status=pending&limit=100",
+      "status": 200,
+      "request": null,
+      "response": {
+        "count": 1,
+        "next": null,
+        "previous": null,
+        "results": [
+          {
+            "id": 51,
+            "version": 1,
+            "program": {
+              "id": 30,
+              "name": "Смена кейса case_championship qa01c-20261025-2b16a5aa"
+            },
+            "solution": {
+              "kind": "solution",
+              "program_id": 30,
+              "solution_id": 45,
+              "name": "Сохраненная правка case_championship"
+            },
+            "captain": {
+              "id": 9,
+              "first_name": "Илья",
+              "last_name": "Сквозной",
+              "avatar_url": null
+            },
+            "recipient": {
+              "id": 10,
+              "first_name": "Мария",
+              "last_name": "Сквозная",
+              "avatar_url": null
+            },
+            "role": "Аналитик",
+            "specialization": null,
+            "motivational_letter": null,
+            "status": "pending",
+            "created_at": "2026-10-25T09:35:57.583312Z",
+            "updated_at": "2026-10-25T09:35:57.583312Z",
+            "permissions": {
+              "can_edit": true,
+              "can_revoke": true,
+              "can_accept": false,
+              "can_decline": false
+            }
+          }
+        ]
+      },
+      "cacheControl": null,
+      "c00": true
+    },
+    {
+      "actor": "captain",
+      "method": "GET",
+      "path": "/solution-invitations/51/",
+      "status": 200,
+      "request": null,
+      "response": {
+        "id": 51,
+        "version": 1,
+        "program": {
+          "id": 30,
+          "name": "Смена кейса case_championship qa01c-20261025-2b16a5aa"
+        },
+        "solution": {
+          "kind": "solution",
+          "program_id": 30,
+          "solution_id": 45,
+          "name": "Сохраненная правка case_championship"
+        },
+        "captain": {
+          "id": 9,
+          "first_name": "Илья",
+          "last_name": "Сквозной",
+          "avatar_url": null
+        },
+        "recipient": {
+          "id": 10,
+          "first_name": "Мария",
+          "last_name": "Сквозная",
+          "avatar_url": null
+        },
+        "role": "Аналитик",
+        "specialization": null,
+        "motivational_letter": null,
+        "status": "pending",
+        "created_at": "2026-10-25T09:35:57.583312Z",
+        "updated_at": "2026-10-25T09:35:57.583312Z",
+        "permissions": {
+          "can_edit": true,
+          "can_revoke": true,
+          "can_accept": false,
+          "can_decline": false
+        }
+      },
+      "cacheControl": null,
+      "c00": true
+    },
+    {
+      "actor": "captain",
+      "method": "GET",
+      "path": "/programs/31/solution-context/",
+      "status": 200,
+      "request": null,
+      "response": {
+        "program_id": 31,
+        "storage_mode": "solution",
+        "is_registered": true,
+        "is_competitive": true,
+        "submission_open": false,
+        "submission_deadline": "2026-10-24T09:35:59.873924Z",
+        "can_create": false,
+        "blocked_reason": "already_has_application",
+        "current_application": {
+          "kind": "solution",
+          "program_id": 31,
+          "solution_id": 47,
+          "name": "Сохраненная правка hackathon"
+        }
+      },
+      "cacheControl": null,
+      "c00": true
+    },
+    {
+      "actor": "captain",
+      "method": "GET",
+      "path": "/programs/31/solutions/47/",
+      "status": 200,
+      "request": null,
+      "response": {
+        "id": 47,
+        "program_id": 31,
+        "version": 5,
+        "name": "Сохраненная правка hackathon",
+        "captain_id": 9,
+        "created_at": "2026-10-25T09:35:59.228117Z",
+        "updated_at": "2026-10-25T09:36:00.874616Z",
+        "team": {
+          "members": [
+            {
+              "user": {
+                "id": 9,
+                "first_name": "Илья",
+                "last_name": "Сквозной",
+                "avatar_url": null
+              },
+              "role": null,
+              "specialization": null,
+              "joined_at": "2026-10-25T09:35:59.231143Z",
+              "is_captain": true
+            }
+          ],
+          "accepted_count": 1,
+          "pending_count": 1,
+          "reserved_count": 2,
+          "min_size": 1,
+          "max_size": 4,
+          "is_frozen": false
+        },
+        "form": {
+          "program_id": 31,
+          "revision": "2df6ad388a42bdf22e073b802858112e0184765665bbef2ac4ae5c8c77aaf5fe",
+          "template": "hackathon",
+          "is_configured": true,
+          "is_snapshot": false,
+          "fields": [
+            {
+              "id": 237,
+              "type": "select",
+              "purpose": "case",
+              "label": "Задача или трек",
+              "help_text": "",
+              "required": true,
+              "position": 0,
+              "options": [
+                "Город",
+                "  Образование | наука  ",
+                "Медицина"
+              ],
+              "validation": {
+                "min_length": null,
+                "max_length": null,
+                "minimum": null,
+                "maximum": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 238,
+              "type": "textarea",
+              "purpose": "other",
+              "label": "Краткое описание",
+              "help_text": "",
+              "required": false,
+              "position": 1,
+              "options": [],
+              "validation": {
+                "min_length": null,
+                "max_length": 3000,
+                "minimum": null,
+                "maximum": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 239,
+              "type": "textarea",
+              "purpose": "other",
+              "label": "Описание реализации",
+              "help_text": "",
+              "required": false,
+              "position": 2,
+              "options": [],
+              "validation": {
+                "min_length": null,
+                "max_length": 10000,
+                "minimum": null,
+                "maximum": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 240,
+              "type": "url",
+              "purpose": "repository",
+              "label": "Репозиторий",
+              "help_text": "",
+              "required": false,
+              "position": 3,
+              "options": [],
+              "validation": {
+                "min_length": null,
+                "max_length": null,
+                "minimum": null,
+                "maximum": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 241,
+              "type": "textarea",
+              "purpose": "run_instructions",
+              "label": "Инструкция запуска",
+              "help_text": "",
+              "required": false,
+              "position": 4,
+              "options": [],
+              "validation": {
+                "min_length": null,
+                "max_length": null,
+                "minimum": null,
+                "maximum": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 242,
+              "type": "url",
+              "purpose": "demo",
+              "label": "Демо",
+              "help_text": "",
+              "required": false,
+              "position": 5,
+              "options": [],
+              "validation": {
+                "min_length": null,
+                "max_length": null,
+                "minimum": null,
+                "maximum": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 243,
+              "type": "file",
+              "purpose": "presentation",
+              "label": "Презентация PDF",
+              "help_text": "",
+              "required": false,
+              "position": 6,
+              "options": [],
+              "validation": {
+                "min_length": null,
+                "max_length": null,
+                "minimum": null,
+                "maximum": null,
+                "allowed_extensions": [
+                  "pdf"
+                ],
+                "max_file_size_bytes": 20971520
+              }
+            },
+            {
+              "id": 244,
+              "type": "url",
+              "purpose": "video",
+              "label": "Видео",
+              "help_text": "",
+              "required": false,
+              "position": 7,
+              "options": [],
+              "validation": {
+                "min_length": null,
+                "max_length": null,
+                "minimum": null,
+                "maximum": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 245,
+              "type": "file",
+              "purpose": "other",
+              "label": "Дополнительные материалы",
+              "help_text": "",
+              "required": false,
+              "position": 8,
+              "options": [],
+              "validation": {
+                "min_length": null,
+                "max_length": null,
+                "minimum": null,
+                "maximum": null,
+                "allowed_extensions": [
+                  "pdf",
+                  "zip"
+                ],
+                "max_file_size_bytes": 52428800
+              }
+            },
+            {
+              "id": 246,
+              "type": "number",
+              "purpose": "other",
+              "label": "Ноль",
+              "help_text": "",
+              "required": false,
+              "position": 9,
+              "options": [],
+              "validation": {
+                "min_length": null,
+                "max_length": null,
+                "minimum": null,
+                "maximum": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 247,
+              "type": "checkbox",
+              "purpose": "other",
+              "label": "Подтверждение",
+              "help_text": "",
+              "required": false,
+              "position": 10,
+              "options": [],
+              "validation": {
+                "min_length": null,
+                "max_length": null,
+                "minimum": null,
+                "maximum": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            }
+          ]
+        },
+        "answers": [
+          {
+            "field_id": 237,
+            "value": "  Образование | наука  "
+          },
+          {
+            "field_id": 246,
+            "value": 0
+          },
+          {
+            "field_id": 247,
+            "value": false
+          }
+        ],
+        "submission": {
+          "required": true,
+          "status": "draft",
+          "submission_open": false,
+          "deadline": "2026-10-24T09:35:59.873924Z",
+          "submitted_at": null
+        },
+        "permissions": {
+          "can_edit": true,
+          "can_manage_team": true,
+          "can_invite": true,
+          "can_submit": false,
+          "can_leave": false
+        },
+        "readiness": {
+          "is_ready": true,
+          "issues": []
+        }
+      },
+      "cacheControl": null,
+      "c00": true
+    },
+    {
+      "actor": "captain",
+      "method": "GET",
+      "path": "/programs/31/solutions/47/invitations/?status=pending&limit=100",
+      "status": 200,
+      "request": null,
+      "response": {
+        "count": 1,
+        "next": null,
+        "previous": null,
+        "results": [
+          {
+            "id": 52,
+            "version": 1,
+            "program": {
+              "id": 31,
+              "name": "Смена кейса hackathon qa01c-20261025-2b16a5aa"
+            },
+            "solution": {
+              "kind": "solution",
+              "program_id": 31,
+              "solution_id": 47,
+              "name": "Сохраненная правка hackathon"
+            },
+            "captain": {
+              "id": 9,
+              "first_name": "Илья",
+              "last_name": "Сквозной",
+              "avatar_url": null
+            },
+            "recipient": {
+              "id": 10,
+              "first_name": "Мария",
+              "last_name": "Сквозная",
+              "avatar_url": null
+            },
+            "role": "Аналитик",
+            "specialization": null,
+            "motivational_letter": null,
+            "status": "pending",
+            "created_at": "2026-10-25T09:35:59.846614Z",
+            "updated_at": "2026-10-25T09:35:59.846614Z",
+            "permissions": {
+              "can_edit": true,
+              "can_revoke": true,
+              "can_accept": false,
+              "can_decline": false
+            }
+          }
+        ]
+      },
+      "cacheControl": null,
+      "c00": true
+    },
+    {
+      "actor": "captain",
+      "method": "GET",
+      "path": "/solution-invitations/52/",
+      "status": 200,
+      "request": null,
+      "response": {
+        "id": 52,
+        "version": 1,
+        "program": {
+          "id": 31,
+          "name": "Смена кейса hackathon qa01c-20261025-2b16a5aa"
+        },
+        "solution": {
+          "kind": "solution",
+          "program_id": 31,
+          "solution_id": 47,
+          "name": "Сохраненная правка hackathon"
+        },
+        "captain": {
+          "id": 9,
+          "first_name": "Илья",
+          "last_name": "Сквозной",
+          "avatar_url": null
+        },
+        "recipient": {
+          "id": 10,
+          "first_name": "Мария",
+          "last_name": "Сквозная",
+          "avatar_url": null
+        },
+        "role": "Аналитик",
+        "specialization": null,
+        "motivational_letter": null,
+        "status": "pending",
+        "created_at": "2026-10-25T09:35:59.846614Z",
+        "updated_at": "2026-10-25T09:35:59.846614Z",
+        "permissions": {
+          "can_edit": true,
+          "can_revoke": true,
+          "can_accept": false,
+          "can_decline": false
+        }
+      },
+      "cacheControl": null,
+      "c00": true
+    },
+    {
+      "actor": "captain",
+      "method": "GET",
+      "path": "/programs/30/solutions/47/",
+      "status": 404,
+      "request": null,
+      "response": {
+        "code": "not_found",
+        "detail": "Решение или программа не найдены.",
+        "errors": [],
+        "meta": {}
+      },
+      "cacheControl": null,
+      "c00": true
+    },
+    {
+      "actor": "captain",
+      "method": "GET",
+      "path": "/programs/31/solutions/45/",
+      "status": 404,
+      "request": null,
+      "response": {
+        "code": "not_found",
+        "detail": "Решение или программа не найдены.",
+        "errors": [],
+        "meta": {}
+      },
+      "cacheControl": null,
+      "c00": true
+    },
+    {
+      "actor": "captain",
+      "method": "PATCH",
+      "path": "/programs/30/solutions/47/",
+      "status": 404,
+      "request": {
+        "expected_version": 5,
+        "expected_form_revision": "2df6ad388a42bdf22e073b802858112e0184765665bbef2ac4ae5c8c77aaf5fe",
+        "name": "Не сохранять между программами"
+      },
+      "response": {
+        "code": "not_found",
+        "detail": "Решение или программа не найдены.",
+        "errors": [],
+        "meta": {}
+      },
+      "cacheControl": null,
+      "c00": true
+    },
+    {
+      "actor": "captain",
+      "method": "POST",
+      "path": "/programs/30/solutions/47/submit/",
+      "status": 404,
+      "request": {
+        "expected_version": 5,
+        "expected_form_revision": "2df6ad388a42bdf22e073b802858112e0184765665bbef2ac4ae5c8c77aaf5fe"
+      },
+      "response": {
+        "code": "not_found",
+        "detail": "Решение или программа не найдены.",
+        "errors": [],
+        "meta": {}
+      },
+      "cacheControl": null,
+      "c00": true
+    },
+    {
+      "actor": "captain",
+      "method": "GET",
+      "path": "/programs/34/solution-context/",
+      "status": 200,
+      "request": null,
+      "response": {
+        "program_id": 34,
+        "storage_mode": "legacy_project",
+        "is_registered": true,
+        "is_competitive": true,
+        "submission_open": true,
+        "submission_deadline": "2026-10-26T11:17:58.692009Z",
+        "can_create": false,
+        "blocked_reason": "already_has_application",
+        "current_application": {
+          "kind": "legacy_project",
+          "program_id": 34,
+          "project_id": 4,
+          "program_link_id": 3,
+          "name": "Заявка проекта qa01l-20261025-c6c0e219 сохранен"
+        }
+      },
+      "cacheControl": null,
+      "c00": true
+    },
+    {
+      "actor": "captain",
+      "method": "GET",
+      "path": "/projects/3/",
+      "status": 200,
+      "request": null,
+      "response": {
+        "id": 3,
+        "team_policy": {
+          "is_frozen": false,
+          "program_link_id": null,
+          "requires_program_context": false,
+          "program_links": []
+        },
+        "name": "Обычный проект qa01l-20261025-c6c0e219 сохранен",
+        "description": "Проверка прежнего сценария проекта",
+        "short_description": "Проверка прежнего сценария проекта",
+        "achievements": [],
+        "goals": [],
+        "links": [],
+        "region": "Москва",
+        "industry": 1,
+        "industry_id": 1,
+        "presentation_address": null,
+        "image_address": null,
+        "collaborators": [
+          {
+            "user_id": 9,
+            "first_name": "Илья",
+            "last_name": "Сквозной",
+            "role": "Основатель",
+            "skills": [],
+            "avatar": null
+          },
+          {
+            "user_id": 10,
+            "first_name": "Мария",
+            "last_name": "Сквозная",
+            "role": "Аналитик совместимости",
+            "skills": [],
+            "avatar": null
+          }
+        ],
+        "partners": [],
+        "leader": 9,
+        "draft": false,
+        "is_company": false,
+        "vacancies": [],
+        "resources": [],
+        "datetime_created": "2026-10-25T14:17:58.811596+03:00",
+        "datetime_updated": "2026-10-25T14:30:07.718268+03:00",
+        "views_count": 2,
+        "is_public": true,
+        "cover": null,
+        "cover_image_address": "http://127.0.0.1:8886/assets/images/shared/logo.svg",
+        "is_default_cover": false,
+        "actuality": "Проверяем совместимость",
+        "problem": "Сохраняем существующий сценарий",
+        "target_audience": "Участники программ",
+        "implementation_deadline": null,
+        "trl": null,
+        "partner_program_tags": [],
+        "partner_program": null
+      },
+      "cacheControl": null,
+      "c00": false
+    },
+    {
+      "actor": "captain",
+      "method": "GET",
+      "path": "/programs/4/solutions/3/",
+      "status": 404,
+      "request": null,
+      "response": {
+        "code": "not_found",
+        "detail": "Решение или программа не найдены.",
+        "errors": [],
+        "meta": {}
+      },
+      "cacheControl": null,
+      "c00": true
+    },
+    {
+      "actor": "captain",
+      "method": "GET",
+      "path": "/projects/4/",
+      "status": 200,
+      "request": null,
+      "response": {
+        "id": 4,
+        "team_policy": {
+          "is_frozen": false,
+          "program_link_id": 3,
+          "requires_program_context": false,
+          "program_links": [
+            {
+              "id": 3,
+              "program_id": 34,
+              "is_submitted": false,
+              "is_competitive": true
+            }
+          ]
+        },
+        "name": "Заявка проекта qa01l-20261025-c6c0e219 сохранен",
+        "description": "Проверка прежнего сценария проекта",
+        "short_description": "Проверка прежнего сценария проекта",
+        "achievements": [],
+        "goals": [],
+        "links": [],
+        "region": "Москва",
+        "industry": 1,
+        "industry_id": 1,
+        "presentation_address": null,
+        "image_address": null,
+        "collaborators": [
+          {
+            "user_id": 9,
+            "first_name": "Илья",
+            "last_name": "Сквозной",
+            "role": "Основатель",
+            "skills": [],
+            "avatar": null
+          }
+        ],
+        "partners": [],
+        "leader": 9,
+        "draft": true,
+        "is_company": false,
+        "vacancies": [],
+        "resources": [],
+        "datetime_created": "2026-10-25T14:17:59.067432+03:00",
+        "datetime_updated": "2026-10-25T14:30:09.944437+03:00",
+        "views_count": 1,
+        "is_public": false,
+        "cover": null,
+        "cover_image_address": "http://127.0.0.1:8886/assets/images/shared/logo.svg",
+        "is_default_cover": false,
+        "actuality": "Проверяем совместимость",
+        "problem": "Сохраняем существующий сценарий",
+        "target_audience": "Участники программ",
+        "implementation_deadline": null,
+        "trl": null,
+        "partner_program_tags": [
+          "qa01l-20261025-c6c0e219"
+        ],
+        "partner_program": {
+          "name": "Старая программа qa01l-20261025-c6c0e219",
+          "program_link_id": 3,
+          "program_id": 34,
+          "is_submitted": false,
+          "can_submit": true,
+          "program_fields": [
+            {
+              "id": 255,
+              "name": "case",
+              "label": "Кейс старой программы",
+              "field_type": "select",
+              "is_required": true,
+              "show_filter": true,
+              "help_text": null,
+              "options": [
+                "Город",
+                "Образование"
+              ]
+            },
+            {
+              "id": 256,
+              "name": "legacy_summary",
+              "label": "Описание заявки",
+              "field_type": "textarea",
+              "is_required": true,
+              "show_filter": false,
+              "help_text": null,
+              "options": []
+            }
+          ],
+          "program_field_values": []
+        }
+      },
+      "cacheControl": null,
+      "c00": false
+    },
+    {
+      "actor": "captain",
+      "method": "GET",
+      "path": "/programs/6/solutions/4/",
+      "status": 404,
+      "request": null,
+      "response": {
+        "code": "not_found",
+        "detail": "Решение или программа не найдены.",
+        "errors": [],
+        "meta": {}
+      },
+      "cacheControl": null,
+      "c00": true
+    },
+    {
+      "actor": "expert",
+      "method": "GET",
+      "path": "/programs/23/solutions/34/evaluation/",
+      "status": 200,
+      "request": null,
+      "response": {
+        "program": {
+          "id": 23,
+          "name": "Ревизия оценки Кейс-чемпионат qa01e-20261025-after-d445c996"
+        },
+        "solution": {
+          "id": 34,
+          "program_id": 23,
+          "version": 3,
+          "name": "Ревизия 1 case_championship",
+          "captain_id": 9,
+          "created_at": "2026-10-25T07:36:14.047299Z",
+          "updated_at": "2026-10-25T07:36:14.283907Z",
+          "team": {
+            "members": [
+              {
+                "role": null,
+                "user": {
+                  "id": 9,
+                  "last_name": "Сквозной",
+                  "avatar_url": null,
+                  "first_name": "Илья"
+                },
+                "joined_at": "2026-10-25T07:36:14.051623Z",
+                "is_captain": true,
+                "specialization": null
+              }
+            ],
+            "accepted_count": 1,
+            "pending_count": 0,
+            "reserved_count": 1,
+            "min_size": 1,
+            "max_size": 4,
+            "is_frozen": true
+          },
+          "form": {
+            "fields": [
+              {
+                "id": 170,
+                "type": "select",
+                "label": "Кейс",
+                "options": [
+                  "Город",
+                  "Образование"
+                ],
+                "purpose": "case",
+                "position": 0,
+                "required": true,
+                "help_text": "",
+                "validation": {
+                  "maximum": null,
+                  "minimum": null,
+                  "max_length": null,
+                  "min_length": null,
+                  "allowed_extensions": [],
+                  "max_file_size_bytes": null
+                }
+              },
+              {
+                "id": 171,
+                "type": "textarea",
+                "label": "Краткое описание",
+                "options": [],
+                "purpose": "other",
+                "position": 1,
+                "required": true,
+                "help_text": "",
+                "validation": {
+                  "maximum": null,
+                  "minimum": null,
+                  "max_length": 3000,
+                  "min_length": null,
+                  "allowed_extensions": [],
+                  "max_file_size_bytes": null
+                }
+              },
+              {
+                "id": 172,
+                "type": "file",
+                "label": "Презентация PDF",
+                "options": [],
+                "purpose": "presentation",
+                "position": 2,
+                "required": false,
+                "help_text": "",
+                "validation": {
+                  "maximum": null,
+                  "minimum": null,
+                  "max_length": null,
+                  "min_length": null,
+                  "allowed_extensions": [
+                    "pdf"
+                  ],
+                  "max_file_size_bytes": 20971520
+                }
+              },
+              {
+                "id": 173,
+                "type": "url",
+                "label": "Видео",
+                "options": [],
+                "purpose": "video",
+                "position": 3,
+                "required": false,
+                "help_text": "",
+                "validation": {
+                  "maximum": null,
+                  "minimum": null,
+                  "max_length": null,
+                  "min_length": null,
+                  "allowed_extensions": [],
+                  "max_file_size_bytes": null
+                }
+              },
+              {
+                "id": 174,
+                "type": "file",
+                "label": "Дополнительные материалы",
+                "options": [],
+                "purpose": "other",
+                "position": 4,
+                "required": false,
+                "help_text": "",
+                "validation": {
+                  "maximum": null,
+                  "minimum": null,
+                  "max_length": null,
+                  "min_length": null,
+                  "allowed_extensions": [
+                    "pdf",
+                    "zip"
+                  ],
+                  "max_file_size_bytes": 52428800
+                }
+              },
+              {
+                "id": 175,
+                "type": "number",
+                "label": "Ноль",
+                "options": [],
+                "purpose": "other",
+                "position": 5,
+                "required": false,
+                "help_text": "",
+                "validation": {
+                  "maximum": null,
+                  "minimum": null,
+                  "max_length": null,
+                  "min_length": null,
+                  "allowed_extensions": [],
+                  "max_file_size_bytes": null
+                }
+              },
+              {
+                "id": 176,
+                "type": "checkbox",
+                "label": "Согласие",
+                "options": [],
+                "purpose": "other",
+                "position": 6,
+                "required": false,
+                "help_text": "",
+                "validation": {
+                  "maximum": null,
+                  "minimum": null,
+                  "max_length": null,
+                  "min_length": null,
+                  "allowed_extensions": [],
+                  "max_file_size_bytes": null
+                }
+              }
+            ],
+            "revision": "020cfc2d9e3e1f0ca820679b917e4bd3cb18be48e9d56e51c5c998c348626c3a",
+            "template": "case_championship",
+            "program_id": 23,
+            "is_snapshot": true,
+            "is_configured": true
+          },
+          "answers": [
+            {
+              "value": "Город",
+              "field_id": 170
+            },
+            {
+              "value": "Материалы для экспертной проверки",
+              "field_id": 171
+            },
+            {
+              "value": {
+                "url": "http://127.0.0.1:8871/local-uploads/55d3c233-2a32-42ed-8187-5c32eae9e963.pdf"
+              },
+              "field_id": 172
+            },
+            {
+              "value": "https://example.test/repository",
+              "field_id": 173
+            },
+            {
+              "value": {
+                "url": "http://127.0.0.1:8871/local-uploads/55d3c233-2a32-42ed-8187-5c32eae9e963.pdf"
+              },
+              "field_id": 174
+            },
+            {
+              "value": 0,
+              "field_id": 175
+            },
+            {
+              "value": false,
+              "field_id": 176
+            }
+          ],
+          "submission": {
+            "required": true,
+            "status": "submitted",
+            "submission_open": true,
+            "deadline": "2026-10-28T07:36:13.753456Z",
+            "submitted_at": "2026-10-25T07:36:14.280895Z"
+          },
+          "permissions": {
+            "can_edit": false,
+            "can_manage_team": false,
+            "can_invite": false,
+            "can_submit": false,
+            "can_leave": false
+          },
+          "readiness": null
+        },
+        "criteria_revision": "701bea49c2a29ed504f9d699d04dc35cb000411c5d433d4578f2076a82fb116a",
+        "criteria": [
+          {
+            "id": 39,
+            "name": "Качество после правки",
+            "description": "Обоснованность решения",
+            "type": "int",
+            "min_value": 0.0,
+            "max_value": 10.0,
+            "value": "0"
+          },
+          {
+            "id": 40,
+            "name": "Реализуемость",
+            "description": "Возможность реализации",
+            "type": "bool",
+            "min_value": null,
+            "max_value": null,
+            "value": "False"
+          },
+          {
+            "id": 45,
+            "name": "Новый обязательный критерий",
+            "description": "Добавлен организатором",
+            "type": "int",
+            "min_value": 0.0,
+            "max_value": 5.0,
+            "value": "0"
+          },
+          {
+            "id": 46,
+            "name": "Новый комментарий",
+            "description": "Скопируйте прежнее пояснение при необходимости",
+            "type": "str",
+            "min_value": null,
+            "max_value": null,
+            "value": "КККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККК"
+          }
+        ],
+        "managed_evaluation": true,
+        "can_rate": false,
+        "blocked_reason": "Срок оценивания завершен.",
+        "is_completed": true,
+        "rated_count": 1,
+        "max_rates": 1,
+        "required_evaluators": 2,
+        "deadline": "2026-10-25T07:38:41.475473Z"
+      },
+      "cacheControl": "private, no-store",
+      "c00": true
+    },
+    {
+      "actor": "captain",
+      "method": "GET",
+      "path": "/programs/23/solutions/34/evaluation/",
+      "status": 403,
+      "request": null,
+      "response": {
+        "code": "not_program_expert",
+        "detail": "Оценивание доступно экспертам этой программы.",
+        "errors": [],
+        "meta": {}
+      },
+      "cacheControl": "private, no-store",
+      "c00": true
+    },
+    {
+      "actor": "expert",
+      "method": "GET",
+      "path": "/programs/24/solutions/36/evaluation/",
+      "status": 200,
+      "request": null,
+      "response": {
+        "program": {
+          "id": 24,
+          "name": "Ревизия оценки Хакатон qa01e-20261025-after-d445c996"
+        },
+        "solution": {
+          "id": 36,
+          "program_id": 24,
+          "version": 3,
+          "name": "Ревизия 1 hackathon",
+          "captain_id": 9,
+          "created_at": "2026-10-25T07:36:15.327392Z",
+          "updated_at": "2026-10-25T07:36:15.582578Z",
+          "team": {
+            "members": [
+              {
+                "role": null,
+                "user": {
+                  "id": 9,
+                  "last_name": "Сквозной",
+                  "avatar_url": null,
+                  "first_name": "Илья"
+                },
+                "joined_at": "2026-10-25T07:36:15.331428Z",
+                "is_captain": true,
+                "specialization": null
+              }
+            ],
+            "accepted_count": 1,
+            "pending_count": 0,
+            "reserved_count": 1,
+            "min_size": 1,
+            "max_size": 4,
+            "is_frozen": true
+          },
+          "form": {
+            "fields": [
+              {
+                "id": 177,
+                "type": "select",
+                "label": "Задача или трек",
+                "options": [
+                  "Город",
+                  "Образование"
+                ],
+                "purpose": "case",
+                "position": 0,
+                "required": true,
+                "help_text": "",
+                "validation": {
+                  "maximum": null,
+                  "minimum": null,
+                  "max_length": null,
+                  "min_length": null,
+                  "allowed_extensions": [],
+                  "max_file_size_bytes": null
+                }
+              },
+              {
+                "id": 178,
+                "type": "textarea",
+                "label": "Краткое описание",
+                "options": [],
+                "purpose": "other",
+                "position": 1,
+                "required": true,
+                "help_text": "",
+                "validation": {
+                  "maximum": null,
+                  "minimum": null,
+                  "max_length": 3000,
+                  "min_length": null,
+                  "allowed_extensions": [],
+                  "max_file_size_bytes": null
+                }
+              },
+              {
+                "id": 179,
+                "type": "textarea",
+                "label": "Описание реализации",
+                "options": [],
+                "purpose": "other",
+                "position": 2,
+                "required": true,
+                "help_text": "",
+                "validation": {
+                  "maximum": null,
+                  "minimum": null,
+                  "max_length": 10000,
+                  "min_length": null,
+                  "allowed_extensions": [],
+                  "max_file_size_bytes": null
+                }
+              },
+              {
+                "id": 180,
+                "type": "url",
+                "label": "Репозиторий",
+                "options": [],
+                "purpose": "repository",
+                "position": 3,
+                "required": true,
+                "help_text": "",
+                "validation": {
+                  "maximum": null,
+                  "minimum": null,
+                  "max_length": null,
+                  "min_length": null,
+                  "allowed_extensions": [],
+                  "max_file_size_bytes": null
+                }
+              },
+              {
+                "id": 181,
+                "type": "textarea",
+                "label": "Инструкция запуска",
+                "options": [],
+                "purpose": "run_instructions",
+                "position": 4,
+                "required": true,
+                "help_text": "",
+                "validation": {
+                  "maximum": null,
+                  "minimum": null,
+                  "max_length": null,
+                  "min_length": null,
+                  "allowed_extensions": [],
+                  "max_file_size_bytes": null
+                }
+              },
+              {
+                "id": 182,
+                "type": "url",
+                "label": "Демо",
+                "options": [],
+                "purpose": "demo",
+                "position": 5,
+                "required": false,
+                "help_text": "",
+                "validation": {
+                  "maximum": null,
+                  "minimum": null,
+                  "max_length": null,
+                  "min_length": null,
+                  "allowed_extensions": [],
+                  "max_file_size_bytes": null
+                }
+              },
+              {
+                "id": 183,
+                "type": "file",
+                "label": "Презентация PDF",
+                "options": [],
+                "purpose": "presentation",
+                "position": 6,
+                "required": false,
+                "help_text": "",
+                "validation": {
+                  "maximum": null,
+                  "minimum": null,
+                  "max_length": null,
+                  "min_length": null,
+                  "allowed_extensions": [
+                    "pdf"
+                  ],
+                  "max_file_size_bytes": 20971520
+                }
+              },
+              {
+                "id": 184,
+                "type": "url",
+                "label": "Видео",
+                "options": [],
+                "purpose": "video",
+                "position": 7,
+                "required": false,
+                "help_text": "",
+                "validation": {
+                  "maximum": null,
+                  "minimum": null,
+                  "max_length": null,
+                  "min_length": null,
+                  "allowed_extensions": [],
+                  "max_file_size_bytes": null
+                }
+              },
+              {
+                "id": 185,
+                "type": "file",
+                "label": "Дополнительные материалы",
+                "options": [],
+                "purpose": "other",
+                "position": 8,
+                "required": false,
+                "help_text": "",
+                "validation": {
+                  "maximum": null,
+                  "minimum": null,
+                  "max_length": null,
+                  "min_length": null,
+                  "allowed_extensions": [
+                    "pdf",
+                    "zip"
+                  ],
+                  "max_file_size_bytes": 52428800
+                }
+              },
+              {
+                "id": 186,
+                "type": "number",
+                "label": "Ноль",
+                "options": [],
+                "purpose": "other",
+                "position": 9,
+                "required": false,
+                "help_text": "",
+                "validation": {
+                  "maximum": null,
+                  "minimum": null,
+                  "max_length": null,
+                  "min_length": null,
+                  "allowed_extensions": [],
+                  "max_file_size_bytes": null
+                }
+              },
+              {
+                "id": 187,
+                "type": "checkbox",
+                "label": "Согласие",
+                "options": [],
+                "purpose": "other",
+                "position": 10,
+                "required": false,
+                "help_text": "",
+                "validation": {
+                  "maximum": null,
+                  "minimum": null,
+                  "max_length": null,
+                  "min_length": null,
+                  "allowed_extensions": [],
+                  "max_file_size_bytes": null
+                }
+              }
+            ],
+            "revision": "64e963bf5d0cfd865de60e7ff952ee3429726c2b8b82a9c78b03ff9de83d5899",
+            "template": "hackathon",
+            "program_id": 24,
+            "is_snapshot": true,
+            "is_configured": true
+          },
+          "answers": [
+            {
+              "value": "Город",
+              "field_id": 177
+            },
+            {
+              "value": "Материалы для экспертной проверки",
+              "field_id": 178
+            },
+            {
+              "value": "Материалы для экспертной проверки",
+              "field_id": 179
+            },
+            {
+              "value": "https://example.test/repository",
+              "field_id": 180
+            },
+            {
+              "value": "Материалы для экспертной проверки",
+              "field_id": 181
+            },
+            {
+              "value": "https://example.test/repository",
+              "field_id": 182
+            },
+            {
+              "value": {
+                "url": "http://127.0.0.1:8871/local-uploads/55d3c233-2a32-42ed-8187-5c32eae9e963.pdf"
+              },
+              "field_id": 183
+            },
+            {
+              "value": "https://example.test/repository",
+              "field_id": 184
+            },
+            {
+              "value": {
+                "url": "http://127.0.0.1:8871/local-uploads/55d3c233-2a32-42ed-8187-5c32eae9e963.pdf"
+              },
+              "field_id": 185
+            },
+            {
+              "value": 0,
+              "field_id": 186
+            },
+            {
+              "value": false,
+              "field_id": 187
+            }
+          ],
+          "submission": {
+            "required": true,
+            "status": "submitted",
+            "submission_open": true,
+            "deadline": "2026-10-28T07:36:13.763572Z",
+            "submitted_at": "2026-10-25T07:36:15.580541Z"
+          },
+          "permissions": {
+            "can_edit": false,
+            "can_manage_team": false,
+            "can_invite": false,
+            "can_submit": false,
+            "can_leave": false
+          },
+          "readiness": null
+        },
+        "criteria_revision": "7dd87f314b0e3494d680efa04bc27ba72edc1c0dfc8d9bf182f911647769d940",
+        "criteria": [
+          {
+            "id": 42,
+            "name": "Качество после правки",
+            "description": "Обоснованность решения",
+            "type": "int",
+            "min_value": 0.0,
+            "max_value": 10.0,
+            "value": "0"
+          },
+          {
+            "id": 43,
+            "name": "Реализуемость",
+            "description": "Возможность реализации",
+            "type": "bool",
+            "min_value": null,
+            "max_value": null,
+            "value": "False"
+          },
+          {
+            "id": 47,
+            "name": "Новый обязательный критерий",
+            "description": "Добавлен организатором",
+            "type": "int",
+            "min_value": 0.0,
+            "max_value": 5.0,
+            "value": "0"
+          },
+          {
+            "id": 48,
+            "name": "Новый комментарий",
+            "description": "Скопируйте прежнее пояснение при необходимости",
+            "type": "str",
+            "min_value": null,
+            "max_value": null,
+            "value": "КККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККККК"
+          }
+        ],
+        "managed_evaluation": true,
+        "can_rate": false,
+        "blocked_reason": "Срок оценивания завершен.",
+        "is_completed": true,
+        "rated_count": 1,
+        "max_rates": 1,
+        "required_evaluators": 2,
+        "deadline": "2026-10-25T07:41:46.500040Z"
+      },
+      "cacheControl": "private, no-store",
+      "c00": true
+    },
+    {
+      "actor": "captain",
+      "method": "GET",
+      "path": "/programs/24/solutions/36/evaluation/",
+      "status": 403,
+      "request": null,
+      "response": {
+        "code": "not_program_expert",
+        "detail": "Оценивание доступно экспертам этой программы.",
+        "errors": [],
+        "meta": {}
+      },
+      "cacheControl": "private, no-store",
+      "c00": true
+    },
+    {
+      "actor": "expert",
+      "method": "GET",
+      "path": "/programs/23/solutions/36/evaluation/",
+      "status": 404,
+      "request": null,
+      "response": {
+        "code": "not_found",
+        "detail": "Решение или программа не найдены.",
+        "errors": [],
+        "meta": {}
+      },
+      "cacheControl": "private, no-store",
+      "c00": true
+    },
+    {
+      "actor": "expert",
+      "method": "GET",
+      "path": "/programs/24/solutions/34/evaluation/",
+      "status": 404,
+      "request": null,
+      "response": {
+        "code": "not_found",
+        "detail": "Решение или программа не найдены.",
+        "errors": [],
+        "meta": {}
+      },
+      "cacheControl": "private, no-store",
+      "c00": true
+    }
+  ],
+  "dualRole": [
+    {
+      "actor": "expert",
+      "method": "GET",
+      "path": "/programs/23/management/solution-analytics/",
+      "status": 200,
+      "request": null,
+      "response": {
+        "program_id": 23,
+        "summary": {
+          "participants": {
+            "total": 3
+          },
+          "solutions": {
+            "total": 2
+          },
+          "experts": {
+            "total": 2
+          },
+          "participant_regions": {
+            "total": 0,
+            "items": []
+          }
+        },
+        "participant_funnel": {
+          "registrations": 3,
+          "unique_participants": 3,
+          "visited_participants": 3,
+          "onboarded_participants": 3,
+          "with_team": 2,
+          "captains": 2,
+          "submitted_captains": 2
+        },
+        "solution_funnel": {
+          "created": 2,
+          "submission_applicable": true,
+          "not_submitted": 0,
+          "submitted": 2,
+          "evaluated": 0
+        },
+        "evaluation_status": {
+          "applicable": true,
+          "mode": "distributed",
+          "required_evaluators": 2,
+          "max_evaluations_per_solution": 1,
+          "assignments": {
+            "total": 4,
+            "pending": 3,
+            "evaluated": 1
+          },
+          "solutions": {
+            "submitted": 2,
+            "awaiting_evaluation": 1,
+            "partially_evaluated": 1,
+            "evaluated": 0
+          }
+        },
+        "attention": {
+          "participants_without_visit": 0,
+          "participants_without_onboarding": 0,
+          "participants_without_team": 1,
+          "solutions_awaiting_evaluation": 2,
+          "solutions_not_submitted": 0,
+          "delayed_experts": {
+            "total": 2,
+            "items": [
+              {
+                "expert_id": 5,
+                "user_id": 15,
+                "first_name": "Роман",
+                "last_name": "Эксперт",
+                "full_name": "Роман Эксперт",
+                "avatar": null,
+                "assignments_total": 2,
+                "completed": 1,
+                "pending": 1,
+                "overdue_24h": 0,
+                "overdue_48h": 0,
+                "oldest_waiting_since": "2026-10-25T07:36:14.792653+00:00",
+                "oldest_waiting_seconds": 15278,
+                "severity": "critical"
+              },
+              {
+                "expert_id": 6,
+                "user_id": 16,
+                "first_name": "Алина",
+                "last_name": "Эксперт",
+                "full_name": "Алина Эксперт",
+                "avatar": null,
+                "assignments_total": 2,
+                "completed": 0,
+                "pending": 2,
+                "overdue_24h": 0,
+                "overdue_48h": 0,
+                "oldest_waiting_since": "2026-10-25T07:36:14.328196+00:00",
+                "oldest_waiting_seconds": 15278,
+                "severity": "critical"
+              }
+            ]
+          }
+        },
+        "activity": [
+          {
+            "date": "2026-09-26",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-09-27",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-09-28",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-09-29",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-09-30",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-01",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-02",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-03",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-04",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-05",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-06",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-07",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-08",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-09",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-10",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-11",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-12",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-13",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-14",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-15",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-16",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-17",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-18",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-19",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-20",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-21",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-22",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-23",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-24",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-25",
+            "registrations": 3,
+            "submitted_solutions": 2
+          }
+        ],
+        "cases": {
+          "program_id": 23,
+          "configured": true,
+          "submission_applicable": true,
+          "items": [
+            {
+              "name": "Город",
+              "participants_total": 2,
+              "solutions_total": 2,
+              "not_submitted": 0,
+              "submitted": 2
+            },
+            {
+              "name": "Образование",
+              "participants_total": 0,
+              "solutions_total": 0,
+              "not_submitted": 0,
+              "submitted": 0
+            }
+          ],
+          "without_case": {
+            "participants_total": 0,
+            "solutions_total": 0,
+            "not_submitted": 0,
+            "submitted": 0
+          }
+        },
+        "field_coverage": [
+          {
+            "field_id": 170,
+            "label": "Кейс",
+            "type": "select",
+            "purpose": "case",
+            "applicable": 2,
+            "answered": 2,
+            "required_applicable": 2,
+            "required_unanswered": 0
+          },
+          {
+            "field_id": 171,
+            "label": "Краткое описание",
+            "type": "textarea",
+            "purpose": "other",
+            "applicable": 2,
+            "answered": 2,
+            "required_applicable": 2,
+            "required_unanswered": 0
+          },
+          {
+            "field_id": 172,
+            "label": "Презентация PDF",
+            "type": "file",
+            "purpose": "presentation",
+            "applicable": 2,
+            "answered": 1,
+            "required_applicable": 0,
+            "required_unanswered": 0
+          },
+          {
+            "field_id": 173,
+            "label": "Видео",
+            "type": "url",
+            "purpose": "video",
+            "applicable": 2,
+            "answered": 2,
+            "required_applicable": 0,
+            "required_unanswered": 0
+          },
+          {
+            "field_id": 174,
+            "label": "Дополнительные материалы",
+            "type": "file",
+            "purpose": "other",
+            "applicable": 2,
+            "answered": 1,
+            "required_applicable": 0,
+            "required_unanswered": 0
+          },
+          {
+            "field_id": 175,
+            "label": "Ноль",
+            "type": "number",
+            "purpose": "other",
+            "applicable": 2,
+            "answered": 2,
+            "required_applicable": 0,
+            "required_unanswered": 0
+          },
+          {
+            "field_id": 176,
+            "label": "Согласие",
+            "type": "checkbox",
+            "purpose": "other",
+            "applicable": 2,
+            "answered": 2,
+            "required_applicable": 0,
+            "required_unanswered": 0
+          }
+        ]
+      },
+      "cacheControl": "private, no-store",
+      "c00": true
+    },
+    {
+      "actor": "expert",
+      "method": "GET",
+      "path": "/programs/24/management/solution-analytics/",
+      "status": 200,
+      "request": null,
+      "response": {
+        "program_id": 24,
+        "summary": {
+          "participants": {
+            "total": 3
+          },
+          "solutions": {
+            "total": 2
+          },
+          "experts": {
+            "total": 2
+          },
+          "participant_regions": {
+            "total": 0,
+            "items": []
+          }
+        },
+        "participant_funnel": {
+          "registrations": 3,
+          "unique_participants": 3,
+          "visited_participants": 3,
+          "onboarded_participants": 3,
+          "with_team": 2,
+          "captains": 2,
+          "submitted_captains": 2
+        },
+        "solution_funnel": {
+          "created": 2,
+          "submission_applicable": true,
+          "not_submitted": 0,
+          "submitted": 2,
+          "evaluated": 1
+        },
+        "evaluation_status": {
+          "applicable": true,
+          "mode": "open",
+          "required_evaluators": 2,
+          "max_evaluations_per_solution": 1,
+          "assignments": null,
+          "solutions": {
+            "submitted": 2,
+            "awaiting_evaluation": 1,
+            "partially_evaluated": 0,
+            "evaluated": 1
+          }
+        },
+        "attention": {
+          "participants_without_visit": 0,
+          "participants_without_onboarding": 0,
+          "participants_without_team": 1,
+          "solutions_awaiting_evaluation": 1,
+          "solutions_not_submitted": 0,
+          "delayed_experts": {
+            "total": 0,
+            "items": []
+          }
+        },
+        "activity": [
+          {
+            "date": "2026-09-26",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-09-27",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-09-28",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-09-29",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-09-30",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-01",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-02",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-03",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-04",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-05",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-06",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-07",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-08",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-09",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-10",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-11",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-12",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-13",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-14",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-15",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-16",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-17",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-18",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-19",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-20",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-21",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-22",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-23",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-24",
+            "registrations": 0,
+            "submitted_solutions": 0
+          },
+          {
+            "date": "2026-10-25",
+            "registrations": 3,
+            "submitted_solutions": 2
+          }
+        ],
+        "cases": {
+          "program_id": 24,
+          "configured": true,
+          "submission_applicable": true,
+          "items": [
+            {
+              "name": "Город",
+              "participants_total": 2,
+              "solutions_total": 2,
+              "not_submitted": 0,
+              "submitted": 2
+            },
+            {
+              "name": "Образование",
+              "participants_total": 0,
+              "solutions_total": 0,
+              "not_submitted": 0,
+              "submitted": 0
+            }
+          ],
+          "without_case": {
+            "participants_total": 0,
+            "solutions_total": 0,
+            "not_submitted": 0,
+            "submitted": 0
+          }
+        },
+        "field_coverage": [
+          {
+            "field_id": 177,
+            "label": "Задача или трек",
+            "type": "select",
+            "purpose": "case",
+            "applicable": 2,
+            "answered": 2,
+            "required_applicable": 2,
+            "required_unanswered": 0
+          },
+          {
+            "field_id": 178,
+            "label": "Краткое описание",
+            "type": "textarea",
+            "purpose": "other",
+            "applicable": 2,
+            "answered": 2,
+            "required_applicable": 2,
+            "required_unanswered": 0
+          },
+          {
+            "field_id": 179,
+            "label": "Описание реализации",
+            "type": "textarea",
+            "purpose": "other",
+            "applicable": 2,
+            "answered": 2,
+            "required_applicable": 2,
+            "required_unanswered": 0
+          },
+          {
+            "field_id": 180,
+            "label": "Репозиторий",
+            "type": "url",
+            "purpose": "repository",
+            "applicable": 2,
+            "answered": 2,
+            "required_applicable": 2,
+            "required_unanswered": 0
+          },
+          {
+            "field_id": 181,
+            "label": "Инструкция запуска",
+            "type": "textarea",
+            "purpose": "run_instructions",
+            "applicable": 2,
+            "answered": 2,
+            "required_applicable": 2,
+            "required_unanswered": 0
+          },
+          {
+            "field_id": 182,
+            "label": "Демо",
+            "type": "url",
+            "purpose": "demo",
+            "applicable": 2,
+            "answered": 2,
+            "required_applicable": 0,
+            "required_unanswered": 0
+          },
+          {
+            "field_id": 183,
+            "label": "Презентация PDF",
+            "type": "file",
+            "purpose": "presentation",
+            "applicable": 2,
+            "answered": 1,
+            "required_applicable": 0,
+            "required_unanswered": 0
+          },
+          {
+            "field_id": 184,
+            "label": "Видео",
+            "type": "url",
+            "purpose": "video",
+            "applicable": 2,
+            "answered": 2,
+            "required_applicable": 0,
+            "required_unanswered": 0
+          },
+          {
+            "field_id": 185,
+            "label": "Дополнительные материалы",
+            "type": "file",
+            "purpose": "other",
+            "applicable": 2,
+            "answered": 1,
+            "required_applicable": 0,
+            "required_unanswered": 0
+          },
+          {
+            "field_id": 186,
+            "label": "Ноль",
+            "type": "number",
+            "purpose": "other",
+            "applicable": 2,
+            "answered": 2,
+            "required_applicable": 0,
+            "required_unanswered": 0
+          },
+          {
+            "field_id": 187,
+            "label": "Согласие",
+            "type": "checkbox",
+            "purpose": "other",
+            "applicable": 2,
+            "answered": 2,
+            "required_applicable": 0,
+            "required_unanswered": 0
+          }
+        ]
+      },
+      "cacheControl": "private, no-store",
+      "c00": true
+    },
+    {
+      "actor": "expert",
+      "method": "GET",
+      "path": "/programs/30/management/solution-analytics/",
+      "status": 403,
+      "request": null,
+      "response": {
+        "code": "permission_denied",
+        "detail": "Аналитика доступна организатору программы.",
+        "errors": [],
+        "meta": {}
+      },
+      "cacheControl": "private, no-store",
+      "c00": true
+    },
+    {
+      "actor": "expert",
+      "method": "GET",
+      "path": "/programs/34/management/solution-analytics/",
+      "status": 403,
+      "request": null,
+      "response": {
+        "code": "permission_denied",
+        "detail": "Аналитика доступна организатору программы.",
+        "errors": [],
+        "meta": {}
+      },
+      "cacheControl": "private, no-store",
+      "c00": true
+    },
+    {
+      "actor": "captain",
+      "method": "GET",
+      "path": "/programs/30/management/solution-analytics/",
+      "status": 403,
+      "request": null,
+      "response": {
+        "code": "permission_denied",
+        "detail": "Аналитика доступна организатору программы.",
+        "errors": [],
+        "meta": {}
+      },
+      "cacheControl": "private, no-store",
+      "c00": true
+    },
+    {
+      "actor": "expert",
+      "method": "GET",
+      "path": "/programs/34/solution-context/",
+      "status": 200,
+      "request": null,
+      "response": {
+        "program_id": 34,
+        "storage_mode": "legacy_project",
+        "is_registered": false,
+        "is_competitive": true,
+        "submission_open": true,
+        "submission_deadline": "2026-10-26T11:17:58.692009Z",
+        "can_create": false,
+        "blocked_reason": "legacy_mode",
+        "current_application": null
+      },
+      "cacheControl": null,
+      "c00": true
+    },
+    {
+      "actor": "expert",
+      "method": "GET",
+      "path": "/rate-project/34?assigned_only=1",
+      "status": 200,
+      "request": null,
+      "response": {
+        "count": 0,
+        "next": null,
+        "previous": null,
+        "results": [],
+        "evaluation_counts": {
+          "pending": 0,
+          "completed": 0
+        }
+      },
+      "cacheControl": "no-store",
+      "c00": false
+    }
+  ],
+  "legacyFinal": [
+    {
+      "method": "GET",
+      "path": "/projects/3/",
+      "status": 200,
+      "response": {
+        "id": 3,
+        "team_policy": {
+          "is_frozen": false,
+          "program_link_id": null,
+          "requires_program_context": false,
+          "program_links": []
+        },
+        "name": "Обычный проект qa01l-20261025-c6c0e219 сохранен",
+        "description": "Проверка прежнего сценария проекта",
+        "short_description": "Проверка прежнего сценария проекта",
+        "achievements": [],
+        "goals": [],
+        "links": [],
+        "region": "Москва",
+        "industry": 1,
+        "industry_id": 1,
+        "presentation_address": null,
+        "image_address": null,
+        "collaborators": [
+          {
+            "user_id": 9,
+            "first_name": "Илья",
+            "last_name": "Сквозной",
+            "role": "Основатель",
+            "skills": [],
+            "avatar": null
+          },
+          {
+            "user_id": 10,
+            "first_name": "Мария",
+            "last_name": "Сквозная",
+            "role": "Аналитик совместимости",
+            "skills": [],
+            "avatar": null
+          }
+        ],
+        "partners": [],
+        "leader": 9,
+        "draft": false,
+        "is_company": false,
+        "vacancies": [],
+        "resources": [],
+        "datetime_created": "2026-10-25T14:17:58.811596+03:00",
+        "datetime_updated": "2026-10-25T14:30:07.718268+03:00",
+        "views_count": 2,
+        "is_public": true,
+        "cover": null,
+        "cover_image_address": "http://127.0.0.1:8886/assets/images/shared/logo.svg",
+        "is_default_cover": false,
+        "actuality": "Проверяем совместимость",
+        "problem": "Сохраняем существующий сценарий",
+        "target_audience": "Участники программ",
+        "implementation_deadline": null,
+        "trl": null,
+        "partner_program_tags": [],
+        "partner_program": null
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/invites/?project=3",
+      "status": 200,
+      "response": []
+    },
+    {
+      "method": "GET",
+      "path": "/invites/1/",
+      "status": 200,
+      "response": {
+        "id": 1,
+        "project": {
+          "id": 3,
+          "team_policy": {
+            "is_frozen": false,
+            "program_link_id": null,
+            "requires_program_context": false,
+            "program_links": []
+          },
+          "name": "Обычный проект qa01l-20261025-c6c0e219 сохранен",
+          "leader": 9,
+          "short_description": "Проверка прежнего сценария проекта",
+          "image_address": null,
+          "industry": 1,
+          "draft": false,
+          "views_count": 2,
+          "is_company": false,
+          "partner_program": null
+        },
+        "program_link_id": null,
+        "user": {
+          "id": 10,
+          "user_type": 1,
+          "email": "qa01-20261025-fa37de87-member@local.example",
+          "first_name": "Мария",
+          "last_name": "Сквозная",
+          "patronymic": null,
+          "skills": [],
+          "birthday": "1990-01-01",
+          "speciality": null,
+          "v2_speciality": null,
+          "education": [],
+          "work_experience": [],
+          "user_languages": [],
+          "about_me": null,
+          "avatar": null,
+          "links": [],
+          "city": null,
+          "is_active": true,
+          "is_online": false,
+          "member": {
+            "useful_to_project": ""
+          },
+          "investor": null,
+          "expert": null,
+          "mentor": null,
+          "achievements": [],
+          "verification_date": null,
+          "has_evaluation_access": false,
+          "onboarding_stage": null,
+          "projects": [
+            {
+              "id": 3,
+              "name": "Обычный проект qa01l-20261025-c6c0e219 сохранен",
+              "leader": 9,
+              "short_description": "Проверка прежнего сценария проекта",
+              "image_address": null,
+              "industry": 1,
+              "views_count": 2,
+              "collaborator": {
+                "user_id": 10,
+                "first_name": "Мария",
+                "last_name": "Сквозная",
+                "role": "Аналитик совместимости",
+                "skills": [],
+                "avatar": null
+              },
+              "is_company": false
+            },
+            {
+              "id": 4,
+              "name": "Заявка проекта qa01l-20261025-c6c0e219 сохранен",
+              "leader": 9,
+              "short_description": "Проверка прежнего сценария проекта",
+              "image_address": null,
+              "industry": 1,
+              "views_count": 2,
+              "collaborator": {
+                "user_id": 10,
+                "first_name": "Мария",
+                "last_name": "Сквозная",
+                "role": "Аналитик совместимости",
+                "skills": [],
+                "avatar": null
+              },
+              "is_company": false
+            }
+          ],
+          "programs": [
+            {
+              "id": 17,
+              "tag": "sadm-20261025-1c0f7390-case_championship",
+              "name": "Первая сдача Кейс-чемпионат sadm-20261025-1c0f7390",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 18,
+              "tag": "sadm-20261025-1c0f7390-hackathon",
+              "name": "Первая сдача Хакатон sadm-20261025-1c0f7390",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 7,
+              "tag": "qa01-20261025-fa37de87-case_championship",
+              "name": "QA01 Кейс-чемпионат qa01-20261025-fa37de87",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 8,
+              "tag": "qa01-20261025-fa37de87-hackathon",
+              "name": "QA01 Хакатон qa01-20261025-fa37de87",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 9,
+              "tag": "rel01-20261025-f7bd7145-case_championship",
+              "name": "REL01 Кейс-чемпионат rel01-20261025-f7bd7145",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 10,
+              "tag": "rel01-20261025-f7bd7145-hackathon",
+              "name": "REL01 Хакатон rel01-20261025-f7bd7145",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 11,
+              "tag": "qa01n-20261025-bdb96b29-case_championship",
+              "name": "QA01 negative Кейс-чемпионат qa01n-20261025-bdb96b29",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 12,
+              "tag": "qa01n-20261025-bdb96b29-hackathon",
+              "name": "QA01 negative Хакатон qa01n-20261025-bdb96b29",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 13,
+              "tag": "qa01u-20261025-c5cbadd8-case_championship",
+              "name": "QA01 negative Кейс-чемпионат qa01u-20261025-c5cbadd8",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 14,
+              "tag": "qa01u-20261025-c5cbadd8-hackathon",
+              "name": "QA01 negative Хакатон qa01u-20261025-c5cbadd8",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 15,
+              "tag": "qa01i-20261025-7ed1e705-case_championship",
+              "name": "QA01 invitation Кейс-чемпионат qa01i-20261025-7ed1e705",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 16,
+              "tag": "qa01i-20261025-7ed1e705-hackathon",
+              "name": "QA01 invitation Хакатон qa01i-20261025-7ed1e705",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 19,
+              "tag": "sadm-20261025-d2687752-case_championship",
+              "name": "Первая сдача Кейс-чемпионат sadm-20261025-d2687752",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 20,
+              "tag": "sadm-20261025-d2687752-hackathon",
+              "name": "Первая сдача Хакатон sadm-20261025-d2687752",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 21,
+              "tag": "qa01e-20261025-before-1c1271f7-case_championship",
+              "name": "Ревизия оценки Кейс-чемпионат qa01e-20261025-before-1c1271f7",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 22,
+              "tag": "qa01e-20261025-before-1c1271f7-hackathon",
+              "name": "Ревизия оценки Хакатон qa01e-20261025-before-1c1271f7",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 23,
+              "tag": "qa01e-20261025-after-d445c996-case_championship",
+              "name": "Ревизия оценки Кейс-чемпионат qa01e-20261025-after-d445c996",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 24,
+              "tag": "qa01e-20261025-after-d445c996-hackathon",
+              "name": "Ревизия оценки Хакатон qa01e-20261025-after-d445c996",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 25,
+              "tag": "qa01m-20261025-b080f725-case_championship",
+              "name": "Одновременное вступление Кейс-чемпионат qa01m-20261025-b080f725",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 26,
+              "tag": "qa01m-20261025-b080f725-hackathon",
+              "name": "Одновременное вступление Хакатон qa01m-20261025-b080f725",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 30,
+              "tag": "qa01c-20261025-2b16a5aa-case_championship",
+              "name": "Смена кейса case_championship qa01c-20261025-2b16a5aa",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 31,
+              "tag": "qa01c-20261025-2b16a5aa-hackathon",
+              "name": "Смена кейса hackathon qa01c-20261025-2b16a5aa",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 32,
+              "tag": "qa01c-20261025-2b16a5aa-noncompetitive",
+              "name": "Смена кейса noncompetitive qa01c-20261025-2b16a5aa",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 34,
+              "tag": "qa01l-20261025-c6c0e219",
+              "name": "Старая программа qa01l-20261025-c6c0e219",
+              "year": 2026,
+              "logo": null
+            }
+          ],
+          "dataset_migration_applied": false,
+          "is_mospolytech_student": false,
+          "study_group": null
+        },
+        "sender": {
+          "id": 9,
+          "first_name": "Илья",
+          "last_name": "Сквозной",
+          "patronymic": null,
+          "avatar": null
+        },
+        "motivational_letter": null,
+        "role": "Аналитик совместимости",
+        "specialization": null,
+        "is_accepted": true,
+        "datetime_created": "2026-10-25T14:29:55.898204+03:00",
+        "datetime_updated": "2026-10-25T14:29:58.048134+03:00"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/invites/2/",
+      "status": 200,
+      "response": {
+        "id": 2,
+        "project": {
+          "id": 3,
+          "team_policy": {
+            "is_frozen": false,
+            "program_link_id": null,
+            "requires_program_context": false,
+            "program_links": []
+          },
+          "name": "Обычный проект qa01l-20261025-c6c0e219 сохранен",
+          "leader": 9,
+          "short_description": "Проверка прежнего сценария проекта",
+          "image_address": null,
+          "industry": 1,
+          "draft": false,
+          "views_count": 2,
+          "is_company": false,
+          "partner_program": null
+        },
+        "program_link_id": null,
+        "user": {
+          "id": 11,
+          "user_type": 1,
+          "email": "qa01-20261025-fa37de87-pending_a@local.example",
+          "first_name": "Антон",
+          "last_name": "Сквозной",
+          "patronymic": null,
+          "skills": [],
+          "birthday": "1990-01-01",
+          "speciality": null,
+          "v2_speciality": null,
+          "education": [],
+          "work_experience": [],
+          "user_languages": [],
+          "about_me": null,
+          "avatar": null,
+          "links": [],
+          "city": null,
+          "is_active": true,
+          "is_online": false,
+          "member": {
+            "useful_to_project": ""
+          },
+          "investor": null,
+          "expert": null,
+          "mentor": null,
+          "achievements": [],
+          "verification_date": null,
+          "has_evaluation_access": false,
+          "onboarding_stage": null,
+          "projects": [],
+          "programs": [
+            {
+              "id": 17,
+              "tag": "sadm-20261025-1c0f7390-case_championship",
+              "name": "Первая сдача Кейс-чемпионат sadm-20261025-1c0f7390",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 18,
+              "tag": "sadm-20261025-1c0f7390-hackathon",
+              "name": "Первая сдача Хакатон sadm-20261025-1c0f7390",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 7,
+              "tag": "qa01-20261025-fa37de87-case_championship",
+              "name": "QA01 Кейс-чемпионат qa01-20261025-fa37de87",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 8,
+              "tag": "qa01-20261025-fa37de87-hackathon",
+              "name": "QA01 Хакатон qa01-20261025-fa37de87",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 9,
+              "tag": "rel01-20261025-f7bd7145-case_championship",
+              "name": "REL01 Кейс-чемпионат rel01-20261025-f7bd7145",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 10,
+              "tag": "rel01-20261025-f7bd7145-hackathon",
+              "name": "REL01 Хакатон rel01-20261025-f7bd7145",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 11,
+              "tag": "qa01n-20261025-bdb96b29-case_championship",
+              "name": "QA01 negative Кейс-чемпионат qa01n-20261025-bdb96b29",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 12,
+              "tag": "qa01n-20261025-bdb96b29-hackathon",
+              "name": "QA01 negative Хакатон qa01n-20261025-bdb96b29",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 13,
+              "tag": "qa01u-20261025-c5cbadd8-case_championship",
+              "name": "QA01 negative Кейс-чемпионат qa01u-20261025-c5cbadd8",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 14,
+              "tag": "qa01u-20261025-c5cbadd8-hackathon",
+              "name": "QA01 negative Хакатон qa01u-20261025-c5cbadd8",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 15,
+              "tag": "qa01i-20261025-7ed1e705-case_championship",
+              "name": "QA01 invitation Кейс-чемпионат qa01i-20261025-7ed1e705",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 16,
+              "tag": "qa01i-20261025-7ed1e705-hackathon",
+              "name": "QA01 invitation Хакатон qa01i-20261025-7ed1e705",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 19,
+              "tag": "sadm-20261025-d2687752-case_championship",
+              "name": "Первая сдача Кейс-чемпионат sadm-20261025-d2687752",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 20,
+              "tag": "sadm-20261025-d2687752-hackathon",
+              "name": "Первая сдача Хакатон sadm-20261025-d2687752",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 21,
+              "tag": "qa01e-20261025-before-1c1271f7-case_championship",
+              "name": "Ревизия оценки Кейс-чемпионат qa01e-20261025-before-1c1271f7",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 22,
+              "tag": "qa01e-20261025-before-1c1271f7-hackathon",
+              "name": "Ревизия оценки Хакатон qa01e-20261025-before-1c1271f7",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 23,
+              "tag": "qa01e-20261025-after-d445c996-case_championship",
+              "name": "Ревизия оценки Кейс-чемпионат qa01e-20261025-after-d445c996",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 24,
+              "tag": "qa01e-20261025-after-d445c996-hackathon",
+              "name": "Ревизия оценки Хакатон qa01e-20261025-after-d445c996",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 25,
+              "tag": "qa01m-20261025-b080f725-case_championship",
+              "name": "Одновременное вступление Кейс-чемпионат qa01m-20261025-b080f725",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 26,
+              "tag": "qa01m-20261025-b080f725-hackathon",
+              "name": "Одновременное вступление Хакатон qa01m-20261025-b080f725",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 30,
+              "tag": "qa01c-20261025-2b16a5aa-case_championship",
+              "name": "Смена кейса case_championship qa01c-20261025-2b16a5aa",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 31,
+              "tag": "qa01c-20261025-2b16a5aa-hackathon",
+              "name": "Смена кейса hackathon qa01c-20261025-2b16a5aa",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 32,
+              "tag": "qa01c-20261025-2b16a5aa-noncompetitive",
+              "name": "Смена кейса noncompetitive qa01c-20261025-2b16a5aa",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 34,
+              "tag": "qa01l-20261025-c6c0e219",
+              "name": "Старая программа qa01l-20261025-c6c0e219",
+              "year": 2026,
+              "logo": null
+            }
+          ],
+          "dataset_migration_applied": false,
+          "is_mospolytech_student": false,
+          "study_group": null
+        },
+        "sender": {
+          "id": 9,
+          "first_name": "Илья",
+          "last_name": "Сквозной",
+          "patronymic": null,
+          "avatar": null
+        },
+        "motivational_letter": null,
+        "role": "Проверенная роль",
+        "specialization": "",
+        "is_accepted": false,
+        "datetime_created": "2026-10-25T14:30:01.081577+03:00",
+        "datetime_updated": "2026-10-25T14:30:03.240526+03:00"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/projects/4/",
+      "status": 200,
+      "response": {
+        "id": 4,
+        "team_policy": {
+          "is_frozen": true,
+          "program_link_id": 3,
+          "requires_program_context": false,
+          "program_links": [
+            {
+              "id": 3,
+              "program_id": 34,
+              "is_submitted": true,
+              "is_competitive": true
+            }
+          ]
+        },
+        "name": "Заявка проекта qa01l-20261025-c6c0e219 сохранен",
+        "description": "Проверка прежнего сценария проекта",
+        "short_description": "Проверка прежнего сценария проекта",
+        "achievements": [],
+        "goals": [],
+        "links": [],
+        "region": "Москва",
+        "industry": 1,
+        "industry_id": 1,
+        "presentation_address": null,
+        "image_address": null,
+        "collaborators": [
+          {
+            "user_id": 9,
+            "first_name": "Илья",
+            "last_name": "Сквозной",
+            "role": "Основатель",
+            "skills": [],
+            "avatar": null
+          },
+          {
+            "user_id": 10,
+            "first_name": "Мария",
+            "last_name": "Сквозная",
+            "role": "Аналитик совместимости",
+            "skills": [],
+            "avatar": null
+          }
+        ],
+        "partners": [],
+        "leader": 9,
+        "draft": false,
+        "is_company": false,
+        "vacancies": [],
+        "resources": [],
+        "datetime_created": "2026-10-25T14:17:59.067432+03:00",
+        "datetime_updated": "2026-10-25T14:58:28.811291+03:00",
+        "views_count": 2,
+        "is_public": false,
+        "cover": null,
+        "cover_image_address": "http://127.0.0.1:8886/assets/images/shared/logo.svg",
+        "is_default_cover": false,
+        "actuality": "Проверяем совместимость",
+        "problem": "Сохраняем существующий сценарий",
+        "target_audience": "Участники программ",
+        "implementation_deadline": null,
+        "trl": null,
+        "partner_program_tags": [
+          "qa01l-20261025-c6c0e219"
+        ],
+        "partner_program": {
+          "name": "Старая программа qa01l-20261025-c6c0e219",
+          "program_link_id": 3,
+          "program_id": 34,
+          "is_submitted": true,
+          "can_submit": false,
+          "program_fields": [
+            {
+              "id": 255,
+              "name": "case",
+              "label": "Кейс старой программы",
+              "field_type": "select",
+              "is_required": true,
+              "show_filter": true,
+              "help_text": null,
+              "options": [
+                "Город",
+                "Образование"
+              ]
+            },
+            {
+              "id": 256,
+              "name": "legacy_summary",
+              "label": "Описание заявки",
+              "field_type": "textarea",
+              "is_required": true,
+              "show_filter": false,
+              "help_text": null,
+              "options": []
+            }
+          ],
+          "program_field_values": [
+            {
+              "field_name": "case",
+              "value": "Город"
+            },
+            {
+              "field_name": "legacy_summary",
+              "value": "Старая заявка qa01l-20261025-c6c0e219"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/invites/?project=4",
+      "status": 200,
+      "response": []
+    },
+    {
+      "method": "GET",
+      "path": "/invites/4/",
+      "status": 200,
+      "response": {
+        "id": 4,
+        "project": {
+          "id": 4,
+          "team_policy": {
+            "is_frozen": true,
+            "program_link_id": 3,
+            "requires_program_context": false,
+            "program_links": [
+              {
+                "id": 3,
+                "program_id": 34,
+                "is_submitted": true,
+                "is_competitive": true
+              }
+            ]
+          },
+          "name": "Заявка проекта qa01l-20261025-c6c0e219 сохранен",
+          "leader": 9,
+          "short_description": "Проверка прежнего сценария проекта",
+          "image_address": null,
+          "industry": 1,
+          "draft": false,
+          "views_count": 2,
+          "is_company": false,
+          "partner_program": {
+            "id": 34,
+            "name": "Старая программа qa01l-20261025-c6c0e219"
+          }
+        },
+        "program_link_id": 3,
+        "user": {
+          "id": 10,
+          "user_type": 1,
+          "email": "qa01-20261025-fa37de87-member@local.example",
+          "first_name": "Мария",
+          "last_name": "Сквозная",
+          "patronymic": null,
+          "skills": [],
+          "birthday": "1990-01-01",
+          "speciality": null,
+          "v2_speciality": null,
+          "education": [],
+          "work_experience": [],
+          "user_languages": [],
+          "about_me": null,
+          "avatar": null,
+          "links": [],
+          "city": null,
+          "is_active": true,
+          "is_online": false,
+          "member": {
+            "useful_to_project": ""
+          },
+          "investor": null,
+          "expert": null,
+          "mentor": null,
+          "achievements": [],
+          "verification_date": null,
+          "has_evaluation_access": false,
+          "onboarding_stage": null,
+          "projects": [
+            {
+              "id": 3,
+              "name": "Обычный проект qa01l-20261025-c6c0e219 сохранен",
+              "leader": 9,
+              "short_description": "Проверка прежнего сценария проекта",
+              "image_address": null,
+              "industry": 1,
+              "views_count": 2,
+              "collaborator": {
+                "user_id": 10,
+                "first_name": "Мария",
+                "last_name": "Сквозная",
+                "role": "Аналитик совместимости",
+                "skills": [],
+                "avatar": null
+              },
+              "is_company": false
+            },
+            {
+              "id": 4,
+              "name": "Заявка проекта qa01l-20261025-c6c0e219 сохранен",
+              "leader": 9,
+              "short_description": "Проверка прежнего сценария проекта",
+              "image_address": null,
+              "industry": 1,
+              "views_count": 2,
+              "collaborator": {
+                "user_id": 10,
+                "first_name": "Мария",
+                "last_name": "Сквозная",
+                "role": "Аналитик совместимости",
+                "skills": [],
+                "avatar": null
+              },
+              "is_company": false
+            }
+          ],
+          "programs": [
+            {
+              "id": 17,
+              "tag": "sadm-20261025-1c0f7390-case_championship",
+              "name": "Первая сдача Кейс-чемпионат sadm-20261025-1c0f7390",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 18,
+              "tag": "sadm-20261025-1c0f7390-hackathon",
+              "name": "Первая сдача Хакатон sadm-20261025-1c0f7390",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 7,
+              "tag": "qa01-20261025-fa37de87-case_championship",
+              "name": "QA01 Кейс-чемпионат qa01-20261025-fa37de87",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 8,
+              "tag": "qa01-20261025-fa37de87-hackathon",
+              "name": "QA01 Хакатон qa01-20261025-fa37de87",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 9,
+              "tag": "rel01-20261025-f7bd7145-case_championship",
+              "name": "REL01 Кейс-чемпионат rel01-20261025-f7bd7145",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 10,
+              "tag": "rel01-20261025-f7bd7145-hackathon",
+              "name": "REL01 Хакатон rel01-20261025-f7bd7145",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 11,
+              "tag": "qa01n-20261025-bdb96b29-case_championship",
+              "name": "QA01 negative Кейс-чемпионат qa01n-20261025-bdb96b29",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 12,
+              "tag": "qa01n-20261025-bdb96b29-hackathon",
+              "name": "QA01 negative Хакатон qa01n-20261025-bdb96b29",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 13,
+              "tag": "qa01u-20261025-c5cbadd8-case_championship",
+              "name": "QA01 negative Кейс-чемпионат qa01u-20261025-c5cbadd8",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 14,
+              "tag": "qa01u-20261025-c5cbadd8-hackathon",
+              "name": "QA01 negative Хакатон qa01u-20261025-c5cbadd8",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 15,
+              "tag": "qa01i-20261025-7ed1e705-case_championship",
+              "name": "QA01 invitation Кейс-чемпионат qa01i-20261025-7ed1e705",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 16,
+              "tag": "qa01i-20261025-7ed1e705-hackathon",
+              "name": "QA01 invitation Хакатон qa01i-20261025-7ed1e705",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 19,
+              "tag": "sadm-20261025-d2687752-case_championship",
+              "name": "Первая сдача Кейс-чемпионат sadm-20261025-d2687752",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 20,
+              "tag": "sadm-20261025-d2687752-hackathon",
+              "name": "Первая сдача Хакатон sadm-20261025-d2687752",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 21,
+              "tag": "qa01e-20261025-before-1c1271f7-case_championship",
+              "name": "Ревизия оценки Кейс-чемпионат qa01e-20261025-before-1c1271f7",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 22,
+              "tag": "qa01e-20261025-before-1c1271f7-hackathon",
+              "name": "Ревизия оценки Хакатон qa01e-20261025-before-1c1271f7",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 23,
+              "tag": "qa01e-20261025-after-d445c996-case_championship",
+              "name": "Ревизия оценки Кейс-чемпионат qa01e-20261025-after-d445c996",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 24,
+              "tag": "qa01e-20261025-after-d445c996-hackathon",
+              "name": "Ревизия оценки Хакатон qa01e-20261025-after-d445c996",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 25,
+              "tag": "qa01m-20261025-b080f725-case_championship",
+              "name": "Одновременное вступление Кейс-чемпионат qa01m-20261025-b080f725",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 26,
+              "tag": "qa01m-20261025-b080f725-hackathon",
+              "name": "Одновременное вступление Хакатон qa01m-20261025-b080f725",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 30,
+              "tag": "qa01c-20261025-2b16a5aa-case_championship",
+              "name": "Смена кейса case_championship qa01c-20261025-2b16a5aa",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 31,
+              "tag": "qa01c-20261025-2b16a5aa-hackathon",
+              "name": "Смена кейса hackathon qa01c-20261025-2b16a5aa",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 32,
+              "tag": "qa01c-20261025-2b16a5aa-noncompetitive",
+              "name": "Смена кейса noncompetitive qa01c-20261025-2b16a5aa",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 34,
+              "tag": "qa01l-20261025-c6c0e219",
+              "name": "Старая программа qa01l-20261025-c6c0e219",
+              "year": 2026,
+              "logo": null
+            }
+          ],
+          "dataset_migration_applied": false,
+          "is_mospolytech_student": false,
+          "study_group": null
+        },
+        "sender": {
+          "id": 9,
+          "first_name": "Илья",
+          "last_name": "Сквозной",
+          "patronymic": null,
+          "avatar": null
+        },
+        "motivational_letter": null,
+        "role": "Аналитик совместимости",
+        "specialization": null,
+        "is_accepted": true,
+        "datetime_created": "2026-10-25T14:30:12.810403+03:00",
+        "datetime_updated": "2026-10-25T14:41:20.500490+03:00"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/invites/5/",
+      "status": 200,
+      "response": {
+        "id": 5,
+        "project": {
+          "id": 4,
+          "team_policy": {
+            "is_frozen": true,
+            "program_link_id": 3,
+            "requires_program_context": false,
+            "program_links": [
+              {
+                "id": 3,
+                "program_id": 34,
+                "is_submitted": true,
+                "is_competitive": true
+              }
+            ]
+          },
+          "name": "Заявка проекта qa01l-20261025-c6c0e219 сохранен",
+          "leader": 9,
+          "short_description": "Проверка прежнего сценария проекта",
+          "image_address": null,
+          "industry": 1,
+          "draft": false,
+          "views_count": 2,
+          "is_company": false,
+          "partner_program": {
+            "id": 34,
+            "name": "Старая программа qa01l-20261025-c6c0e219"
+          }
+        },
+        "program_link_id": 3,
+        "user": {
+          "id": 11,
+          "user_type": 1,
+          "email": "qa01-20261025-fa37de87-pending_a@local.example",
+          "first_name": "Антон",
+          "last_name": "Сквозной",
+          "patronymic": null,
+          "skills": [],
+          "birthday": "1990-01-01",
+          "speciality": null,
+          "v2_speciality": null,
+          "education": [],
+          "work_experience": [],
+          "user_languages": [],
+          "about_me": null,
+          "avatar": null,
+          "links": [],
+          "city": null,
+          "is_active": true,
+          "is_online": false,
+          "member": {
+            "useful_to_project": ""
+          },
+          "investor": null,
+          "expert": null,
+          "mentor": null,
+          "achievements": [],
+          "verification_date": null,
+          "has_evaluation_access": false,
+          "onboarding_stage": null,
+          "projects": [],
+          "programs": [
+            {
+              "id": 17,
+              "tag": "sadm-20261025-1c0f7390-case_championship",
+              "name": "Первая сдача Кейс-чемпионат sadm-20261025-1c0f7390",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 18,
+              "tag": "sadm-20261025-1c0f7390-hackathon",
+              "name": "Первая сдача Хакатон sadm-20261025-1c0f7390",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 7,
+              "tag": "qa01-20261025-fa37de87-case_championship",
+              "name": "QA01 Кейс-чемпионат qa01-20261025-fa37de87",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 8,
+              "tag": "qa01-20261025-fa37de87-hackathon",
+              "name": "QA01 Хакатон qa01-20261025-fa37de87",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 9,
+              "tag": "rel01-20261025-f7bd7145-case_championship",
+              "name": "REL01 Кейс-чемпионат rel01-20261025-f7bd7145",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 10,
+              "tag": "rel01-20261025-f7bd7145-hackathon",
+              "name": "REL01 Хакатон rel01-20261025-f7bd7145",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 11,
+              "tag": "qa01n-20261025-bdb96b29-case_championship",
+              "name": "QA01 negative Кейс-чемпионат qa01n-20261025-bdb96b29",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 12,
+              "tag": "qa01n-20261025-bdb96b29-hackathon",
+              "name": "QA01 negative Хакатон qa01n-20261025-bdb96b29",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 13,
+              "tag": "qa01u-20261025-c5cbadd8-case_championship",
+              "name": "QA01 negative Кейс-чемпионат qa01u-20261025-c5cbadd8",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 14,
+              "tag": "qa01u-20261025-c5cbadd8-hackathon",
+              "name": "QA01 negative Хакатон qa01u-20261025-c5cbadd8",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 15,
+              "tag": "qa01i-20261025-7ed1e705-case_championship",
+              "name": "QA01 invitation Кейс-чемпионат qa01i-20261025-7ed1e705",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 16,
+              "tag": "qa01i-20261025-7ed1e705-hackathon",
+              "name": "QA01 invitation Хакатон qa01i-20261025-7ed1e705",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 19,
+              "tag": "sadm-20261025-d2687752-case_championship",
+              "name": "Первая сдача Кейс-чемпионат sadm-20261025-d2687752",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 20,
+              "tag": "sadm-20261025-d2687752-hackathon",
+              "name": "Первая сдача Хакатон sadm-20261025-d2687752",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 21,
+              "tag": "qa01e-20261025-before-1c1271f7-case_championship",
+              "name": "Ревизия оценки Кейс-чемпионат qa01e-20261025-before-1c1271f7",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 22,
+              "tag": "qa01e-20261025-before-1c1271f7-hackathon",
+              "name": "Ревизия оценки Хакатон qa01e-20261025-before-1c1271f7",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 23,
+              "tag": "qa01e-20261025-after-d445c996-case_championship",
+              "name": "Ревизия оценки Кейс-чемпионат qa01e-20261025-after-d445c996",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 24,
+              "tag": "qa01e-20261025-after-d445c996-hackathon",
+              "name": "Ревизия оценки Хакатон qa01e-20261025-after-d445c996",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 25,
+              "tag": "qa01m-20261025-b080f725-case_championship",
+              "name": "Одновременное вступление Кейс-чемпионат qa01m-20261025-b080f725",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 26,
+              "tag": "qa01m-20261025-b080f725-hackathon",
+              "name": "Одновременное вступление Хакатон qa01m-20261025-b080f725",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 30,
+              "tag": "qa01c-20261025-2b16a5aa-case_championship",
+              "name": "Смена кейса case_championship qa01c-20261025-2b16a5aa",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 31,
+              "tag": "qa01c-20261025-2b16a5aa-hackathon",
+              "name": "Смена кейса hackathon qa01c-20261025-2b16a5aa",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 32,
+              "tag": "qa01c-20261025-2b16a5aa-noncompetitive",
+              "name": "Смена кейса noncompetitive qa01c-20261025-2b16a5aa",
+              "year": 2026,
+              "logo": null
+            },
+            {
+              "id": 34,
+              "tag": "qa01l-20261025-c6c0e219",
+              "name": "Старая программа qa01l-20261025-c6c0e219",
+              "year": 2026,
+              "logo": null
+            }
+          ],
+          "dataset_migration_applied": false,
+          "is_mospolytech_student": false,
+          "study_group": null
+        },
+        "sender": {
+          "id": 9,
+          "first_name": "Илья",
+          "last_name": "Сквозной",
+          "patronymic": null,
+          "avatar": null
+        },
+        "motivational_letter": null,
+        "role": "Проверенная роль",
+        "specialization": "",
+        "is_accepted": false,
+        "datetime_created": "2026-10-25T14:41:23.572606+03:00",
+        "datetime_updated": "2026-10-25T14:41:27.180905+03:00"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/programs/partner-program-projects/3/fields/",
+      "status": 200,
+      "response": {
+        "program_link_id": 3,
+        "program_id": 34,
+        "project_id": 4,
+        "submitted": true,
+        "is_competitive": true,
+        "submission_open": true,
+        "submission_deadline": "2026-10-26T11:17:58.692009Z",
+        "can_submit": false,
+        "fields": [
+          {
+            "id": 255,
+            "name": "case",
+            "label": "Кейс старой программы",
+            "field_type": "select",
+            "is_required": true,
+            "show_filter": true,
+            "help_text": null,
+            "options": [
+              "Город",
+              "Образование"
+            ],
+            "value": "Город"
+          },
+          {
+            "id": 256,
+            "name": "legacy_summary",
+            "label": "Описание заявки",
+            "field_type": "textarea",
+            "is_required": true,
+            "show_filter": false,
+            "help_text": null,
+            "options": [],
+            "value": "Старая заявка qa01l-20261025-c6c0e219"
+          }
+        ]
+      }
+    }
+  ]
+}
