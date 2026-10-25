@@ -51,11 +51,12 @@ class CaseFixture(SubmissionFixture):
             {"case_name": case or self.target},
         )
 
-    def command_case(self):
-        result = self.preview()
+    def command_case(self, case=None):
+        selected = case or self.target
+        result = self.preview(case=selected)
         self.assertEqual(result.status_code, 200, result.data)
         self.assertTrue(result.data["can_apply"], result.data)
-        return dict(case_name=self.target, preview_token=result.data["preview_token"])
+        return dict(case_name=selected, preview_token=result.data["preview_token"])
 
     def apply(self, command, actor=None):
         return call(actor or self.manager, "post", self.root + "apply/", command)
@@ -262,7 +263,7 @@ class SolutionCaseActionTests(CaseFixture, TestCase):
         self.assertEqual(self.solution.status, "draft")
         self.assertIsNone(self.solution.submission_snapshot)
 
-    def test_submitted_preview_and_apply_preserve_snapshot_and_scores(self):
+    def test_confirmation_from_before_submission_is_stale_and_preserves_scores(self):
         command = self.command_case()
         self.assertEqual(self.submit().status_code, 200)
         expert = create_rate_expert(program=self.program)
@@ -275,10 +276,14 @@ class SolutionCaseActionTests(CaseFixture, TestCase):
         )
         before = self.saved()
         response = self.wire(self.preview())
-        self.assertFalse(response["can_apply"])
-        self.assertIsNone(response["preview_token"])
-        self.assertEqual(response["errors"][0]["code"], "team_frozen")
-        self.assertEqual(self.wire(self.apply(command), 409)["code"], "team_frozen")
+        self.assertTrue(response["can_apply"])
+        self.assertIsNotNone(response["preview_token"])
+        self.assertEqual(response["errors"], [])
+        self.assertEqual(response["score_count"], 1)
+        self.assertEqual(response["removed_assignments_count"], 0)
+        self.assertEqual(
+            self.wire(self.apply(command), 409)["code"], "solution_action_conflict"
+        )
         self.assertEqual(self.saved(), before)
 
     def test_unexpected_draft_score_is_not_removed(self):
@@ -529,7 +534,7 @@ class SolutionCaseActionConcurrencyTests(CaseFixture, TransactionTestCase):
                 self.target,
             )
         else:
-            self.assertEqual(result, ["team_frozen", "saved"])
+            self.assertEqual(result, ["solution_action_conflict", "saved"])
             self.assertEqual(self.solution.status, "submitted")
             answers = {
                 a["field_id"]: a["value"]
@@ -540,3 +545,62 @@ class SolutionCaseActionConcurrencyTests(CaseFixture, TransactionTestCase):
                 self.solution.answers.get(field_id=self.fields["select"]["id"]).value,
                 "Задача 1",
             )
+
+    def test_two_submitted_confirmations_write_one_revision(self):
+        self.assertEqual(self.submit().status_code, 200)
+        command = self.command_case()
+        self.solution.refresh_from_db()
+        original = self.solution.submission_snapshot
+        version = self.solution.version
+
+        def change():
+            return actions.apply(self.program.pk, self.solution.pk, self.manager, command)
+
+        self.assertCountEqual(
+            self.race([change, change]), ["saved", "solution_action_conflict"]
+        )
+        self.solution.refresh_from_db()
+        self.assertEqual(self.solution.version, version + 1)
+        journal = self.solution.administrative_changes.get()
+        self.assertEqual(journal.before_snapshot, original)
+        self.assertEqual(journal.after_snapshot, self.solution.submission_snapshot)
+        self.assertEqual(journal.case_name, self.target)
+
+    def test_submitted_confirmation_and_score_update_preserve_the_winning_state(self):
+        self.assertEqual(self.submit().status_code, 200)
+        expert = create_rate_expert(program=self.program)
+        criterion = create_rate_criteria(self.program, min_value=0, max_value=10)
+        SolutionExpertAssignment.objects.create(
+            partner_program=self.program, solution=self.solution, expert=expert.expert
+        )
+        score = SolutionScore.objects.create(
+            solution=self.solution, criteria=criterion, user=expert, value="0"
+        )
+        command = self.command_case()
+        self.solution.refresh_from_db()
+        original = self.solution.submission_snapshot
+        version = self.solution.version
+
+        def change():
+            return actions.apply(self.program.pk, self.solution.pk, self.manager, command)
+
+        def rate():
+            score.value = "7"
+            score.save()
+
+        result = self.race([change, rate])
+        score.refresh_from_db()
+        self.solution.refresh_from_db()
+        self.assertEqual(score.value, "7")
+        self.assertEqual(result[1], "saved")
+        if result[0] == "saved":
+            journal = self.solution.administrative_changes.get()
+            self.assertEqual(journal.before_snapshot, original)
+            self.assertEqual(journal.after_snapshot, self.solution.submission_snapshot)
+            self.assertEqual(journal.score_count, 1)
+            self.assertEqual(self.solution.version, version + 1)
+        else:
+            self.assertEqual(result[0], "solution_action_conflict")
+            self.assertEqual(self.solution.submission_snapshot, original)
+            self.assertEqual(self.solution.version, version)
+            self.assertEqual(self.solution.administrative_changes.count(), 0)

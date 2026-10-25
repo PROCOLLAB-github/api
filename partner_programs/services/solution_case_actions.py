@@ -1,5 +1,6 @@
-"""Confirmed organizer case changes without changing submitted materials."""
+"""Confirmed organizer case changes retain the original submission in history."""
 
+import copy
 import hashlib
 import json
 import logging
@@ -7,6 +8,7 @@ import logging
 from django.core import signing
 from django.db import transaction
 from django.http import Http404
+from django.utils import timezone
 
 from partner_programs.permissions import can_manage_program
 from partner_programs.solution_api import mutation_receipt
@@ -15,12 +17,12 @@ from partner_programs.solution_models import (
     ProgramSolution,
     ProgramSolutionAnswer,
     ProgramSolutionMember,
+    SolutionAdministrativeChange,
 )
 from partner_programs.solution_schema import form_data
 from partner_programs.solution_team import (
     advance_version,
     program_for,
-    require_mutable,
 )
 from project_rates.solution_models import SolutionExpertAssignment, SolutionScore
 
@@ -68,6 +70,21 @@ def context(program_id, solution_id, actor):
     return program, solution, form, field
 
 
+def applied_field(solution, field):
+    if solution.status == "submitted":
+        saved = next(
+            (
+                item
+                for item in solution.submission_snapshot["form"]["fields"]
+                if item["purpose"] == "case"
+            ),
+            None,
+        )
+        if saved and solution.program.fields.filter(pk=saved["id"]).exists():
+            return saved
+    return field
+
+
 def inspect(program, solution, form, field, case_name):
     if (
         not isinstance(case_name, str)
@@ -87,29 +104,43 @@ def inspect(program, solution, form, field, case_name):
                 )
             ],
         )
+    target = applied_field(solution, field)
     answers = list(solution.answers.order_by("pk").values("id", "field_id", "value"))
-    current = next((a["value"] for a in answers if a["field_id"] == field["id"]), None)
+    applied_answers = (
+        solution.submission_snapshot["answers"]
+        if solution.status == "submitted"
+        else answers
+    )
+    current = next(
+        (a["value"] for a in applied_answers if a["field_id"] == target["id"]), None
+    )
     assignments = list(
         SolutionExpertAssignment.objects.filter(solution=solution)
         .order_by("pk")
-        .values_list("pk", flat=True)
+        .values("id", "expert_id", "expert__user_id", "partner_program_id")
     )
     scores = list(
         SolutionScore.objects.filter(solution=solution)
         .order_by("pk")
-        .values_list("pk", flat=True)
+        .values("id", "criteria_id", "user_id", "value")
     )
-    errors = []
-    if solution.status == "submitted":
-        errors.append(
-            issue(
-                "case_name",
-                "team_frozen",
-                "Данные сданного решения зафиксированы.",
-                field["id"],
-            )
+    scopes = list(
+        program.expert_case_scopes.order_by("pk").values(
+            "id", "expert_id", "all_cases", "case_names"
         )
-    elif assignments or scores:
+    )
+    protected = {score["user_id"] for score in scores}
+    scoped = {scope["expert_id"]: scope for scope in scopes}
+    removed = [
+        row["id"]
+        for row in assignments
+        if row["expert__user_id"] not in protected
+        and row["expert_id"] in scoped
+        and not scoped[row["expert_id"]]["all_cases"]
+        and case_name not in scoped[row["expert_id"]]["case_names"]
+    ]
+    errors = []
+    if solution.status != "submitted" and (assignments or scores):
         errors.append(
             issue(
                 "case_name",
@@ -145,6 +176,7 @@ def inspect(program, solution, form, field, case_name):
         ),
         assignments=assignments,
         scores=scores,
+        scopes=scopes,
     )
     digest = hashlib.sha256(
         json.dumps(state, sort_keys=True, default=str).encode()
@@ -157,14 +189,18 @@ def inspect(program, solution, form, field, case_name):
                 solution_id=solution.pk,
                 name=solution.name,
             ),
-            case_field_id=field["id"],
+            case_field_id=target["id"],
             current_case=current if isinstance(current, str) else None,
             case_name=case_name,
             solution_version=solution.version,
             errors=errors,
             can_apply=not errors,
+            is_submitted=solution.status == "submitted",
+            removed_assignments_count=len(removed),
+            score_count=len(scores),
         ),
         digest,
+        removed,
     )
 
 
@@ -175,7 +211,7 @@ def proof_context(program, solution, actor, case_name):
 @transaction.atomic
 def preview(program_id, solution_id, actor, data):
     program, solution, form, field = context(program_id, solution_id, actor)
-    result, state = inspect(program, solution, form, field, data["case_name"])
+    result, state, _ = inspect(program, solution, form, field, data["case_name"])
     result["preview_token"] = (
         signing.dumps(
             {
@@ -194,7 +230,6 @@ def preview(program_id, solution_id, actor, data):
 @transaction.atomic
 def apply(program_id, solution_id, actor, data):
     program, solution, form, field = context(program_id, solution_id, actor)
-    require_mutable(solution)
     try:
         proof = signing.loads(data["preview_token"], salt=SALT, max_age=MAX_AGE)
     except signing.BadSignature as error:
@@ -202,13 +237,91 @@ def apply(program_id, solution_id, actor, data):
     expected = proof_context(program, solution, actor, data["case_name"])
     if not isinstance(proof, dict) or any(proof.get(k) != v for k, v in expected.items()):
         raise conflict()
-    result, state = inspect(program, solution, form, field, data["case_name"])
+    result, state, removed = inspect(program, solution, form, field, data["case_name"])
     if proof.get("state") != state or not result["can_apply"]:
         raise conflict(result["errors"])
-    ProgramSolutionAnswer.objects.update_or_create(
-        solution=solution, field_id=field["id"], defaults={"value": data["case_name"]}
+    before_version = solution.version
+    before_snapshot = copy.deepcopy(solution.submission_snapshot)
+    if solution.status == "submitted":
+        target = applied_field(solution, field)
+        after = copy.deepcopy(before_snapshot)
+        if not any(item["id"] == target["id"] for item in after["form"]["fields"]):
+            old_case_ids = {
+                item["id"]
+                for item in after["form"]["fields"]
+                if item["purpose"] == "case"
+            }
+            if old_case_ids:
+                after["form"]["fields"] = [
+                    copy.deepcopy(target) if item["id"] in old_case_ids else item
+                    for item in after["form"]["fields"]
+                ]
+                after["answers"] = [
+                    item
+                    for item in after["answers"]
+                    if item["field_id"] not in old_case_ids
+                ]
+            else:
+                after["form"]["fields"].append(copy.deepcopy(target))
+            after["form"]["revision"] = hashlib.sha256(
+                json.dumps(
+                    dict(
+                        template=after["form"]["template"], fields=after["form"]["fields"]
+                    ),
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ).encode()
+            ).hexdigest()
+        answer = next(
+            (item for item in after["answers"] if item["field_id"] == target["id"]), None
+        )
+        if answer is None:
+            after["answers"].append(dict(field_id=target["id"], value=data["case_name"]))
+        else:
+            answer["value"] = data["case_name"]
+        # Only this confirmed manager writer bypasses ordinary frozen model writes.
+        saved = solution.answers.filter(field_id=target["id"])
+        if saved.exists():
+            saved.update(value=data["case_name"])
+        else:
+            ProgramSolutionAnswer.objects.bulk_create(
+                [
+                    ProgramSolutionAnswer(
+                        solution=solution, field_id=target["id"], value=data["case_name"]
+                    )
+                ]
+            )
+        solution.submission_snapshot = after
+        solution.version += 1
+        solution.updated_at = timezone.now()
+        ProgramSolution.objects.filter(pk=solution.pk).update(
+            submission_snapshot=after,
+            version=solution.version,
+            updated_at=solution.updated_at,
+        )
+    else:
+        ProgramSolutionAnswer.objects.update_or_create(
+            solution=solution, field_id=field["id"], defaults={"value": data["case_name"]}
+        )
+        advance_version(solution)
+    SolutionExpertAssignment.objects.filter(pk__in=removed).delete()
+    SolutionAdministrativeChange.objects.create(
+        solution=solution,
+        actor=actor,
+        actor_name=f"{actor.first_name} {actor.last_name}".strip(),
+        action="change_case",
+        before_version=before_version,
+        after_version=solution.version,
+        case_field_id=result["case_field_id"],
+        previous_case=result["current_case"],
+        case_name=data["case_name"],
+        removed_assignment_ids=removed,
+        score_count=result["score_count"],
+        was_submitted=solution.status == "submitted",
+        before_snapshot=before_snapshot,
+        after_snapshot=copy.deepcopy(solution.submission_snapshot),
     )
-    advance_version(solution)
     logger.info(
         "Program solution case change program=%s actor=%s solution=%s",
         program.pk,

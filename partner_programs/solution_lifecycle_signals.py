@@ -7,8 +7,18 @@ from partner_programs.solution_models import (
     ProgramSolutionAnswer,
     ProgramSolutionMember,
     SolutionInvitation,
+    SolutionAdministrativeChange,
     lock_saved_solution,
 )
+
+
+@receiver(
+    pre_delete,
+    sender=SolutionAdministrativeChange,
+    dispatch_uid="protect_solution_administrative_history",
+)
+def protect_administrative_history(sender, instance, **kwargs):
+    raise ProtectedError("Историю изменений нельзя удалять.", [instance])
 
 
 @receiver(pre_delete, sender=ProgramSolution, dispatch_uid="protect_submitted_solution")

@@ -101,6 +101,69 @@ class ProgramSolution(models.Model):
         ]
 
 
+class SolutionAdministrativeChange(models.Model):
+    """Privileged changes retain the original submission and every later revision."""
+
+    solution = models.ForeignKey(
+        ProgramSolution, on_delete=models.PROTECT, related_name="administrative_changes"
+    )
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL
+    )
+    actor_name = models.CharField(max_length=512)
+    action = models.CharField(max_length=32, choices=[("change_case", "Смена кейса")])
+    before_version = models.PositiveBigIntegerField()
+    after_version = models.PositiveBigIntegerField()
+    case_field_id = models.PositiveBigIntegerField()
+    previous_case = models.TextField(null=True)
+    case_name = models.CharField(max_length=1000)
+    removed_assignment_ids = models.JSONField(default=list)
+    score_count = models.PositiveIntegerField(default=0)
+    was_submitted = models.BooleanField()
+    before_snapshot = models.JSONField(null=True)
+    after_snapshot = models.JSONField(null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if self.pk is not None:
+            raise ValidationError("Историю изменений нельзя переписывать.")
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError("Историю изменений нельзя удалять.")
+
+    class Meta:
+        verbose_name = "Административное изменение решения"
+        verbose_name_plural = "История административных изменений решений"
+        ordering = ["-created_at", "-pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["solution", "after_version"],
+                name="unique_solution_admin_revision",
+            ),
+            models.CheckConstraint(
+                check=models.Q(before_version__gte=1)
+                & models.Q(after_version=models.F("before_version") + 1),
+                name="solution_admin_version_step",
+            ),
+            models.CheckConstraint(
+                check=(
+                    models.Q(
+                        was_submitted=True,
+                        before_snapshot__isnull=False,
+                        after_snapshot__isnull=False,
+                    )
+                    | models.Q(
+                        was_submitted=False,
+                        before_snapshot__isnull=True,
+                        after_snapshot__isnull=True,
+                    )
+                ),
+                name="solution_admin_snapshots_consistent",
+            ),
+        ]
+
+
 class SolutionOwnedRecord(models.Model):
     """Обычные model/admin записи используют ту же сериализацию, что и API."""
 

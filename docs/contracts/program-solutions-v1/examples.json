@@ -1,5 +1,5 @@
 {
-  "contract_version": "1.16.0",
+  "contract_version": "1.17.0",
   "description": "Независимые примеры, не последовательность операций; фиктивные данные.",
   "scenarios": [
     {
@@ -8080,7 +8080,10 @@
         "solution_version": 7,
         "errors": [],
         "can_apply": true,
-        "preview_token": "opaque-case-preview-token"
+        "preview_token": "opaque-case-preview-token",
+        "is_submitted": false,
+        "removed_assignments_count": 0,
+        "score_count": 0
       },
       "request": {
         "case_name": "Образование | наука"
@@ -8103,7 +8106,10 @@
         "solution_version": 7,
         "errors": [],
         "can_apply": true,
-        "preview_token": "opaque-case-preview-token"
+        "preview_token": "opaque-case-preview-token",
+        "is_submitted": false,
+        "removed_assignments_count": 0,
+        "score_count": 0
       },
       "request": {
         "case_name": "Образование | наука"
@@ -8126,7 +8132,10 @@
         "solution_version": 7,
         "errors": [],
         "can_apply": true,
-        "preview_token": "opaque-case-preview-token"
+        "preview_token": "opaque-case-preview-token",
+        "is_submitted": false,
+        "removed_assignments_count": 0,
+        "score_count": 0
       },
       "request": {
         "case_name": "Образование | наука"
@@ -8156,7 +8165,10 @@
           }
         ],
         "can_apply": false,
-        "preview_token": null
+        "preview_token": null,
+        "is_submitted": false,
+        "removed_assignments_count": 0,
+        "score_count": 0
       },
       "request": {
         "case_name": "Образование | наука"
@@ -8177,16 +8189,12 @@
         "current_case": "Город",
         "case_name": "Образование | наука",
         "solution_version": 7,
-        "errors": [
-          {
-            "path": "case_name",
-            "code": "team_frozen",
-            "detail": "Данные сданного решения зафиксированы.",
-            "field_id": 401
-          }
-        ],
-        "can_apply": false,
-        "preview_token": null
+        "errors": [],
+        "can_apply": true,
+        "preview_token": "opaque-submitted-case-preview-token",
+        "is_submitted": true,
+        "removed_assignments_count": 0,
+        "score_count": 0
       },
       "request": {
         "case_name": "Образование | наука"
@@ -8216,7 +8224,10 @@
           }
         ],
         "can_apply": false,
-        "preview_token": null
+        "preview_token": null,
+        "is_submitted": false,
+        "removed_assignments_count": 0,
+        "score_count": 0
       },
       "request": {
         "case_name": "Образование | наука"
@@ -8420,12 +8431,11 @@
     {
       "name": "case_action_apply_submitted",
       "operation_id": "applySolutionCaseChange",
-      "status": 409,
+      "status": 200,
       "response": {
-        "code": "team_frozen",
-        "detail": "Состав и данные зафиксированы.",
-        "errors": [],
-        "meta": {}
+        "solution_id": 301,
+        "solution_version": 8,
+        "updated_at": "2026-10-25T12:00:00Z"
       },
       "request": {
         "case_name": "Образование | наука",
@@ -8765,6 +8775,573 @@
           "name": "Сервис для студентов"
         },
         "solution_version": 9
+      }
+    },
+    {
+      "name": "case_action_preview_submitted_assignment_effects",
+      "operation_id": "previewSolutionCaseChange",
+      "status": 200,
+      "response": {
+        "application": {
+          "kind": "solution",
+          "program_id": 12,
+          "solution_id": 301,
+          "name": "Решение команды"
+        },
+        "case_field_id": 401,
+        "current_case": "Город",
+        "case_name": "Образование | наука",
+        "solution_version": 7,
+        "errors": [],
+        "can_apply": true,
+        "preview_token": "opaque-submitted-case-preview-token",
+        "is_submitted": true,
+        "removed_assignments_count": 1,
+        "score_count": 2
+      },
+      "request": {
+        "case_name": "Образование | наука"
+      }
+    },
+    {
+      "name": "case_action_apply_submitted_replay",
+      "operation_id": "applySolutionCaseChange",
+      "status": 409,
+      "response": {
+        "code": "solution_action_conflict",
+        "detail": "Данные решения изменились. Подтвердите действие заново.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "case_name": "Образование | наука",
+        "preview_token": "used-case-preview-token"
+      }
+    },
+    {
+      "name": "admin_history_list",
+      "operation_id": "listSolutionAdminChanges",
+      "status": 200,
+      "response": {
+        "count": 1,
+        "offset": 0,
+        "limit": 20,
+        "results": [
+          {
+            "id": 71,
+            "application": {
+              "kind": "solution",
+              "program_id": 12,
+              "solution_id": 301,
+              "name": "Сервис для студентов"
+            },
+            "action": "change_case",
+            "actor": {
+              "id": 8,
+              "first_name": "Организатор",
+              "last_name": "Программы",
+              "avatar_url": null
+            },
+            "actor_name": "Организатор Программы",
+            "created_at": "2026-10-25T12:00:00Z",
+            "before_version": 7,
+            "after_version": 8,
+            "case_field_id": 1001,
+            "previous_case": "Цифровой сервис",
+            "case_name": "Образование | наука",
+            "removed_assignments_count": 1,
+            "score_count": 2,
+            "was_submitted": true
+          }
+        ]
+      },
+      "query": {
+        "offset": 0,
+        "limit": 20
+      }
+    },
+    {
+      "name": "admin_history_detail",
+      "operation_id": "readSolutionAdminChange",
+      "status": 200,
+      "response": {
+        "change": {
+          "id": 71,
+          "application": {
+            "kind": "solution",
+            "program_id": 12,
+            "solution_id": 301,
+            "name": "Сервис для студентов"
+          },
+          "action": "change_case",
+          "actor": {
+            "id": 8,
+            "first_name": "Организатор",
+            "last_name": "Программы",
+            "avatar_url": null
+          },
+          "actor_name": "Организатор Программы",
+          "created_at": "2026-10-25T12:00:00Z",
+          "before_version": 7,
+          "after_version": 8,
+          "case_field_id": 1001,
+          "previous_case": "Цифровой сервис",
+          "case_name": "Образование | наука",
+          "removed_assignments_count": 1,
+          "score_count": 2,
+          "was_submitted": true
+        },
+        "before_snapshot": {
+          "name": "Сервис для студентов",
+          "captain_id": 7,
+          "members": [
+            {
+              "user": {
+                "id": 7,
+                "first_name": "Иван",
+                "last_name": "Петров",
+                "avatar_url": null
+              },
+              "role": null,
+              "specialization": null,
+              "joined_at": "2026-10-23T09:00:00Z",
+              "is_captain": true
+            },
+            {
+              "user": {
+                "id": 8,
+                "first_name": "Анна",
+                "last_name": "Смирнова",
+                "avatar_url": null
+              },
+              "role": null,
+              "specialization": null,
+              "joined_at": "2026-10-23T09:00:00Z",
+              "is_captain": false
+            }
+          ],
+          "form": {
+            "program_id": 12,
+            "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "template": "case_championship",
+            "is_configured": true,
+            "is_snapshot": true,
+            "fields": [
+              {
+                "id": 1001,
+                "type": "select",
+                "purpose": "case",
+                "label": "Кейс",
+                "help_text": "",
+                "required": true,
+                "position": 0,
+                "options": [
+                  "Цифровой сервис",
+                  "Операционная эффективность"
+                ],
+                "validation": {
+                  "min_length": null,
+                  "max_length": null,
+                  "minimum": null,
+                  "maximum": null,
+                  "allowed_extensions": [],
+                  "max_file_size_bytes": null
+                }
+              },
+              {
+                "id": 1002,
+                "type": "textarea",
+                "purpose": "other",
+                "label": "Краткое описание",
+                "help_text": "",
+                "required": true,
+                "position": 1,
+                "options": [],
+                "validation": {
+                  "min_length": null,
+                  "max_length": 3000,
+                  "minimum": null,
+                  "maximum": null,
+                  "allowed_extensions": [],
+                  "max_file_size_bytes": null
+                }
+              },
+              {
+                "id": 1003,
+                "type": "file",
+                "purpose": "presentation",
+                "label": "Презентация PDF",
+                "help_text": "",
+                "required": true,
+                "position": 2,
+                "options": [],
+                "validation": {
+                  "min_length": null,
+                  "max_length": null,
+                  "minimum": null,
+                  "maximum": null,
+                  "allowed_extensions": [
+                    "pdf"
+                  ],
+                  "max_file_size_bytes": 20971520
+                }
+              },
+              {
+                "id": 1004,
+                "type": "number",
+                "purpose": "other",
+                "label": "Ожидаемый эффект",
+                "help_text": "",
+                "required": false,
+                "position": 3,
+                "options": [],
+                "validation": {
+                  "min_length": null,
+                  "max_length": null,
+                  "minimum": 0,
+                  "maximum": null,
+                  "allowed_extensions": [],
+                  "max_file_size_bytes": null
+                }
+              },
+              {
+                "id": 1005,
+                "type": "checkbox",
+                "purpose": "other",
+                "label": "Приложены расчеты",
+                "help_text": "",
+                "required": false,
+                "position": 4,
+                "options": [],
+                "validation": {
+                  "min_length": null,
+                  "max_length": null,
+                  "minimum": null,
+                  "maximum": null,
+                  "allowed_extensions": [],
+                  "max_file_size_bytes": null
+                }
+              }
+            ]
+          },
+          "answers": [
+            {
+              "field_id": 1001,
+              "value": "Цифровой сервис"
+            },
+            {
+              "field_id": 1002,
+              "value": "Единый сервис поддержки студентов."
+            },
+            {
+              "field_id": 1004,
+              "value": 0
+            },
+            {
+              "field_id": 1005,
+              "value": false
+            },
+            {
+              "field_id": 1003,
+              "value": {
+                "url": "https://cdn.example.test/solutions/301/presentation.pdf"
+              }
+            }
+          ],
+          "submitted_at": "2026-10-23T10:05:00Z"
+        },
+        "after_snapshot": {
+          "name": "Сервис для студентов",
+          "captain_id": 7,
+          "members": [
+            {
+              "user": {
+                "id": 7,
+                "first_name": "Иван",
+                "last_name": "Петров",
+                "avatar_url": null
+              },
+              "role": null,
+              "specialization": null,
+              "joined_at": "2026-10-23T09:00:00Z",
+              "is_captain": true
+            },
+            {
+              "user": {
+                "id": 8,
+                "first_name": "Анна",
+                "last_name": "Смирнова",
+                "avatar_url": null
+              },
+              "role": null,
+              "specialization": null,
+              "joined_at": "2026-10-23T09:00:00Z",
+              "is_captain": false
+            }
+          ],
+          "form": {
+            "program_id": 12,
+            "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "template": "case_championship",
+            "is_configured": true,
+            "is_snapshot": true,
+            "fields": [
+              {
+                "id": 1001,
+                "type": "select",
+                "purpose": "case",
+                "label": "Кейс",
+                "help_text": "",
+                "required": true,
+                "position": 0,
+                "options": [
+                  "Цифровой сервис",
+                  "Операционная эффективность"
+                ],
+                "validation": {
+                  "min_length": null,
+                  "max_length": null,
+                  "minimum": null,
+                  "maximum": null,
+                  "allowed_extensions": [],
+                  "max_file_size_bytes": null
+                }
+              },
+              {
+                "id": 1002,
+                "type": "textarea",
+                "purpose": "other",
+                "label": "Краткое описание",
+                "help_text": "",
+                "required": true,
+                "position": 1,
+                "options": [],
+                "validation": {
+                  "min_length": null,
+                  "max_length": 3000,
+                  "minimum": null,
+                  "maximum": null,
+                  "allowed_extensions": [],
+                  "max_file_size_bytes": null
+                }
+              },
+              {
+                "id": 1003,
+                "type": "file",
+                "purpose": "presentation",
+                "label": "Презентация PDF",
+                "help_text": "",
+                "required": true,
+                "position": 2,
+                "options": [],
+                "validation": {
+                  "min_length": null,
+                  "max_length": null,
+                  "minimum": null,
+                  "maximum": null,
+                  "allowed_extensions": [
+                    "pdf"
+                  ],
+                  "max_file_size_bytes": 20971520
+                }
+              },
+              {
+                "id": 1004,
+                "type": "number",
+                "purpose": "other",
+                "label": "Ожидаемый эффект",
+                "help_text": "",
+                "required": false,
+                "position": 3,
+                "options": [],
+                "validation": {
+                  "min_length": null,
+                  "max_length": null,
+                  "minimum": 0,
+                  "maximum": null,
+                  "allowed_extensions": [],
+                  "max_file_size_bytes": null
+                }
+              },
+              {
+                "id": 1005,
+                "type": "checkbox",
+                "purpose": "other",
+                "label": "Приложены расчеты",
+                "help_text": "",
+                "required": false,
+                "position": 4,
+                "options": [],
+                "validation": {
+                  "min_length": null,
+                  "max_length": null,
+                  "minimum": null,
+                  "maximum": null,
+                  "allowed_extensions": [],
+                  "max_file_size_bytes": null
+                }
+              }
+            ]
+          },
+          "answers": [
+            {
+              "field_id": 1001,
+              "value": "Образование | наука"
+            },
+            {
+              "field_id": 1002,
+              "value": "Единый сервис поддержки студентов."
+            },
+            {
+              "field_id": 1004,
+              "value": 0
+            },
+            {
+              "field_id": 1005,
+              "value": false
+            },
+            {
+              "field_id": 1003,
+              "value": {
+                "url": "https://cdn.example.test/solutions/301/presentation.pdf"
+              }
+            }
+          ],
+          "submitted_at": "2026-10-23T10:05:00Z"
+        }
+      }
+    },
+    {
+      "name": "admin_history_draft_detail",
+      "operation_id": "readSolutionAdminChange",
+      "status": 200,
+      "response": {
+        "change": {
+          "id": 72,
+          "application": {
+            "kind": "solution",
+            "program_id": 12,
+            "solution_id": 301,
+            "name": "Сервис для студентов"
+          },
+          "action": "change_case",
+          "actor": {
+            "id": 8,
+            "first_name": "Организатор",
+            "last_name": "Программы",
+            "avatar_url": null
+          },
+          "actor_name": "Организатор Программы",
+          "created_at": "2026-10-25T12:00:00Z",
+          "before_version": 7,
+          "after_version": 8,
+          "case_field_id": 1001,
+          "previous_case": "Цифровой сервис",
+          "case_name": "Образование | наука",
+          "removed_assignments_count": 0,
+          "score_count": 0,
+          "was_submitted": false
+        },
+        "before_snapshot": null,
+        "after_snapshot": null
+      }
+    },
+    {
+      "name": "admin_history_empty",
+      "operation_id": "listSolutionAdminChanges",
+      "status": 200,
+      "response": {
+        "count": 0,
+        "offset": 100,
+        "limit": 20,
+        "results": []
+      },
+      "query": {
+        "offset": 100,
+        "limit": 20
+      }
+    },
+    {
+      "name": "admin_history_anonymous",
+      "operation_id": "listSolutionAdminChanges",
+      "status": 401,
+      "response": {
+        "code": "authentication_required",
+        "detail": "Требуется авторизация.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "admin_history_foreign_manager",
+      "operation_id": "listSolutionAdminChanges",
+      "status": 403,
+      "response": {
+        "code": "permission_denied",
+        "detail": "История доступна организатору программы.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "admin_history_foreign_solution",
+      "operation_id": "listSolutionAdminChanges",
+      "status": 404,
+      "response": {
+        "code": "not_found",
+        "detail": "Решение не найдено.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "admin_history_foreign_change",
+      "operation_id": "readSolutionAdminChange",
+      "status": 404,
+      "response": {
+        "code": "not_found",
+        "detail": "Изменение не найдено.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "admin_history_invalid_pagination",
+      "operation_id": "listSolutionAdminChanges",
+      "status": 400,
+      "response": {
+        "code": "validation_error",
+        "detail": "Проверьте параметры запроса.",
+        "errors": [],
+        "meta": {}
+      },
+      "query": {
+        "limit": 0
+      }
+    },
+    {
+      "name": "admin_history_unknown_detail_query",
+      "operation_id": "readSolutionAdminChange",
+      "status": 400,
+      "response": {
+        "code": "validation_error",
+        "detail": "Неизвестный параметр запроса.",
+        "errors": [],
+        "meta": {}
+      },
+      "query": {
+        "all": true
+      }
+    },
+    {
+      "name": "admin_history_legacy",
+      "operation_id": "listSolutionAdminChanges",
+      "status": 409,
+      "response": {
+        "code": "solution_mode_unavailable",
+        "detail": "Программа использует заявки на основе проектов.",
+        "errors": [],
+        "meta": {}
       }
     }
   ]

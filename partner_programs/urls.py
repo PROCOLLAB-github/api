@@ -2,6 +2,7 @@ from django.urls import path
 
 from partner_programs.solution_action_api import SolutionActionView
 from partner_programs.solution_case_action_api import SolutionCaseChangeView
+from partner_programs.solution_history_api import SolutionHistoryView
 from partner_programs.solution_publication_api import (
     PublishedSolutionListView,
     PublishedSolutionDetailView,
@@ -244,6 +245,14 @@ urlpatterns = [
     path(
         "<int:pk>/management/solutions/<int:solution_id>/case/preview/",
         SolutionCaseChangeView.as_view(),
+    ),
+    path(
+        "<int:pk>/management/solutions/<int:solution_id>/history/",
+        SolutionHistoryView.as_view(),
+    ),
+    path(
+        "<int:pk>/management/solutions/<int:solution_id>/history/<int:change_id>/",
+        SolutionHistoryView.as_view(),
     ),
     path(
         "<int:pk>/management/solutions/<int:solution_id>/case/apply/",

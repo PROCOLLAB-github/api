@@ -3,7 +3,7 @@
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "info": {
     "title": "PROCOLLAB Program Solutions C00",
-    "version": "1.16.0",
+    "version": "1.17.0",
     "description": "Контракт решений в программах для реализации и моков BE01–BE09. API base URL задается окружением. snake_case на проводе. Старые API не меняются."
   },
   "servers": [
@@ -8678,7 +8678,7 @@
       "post": {
         "operationId": "previewSolutionCaseChange",
         "summary": "Предпросмотр смены кейса черновика",
-        "description": "Organizer/admin своей программы. Exact case, signed proof10min, program/solution locks, state recheck. Несданные решения; политика административных исключений после сдачи остается открытой. Старый submit action не меняется. private, no-store.",
+        "description": "Organizer/admin своей программы. Signed proof10min и program→solution locks; state recheck включает оценки/назначения/scopes. После сдачи меняется только кейс, исходный snapshot сохраняется в append-only истории до/после; остальные материалы/состав/дата сдачи и оценки сохраняются. Снимаются только несовместимые неоцененные назначения. Обычные participant writers остаются frozen. Legacy project handlers не меняются. private, no-store.",
         "parameters": [
           {
             "name": "program_id",
@@ -8779,7 +8779,7 @@
       "post": {
         "operationId": "applySolutionCaseChange",
         "summary": "Подтверждение смены кейса черновика",
-        "description": "Organizer/admin своей программы. Exact case, signed proof10min, program/solution locks, state recheck. Несданные решения; политика административных исключений после сдачи остается открытой. Старый submit action не меняется. private, no-store.",
+        "description": "Organizer/admin своей программы. Signed proof10min и program→solution locks; state recheck включает оценки/назначения/scopes. После сдачи меняется только кейс, исходный snapshot сохраняется в append-only истории до/после; остальные материалы/состав/дата сдачи и оценки сохраняются. Снимаются только несовместимые неоцененные назначения. Обычные participant writers остаются frozen. Legacy project handlers не меняются. private, no-store.",
         "parameters": [
           {
             "name": "program_id",
@@ -8819,6 +8819,219 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MutationReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/programs/{program_id}/management/solutions/{solution_id}/history/": {
+      "get": {
+        "operationId": "listSolutionAdminChanges",
+        "summary": "История административных изменений решения",
+        "description": "Только organizer/admin своей программы и solution mode. История ограничена настоящей парой program/solution/change; before/after показывают сохраненную сдачу без регистрации или иных private DTO. Списки newest first, limit/offset. Неизвестные query запрещены. Чтение доступно независимо от текущей формы/creation flag/deadline. private, no-store.",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "solution_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Результат",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SolutionAdminChangePage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/programs/{program_id}/management/solutions/{solution_id}/history/{change_id}/": {
+      "get": {
+        "operationId": "readSolutionAdminChange",
+        "summary": "История административных изменений решения",
+        "description": "Только organizer/admin своей программы и solution mode. История ограничена настоящей парой program/solution/change; before/after показывают сохраненную сдачу без регистрации или иных private DTO. Списки newest first, limit/offset. Неизвестные query запрещены. Чтение доступно независимо от текущей формы/creation flag/deadline. private, no-store.",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "solution_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "change_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Результат",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SolutionAdminChangeDetail"
                 }
               }
             }
@@ -13664,6 +13877,17 @@
               "string",
               "null"
             ]
+          },
+          "is_submitted": {
+            "type": "boolean"
+          },
+          "removed_assignments_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "score_count": {
+            "type": "integer",
+            "minimum": 0
           }
         },
         "required": [
@@ -13674,9 +13898,163 @@
           "solution_version",
           "errors",
           "can_apply",
-          "preview_token"
+          "preview_token",
+          "is_submitted",
+          "removed_assignments_count",
+          "score_count"
         ],
         "additionalProperties": false
+      },
+      "SolutionAdminChange": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "application",
+          "action",
+          "actor",
+          "actor_name",
+          "created_at",
+          "before_version",
+          "after_version",
+          "case_field_id",
+          "previous_case",
+          "case_name",
+          "removed_assignments_count",
+          "score_count",
+          "was_submitted"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "application": {
+            "$ref": "#/components/schemas/SolutionRef"
+          },
+          "action": {
+            "const": "change_case"
+          },
+          "actor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/User"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "actor_name": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "before_version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "after_version": {
+            "type": "integer",
+            "minimum": 2
+          },
+          "case_field_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "previous_case": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "case_name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "removed_assignments_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "score_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "was_submitted": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SolutionAdminChangePage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "count",
+          "offset",
+          "limit",
+          "results"
+        ],
+        "properties": {
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SolutionAdminChange"
+            }
+          }
+        }
+      },
+      "SolutionAdminChangeDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "change",
+          "before_snapshot",
+          "after_snapshot"
+        ],
+        "properties": {
+          "change": {
+            "$ref": "#/components/schemas/SolutionAdminChange"
+          },
+          "before_snapshot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SubmissionSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "after_snapshot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SubmissionSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
       }
     }
   }

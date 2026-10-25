@@ -7,6 +7,7 @@ from partner_programs.solution_models import (
     ProgramSolutionMember,
     ProgramSolutionAnswer,
     SolutionInvitation,
+    SolutionAdministrativeChange,
 )
 
 
@@ -18,6 +19,25 @@ class ReadonlySolutionInline(admin.TabularInline):
         return False
 
     def has_change_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(SolutionAdministrativeChange)
+class SolutionAdministrativeChangeAdmin(admin.ModelAdmin):
+    list_display = ("id", "solution", "action", "actor_name", "created_at")
+    list_filter = ("action", "was_submitted", "solution__program")
+    search_fields = ("solution__name", "actor_name")
+    readonly_fields = tuple(
+        field.name for field in SolutionAdministrativeChange._meta.fields
+    )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
         return False
 
 
