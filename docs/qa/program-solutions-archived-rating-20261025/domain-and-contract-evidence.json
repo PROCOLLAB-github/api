@@ -1,0 +1,33 @@
+{
+  "status": "PASS",
+  "contract": "1.20.1",
+  "responses": 36,
+  "validRequests": 20,
+  "seedResponses": 18,
+  "browserResponses": 12,
+  "readOnlyVerifierResponses": 6,
+  "oldModelsUnchanged": 25,
+  "hashBefore": "c8196d411a2bbab6838167141baa1ae2b2229df7191f29d97f0d37f66cc56989",
+  "hashAfter": "c8196d411a2bbab6838167141baa1ae2b2229df7191f29d97f0d37f66cc56989",
+  "programs": [
+    {
+      "id": 47,
+      "solution": 64,
+      "template": "case_championship",
+      "retainedOwnScores": 4
+    },
+    {
+      "id": 48,
+      "solution": 65,
+      "template": "hackathon",
+      "retainedOwnScores": 4
+    }
+  ],
+  "globalRegistrationAuditsRetained": 7,
+  "unchangedAllEarlierC2Rows": true,
+  "creationFlagsFalse": true,
+  "savedZeroFalseAndCommentsRetained": true,
+  "defaultEmptyCommentPreserved": true,
+  "attemptedTwoNotWritten": true,
+  "noNewProject": true
+}

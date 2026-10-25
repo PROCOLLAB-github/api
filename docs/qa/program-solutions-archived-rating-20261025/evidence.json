@@ -1,0 +1,259 @@
+{
+  "status": "PASS",
+  "scope": "D01 archived-rating behavior fix; full first release incomplete",
+  "backendProduct": "394bf1666825ea87e7985b88c401a4e3c9f8d316",
+  "frontendProduct": "b4191a8b082e41b318c67c7605fa2764b647c46c",
+  "contract": {
+    "version": "1.20.1",
+    "schemas": 156,
+    "operations": 59,
+    "scenarios": 299,
+    "oldSchemasUnchanged": 156,
+    "oldOperationsUnchanged": 59,
+    "oldScenariosUnchanged": 297,
+    "sharedFilesByteIdentical": 3
+  },
+  "tests": {
+    "nativePG": 420,
+    "newNative": 3,
+    "frontend": 2949,
+    "frontendFiles": 484,
+    "componentAndWireFocused": 21,
+    "strictTypes": "PASS",
+    "developmentBuild": "PASS",
+    "scopedLint": "PASS",
+    "black": "PASS",
+    "flake8": "PASS",
+    "djangoCheck": "PASS",
+    "migrationConsistency": "PASS",
+    "prettierBeforeReports": {
+      "version": "3.8.3",
+      "files": 2042,
+      "status": "PASS"
+    },
+    "prettierWithReports": {
+      "version": "3.8.3",
+      "files": 2047,
+      "status": "PASS"
+    }
+  },
+  "domain": {
+    "status": "PASS",
+    "contract": "1.20.1",
+    "responses": 36,
+    "validRequests": 20,
+    "seedResponses": 18,
+    "browserResponses": 12,
+    "readOnlyVerifierResponses": 6,
+    "oldModelsUnchanged": 25,
+    "hashBefore": "c8196d411a2bbab6838167141baa1ae2b2229df7191f29d97f0d37f66cc56989",
+    "hashAfter": "c8196d411a2bbab6838167141baa1ae2b2229df7191f29d97f0d37f66cc56989",
+    "programs": [
+      {
+        "id": 47,
+        "solution": 64,
+        "template": "case_championship",
+        "retainedOwnScores": 4
+      },
+      {
+        "id": 48,
+        "solution": 65,
+        "template": "hackathon",
+        "retainedOwnScores": 4
+      }
+    ],
+    "globalRegistrationAuditsRetained": 7,
+    "unchangedAllEarlierC2Rows": true,
+    "creationFlagsFalse": true,
+    "savedZeroFalseAndCommentsRetained": true,
+    "defaultEmptyCommentPreserved": true,
+    "attemptedTwoNotWritten": true,
+    "noNewProject": true
+  },
+  "browser": {
+    "status": "PASS",
+    "checks": [
+      {
+        "program": 47,
+        "solution": 64,
+        "template": "case_championship",
+        "distributed": true,
+        "status": "PASS",
+        "submittedScoreAfterArchive": 409,
+        "code": "solution_archived",
+        "retry": 404,
+        "fieldsAndControlsRemoved": true,
+        "noUnsavedCopy": true,
+        "teamTabRetainedInput": true,
+        "activeExpertCounts": {
+          "pending": 0,
+          "completed": 0
+        },
+        "widths": [390, 1440]
+      },
+      {
+        "program": 48,
+        "solution": 65,
+        "template": "hackathon",
+        "distributed": false,
+        "status": "PASS",
+        "submittedScoreAfterArchive": 409,
+        "code": "solution_archived",
+        "retry": 404,
+        "fieldsAndControlsRemoved": true,
+        "noUnsavedCopy": true,
+        "teamTabRetainedInput": true,
+        "activeExpertCounts": {
+          "pending": 0,
+          "completed": 0
+        },
+        "widths": [390, 1440]
+      }
+    ],
+    "javascriptErrors": [],
+    "oneInvocation": true,
+    "realLogin": true,
+    "networkResponsesMocked": false,
+    "browserVersion": "156.0.8078.47",
+    "channel": "chrome"
+  },
+  "recovery": {
+    "status": "PASS",
+    "oldModelsUnchanged": 23,
+    "hashBefore": "717c9a664170764394fd1f9a256fca7c78fa42d929abe0e85a4557be1f684e3d",
+    "hashAfter": "717c9a664170764394fd1f9a256fca7c78fa42d929abe0e85a4557be1f684e3d",
+    "c2Audits": 7,
+    "c2SolutionEvents": 6,
+    "c2Solutions": [60, 61, 62, 63],
+    "postgresRecoveredWithoutRestart": true
+  },
+  "sourceHashesNormalizedLF": {
+    "backend": {
+      "docs/contracts/program-solutions-v1/README.md": "57b80e1f7b670c8d0ebba5e9da167aa46c0640879cf7bf698a2dd7c1fe3216e3",
+      "docs/contracts/program-solutions-v1/examples.json": "0ffa46ca633c310a87f021321c519254802e496aee8250379c0d5d60d6455a6f",
+      "docs/contracts/program-solutions-v1/openapi.json": "a796786fa97d25041b4d2418fa729f422c4fa4d52d97a98a5ee1ad63a88fbb75",
+      "docs/product/program-solutions-be07.md": "33cf9dba0453a3d22d0434844edd8dc0b107d2b62d844e35c8e34004d10400fa",
+      "project_rates/solution_evaluation.py": "7caad9c059426a707739a0db88dd26c8ae7818ca1a659f61fb6e03b6a552df01",
+      "project_rates/tests/test_solution_evaluation.py": "89c2c496713c98dbec50ba02c0d67fa4782b00e0b5ef82075f54c3bba8d30766"
+    },
+    "frontend": {
+      "docs/contracts/program-solutions-v1/README.md": "57b80e1f7b670c8d0ebba5e9da167aa46c0640879cf7bf698a2dd7c1fe3216e3",
+      "docs/contracts/program-solutions-v1/examples.json": "0ffa46ca633c310a87f021321c519254802e496aee8250379c0d5d60d6455a6f",
+      "docs/contracts/program-solutions-v1/openapi.json": "a796786fa97d25041b4d2418fa729f422c4fa4d52d97a98a5ee1ad63a88fbb75",
+      "projects/social_platform/src/app/domain/solution/solution-contract.fixture.ts": "25493c9a849fdd69574a71ccc2d0580d01690642b2237546f3cfd85ad19e757a",
+      "projects/social_platform/src/app/domain/solution/solution-contract.model.ts": "a7972d2ad9cbd79813700d81c709136cca1289ef6bd9bf06d3b702828e6f5811",
+      "projects/social_platform/src/app/ui/pages/program/solution-evaluation/solution-evaluation.component.spec.ts": "b658e6b4849eb61d5c733867ff31f97e69404374669fa4cafad935aee581d6bd",
+      "projects/social_platform/src/app/ui/pages/program/solution-evaluation/solution-evaluation.component.ts": "aec63cc4382476a888507df6a85fe31d4cea8f92a6f8f84df03f1e72798611c3"
+    }
+  },
+  "rawArtifacts": {
+    "browser-evidence.json": "fb12ddd8a3e7b3a0c00e6b21771072667621c55bf600fa87baef366dcffa1822",
+    "browser-failure-1792948080945.json": "7e1851abdd3c066bb3cd513471cd0a9eaf1212545d8be60fe52cb41b3ba8e2b7",
+    "build-provenance.json": "4b94da2c7e798a3d413930e128f90615fdc3b4b30721e98ed3afbdffa53dc6d3",
+    "case_championship-archived-1440.png": "fea927fabaa71ec07a6202ff5c4e785de52174dbd078548a8d3225c9fc85c6f9",
+    "case_championship-archived-390.png": "c214f3b5c6daa033188c91eeb088f897bc95bc2727a2a2cecaeafdad3c0c6364",
+    "case_championship-before-confirm-1440.png": "7351376e9e1a79e829240d51f97437c7eb5b44a985641a53950e8c71bbeadf58",
+    "case_championship-before-confirm-390.png": "b57aafa39084f4da588658e4c144a62421971a868cfdc82fa681fa0cc29f408f",
+    "domain-and-contract-evidence.json": "11d4e32dcd59de72214b333dbcd46d626356b88be4d7e1c694c595939aa71e27",
+    "hackathon-archived-1440.png": "fc3de347668d0f8f0fcba4357e5eb85fdd139ebc0fd508804c3466d9f3b248f1",
+    "hackathon-archived-390.png": "2908c9c8bdf78dc2b2f6167fd677cf3a8220e888ac009fc49bdd791fb658aa57",
+    "hackathon-before-confirm-1440.png": "c18d073948a38b5e653e1343eb06b4112c7c428cac820d8cbf50537bcd48e48d",
+    "hackathon-before-confirm-390.png": "1edaf1ecada51e8c26fe3b1fdd82a644ea69f56a62c61bb861c048311f6bc5fa",
+    "http-wire.json": "b7a6ba74ca06fad2cdd39e8def686258eb653a43ea6fc2722d920d0f0f1a5f36",
+    "procollab-archived-rating-browser-chrome.log": "d0bb975d7ec253cf1c3958f7479e9c0cf9b5ab2e6fb724c371e20e18a040113e",
+    "procollab-archived-rating-browser.cjs": "5e59591f0509404e3d143367574b180db4cec17fe77bf0ee1bb8a55ef6063b75",
+    "procollab-archived-rating-browser.log": "f9f3a83279317430cfae03ffe882848033c0eba9d8fcc77ccff69f7927be167d",
+    "procollab-archived-rating-build-copy-recovered.log": "8ae0abe2c9bc4b7bc6bb726ace35816e9c803f1fc6fcfaa951f29a6fb685aa51",
+    "procollab-archived-rating-build.cjs": "136b7c266e3a1d7bfc060a5077af302f6f5a850d085e9a34665e405b49aaf33c",
+    "procollab-archived-rating-build.log": "824f869360907ad73c864c56445cd9fc0eaafde11b7684d0b8b0bfc7da281a93",
+    "procollab-archived-rating-contract.py": "8f7d3a88b313dfff7b6bddf0128b96937e8ccfda454d6e3bad911439ad208b0c",
+    "procollab-archived-rating-fe-final.log": "05228d50f42bdb1ed74bac8eb5faf4377e50dfebe2bf13ee70e1a88fa24713b0",
+    "procollab-archived-rating-format-before-reports.json": "7b9282c7f10eef7761182843bc43761099da5080beb561f7299ab1fa3954b9b7",
+    "procollab-archived-rating-main-recovery.json": "6969115b676e524d0f4ff9fb554e821c08206c43b17041310ff9afcc91a9264d",
+    "procollab-archived-rating-native-after.log": "f1d328be6825fe95a8f01267386a154980b21e6462c1d0e10eb2a389ffaccdc0",
+    "procollab-archived-rating-native-before.log": "00c462b1c8ff061e938bfeff6929007c7f07de51d4a35aeade9cc857955800b8",
+    "procollab-archived-rating-native-final.log": "35f441b492bf94978943e285750a69e3937e9049832a851cec79f9b1fc835e03",
+    "procollab-archived-rating-native-recovered.log": "cd16434e227ab35a0094b4f1e162f6e968deba96416d9bf9792084708cdf3c16",
+    "procollab-archived-rating-pg-recovery.log": "46d432d365db1bbda5ffd9ce3f46f4b0afb5a39b7e0af4b47ebdc83dc45fb996",
+    "procollab-archived-rating-preceding-c1-general.log": "31e3da8df467214cd2838877645930033aa767f569e5c7901ca8829a339d4374",
+    "procollab-archived-rating-preceding-c2-pg.log": "7a3f8b20eb04492889a43cbe1b7e902b4d034f8069f2d6656af4d7f26637863a",
+    "procollab-archived-rating-recovery-check.py": "6fd9dc9edceea6221b21e81b2521086b485afe20cc38c3b7ccfc204c7313bf0d",
+    "procollab-archived-rating-seed-final.log": "85d5d3e275f2547046161c148ebcbd6ed62d8743f0e1b9b550497d98c907b549",
+    "procollab-archived-rating-seed-recovered.log": "55f4e7f60607966410c82a255ff3c9c2686cf033208dcab338c307ef74b0172a",
+    "procollab-archived-rating-seed.log": "92a16c45f6425312807b5ffaa20619d2bd9346dd94ad1e7297334ac01cc137c0",
+    "procollab-archived-rating-seed.py": "ff5e7b7b4c5a0b1b40fe70de7d84b96593c24b91790149d08759ee3513172b73",
+    "procollab-archived-rating-server.py": "2b2edeffed8c144f469726a59db01561f309ddb0c792927cc44a4948a0aa1e27",
+    "procollab-archived-rating-spa.py": "f9cc77ef44018f7eaf86ff0639be0aa77e80782ef1f8dc8872a1537e54734b4b",
+    "procollab-archived-rating-ui-after.log": "a00c0ef364598480e32a732726e1e871d66342b00e948aa040e330356496d0ac",
+    "procollab-archived-rating-ui-before.log": "39e4767ee6208ecc9b78422963a0fcbbca03ff70abda59b8289c1c57a8412c01",
+    "procollab-archived-rating-verify-final.log": "c46c6964eea653209617c78d824202b10435bcc874cd04943848128b2d772d51",
+    "procollab-archived-rating-verify.log": "34a0315967f4baa64abe1325d58d78a227a567ec2de5d465c1c2180fac9d35dd",
+    "procollab-archived-rating-verify.py": "3ba98ef966bb8014e2f801c95535a74dea3fa6eb8b52996917d925d264a07e6f",
+    "procollab-test-archived-rating-unicode.py": "cae96723152683c3b819efafd59621b5c6a7fcfecf3fa39f476082e8024b8d31",
+    "procollab-archived-rating-format-final.json": "180757ddaa25f8163dc2514ac4faf704f7f6fe32c4ba81066e3f43a629a4fbb1",
+    "project-count-evidence.json": "95de71492afacde61c6ea6b3c5312571808c794001f69043d76c6b955711a276"
+  },
+  "redactedSignedProofs": 4,
+  "attempts": [
+    "Before: native3 =>2 product failures, component10 =>1 product failure.",
+    "Intermediate native65: malformed synthetic stale-revision string correctly got400; test now uses valid64-character stale hash and still asserts archive409.",
+    "Full420 interrupted by local PostgreSQL recovery and I/O errors =>77 errors; not PASS. Separate fresh ICU ru-RU test DB completed420/OK. Failed test DB retained; main DB not reset.",
+    "First seed after recovery rejected missing show_filter on a case definition and rolled back its atomic fixture setup. Corrected fixture obeys the existing case rule.",
+    "Initial Playwright launch had no cached executable and performed no browser actions; completed run used installed Chrome.",
+    "Initial verifier assumed3 scores; actual captured frame includes default empty comment, so all4 exact ID/value pairs plus complete row hashes are now checked. No work, criteria or score was reset."
+  ],
+  "qa": {
+    "originalACRowsUnchanged": 26,
+    "passCount": 23,
+    "passAC": "01-17,20,22-26",
+    "openAC": ["18", "19"],
+    "separateBE10": "21"
+  },
+  "priorCI": {
+    "c2PG": {
+      "run": 40212381737,
+      "head": "f22ea47bad4ef68b66a239c5787c23607f8a739e",
+      "status": "completed/success",
+      "locking": 39,
+      "full": 1818,
+      "skips": 0
+    },
+    "c2General": {
+      "run": 40212377825,
+      "status": "in_progress"
+    },
+    "c1General": {
+      "run": 40208630839,
+      "status": "completed/success",
+      "full": 1768,
+      "skipped": 67
+    }
+  },
+  "limitations": [
+    "No new layout/HTML/SCSS/DS change or D02/D03 implementation.",
+    "Completed browser invocation on Chrome156,390/1440; full a11y/zoom/production CDN not claimed. External avatars were blocked, broken avatars may appear in screenshots.",
+    "Initial local I/O failure root cause not established; automatic PG recovery observed and old data hashes rechecked.",
+    "Binary/CDN operations not part of this journey.",
+    "D02/D03 screens, competitive unsent draft eligibility, full QA01/REL01 remain; BE10 separate.",
+    "No merge/deploy/real-program switching/Project migration or deletion; new HEAD Linux CI not claimed."
+  ],
+  "ownedHelpers": {
+    "stopped": true,
+    "apiWrapper": 19568,
+    "apiChild": 11504,
+    "spaWrapper": 32128,
+    "spaChild": 24008,
+    "releasedPorts": [8877, 8882],
+    "oldServersUnchanged": {
+      "8769": 20920,
+      "8871": 19092,
+      "8876": 33332
+    }
+  },
+  "projectCounts": {
+    "status": "PASS",
+    "projectCountBefore": 4,
+    "projectCountAfter": 4,
+    "newProjects": 0
+  }
+}
