@@ -1,0 +1,39 @@
+{
+  "prefix": "qa01-20261025-fa37de87",
+  "programs": {
+    "7": {
+      "solutionId": 6,
+      "template": "case_championship",
+      "checks": [
+        "empty draft",
+        "real invitation + accepted inbox + two pending + capacity",
+        "0/false/case retained across tabs and saved",
+        "cancel then one submit POST",
+        "snapshot and frozen materials/team",
+        "pending decline/revoke after frozen submission"
+      ],
+      "submitted": true,
+      "complete": true
+    },
+    "8": {
+      "solutionId": 7,
+      "template": "hackathon",
+      "checks": [
+        "empty draft",
+        "real invitation + accepted inbox + two pending + capacity",
+        "0/false/case retained across tabs and saved",
+        "cancel then one submit POST",
+        "snapshot and frozen materials/team",
+        "pending decline/revoke after frozen submission"
+      ],
+      "submitted": true,
+      "complete": true
+    }
+  },
+  "fixtureReset": {
+    "removedDraftIds": [
+      5
+    ],
+    "reason": "fresh direct HTTP run after harness origin/multipart setup"
+  }
+}

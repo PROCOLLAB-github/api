@@ -1,6 +1,6 @@
 # QA01 Матрица первого выпуска ProgramSolution
 
-Статус: **подготовка сквозной приемки, не PASS и не READY TO MERGE**. Снимок от 25.10.2026: backend 1724bca4c7cf7907955312d1f4c9e6ec44316fbd, frontend e57fb04ec93fdede611712014492a529cf9172b9, C00 1.12.0. Источник требований — [каноническое ТЗ](https://chatgpt.com/space/page_9632e9ed74588191b6b3e4b397d55175), sequence 32, блок baeab2fb-c1e1-46c0-9e95-2f5c4b9bfc41. Тексты всех AC скопированы без изменения. AC21 относится к отдельному BE10 после первого выпуска; QA01 требует AC01–AC20 и AC22–AC26.
+Статус: **частичная сквозная приемка; общий QA01 не PASS и не READY TO MERGE**. Снимок от 25.10.2026: backend runtime 1724bca4c7cf7907955312d1f4c9e6ec44316fbd, frontend e57fb04ec93fdede611712014492a529cf9172b9, C00 1.12.0. Следующие docs commits не меняют runtime. Источник требований — [каноническое ТЗ](https://chatgpt.com/space/page_9632e9ed74588191b6b3e4b397d55175), sequence 32, блок baeab2fb-c1e1-46c0-9e95-2f5c4b9bfc41. Тексты всех AC скопированы без изменения. AC21 относится к отдельному BE10 после первого выпуска; QA01 требует AC01–AC20 и AC22–AC26.
 
 Предыдущий этап завершил API-фильтр/filtered XLSX и дал 244 PostgreSQL tests, 2754 frontend tests/478 files и 143 настоящих HTTP checks. Это доказательство соответствующего scope, а не сквозной приемки. Ни одна строка ниже не закрывается по одному имени test file или общему числу зеленых tests. Перед PASS нужно прочитать конкретные assertions, привязать runtime/source ref и выполнить нужный сценарий.
 
@@ -37,11 +37,29 @@
 
 ## Проверенные границы существующего evidence
 
+- PART01: реальный участнический путь КЧ/хакатона на текущих runtime refs прошел в отдельном локальном окружении. Доказательства и границы — ниже; общие verdict строк таблицы остаются открытыми до завершения всего scope.
+- Собственный [PostgreSQL CI 1724bca](https://github.com/PROCOLLAB-github/api/actions/runs/40159104055) SUCCESS: 1652 full-suite + 39 locking tests, fresh migrations/checks; Ran/OK проверены в логе. [Общий CI 1724bca](https://github.com/PROCOLLAB-github/api/actions/runs/40159100597) SUCCESS, Tests и Lint. Это проверенные runtime refs, а не незавершенный новый запуск docs commit.
 - Логи C:/Users/evsee/AppData/Local/Temp/procollab-solution-field-filters-regression.log и procollab-solution-field-filters-fe-tests.log: 244 PostgreSQL / 2754 frontend и strict C00 types PASS на указанных refs. Source/assertions каждой строки AC требуется привязать отдельно.
 - design-artifacts/program-solutions-20261024/expert-v1/implementation/browser-evidence.json: программы 3/4, ширины 320/390/768/1440, 2 POST оценки, errors []. Это экспертный UI на ref того прохода, не новое прохождение всей заявки на текущем ref.
 - cabinet-browser-evidence.json: actual mixed cabinet, Project.id=Solution.id=2, обе ветки/return/filter/error/retry; otherWrites=1. Не записывать этот проход как zero writes.
 - field-filters-http-evidence.json: 143 HTTP/JWT/anonymous checks КЧ/хакатона/noncompetitive, настоящие filtered книги, domain mutations 0. Не доказывает новые Angular controls или полный жизненный цикл приглашения.
 - D02 manager-v1 и D03 public-v1: статические прототипы с отдельным responsive/keyboard/states QA. Это не Angular integration и не design approval. Предыдущие согласования D00 v3/D01 сохраняются.
+
+## PART01: участник КЧ и хакатона — PASS в указанном scope
+
+[Отчет и точные JSON evidence](../qa/program-solutions-participant-20261025/README.md). Настоящие Angular/JWT/Django/PostgreSQL, пять отдельных аккаунтов и две новые синтетические программы 7/8, решения 6/7; прежние программы 3/4/6 не перезаписывались. Браузер Headless Edge/Playwright, основной полный путь 390 px; отсутствие горизонтального overflow проверено в состояниях team/materials/readonly на 320/390/768/1440 px, материалы дополнительно сняты на desktop. Это не утверждение полного desktop пути, screen reader или browser zoom.
+
+- AC01/03/04: создан отдельный пустой ProgramSolution с одним капитаном и без ответов/выбранного кейса; состав и приглашения внутри второй вкладки той же заявки. Сохранение не создает Project; моделей самостоятельной Team в runtime нет.
+- AC05/07/26: реальный program search, выбор получателя и свободная роль → pending → принятие через уведомление второго аккаунта. Два дополнительных pending дают accepted=2, pending=2, reserved=4. После принятия капитан получил настоящий version_conflict: модальное окно сохранило получателя/роль, повтор завершился 201. Это не проверка отказа пятому участнику, всех длиновых границ роли или редактирования роли.
+- AC10/12/13/20/25: разные canonical формы КЧ и хакатона, кейс изначально null; локальный ввод, выбранный кейс, число 0 и checkbox false сохраняются при переходе между вкладками и в JSON после save. Один капитан/участник работают в обеих программах без смешения solution IDs/ответов. Для КЧ загружен настоящий PDF 597 bytes; bytes, MIME, владелец и SHA-256 проверены в локальном хранилище. В хакатоне заполнены обязательные repository/run instructions; необязательная презентация отсутствует.
+- AC09/24: отмена подтверждения оставляет draft; подтверждение дает ровно один успешный UI submit POST для каждого решения. Материалы/форма/принятый состав зафиксированы snapshot, редактирующие inputs и управление составом исчезают. После сдачи один pending отклонен получателем, другой отозван капитаном (DELETE 204 удаляет запись; отдельного status=revoked нет). Snapshot/состав не меняются, pending=0, accepted=2. Mont загружен и используется.
+- AC06/09: отдельный HTTP verifier выполнил 18 запросов с C00 response validation: captain/member читают только свое решение, declined/revoked recipient получают 404, anonymous 401; member PATCH 403/not_solution_captain, captain PATCH 409/team_frozen, repeat submit 409/already_submitted. До/после отрицательных проверок доменные данные совпадают; published_at остается null.
+
+Путь намеренно меняет синтетические данные: 28 mutating HTTP requests в сохраненном browser evidence, включая два ожидаемых 409. Это не число сохраненных изменений и не zero writes. Был отдельный failed harness attempt: финальная проверка хакатона прочитала pending раньше завершения DELETE; обе сдачи уже состоялись. Raw attempt сохранен, финальные postconditions перечитаны с явным ожиданием DELETE, повторной сдачи не было. Evidence явно объединяет завершенные фазы и resumed final verification, а не заявляет одну непрерывную успешную invocation.
+
+Production CDN, внешние avatars и рассылка не использовались. Для QA скопирован готовый development build, только API/WebSocket origins в одном generated chunk заменены на localhost; хеши до/после сохранены. Исходные frontend environments не менялись. Первые неудачные origin/multipart попытки относятся к harness; проксирование файлов заменено прямым browser HTTP. Удален только прежний проверенный draft solution=5 до успешного прогона; сданные 6/7 сохранены. Внешняя сеть блокировалась, поэтому default avatars на screenshots отсутствуют. Три состояния screenshot просмотрены визуально; полная visual/a11y приемка не заявляется.
+
+Остаются: submit errors/focus обеих вкладок, stale form rebase с вводом, deadline/network negatives, все переходы приглашений и границы ролей, PostgreSQL races с прочитанными assertions, полный organizer/expert/public/legacy/noncompetitive путь. PART01 не закрывает QA01 целиком.
 
 ## GAP-A: административные исключения после сдачи
 
@@ -59,8 +77,8 @@ Source: management_project_actions.inspect_action/apply_action и tests/test_man
 
 ## Последовательность оставшейся приемки
 
-1. Продолжить независимый полный путь участника на согласованном D00 v3: новая синтетическая программа/пользователи для каждого шаблона, реальные captain/recipient JWT/browser contexts, без перезаписи program=3/4/6. Зафиксировать начальные IDs/данные, запросы/DOM/focus, итоговые сохраненные значения, отсутствие Project и разрешенные cleanup границы.
-2. Проверить оба формата на mobile и desktop: создать → пустой draft → invite/search/free role → принять вторым аккаунтом → заполнить 0/false/file/кейс → две вкладки → submit confirm → readonly и повтор. Негативные сетевые сценарии/устаревшая форма не должны терять ввод. Успешный тестовый путь намеренно создает и меняет синтетические данные; не называть его zero writes.
+1. PART01 участнического пути обеих форм выполнен в описанном scope. Сохранить решения 6/7 как submitted fixtures; не сбрасывать их для повторного прогона и не выдавать повторное чтение за новое прохождение всех фаз.
+2. Продолжить отрицательные участнические сценарии на новых изолированных drafts: пустая сдача открывает нужную вкладку/точный control, deadline/network/stale form не теряют ввод, повтор/недоступные кандидаты/role bounds/edit. Отдельно завершить desktop путь; существующая проверка ширин подтверждает только указанные состояния.
 3. Сопоставить реальные PostgreSQL concurrency assertions с AC02/07/08/15, включая form/save/team races. Уже выполненный suite не заменяет чтение assertions.
 4. Реализовать и проверить GAP-B. После решения GAP-A дополнить контракт/preview/apply и приемку соответствующих административных сценариев.
 5. После D02 approval подключить manager UI, напоминания/действия/распределение/results/counters/export и проверить настоящие роли/ошибки/возврат. После D03 approval подключить public UI; конкурсная публикация остается зависимой от ранее заданного вопроса о drafts.
@@ -68,4 +86,4 @@ Source: management_project_actions.inspect_action/apply_action и tests/test_man
 
 ## Ограничения
 
-Этот документ — подготовленный plan/audit незавершенной feature. Новых runtime checks, UI изменений, migrations/deploy/переключения программ или полного acceptance не выполняет. Требования не сокращаются до уже реализованных API; полный goal остается активным. D02/D03 и вопрос конкурсных несданных черновиков не переотправляются.
+Этот документ фиксирует незавершенную feature, выполненный PART01 и оставшийся plan/audit. Runtime checks выполнены только в указанном scope. UI/source изменений, новых migrations/deploy/переключения реальных программ и полного acceptance этот этап не выполняет. Требования не сокращаются до уже реализованных API; полный goal остается активным. D02/D03 и вопрос конкурсных несданных черновиков не переотправляются.
