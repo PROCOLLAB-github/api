@@ -3,7 +3,7 @@
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "info": {
     "title": "PROCOLLAB Program Solutions C00",
-    "version": "1.10.0",
+    "version": "1.11.0",
     "description": "Контракт решений в программах для реализации и моков BE01–BE09. API base URL задается окружением. snake_case на проводе. Старые API не меняются."
   },
   "servers": [
@@ -7994,6 +7994,171 @@
         },
         "description": "Организатор/администратор своей solution-программы; только competitive distributed. Selection IDs — настоящие solution IDs. Private, no-store."
       }
+    },
+    "/programs/{program_id}/published-solutions/": {
+      "get": {
+        "operationId": "getPublishedSolutions",
+        "summary": "Прочитать публичные решения неконкурсной программы",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200,
+              "default": ""
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Program-scoped manager read; private, no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublishedSolutionPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "description": "Анонимное read-only представление опубликованных неконкурсных решений. Данные остаются в ProgramSolution. Публикация определяется сохраненным published_at; GET не публикует. Конкурсная ветка еще не реализована до решения о черновиках. Cache-Control no-store."
+      }
+    },
+    "/programs/{program_id}/published-solutions/{solution_id}/": {
+      "get": {
+        "operationId": "getPublishedSolution",
+        "summary": "Прочитать публичные материалы и принятый состав решения",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "solution_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Program-scoped manager read; private, no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublishedSolution"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "description": "Анонимное read-only представление опубликованных неконкурсных решений. Данные остаются в ProgramSolution. Публикация определяется сохраненным published_at; GET не публикует. Конкурсная ветка еще не реализована до решения о черновиках. Cache-Control no-store."
+      }
     }
   },
   "components": {
@@ -12432,6 +12597,155 @@
           "skipped_count": {
             "type": "integer",
             "minimum": 0
+          }
+        }
+      },
+      "PublishedSolutionMember": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "user",
+          "role",
+          "specialization",
+          "is_captain"
+        ],
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/User"
+          },
+          "role": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "specialization": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "is_captain": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PublishedSolution": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "application",
+          "published_at",
+          "fields",
+          "answers",
+          "team"
+        ],
+        "properties": {
+          "application": {
+            "$ref": "#/components/schemas/SolutionRef"
+          },
+          "published_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Field"
+            }
+          },
+          "answers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Answer"
+            }
+          },
+          "team": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "members",
+              "accepted_count"
+            ],
+            "properties": {
+              "members": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "$ref": "#/components/schemas/PublishedSolutionMember"
+                }
+              },
+              "accepted_count": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        }
+      },
+      "PublishedSolutionCard": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "application",
+          "published_at",
+          "captain",
+          "accepted_count"
+        ],
+        "properties": {
+          "application": {
+            "$ref": "#/components/schemas/SolutionRef"
+          },
+          "published_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "captain": {
+            "$ref": "#/components/schemas/User"
+          },
+          "accepted_count": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "PublishedSolutionPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "program_id",
+          "count",
+          "next",
+          "previous",
+          "results"
+        ],
+        "properties": {
+          "program_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "next": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "previous": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublishedSolutionCard"
+            }
           }
         }
       }

@@ -22,7 +22,7 @@ Checked through running HTTP API: КЧ и хакатон, JWT двух эксп�
 
 Requirement audit: AC04/20 PASS для membership/selectors/нового кабинета; AC18 PASS для собственных оценок и закрытых результатов в проверенных API; AC22 PASS для затронутого legacy regression. AC02/19/23 остаются PARTIAL до всех административных входов, публикации и BE09. Review не обнаружил оставшихся блокирующих замечаний в текущем checkpoint; общий первый выпуск не готов. При review исправлены лишний запрос определения режима, согласованность cabinet mock/filter, сохранение revision при admin правке и гонка смены программы критерия до блокировки.
 
-Бизнес-вопрос закрыт пользователем 25.10.2026: при включенной публикации открывать решения внешним посетителям в разделе «Решения» самой программы, включая сохраненные неконкурсные материалы без отдельной сдачи. Хранение — ProgramSolution/ProgramSolutionAnswer и собственные связанные модели; файлы остаются в существующем хранилище. Публикация меняет доступ, не переносит работу в Project/каталог. Закрытые оценки, регистрационные данные и pending приглашения не являются публичными материалами. Контракт и реализация публикации еще впереди; новый draft нельзя механически приравнивать к старому Project.draft.
+Бизнес-вопрос закрыт пользователем 25.10.2026: при включенной публикации открывать решения внешним посетителям в разделе «Решения» самой программы, включая сохраненные неконкурсные материалы без отдельной сдачи. Хранение — ProgramSolution/ProgramSolutionAnswer и собственные связанные модели; файлы остаются в существующем хранилище. Публикация меняет доступ, не переносит работу в Project/каталог. Закрытые оценки, регистрационные данные и pending приглашения не являются публичными материалами. Контракт и реализация неконкурсной ветки описаны ниже; конкурсная публикация и public UI еще впереди. Новый draft нельзя механически приравнивать к старому Project.draft.
 
 ## Входы программы: контракт до реализации 25.10.2026
 
@@ -31,3 +31,65 @@ Before: GET /programs/{id}/ не передает формат хранения,
 ENT01: оба вида ответа detail передают реальное значение, включая эксперта без регистрации; запрос не дает новых прав на материалы. ENT02: верхняя кнопка и ссылка экспертного виджета ведут в solutions-rating только при явном solution, иначе projects-rating. ENT03: реальные browser обеих локальных программ и legacy, query/права и regression tests. Это маршрутизация входов; метрики ролевого виджета и остальные BE09 остаются отдельной незавершенной работой.
 
 Реализовано: read-only поле в базовом member/unregistered serializer, без миграций и изменения role checks. ENT01 PASS: 30 PostgreSQL tests (новый routing/privacy/readonly, прежние detail и role widget) и реальный HTTP эксперта обеих форм. ENT02/03 PASS: Angular widget tests и browser верхняя кнопка/виджет → нужный список → возврат для КЧ program=3, хакатона=4 и legacy=5; списки 320/390/768/1440 без overflow/JS errors. Эксперту без регистрации по-прежнему не возвращаются description/links. Black/Flake8 и git diff --check PASS. Full frontend regression/build/format фиксируется в парном отчете. Это не проверка/готовность новых счетчиков виджета, публичной страницы или всего первого выпуска.
+
+## Публикация неконкурсных решений
+
+Независимый блок подтвержденного поведения. Конкурсная публикация остается незавершенной: вопрос о несданных черновиках уже задан пользователю, ответ не получен. Этот блок не выбирает правило за пользователя и не объявляет публикацию всей feature готовой.
+
+### Current behavior и source
+
+`services/publishing.py` выбирает завершенные программы с publish_projects_after_finish, затем делает связанные недрафтовые Project публичными. Повтор не меняет уже опубликованные записи; выключение флага или перенос даты после состоявшейся публикации не отзывает Project.is_public. Существующая Celery task вызывается ежедневно в 06:00, ее имя/возвращаемое число не меняются. Program detail читается анонимно через IsAuthenticatedOrReadOnly без дополнительного draft-фильтра. Новый public API не вводит отдельную политику видимости самой программы.
+
+У неконкурсного решения нет отдельного финального submit: ProgramSolution.status=draft обозначает хранение сохраненной заявки, а не запрет публикации. require_mutable разрешает дальнейшие изменения капитану; публикация сама по себе не должна заморозить такую работу или создать Submission/Project. Submitted-данные, если такая запись уже существует, по-прежнему читаются из неизменяемого снимка.
+
+### Target behavior и правила
+
+В ProgramSolution добавляется служебное nullable published_at (не editable через API/admin). NULL по умолчанию сохраняет существующие решения закрытыми. Отдельный publisher выбирает только solution + noncompetitive + publish_projects_after_finish + datetime_finished <= now; под блокировкой программы ставит дату только неопубликованным решениям. Не проверяет искусственную сдачу/полноту обязательных полей. Повтор сохраняет первую дату. После публикации публичность определяется сохраненным маркером: выключение флага не отзывает состоявшуюся публикацию. Дальнейшие обычные правки сохраненной неконкурсной работы видны в публичных материалах, без смены версии из-за самого publisher.
+
+Данные остаются в ProgramSolution/ProgramSolutionAnswer/accepted members, файлы — в прежнем UserFile/CDN. Project не создается и не становится публичным из-за публикации solution-программы. Старый publisher ограничивается legacy_project, сохраняя прежнее поведение для старого режима; исторические проектные ссылки/анкета в новом режиме не публикуются как побочный эффект. BE10 для реальных программ остается отдельной согласованной миграцией.
+
+Публичное представление показывает application=SolutionRef, дату публикации, определения полей/ответы и принятый состав с минимальным User (id, first_name, last_name, avatar_url), ролью/специализацией и is_captain. Капитан один раз. Из снимка и текущих моделей берутся только эти разрешенные ключи. Нет оценок, назначений, рейтинга, регистрационной анкеты, email/даты рождения профилей, pending приглашений, token, permissions/readiness/version и внутренних данных организатора. Настроенные поля решения публикуются как материалы с сохраненным содержимым. Форма/ответы одной программы; 0 и False остаются значениями ответа. Текущий файл не копируется и не получает новый ID.
+
+### Contract before и after
+
+В C00 1.10.0 публичных материалов нет. C00 1.11.0 добавляет два read-only GET с security=[]: `/programs/{program_id}/published-solutions/` и `/programs/{program_id}/published-solutions/{solution_id}/`. Блок реализует неконкурсные программы; competitive/legacy пока 404, это граница незавершенной реализации конкурсного правила, а не новый бизнес-запрет.
+
+List: limit 1–100 (default 20), offset >=0, search <=200 по отображаемому имени (snapshot для submitted). Ответ program_id/count/next/previous/results; карточка содержит SolutionRef, published_at, минимального капитана и accepted_count. Сортировка published_at/id, найденные работы не ограничиваются первой страницей. Detail: application/published_at/fields/answers/team. Неопубликованная работа, чужая программа, неизвестный/unsafe ID дают один C00 not_found без раскрытия существования. Неверные/лишние query — C00 400. Невалидная переданная авторизация может дать C00 401; анонимный запрос без нее разрешен. Cache-Control no-store. GET не публикует и не пишет данные. Менеджер/капитан не получают через этот путь обход публикации, приватные API сохраняются отдельно.
+
+Affected systems: nullable migration + partial program/publication index, publisher/service exports, отдельная Celery task с прежним временем 06:00, public projection/API/URLs, C00/generated frontend DTO/fixtures и API layer. Новый публичный Angular экран требует отдельного дизайна и approval; D02 организатора также остается pending. Порядок: spec/C00 → migration/model/publisher → safe public projection/API → tests/legacy regressions → API layer/wire tests → review/draft PR. Rollout: migrations → backend → frontend, без переключения реальных программ и без выполнения production publisher в этой задаче.
+
+| AC | Проверяемое поведение |
+| --- | --- |
+| PUB01 | Только завершенная solution noncompetitive с включенным флагом получает published_at; до срока/без флага/legacy/competitive ничего не публикуется |
+| PUB02 | Первая дата сохраняется при повторе и двух конкурентных publisher; позднее включение работает, выключение после публикации не отзывает публичность |
+| PUB03 | Сохраненное draft/частичные или пустые материалы не требуют submit; publisher не меняет status/version/updated_at/состав/файлы, последующая разрешенная правка видна публично |
+| PUB04 | Анонимные list/detail дают реальные SolutionRef, stable ordering/count/search/pagination, current или submitted snapshot; C00 shape/private-data allowlist соблюдены |
+| PUB05 | 0/False/file URL и accepted team/captain сохраняются, pending/регистрации/email/оценки/служебные данные не попадают в JSON |
+| PUB06 | Непубличные/чужие/unknown/unsafe IDs скрыты 404 для всех ролей; invalid query 400; старый private API не становится публичным и write payload не может задать published_at |
+| PUB07 | Новый job и legacy publisher разделены по режиму, новые решения не создают/не публикуют Project; старая публикация из link/profile и периодическая task сохраняются |
+| PUB08 | Миграция оставляет старые решения private, индекс соответствует public query; гидратация после pagination и bounded queries исключают N+1, большой load benchmark не подменяется этим тестом |
+| PUB09 | C00/два repo/generated types/fixtures и frontend API layer синхронизированы; read-only операции поддерживают anonymous, 0/False/nullable next/errors без Project DTO |
+| PUB10 | Конкурсное правило не подставлено вместо ответа пользователя, новая UI-реализация не начинается без дизайна/approval; основной goal/BE08/QA01/REL01 не объявляются завершенными |
+
+### Verification и review публичного API
+
+| AC | Evidence | Verdict |
+| --- | --- | --- |
+| PUB01 | API/service tests: flag false, future/exact finish, competitive и legacy не публикуются; сохраненный noncompetitive draft получает marker | PASS |
+| PUB02 | Повтор/позднее включение, flag off и перенос даты после публикации; два PostgreSQL потока с Barrier дают counts 0/1 и одну первую дату | PASS |
+| PUB03 | Status/version/updated_at/snapshot/files/project count до и после publisher неизменны; empty/partial без submit, разрешенная правка после публикации видна; stale full save сохраняет marker | PASS |
+| PUB04 | Anonymous list/detail C00, stable count/order/search/next/previous, submitted snapshot вместо поздних live значений; actual HTTP публичных материалов | PASS |
+| PUB05 | 0/False/URL файла, accepted/captain once и отсутствие pending/registration/profile email/birthday; snapshot extra keys/неподходящие object answers/file metadata не раскрываются | PASS |
+| PUB06 | Одинаковый 404 для всех ролей на непубличной работе, foreign/unknown/unsafe IDs, query 400, private read 401/404 и public write 405; API/model/admin marker readonly | PASS |
+| PUB07 | В одном publisher запуске старые link/profile проекты legacy публикуются, обе исторические Project ссылки solution-программы остаются private; новый job idempotent и расписание совпадает со старым | PASS |
+| PUB08 | MigrationExecutor 0032→0033 с существующим решением оставляет published_at NULL; SQL index применен, list 4 queries без роста на 9 работах, detail не более 6 и без чтения project_rates | PASS |
+| PUB09 | C00 1.11.0 120/45/144, прежние 116/43/128 сохранены; 25 новых wire tests, full frontend 2720 tests / 477 files, strict C00 types/build/scoped ESLint PASS | PASS |
+| PUB10 | Этот checkpoint реализует только подтвержденную неконкурсную ветку; конкурсные черновики и новый public UI остаются открытыми, default legacy/реальные программы не переключались | PASS в указанном scope |
+
+Checked by tests: **19 новых publication tests**; итоговый широкий PostgreSQL прогон foundation/team/invitations/forms/answers/submission/entrypoints/routing/widget/cases/analytics/reminders/publication, legacy publishing, solution evaluation и chat/Swagger permissions — **229 tests PASS**. В окончательном focused прогоне publication + legacy publishing + staff Swagger — 24 PASS, включая эти 19. Logs: `C:/Users/evsee/AppData/Local/Temp/procollab-solution-publication-final-regression.log` и `procollab-solution-publication-final-tests.log`. PostgreSQL 18/ICU ru-RU test DB; concurrency и настоящий schema transition выполнены, не заменены SQLite проверкой.
+
+Checked through running API: **16 реальных HTTP checks** на localhost:8871. Для синтетических program=6/solution=4 временно включены flag и прошедшая дата, scoped publisher поставил marker. Anonymous list/materials/team, search/limit, private allowlist, чужие/unsafe ID, query 400 и bad JWT 401 прошли C00; private solution read остался 401. После выключения флага marker продолжил давать доступ. В finally восстановлены flag/finish/marker, сохраненные данные/версии/состав/файлы и Project public state не менялись. После восстановления list пуст и detail 404; backup-файл удален. Evidence: `design-artifacts/program-solutions-20261024/expert-v1/implementation/solution-publication-http-evidence.json`. Это проверка API, не нового public Angular экрана.
+
+Checked by source/review: mode/date/flag → program lock → nullable marker update, отдельная Celery task и allowlist GET прослежены. На review закрыты перезапись marker устаревшим Model.save, смешение legacy Project ссылок, выдача произвольного JSON вместо примитивного ответа и лишние метаданные файла. Настроенное содержимое допустимого типа сохраняется: новые required/min/max/options не вводят искусственную сдачу или автоматическое переписывание ответа. Private mutation/permission/snapshot contracts не расширены. Blocking findings этого API-блока не осталось.
+
+Checked by build/static: Angular development build и scoped ESLint PASS; backend Black/Flake8, C00 validator, makemigrations --check, manage.py check и diff checks PASS. Migration 0033 применена к отдельному локальному runtime и test DB; production migration/deploy не выполнялись. Not checked: новый public browser UI, production/CDN download, large-volume memory/load benchmark, конкурсная публикация и первый выпуск целиком. Собственный Linux CI нового commit требуется; исправление Swagger 3e9171b проверяется отдельно и не подменяет CI этой миграции.

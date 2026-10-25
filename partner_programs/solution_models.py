@@ -21,12 +21,18 @@ class ProgramSolution(models.Model):
     )
     submitted_at = models.DateTimeField(null=True, blank=True)
     submission_snapshot = models.JSONField(null=True, blank=True)
+    published_at = models.DateTimeField(
+        null=True, blank=True, editable=False, verbose_name="Дата публикации"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     @transaction.atomic
     def save(self, *args, **kwargs):
         previous = lock_saved_solution(self.pk) if self.pk else None
+        # Дату устанавливает publisher. Обычный save, в том числе устаревшего
+        # экземпляра, не публикует работу и не отзывает состоявшуюся публикацию.
+        self.published_at = previous.published_at if previous else None
         if previous:
             if previous.program_id != self.program_id:
                 raise ValidationError(
@@ -62,6 +68,13 @@ class ProgramSolution(models.Model):
         verbose_name = "Решение программы"
         verbose_name_plural = "Решения программ"
         ordering = ["created_at", "pk"]
+        indexes = [
+            models.Index(
+                fields=["program", "published_at", "id"],
+                condition=models.Q(published_at__isnull=False),
+                name="solution_publication_idx",
+            )
+        ]
         constraints = [
             models.UniqueConstraint(
                 fields=["program", "captain"],

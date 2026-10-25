@@ -1,5 +1,5 @@
 {
-  "contract_version": "1.10.0",
+  "contract_version": "1.11.0",
   "description": "Независимые примеры, не последовательность операций; фиктивные данные.",
   "scenarios": [
     {
@@ -6621,6 +6621,498 @@
       },
       "request": {
         "token": "another-actor-token"
+      }
+    },
+    {
+      "name": "published_solutions_list",
+      "operation_id": "getPublishedSolutions",
+      "status": 200,
+      "response": {
+        "program_id": 14,
+        "count": 1,
+        "next": null,
+        "previous": null,
+        "results": [
+          {
+            "application": {
+              "kind": "solution",
+              "program_id": 14,
+              "solution_id": 501,
+              "name": "Прототип сервиса"
+            },
+            "published_at": "2026-10-25T06:00:00Z",
+            "captain": {
+              "id": 11,
+              "first_name": "Иван",
+              "last_name": "Токарев",
+              "avatar_url": null
+            },
+            "accepted_count": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "published_solutions_empty",
+      "operation_id": "getPublishedSolutions",
+      "status": 200,
+      "response": {
+        "program_id": 14,
+        "count": 0,
+        "next": null,
+        "previous": null,
+        "results": []
+      }
+    },
+    {
+      "name": "published_solutions_search_page",
+      "operation_id": "getPublishedSolutions",
+      "status": 200,
+      "response": {
+        "program_id": 14,
+        "count": 25,
+        "next": "https://local.test/programs/14/published-solutions/?limit=1&offset=1",
+        "previous": null,
+        "results": [
+          {
+            "application": {
+              "kind": "solution",
+              "program_id": 14,
+              "solution_id": 501,
+              "name": "Прототип сервиса"
+            },
+            "published_at": "2026-10-25T06:00:00Z",
+            "captain": {
+              "id": 11,
+              "first_name": "Иван",
+              "last_name": "Токарев",
+              "avatar_url": null
+            },
+            "accepted_count": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "published_solution_zero_false_file",
+      "operation_id": "getPublishedSolution",
+      "status": 200,
+      "response": {
+        "application": {
+          "kind": "solution",
+          "program_id": 14,
+          "solution_id": 501,
+          "name": "Прототип сервиса"
+        },
+        "published_at": "2026-10-25T06:00:00Z",
+        "fields": [
+          {
+            "id": 701,
+            "type": "number",
+            "purpose": "other",
+            "label": "Размер пилота",
+            "help_text": "",
+            "required": false,
+            "position": 0,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 702,
+            "type": "checkbox",
+            "purpose": "other",
+            "label": "Разрешение на демонстрацию",
+            "help_text": "",
+            "required": false,
+            "position": 1,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 703,
+            "type": "file",
+            "purpose": "other",
+            "label": "Материалы",
+            "help_text": "",
+            "required": false,
+            "position": 2,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          }
+        ],
+        "answers": [
+          {
+            "field_id": 701,
+            "value": 0
+          },
+          {
+            "field_id": 702,
+            "value": false
+          },
+          {
+            "field_id": 703,
+            "value": {
+              "url": "https://cdn.example.org/solution/materials.zip"
+            }
+          }
+        ],
+        "team": {
+          "members": [
+            {
+              "user": {
+                "id": 11,
+                "first_name": "Иван",
+                "last_name": "Токарев",
+                "avatar_url": null
+              },
+              "role": "Капитан",
+              "specialization": null,
+              "is_captain": true
+            }
+          ],
+          "accepted_count": 1
+        }
+      }
+    },
+    {
+      "name": "published_solution_saved_partial_without_submit",
+      "operation_id": "getPublishedSolution",
+      "status": 200,
+      "response": {
+        "application": {
+          "kind": "solution",
+          "program_id": 14,
+          "solution_id": 501,
+          "name": "Прототип сервиса"
+        },
+        "published_at": "2026-10-25T06:00:00Z",
+        "fields": [
+          {
+            "id": 701,
+            "type": "number",
+            "purpose": "other",
+            "label": "Размер пилота",
+            "help_text": "",
+            "required": false,
+            "position": 0,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 702,
+            "type": "checkbox",
+            "purpose": "other",
+            "label": "Разрешение на демонстрацию",
+            "help_text": "",
+            "required": false,
+            "position": 1,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 703,
+            "type": "file",
+            "purpose": "other",
+            "label": "Материалы",
+            "help_text": "",
+            "required": false,
+            "position": 2,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          }
+        ],
+        "answers": [],
+        "team": {
+          "members": [
+            {
+              "user": {
+                "id": 11,
+                "first_name": "Иван",
+                "last_name": "Токарев",
+                "avatar_url": null
+              },
+              "role": "Капитан",
+              "specialization": null,
+              "is_captain": true
+            }
+          ],
+          "accepted_count": 1
+        }
+      }
+    },
+    {
+      "name": "published_solution_empty_form_captain_only",
+      "operation_id": "getPublishedSolution",
+      "status": 200,
+      "response": {
+        "application": {
+          "kind": "solution",
+          "program_id": 14,
+          "solution_id": 501,
+          "name": "Прототип сервиса"
+        },
+        "published_at": "2026-10-25T06:00:00Z",
+        "fields": [],
+        "answers": [],
+        "team": {
+          "members": [
+            {
+              "user": {
+                "id": 11,
+                "first_name": "Иван",
+                "last_name": "Токарев",
+                "avatar_url": null
+              },
+              "role": "Капитан",
+              "specialization": null,
+              "is_captain": true
+            }
+          ],
+          "accepted_count": 1
+        }
+      }
+    },
+    {
+      "name": "published_solution_from_immutable_snapshot",
+      "operation_id": "getPublishedSolution",
+      "status": 200,
+      "response": {
+        "application": {
+          "kind": "solution",
+          "program_id": 14,
+          "solution_id": 501,
+          "name": "Имя при сдаче"
+        },
+        "published_at": "2026-10-25T06:00:00Z",
+        "fields": [
+          {
+            "id": 701,
+            "type": "number",
+            "purpose": "other",
+            "label": "Размер пилота",
+            "help_text": "",
+            "required": false,
+            "position": 0,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 702,
+            "type": "checkbox",
+            "purpose": "other",
+            "label": "Разрешение на демонстрацию",
+            "help_text": "",
+            "required": false,
+            "position": 1,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 703,
+            "type": "file",
+            "purpose": "other",
+            "label": "Материалы",
+            "help_text": "",
+            "required": false,
+            "position": 2,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          }
+        ],
+        "answers": [
+          {
+            "field_id": 701,
+            "value": 0
+          },
+          {
+            "field_id": 702,
+            "value": false
+          },
+          {
+            "field_id": 703,
+            "value": {
+              "url": "https://cdn.example.org/solution/materials.zip"
+            }
+          }
+        ],
+        "team": {
+          "members": [
+            {
+              "user": {
+                "id": 11,
+                "first_name": "Иван",
+                "last_name": "Токарев",
+                "avatar_url": null
+              },
+              "role": "Капитан",
+              "specialization": null,
+              "is_captain": true
+            }
+          ],
+          "accepted_count": 1
+        }
+      }
+    },
+    {
+      "name": "published_solution_list_legacy",
+      "operation_id": "getPublishedSolutions",
+      "status": 404,
+      "response": {
+        "code": "not_found",
+        "detail": "Контролируемая ошибка.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "published_solution_list_competitive_pending_rule",
+      "operation_id": "getPublishedSolutions",
+      "status": 404,
+      "response": {
+        "code": "not_found",
+        "detail": "Контролируемая ошибка.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "published_solution_list_missing_program",
+      "operation_id": "getPublishedSolutions",
+      "status": 404,
+      "response": {
+        "code": "not_found",
+        "detail": "Контролируемая ошибка.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "published_solution_list_invalid_query",
+      "operation_id": "getPublishedSolutions",
+      "status": 400,
+      "response": {
+        "code": "validation_error",
+        "detail": "Контролируемая ошибка.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "published_solution_detail_unpublished",
+      "operation_id": "getPublishedSolution",
+      "status": 404,
+      "response": {
+        "code": "not_found",
+        "detail": "Контролируемая ошибка.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "published_solution_detail_other_program",
+      "operation_id": "getPublishedSolution",
+      "status": 404,
+      "response": {
+        "code": "not_found",
+        "detail": "Контролируемая ошибка.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "published_solution_detail_unsafe_id",
+      "operation_id": "getPublishedSolution",
+      "status": 404,
+      "response": {
+        "code": "not_found",
+        "detail": "Контролируемая ошибка.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "published_solution_detail_bad_authorization",
+      "operation_id": "getPublishedSolution",
+      "status": 401,
+      "response": {
+        "code": "authentication_required",
+        "detail": "Контролируемая ошибка.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "published_solution_list_bad_authorization",
+      "operation_id": "getPublishedSolutions",
+      "status": 401,
+      "response": {
+        "code": "authentication_required",
+        "detail": "Контролируемая ошибка.",
+        "errors": [],
+        "meta": {}
       }
     }
   ]

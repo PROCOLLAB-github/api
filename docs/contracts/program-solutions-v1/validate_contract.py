@@ -43,7 +43,7 @@ for scenario in examples["scenarios"]:
     else:
         check(scenario["response"], response["content"]["application/json"]["schema"])
     payload = scenario.get("response", {})
-    if "team" in payload:
+    if "team" in payload and "form" in payload and "submission" in payload:
         team = payload["team"]
         user_ids = [member["user"]["id"] for member in team["members"]]
         assert len(user_ids) == len(set(user_ids)) == team["accepted_count"], name
@@ -82,6 +82,14 @@ for scenario in examples["scenarios"]:
             assert (
                 team["min_size"] is None or team["accepted_count"] >= team["min_size"]
             ), name
+    if "published_at" in payload and "fields" in payload:
+        team = payload["team"]
+        ids = [row["user"]["id"] for row in team["members"]]
+        assert len(set(ids)) == len(ids) == team["accepted_count"], name
+        assert sum(row["is_captain"] for row in team["members"]) == 1, name
+        fields = {field["id"] for field in payload["fields"]}
+        answers = [answer["field_id"] for answer in payload["answers"]]
+        assert len(set(answers)) == len(answers) and set(answers) <= fields, name
 assert covered == set(operations), (
     "Operations missing examples",
     sorted(set(operations) - covered),

@@ -1,4 +1,8 @@
 from django.urls import path
+from partner_programs.solution_publication_api import (
+    PublishedSolutionListView,
+    PublishedSolutionDetailView,
+)
 from partner_programs.solution_attention_api import SolutionExpertReminderView
 from partner_programs.solution_analytics_api import (
     SolutionCaseAnalyticsView,
@@ -132,6 +136,11 @@ from partner_programs.certificate_views import (
 app_name = "partner_programs"
 
 urlpatterns = [
+    path("<int:pk>/published-solutions/", PublishedSolutionListView.as_view()),
+    path(
+        "<int:pk>/published-solutions/<int:solution_id>/",
+        PublishedSolutionDetailView.as_view(),
+    ),
     path(
         "<int:pk>/management/solution-analytics/attention/solutions-awaiting-evaluation/reminder-preview/",
         SolutionExpertReminderView.as_view(),
