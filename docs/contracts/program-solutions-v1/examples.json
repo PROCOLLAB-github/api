@@ -10239,8 +10239,8 @@
             "is_submitted": true,
             "is_archived": true,
             "score_count": 2,
-            "removed_assignments_count": 2,
-            "revoked_invitation_count": 1,
+            "removed_assignments_count": 0,
+            "revoked_invitation_count": 0,
             "errors": [
               {
                 "path": "ids",
@@ -10252,8 +10252,8 @@
           }
         ],
         "score_count": 2,
-        "removed_assignments_count": 2,
-        "revoked_invitation_count": 1,
+        "removed_assignments_count": 0,
+        "revoked_invitation_count": 0,
         "can_apply": false,
         "preview_token": null
       },
@@ -10507,8 +10507,8 @@
             }
           ],
           "accepted_count": 2,
-          "pending_count": 1,
-          "reserved_count": 3,
+          "pending_count": 0,
+          "reserved_count": 2,
           "min_size": 2,
           "max_size": 4,
           "is_frozen": true
@@ -10656,8 +10656,15 @@
           "can_leave": false
         },
         "readiness": {
-          "is_ready": true,
-          "issues": []
+          "is_ready": false,
+          "issues": [
+            {
+              "path": "participation",
+              "code": "solution_archived",
+              "field_id": null,
+              "detail": "Решение снято с участия."
+            }
+          ]
         },
         "participation": {
           "status": "archived",
@@ -10706,8 +10713,8 @@
             }
           ],
           "accepted_count": 2,
-          "pending_count": 1,
-          "reserved_count": 3,
+          "pending_count": 0,
+          "reserved_count": 2,
           "min_size": 2,
           "max_size": 4,
           "is_frozen": true
@@ -10950,7 +10957,7 @@
             "avatar_url": null
           },
           "actor_name": "Организатор Программы",
-          "created_at": "2026-10-25T12:00:00Z",
+          "created_at": "2026-10-25T15:00:00Z",
           "before_version": 7,
           "after_version": 8,
           "removed_assignments_count": 2,
@@ -11460,11 +11467,11 @@
             "avatar_url": null
           },
           "actor_name": "Организатор Программы",
-          "created_at": "2026-10-25T12:00:00Z",
+          "created_at": "2026-10-25T15:00:00Z",
           "before_version": 7,
           "after_version": 8,
-          "removed_assignments_count": 2,
-          "score_count": 2,
+          "removed_assignments_count": 0,
+          "score_count": 0,
           "was_submitted": false,
           "archived_at": "2026-10-25T15:00:00Z",
           "reason": "detached",

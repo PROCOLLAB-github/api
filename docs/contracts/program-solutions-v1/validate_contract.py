@@ -85,6 +85,14 @@ for scenario in examples["scenarios"]:
             assert team["is_frozen"] and payload["form"]["is_snapshot"], name
             assert payload["submission"]["submitted_at"] is not None, name
             assert not any(payload["permissions"].values()), name
+        if payload.get("participation", {}).get("status") == "archived":
+            assert team["is_frozen"] and payload["form"]["is_snapshot"], name
+            assert team["pending_count"] == 0, name
+            assert team["reserved_count"] == team["accepted_count"], name
+            assert not any(payload["permissions"].values()), name
+            if payload["readiness"]:
+                assert not payload["readiness"]["is_ready"], name
+                assert any(i["code"] == "solution_archived" for i in payload["readiness"]["issues"]), name
         if payload["readiness"] and payload["readiness"]["is_ready"]:
             answered = {a["field_id"] for a in payload["answers"]}
             assert {f["id"] for f in fields.values() if f["required"]} <= answered, name
