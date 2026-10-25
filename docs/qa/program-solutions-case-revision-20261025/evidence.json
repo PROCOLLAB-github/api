@@ -1,0 +1,295 @@
+{
+  "status": "PASS",
+  "scope": "BE08A case changes and history only; full BE08/QA01/REL01 open",
+  "backendProduct": "91fdbc3f6199d6e0b861caa23063766afd18a385",
+  "frontendProduct": "74037240c7f10687b24b5627472e5225fb58a381",
+  "c00": {
+    "version": "1.17.0",
+    "schemas": 131,
+    "operations": 51,
+    "scenarios": 230,
+    "sharedFiles": {
+      "openapi.json": "7306956b1298fe953b96f7e53ce2962f112f819067f093e282f74a90c861393c",
+      "examples.json": "ac3dbb1c9baa13bf42d2cfca43ad952d6d21dfa601ec61a73d49d88d7ec51815",
+      "README.md": "b038017284f4fb3b81cd68c460bfc5d56be20327ae203ce3d0314e6fc2dbf7d6"
+    },
+    "changedOldSchemas": [
+      "SolutionCaseChangePreview"
+    ],
+    "unchangedOldSchemas": 127,
+    "changedOldScenarios": [
+      "case_action_preview_ready",
+      "case_action_preview_empty_current",
+      "case_action_preview_noncompetitive",
+      "case_action_preview_same",
+      "case_action_preview_submitted",
+      "case_action_preview_evaluation",
+      "case_action_apply_submitted"
+    ],
+    "unchangedOldScenarios": 210,
+    "addedScenarios": 13
+  },
+  "acceptance": {
+    "ACH01": "PASS in report scope",
+    "ACH02": "PASS in report scope",
+    "ACH03": "PASS in report scope",
+    "ACH04": "PASS in report scope",
+    "ACH05": "PASS in report scope",
+    "ACH06": "PASS in report scope",
+    "ACH07": "PASS in report scope",
+    "ACH08": "PASS in report scope"
+  },
+  "http": {
+    "responses": 56,
+    "validatedResponses": 56,
+    "validRequestBodies": 23,
+    "core": {
+      "status": "PASS",
+      "responses": 53,
+      "validation": {
+        "responses": 53,
+        "validRequests": 22
+      },
+      "checks": [
+        {
+          "program": 35,
+          "solution": 51,
+          "key": "case_championship",
+          "journal": 1,
+          "case": "  Образование | наука  ",
+          "originalSnapshotRetained": true,
+          "otherMaterialsAndTeamUnchanged": true,
+          "scoresZeroFalseRetained": true,
+          "onlyUnratedIncompatibleAssignmentRemoved": true,
+          "ordinaryWritersFrozen": true,
+          "historyPrivate": true,
+          "closedDeadlineAndCreationDisabled": true
+        },
+        {
+          "program": 36,
+          "solution": 52,
+          "key": "hackathon",
+          "journal": 2,
+          "case": "  Образование | наука  ",
+          "originalSnapshotRetained": true,
+          "otherMaterialsAndTeamUnchanged": true,
+          "scoresZeroFalseRetained": true,
+          "onlyUnratedIncompatibleAssignmentRemoved": true,
+          "ordinaryWritersFrozen": true,
+          "historyPrivate": true,
+          "closedDeadlineAndCreationDisabled": true
+        }
+      ],
+      "old22ModelsUnchanged": true,
+      "newProjects": 0,
+      "newSolutions": 2,
+      "newRevisions": 2,
+      "domainRowsPreservedHash": "4b2728c3a688182627ede2f5572cc874ce0e129cfabd2d694591116e7cd8e7fe",
+      "scope": "Fresh local programs only; fixture setup/initial scores separate from checked signed admin changes; no UI/full release claim."
+    },
+    "boundary": {
+      "status": "PASS",
+      "responses": 3,
+      "validRequests": 1,
+      "legacyProgram": 34,
+      "project": 4,
+      "link": 3,
+      "solutionPathsBlocked": true,
+      "legacyContextPreserved": true,
+      "old22ModelsUnchanged": true,
+      "domainWrites": 0
+    },
+    "redactedProofs": 8,
+    "redaction": "Only preview_token strings replaced after validation; no JWT/auth headers captured."
+  },
+  "migration": {
+    "status": "PASS",
+    "database": "local-procollab_ci",
+    "migration": "0035_solution_administrative_history",
+    "oldModelsUnchanged": 22,
+    "hashBefore": "4b2728c3a688182627ede2f5572cc874ce0e129cfabd2d694591116e7cd8e7fe",
+    "hashAfter": "4b2728c3a688182627ede2f5572cc874ce0e129cfabd2d694591116e7cd8e7fe",
+    "rowCounts": {
+      "partner_programs.PartnerProgram": 33,
+      "partner_programs.PartnerProgramField": 249,
+      "partner_programs.PartnerProgramUserProfile": 98,
+      "partner_programs.PartnerProgramProject": 3,
+      "partner_programs.PartnerProgramFieldValue": 2,
+      "partner_programs.ProgramSolution": 49,
+      "partner_programs.ProgramSolutionAnswer": 237,
+      "partner_programs.ProgramSolutionMember": 65,
+      "partner_programs.SolutionInvitation": 30,
+      "project_rates.SolutionScore": 24,
+      "project_rates.SolutionExpertAssignment": 12,
+      "project_rates.Criteria": 52,
+      "users.Expert": 6,
+      "files.UserFile": 8,
+      "projects.Project": 4,
+      "projects.Collaborator": 6,
+      "invites.Invite": 4,
+      "project_rates.ProjectScore": 3,
+      "project_rates.ProjectExpertAssignment": 1,
+      "industries.Industry": 1,
+      "users.Expert_programs": 15,
+      "partner_programs.PartnerProgram_managers": 37
+    },
+    "newHistoryRows": 0,
+    "existingProjectsMigratedOrDeleted": 0,
+    "onlyLocalSchema": true,
+    "notes": "Creates new audit table/constraints; no RunPython, Project operations or rewriting existing solution snapshots."
+  },
+  "tests": {
+    "nativePostgresSolution": 353,
+    "legacyRegression": 148,
+    "caseHistoryFocused": 32,
+    "focusedSubsetOf353": true,
+    "newTests": 13,
+    "newHistoryTests": 11,
+    "newObservedRaces": 2,
+    "totalCaseObservedRaces": 5,
+    "frontend": 2862,
+    "frontendFiles": 481,
+    "wire": 49,
+    "newHistoryWire": 16,
+    "strictTypes": true,
+    "build": true,
+    "scopedEslint": true,
+    "lockedFormat": {
+      "version": "3.8.3",
+      "filesBeforeReport": 2020,
+      "failures": [],
+      "filesWithReport": 2021
+    }
+  },
+  "programs": [
+    {
+      "program": 35,
+      "solution": 51,
+      "kind": "case_championship",
+      "fields": {
+        "case": 257,
+        "materials": 258,
+        "zero": 259,
+        "boolean": 260,
+        "presentation": 261
+      },
+      "criteria": [
+        62,
+        63
+      ],
+      "journal": 1,
+      "completedState": {
+        "accepted": true,
+        "submitted": true,
+        "evaluationSeeded": true,
+        "applied": true,
+        "complete": true
+      },
+      "initialSnapshotHash": "7a3731112023fe114bef1788336a4927ec6ad26b8e065b761e69e3c70741ccd9",
+      "originalScoreRowsHash": "1baf9cc36791e85d28de8d48dd9289a2e03b14393319ca385c192281089542ee",
+      "originalMemberRowsHash": "8ba4d42fc903a83b2b39116929e2365675a6afb624a0734fab4fe4e61784d248"
+    },
+    {
+      "program": 36,
+      "solution": 52,
+      "kind": "hackathon",
+      "fields": {
+        "case": 262,
+        "materials": 263,
+        "zero": 264,
+        "boolean": 265,
+        "repository": 266
+      },
+      "criteria": [
+        65,
+        66
+      ],
+      "journal": 2,
+      "completedState": {
+        "accepted": true,
+        "submitted": true,
+        "evaluationSeeded": true,
+        "applied": true,
+        "complete": true
+      },
+      "initialSnapshotHash": "1e2b9687fe9ffd7e7fef0c8dc69257f5904f16a334e3ff8d9eb1f99bfde8cc35",
+      "originalScoreRowsHash": "3c8bbedfeba503d59244d8d367b21034c6a34c1988c69413b3d6481915aee087",
+      "originalMemberRowsHash": "b842c79918c7dfda255ac1137a8711b8b5325434dfae3e4c0dbde52b036a5a21"
+    }
+  ],
+  "rawRoot": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-case-revision",
+  "rawArtifacts": {
+    "http-evidence.json": "2eb2c96d5d13e2f63e68d9ca1af51e61db61ee19dfbc38fbaae209f36d6a157e",
+    "http-wire.json": "f5cc48a2fed41ab36b5af8a20d21def67fdf7a2226cb386ee450fa46f0ddf68e",
+    "legacy-boundary-evidence.json": "54ecb75e12c6a7f8f396484de5a74937b9954c151e8ee81a9a82ce8ea18f1b1a",
+    "legacy-boundary-wire.json": "c08d75dbf7e7cbe2b753a0cfc3844e2e8a80702eee4bf6e4c10ad8d39d3c89a2",
+    "migration-evidence.json": "8abe0c94eb089beefe03547b9bf563d6f8b5d671c63997db80d9b86fe5526bdc",
+    "procollab-case-revision-build.log": "d58a2bcb8bd93117134177b2af181c1f60ddd4bb98865c84eb3fa8d8abf01cf2",
+    "procollab-case-revision-final-focused-tests.log": "93ea9d5bcc76dfe57ac1445788b15747799db4675068aec797a3567ba633fc9a",
+    "procollab-case-revision-final-types.log": "9c49338a6bd87668f4525097ed9dbc34a680477f0387588bce160c2d95c749d8",
+    "procollab-case-revision-focused-tests.log": "6b516b4dbe553a9cd15d67939f1f7717c88b0fd8a1d19f651fd3aaf8728dd838",
+    "procollab-case-revision-format.log": "e888686e2d21186a3d5938a465fd0f73272233e1540ea5e0ebb66586c1795e40",
+    "procollab-case-revision-frontend-suite.log": "24bf9f2db981bc91980e1c9550573c5dfd7d91c0d643334d9edb83011441c5fc",
+    "procollab-case-revision-history-tests.log": "774dc48a9d741ec60d6b1ff83ef3a5f2104af9b26e49a2c20812e65747197e1c",
+    "procollab-case-revision-http-final.log": "7b7329873c2f97697a93d538b47aa26e7a2a0e4cf94ecfad3113045fbe263664",
+    "procollab-case-revision-http-resumed.log": "4ea66096eb14da3ba52704a0e3f7873750cdc55f7979aadcb0302dc6367c1512",
+    "procollab-case-revision-http-verified.log": "da8ac3dacfb4146f48c388feda9da1582f1bdcb52996285a5893dc79f0e59dae",
+    "procollab-case-revision-http.log": "5e0c2665e1cecb6e9009e4c85e45ab8c400605af3236d4aa060ee2dbf702de2d",
+    "procollab-case-revision-initial-tests.log": "9b916bb1d91ec75132fb1235a46467577e3d0482e61df8bc711293f6abfdec8a",
+    "procollab-case-revision-legacy-boundary.log": "0dbc343b6147ec81533f5fa99e321252965ef8abc688022733d28c181d4ee574",
+    "procollab-case-revision-legacy-tests.log": "62d722e9e2cb1d0124127c7c28e776f7bb0cc70520f5e3680922b0890cc7d97b",
+    "procollab-case-revision-migrate-corrected.log": "aac1929115114be926c4c79a513b6d5f1366c689da37a97c5f5394b8ce6aafea",
+    "procollab-case-revision-migrate.log": "a20b03fd9ac91b636ebaeb45b6e0e3e8b9bcced2e1e7b16c9438e4230739672a",
+    "procollab-case-revision-solution-suite.log": "08502228430eeb2ecfdf84de4f9f16e66f3b0b546c09e600896adeae01b81ff9",
+    "procollab-case-revision-types.log": "9c49338a6bd87668f4525097ed9dbc34a680477f0387588bce160c2d95c749d8",
+    "procollab-case-revision-wire-tests.log": "7b795a9d1dc6c62e72d9284a54442cb2eb87df68b8ca447a8fe8d7080ecda1ed",
+    "procollab-case-revision-black.log": "d8d8356b9c0ae586eae32f455c85df08e3c6042a1a5b163bd3842414316952e1",
+    "procollab-case-revision-flake8.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "procollab-case-revision-format-final.log": "50a6ecef9e200868d4f431621dcfcb8f2ae9b89375aa6cfe4a04c9d8266cc26f"
+  },
+  "sourceHashes": {
+    "partner_programs/services/solution_case_actions.py": "dde07d2fc33e8d2fa6c28eef77f0162603f2a9b835ee9d6fa84e65bd1e2d364d",
+    "partner_programs/solution_models.py": "f39482a5d7fa9730e8aef32cf32fbfd05d3f03e81ebb5009c933accc1bde0bd4",
+    "partner_programs/solution_history_api.py": "18696609fd32142fba9d4544b1bb86c3347f53cde1f1e73c2d62003345c1b01d",
+    "partner_programs/solution_admin.py": "94debc57ea4ec58b66cdbb8f94d686157782ae5b4fe2196d373c0b975d97fc32",
+    "partner_programs/solution_lifecycle_signals.py": "312e48151ed4e5352a19878ef70c4c74d708a66ac3e84c6e56d7ccdaa1ae27de",
+    "partner_programs/urls.py": "357d432e1c8d3e1d39b715c5d74be13327331b778bddaf9ef7750dfbb25cca0b",
+    "partner_programs/migrations/0035_solution_administrative_history.py": "897cf780387cd12b65f8dc6a423340351e12b24292f9a7ceb7d1530ffbb7e773",
+    "partner_programs/tests/test_solution_administrative_history.py": "4ab5871d96f6930cc294bcf0c37ffe74ae4e3e535dd8ec4c2d84b7d454f9d370",
+    "partner_programs/tests/test_solution_case_actions.py": "7011768320f8e0db9354e3397e6d9fe3cac71315169ab89020fcc7620126e3ea"
+  },
+  "helpers": {
+    "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-case-revision-contract.py": "115958bd81542aa17c63063414d34f13d6f744780307cf344b59edf490e7d26f",
+    "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-case-revision-migrate.py": "cc18452ebe1373d2e0a48521369f0f299169144d37c8e651ca2b7f171d56c068",
+    "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-case-revision-migrate-before-pkfix.py": "351a827ec808a004a31a9d57073c6332c6a8fd4b59f46d76ab8421c044e15f4c",
+    "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-case-revision-http.py": "aca5298c061ff4334685998322eb77beef5d19019053081af0826db9be2bed49",
+    "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-case-revision-http-before-resume.py": "7db173c3871e4d4683f6ed6c882fbf91650397f0db99cec7f11ba9f93440655a",
+    "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-case-revision-http-before-score-wire-fix.py": "e53319a63c464a8425ad4b7ea571c486e11da72150041a8cf21b362f4129ebbd",
+    "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-case-revision-http-before-default-criterion-fix.py": "0f12e7bf568f7286b0cb273d5cd59853f26cc40a34df82bce6ed1f26f9148c21",
+    "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-case-revision-legacy-boundary.py": "87675ed9e0cfda444c978c9feeeff691153948734dc53acbc7b5d980531cd7a5",
+    "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-case-revision-package.py": "64811a635965ca9af495888bd167cf1d803c952a15250cf0058306e1f3cbb160"
+  },
+  "precedingCi": {
+    "head": "f9ca4c45c020b9316a9b48910d77e994a867a29d",
+    "postgres": 40191843680,
+    "general": 40191838237,
+    "status": "completed/success",
+    "notProofForNewProduct": true
+  },
+  "limitations": [
+    "No new UI/browser acceptance; D02/D03 pending",
+    "Only fresh local programs35/36 changed; all previously selected22 models unchanged",
+    "Core resumed after harness status/type/default-criterion corrections; no repeated submission or admin apply",
+    "No merge/deploy/real-program switch/automatic migration",
+    "Member exclusion/registration removal/archive still pending",
+    "Competitive draft publication and full QA01/REL01 open"
+  ],
+  "staticChecks": {
+    "black": true,
+    "flake8": true,
+    "djangoCheck": true,
+    "migrationConsistency": true,
+    "c00Validator": true,
+    "diffCheck": true
+  }
+}
