@@ -1,0 +1,174 @@
+{
+  "status": "PASS",
+  "backendHead": "db7ffe4d6124b16232685fb49f77105f1436bacf",
+  "c00": "1.16.0",
+  "jsonResponses": 7,
+  "xlsxResponses": 3,
+  "totalResponses": 10,
+  "checks": [
+    {
+      "program": 27,
+      "solution": 42,
+      "key": "case_championship",
+      "jsonNumberType": "int",
+      "jsonNumberValue": 0,
+      "jsonBooleanValue": false,
+      "xlsxNumberType": "n",
+      "xlsxBooleanType": "b",
+      "missingOptionalField": 209,
+      "missingAnswerRowAbsent": true,
+      "definitionRowPresent": true
+    },
+    {
+      "program": 28,
+      "solution": 43,
+      "key": "hackathon",
+      "jsonNumberType": "int",
+      "jsonNumberValue": 0,
+      "jsonBooleanValue": false,
+      "xlsxNumberType": "n",
+      "xlsxBooleanType": "b",
+      "missingOptionalField": 221,
+      "missingAnswerRowAbsent": true,
+      "definitionRowPresent": true
+    },
+    {
+      "program": 29,
+      "solution": 44,
+      "key": "noncompetitive",
+      "jsonNumberType": "int",
+      "jsonNumberValue": 0,
+      "jsonBooleanValue": false,
+      "xlsxNumberType": "n",
+      "xlsxBooleanType": "b",
+      "missingOptionalField": 229,
+      "missingAnswerRowAbsent": true,
+      "definitionRowPresent": true
+    },
+    {
+      "program": 11,
+      "solution": 12,
+      "template": "case_championship",
+      "snapshotFormAnswersMembersUnchanged": true,
+      "liveFormDifferent": true,
+      "newRequiredOnlyInLive": [
+        82
+      ],
+      "submittedReadinessUnaffected": true
+    },
+    {
+      "program": 12,
+      "solution": 13,
+      "template": "hackathon",
+      "snapshotFormAnswersMembersUnchanged": true,
+      "liveFormDifferent": true,
+      "newRequiredOnlyInLive": [
+        83
+      ],
+      "submittedReadinessUnaffected": true
+    }
+  ],
+  "events": [
+    {
+      "role": "form:captain",
+      "path": "/programs/27/solutions/42/",
+      "status": 200,
+      "responseSha256": "d7bcbd548ee07c33fa275c5461962c03a05ae85d8598f744cdc7c984552bea5d",
+      "cacheControl": null
+    },
+    {
+      "role": "form:manager",
+      "path": "/programs/27/management/solution-analytics/export/?kind=solutions",
+      "status": 200,
+      "binary": "case_championship-answers.xlsx",
+      "bytes": 8150,
+      "sha256": "45dd742d6a66d89908fd001140cb7ab9583f076a2bffd7f5408becb6da907eca",
+      "cacheControl": "private, no-store"
+    },
+    {
+      "role": "form:captain",
+      "path": "/programs/28/solutions/43/",
+      "status": 200,
+      "responseSha256": "b8d9e37a6a29461e121338a343da5ce4a50f02c50a91b8dd12bdfca8d913c012",
+      "cacheControl": null
+    },
+    {
+      "role": "form:manager",
+      "path": "/programs/28/management/solution-analytics/export/?kind=solutions",
+      "status": 200,
+      "binary": "hackathon-answers.xlsx",
+      "bytes": 8347,
+      "sha256": "c3d79ee5d3d96f1e0faa9e210c4d289762eef26d852265fb0e97e1eaef6674b6",
+      "cacheControl": "private, no-store"
+    },
+    {
+      "role": "form:captain",
+      "path": "/programs/29/solutions/44/",
+      "status": 200,
+      "responseSha256": "6dcbd5572cf4c835b7ae3b463f1af52e6cd4f3eb718b13febf9b203ed8a0473a",
+      "cacheControl": null
+    },
+    {
+      "role": "form:manager",
+      "path": "/programs/29/management/solution-analytics/export/?kind=solutions",
+      "status": 200,
+      "binary": "noncompetitive-answers.xlsx",
+      "bytes": 8148,
+      "sha256": "4e6c53e137af9765ca6a7b48c6ae84b21e8ddbc20b0b7715267dd10108d81aae",
+      "cacheControl": "private, no-store"
+    },
+    {
+      "role": "negative:captain",
+      "path": "/programs/11/solutions/12/",
+      "status": 200,
+      "responseSha256": "b1ccd56edfeb73130c1f36a5fbbd6456a3291354f761aee5d43d03166e845134",
+      "cacheControl": null
+    },
+    {
+      "role": "negative:captain",
+      "path": "/programs/11/solution-form/",
+      "status": 200,
+      "responseSha256": "d37672fd3374fc8ee35443af15d3628400277cac21088b0c7fc247de0a8be507",
+      "cacheControl": null
+    },
+    {
+      "role": "negative:captain",
+      "path": "/programs/12/solutions/13/",
+      "status": 200,
+      "responseSha256": "b6497232b8d04a69f6123d6a4783109cdf48f99f4ca0e175ff7e9f4590592b17",
+      "cacheControl": null
+    },
+    {
+      "role": "negative:captain",
+      "path": "/programs/12/solution-form/",
+      "status": 200,
+      "responseSha256": "5879b4be837e6719627d7c29f1e7eb8ec8da057873848d3317afa4d326dd1599",
+      "cacheControl": null
+    }
+  ],
+  "domainModels": [
+    "partner_programs.PartnerProgram",
+    "partner_programs.PartnerProgramField",
+    "partner_programs.PartnerProgramUserProfile",
+    "partner_programs.ProgramSolution",
+    "partner_programs.ProgramSolutionAnswer",
+    "partner_programs.ProgramSolutionMember",
+    "partner_programs.SolutionInvitation",
+    "project_rates.SolutionScore",
+    "project_rates.SolutionExpertAssignment",
+    "project_rates.Criteria",
+    "users.Expert",
+    "files.UserFile",
+    "projects.Project",
+    "users.Expert_programs",
+    "partner_programs.PartnerProgram_managers"
+  ],
+  "domainBefore": "f15e4e8a179c7a4e3e046a89d4b244973da0aa7f024c789b4b0964eb41423d9b",
+  "domainAfter": "f15e4e8a179c7a4e3e046a89d4b244973da0aa7f024c789b4b0964eb41423d9b",
+  "domainMutations": 0,
+  "newFixtures": 0,
+  "limits": [
+    "Read-only current data/export verification; not a replay of historical browser mutation phases.",
+    "Missing optional answer has no answer row; its definition stays in the workbook."
+  ]
+}
