@@ -171,3 +171,39 @@ Checked by source/review: новые DTO/книга используют Solutio
 Not checked: новый frontend экран и его browser acceptance, reminder confirmation/delivery, destructive management actions, оставшаяся публикация/QA01/REL01. Этот блок — полный набор указанных пяти read/export API, не готовность всей BE09/FE08. Large-volume memory/load benchmark и пересчет книги внутри Excel не выполнялись. Default legacy_project и реальные программы не переключались.
 
 Предыдущий опубликованный f75da24 прошел Linux PostgreSQL CI 40146313783: 1573 full-suite tests и 39 locking tests PASS; общий CI 40146310069 на момент следующего checkpoint еще выполнялся. Новый commit основной аналитики требует собственного CI, результат предыдущего не подменяет его проверку.
+
+## Напоминания участникам без команды
+
+Current behavior: существующий POST `/programs/{pk}/manager-overview/attention/participants-without-team/{reminder-preview|reminders}/` уже выбирает в solution mode капитанов/принятых участников по ProgramSolution/ProgramSolutionMember. Ожидающее приглашение не создает членство. Однако общий текст предлагает создать проект.
+
+Target behavior: только в solution mode текст предлагает «Создайте решение или присоединитесь к команде». Это касается КЧ, хакатона и неконкурсной программы. Legacy mode сохраняет «Создайте проект». Ссылка остается текущим `/office/program/{pk}/members`. Категория participants-without-visit сохраняет прежний текст и адрес программы.
+
+Контракт before/after: endpoint/method, request selection/search/token, response preview/token/counts/recipients, ошибки и manager/admin permissions не меняются. Меняется только значение preview_text и соответствующий текст сохраненного уведомления/письма. C00 1.9.0 не расширяется: это исправление существующего участнического flow. Миграция не нужна. Angular consumer продолжает показывать server preview_text; новый UI D02 ожидает отдельного согласования.
+
+План: mode-aware текст общего message_for → PostgreSQL tests реального preview/confirm/outbox/delivery на locmem email → regression существующих attention actions и membership → review. Реальные письма не отправляются. Напоминания экспертам о решениях, новая категория решений и destructive commands не входят в этот локальный блок и остаются впереди.
+
+| AC | Проверяемое поведение |
+| --- | --- |
+| ATT01 | Preview solution-программы адресован только зарегистрированным пользователям без принятой команды этой программы; pending приглашение и исторический Project не подменяют членство |
+| ATT02 | КЧ/хакатон/noncompetitive используют «Создайте решение», legacy — «Создайте проект»; пути, структура ответа и visits-сценарий сохранены |
+| ATT03 | Confirm повторно проверяет состав, создает outbox после валидного preview; повтор token не создает вторую рассылку, очередь запускается после commit |
+| ATT04 | Вступивший в команду после preview исключается на confirm, вступивший после confirm — при delivery; письмо повторно не отправляется |
+| ATT05 | Локальная доставка содержит solution-текст и рабочий программный путь; реальные SMTP/Celery не используются в проверке |
+| ATT06 | Прямой API сохраняет manager/admin program scope: участник, посторонний и аноним не получают preview/confirm; неверная программа не раскрывает данные |
+
+### Verification и review участнических напоминаний
+
+| AC | Evidence | Verdict |
+| --- | --- | --- |
+| ATT01 | Реальный preview API: капитан/принятый участник исключены, pending и участник с историческим Project включены, чужая программа исключена; preview не создает outbox | PASS |
+| ATT02 | API matrix case_championship/hackathon/noncompetitive/legacy; visits сохраняет текст и программный путь | PASS |
+| ATT03 | Confirm API и captureOnCommitCallbacks: сохраненные source user IDs/text/path, один durable notice и один enqueue при повторе token | PASS |
+| ATT04 | Принятый member после preview дает skipped=1 на confirm; капитан нового решения после confirm отменяет delivery с attempts=0 | PASS |
+| ATT05 | Locmem delivery: solution-текст, существующий /members URL, один приватный адресат и одно письмо при двух вызовах; sent/attempts/emailed_at сохранены | PASS |
+| ATT06 | Реальные прямые API checks anonymous=401, participant/outsider/wrong-program=403, staff=200; outbox без прав не создан | PASS |
+
+Checked by tests: 8 новых PostgreSQL tests PASS; общий повтор с существующими attention actions/analytics — **107 tests PASS**, включая эти восемь. Команда: `python procollab-test-unicode.py partner_programs.tests.test_solution_participant_reminders partner_programs.tests.test_attention_actions partner_programs.tests.test_attention_analytics_api`; локальный PostgreSQL 18, порт 55439, ICU test DB. Log: `C:/Users/evsee/AppData/Local/Temp/procollab-solution-participant-reminders-regression.log`. Black/Flake8 только измененных Python-файлов и git diff --check PASS.
+
+Checked by source/review: endpoint → managed_program → selection/preview → подписанный token → confirm lock/recheck → on_commit/outbox → delivery recheck прослежен; код изменяет только mode-aware текст message_for. Angular analytics-drilldown показывает server previewText, response/payload/permission/path не менялись. Blocking findings этого локального блока не обнаружены. Build неприменим к изменению текста Python; новая схема или migration не требуется.
+
+Not checked: новый manager Angular UI и его delivery interaction, внешний SMTP/Celery, production. Новые напоминания экспертам о решениях и остальные BE09/FE08 остаются незавершенными; этот результат не означает готовность всей feature или прохождение нового Linux CI.

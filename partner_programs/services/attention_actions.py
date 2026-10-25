@@ -123,9 +123,10 @@ def message_for(program, category, recipient, rows):
         text = f"Вы зарегистрированы в программе «{program.name}». Зайдите на PROCOLLAB, чтобы начать участие."
         path = f"/office/program/{program.pk}"
     elif category == "participants-without-team":
+        work_type = "решение" if program.solution_storage_mode == "solution" else "проект"
         text = (
             f"Вы участвуете в программе «{program.name}», но пока не состоите в команде. "
-            "Создайте проект или присоединитесь к команде."
+            f"Создайте {work_type} или присоединитесь к команде."
         )
         path = f"/office/program/{program.pk}/members"
     else:
