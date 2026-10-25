@@ -1,5 +1,5 @@
 {
-  "contract_version": "1.17.0",
+  "contract_version": "1.18.0",
   "description": "Независимые примеры, не последовательность операций; фиктивные данные.",
   "scenarios": [
     {
@@ -9342,6 +9342,816 @@
         "detail": "Программа использует заявки на основе проектов.",
         "errors": [],
         "meta": {}
+      }
+    },
+    {
+      "name": "member_removal_preview_submitted",
+      "operation_id": "previewSolutionMemberRemoval",
+      "status": 200,
+      "response": {
+        "application": {
+          "kind": "solution",
+          "program_id": 12,
+          "solution_id": 301,
+          "name": "Решение команды"
+        },
+        "member": {
+          "user": {
+            "id": 10,
+            "first_name": "Участник",
+            "last_name": "Команды",
+            "avatar_url": null
+          },
+          "role": "Backend-разработчик",
+          "specialization": null,
+          "joined_at": "2026-10-24T10:00:00Z",
+          "is_captain": false
+        },
+        "solution_version": 7,
+        "is_submitted": true,
+        "remaining_member_count": 1,
+        "revoked_invitation_count": 0,
+        "score_count": 2,
+        "errors": [],
+        "can_apply": true,
+        "preview_token": "opaque-member-removal-preview-token"
+      },
+      "request": {
+        "user_id": 10
+      }
+    },
+    {
+      "name": "member_removal_preview_draft_pending",
+      "operation_id": "previewSolutionMemberRemoval",
+      "status": 200,
+      "response": {
+        "application": {
+          "kind": "solution",
+          "program_id": 12,
+          "solution_id": 301,
+          "name": "Решение команды"
+        },
+        "member": {
+          "user": {
+            "id": 10,
+            "first_name": "Участник",
+            "last_name": "Команды",
+            "avatar_url": null
+          },
+          "role": "Backend-разработчик",
+          "specialization": null,
+          "joined_at": "2026-10-24T10:00:00Z",
+          "is_captain": false
+        },
+        "solution_version": 7,
+        "is_submitted": false,
+        "remaining_member_count": 1,
+        "revoked_invitation_count": 1,
+        "score_count": 0,
+        "errors": [],
+        "can_apply": true,
+        "preview_token": "opaque-member-removal-preview-token"
+      },
+      "request": {
+        "user_id": 10
+      }
+    },
+    {
+      "name": "member_removal_preview_captain",
+      "operation_id": "previewSolutionMemberRemoval",
+      "status": 200,
+      "response": {
+        "application": {
+          "kind": "solution",
+          "program_id": 12,
+          "solution_id": 301,
+          "name": "Решение команды"
+        },
+        "member": {
+          "user": {
+            "id": 9,
+            "first_name": "Участник",
+            "last_name": "Команды",
+            "avatar_url": null
+          },
+          "role": "Backend-разработчик",
+          "specialization": null,
+          "joined_at": "2026-10-24T10:00:00Z",
+          "is_captain": true
+        },
+        "solution_version": 7,
+        "is_submitted": true,
+        "remaining_member_count": 1,
+        "revoked_invitation_count": 0,
+        "score_count": 2,
+        "errors": [
+          {
+            "path": "user_id",
+            "code": "captain_cannot_be_removed",
+            "detail": "Капитана нельзя исключить из состава. Для него снимите заявку с участия.",
+            "field_id": null
+          }
+        ],
+        "can_apply": false,
+        "preview_token": null
+      },
+      "request": {
+        "user_id": 9
+      }
+    },
+    {
+      "name": "member_removal_apply_submitted",
+      "operation_id": "applySolutionMemberRemoval",
+      "status": 200,
+      "response": {
+        "solution_id": 301,
+        "solution_version": 8,
+        "updated_at": "2026-10-25T15:00:00Z"
+      },
+      "request": {
+        "user_id": 10,
+        "preview_token": "opaque-member-removal-preview-token"
+      }
+    },
+    {
+      "name": "member_removal_anonymous",
+      "operation_id": "previewSolutionMemberRemoval",
+      "status": 401,
+      "response": {
+        "code": "authentication_required",
+        "detail": "Проверьте данные и подтвердите действие заново.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "user_id": 10
+      }
+    },
+    {
+      "name": "member_removal_captain_denied",
+      "operation_id": "previewSolutionMemberRemoval",
+      "status": 403,
+      "response": {
+        "code": "permission_denied",
+        "detail": "Проверьте данные и подтвердите действие заново.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "user_id": 10
+      }
+    },
+    {
+      "name": "member_removal_foreign_manager",
+      "operation_id": "previewSolutionMemberRemoval",
+      "status": 403,
+      "response": {
+        "code": "permission_denied",
+        "detail": "Проверьте данные и подтвердите действие заново.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "user_id": 10
+      }
+    },
+    {
+      "name": "member_removal_foreign_solution",
+      "operation_id": "previewSolutionMemberRemoval",
+      "status": 404,
+      "response": {
+        "code": "not_found",
+        "detail": "Проверьте данные и подтвердите действие заново.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "user_id": 10
+      }
+    },
+    {
+      "name": "member_removal_missing_member",
+      "operation_id": "previewSolutionMemberRemoval",
+      "status": 404,
+      "response": {
+        "code": "not_found",
+        "detail": "Проверьте данные и подтвердите действие заново.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "user_id": 10
+      }
+    },
+    {
+      "name": "member_removal_legacy",
+      "operation_id": "previewSolutionMemberRemoval",
+      "status": 409,
+      "response": {
+        "code": "solution_mode_unavailable",
+        "detail": "Проверьте данные и подтвердите действие заново.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "user_id": 10
+      }
+    },
+    {
+      "name": "member_removal_replay",
+      "operation_id": "applySolutionMemberRemoval",
+      "status": 409,
+      "response": {
+        "code": "solution_action_conflict",
+        "detail": "Проверьте данные и подтвердите действие заново.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "user_id": 10,
+        "preview_token": "opaque-member-removal-preview-token"
+      }
+    },
+    {
+      "name": "member_removal_stale",
+      "operation_id": "applySolutionMemberRemoval",
+      "status": 409,
+      "response": {
+        "code": "solution_action_conflict",
+        "detail": "Проверьте данные и подтвердите действие заново.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "user_id": 10,
+        "preview_token": "opaque-member-removal-preview-token"
+      }
+    },
+    {
+      "name": "member_removal_expired",
+      "operation_id": "applySolutionMemberRemoval",
+      "status": 409,
+      "response": {
+        "code": "solution_action_conflict",
+        "detail": "Проверьте данные и подтвердите действие заново.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "user_id": 10,
+        "preview_token": "opaque-member-removal-preview-token"
+      }
+    },
+    {
+      "name": "member_removal_changed_target",
+      "operation_id": "applySolutionMemberRemoval",
+      "status": 409,
+      "response": {
+        "code": "solution_action_conflict",
+        "detail": "Проверьте данные и подтвердите действие заново.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "user_id": 10,
+        "preview_token": "opaque-member-removal-preview-token"
+      }
+    },
+    {
+      "name": "member_removal_missing_token",
+      "operation_id": "applySolutionMemberRemoval",
+      "status": 400,
+      "response": {
+        "code": "validation_error",
+        "detail": "Проверьте данные и подтвердите действие заново.",
+        "errors": [],
+        "meta": {}
+      },
+      "invalid_request": {
+        "user_id": 10
+      }
+    },
+    {
+      "name": "member_removal_invalid_user",
+      "operation_id": "previewSolutionMemberRemoval",
+      "status": 400,
+      "response": {
+        "code": "validation_error",
+        "detail": "Проверьте данные и подтвердите действие заново.",
+        "errors": [],
+        "meta": {}
+      },
+      "invalid_request": {
+        "user_id": 0
+      }
+    },
+    {
+      "name": "member_removal_unknown_query",
+      "operation_id": "previewSolutionMemberRemoval",
+      "status": 400,
+      "response": {
+        "code": "validation_error",
+        "detail": "Проверьте данные и подтвердите действие заново.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "user_id": 10
+      },
+      "query": {
+        "all": true
+      }
+    },
+    {
+      "name": "member_removal_history_detail",
+      "operation_id": "readSolutionAdminChange",
+      "status": 200,
+      "response": {
+        "change": {
+          "id": 73,
+          "application": {
+            "kind": "solution",
+            "program_id": 12,
+            "solution_id": 301,
+            "name": "Решение команды"
+          },
+          "action": "remove_member",
+          "actor": {
+            "id": 8,
+            "first_name": "Организатор",
+            "last_name": "Программы",
+            "avatar_url": null
+          },
+          "actor_name": "Организатор Программы",
+          "created_at": "2026-10-25T12:00:00Z",
+          "before_version": 7,
+          "after_version": 8,
+          "removed_assignments_count": 0,
+          "score_count": 2,
+          "was_submitted": true,
+          "removed_member": {
+            "user": {
+              "id": 10,
+              "first_name": "Участник",
+              "last_name": "Команды",
+              "avatar_url": null
+            },
+            "role": "Backend-разработчик",
+            "specialization": null,
+            "joined_at": "2026-10-24T10:00:00Z",
+            "is_captain": false
+          },
+          "revoked_invitation_count": 0
+        },
+        "before_snapshot": {
+          "name": "Сервис для студентов",
+          "captain_id": 7,
+          "members": [
+            {
+              "user": {
+                "id": 7,
+                "first_name": "Иван",
+                "last_name": "Петров",
+                "avatar_url": null
+              },
+              "role": null,
+              "specialization": null,
+              "joined_at": "2026-10-23T09:00:00Z",
+              "is_captain": true
+            },
+            {
+              "user": {
+                "id": 8,
+                "first_name": "Анна",
+                "last_name": "Смирнова",
+                "avatar_url": null
+              },
+              "role": null,
+              "specialization": null,
+              "joined_at": "2026-10-23T09:00:00Z",
+              "is_captain": false
+            },
+            {
+              "user": {
+                "id": 10,
+                "first_name": "Участник",
+                "last_name": "Команды",
+                "avatar_url": null
+              },
+              "role": "Backend-разработчик",
+              "specialization": null,
+              "joined_at": "2026-10-24T10:00:00Z",
+              "is_captain": false
+            }
+          ],
+          "form": {
+            "program_id": 12,
+            "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "template": "case_championship",
+            "is_configured": true,
+            "is_snapshot": true,
+            "fields": [
+              {
+                "id": 1001,
+                "type": "select",
+                "purpose": "case",
+                "label": "Кейс",
+                "help_text": "",
+                "required": true,
+                "position": 0,
+                "options": [
+                  "Цифровой сервис",
+                  "Операционная эффективность"
+                ],
+                "validation": {
+                  "min_length": null,
+                  "max_length": null,
+                  "minimum": null,
+                  "maximum": null,
+                  "allowed_extensions": [],
+                  "max_file_size_bytes": null
+                }
+              },
+              {
+                "id": 1002,
+                "type": "textarea",
+                "purpose": "other",
+                "label": "Краткое описание",
+                "help_text": "",
+                "required": true,
+                "position": 1,
+                "options": [],
+                "validation": {
+                  "min_length": null,
+                  "max_length": 3000,
+                  "minimum": null,
+                  "maximum": null,
+                  "allowed_extensions": [],
+                  "max_file_size_bytes": null
+                }
+              },
+              {
+                "id": 1003,
+                "type": "file",
+                "purpose": "presentation",
+                "label": "Презентация PDF",
+                "help_text": "",
+                "required": true,
+                "position": 2,
+                "options": [],
+                "validation": {
+                  "min_length": null,
+                  "max_length": null,
+                  "minimum": null,
+                  "maximum": null,
+                  "allowed_extensions": [
+                    "pdf"
+                  ],
+                  "max_file_size_bytes": 20971520
+                }
+              },
+              {
+                "id": 1004,
+                "type": "number",
+                "purpose": "other",
+                "label": "Ожидаемый эффект",
+                "help_text": "",
+                "required": false,
+                "position": 3,
+                "options": [],
+                "validation": {
+                  "min_length": null,
+                  "max_length": null,
+                  "minimum": 0,
+                  "maximum": null,
+                  "allowed_extensions": [],
+                  "max_file_size_bytes": null
+                }
+              },
+              {
+                "id": 1005,
+                "type": "checkbox",
+                "purpose": "other",
+                "label": "Приложены расчеты",
+                "help_text": "",
+                "required": false,
+                "position": 4,
+                "options": [],
+                "validation": {
+                  "min_length": null,
+                  "max_length": null,
+                  "minimum": null,
+                  "maximum": null,
+                  "allowed_extensions": [],
+                  "max_file_size_bytes": null
+                }
+              }
+            ]
+          },
+          "answers": [
+            {
+              "field_id": 1001,
+              "value": "Цифровой сервис"
+            },
+            {
+              "field_id": 1002,
+              "value": "Единый сервис поддержки студентов."
+            },
+            {
+              "field_id": 1004,
+              "value": 0
+            },
+            {
+              "field_id": 1005,
+              "value": false
+            },
+            {
+              "field_id": 1003,
+              "value": {
+                "url": "https://cdn.example.test/solutions/301/presentation.pdf"
+              }
+            }
+          ],
+          "submitted_at": "2026-10-23T10:05:00Z"
+        },
+        "after_snapshot": {
+          "name": "Сервис для студентов",
+          "captain_id": 7,
+          "members": [
+            {
+              "user": {
+                "id": 7,
+                "first_name": "Иван",
+                "last_name": "Петров",
+                "avatar_url": null
+              },
+              "role": null,
+              "specialization": null,
+              "joined_at": "2026-10-23T09:00:00Z",
+              "is_captain": true
+            },
+            {
+              "user": {
+                "id": 8,
+                "first_name": "Анна",
+                "last_name": "Смирнова",
+                "avatar_url": null
+              },
+              "role": null,
+              "specialization": null,
+              "joined_at": "2026-10-23T09:00:00Z",
+              "is_captain": false
+            }
+          ],
+          "form": {
+            "program_id": 12,
+            "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "template": "case_championship",
+            "is_configured": true,
+            "is_snapshot": true,
+            "fields": [
+              {
+                "id": 1001,
+                "type": "select",
+                "purpose": "case",
+                "label": "Кейс",
+                "help_text": "",
+                "required": true,
+                "position": 0,
+                "options": [
+                  "Цифровой сервис",
+                  "Операционная эффективность"
+                ],
+                "validation": {
+                  "min_length": null,
+                  "max_length": null,
+                  "minimum": null,
+                  "maximum": null,
+                  "allowed_extensions": [],
+                  "max_file_size_bytes": null
+                }
+              },
+              {
+                "id": 1002,
+                "type": "textarea",
+                "purpose": "other",
+                "label": "Краткое описание",
+                "help_text": "",
+                "required": true,
+                "position": 1,
+                "options": [],
+                "validation": {
+                  "min_length": null,
+                  "max_length": 3000,
+                  "minimum": null,
+                  "maximum": null,
+                  "allowed_extensions": [],
+                  "max_file_size_bytes": null
+                }
+              },
+              {
+                "id": 1003,
+                "type": "file",
+                "purpose": "presentation",
+                "label": "Презентация PDF",
+                "help_text": "",
+                "required": true,
+                "position": 2,
+                "options": [],
+                "validation": {
+                  "min_length": null,
+                  "max_length": null,
+                  "minimum": null,
+                  "maximum": null,
+                  "allowed_extensions": [
+                    "pdf"
+                  ],
+                  "max_file_size_bytes": 20971520
+                }
+              },
+              {
+                "id": 1004,
+                "type": "number",
+                "purpose": "other",
+                "label": "Ожидаемый эффект",
+                "help_text": "",
+                "required": false,
+                "position": 3,
+                "options": [],
+                "validation": {
+                  "min_length": null,
+                  "max_length": null,
+                  "minimum": 0,
+                  "maximum": null,
+                  "allowed_extensions": [],
+                  "max_file_size_bytes": null
+                }
+              },
+              {
+                "id": 1005,
+                "type": "checkbox",
+                "purpose": "other",
+                "label": "Приложены расчеты",
+                "help_text": "",
+                "required": false,
+                "position": 4,
+                "options": [],
+                "validation": {
+                  "min_length": null,
+                  "max_length": null,
+                  "minimum": null,
+                  "maximum": null,
+                  "allowed_extensions": [],
+                  "max_file_size_bytes": null
+                }
+              }
+            ]
+          },
+          "answers": [
+            {
+              "field_id": 1001,
+              "value": "Цифровой сервис"
+            },
+            {
+              "field_id": 1002,
+              "value": "Единый сервис поддержки студентов."
+            },
+            {
+              "field_id": 1004,
+              "value": 0
+            },
+            {
+              "field_id": 1005,
+              "value": false
+            },
+            {
+              "field_id": 1003,
+              "value": {
+                "url": "https://cdn.example.test/solutions/301/presentation.pdf"
+              }
+            }
+          ],
+          "submitted_at": "2026-10-23T10:05:00Z"
+        }
+      }
+    },
+    {
+      "name": "member_removal_history_draft",
+      "operation_id": "readSolutionAdminChange",
+      "status": 200,
+      "response": {
+        "change": {
+          "id": 73,
+          "application": {
+            "kind": "solution",
+            "program_id": 12,
+            "solution_id": 301,
+            "name": "Решение команды"
+          },
+          "action": "remove_member",
+          "actor": {
+            "id": 8,
+            "first_name": "Организатор",
+            "last_name": "Программы",
+            "avatar_url": null
+          },
+          "actor_name": "Организатор Программы",
+          "created_at": "2026-10-25T12:00:00Z",
+          "before_version": 7,
+          "after_version": 8,
+          "removed_assignments_count": 0,
+          "score_count": 0,
+          "was_submitted": false,
+          "removed_member": {
+            "user": {
+              "id": 10,
+              "first_name": "Участник",
+              "last_name": "Команды",
+              "avatar_url": null
+            },
+            "role": "Backend-разработчик",
+            "specialization": null,
+            "joined_at": "2026-10-24T10:00:00Z",
+            "is_captain": false
+          },
+          "revoked_invitation_count": 1
+        },
+        "before_snapshot": null,
+        "after_snapshot": null
+      }
+    },
+    {
+      "name": "member_removal_history_mixed_list",
+      "operation_id": "listSolutionAdminChanges",
+      "status": 200,
+      "response": {
+        "count": 2,
+        "offset": 0,
+        "limit": 20,
+        "results": [
+          {
+            "id": 73,
+            "application": {
+              "kind": "solution",
+              "program_id": 12,
+              "solution_id": 301,
+              "name": "Решение команды"
+            },
+            "action": "remove_member",
+            "actor": {
+              "id": 8,
+              "first_name": "Организатор",
+              "last_name": "Программы",
+              "avatar_url": null
+            },
+            "actor_name": "Организатор Программы",
+            "created_at": "2026-10-25T12:00:00Z",
+            "before_version": 7,
+            "after_version": 8,
+            "removed_assignments_count": 0,
+            "score_count": 2,
+            "was_submitted": true,
+            "removed_member": {
+              "user": {
+                "id": 10,
+                "first_name": "Участник",
+                "last_name": "Команды",
+                "avatar_url": null
+              },
+              "role": "Backend-разработчик",
+              "specialization": null,
+              "joined_at": "2026-10-24T10:00:00Z",
+              "is_captain": false
+            },
+            "revoked_invitation_count": 0
+          },
+          {
+            "id": 71,
+            "application": {
+              "kind": "solution",
+              "program_id": 12,
+              "solution_id": 301,
+              "name": "Сервис для студентов"
+            },
+            "action": "change_case",
+            "actor": {
+              "id": 8,
+              "first_name": "Организатор",
+              "last_name": "Программы",
+              "avatar_url": null
+            },
+            "actor_name": "Организатор Программы",
+            "created_at": "2026-10-25T12:00:00Z",
+            "before_version": 7,
+            "after_version": 8,
+            "case_field_id": 1001,
+            "previous_case": "Цифровой сервис",
+            "case_name": "Образование | наука",
+            "removed_assignments_count": 1,
+            "score_count": 2,
+            "was_submitted": true
+          }
+        ]
       }
     }
   ]

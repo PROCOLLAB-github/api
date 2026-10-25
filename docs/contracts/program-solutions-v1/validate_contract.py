@@ -2,7 +2,7 @@
 import json
 from pathlib import Path
 
-from jsonschema import Draft202012Validator, FormatChecker
+from jsonschema import Draft202012Validator, FormatChecker, ValidationError
 from openapi_spec_validator import validate_spec
 
 ROOT = Path(__file__).resolve().parent
@@ -37,6 +37,15 @@ for scenario in examples["scenarios"]:
     if "request" in scenario:
         content = operation["requestBody"]["content"]["application/json"]
         check(scenario["request"], content["schema"])
+    if "invalid_request" in scenario:
+        assert scenario["status"] == 400, name
+        content = operation["requestBody"]["content"]["application/json"]
+        try:
+            check(scenario["invalid_request"], content["schema"])
+        except ValidationError:
+            pass
+        else:
+            raise AssertionError("Invalid request unexpectedly matches C00: " + name)
     response = operation["responses"][str(scenario["status"])]
     if scenario["status"] == 204:
         assert "response" not in scenario, name

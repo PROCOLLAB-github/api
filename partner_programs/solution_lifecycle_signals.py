@@ -35,6 +35,13 @@ def protect_submitted_record(sender, instance, **kwargs):
     solution = lock_saved_solution(
         instance.pk if sender is ProgramSolution else instance.solution_id
     )
+    if sender is ProgramSolutionMember:
+        from partner_programs.services.solution_member_actions import (
+            permits_member_deletion,
+        )
+
+        if permits_member_deletion(instance):
+            return
     if (
         solution
         and solution.status == "submitted"

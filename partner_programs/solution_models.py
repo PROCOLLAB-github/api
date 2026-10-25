@@ -111,12 +111,20 @@ class SolutionAdministrativeChange(models.Model):
         settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL
     )
     actor_name = models.CharField(max_length=512)
-    action = models.CharField(max_length=32, choices=[("change_case", "Смена кейса")])
+    action = models.CharField(
+        max_length=32,
+        choices=[
+            ("change_case", "Смена кейса"),
+            ("remove_member", "Исключение участника"),
+        ],
+    )
     before_version = models.PositiveBigIntegerField()
     after_version = models.PositiveBigIntegerField()
-    case_field_id = models.PositiveBigIntegerField()
+    case_field_id = models.PositiveBigIntegerField(null=True)
     previous_case = models.TextField(null=True)
-    case_name = models.CharField(max_length=1000)
+    case_name = models.CharField(max_length=1000, null=True)
+    removed_member = models.JSONField(null=True)
+    revoked_invitation_ids = models.JSONField(default=list)
     removed_assignment_ids = models.JSONField(default=list)
     score_count = models.PositiveIntegerField(default=0)
     was_submitted = models.BooleanField()
@@ -137,6 +145,24 @@ class SolutionAdministrativeChange(models.Model):
         verbose_name_plural = "История административных изменений решений"
         ordering = ["-created_at", "-pk"]
         constraints = [
+            models.CheckConstraint(
+                check=(
+                    models.Q(
+                        action="change_case",
+                        case_field_id__isnull=False,
+                        case_name__isnull=False,
+                        removed_member__isnull=True,
+                    )
+                    | models.Q(
+                        action="remove_member",
+                        case_field_id__isnull=True,
+                        previous_case__isnull=True,
+                        case_name__isnull=True,
+                        removed_member__isnull=False,
+                    )
+                ),
+                name="solution_admin_action_consistent",
+            ),
             models.UniqueConstraint(
                 fields=["solution", "after_version"],
                 name="unique_solution_admin_revision",

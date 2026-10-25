@@ -37,7 +37,7 @@ def managed_solution(program_id, solution_id, actor):
 
 
 def change_data(change):
-    return dict(
+    data = dict(
         id=change.pk,
         application=dict(
             kind="solution",
@@ -51,13 +51,22 @@ def change_data(change):
         created_at=iso(change.created_at),
         before_version=change.before_version,
         after_version=change.after_version,
-        case_field_id=change.case_field_id,
-        previous_case=change.previous_case,
-        case_name=change.case_name,
         removed_assignments_count=len(change.removed_assignment_ids),
         score_count=change.score_count,
         was_submitted=change.was_submitted,
     )
+    if change.action == "remove_member":
+        data.update(
+            removed_member=change.removed_member,
+            revoked_invitation_count=len(change.revoked_invitation_ids),
+        )
+    else:
+        data.update(
+            case_field_id=change.case_field_id,
+            previous_case=change.previous_case,
+            case_name=change.case_name,
+        )
+    return data
 
 
 class HistoryQuery(StrictSerializer):

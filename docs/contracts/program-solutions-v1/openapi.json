@@ -3,7 +3,7 @@
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "info": {
     "title": "PROCOLLAB Program Solutions C00",
-    "version": "1.17.0",
+    "version": "1.18.0",
     "description": "Контракт решений в программах для реализации и моков BE01–BE09. API base URL задается окружением. snake_case на проводе. Старые API не меняются."
   },
   "servers": [
@@ -9088,6 +9088,208 @@
           }
         }
       }
+    },
+    "/programs/{program_id}/management/solutions/{solution_id}/members/remove/preview/": {
+      "post": {
+        "operationId": "previewSolutionMemberRemoval",
+        "summary": "Исключение участника организатором",
+        "description": "Только organizer/admin своей программы, solution mode. Signed proof10min связан с actor/program/solution/user и текущими данными. Общие program→solution locks и recheck. До и после сдачи исключается принятый участник, кроме капитана; min_size остается проверкой сдачи. Регистрация, ответы, файлы, оценки и назначения сохраняются. Pending приглашения исключенного отзываются; accepted/declined история не дает доступа к материалам и сохраняется. Submitted snapshot меняет только members; исходный snapshot и исключенный Member сохраняются в append-only истории. Обычные writers остаются frozen. Независимо от формы/срока/creation flag; legacy handlers не меняются. Неизвестные поля/query запрещены. private, no-store.",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "solution_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolutionMemberRemovalPreviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Результат",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SolutionMemberRemovalPreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/programs/{program_id}/management/solutions/{solution_id}/members/remove/apply/": {
+      "post": {
+        "operationId": "applySolutionMemberRemoval",
+        "summary": "Исключение участника организатором",
+        "description": "Только organizer/admin своей программы, solution mode. Signed proof10min связан с actor/program/solution/user и текущими данными. Общие program→solution locks и recheck. До и после сдачи исключается принятый участник, кроме капитана; min_size остается проверкой сдачи. Регистрация, ответы, файлы, оценки и назначения сохраняются. Pending приглашения исключенного отзываются; accepted/declined история не дает доступа к материалам и сохраняется. Submitted snapshot меняет только members; исходный snapshot и исключенный Member сохраняются в append-only истории. Обычные writers остаются frozen. Независимо от формы/срока/creation flag; legacy handlers не меняются. Неизвестные поля/query запрещены. private, no-store.",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "solution_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolutionMemberRemovalApplyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Результат",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MutationReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -13906,6 +14108,176 @@
         "additionalProperties": false
       },
       "SolutionAdminChange": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/SolutionCaseAdminChange"
+          },
+          {
+            "$ref": "#/components/schemas/SolutionMemberAdminChange"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "action"
+        }
+      },
+      "SolutionAdminChangePage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "count",
+          "offset",
+          "limit",
+          "results"
+        ],
+        "properties": {
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SolutionAdminChange"
+            }
+          }
+        }
+      },
+      "SolutionAdminChangeDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "change",
+          "before_snapshot",
+          "after_snapshot"
+        ],
+        "properties": {
+          "change": {
+            "$ref": "#/components/schemas/SolutionAdminChange"
+          },
+          "before_snapshot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SubmissionSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "after_snapshot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SubmissionSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "SolutionMemberRemovalPreviewRequest": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "user_id"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionMemberRemovalApplyRequest": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "preview_token": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200000
+          }
+        },
+        "required": [
+          "user_id",
+          "preview_token"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionMemberRemovalPreview": {
+        "type": "object",
+        "properties": {
+          "application": {
+            "$ref": "#/components/schemas/SolutionRef"
+          },
+          "member": {
+            "$ref": "#/components/schemas/Member"
+          },
+          "solution_version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "is_submitted": {
+            "type": "boolean"
+          },
+          "remaining_member_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "revoked_invitation_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "score_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            }
+          },
+          "can_apply": {
+            "type": "boolean"
+          },
+          "preview_token": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "application",
+          "member",
+          "solution_version",
+          "is_submitted",
+          "remaining_member_count",
+          "revoked_invitation_count",
+          "score_count",
+          "errors",
+          "can_apply",
+          "preview_token"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionCaseAdminChange": {
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -13991,70 +14363,80 @@
           }
         }
       },
-      "SolutionAdminChangePage": {
+      "SolutionMemberAdminChange": {
         "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "count",
-          "offset",
-          "limit",
-          "results"
-        ],
         "properties": {
-          "count": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "offset": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "limit": {
+          "id": {
             "type": "integer",
             "minimum": 1,
-            "maximum": 100
+            "maximum": 9007199254740991
           },
-          "results": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/SolutionAdminChange"
-            }
+          "application": {
+            "$ref": "#/components/schemas/SolutionRef"
+          },
+          "action": {
+            "const": "remove_member"
+          },
+          "actor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/User"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "actor_name": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "before_version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "after_version": {
+            "type": "integer",
+            "minimum": 2
+          },
+          "removed_assignments_count": {
+            "const": 0
+          },
+          "score_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "was_submitted": {
+            "type": "boolean"
+          },
+          "removed_member": {
+            "$ref": "#/components/schemas/Member"
+          },
+          "revoked_invitation_count": {
+            "type": "integer",
+            "minimum": 0
           }
-        }
-      },
-      "SolutionAdminChangeDetail": {
-        "type": "object",
-        "additionalProperties": false,
+        },
         "required": [
-          "change",
-          "before_snapshot",
-          "after_snapshot"
+          "id",
+          "application",
+          "action",
+          "actor",
+          "actor_name",
+          "created_at",
+          "before_version",
+          "after_version",
+          "removed_assignments_count",
+          "score_count",
+          "was_submitted",
+          "removed_member",
+          "revoked_invitation_count"
         ],
-        "properties": {
-          "change": {
-            "$ref": "#/components/schemas/SolutionAdminChange"
-          },
-          "before_snapshot": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/SubmissionSnapshot"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "after_snapshot": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/SubmissionSnapshot"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        }
+        "additionalProperties": false
       }
     }
   }

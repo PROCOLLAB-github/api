@@ -3,6 +3,7 @@ from django.urls import path
 from partner_programs.solution_action_api import SolutionActionView
 from partner_programs.solution_case_action_api import SolutionCaseChangeView
 from partner_programs.solution_history_api import SolutionHistoryView
+from partner_programs.solution_member_action_api import SolutionMemberRemovalView
 from partner_programs.solution_publication_api import (
     PublishedSolutionListView,
     PublishedSolutionDetailView,
@@ -245,6 +246,14 @@ urlpatterns = [
     path(
         "<int:pk>/management/solutions/<int:solution_id>/case/preview/",
         SolutionCaseChangeView.as_view(),
+    ),
+    path(
+        "<int:pk>/management/solutions/<int:solution_id>/members/remove/preview/",
+        SolutionMemberRemovalView.as_view(),
+    ),
+    path(
+        "<int:pk>/management/solutions/<int:solution_id>/members/remove/apply/",
+        SolutionMemberRemovalView.as_view(apply_action=True),
     ),
     path(
         "<int:pk>/management/solutions/<int:solution_id>/history/",
