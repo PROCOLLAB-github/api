@@ -44,8 +44,12 @@ def protect_submitted_record(sender, instance, **kwargs):
             return
     if (
         solution
-        and solution.status == "submitted"
-        and not (sender is SolutionInvitation and instance.status == "pending")
+        and (solution.status == "submitted" or solution.archived_at is not None)
+        and not (
+            solution.archived_at is None
+            and sender is SolutionInvitation
+            and instance.status == "pending"
+        )
     ):
         raise ProtectedError(
             "Данные и состав сданного решения зафиксированы.", [instance]

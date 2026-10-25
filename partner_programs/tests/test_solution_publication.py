@@ -491,7 +491,11 @@ class SolutionPublicationMigrationTests(TransactionTestCase):
             ).objects.create(program_id=program.pk, captain_id=captain.pk)
             executor = MigrationExecutor(connection)
             executor.migrate(after)
-            current = ProgramSolution.objects.get(pk=solution.pk)
+            current = (
+                executor.loader.project_state(after)
+                .apps.get_model("partner_programs", "ProgramSolution")
+                .objects.get(pk=solution.pk)
+            )
             self.assertIsNone(current.published_at)
             self.assertEqual(current.status, "draft")
         finally:

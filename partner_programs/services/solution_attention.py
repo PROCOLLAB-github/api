@@ -67,6 +67,7 @@ def solution_recipient_targets(program, rows):
             partner_program=program,
             solution__program=program,
             solution__status="submitted",
+            solution__archived_at__isnull=True,
             expert__programs=program,
             expert__user__is_active=True,
         )

@@ -6,6 +6,7 @@ from urllib.parse import unquote, urlsplit
 
 import requests
 from django.conf import settings
+from django.db.models import Q
 
 from files.content import detect_content_type
 from files.models import UserFile
@@ -152,22 +153,24 @@ def validate_file(solution, field, value, *, owned_urls=None):
 
 def used_by_submitted_solution(link):
     if ProgramSolutionAnswer.objects.filter(
-        solution__status="submitted", value__url=link
+        Q(solution__status="submitted") | Q(solution__archived_at__isnull=False),
+        value__url=link,
     ).exists():
         return True
     # Снимок остается источником истины и после переноса исторических записей.
-    for snapshot in ProgramSolution.objects.filter(status="submitted").values_list(
-        "submission_snapshot", flat=True
-    ):
-        if not isinstance(snapshot, dict):
-            continue
-        for answer in snapshot.get("answers", []):
-            value = answer.get("value") if isinstance(answer, dict) else None
-            if isinstance(value, dict) and value.get("url") == link:
-                return True
+    for submitted, archived in ProgramSolution.all_objects.filter(
+        Q(status="submitted") | Q(archived_at__isnull=False)
+    ).values_list("submission_snapshot", "archive_snapshot"):
+        for snapshot in (submitted, archived):
+            if not isinstance(snapshot, dict):
+                continue
+            for answer in snapshot.get("answers", []):
+                value = answer.get("value") if isinstance(answer, dict) else None
+                if isinstance(value, dict) and value.get("url") == link:
+                    return True
     return False
 
 
 def protect_solution_file(upload):
     if used_by_submitted_solution(upload.link):
-        raise SolutionError("file_in_use", "Файл используется в сданном решении.")
+        raise SolutionError("file_in_use", "Файл используется в сохраненном решении.")

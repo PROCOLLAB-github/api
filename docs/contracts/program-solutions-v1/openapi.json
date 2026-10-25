@@ -3,7 +3,7 @@
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "info": {
     "title": "PROCOLLAB Program Solutions C00",
-    "version": "1.18.0",
+    "version": "1.19.0",
     "description": "Контракт решений в программах для реализации и моков BE01–BE09. API base URL задается окружением. snake_case на проводе. Старые API не меняются."
   },
   "servers": [
@@ -167,7 +167,7 @@
       "get": {
         "operationId": "listSolutions",
         "summary": "Решения программы",
-        "description": "",
+        "description": "По умолчанию active. participation=archived/all дает собственные архивные работы капитану/сохраненному составу и organizer/admin; эксперт получает только активные назначенные работы. Архив исключен из current_application.",
         "parameters": [
           {
             "name": "program_id",
@@ -219,6 +219,19 @@
                 "not_submitted"
               ],
               "default": "all"
+            }
+          },
+          {
+            "name": "participation",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "active",
+                "archived",
+                "all"
+              ],
+              "default": "active"
             }
           }
         ],
@@ -9290,6 +9303,188 @@
           }
         }
       }
+    },
+    "/programs/{program_id}/management/solutions/archive/preview/": {
+      "post": {
+        "operationId": "previewSolutionArchive",
+        "summary": "Снятие решений с участия с сохранением работ",
+        "description": "Только organizer/admin своей программы, solution mode. Bulk signed proof10min связан с actor/program/ids и актуальными работами/составом/приглашениями/оценками/назначениями. Program→solutions locks/recheck; stale/replay409. Снятие до/после сдачи сохраняет solution/answers/UserFile/roster/scores и исходную сдачу. Pending отзываются, все назначения снимаются, включая оцененные; оценки сохраняются. Архив не участвует в текущей заявке/эксклюзивности/оценивании/аналитике/результатах/публикации. Captain/members/manager читают архив отдельно; новые заявки подчиняются текущим правилам регистрации/срока/creation flag. Draft получает archive snapshot без искусственного submit; submitted snapshot не меняется. Неизвестные body/query запрещены. private, no-store. Старые Project handlers/данные не меняются.",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolutionArchivePreviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Результат",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SolutionArchivePreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/programs/{program_id}/management/solutions/archive/apply/": {
+      "post": {
+        "operationId": "applySolutionArchive",
+        "summary": "Снятие решений с участия с сохранением работ",
+        "description": "Только organizer/admin своей программы, solution mode. Bulk signed proof10min связан с actor/program/ids и актуальными работами/составом/приглашениями/оценками/назначениями. Program→solutions locks/recheck; stale/replay409. Снятие до/после сдачи сохраняет solution/answers/UserFile/roster/scores и исходную сдачу. Pending отзываются, все назначения снимаются, включая оцененные; оценки сохраняются. Архив не участвует в текущей заявке/эксклюзивности/оценивании/аналитике/результатах/публикации. Captain/members/manager читают архив отдельно; новые заявки подчиняются текущим правилам регистрации/срока/creation flag. Draft получает archive snapshot без искусственного submit; submitted snapshot не меняется. Неизвестные body/query запрещены. private, no-store. Старые Project handlers/данные не меняются.",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolutionArchiveApplyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Результат",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SolutionArchiveReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -10290,6 +10485,9 @@
                 "type": "null"
               }
             ]
+          },
+          "participation": {
+            "$ref": "#/components/schemas/SolutionParticipation"
           }
         },
         "required": [
@@ -10358,6 +10556,9 @@
                 "type": "null"
               }
             ]
+          },
+          "participation": {
+            "$ref": "#/components/schemas/SolutionParticipation"
           }
         },
         "required": [
@@ -14114,6 +14315,9 @@
           },
           {
             "$ref": "#/components/schemas/SolutionMemberAdminChange"
+          },
+          {
+            "$ref": "#/components/schemas/SolutionArchiveAdminChange"
           }
         ],
         "discriminator": {
@@ -14182,6 +14386,9 @@
                 "type": "null"
               }
             ]
+          },
+          "archive_snapshot": {
+            "$ref": "#/components/schemas/SolutionArchiveSnapshot"
           }
         }
       },
@@ -14434,6 +14641,339 @@
           "score_count",
           "was_submitted",
           "removed_member",
+          "revoked_invitation_count"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionParticipation": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "enum": [
+              "active",
+              "archived"
+            ]
+          },
+          "archived_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "reason": {
+            "enum": [
+              "detached",
+              "registration_removed",
+              null
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "archived_at",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionArchiveSnapshot": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "captain_id",
+          "members",
+          "form",
+          "answers",
+          "captured_at"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "captain_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Member"
+            }
+          },
+          "form": {
+            "$ref": "#/components/schemas/Form"
+          },
+          "answers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Answer"
+            }
+          },
+          "captured_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "SolutionArchivePreviewRequest": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "minItems": 1,
+            "maxItems": 10000,
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "ids"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionArchiveApplyRequest": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "minItems": 1,
+            "maxItems": 10000,
+            "uniqueItems": true
+          },
+          "preview_token": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200000
+          }
+        },
+        "required": [
+          "ids",
+          "preview_token"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionArchivePreviewItem": {
+        "type": "object",
+        "properties": {
+          "application": {
+            "$ref": "#/components/schemas/SolutionRef"
+          },
+          "solution_version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "is_submitted": {
+            "type": "boolean"
+          },
+          "is_archived": {
+            "type": "boolean"
+          },
+          "score_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "removed_assignments_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "revoked_invitation_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            }
+          }
+        },
+        "required": [
+          "application",
+          "solution_version",
+          "is_submitted",
+          "is_archived",
+          "score_count",
+          "removed_assignments_count",
+          "revoked_invitation_count",
+          "errors"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionArchivePreview": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SolutionArchivePreviewItem"
+            }
+          },
+          "score_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "removed_assignments_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "revoked_invitation_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "can_apply": {
+            "type": "boolean"
+          },
+          "preview_token": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "score_count",
+          "removed_assignments_count",
+          "revoked_invitation_count",
+          "can_apply",
+          "preview_token"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionArchiveResult": {
+        "type": "object",
+        "properties": {
+          "application": {
+            "$ref": "#/components/schemas/SolutionRef"
+          },
+          "solution_version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "archived_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "application",
+          "solution_version",
+          "archived_at"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionArchiveReceipt": {
+        "type": "object",
+        "properties": {
+          "changed_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SolutionArchiveResult"
+            }
+          }
+        },
+        "required": [
+          "changed_count",
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionArchiveAdminChange": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "application": {
+            "$ref": "#/components/schemas/SolutionRef"
+          },
+          "action": {
+            "const": "archive"
+          },
+          "actor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/User"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "actor_name": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "before_version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "after_version": {
+            "type": "integer",
+            "minimum": 2
+          },
+          "removed_assignments_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "score_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "was_submitted": {
+            "type": "boolean"
+          },
+          "archived_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reason": {
+            "enum": [
+              "detached",
+              "registration_removed"
+            ]
+          },
+          "revoked_invitation_count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "id",
+          "application",
+          "action",
+          "actor",
+          "actor_name",
+          "created_at",
+          "before_version",
+          "after_version",
+          "removed_assignments_count",
+          "score_count",
+          "was_submitted",
+          "archived_at",
+          "reason",
           "revoked_invitation_count"
         ],
         "additionalProperties": false

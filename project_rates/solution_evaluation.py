@@ -112,6 +112,8 @@ def metrics(program, solutions, actor, criteria):
 
 
 def blocked_reason(program, solution, actor, criteria, state):
+    if solution.archived_at is not None:
+        return "Решение снято с участия."
     if program.solution_storage_mode != "solution":
         return "Программа использует заявки на основе проектов."
     if solution.status != "submitted":
@@ -159,6 +161,9 @@ def rating_frame(solution, actor):
 
     program = solution.program
     program_expert(program, actor)
+    from partner_programs.solution_team import require_active
+
+    require_active(solution)
     if solution.status != "submitted":
         raise SolutionError("solution_not_submitted", "Сначала нужно сдать решение.")
     criteria = list(Criteria.objects.filter(partner_program=program).order_by("pk"))

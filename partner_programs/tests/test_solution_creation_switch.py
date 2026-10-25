@@ -50,16 +50,21 @@ def toggle(program_id, enabled, *, apply=True):
     return json.loads(output.getvalue())
 
 
-def domain_state():
+def domain_state(model_registry=None):
+    selected = (
+        ProgramSolution,
+        ProgramSolutionAnswer,
+        ProgramSolutionMember,
+        SolutionInvitation,
+        Project,
+    )
+    if model_registry is not None:
+        selected = tuple(
+            model_registry.get_model(model._meta.label) for model in selected
+        )
     return {
         model._meta.label: list(model.objects.order_by("pk").values())
-        for model in (
-            ProgramSolution,
-            ProgramSolutionAnswer,
-            ProgramSolutionMember,
-            SolutionInvitation,
-            Project,
-        )
+        for model in selected
     }
 
 
@@ -457,7 +462,6 @@ class SolutionCreationSwitchMigrationTests(SubmissionFixture, TransactionTestCas
         self.ready()
         self.assertEqual(self.submit().status_code, 200)
         create_partner_program()
-        before_data = domain_state()
         columns = [
             f.attname
             for f in PartnerProgram._meta.fields
@@ -468,6 +472,8 @@ class SolutionCreationSwitchMigrationTests(SubmissionFixture, TransactionTestCas
         latest = executor.loader.graph.leaf_nodes()
         before = [("partner_programs", "0033_solution_publication")]
         after = [("partner_programs", "0034_solution_creation_switch")]
+        historical = executor.loader.project_state(after).apps
+        before_data = domain_state(historical)
         try:
             executor.migrate(before)
             executor = MigrationExecutor(connection)
@@ -479,7 +485,7 @@ class SolutionCreationSwitchMigrationTests(SubmissionFixture, TransactionTestCas
                 list(PartnerProgram.objects.order_by("pk").values(*columns)),
                 before_programs,
             )
-            self.assertEqual(domain_state(), before_data)
+            self.assertEqual(domain_state(historical), before_data)
         finally:
             MigrationExecutor(connection).migrate(latest)
 

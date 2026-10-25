@@ -1,5 +1,6 @@
 from django.contrib import admin, messages
 from django.db import transaction
+from django.db.models import Q
 
 from partner_programs.models import PartnerProgram
 from partner_programs.solution_models import (
@@ -67,10 +68,26 @@ class SolutionInvitationInline(ReadonlySolutionInline):
 
 @admin.register(ProgramSolution)
 class ProgramSolutionAdmin(admin.ModelAdmin):
-    list_display = ("id", "name", "program", "captain", "status", "submitted_at")
+    list_display = (
+        "id",
+        "name",
+        "program",
+        "captain",
+        "status",
+        "submitted_at",
+        "archived_at",
+    )
     list_filter = ("program", "status")
     search_fields = ("name", "program__name", "captain__email")
     inlines = (SolutionMemberInline, SolutionAnswerInline, SolutionInvitationInline)
+
+    def get_queryset(self, request):
+        return ProgramSolution.all_objects.all()
+
+    def has_change_permission(self, request, obj=None):
+        return super().has_change_permission(request, obj) and (
+            obj is None or obj.archived_at is None
+        )
 
     def has_add_permission(self, request):
         return False
@@ -92,18 +109,23 @@ class ProgramSolutionAdmin(admin.ModelAdmin):
         return tuple(
             field.name
             for field in self.model._meta.fields
-            if not obj or obj.status == "submitted" or field.name != "name"
+            if not obj
+            or obj.status == "submitted"
+            or obj.archived_at
+            or field.name != "name"
         )
 
     def has_delete_permission(self, request, obj=None):
         return super().has_delete_permission(request, obj) and (
-            obj is None or obj.status != "submitted"
+            obj is None or (obj.status != "submitted" and obj.archived_at is None)
         )
 
     def get_deleted_objects(self, objs, request):
         deleted, counts, needed, protected = super().get_deleted_objects(objs, request)
         protected.extend(
-            f"Сданное решение #{obj.pk}" for obj in objs if obj.status == "submitted"
+            f"Сохраненное решение #{obj.pk}"
+            for obj in objs
+            if obj.status == "submitted" or obj.archived_at
         )
         return deleted, counts, needed, protected
 
@@ -121,11 +143,13 @@ class ProgramSolutionAdmin(admin.ModelAdmin):
             .filter(pk__in=queryset.values("program_id"))
             .order_by("pk")
         )
-        submitted = queryset.filter(status="submitted").count()
-        queryset.filter(status="draft").delete()
+        submitted = queryset.filter(
+            Q(status="submitted") | Q(archived_at__isnull=False)
+        ).count()
+        queryset.filter(status="draft", archived_at__isnull=True).delete()
         if submitted:
             self.message_user(
                 request,
-                f"Сданные решения сохранены: {submitted}.",
+                f"Защищенные решения сохранены: {submitted}.",
                 level=messages.WARNING,
             )

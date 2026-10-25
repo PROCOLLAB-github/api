@@ -143,7 +143,9 @@ def enable_workspace(program):
     members = dict(program.experts.values_list("user_id", "pk"))
     historical = (
         SolutionScore.objects.filter(
-            criteria__partner_program=program, solution__program=program
+            criteria__partner_program=program,
+            solution__program=program,
+            solution__archived_at__isnull=True,
         )
         .values_list("solution_id", "user_id")
         .distinct()

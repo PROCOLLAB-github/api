@@ -124,7 +124,7 @@ def expert_metrics(program, user):
         return dict(mode=mode, assigned=None, remaining=None)
     assignments = list(
         SolutionExpertAssignment.objects.filter(
-            partner_program=program, expert__user=user
+            partner_program=program, expert__user=user, solution__archived_at__isnull=True
         ).values("solution_id", "solution__program_id", "solution__status")
     )
     readable = {

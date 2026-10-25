@@ -90,7 +90,10 @@ class InvitationListQuery(StrictSerializer):
 
 def invitation_data(invitation, actor):
     solution = invitation.solution
-    enabled = solution.program.solution_storage_mode == "solution"
+    enabled = (
+        solution.program.solution_storage_mode == "solution"
+        and solution.archived_at is None
+    )
     pending = invitation.status == "pending" and enabled
     mutable = pending and solution.status != "submitted"
     captain, recipient = (

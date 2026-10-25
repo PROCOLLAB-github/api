@@ -96,6 +96,14 @@ def context_data(program, user):
     )
 
 
+def participation_data(solution):
+    return dict(
+        status="archived" if solution.archived_at else "active",
+        archived_at=iso(solution.archived_at),
+        reason=solution.archive_reason,
+    )
+
+
 def solution_data(solution, user):
     program = solution.program
     members = list(solution.members.select_related("user"))
@@ -107,6 +115,8 @@ def solution_data(solution, user):
     )
     own = solution.captain_id == user.pk or user.pk in accepted
     submitted = solution.status == "submitted"
+    archived = solution.archived_at is not None
+    frozen = submitted or archived
     form = form_data(program)
     answers = [
         dict(field_id=a.field_id, value=a.value)
@@ -123,8 +133,8 @@ def solution_data(solution, user):
         )
         for m in members
     ]
-    snapshot = solution.submission_snapshot
-    if submitted and snapshot:
+    snapshot = solution.archive_snapshot if archived else solution.submission_snapshot
+    if frozen and snapshot:
         name, captain_id = snapshot["name"], snapshot["captain_id"]
         form, answers, member_data = (
             snapshot["form"],
@@ -133,7 +143,11 @@ def solution_data(solution, user):
         )
         accepted = {member["user"]["id"] for member in member_data}
     problems = []
-    if program.is_competitive and own and not submitted:
+    if archived:
+        problems = [
+            issue("participation", "solution_archived", "Решение снято с участия.")
+        ]
+    elif program.is_competitive and own and not submitted:
         problems = readiness_issues(solution, form, answers, accepted)
     return dict(
         id=solution.pk,
@@ -143,6 +157,7 @@ def solution_data(solution, user):
         captain_id=captain_id,
         created_at=iso(solution.created_at),
         updated_at=iso(solution.updated_at),
+        participation=participation_data(solution),
         team=dict(
             members=member_data,
             accepted_count=len(accepted),
@@ -150,7 +165,7 @@ def solution_data(solution, user):
             reserved_count=len(accepted | pending),
             min_size=program.legacy_team_min_size,
             max_size=program.legacy_team_max_size,
-            is_frozen=submitted,
+            is_frozen=frozen,
         ),
         form=form,
         answers=answers,
@@ -165,22 +180,22 @@ def solution_data(solution, user):
             can_edit=(
                 solution.captain_id == user.pk
                 and program.solution_storage_mode == "solution"
-                and not submitted
+                and not frozen
             ),
             can_manage_team=(
                 solution.captain_id == user.pk
                 and program.solution_storage_mode == "solution"
-                and not submitted
+                and not frozen
             ),
             can_invite=(
                 solution.captain_id == user.pk
                 and program.solution_storage_mode == "solution"
-                and not submitted
+                and not frozen
             ),
             can_submit=(
                 solution.captain_id == user.pk
                 and program.solution_storage_mode == "solution"
-                and not submitted
+                and not frozen
                 and program.is_competitive
                 and program.is_project_submission_open()
             ),
@@ -188,7 +203,7 @@ def solution_data(solution, user):
                 user.pk in accepted
                 and solution.captain_id != user.pk
                 and program.solution_storage_mode == "solution"
-                and not submitted
+                and not frozen
             ),
         ),
         readiness=dict(is_ready=not problems, issues=problems)
@@ -248,6 +263,9 @@ class SolutionListQuery(StrictSerializer):
     limit = serializers.IntegerField(min_value=1, max_value=100, default=20)
     offset = serializers.IntegerField(min_value=0, default=0)
     search = serializers.CharField(required=False, allow_blank=True)
+    participation = serializers.ChoiceField(
+        choices=["active", "archived", "all"], default="active"
+    )
     submission = serializers.ChoiceField(
         choices=["all", "submitted", "not_submitted"], default="all"
     )
@@ -363,10 +381,14 @@ class SolutionListCreateView(SolutionAPIView):
         if not program.is_competitive and data["submission"] != "all":
             raise ValidationError({"submission": "Фильтр сдачи неприменим."})
         rows = (
-            visible_solutions(program, request.user)
+            visible_solutions(
+                program, request.user, include_archived=data["participation"] != "active"
+            )
             .select_related("captain")
             .order_by("created_at", "pk")
         )
+        if data["participation"] == "archived":
+            rows = rows.filter(archived_at__isnull=False)
         if data.get("search"):
             rows = rows.filter(name__icontains=data["search"])
         if data["submission"] != "all":
@@ -382,8 +404,10 @@ class SolutionListCreateView(SolutionAPIView):
             name, captain = row.name, user_data(row.captain)
             accepted_count = row.members.count()
             case_value = case.value if case else None
-            if row.status == "submitted" and row.submission_snapshot:
-                snapshot = row.submission_snapshot
+            snapshot = (
+                row.archive_snapshot if row.archived_at else row.submission_snapshot
+            )
+            if snapshot and (row.status == "submitted" or row.archived_at):
                 name = snapshot["name"]
                 accepted_count = len(snapshot["members"])
                 captain = next(m["user"] for m in snapshot["members"] if m["is_captain"])
@@ -408,6 +432,7 @@ class SolutionListCreateView(SolutionAPIView):
                     case_value=case_value,
                     status=row.status,
                     submitted_at=iso(row.submitted_at),
+                    participation=participation_data(row),
                 )
             )
 
@@ -444,7 +469,7 @@ class SolutionDetailView(SolutionAPIView):
             raise Http404
         try:
             solution = (
-                visible_solutions(program, request.user)
+                visible_solutions(program, request.user, include_archived=True)
                 .select_related("program")
                 .get(pk=solution_id)
             )

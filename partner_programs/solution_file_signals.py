@@ -11,4 +11,4 @@ def protect_snapshot_file(sender, instance, using, **kwargs):
     # Collector вызывает pre_delete в atomic; блокировка общая с PATCH/submit.
     sender.objects.using(using).select_for_update().filter(pk=instance.pk).first()
     if used_by_submitted_solution(instance.pk):
-        raise ProtectedError("Файл используется в сданном решении.", [instance])
+        raise ProtectedError("Файл используется в сохраненном решении.", [instance])

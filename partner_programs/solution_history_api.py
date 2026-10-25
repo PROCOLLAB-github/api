@@ -31,7 +31,7 @@ def managed_solution(program_id, solution_id, actor):
     if not 0 < solution_id <= MAX_ID:
         raise Http404
     try:
-        return ProgramSolution.objects.get(program=program, pk=solution_id)
+        return ProgramSolution.all_objects.get(program=program, pk=solution_id)
     except ProgramSolution.DoesNotExist:
         raise Http404
 
@@ -55,7 +55,13 @@ def change_data(change):
         score_count=change.score_count,
         was_submitted=change.was_submitted,
     )
-    if change.action == "remove_member":
+    if change.action == "archive":
+        data.update(
+            archived_at=iso(change.archived_at),
+            reason=change.archive_reason,
+            revoked_invitation_count=len(change.revoked_invitation_ids),
+        )
+    elif change.action == "remove_member":
         data.update(
             removed_member=change.removed_member,
             revoked_invitation_count=len(change.revoked_invitation_ids),
@@ -96,13 +102,14 @@ class SolutionHistoryView(SolutionAPIView):
                 change = rows.get(pk=change_id)
             except SolutionAdministrativeChange.DoesNotExist:
                 raise Http404
-            return Response(
-                dict(
-                    change=change_data(change),
-                    before_snapshot=change.before_snapshot,
-                    after_snapshot=change.after_snapshot,
-                )
+            data = dict(
+                change=change_data(change),
+                before_snapshot=change.before_snapshot,
+                after_snapshot=change.after_snapshot,
             )
+            if change.action == "archive":
+                data["archive_snapshot"] = change.archive_snapshot
+            return Response(data)
         offset, limit = query.validated_data["offset"], query.validated_data["limit"]
         return Response(
             dict(

@@ -22,8 +22,9 @@ def program_for(pk, *, lock=False):
         raise Http404
 
 
-def visible_solutions(program, user):
-    query = ProgramSolution.objects.filter(program=program)
+def visible_solutions(program, user, *, include_archived=False):
+    manager = ProgramSolution.all_objects if include_archived else ProgramSolution.objects
+    query = manager.filter(program=program)
     # Эксперт получает сданные работы своей программы в пределах режима назначений.
     if can_manage_program(user, program):
         return query
@@ -41,9 +42,13 @@ def lock_solution(program_id, solution_id, actor):
     if not 0 < solution_id <= MAX_ID:
         raise Http404
     # Отдельный EXISTS до FOR UPDATE: DISTINCT нельзя блокировать в PostgreSQL.
-    if not visible_solutions(program, actor).filter(pk=solution_id).exists():
+    if (
+        not visible_solutions(program, actor, include_archived=True)
+        .filter(pk=solution_id)
+        .exists()
+    ):
         raise Http404
-    solution = ProgramSolution.objects.select_for_update().get(
+    solution = ProgramSolution.all_objects.select_for_update().get(
         pk=solution_id, program=program
     )
     solution.program = program
@@ -55,8 +60,17 @@ def require_mutable(solution):
         raise SolutionError(
             "solution_mode_unavailable", "Программа использует заявки на основе проектов."
         )
+    require_active(solution)
     if solution.status == "submitted":
         raise SolutionError("team_frozen", "Состав команды зафиксирован после сдачи.")
+
+
+def require_active(solution):
+    if solution.archived_at is not None:
+        raise SolutionError(
+            "solution_archived",
+            "Решение снято с участия. Материалы доступны для просмотра.",
+        )
 
 
 def require_captain(solution, actor):

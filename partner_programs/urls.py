@@ -4,6 +4,7 @@ from partner_programs.solution_action_api import SolutionActionView
 from partner_programs.solution_case_action_api import SolutionCaseChangeView
 from partner_programs.solution_history_api import SolutionHistoryView
 from partner_programs.solution_member_action_api import SolutionMemberRemovalView
+from partner_programs.solution_archive_action_api import SolutionArchiveView
 from partner_programs.solution_publication_api import (
     PublishedSolutionListView,
     PublishedSolutionDetailView,
@@ -270,6 +271,11 @@ urlpatterns = [
     path(
         "<int:pk>/management/solutions/actions/preview/",
         SolutionActionView.as_view(),
+    ),
+    path("<int:pk>/management/solutions/archive/preview/", SolutionArchiveView.as_view()),
+    path(
+        "<int:pk>/management/solutions/archive/apply/",
+        SolutionArchiveView.as_view(apply_action=True),
     ),
     path(
         "<int:pk>/management/solutions/actions/apply/",

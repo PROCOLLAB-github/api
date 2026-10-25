@@ -31,7 +31,7 @@ class UserFileAdmin(admin.ModelAdmin):
         )
         for obj in objs:
             if used_by_submitted_solution(obj.pk):
-                protected.append(f"Файл сданного решения: {obj}")
+                protected.append(f"Файл сохраненного решения: {obj}")
         return deleted, counts, permissions_needed, protected
 
     list_display = (
@@ -96,7 +96,7 @@ class UserFileAdmin(admin.ModelAdmin):
 
         obj = UserFile.objects.select_for_update().get(pk=obj.pk)
         if used_by_submitted_solution(obj.pk):
-            raise PermissionDenied("Файл используется в сданном решении.")
+            raise PermissionDenied("Файл используется в сохраненном решении.")
         self.cdn.delete(obj.link)
         obj.delete()
 
@@ -106,7 +106,7 @@ class UserFileAdmin(admin.ModelAdmin):
 
         rows = list(queryset.select_for_update().order_by("pk"))
         if any(used_by_submitted_solution(obj.pk) for obj in rows):
-            raise PermissionDenied("Файл используется в сданном решении.")
+            raise PermissionDenied("Файл используется в сохраненном решении.")
         for obj in rows:
             self.cdn.delete(obj.link)
         queryset.delete()

@@ -36,7 +36,9 @@ def assignment_snapshot(program, *, include_historical=True):
     members = dict(program.experts.values_list("user_id", "pk"))
     values = defaultdict(dict)
     for solution_id, user_id, criterion_id, value in SolutionScore.objects.filter(
-        criteria__partner_program=program, solution__program=program
+        criteria__partner_program=program,
+        solution__program=program,
+        solution__archived_at__isnull=True,
     ).values_list("solution_id", "user_id", "criteria_id", "value"):
         if user_id in members:
             pair = (solution_id, members[user_id])

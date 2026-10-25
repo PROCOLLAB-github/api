@@ -17,7 +17,9 @@ def membership_expressions(program_id):
         program_id=program_id, captain_id=OuterRef("user_id")
     )
     members = ProgramSolutionMember.objects.filter(
-        solution__program_id=program_id, user_id=OuterRef("user_id")
+        solution__program_id=program_id,
+        solution__archived_at__isnull=True,
+        user_id=OuterRef("user_id"),
     )
     # Сохраняем internal aliases прежней SQL-проекции для общих счетчиков и списков.
     return dict(

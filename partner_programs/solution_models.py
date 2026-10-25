@@ -5,6 +5,11 @@ from django.core.exceptions import ValidationError
 from django.db import models, transaction
 
 
+class ActiveSolutionManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(archived_at__isnull=True)
+
+
 class ProgramSolution(models.Model):
     program = models.ForeignKey(
         "partner_programs.PartnerProgram",
@@ -24,8 +29,28 @@ class ProgramSolution(models.Model):
     published_at = models.DateTimeField(
         null=True, blank=True, editable=False, verbose_name="Дата публикации"
     )
+    archived_at = models.DateTimeField(null=True, editable=False)
+    archived_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="archived_program_solutions",
+        editable=False,
+    )
+    archive_reason = models.CharField(
+        max_length=32,
+        null=True,
+        editable=False,
+        choices=[
+            ("detached", "Снятие заявки"),
+            ("registration_removed", "Удаление регистрации"),
+        ],
+    )
+    archive_snapshot = models.JSONField(null=True, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    objects = ActiveSolutionManager()
+    all_objects = models.Manager()
 
     @transaction.atomic
     def save(self, *args, **kwargs):
@@ -33,7 +58,18 @@ class ProgramSolution(models.Model):
         # Дату устанавливает publisher. Обычный save, в том числе устаревшего
         # экземпляра, не публикует работу и не отзывает состоявшуюся публикацию.
         self.published_at = previous.published_at if previous else None
+        for field in (
+            "archived_at",
+            "archived_by_id",
+            "archive_reason",
+            "archive_snapshot",
+        ):
+            setattr(self, field, getattr(previous, field) if previous else None)
         if previous:
+            if previous.archived_at is not None:
+                raise ValidationError(
+                    "Решение снято с участия.", code="solution_archived"
+                )
             if previous.program_id != self.program_id:
                 raise ValidationError(
                     "Решение нельзя переназначить другой программе.",
@@ -48,7 +84,9 @@ class ProgramSolution(models.Model):
                 "submitted_at",
                 "submission_snapshot",
             )
-            if previous.status == "submitted" and any(
+            if (
+                previous.status == "submitted" or previous.archived_at is not None
+            ) and any(
                 (selected is None or field in selected or field + "_id" in selected)
                 and getattr(
                     previous, field + "_id" if field in ("program", "captain") else field
@@ -65,6 +103,8 @@ class ProgramSolution(models.Model):
         return super().save(*args, **kwargs)
 
     class Meta:
+        base_manager_name = "all_objects"
+        default_manager_name = "objects"
         verbose_name = "Решение программы"
         verbose_name_plural = "Решения программ"
         ordering = ["created_at", "pk"]
@@ -78,7 +118,24 @@ class ProgramSolution(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["program", "captain"],
-                name="unique_solution_program_captain",
+                condition=models.Q(archived_at__isnull=True),
+                name="unique_active_solution_captain",
+            ),
+            models.CheckConstraint(
+                check=(
+                    models.Q(
+                        archived_at__isnull=True,
+                        archive_reason__isnull=True,
+                        archive_snapshot__isnull=True,
+                    )
+                    | models.Q(
+                        archived_at__isnull=False,
+                        archive_reason__isnull=False,
+                        archive_reason__in=["detached", "registration_removed"],
+                        archive_snapshot__isnull=False,
+                    )
+                ),
+                name="solution_archive_consistent",
             ),
             models.CheckConstraint(
                 check=models.Q(version__gte=1), name="solution_version_positive"
@@ -116,6 +173,7 @@ class SolutionAdministrativeChange(models.Model):
         choices=[
             ("change_case", "Смена кейса"),
             ("remove_member", "Исключение участника"),
+            ("archive", "Снятие заявки"),
         ],
     )
     before_version = models.PositiveBigIntegerField()
@@ -125,6 +183,9 @@ class SolutionAdministrativeChange(models.Model):
     case_name = models.CharField(max_length=1000, null=True)
     removed_member = models.JSONField(null=True)
     revoked_invitation_ids = models.JSONField(default=list)
+    archived_at = models.DateTimeField(null=True)
+    archive_reason = models.CharField(max_length=32, null=True)
+    archive_snapshot = models.JSONField(null=True)
     removed_assignment_ids = models.JSONField(default=list)
     score_count = models.PositiveIntegerField(default=0)
     was_submitted = models.BooleanField()
@@ -152,6 +213,9 @@ class SolutionAdministrativeChange(models.Model):
                         case_field_id__isnull=False,
                         case_name__isnull=False,
                         removed_member__isnull=True,
+                        archived_at__isnull=True,
+                        archive_reason__isnull=True,
+                        archive_snapshot__isnull=True,
                     )
                     | models.Q(
                         action="remove_member",
@@ -159,6 +223,20 @@ class SolutionAdministrativeChange(models.Model):
                         previous_case__isnull=True,
                         case_name__isnull=True,
                         removed_member__isnull=False,
+                        archived_at__isnull=True,
+                        archive_reason__isnull=True,
+                        archive_snapshot__isnull=True,
+                    )
+                    | models.Q(
+                        action="archive",
+                        case_field_id__isnull=True,
+                        previous_case__isnull=True,
+                        case_name__isnull=True,
+                        removed_member__isnull=True,
+                        archived_at__isnull=False,
+                        archive_reason__in=["detached", "registration_removed"],
+                        archive_reason__isnull=False,
+                        archive_snapshot__isnull=False,
                     )
                 ),
                 name="solution_admin_action_consistent",
@@ -205,11 +283,13 @@ class SolutionOwnedRecord(models.Model):
                 code="invalid_program_context",
             )
         solution = lock_saved_solution(self.solution_id) if self.solution_id else None
+        if solution and solution.archived_at is not None:
+            raise ValidationError("Решение снято с участия.", code="solution_archived")
         # Другой writer мог обработать запись, пока мы ожидали блокировку программы.
         previous = type(self).objects.filter(pk=self.pk).first() if self.pk else None
         if (
             solution
-            and solution.status == "submitted"
+            and (solution.status == "submitted" or solution.archived_at is not None)
             and not self.allowed_after_submission(previous, kwargs.get("update_fields"))
         ):
             raise ValidationError(
@@ -321,7 +401,7 @@ class ProgramSolutionAnswer(SolutionOwnedRecord):
 def lock_saved_solution(solution_id):
     """Вызывается только внутри atomic: программа -> решение, как у команд API."""
     reference = (
-        ProgramSolution.objects.filter(pk=solution_id)
+        ProgramSolution.all_objects.filter(pk=solution_id)
         .values_list("program_id", flat=True)
         .first()
     )
@@ -330,4 +410,4 @@ def lock_saved_solution(solution_id):
     from partner_programs.models import PartnerProgram
 
     PartnerProgram.objects.select_for_update().get(pk=reference)
-    return ProgramSolution.objects.select_for_update().filter(pk=solution_id).first()
+    return ProgramSolution.all_objects.select_for_update().filter(pk=solution_id).first()

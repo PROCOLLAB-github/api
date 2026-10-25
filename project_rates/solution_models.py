@@ -41,7 +41,9 @@ class SolutionScore(models.Model):
         from project_rates.models import Criteria
 
         criterion = Criteria.objects.filter(pk=self.criteria_id).first()
-        solution = ProgramSolution.objects.filter(pk=self.solution_id).first()
+        solution = ProgramSolution.all_objects.filter(pk=self.solution_id).first()
+        if solution and solution.archived_at is not None:
+            raise ValidationError({"solution": "Решение снято с участия."})
         if criterion and solution and criterion.partner_program_id != solution.program_id:
             raise ValidationError({"criteria": "Критерий относится к другой программе."})
         if solution and solution.status != "submitted":
@@ -149,7 +151,9 @@ class SolutionExpertAssignment(models.Model):
         if not self.partner_program_id or not self.solution_id or not self.expert_id:
             return
 
-        solution = ProgramSolution.objects.filter(pk=self.solution_id).first()
+        solution = ProgramSolution.all_objects.filter(pk=self.solution_id).first()
+        if solution and solution.archived_at is not None:
+            raise ValidationError({"solution": "Решение снято с участия."})
         expert = Expert.objects.filter(
             pk=self.expert_id, programs__pk=self.partner_program_id, user__is_active=True
         ).first()

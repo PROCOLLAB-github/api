@@ -25,6 +25,7 @@ def require_enabled(solution):
         raise SolutionError(
             "solution_mode_unavailable", "Программа использует заявки на основе проектов."
         )
+    solution_team.require_active(solution)
 
 
 def require_pending(invitation):
@@ -85,7 +86,7 @@ def lock_invitation(invitation_id, actor):
     except SolutionInvitation.DoesNotExist:
         raise Http404
     program = solution_team.program_for(reference.solution.program_id, lock=True)
-    solution = ProgramSolution.objects.select_for_update().get(
+    solution = ProgramSolution.all_objects.select_for_update().get(
         pk=reference.solution_id, program=program
     )
     try:
