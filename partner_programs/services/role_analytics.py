@@ -132,6 +132,12 @@ def participant_widget_metrics(program, user):
 
 def build_program_role_widget(program, user):
     role = require_widget_role(program, user)
+    if program.solution_storage_mode == "solution":
+        from partner_programs.services.solution_role_analytics import (
+            build_solution_role_widget,
+        )
+
+        return build_solution_role_widget(program, user, role)
     result = {
         "program_id": program.pk,
         "role": role,

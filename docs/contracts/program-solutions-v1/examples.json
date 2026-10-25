@@ -1,5 +1,5 @@
 {
-  "contract_version": "1.6.0",
+  "contract_version": "1.7.0",
   "description": "Независимые примеры, не последовательность операций; фиктивные данные.",
   "scenarios": [
     {
@@ -5256,6 +5256,229 @@
         "case_options": [
           "Цифровой сервис"
         ]
+      }
+    },
+    {
+      "name": "solution_widget_participant_snapshot",
+      "operation_id": "getProgramRoleWidget",
+      "status": 200,
+      "response": {
+        "program_id": 12,
+        "role": "participant",
+        "is_competitive": true,
+        "storage_mode": "solution",
+        "participant": {
+          "application": {
+            "kind": "solution",
+            "program_id": 12,
+            "solution_id": 301,
+            "name": "Сервис для студентов"
+          },
+          "case_provided": true,
+          "case_name": "Цифровой сервис",
+          "stage": "evaluated",
+          "submission_open": false
+        }
+      }
+    },
+    {
+      "name": "solution_widget_participant_draft_without_case",
+      "operation_id": "getProgramRoleWidget",
+      "status": 200,
+      "response": {
+        "program_id": 12,
+        "role": "participant",
+        "is_competitive": true,
+        "storage_mode": "solution",
+        "participant": {
+          "application": {
+            "kind": "solution",
+            "program_id": 12,
+            "solution_id": 301,
+            "name": "Сервис для студентов"
+          },
+          "case_provided": true,
+          "case_name": null,
+          "stage": "not_submitted",
+          "submission_open": true
+        }
+      }
+    },
+    {
+      "name": "solution_widget_participant_noncompetitive",
+      "operation_id": "getProgramRoleWidget",
+      "status": 200,
+      "response": {
+        "program_id": 12,
+        "role": "participant",
+        "is_competitive": false,
+        "storage_mode": "solution",
+        "participant": {
+          "application": {
+            "kind": "solution",
+            "program_id": 12,
+            "solution_id": 301,
+            "name": "Сервис для студентов"
+          },
+          "case_provided": true,
+          "case_name": "Цифровой сервис",
+          "stage": "not_applicable",
+          "submission_open": false
+        }
+      }
+    },
+    {
+      "name": "solution_widget_organizer",
+      "operation_id": "getProgramRoleWidget",
+      "status": 200,
+      "response": {
+        "program_id": 12,
+        "role": "organizer",
+        "is_competitive": true,
+        "storage_mode": "solution",
+        "organizer": {
+          "participants": 5,
+          "solutions": 2,
+          "submitted_solutions": 1,
+          "participants_without_solution": 2
+        }
+      }
+    },
+    {
+      "name": "solution_widget_organizer_noncompetitive",
+      "operation_id": "getProgramRoleWidget",
+      "status": 200,
+      "response": {
+        "program_id": 12,
+        "role": "organizer",
+        "is_competitive": false,
+        "storage_mode": "solution",
+        "organizer": {
+          "participants": 5,
+          "solutions": 2,
+          "submitted_solutions": null,
+          "participants_without_solution": 2
+        }
+      }
+    },
+    {
+      "name": "solution_widget_expert_zero_complete",
+      "operation_id": "getProgramRoleWidget",
+      "status": 200,
+      "response": {
+        "program_id": 12,
+        "role": "expert",
+        "is_competitive": true,
+        "storage_mode": "solution",
+        "expert": {
+          "mode": "distributed",
+          "assigned": 1,
+          "remaining": 0,
+          "evaluation_ends": "2026-10-24T18:00:00Z"
+        }
+      }
+    },
+    {
+      "name": "solution_widget_expert_open",
+      "operation_id": "getProgramRoleWidget",
+      "status": 200,
+      "response": {
+        "program_id": 12,
+        "role": "expert",
+        "is_competitive": true,
+        "storage_mode": "solution",
+        "expert": {
+          "mode": "open",
+          "assigned": null,
+          "remaining": null,
+          "evaluation_ends": "2026-10-24T18:00:00Z"
+        }
+      }
+    },
+    {
+      "name": "solution_widget_expert_empty",
+      "operation_id": "getProgramRoleWidget",
+      "status": 200,
+      "response": {
+        "program_id": 12,
+        "role": "expert",
+        "is_competitive": true,
+        "storage_mode": "solution",
+        "expert": {
+          "mode": "distributed",
+          "assigned": 0,
+          "remaining": 0,
+          "evaluation_ends": "2026-10-24T18:00:00Z"
+        }
+      }
+    },
+    {
+      "name": "legacy_widget_participant",
+      "operation_id": "getProgramRoleWidget",
+      "status": 200,
+      "response": {
+        "program_id": 12,
+        "role": "participant",
+        "is_competitive": true,
+        "participant": {
+          "case_provided": true,
+          "case_name": "Цифровой сервис",
+          "stage": "evaluated",
+          "submission_open": false,
+          "participant_project": {
+            "id": 55,
+            "name": "Исторический проект",
+            "program_link_id": 65
+          }
+        }
+      }
+    },
+    {
+      "name": "legacy_widget_organizer",
+      "operation_id": "getProgramRoleWidget",
+      "status": 200,
+      "response": {
+        "program_id": 12,
+        "role": "organizer",
+        "is_competitive": true,
+        "organizer": {
+          "participants": 5,
+          "projects": 2,
+          "submitted_solutions": 1,
+          "participants_without_project": 2
+        }
+      }
+    },
+    {
+      "name": "legacy_widget_expert",
+      "operation_id": "getProgramRoleWidget",
+      "status": 200,
+      "response": {
+        "program_id": 12,
+        "role": "expert",
+        "is_competitive": true,
+        "expert": {
+          "mode": "distributed",
+          "assigned": 1,
+          "remaining": 0,
+          "evaluation_ends": "2026-10-24T18:00:00Z"
+        }
+      }
+    },
+    {
+      "name": "widget_forbidden",
+      "operation_id": "getProgramRoleWidget",
+      "status": 403,
+      "response": {
+        "detail": "Аналитика доступна только участникам этой программы."
+      }
+    },
+    {
+      "name": "widget_ambiguous_membership",
+      "operation_id": "getProgramRoleWidget",
+      "status": 409,
+      "response": {
+        "detail": "Связи заявки требуют проверки организатором."
       }
     }
   ]

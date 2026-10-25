@@ -57,4 +57,25 @@ Target: сохранить endpoint, role priority organizer → expert → part
 | WID07 | GET не записывает данные, число запросов ограничено и не растет на каждую работу; legacy regression и private payload checks проходят                                                                                  |
 | WID08 | Три прежние UI-роли показывают корректные подписи/ссылки/нулевые и неприменимые состояния; browser обеих форм/mobile, source/tests/build/review фиксируются отдельно                                                   |
 
-Этот блок еще не реализован и не принят. Основная аналитика/attention/другие экспорты остаются в полном BE09 scope.
+## Проверка и review ролевого виджета 25.10.2026
+
+Реализован отдельный solution_role_analytics, подключенный после прежней проверки роли. C00 1.7.0 фиксирует один существующий GET и две независимые формы успешного ответа: legacy остается прежним, solution содержит storage_mode и настоящие SolutionRef/счетчики. Ошибки существующего endpoint сохраняют DRF detail и status; клиент показывает безопасный текст по статусу. Успешный приватный ответ имеет Cache-Control: private, no-store. Новых записей, событий или polling нет.
+
+| AC | Реализация / evidence | Verdict |
+| --- | --- | --- |
+| WID01 | require_widget_role до выбора сервиса; tests priority, outsider, foreign expert, query claims и anonymous | PASS |
+| WID02 | scoped ownership query по captain/accepted members, максимум две строки; pending исключен, multiple/legacy-only возвращают 409; API tests | PASS |
+| WID03 | snapshot_name/snapshot_case и признак кейса из сданной формы; test измененной live подписи/имени, API schema и реальные browser ссылки | PASS |
+| WID04 | общий complete_values и прежние правила distributed/open; API tests draft/no criteria/first score/noncompetitive/after deadline, browser обеих форм и сохраненного noncompetitive | PASS |
+| WID05 | настоящие назначения своего Expert.user, только собственные оценки; 0/False, второй эксперт/квота, not_ready и null tests | PASS |
+| WID06 | ProgramSolution aggregate и принятый SQL membership; уникальные регистрации, pending, historical Project и noncompetitive null tests, browser реальные счетчики | PASS |
+| WID07 | tests всех ролей: не более 14 queries, число не растет после добавления восьми работ, отсутствуют INSERT/UPDATE/DELETE; old body/schema/privacy regression | PASS |
+| WID08 | прежняя геометрия/controls и SCSS, C00 union на frontend; 21 component + 8 HTTP wire tests, реальный browser трех ролей и 320/390/768/1440 | PASS |
+
+- Checked by source: legacy services не переписаны; поля решения не проецируются в Project. Ownership и строка читаются одним scoped query без второго unscoped get. Privacy ограничена ссылкой/именем/кейсом/стадией; критерии, оценки, эксперты и регистрационные ответы не сериализуются. Все прежние 74 схемы, 34 операции и 59 сценариев C00 структурно сохранены; OpenAPI/примеры/README обоих repos byte-identical.
+- Checked by tests: финальный PostgreSQL прогон 214 tests (новые 15, legacy role widget, program detail и project_rates) PASS после review selector. Первый запуск финальной команды имел loader error из-за неверного имени test_role_widget; исправленный test_role_widget_api прогнан целиком. C00: 85 schemas / 35 operations / 72 scenarios PASS. Black/Flake8 пяти измененных Python файлов, makemigrations --check --dry-run и manage.py check PASS.
+- Checked by build: frontend npm run test:ci — 2615 tests / 473 files и strict C00 types PASS; обычный Angular development build PASS, scoped ESLint 0 errors. Locked Prettier 3.8.3: 1961 LF-normalized files PASS; итоговый git diff --check обоих repos PASS.
+- Checked in browser: реальные Angular/Django/PostgreSQL/JWT с вымышленными КЧ, хакатоном и неконкурсной программой. Три роли, открытие своего решения, пустая заявка/невыбранный кейс, 0/null/completed, Mont, 320/390/768/1440 без overflow; controlled network/retry и 409 без raw detail, legacy expert regression PASS. 0 изменяющих solution HTTP, JS errors отсутствуют. Evidence: design-artifacts/program-solutions-20261024/expert-v1/implementation/widget-browser-evidence.json. Начальный прогон завершился timeout на белой странице; повтор с HTTP-status/JS diagnostics полностью прошел, отдельная причина начального сбоя не подтверждена. Временная локальная роль менеджера и dev environment восстановлены.
+- Not checked: полная основная manager analytics/attention, новые административные UI, публикация, полный a11y audit и релиз; этот блок их не закрывает. Новый commit требует своего Linux CI; предыдущий a10af12 прошел 1549 PostgreSQL tests + 39 locking и общий CI.
+
+Requirement audit WID01–WID08: PASS. Review не выявил оставшихся blocking findings в этом блоке. Основная аналитика/attention/другие экспорты остаются в полном BE09 scope; вся feature и PR пока draft.

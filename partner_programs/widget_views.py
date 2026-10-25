@@ -6,7 +6,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from partner_programs.models import PartnerProgram
-from partner_programs.serializers.role_analytics import ProgramRoleWidgetSerializer
+from partner_programs.serializers.role_analytics import (
+    ProgramRoleWidgetSerializer,
+    SolutionProgramRoleWidgetSerializer,
+)
 from partner_programs.services.role_analytics import build_program_role_widget
 
 
@@ -17,4 +20,11 @@ class ProgramRoleWidgetAPIView(APIView):
         program = get_object_or_404(PartnerProgram, pk=pk)
         # role/user_id/project_id клиента не используются для доступа или выбора.
         data = build_program_role_widget(program, request.user)
-        return Response(ProgramRoleWidgetSerializer(data).data)
+        serializer = (
+            SolutionProgramRoleWidgetSerializer
+            if program.solution_storage_mode == "solution"
+            else ProgramRoleWidgetSerializer
+        )
+        response = Response(serializer(data).data)
+        response["Cache-Control"] = "private, no-store"
+        return response

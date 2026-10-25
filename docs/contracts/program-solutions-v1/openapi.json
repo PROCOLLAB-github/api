@@ -3,7 +3,7 @@
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "info": {
     "title": "PROCOLLAB Program Solutions C00",
-    "version": "1.6.0",
+    "version": "1.7.0",
     "description": "Контракт решений в программах для реализации и моков BE01–BE09. API base URL задается окружением. snake_case на проводе. Старые API не меняются."
   },
   "servers": [
@@ -7131,6 +7131,85 @@
         },
         "description": "Только организатор этой программы в режиме solution. Тот же расчет и порядок, что GET solution-results: места вычисляются до фильтрации, средние только по полным оценкам. scope=current (по умолчанию) применяет search, case_scope/case_name и status; scope=all выгружает все сданные решения, сохраняя order. Некорректный selected case_name остается ошибкой при обоих scope, как в действующей выгрузке проектов. Два листа: Рейтинг и Оценки экспертов. Столбец ID решения содержит ProgramSolution.id; Project и program_link_id не используются. Числа и формулы имеют прежнюю семантику; пользовательские строки остаются текстом, включая строки, начинающиеся с =. Черновики и чужие программы исключены. Оценки не публикуются участникам. Успешный ответ является бинарным XLSX; JSON возвращается только для ошибок C00."
       }
+    },
+    "/programs/{program_id}/analytics-widget/": {
+      "get": {
+        "operationId": "getProgramRoleWidget",
+        "summary": "Ролевой виджет текущего пользователя программы",
+        "description": "Прежний read-only endpoint. В legacy сохраняется ответ Project, в solution явный storage_mode и настоящая ссылка/счетчики решения. Роль organizer → expert → participant проверяется сервером. GET не меняет данные. Скрытые оценки, эксперты и регистрационные ответы не возвращаются. Ошибки сохраняют существующий DRF detail, не C00 Error.",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успех",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleWidget"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "private, no-store"
+              }
+            }
+          },
+          "401": {
+            "description": "Существующая ошибка виджета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WidgetError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Существующая ошибка виджета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WidgetError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Существующая ошибка виджета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WidgetError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Существующая ошибка виджета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WidgetError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -9871,6 +9950,427 @@
           "results"
         ],
         "additionalProperties": false
+      },
+      "WidgetProjectRef": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "name": {
+            "type": "string"
+          },
+          "program_link_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "program_link_id"
+        ]
+      },
+      "WidgetStage": {
+        "type": "string",
+        "enum": [
+          "none",
+          "not_submitted",
+          "submitted",
+          "review",
+          "evaluated",
+          "not_applicable"
+        ]
+      },
+      "WidgetLegacyParticipant": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "participant_project": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WidgetProjectRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "case_provided": {
+            "type": "boolean"
+          },
+          "case_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "stage": {
+            "$ref": "#/components/schemas/WidgetStage"
+          },
+          "submission_open": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "participant_project",
+          "case_provided",
+          "case_name",
+          "stage",
+          "submission_open"
+        ]
+      },
+      "WidgetParticipant": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "application": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SolutionRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "case_provided": {
+            "type": "boolean"
+          },
+          "case_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "stage": {
+            "$ref": "#/components/schemas/WidgetStage"
+          },
+          "submission_open": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "application",
+          "case_provided",
+          "case_name",
+          "stage",
+          "submission_open"
+        ]
+      },
+      "WidgetLegacyOrganizer": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "participants": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "projects": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "submitted_solutions": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "participants_without_project": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "participants",
+          "projects",
+          "submitted_solutions",
+          "participants_without_project"
+        ]
+      },
+      "WidgetOrganizer": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "participants": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "solutions": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "submitted_solutions": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "participants_without_solution": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "participants",
+          "solutions",
+          "submitted_solutions",
+          "participants_without_solution"
+        ]
+      },
+      "WidgetExpert": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "open",
+              "distributed"
+            ]
+          },
+          "assigned": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "remaining": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "evaluation_ends": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "mode",
+          "assigned",
+          "remaining",
+          "evaluation_ends"
+        ]
+      },
+      "SolutionWidget": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "program_id": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "role": {
+                "const": "participant"
+              },
+              "is_competitive": {
+                "type": "boolean"
+              },
+              "storage_mode": {
+                "const": "solution"
+              },
+              "participant": {
+                "$ref": "#/components/schemas/WidgetParticipant"
+              }
+            },
+            "required": [
+              "program_id",
+              "role",
+              "is_competitive",
+              "storage_mode",
+              "participant"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "program_id": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "role": {
+                "const": "organizer"
+              },
+              "is_competitive": {
+                "type": "boolean"
+              },
+              "storage_mode": {
+                "const": "solution"
+              },
+              "organizer": {
+                "$ref": "#/components/schemas/WidgetOrganizer"
+              }
+            },
+            "required": [
+              "program_id",
+              "role",
+              "is_competitive",
+              "storage_mode",
+              "organizer"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "program_id": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "role": {
+                "const": "expert"
+              },
+              "is_competitive": {
+                "type": "boolean"
+              },
+              "storage_mode": {
+                "const": "solution"
+              },
+              "expert": {
+                "$ref": "#/components/schemas/WidgetExpert"
+              }
+            },
+            "required": [
+              "program_id",
+              "role",
+              "is_competitive",
+              "storage_mode",
+              "expert"
+            ]
+          }
+        ]
+      },
+      "LegacyWidget": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "program_id": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "role": {
+                "const": "participant"
+              },
+              "is_competitive": {
+                "type": "boolean"
+              },
+              "storage_mode": {
+                "const": "legacy_project"
+              },
+              "participant": {
+                "$ref": "#/components/schemas/WidgetLegacyParticipant"
+              }
+            },
+            "required": [
+              "program_id",
+              "role",
+              "is_competitive",
+              "participant"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "program_id": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "role": {
+                "const": "organizer"
+              },
+              "is_competitive": {
+                "type": "boolean"
+              },
+              "storage_mode": {
+                "const": "legacy_project"
+              },
+              "organizer": {
+                "$ref": "#/components/schemas/WidgetLegacyOrganizer"
+              }
+            },
+            "required": [
+              "program_id",
+              "role",
+              "is_competitive",
+              "organizer"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "program_id": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "role": {
+                "const": "expert"
+              },
+              "is_competitive": {
+                "type": "boolean"
+              },
+              "storage_mode": {
+                "const": "legacy_project"
+              },
+              "expert": {
+                "$ref": "#/components/schemas/WidgetExpert"
+              }
+            },
+            "required": [
+              "program_id",
+              "role",
+              "is_competitive",
+              "expert"
+            ]
+          }
+        ]
+      },
+      "RoleWidget": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/SolutionWidget"
+          },
+          {
+            "$ref": "#/components/schemas/LegacyWidget"
+          }
+        ]
+      },
+      "WidgetError": {
+        "type": "object",
+        "properties": {
+          "detail": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "additionalProperties": true,
+        "description": "Существующий DRF error contract виджета; raw body не показывается в Angular."
       }
     }
   }
