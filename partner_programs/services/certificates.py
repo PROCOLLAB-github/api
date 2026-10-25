@@ -53,6 +53,7 @@ def default_draft():
         (60, 70, 25, 8, 16),
     ]
     return {
+        "orientation": "landscape",
         "background_id": None,
         "signature_id": None,
         "director": "",
@@ -84,6 +85,7 @@ def hidden_elements(draft):
 def normalized_draft(draft):
     return {
         **draft,
+        "orientation": draft.get("orientation", "landscape"),
         "hidden_elements": [key for key in ELEMENTS if key in hidden_elements(draft)],
     }
 
@@ -193,7 +195,10 @@ def upload_asset(program, kind, upload):
         from PIL import ImageOps
 
         image = ImageOps.exif_transpose(image)
-        image.thumbnail((3508, 2480) if kind == "background" else (2000, 2000))
+        limit = (2000, 2000)
+        if kind == "background":
+            limit = (2480, 3508) if image.height > image.width else (3508, 2480)
+        image.thumbnail(limit)
         buffer = io.BytesIO()
         image.save(buffer, format="PNG")
         if buffer.tell() > 20 * 1024 * 1024:
@@ -229,6 +234,9 @@ def validate_draft(program, draft, previous=None):
         font_size = serializers.FloatField(min_value=8, max_value=72)
 
     class Draft(serializers.Serializer):
+        orientation = serializers.ChoiceField(
+            choices=["landscape", "portrait"], required=False
+        )
         background_id = serializers.IntegerField(allow_null=True)
         signature_id = serializers.IntegerField(allow_null=True)
         director = serializers.CharField(max_length=250, allow_blank=True)
@@ -251,6 +259,9 @@ def validate_draft(program, draft, previous=None):
     serializer = Draft(data=draft)
     serializer.is_valid(raise_exception=True)
     data = serializer.data
+    if "orientation" not in data:
+        # Older clients must not silently rotate a portrait template when saving.
+        data["orientation"] = (previous or {}).get("orientation", "landscape")
     if "hidden_elements" not in data:
         # Старый клиент не должен восстанавливать удаленные новым редактором элементы.
         hidden = hidden_elements(previous or data)
@@ -298,11 +309,18 @@ def certificate_font(bold):
     )
 
 
-def fit_certificate_text(value, box, bold=False):
+def page_dimensions(orientation="landscape"):
+    return (210, 297) if orientation == "portrait" else (297, 210)
+
+
+def fit_certificate_text(value, box, bold=False, orientation="landscape"):
     """Подгоняем реальные строки Mont по обеим сторонам бокса, без обрезки ФИО."""
     font = certificate_font(bold)
-    width = max(1, box["width"] * 11.22 - 2)
-    height = max(1, box["height"] * 7.937 - 2)
+    page_width, page_height = (
+        (793.7, 1122) if orientation == "portrait" else (1122, 793.7)
+    )
+    width = max(1, box["width"] * page_width / 100 - 2)
+    height = max(1, box["height"] * page_height / 100 - 2)
 
     def lines_at(size):
         def fits(text):
@@ -344,6 +362,8 @@ def render_pdf(snapshot, assets, name, program_name, number, issued_at):
     from weasyprint.text.fonts import FontConfiguration
 
     fonts = Path(settings.BASE_DIR) / "assets/users/user_CV"
+    orientation = snapshot.get("orientation", "landscape")
+    page_width, page_height = page_dimensions(orientation)
 
     def fetch(url):
         if url == "certificate-font:regular":
@@ -391,7 +411,9 @@ def render_pdf(snapshot, assets, name, program_name, number, issued_at):
                 )
         else:
             value = values[key]
-            size, lines = fit_certificate_text(value, box, key in ("name", "title"))
+            size, lines = fit_certificate_text(
+                value, box, key in ("name", "title"), orientation
+            )
             content = "<br>".join(escape(line) for line in lines)
             elements.append(
                 f'<div class="element {key}" style="{style}font-size:{size}px"><span>{content}</span></div>'
@@ -400,13 +422,17 @@ def render_pdf(snapshot, assets, name, program_name, number, issued_at):
         """<html><head><meta charset="utf-8"><style>
     @font-face{font-family:Mont;src:url('certificate-font:regular')}
     @font-face{font-family:Mont;src:url('certificate-font:bold');font-weight:600}
-    @page{size:297mm 210mm;margin:0}*{box-sizing:border-box}body{margin:0;font-family:Mont;color:#353535}
-    .sheet{position:relative;width:297mm;height:210mm;overflow:hidden;background:white}
-    .background{position:absolute;width:100%;height:100%;object-fit:cover}
+    @page{size:PAGE_WIDTHmm PAGE_HEIGHTmm;margin:0}*{box-sizing:border-box}body{margin:0;font-family:Mont;color:#353535}
+    .sheet{position:relative;width:PAGE_WIDTHmm;height:PAGE_HEIGHTmm;overflow:hidden;background:white}
+    .background{position:absolute;width:100%;height:100%;object-fit:contain}
     .element{position:absolute;text-align:center;line-height:1.3;overflow:hidden;padding:1px}
     .element span{position:absolute;left:1px;right:1px;top:50%;transform:translateY(-50%);white-space:nowrap}
     .name,.title{font-weight:600}.signature{object-fit:contain}
-    </style></head><body><div class="sheet">"""
+    </style></head><body><div class="sheet">""".replace(
+            "PAGE_WIDTH", str(page_width)
+        ).replace(
+            "PAGE_HEIGHT", str(page_height)
+        )
         + "".join(elements)
         + "</div></body></html>"
     )

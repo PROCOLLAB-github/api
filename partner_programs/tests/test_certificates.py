@@ -168,6 +168,101 @@ class CertificateTests(TestCase):
         for upper, lower in zip(rows, rows[1:]):
             self.assertLessEqual(upper["y"] + upper["height"], lower["y"])
 
+    def test_portrait_orientation_round_trip_and_older_client_save(self):
+        draft = service.default_draft()
+        draft["orientation"] = "portrait"
+        response = self.client.put(
+            self.root, {"revision": 1, "draft": draft}, format="json"
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(
+            self.client.get(self.root).data["draft"]["orientation"], "portrait"
+        )
+        draft.pop("orientation")
+        draft["director"] = "Обновленный директор"
+        response = self.client.put(
+            self.root, {"revision": 2, "draft": draft}, format="json"
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data["draft"]["orientation"], "portrait")
+        for invalid in ("square", "", None):
+            draft["orientation"] = invalid
+            response = self.client.put(
+                self.root, {"revision": 3, "draft": draft}, format="json"
+            )
+            self.assertEqual(response.status_code, 400, response.data)
+        self.config.refresh_from_db()
+        self.assertEqual(self.config.revision, 3)
+        self.assertEqual(self.config.draft["orientation"], "portrait")
+
+    def test_legacy_orientation_defaults_to_landscape(self):
+        draft = deepcopy(self.config.draft)
+        draft.pop("orientation")
+        self.config.draft = draft
+        self.config.save()
+        self.assertEqual(
+            self.client.get(self.root).data["draft"]["orientation"], "landscape"
+        )
+        self.assertEqual(
+            service.validate_draft(self.program, draft)["orientation"], "landscape"
+        )
+
+    def test_portrait_background_keeps_a4_print_resolution(self):
+        buffer = io.BytesIO()
+        Image.new("RGB", (2480, 3508), "white").save(buffer, format="PNG")
+        asset = service.upload_asset(
+            self.program,
+            "background",
+            SimpleUploadedFile("portrait.png", buffer.getvalue()),
+        )
+        self.assertEqual((asset.width, asset.height), (2480, 3508))
+
+    def test_portrait_name_fit_uses_portrait_width_and_height(self):
+        box = {"width": 70, "height": 12, "font_size": 40}
+        value = "Александра Константиновна Добровольская"
+        size, lines = service.fit_certificate_text(value, box, True, "portrait")
+        self.assertEqual(" ".join(lines), value)
+        self.assertLessEqual(len(lines) * size * 1.3, box["height"] * 11.22 - 2)
+        for line in lines:
+            self.assertLessEqual(
+                service.certificate_font(True).getlength(line) / 1000 * size * 1.02,
+                box["width"] * 7.937 - 2,
+            )
+
+    @tag("native_pdf")
+    def test_native_pdf_uses_saved_a4_orientation_and_legacy_default(self):
+        from weasyprint.document import Document
+
+        original_write = Document.write_pdf
+        pages = []
+
+        def capture(document, *args, **kwargs):
+            pages.append([(page.width, page.height) for page in document.pages])
+            return original_write(document, *args, **kwargs)
+
+        for orientation, expected in (
+            ("portrait", (210, 297)),
+            ("landscape", (297, 210)),
+            (None, (297, 210)),
+        ):
+            with self.subTest(orientation=orientation):
+                draft = service.default_draft()
+                if orientation is None:
+                    draft.pop("orientation")
+                else:
+                    draft["orientation"] = orientation
+                with patch.object(
+                    Document, "write_pdf", autospec=True, side_effect=capture
+                ):
+                    pdf = service.render_pdf(
+                        draft, {}, "Анна Крылова", "Программа", "1", timezone.now()
+                    )
+                self.assertTrue(pdf.startswith(b"%PDF"))
+                self.assertEqual(len(pages[-1]), 1)
+                width, height = pages[-1][0]
+                self.assertAlmostEqual(width * 25.4 / 96, expected[0], places=5)
+                self.assertAlmostEqual(height * 25.4 / 96, expected[1], places=5)
+
     def test_optional_elements_can_be_hidden_independently_but_name_cannot(self):
         for key in service.ELEMENTS:
             draft = service.default_draft()
