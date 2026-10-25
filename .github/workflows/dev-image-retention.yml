@@ -1,0 +1,59 @@
+name: DEV API image retention
+
+on:
+  push:
+    branches: [dev]
+    paths: [.github/workflows/dev-image-retention.yml, scripts/dev_image_retention.py]
+  workflow_dispatch:
+    inputs:
+      mode:
+        type: choice
+        options: [plan, apply]
+        default: plan
+        required: true
+      plan_sha256:
+        description: Exact digest printed by the read-only plan
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: api-deploy-dev
+  cancel-in-progress: false
+
+jobs:
+  retention:
+    if: github.ref == 'refs/heads/dev'
+    environment: dev
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install verified SSH transport
+        run: npm install --prefix "$RUNNER_TEMP/dev-migration-ssh" --ignore-scripts --no-package-lock --no-audit --no-fund ssh2@1.16.0
+      - name: Plan or apply exact unused DEV image removals
+        env:
+          NODE_PATH: ${{ runner.temp }}/dev-migration-ssh/node_modules
+          DEV_SERVER_HOST: ${{ secrets.DEV_SERVER_HOST }}
+          DEV_SERVER_USER: ${{ secrets.DEV_SERVER_USER }}
+          DEV_SERVER_PASSWORD: ${{ secrets.DEV_SERVER_PASSWORD }}
+          DEV_SSH_HOST_KEY_SHA256: ${{ vars.DEV_SSH_HOST_KEY_SHA256 }}
+          RETENTION_MODE: ${{ github.event_name == 'push' && 'plan' || inputs.mode }}
+          PLAN_SHA256: ${{ inputs.plan_sha256 }}
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const mode = process.env.RETENTION_MODE;
+          const digest = process.env.PLAN_SHA256 || 'none';
+          if (!['plan', 'apply'].includes(mode)) throw new Error('Invalid mode');
+          if (!/^(none|[0-9a-f]{64})$/.test(digest)) throw new Error('Invalid plan digest');
+          if (mode === 'apply' && !/^[0-9a-f]{64}$/.test(digest)) throw new Error('Inspect a plan first');
+          const source = fs.readFileSync('scripts/dev_image_retention.py', 'utf8');
+          process.env.DEV_DEPLOY_SCRIPT = `set -euo pipefail\npython3 - ${mode} ${digest} <<'DEV_IMAGE_RETENTION_PY'\n${source}\nDEV_IMAGE_RETENTION_PY\n`;
+          require('./scripts/dev_ci_ssh.cjs');
+          NODE
