@@ -141,6 +141,67 @@ class SolutionEvaluationTests(EvaluationFixture, TestCase):
     def setUp(self):
         self.seed_evaluation()
 
+    def archive_after_opening_rating(self, *, distributed):
+        from partner_programs.services import solution_archive_actions
+
+        self.program.is_distributed_evaluation = distributed
+        self.program.save(update_fields=["is_distributed_evaluation"])
+        # One user may manage the program and evaluate another team's work.
+        # Manager visibility must not turn an archive into a quota/assignment error.
+        self.program.managers.add(self.expert)
+        self.assertEqual(self.rate().status_code, 200)
+        self.assertEqual(call(self.expert, "get", self.evaluation_url).status_code, 200)
+        command = self.scores()
+        preview = solution_archive_actions.preview(
+            self.program.pk, self.manager, dict(ids=[self.solution.pk])
+        )
+        solution_archive_actions.apply(
+            self.program.pk,
+            self.manager,
+            dict(ids=[self.solution.pk], preview_token=preview["preview_token"]),
+        )
+        return command
+
+    def assert_archived_rating_rejected_without_changing_saved_work(self, distributed):
+        command = self.archive_after_opening_rating(distributed=distributed)
+        before = list(SolutionScore.objects.filter(solution=self.solution).values())
+        self.solution.refresh_from_db()
+        snapshot = self.solution.submission_snapshot
+        response = call(self.expert, "post", self.evaluation_url, command)
+        self.assertEqual(response.status_code, 409, response.data)
+        self.assertEqual(response.data["code"], "solution_archived")
+        self.assert_schema("Error", response.data)
+        stale = call(
+            self.expert,
+            "post",
+            self.evaluation_url,
+            {**command, "expected_criteria_revision": "0" * 64},
+        )
+        self.assertEqual(stale.status_code, 409, stale.data)
+        self.assertEqual(stale.data["code"], "solution_archived")
+        self.solution.refresh_from_db()
+        self.assertEqual(self.solution.submission_snapshot, snapshot)
+        self.assertEqual(
+            list(SolutionScore.objects.filter(solution=self.solution).values()), before
+        )
+        self.assertFalse(self.solution.expert_assignments.exists())
+
+    def test_open_rating_of_archived_work_reports_archive_instead_of_quota(self):
+        self.assert_archived_rating_rejected_without_changing_saved_work(False)
+
+    def test_distributed_rating_of_archived_work_reports_archive_instead_of_assignment(
+        self,
+    ):
+        self.assert_archived_rating_rejected_without_changing_saved_work(True)
+
+    def test_archived_work_stays_hidden_from_experts_without_retained_access(self):
+        command = self.archive_after_opening_rating(distributed=False)
+        self.program.managers.remove(self.expert)
+        response = call(self.expert, "post", self.evaluation_url, command)
+        self.assertEqual(response.status_code, 404, response.data)
+        self.assertEqual(response.data["code"], "not_found")
+        self.assertEqual(call(self.expert, "get", self.evaluation_url).status_code, 404)
+
     def test_frame_is_snapshot_and_only_own_values_with_real_solution_identity(self):
         SolutionScore.objects.create(
             solution=self.solution, user=self.second, criteria=self.criteria[0], value="9"

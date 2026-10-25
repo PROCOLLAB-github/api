@@ -7,7 +7,7 @@ from django.utils import timezone
 
 from partner_programs.solution_errors import SolutionError, issue
 from partner_programs.solution_models import ProgramSolution
-from partner_programs.solution_team import lock_solution
+from partner_programs.solution_team import lock_solution, require_active
 from project_rates.criteria_policy import revision as criteria_revision, mark_locked
 from project_rates.models import Criteria
 from project_rates.solution_models import SolutionExpertAssignment, SolutionScore
@@ -161,8 +161,6 @@ def rating_frame(solution, actor):
 
     program = solution.program
     program_expert(program, actor)
-    from partner_programs.solution_team import require_active
-
     require_active(solution)
     if solution.status != "submitted":
         raise SolutionError("solution_not_submitted", "Сначала нужно сдать решение.")
@@ -258,6 +256,7 @@ def rate_solution(*, program_id, solution_id, actor, expected_criteria_revision,
         raise SolutionError(
             "solution_mode_unavailable", "Программа использует заявки на основе проектов."
         )
+    require_active(solution)
     if solution.status != "submitted":
         raise SolutionError("solution_not_submitted", "Сначала нужно сдать решение.")
     actual_revision = criteria_revision(program)

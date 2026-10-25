@@ -1,5 +1,5 @@
 {
-  "contract_version": "1.20.0",
+  "contract_version": "1.20.1",
   "description": "Независимые примеры, не последовательность операций; фиктивные данные.",
   "scenarios": [
     {
@@ -12386,6 +12386,70 @@
           601
         ],
         "project_id": 1
+      }
+    },
+    {
+      "name": "rate_archived_solution_open",
+      "operation_id": "rateSolution",
+      "status": 409,
+      "request": {
+        "expected_criteria_revision": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "scores": [
+          {
+            "criterion_id": 21,
+            "value": "0"
+          },
+          {
+            "criterion_id": 22,
+            "value": "4.5"
+          },
+          {
+            "criterion_id": 23,
+            "value": "False"
+          },
+          {
+            "criterion_id": 24,
+            "value": ""
+          }
+        ]
+      },
+      "response": {
+        "code": "solution_archived",
+        "detail": "Решение снято с участия. Материалы доступны для просмотра.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "rate_archived_solution_distributed",
+      "operation_id": "rateSolution",
+      "status": 409,
+      "request": {
+        "expected_criteria_revision": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "scores": [
+          {
+            "criterion_id": 21,
+            "value": "0"
+          },
+          {
+            "criterion_id": 22,
+            "value": "4.5"
+          },
+          {
+            "criterion_id": 23,
+            "value": "False"
+          },
+          {
+            "criterion_id": 24,
+            "value": ""
+          }
+        ]
+      },
+      "response": {
+        "code": "solution_archived",
+        "detail": "Решение снято с участия. Материалы доступны для просмотра.",
+        "errors": [],
+        "meta": {}
       }
     }
   ]
