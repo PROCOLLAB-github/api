@@ -9,6 +9,7 @@ from partner_programs.solution_models import (
     ProgramSolutionAnswer,
     SolutionInvitation,
     SolutionAdministrativeChange,
+    SolutionRegistrationRemoval,
 )
 
 
@@ -40,6 +41,16 @@ class SolutionAdministrativeChangeAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+@admin.register(SolutionRegistrationRemoval)
+class SolutionRegistrationRemovalAdmin(SolutionAdministrativeChangeAdmin):
+    list_display = ("id", "program", "actor_name", "deleted_count", "created_at")
+    list_filter = ("program",)
+    search_fields = ("actor_name",)
+    readonly_fields = tuple(
+        field.name for field in SolutionRegistrationRemoval._meta.fields
+    )
 
 
 class SolutionMemberInline(ReadonlySolutionInline):

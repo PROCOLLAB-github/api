@@ -5,6 +5,10 @@ from partner_programs.solution_case_action_api import SolutionCaseChangeView
 from partner_programs.solution_history_api import SolutionHistoryView
 from partner_programs.solution_member_action_api import SolutionMemberRemovalView
 from partner_programs.solution_archive_action_api import SolutionArchiveView
+from partner_programs.solution_registration_action_api import (
+    SolutionRegistrationRemovalView,
+    SolutionRegistrationRemovalHistoryView,
+)
 from partner_programs.solution_publication_api import (
     PublishedSolutionListView,
     PublishedSolutionDetailView,
@@ -271,6 +275,22 @@ urlpatterns = [
     path(
         "<int:pk>/management/solutions/actions/preview/",
         SolutionActionView.as_view(),
+    ),
+    path(
+        "<int:pk>/management/registrations/remove/preview/",
+        SolutionRegistrationRemovalView.as_view(),
+    ),
+    path(
+        "<int:pk>/management/registrations/remove/apply/",
+        SolutionRegistrationRemovalView.as_view(apply_action=True),
+    ),
+    path(
+        "<int:pk>/management/registrations/removals/",
+        SolutionRegistrationRemovalHistoryView.as_view(),
+    ),
+    path(
+        "<int:pk>/management/registrations/removals/<int:audit_id>/",
+        SolutionRegistrationRemovalHistoryView.as_view(),
     ),
     path("<int:pk>/management/solutions/archive/preview/", SolutionArchiveView.as_view()),
     path(

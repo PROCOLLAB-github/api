@@ -158,6 +158,51 @@ class ProgramSolution(models.Model):
         ]
 
 
+class RegistrationRemovalQuerySet(models.QuerySet):
+    def update(self, **kwargs):
+        raise ValidationError("Аудит удаления регистраций нельзя переписывать.")
+
+    def delete(self):
+        raise ValidationError("Аудит удаления регистраций нельзя удалять.")
+
+
+class SolutionRegistrationRemoval(models.Model):
+    """Audit exists even when removed registrations had no solution."""
+
+    program = models.ForeignKey(
+        "partner_programs.PartnerProgram",
+        on_delete=models.PROTECT,
+        related_name="solution_registration_removals",
+    )
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL
+    )
+    actor_name = models.CharField(max_length=512)
+    registrations = models.JSONField()
+    deleted_count = models.PositiveIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    objects = RegistrationRemovalQuerySet.as_manager()
+
+    def save(self, *args, **kwargs):
+        if self.pk is not None:
+            raise ValidationError("Аудит удаления регистраций нельзя переписывать.")
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError("Аудит удаления регистраций нельзя удалять.")
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+        verbose_name = "Удаление регистраций решений"
+        verbose_name_plural = "Аудит удаления регистраций решений"
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(deleted_count__gte=1),
+                name="solution_registration_removal_positive",
+            )
+        ]
+
+
 class SolutionAdministrativeChange(models.Model):
     """Privileged changes retain the original submission and every later revision."""
 
@@ -174,6 +219,7 @@ class SolutionAdministrativeChange(models.Model):
             ("change_case", "Смена кейса"),
             ("remove_member", "Исключение участника"),
             ("archive", "Снятие заявки"),
+            ("remove_registrations", "Удаление регистраций"),
         ],
     )
     before_version = models.PositiveBigIntegerField()
@@ -182,6 +228,13 @@ class SolutionAdministrativeChange(models.Model):
     previous_case = models.TextField(null=True)
     case_name = models.CharField(max_length=1000, null=True)
     removed_member = models.JSONField(null=True)
+    removed_members = models.JSONField(null=True)
+    registration_removal = models.ForeignKey(
+        SolutionRegistrationRemoval,
+        null=True,
+        on_delete=models.PROTECT,
+        related_name="changes",
+    )
     revoked_invitation_ids = models.JSONField(default=list)
     archived_at = models.DateTimeField(null=True)
     archive_reason = models.CharField(max_length=32, null=True)
@@ -213,6 +266,8 @@ class SolutionAdministrativeChange(models.Model):
                         case_field_id__isnull=False,
                         case_name__isnull=False,
                         removed_member__isnull=True,
+                        removed_members__isnull=True,
+                        registration_removal__isnull=True,
                         archived_at__isnull=True,
                         archive_reason__isnull=True,
                         archive_snapshot__isnull=True,
@@ -223,12 +278,15 @@ class SolutionAdministrativeChange(models.Model):
                         previous_case__isnull=True,
                         case_name__isnull=True,
                         removed_member__isnull=False,
+                        removed_members__isnull=True,
+                        registration_removal__isnull=True,
                         archived_at__isnull=True,
                         archive_reason__isnull=True,
                         archive_snapshot__isnull=True,
                     )
                     | models.Q(
                         action="archive",
+                        removed_members__isnull=True,
                         case_field_id__isnull=True,
                         previous_case__isnull=True,
                         case_name__isnull=True,
@@ -237,6 +295,18 @@ class SolutionAdministrativeChange(models.Model):
                         archive_reason__in=["detached", "registration_removed"],
                         archive_reason__isnull=False,
                         archive_snapshot__isnull=False,
+                    )
+                    | models.Q(
+                        action="remove_registrations",
+                        case_field_id__isnull=True,
+                        previous_case__isnull=True,
+                        case_name__isnull=True,
+                        removed_member__isnull=True,
+                        removed_members__isnull=False,
+                        registration_removal__isnull=False,
+                        archived_at__isnull=True,
+                        archive_reason__isnull=True,
+                        archive_snapshot__isnull=True,
                     )
                 ),
                 name="solution_admin_action_consistent",

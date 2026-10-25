@@ -33,6 +33,15 @@ def permits_member_deletion(instance):
     )
 
 
+def delete_confirmed_member(member):
+    """Internal writer, after permission/proof recheck and program/solution locks."""
+    token = _confirmed_deletion.set((member.solution_id, member.pk, member.user_id))
+    try:
+        member.delete()
+    finally:
+        _confirmed_deletion.reset(token)
+
+
 def conflict(errors=None):
     return SolutionError(
         "solution_action_conflict",
@@ -220,11 +229,7 @@ def apply(program_id, solution_id, actor, data):
         raise conflict(result["errors"])
     before_version = solution.version
     before_snapshot = copy.deepcopy(solution.submission_snapshot)
-    token = _confirmed_deletion.set((solution.pk, member.pk, member.user_id))
-    try:
-        member.delete()
-    finally:
-        _confirmed_deletion.reset(token)
+    delete_confirmed_member(member)
     solution.invitations.filter(pk__in=pending, status="pending").delete()
     if solution.status == "submitted":
         after = copy.deepcopy(before_snapshot)

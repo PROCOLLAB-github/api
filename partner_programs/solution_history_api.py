@@ -61,6 +61,14 @@ def change_data(change):
             reason=change.archive_reason,
             revoked_invitation_count=len(change.revoked_invitation_ids),
         )
+        if change.registration_removal_id:
+            data["registration_removal_id"] = change.registration_removal_id
+    elif change.action == "remove_registrations":
+        data.update(
+            removed_members=change.removed_members,
+            registration_removal_id=change.registration_removal_id,
+            revoked_invitation_count=len(change.revoked_invitation_ids),
+        )
     elif change.action == "remove_member":
         data.update(
             removed_member=change.removed_member,

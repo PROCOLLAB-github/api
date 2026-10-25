@@ -3,7 +3,7 @@
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "info": {
     "title": "PROCOLLAB Program Solutions C00",
-    "version": "1.19.0",
+    "version": "1.20.0",
     "description": "Контракт решений в программах для реализации и моков BE01–BE09. API base URL задается окружением. snake_case на проводе. Старые API не меняются."
   },
   "servers": [
@@ -9485,6 +9485,377 @@
           }
         }
       }
+    },
+    "/programs/{program_id}/management/registrations/remove/preview/": {
+      "post": {
+        "operationId": "previewSolutionRegistrationRemoval",
+        "summary": "Удаление регистраций с сохранением решений",
+        "description": "Организатор/admin своей программы в solution mode. registration_ids — ID PartnerProgramUserProfile, не User/solution. Signed preview 10 минут связан с actor/program/selection и текущими регистрациями/материалами/командой/приглашениями/оценками/назначениями. Program → profiles → ordered solutions; атомарные recheck, эффекты, удаление регистраций и неизменяемый аудит. Капитан: архив reason=registration_removed, состав/материалы/оценки сохранены, pending и назначения сняты. Принятый участник: удалить из текущего состава и снимка, история до/после сохранена, оценки и назначения остаются. Только приглашенный: отозвать pending без изменения состава. Архивные заявки не меняются. Без решения: регистрация удаляется с отдельным аудитом. Auth User/manager/expert, другие программы, Project/UserFile не удаляются. Смешанная legacy-связь блокирует всю команду: legacy_application_conflict. Старые handlers не меняются. Deadline/creation flag не блокируют административное исключение. Stale/replay409, чужая регистрация404; private, no-store. Unknown body/query запрещены. История удаления доступна только организатору/admin своей программы.",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolutionRegistrationRemovalPreviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Результат",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SolutionRegistrationRemovalPreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/programs/{program_id}/management/registrations/remove/apply/": {
+      "post": {
+        "operationId": "applySolutionRegistrationRemoval",
+        "summary": "Удаление регистраций с сохранением решений",
+        "description": "Организатор/admin своей программы в solution mode. registration_ids — ID PartnerProgramUserProfile, не User/solution. Signed preview 10 минут связан с actor/program/selection и текущими регистрациями/материалами/командой/приглашениями/оценками/назначениями. Program → profiles → ordered solutions; атомарные recheck, эффекты, удаление регистраций и неизменяемый аудит. Капитан: архив reason=registration_removed, состав/материалы/оценки сохранены, pending и назначения сняты. Принятый участник: удалить из текущего состава и снимка, история до/после сохранена, оценки и назначения остаются. Только приглашенный: отозвать pending без изменения состава. Архивные заявки не меняются. Без решения: регистрация удаляется с отдельным аудитом. Auth User/manager/expert, другие программы, Project/UserFile не удаляются. Смешанная legacy-связь блокирует всю команду: legacy_application_conflict. Старые handlers не меняются. Deadline/creation flag не блокируют административное исключение. Stale/replay409, чужая регистрация404; private, no-store. Unknown body/query запрещены. История удаления доступна только организатору/admin своей программы.",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolutionRegistrationRemovalApplyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Результат",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SolutionRegistrationRemovalReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/programs/{program_id}/management/registrations/removals/": {
+      "get": {
+        "operationId": "listSolutionRegistrationRemovals",
+        "summary": "Аудит удаления регистраций",
+        "description": "Организатор/admin своей программы в solution mode. registration_ids — ID PartnerProgramUserProfile, не User/solution. Signed preview 10 минут связан с actor/program/selection и текущими регистрациями/материалами/командой/приглашениями/оценками/назначениями. Program → profiles → ordered solutions; атомарные recheck, эффекты, удаление регистраций и неизменяемый аудит. Капитан: архив reason=registration_removed, состав/материалы/оценки сохранены, pending и назначения сняты. Принятый участник: удалить из текущего состава и снимка, история до/после сохранена, оценки и назначения остаются. Только приглашенный: отозвать pending без изменения состава. Архивные заявки не меняются. Без решения: регистрация удаляется с отдельным аудитом. Auth User/manager/expert, другие программы, Project/UserFile не удаляются. Смешанная legacy-связь блокирует всю команду: legacy_application_conflict. Старые handlers не меняются. Deadline/creation flag не блокируют административное исключение. Stale/replay409, чужая регистрация404; private, no-store. Unknown body/query запрещены. История удаления доступна только организатору/admin своей программы.",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Результат",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SolutionRegistrationRemovalAuditPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/programs/{program_id}/management/registrations/removals/{audit_id}/": {
+      "get": {
+        "operationId": "readSolutionRegistrationRemoval",
+        "summary": "Аудит удаления регистраций",
+        "description": "Организатор/admin своей программы в solution mode. registration_ids — ID PartnerProgramUserProfile, не User/solution. Signed preview 10 минут связан с actor/program/selection и текущими регистрациями/материалами/командой/приглашениями/оценками/назначениями. Program → profiles → ordered solutions; атомарные recheck, эффекты, удаление регистраций и неизменяемый аудит. Капитан: архив reason=registration_removed, состав/материалы/оценки сохранены, pending и назначения сняты. Принятый участник: удалить из текущего состава и снимка, история до/после сохранена, оценки и назначения остаются. Только приглашенный: отозвать pending без изменения состава. Архивные заявки не меняются. Без решения: регистрация удаляется с отдельным аудитом. Auth User/manager/expert, другие программы, Project/UserFile не удаляются. Смешанная legacy-связь блокирует всю команду: legacy_application_conflict. Старые handlers не меняются. Deadline/creation flag не блокируют административное исключение. Stale/replay409, чужая регистрация404; private, no-store. Unknown body/query запрещены. История удаления доступна только организатору/admin своей программы.",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "audit_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Результат",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SolutionRegistrationRemovalAuditDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -14318,6 +14689,9 @@
           },
           {
             "$ref": "#/components/schemas/SolutionArchiveAdminChange"
+          },
+          {
+            "$ref": "#/components/schemas/SolutionRegistrationAdminChange"
           }
         ],
         "discriminator": {
@@ -14958,6 +15332,11 @@
           "revoked_invitation_count": {
             "type": "integer",
             "minimum": 0
+          },
+          "registration_removal_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
           }
         },
         "required": [
@@ -14975,6 +15354,435 @@
           "archived_at",
           "reason",
           "revoked_invitation_count"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionRegistrationRemovalPreviewRequest": {
+        "type": "object",
+        "properties": {
+          "registration_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "minItems": 1,
+            "maxItems": 10000,
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "registration_ids"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionRegistrationRemovalApplyRequest": {
+        "type": "object",
+        "properties": {
+          "registration_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "minItems": 1,
+            "maxItems": 10000,
+            "uniqueItems": true
+          },
+          "preview_token": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200000
+          }
+        },
+        "required": [
+          "registration_ids",
+          "preview_token"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionRemovedRegistration": {
+        "type": "object",
+        "properties": {
+          "registration_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "user": {
+            "$ref": "#/components/schemas/User"
+          }
+        },
+        "required": [
+          "registration_id",
+          "user"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionRegistrationRemovalEffect": {
+        "type": "object",
+        "properties": {
+          "application": {
+            "$ref": "#/components/schemas/SolutionRef"
+          },
+          "solution_version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "is_submitted": {
+            "type": "boolean"
+          },
+          "effect": {
+            "enum": [
+              "archive",
+              "remove_members",
+              "revoke_invitations"
+            ]
+          },
+          "removed_members": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Member"
+            }
+          },
+          "removed_assignments_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "revoked_invitation_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "score_count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "application",
+          "solution_version",
+          "is_submitted",
+          "effect",
+          "removed_members",
+          "removed_assignments_count",
+          "revoked_invitation_count",
+          "score_count"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionRegistrationRemovalPreview": {
+        "type": "object",
+        "properties": {
+          "registrations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SolutionRemovedRegistration"
+            }
+          },
+          "effects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SolutionRegistrationRemovalEffect"
+            }
+          },
+          "deleted_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "archived_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "removed_member_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "removed_assignments_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "revoked_invitation_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "score_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "can_apply": {
+            "type": "boolean"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            }
+          },
+          "preview_token": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "registrations",
+          "effects",
+          "deleted_count",
+          "archived_count",
+          "removed_member_count",
+          "removed_assignments_count",
+          "revoked_invitation_count",
+          "score_count",
+          "can_apply",
+          "errors",
+          "preview_token"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionRegistrationRemovalResult": {
+        "type": "object",
+        "properties": {
+          "application": {
+            "$ref": "#/components/schemas/SolutionRef"
+          },
+          "solution_version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "change_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "action": {
+            "enum": [
+              "archive",
+              "remove_registrations"
+            ]
+          }
+        },
+        "required": [
+          "application",
+          "solution_version",
+          "change_id",
+          "action"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionRegistrationRemovalReceipt": {
+        "type": "object",
+        "properties": {
+          "audit_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "deleted_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SolutionRegistrationRemovalResult"
+            }
+          }
+        },
+        "required": [
+          "audit_id",
+          "deleted_count",
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionRegistrationRemovalAudit": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "program_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "actor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/User"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "actor_name": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "registrations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SolutionRemovedRegistration"
+            }
+          },
+          "deleted_count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "id",
+          "program_id",
+          "actor",
+          "actor_name",
+          "created_at",
+          "registrations",
+          "deleted_count"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionRegistrationRemovalAuditDetail": {
+        "type": "object",
+        "properties": {
+          "audit": {
+            "$ref": "#/components/schemas/SolutionRegistrationRemovalAudit"
+          },
+          "changes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SolutionAdminChange"
+            }
+          }
+        },
+        "required": [
+          "audit",
+          "changes"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionRegistrationRemovalAuditPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "count",
+          "offset",
+          "limit",
+          "results"
+        ],
+        "properties": {
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SolutionRegistrationRemovalAudit"
+            }
+          }
+        }
+      },
+      "SolutionRegistrationAdminChange": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "application": {
+            "$ref": "#/components/schemas/SolutionRef"
+          },
+          "action": {
+            "const": "remove_registrations"
+          },
+          "actor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/User"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "actor_name": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "before_version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "after_version": {
+            "type": "integer",
+            "minimum": 2
+          },
+          "removed_assignments_count": {
+            "const": 0
+          },
+          "score_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "was_submitted": {
+            "type": "boolean"
+          },
+          "revoked_invitation_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "removed_members": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Member"
+            }
+          },
+          "registration_removal_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "id",
+          "application",
+          "action",
+          "actor",
+          "actor_name",
+          "created_at",
+          "before_version",
+          "after_version",
+          "removed_assignments_count",
+          "score_count",
+          "was_submitted",
+          "revoked_invitation_count",
+          "removed_members",
+          "registration_removal_id"
         ],
         "additionalProperties": false
       }

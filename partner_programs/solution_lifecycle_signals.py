@@ -8,10 +8,16 @@ from partner_programs.solution_models import (
     ProgramSolutionMember,
     SolutionInvitation,
     SolutionAdministrativeChange,
+    SolutionRegistrationRemoval,
     lock_saved_solution,
 )
 
 
+@receiver(
+    pre_delete,
+    sender=SolutionRegistrationRemoval,
+    dispatch_uid="protect_solution_registration_removal_audit",
+)
 @receiver(
     pre_delete,
     sender=SolutionAdministrativeChange,

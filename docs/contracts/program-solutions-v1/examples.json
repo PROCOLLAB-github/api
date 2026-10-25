@@ -1,5 +1,5 @@
 {
-  "contract_version": "1.19.0",
+  "contract_version": "1.20.0",
   "description": "Независимые примеры, не последовательность операций; фиктивные данные.",
   "scenarios": [
     {
@@ -11638,6 +11638,754 @@
           ],
           "captured_at": "2026-10-25T15:00:00Z"
         }
+      }
+    },
+    {
+      "name": "registration_removal_preview_member_submitted",
+      "operation_id": "previewSolutionRegistrationRemoval",
+      "status": 200,
+      "response": {
+        "registrations": [
+          {
+            "registration_id": 601,
+            "user": {
+              "id": 10,
+              "first_name": "Участник",
+              "last_name": "Команды",
+              "avatar_url": null
+            }
+          }
+        ],
+        "effects": [
+          {
+            "application": {
+              "kind": "solution",
+              "program_id": 12,
+              "solution_id": 301,
+              "name": "Решение команды"
+            },
+            "solution_version": 7,
+            "is_submitted": true,
+            "effect": "remove_members",
+            "removed_members": [
+              {
+                "user": {
+                  "id": 10,
+                  "first_name": "Участник",
+                  "last_name": "Команды",
+                  "avatar_url": null
+                },
+                "role": "Backend-разработчик",
+                "specialization": null,
+                "joined_at": "2026-10-24T10:00:00Z",
+                "is_captain": false
+              }
+            ],
+            "removed_assignments_count": 0,
+            "revoked_invitation_count": 1,
+            "score_count": 2
+          }
+        ],
+        "deleted_count": 1,
+        "archived_count": 0,
+        "removed_member_count": 1,
+        "removed_assignments_count": 0,
+        "revoked_invitation_count": 1,
+        "score_count": 2,
+        "can_apply": true,
+        "errors": [],
+        "preview_token": "opaque-registration-removal-proof"
+      },
+      "request": {
+        "registration_ids": [
+          601
+        ]
+      }
+    },
+    {
+      "name": "registration_removal_preview_pending_only",
+      "operation_id": "previewSolutionRegistrationRemoval",
+      "status": 200,
+      "response": {
+        "registrations": [
+          {
+            "registration_id": 601,
+            "user": {
+              "id": 10,
+              "first_name": "Участник",
+              "last_name": "Команды",
+              "avatar_url": null
+            }
+          }
+        ],
+        "effects": [
+          {
+            "application": {
+              "kind": "solution",
+              "program_id": 12,
+              "solution_id": 301,
+              "name": "Решение команды"
+            },
+            "solution_version": 7,
+            "is_submitted": true,
+            "effect": "revoke_invitations",
+            "removed_members": [],
+            "removed_assignments_count": 0,
+            "revoked_invitation_count": 1,
+            "score_count": 2
+          }
+        ],
+        "deleted_count": 1,
+        "archived_count": 0,
+        "removed_member_count": 0,
+        "removed_assignments_count": 0,
+        "revoked_invitation_count": 1,
+        "score_count": 2,
+        "can_apply": true,
+        "errors": [],
+        "preview_token": "opaque-registration-removal-proof"
+      },
+      "request": {
+        "registration_ids": [
+          601
+        ]
+      }
+    },
+    {
+      "name": "registration_removal_preview_captain_submitted",
+      "operation_id": "previewSolutionRegistrationRemoval",
+      "status": 200,
+      "response": {
+        "registrations": [
+          {
+            "registration_id": 601,
+            "user": {
+              "id": 10,
+              "first_name": "Участник",
+              "last_name": "Команды",
+              "avatar_url": null
+            }
+          }
+        ],
+        "effects": [
+          {
+            "application": {
+              "kind": "solution",
+              "program_id": 12,
+              "solution_id": 301,
+              "name": "Решение команды"
+            },
+            "solution_version": 7,
+            "is_submitted": true,
+            "effect": "archive",
+            "removed_members": [],
+            "removed_assignments_count": 2,
+            "revoked_invitation_count": 1,
+            "score_count": 2
+          }
+        ],
+        "deleted_count": 1,
+        "archived_count": 1,
+        "removed_member_count": 0,
+        "removed_assignments_count": 2,
+        "revoked_invitation_count": 1,
+        "score_count": 2,
+        "can_apply": true,
+        "errors": [],
+        "preview_token": "opaque-registration-removal-proof"
+      },
+      "request": {
+        "registration_ids": [
+          601
+        ]
+      }
+    },
+    {
+      "name": "registration_removal_preview_member_draft",
+      "operation_id": "previewSolutionRegistrationRemoval",
+      "status": 200,
+      "response": {
+        "registrations": [
+          {
+            "registration_id": 601,
+            "user": {
+              "id": 10,
+              "first_name": "Участник",
+              "last_name": "Команды",
+              "avatar_url": null
+            }
+          }
+        ],
+        "effects": [
+          {
+            "application": {
+              "kind": "solution",
+              "program_id": 12,
+              "solution_id": 301,
+              "name": "Решение команды"
+            },
+            "solution_version": 7,
+            "is_submitted": false,
+            "effect": "remove_members",
+            "removed_members": [
+              {
+                "user": {
+                  "id": 10,
+                  "first_name": "Участник",
+                  "last_name": "Команды",
+                  "avatar_url": null
+                },
+                "role": "Backend-разработчик",
+                "specialization": null,
+                "joined_at": "2026-10-24T10:00:00Z",
+                "is_captain": false
+              }
+            ],
+            "removed_assignments_count": 0,
+            "revoked_invitation_count": 1,
+            "score_count": 0
+          }
+        ],
+        "deleted_count": 1,
+        "archived_count": 0,
+        "removed_member_count": 1,
+        "removed_assignments_count": 0,
+        "revoked_invitation_count": 1,
+        "score_count": 0,
+        "can_apply": true,
+        "errors": [],
+        "preview_token": "opaque-registration-removal-proof"
+      },
+      "request": {
+        "registration_ids": [
+          601
+        ]
+      }
+    },
+    {
+      "name": "registration_removal_preview_without_solution",
+      "operation_id": "previewSolutionRegistrationRemoval",
+      "status": 200,
+      "response": {
+        "registrations": [
+          {
+            "registration_id": 601,
+            "user": {
+              "id": 10,
+              "first_name": "Участник",
+              "last_name": "Команды",
+              "avatar_url": null
+            }
+          }
+        ],
+        "effects": [],
+        "deleted_count": 1,
+        "archived_count": 0,
+        "removed_member_count": 0,
+        "removed_assignments_count": 0,
+        "revoked_invitation_count": 0,
+        "score_count": 0,
+        "can_apply": true,
+        "errors": [],
+        "preview_token": "opaque-registration-removal-proof"
+      },
+      "request": {
+        "registration_ids": [
+          601
+        ]
+      }
+    },
+    {
+      "name": "registration_removal_apply_member",
+      "operation_id": "applySolutionRegistrationRemoval",
+      "status": 200,
+      "response": {
+        "audit_id": 801,
+        "deleted_count": 1,
+        "items": [
+          {
+            "application": {
+              "kind": "solution",
+              "program_id": 12,
+              "solution_id": 301,
+              "name": "Решение команды"
+            },
+            "solution_version": 8,
+            "change_id": 901,
+            "action": "remove_registrations"
+          }
+        ]
+      },
+      "request": {
+        "registration_ids": [
+          601
+        ],
+        "preview_token": "opaque-registration-removal-proof"
+      }
+    },
+    {
+      "name": "registration_removal_apply_captain",
+      "operation_id": "applySolutionRegistrationRemoval",
+      "status": 200,
+      "response": {
+        "audit_id": 801,
+        "deleted_count": 1,
+        "items": [
+          {
+            "application": {
+              "kind": "solution",
+              "program_id": 12,
+              "solution_id": 301,
+              "name": "Решение команды"
+            },
+            "solution_version": 8,
+            "change_id": 901,
+            "action": "archive"
+          }
+        ]
+      },
+      "request": {
+        "registration_ids": [
+          601
+        ],
+        "preview_token": "opaque-registration-removal-proof"
+      }
+    },
+    {
+      "name": "registration_removal_apply_without_solution",
+      "operation_id": "applySolutionRegistrationRemoval",
+      "status": 200,
+      "response": {
+        "audit_id": 801,
+        "deleted_count": 1,
+        "items": []
+      },
+      "request": {
+        "registration_ids": [
+          601
+        ],
+        "preview_token": "opaque-registration-removal-proof"
+      }
+    },
+    {
+      "name": "registration_removal_audit_list",
+      "operation_id": "listSolutionRegistrationRemovals",
+      "status": 200,
+      "response": {
+        "count": 1,
+        "offset": 0,
+        "limit": 20,
+        "results": [
+          {
+            "id": 801,
+            "program_id": 12,
+            "actor": {
+              "id": 8,
+              "first_name": "Организатор",
+              "last_name": "Программы",
+              "avatar_url": null
+            },
+            "actor_name": "Организатор Программы",
+            "created_at": "2026-10-25T12:00:00Z",
+            "registrations": [
+              {
+                "registration_id": 601,
+                "user": {
+                  "id": 10,
+                  "first_name": "Участник",
+                  "last_name": "Команды",
+                  "avatar_url": null
+                }
+              }
+            ],
+            "deleted_count": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "registration_removal_audit_detail",
+      "operation_id": "readSolutionRegistrationRemoval",
+      "status": 200,
+      "response": {
+        "audit": {
+          "id": 801,
+          "program_id": 12,
+          "actor": {
+            "id": 8,
+            "first_name": "Организатор",
+            "last_name": "Программы",
+            "avatar_url": null
+          },
+          "actor_name": "Организатор Программы",
+          "created_at": "2026-10-25T12:00:00Z",
+          "registrations": [
+            {
+              "registration_id": 601,
+              "user": {
+                "id": 10,
+                "first_name": "Участник",
+                "last_name": "Команды",
+                "avatar_url": null
+              }
+            }
+          ],
+          "deleted_count": 1
+        },
+        "changes": [
+          {
+            "id": 73,
+            "application": {
+              "kind": "solution",
+              "program_id": 12,
+              "solution_id": 301,
+              "name": "Решение команды"
+            },
+            "action": "remove_registrations",
+            "actor": {
+              "id": 8,
+              "first_name": "Организатор",
+              "last_name": "Программы",
+              "avatar_url": null
+            },
+            "actor_name": "Организатор Программы",
+            "created_at": "2026-10-25T12:00:00Z",
+            "before_version": 7,
+            "after_version": 8,
+            "removed_assignments_count": 0,
+            "score_count": 0,
+            "was_submitted": false,
+            "revoked_invitation_count": 1,
+            "removed_members": [
+              {
+                "user": {
+                  "id": 10,
+                  "first_name": "Участник",
+                  "last_name": "Команды",
+                  "avatar_url": null
+                },
+                "role": "Backend-разработчик",
+                "specialization": null,
+                "joined_at": "2026-10-24T10:00:00Z",
+                "is_captain": false
+              }
+            ],
+            "registration_removal_id": 801
+          }
+        ]
+      }
+    },
+    {
+      "name": "registration_removal_audit_no_solution",
+      "operation_id": "readSolutionRegistrationRemoval",
+      "status": 200,
+      "response": {
+        "audit": {
+          "id": 801,
+          "program_id": 12,
+          "actor": {
+            "id": 8,
+            "first_name": "Организатор",
+            "last_name": "Программы",
+            "avatar_url": null
+          },
+          "actor_name": "Организатор Программы",
+          "created_at": "2026-10-25T12:00:00Z",
+          "registrations": [
+            {
+              "registration_id": 601,
+              "user": {
+                "id": 10,
+                "first_name": "Участник",
+                "last_name": "Команды",
+                "avatar_url": null
+              }
+            }
+          ],
+          "deleted_count": 1
+        },
+        "changes": []
+      }
+    },
+    {
+      "name": "registration_removal_solution_history",
+      "operation_id": "readSolutionAdminChange",
+      "status": 200,
+      "response": {
+        "change": {
+          "id": 73,
+          "application": {
+            "kind": "solution",
+            "program_id": 12,
+            "solution_id": 301,
+            "name": "Решение команды"
+          },
+          "action": "remove_registrations",
+          "actor": {
+            "id": 8,
+            "first_name": "Организатор",
+            "last_name": "Программы",
+            "avatar_url": null
+          },
+          "actor_name": "Организатор Программы",
+          "created_at": "2026-10-25T12:00:00Z",
+          "before_version": 7,
+          "after_version": 8,
+          "removed_assignments_count": 0,
+          "score_count": 0,
+          "was_submitted": false,
+          "revoked_invitation_count": 1,
+          "removed_members": [
+            {
+              "user": {
+                "id": 10,
+                "first_name": "Участник",
+                "last_name": "Команды",
+                "avatar_url": null
+              },
+              "role": "Backend-разработчик",
+              "specialization": null,
+              "joined_at": "2026-10-24T10:00:00Z",
+              "is_captain": false
+            }
+          ],
+          "registration_removal_id": 801
+        },
+        "before_snapshot": null,
+        "after_snapshot": null
+      }
+    },
+    {
+      "name": "registration_removal_stale",
+      "operation_id": "applySolutionRegistrationRemoval",
+      "status": 409,
+      "response": {
+        "code": "solution_action_conflict",
+        "detail": "Срок сдачи завершен.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "registration_ids": [
+          601
+        ],
+        "preview_token": "opaque-registration-removal-proof"
+      }
+    },
+    {
+      "name": "registration_removal_replay",
+      "operation_id": "applySolutionRegistrationRemoval",
+      "status": 409,
+      "response": {
+        "code": "solution_action_conflict",
+        "detail": "Срок сдачи завершен.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "registration_ids": [
+          601
+        ],
+        "preview_token": "opaque-registration-removal-proof"
+      }
+    },
+    {
+      "name": "registration_removal_expired",
+      "operation_id": "applySolutionRegistrationRemoval",
+      "status": 409,
+      "response": {
+        "code": "solution_action_conflict",
+        "detail": "Срок сдачи завершен.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "registration_ids": [
+          601
+        ],
+        "preview_token": "opaque-registration-removal-proof"
+      }
+    },
+    {
+      "name": "registration_removal_other_actor",
+      "operation_id": "applySolutionRegistrationRemoval",
+      "status": 409,
+      "response": {
+        "code": "solution_action_conflict",
+        "detail": "Срок сдачи завершен.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "registration_ids": [
+          601
+        ],
+        "preview_token": "opaque-registration-removal-proof"
+      }
+    },
+    {
+      "name": "registration_removal_legacy_mode",
+      "operation_id": "previewSolutionRegistrationRemoval",
+      "status": 409,
+      "response": {
+        "code": "solution_mode_unavailable",
+        "detail": "Срок сдачи завершен.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "registration_ids": [
+          601
+        ]
+      }
+    },
+    {
+      "name": "registration_removal_mixed_legacy",
+      "operation_id": "previewSolutionRegistrationRemoval",
+      "status": 409,
+      "response": {
+        "code": "legacy_application_conflict",
+        "detail": "Срок сдачи завершен.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "registration_ids": [
+          601
+        ]
+      }
+    },
+    {
+      "name": "registration_removal_foreign_registration",
+      "operation_id": "previewSolutionRegistrationRemoval",
+      "status": 404,
+      "response": {
+        "code": "not_found",
+        "detail": "Решение или программа не найдены.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "registration_ids": [
+          601
+        ]
+      }
+    },
+    {
+      "name": "registration_removal_participant",
+      "operation_id": "previewSolutionRegistrationRemoval",
+      "status": 403,
+      "response": {
+        "code": "permission_denied",
+        "detail": "Сдать решение может только капитан.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "registration_ids": [
+          601
+        ]
+      }
+    },
+    {
+      "name": "registration_removal_foreign_audit",
+      "operation_id": "readSolutionRegistrationRemoval",
+      "status": 404,
+      "response": {
+        "code": "not_found",
+        "detail": "Решение или программа не найдены.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "registration_removal_invalid_empty",
+      "operation_id": "previewSolutionRegistrationRemoval",
+      "status": 400,
+      "response": {
+        "code": "required_program_fields",
+        "detail": "Заполните обязательные поля.",
+        "errors": [
+          {
+            "path": "answers",
+            "code": "required",
+            "field_id": 1003,
+            "detail": "Загрузите презентацию."
+          }
+        ],
+        "meta": {}
+      },
+      "invalid_request": {
+        "registration_ids": []
+      }
+    },
+    {
+      "name": "registration_removal_invalid_duplicate",
+      "operation_id": "previewSolutionRegistrationRemoval",
+      "status": 400,
+      "response": {
+        "code": "required_program_fields",
+        "detail": "Заполните обязательные поля.",
+        "errors": [
+          {
+            "path": "answers",
+            "code": "required",
+            "field_id": 1003,
+            "detail": "Загрузите презентацию."
+          }
+        ],
+        "meta": {}
+      },
+      "invalid_request": {
+        "registration_ids": [
+          601,
+          601
+        ]
+      }
+    },
+    {
+      "name": "registration_removal_invalid_user_id_instead",
+      "operation_id": "previewSolutionRegistrationRemoval",
+      "status": 400,
+      "response": {
+        "code": "required_program_fields",
+        "detail": "Заполните обязательные поля.",
+        "errors": [
+          {
+            "path": "answers",
+            "code": "required",
+            "field_id": 1003,
+            "detail": "Загрузите презентацию."
+          }
+        ],
+        "meta": {}
+      },
+      "invalid_request": {
+        "user_id": 10
+      }
+    },
+    {
+      "name": "registration_removal_invalid_unknown",
+      "operation_id": "previewSolutionRegistrationRemoval",
+      "status": 400,
+      "response": {
+        "code": "required_program_fields",
+        "detail": "Заполните обязательные поля.",
+        "errors": [
+          {
+            "path": "answers",
+            "code": "required",
+            "field_id": 1003,
+            "detail": "Загрузите презентацию."
+          }
+        ],
+        "meta": {}
+      },
+      "invalid_request": {
+        "registration_ids": [
+          601
+        ],
+        "project_id": 1
       }
     }
   ]

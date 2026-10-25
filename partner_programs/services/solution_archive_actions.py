@@ -180,6 +180,89 @@ def preview(program_id, actor, data):
     return result
 
 
+def archive_locked(solution, actor, now, *, reason="detached", registration_removal=None):
+    """Internal writer after authorization/proof recheck and all context locks."""
+    if solution.archived_at is not None or reason not in (
+        "detached",
+        "registration_removed",
+    ):
+        raise conflict()
+    if (reason == "registration_removed") != (registration_removal is not None):
+        raise conflict()
+    before = copy.deepcopy(solution.submission_snapshot)
+    version = solution.version
+    saved = solution_data(solution, actor)
+    form = copy.deepcopy(saved["form"])
+    form["is_snapshot"] = True
+    captured = dict(
+        name=saved["name"],
+        captain_id=saved["captain_id"],
+        members=copy.deepcopy(saved["team"]["members"]),
+        form=form,
+        answers=copy.deepcopy(saved["answers"]),
+        captured_at=iso(now),
+    )
+    pending = list(
+        solution.invitations.filter(status="pending")
+        .order_by("pk")
+        .values_list("pk", flat=True)
+    )
+    removed = list(
+        solution.expert_assignments.order_by("pk").values_list("pk", flat=True)
+    )
+    score_count = solution.scores.count()
+    solution.invitations.filter(pk__in=pending, status="pending").delete()
+    # The approved detach exception removes even scored assignments, as the
+    # legacy program-link writer does. Scope is the confirmed locked rows;
+    # normal SolutionAssignmentQuerySet.delete keeps its score protection.
+    models.QuerySet.delete(
+        SolutionExpertAssignment.objects.filter(solution=solution, pk__in=removed)
+    )
+    changed = ProgramSolution.all_objects.filter(
+        pk=solution.pk, archived_at__isnull=True
+    ).update(
+        archived_at=now,
+        archived_by=actor,
+        archive_reason=reason,
+        archive_snapshot=captured,
+        version=version + 1,
+        updated_at=now,
+    )
+    if changed != 1:
+        raise conflict()
+    change = SolutionAdministrativeChange.objects.create(
+        solution=solution,
+        actor=actor,
+        actor_name=f"{actor.first_name} {actor.last_name}".strip(),
+        action="archive",
+        registration_removal=registration_removal,
+        before_version=version,
+        after_version=version + 1,
+        removed_assignment_ids=removed,
+        revoked_invitation_ids=pending,
+        score_count=score_count,
+        was_submitted=solution.status == "submitted",
+        before_snapshot=before,
+        after_snapshot=copy.deepcopy(before),
+        archived_at=now,
+        archive_reason=reason,
+        archive_snapshot=copy.deepcopy(captured),
+    )
+    return (
+        dict(
+            application=dict(
+                kind="solution",
+                program_id=solution.program_id,
+                solution_id=solution.pk,
+                name=captured["name"],
+            ),
+            solution_version=version + 1,
+            archived_at=iso(now),
+        ),
+        change,
+    )
+
+
 @transaction.atomic
 def apply(program_id, actor, data):
     program, rows, files = context(program_id, actor, data["ids"])
@@ -196,76 +279,8 @@ def apply(program_id, actor, data):
     now = timezone.now()
     items = []
     for solution in rows:
-        before = copy.deepcopy(solution.submission_snapshot)
-        version = solution.version
-        saved = solution_data(solution, actor)
-        form = copy.deepcopy(saved["form"])
-        form["is_snapshot"] = True
-        captured = dict(
-            name=saved["name"],
-            captain_id=saved["captain_id"],
-            members=copy.deepcopy(saved["team"]["members"]),
-            form=form,
-            answers=copy.deepcopy(saved["answers"]),
-            captured_at=iso(now),
-        )
-        pending = list(
-            solution.invitations.filter(status="pending")
-            .order_by("pk")
-            .values_list("pk", flat=True)
-        )
-        removed = list(
-            solution.expert_assignments.order_by("pk").values_list("pk", flat=True)
-        )
-        score_count = solution.scores.count()
-        solution.invitations.filter(pk__in=pending, status="pending").delete()
-        # The approved detach exception removes even scored assignments, as the
-        # legacy program-link writer does. Scope is the confirmed locked rows;
-        # normal SolutionAssignmentQuerySet.delete keeps its score protection.
-        models.QuerySet.delete(
-            SolutionExpertAssignment.objects.filter(solution=solution, pk__in=removed)
-        )
-        changed = ProgramSolution.all_objects.filter(
-            pk=solution.pk, archived_at__isnull=True
-        ).update(
-            archived_at=now,
-            archived_by=actor,
-            archive_reason="detached",
-            archive_snapshot=captured,
-            version=version + 1,
-            updated_at=now,
-        )
-        if changed != 1:
-            raise conflict()
-        SolutionAdministrativeChange.objects.create(
-            solution=solution,
-            actor=actor,
-            actor_name=f"{actor.first_name} {actor.last_name}".strip(),
-            action="archive",
-            before_version=version,
-            after_version=version + 1,
-            removed_assignment_ids=removed,
-            revoked_invitation_ids=pending,
-            score_count=score_count,
-            was_submitted=solution.status == "submitted",
-            before_snapshot=before,
-            after_snapshot=copy.deepcopy(before),
-            archived_at=now,
-            archive_reason="detached",
-            archive_snapshot=copy.deepcopy(captured),
-        )
-        items.append(
-            dict(
-                application=dict(
-                    kind="solution",
-                    program_id=program.pk,
-                    solution_id=solution.pk,
-                    name=captured["name"],
-                ),
-                solution_version=version + 1,
-                archived_at=iso(now),
-            )
-        )
+        item, _ = archive_locked(solution, actor, now)
+        items.append(item)
     logger.info(
         "Program solution archive program=%s actor=%s solutions=%s",
         program.pk,
