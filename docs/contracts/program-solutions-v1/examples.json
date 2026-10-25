@@ -1,5 +1,5 @@
 {
-  "contract_version": "1.13.0",
+  "contract_version": "1.14.0",
   "description": "Независимые примеры, не последовательность операций; фиктивные данные.",
   "scenarios": [
     {
@@ -7591,6 +7591,473 @@
             }
           ]
         }
+      }
+    },
+    {
+      "name": "solution_action_preview_ready",
+      "operation_id": "previewSolutionSubmitAction",
+      "status": 200,
+      "response": {
+        "items": [
+          {
+            "application": {
+              "kind": "solution",
+              "program_id": 12,
+              "solution_id": 301,
+              "name": "Готовое решение"
+            },
+            "errors": []
+          }
+        ],
+        "ready_count": 1,
+        "already_submitted_count": 0,
+        "can_apply": true,
+        "preview_token": "opaque-preview-token"
+      },
+      "request": {
+        "action": "submit",
+        "ids": [
+          301
+        ]
+      }
+    },
+    {
+      "name": "solution_action_preview_incomplete",
+      "operation_id": "previewSolutionSubmitAction",
+      "status": 200,
+      "response": {
+        "items": [
+          {
+            "application": {
+              "kind": "solution",
+              "program_id": 12,
+              "solution_id": 301,
+              "name": "Готовое решение"
+            },
+            "errors": [
+              {
+                "path": "answers",
+                "code": "required",
+                "field_id": 1001,
+                "detail": "Заполните обязательное поле."
+              }
+            ]
+          }
+        ],
+        "ready_count": 0,
+        "already_submitted_count": 0,
+        "can_apply": false,
+        "preview_token": null
+      },
+      "request": {
+        "action": "submit",
+        "ids": [
+          301
+        ]
+      }
+    },
+    {
+      "name": "solution_action_preview_already",
+      "operation_id": "previewSolutionSubmitAction",
+      "status": 200,
+      "response": {
+        "items": [
+          {
+            "application": {
+              "kind": "solution",
+              "program_id": 12,
+              "solution_id": 301,
+              "name": "Готовое решение"
+            },
+            "errors": []
+          }
+        ],
+        "ready_count": 0,
+        "already_submitted_count": 1,
+        "can_apply": false,
+        "preview_token": null
+      },
+      "request": {
+        "action": "submit",
+        "ids": [
+          301
+        ]
+      }
+    },
+    {
+      "name": "solution_action_preview_mixed",
+      "operation_id": "previewSolutionSubmitAction",
+      "status": 200,
+      "response": {
+        "items": [
+          {
+            "application": {
+              "kind": "solution",
+              "program_id": 12,
+              "solution_id": 301,
+              "name": "Готовое решение"
+            },
+            "errors": []
+          },
+          {
+            "application": {
+              "kind": "solution",
+              "program_id": 12,
+              "solution_id": 302,
+              "name": "Готовое решение"
+            },
+            "errors": []
+          }
+        ],
+        "ready_count": 1,
+        "already_submitted_count": 1,
+        "can_apply": true,
+        "preview_token": "opaque-preview-token"
+      },
+      "request": {
+        "action": "submit",
+        "ids": [
+          301,
+          302
+        ]
+      }
+    },
+    {
+      "name": "solution_action_preview_noncompetitive",
+      "operation_id": "previewSolutionSubmitAction",
+      "status": 409,
+      "response": {
+        "code": "not_competitive",
+        "detail": "Проверьте действие.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "action": "submit",
+        "ids": [
+          301
+        ]
+      }
+    },
+    {
+      "name": "solution_action_preview_forbidden",
+      "operation_id": "previewSolutionSubmitAction",
+      "status": 403,
+      "response": {
+        "code": "permission_denied",
+        "detail": "Проверьте действие.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "action": "submit",
+        "ids": [
+          301
+        ]
+      }
+    },
+    {
+      "name": "solution_action_preview_anonymous",
+      "operation_id": "previewSolutionSubmitAction",
+      "status": 401,
+      "response": {
+        "code": "authentication_required",
+        "detail": "Проверьте действие.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "action": "submit",
+        "ids": [
+          301
+        ]
+      }
+    },
+    {
+      "name": "solution_action_preview_foreign",
+      "operation_id": "previewSolutionSubmitAction",
+      "status": 404,
+      "response": {
+        "code": "not_found",
+        "detail": "Проверьте действие.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "action": "submit",
+        "ids": [
+          301
+        ]
+      }
+    },
+    {
+      "name": "solution_action_preview_invalid",
+      "operation_id": "previewSolutionSubmitAction",
+      "status": 400,
+      "response": {
+        "code": "validation_error",
+        "detail": "Проверьте действие.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "solution_action_preview_legacy",
+      "operation_id": "previewSolutionSubmitAction",
+      "status": 409,
+      "response": {
+        "code": "solution_mode_unavailable",
+        "detail": "Проверьте действие.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "action": "submit",
+        "ids": [
+          301
+        ]
+      }
+    },
+    {
+      "name": "solution_action_apply_ready",
+      "operation_id": "applySolutionSubmitAction",
+      "status": 200,
+      "response": {
+        "changed_count": 1,
+        "already_submitted_count": 0
+      },
+      "request": {
+        "action": "submit",
+        "ids": [
+          301
+        ],
+        "preview_token": "opaque-preview-token"
+      }
+    },
+    {
+      "name": "solution_action_apply_mixed",
+      "operation_id": "applySolutionSubmitAction",
+      "status": 200,
+      "response": {
+        "changed_count": 1,
+        "already_submitted_count": 1
+      },
+      "request": {
+        "action": "submit",
+        "ids": [
+          301,
+          302
+        ],
+        "preview_token": "opaque-preview-token"
+      }
+    },
+    {
+      "name": "solution_action_apply_replay",
+      "operation_id": "applySolutionSubmitAction",
+      "status": 409,
+      "response": {
+        "code": "solution_action_conflict",
+        "detail": "Проверьте действие.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "action": "submit",
+        "ids": [
+          301
+        ],
+        "preview_token": "opaque-preview-token"
+      }
+    },
+    {
+      "name": "solution_action_apply_bad_signature",
+      "operation_id": "applySolutionSubmitAction",
+      "status": 409,
+      "response": {
+        "code": "solution_action_conflict",
+        "detail": "Проверьте действие.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "action": "submit",
+        "ids": [
+          301
+        ],
+        "preview_token": "opaque-preview-token"
+      }
+    },
+    {
+      "name": "solution_action_apply_expired",
+      "operation_id": "applySolutionSubmitAction",
+      "status": 409,
+      "response": {
+        "code": "solution_action_conflict",
+        "detail": "Проверьте действие.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "action": "submit",
+        "ids": [
+          301
+        ],
+        "preview_token": "opaque-preview-token"
+      }
+    },
+    {
+      "name": "solution_action_apply_changed_state",
+      "operation_id": "applySolutionSubmitAction",
+      "status": 409,
+      "response": {
+        "code": "solution_action_conflict",
+        "detail": "Проверьте действие.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "action": "submit",
+        "ids": [
+          301
+        ],
+        "preview_token": "opaque-preview-token"
+      }
+    },
+    {
+      "name": "solution_action_apply_other_manager",
+      "operation_id": "applySolutionSubmitAction",
+      "status": 409,
+      "response": {
+        "code": "solution_action_conflict",
+        "detail": "Проверьте действие.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "action": "submit",
+        "ids": [
+          301
+        ],
+        "preview_token": "opaque-preview-token"
+      }
+    },
+    {
+      "name": "solution_action_apply_forbidden",
+      "operation_id": "applySolutionSubmitAction",
+      "status": 403,
+      "response": {
+        "code": "permission_denied",
+        "detail": "Проверьте действие.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "action": "submit",
+        "ids": [
+          301
+        ],
+        "preview_token": "opaque-preview-token"
+      }
+    },
+    {
+      "name": "solution_action_apply_foreign",
+      "operation_id": "applySolutionSubmitAction",
+      "status": 404,
+      "response": {
+        "code": "not_found",
+        "detail": "Проверьте действие.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "action": "submit",
+        "ids": [
+          301
+        ],
+        "preview_token": "opaque-preview-token"
+      }
+    },
+    {
+      "name": "solution_action_apply_noncompetitive",
+      "operation_id": "applySolutionSubmitAction",
+      "status": 409,
+      "response": {
+        "code": "not_competitive",
+        "detail": "Проверьте действие.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "action": "submit",
+        "ids": [
+          301
+        ],
+        "preview_token": "opaque-preview-token"
+      }
+    },
+    {
+      "name": "solution_action_apply_legacy",
+      "operation_id": "applySolutionSubmitAction",
+      "status": 409,
+      "response": {
+        "code": "solution_mode_unavailable",
+        "detail": "Проверьте действие.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "action": "submit",
+        "ids": [
+          301
+        ],
+        "preview_token": "opaque-preview-token"
+      }
+    },
+    {
+      "name": "solution_action_apply_invalid",
+      "operation_id": "applySolutionSubmitAction",
+      "status": 400,
+      "response": {
+        "code": "validation_error",
+        "detail": "Проверьте действие.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "solution_action_apply_file_invalid",
+      "operation_id": "applySolutionSubmitAction",
+      "status": 400,
+      "response": {
+        "code": "invalid_answers",
+        "detail": "Проверьте действие.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "action": "submit",
+        "ids": [
+          301
+        ],
+        "preview_token": "opaque-preview-token"
+      }
+    },
+    {
+      "name": "solution_action_apply_anonymous",
+      "operation_id": "applySolutionSubmitAction",
+      "status": 401,
+      "response": {
+        "code": "authentication_required",
+        "detail": "Проверьте действие.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "action": "submit",
+        "ids": [
+          301
+        ],
+        "preview_token": "opaque-preview-token"
       }
     }
   ]

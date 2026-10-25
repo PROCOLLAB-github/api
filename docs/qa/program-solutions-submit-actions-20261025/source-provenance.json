@@ -1,0 +1,31 @@
+{
+  "backendBase": "6db9050c2d1eb7313006a285566501a104dbc415",
+  "frontendBase": "03f3b123daf0691303f5bbc7ff06c6682e45be01",
+  "sourceDirectory": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-submit-actions",
+  "sourceRawEvidenceSha256": "ab321164f6cdb77674077dab50cdcf66510f0287866acdd68cfb07df2dc92255",
+  "previousHttpEvidenceSha256": "cf34418c70bf20fb18d3dc7317539945f28f3b3c006f8753755deaffc8d311e5",
+  "helperSha256": "04d536060fc357ef858515f9914879032acca5f34aa3634f24b874c5bcef5d1c",
+  "sources": {
+    "Z:\\Документы\\PROCOLLAB-dev\\api-dev-program-solutions-be01-20261024\\partner_programs\\solution_submission.py": "01518f2cd0cf6ec40de2b392f51bfc01d0da599680a5c7219f5ff69f1465a393",
+    "Z:\\Документы\\PROCOLLAB-dev\\api-dev-program-solutions-be01-20261024\\partner_programs\\services\\solution_submission_actions.py": "7c629683b99fcfcfbba47db4aba3d1a801f5a8bbdb3daa3ea4834b01694ab41b",
+    "Z:\\Документы\\PROCOLLAB-dev\\api-dev-program-solutions-be01-20261024\\partner_programs\\solution_action_api.py": "1d5310ff5149f1ad1232517923730483d7ebd13f6afc7e5f69140c84c30a18b4",
+    "Z:\\Документы\\PROCOLLAB-dev\\api-dev-program-solutions-be01-20261024\\partner_programs\\urls.py": "84037edacd3b3b4cc1970925f49b636a852430fedb799cbb33b541a24d6eec0c",
+    "Z:\\Документы\\PROCOLLAB-dev\\api-dev-program-solutions-be01-20261024\\partner_programs\\tests\\test_solution_submission_actions.py": "39c523902747c7abde28da7f9ae9e6f30d401d3684e4b76ac2358dbe69900388",
+    "Z:\\Документы\\PROCOLLAB-dev\\api-dev-program-solutions-be01-20261024\\docs\\contracts\\program-solutions-v1\\openapi.json": "792053242e796730d24ed4482100ec6a33d4db055b4a96f1929795a013e17fa4",
+    "Z:\\Документы\\PROCOLLAB-dev\\api-dev-program-solutions-be01-20261024\\docs\\contracts\\program-solutions-v1\\examples.json": "7e024b2ffd88bf473728044c960d53634f85c489f4af40c3dc91a3fd490d7208",
+    "Z:\\Документы\\PROCOLLAB-dev\\procollab-dev-program-solutions-fe01-20261024\\projects\\social_platform\\src\\app\\api\\solution\\use-cases\\solution-submission-actions.use-cases.ts": "7a0f915ae098f73a59d49d0dce12231cd16319732eaaca7fd46e2c82719ae7ec",
+    "Z:\\Документы\\PROCOLLAB-dev\\procollab-dev-program-solutions-fe01-20261024\\projects\\social_platform\\src\\app\\api\\solution\\solution-submission-actions-contract.spec.ts": "442a385d7bccdec2dde6deb3f26b13b6a115d4dff1c3a1f6ea149bd7a4c9950f",
+    "Z:\\Документы\\PROCOLLAB-dev\\procollab-dev-program-solutions-fe01-20261024\\projects\\social_platform\\src\\app\\infrastructure\\adapters\\solution\\solution-http.adapter.ts": "f719265437355e9638231601bf3136c1fe641fa25b472629c1d76ff876a6863f",
+    "Z:\\Документы\\PROCOLLAB-dev\\procollab-dev-program-solutions-fe01-20261024\\projects\\social_platform\\src\\app\\domain\\solution\\solution-contract.model.ts": "7f85aa7a8643c20d34a73514f81a82d478f30a5a5ef506cb861e4efb5be3ee2d",
+    "Z:\\Документы\\PROCOLLAB-dev\\procollab-dev-program-solutions-fe01-20261024\\projects\\social_platform\\src\\app\\domain\\solution\\solution-contract.fixture.ts": "45e14979d41442a4c63f4ae547e063385271c8554750b3e28b52e3d6c941a879"
+  },
+  "localLogs": {
+    "procollab-sadm-pg-broad-final.log": "841094b48f835c020a7a21af24952fc109b67d7cec20f32597f5f30e57900063",
+    "procollab-sadm-tests-final.log": "3112646700c91f95a8ff32b72e03090a51bb02f842aeecb93469dfa36666d2c8",
+    "procollab-sadm-fe-all-final.log": "7a41cab661eee120db334100904c80e13216724c1768e6099019a31ad3b2d85f",
+    "procollab-sadm-fe-build.log": "e304385b61cc278af9c708bec2b3105fccc3b0d5d218c3774e6a3904651ff42c",
+    "procollab-sadm-http-final.log": "69ce887ddcf5f20600bf5f4110492ad8a17d951183b42a61a074dbd17514f536"
+  },
+  "credentialsIncluded": false,
+  "limits": "Source hashes identify the verified runtime before documentation/commit; no production or UI browser flow was used."
+}

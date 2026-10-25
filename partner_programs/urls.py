@@ -1,4 +1,6 @@
 from django.urls import path
+
+from partner_programs.solution_action_api import SolutionActionView
 from partner_programs.solution_publication_api import (
     PublishedSolutionListView,
     PublishedSolutionDetailView,
@@ -237,6 +239,14 @@ urlpatterns = [
     path(
         "<int:pk>/certificates/download/<uuid:token>/",
         PublicCertificateDownloadView.as_view(),
+    ),
+    path(
+        "<int:pk>/management/solutions/actions/preview/",
+        SolutionActionView.as_view(),
+    ),
+    path(
+        "<int:pk>/management/solutions/actions/apply/",
+        SolutionActionView.as_view(apply_action=True),
     ),
     path(
         "<int:pk>/management/projects/actions/preview/",

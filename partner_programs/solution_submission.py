@@ -173,6 +173,12 @@ def submit_solution(
     if not solution.program.is_competitive:
         raise SolutionError("not_competitive", "Эта программа не требует сдачи решения.")
     require_open(solution.program)
+    return _finalize_submission(solution, actor, form)
+
+
+def _finalize_submission(solution, actor, form, *, allow_after_deadline=False):
+    """Caller holds program/solution locks and has checked its own submission right."""
+    require_mutable(solution)
     list(solution.members.select_for_update().order_by("pk"))
     try:
         validate_submission_team(solution)
@@ -223,7 +229,7 @@ def submit_solution(
     data = solution_data(solution, actor)
     stamp = timezone.now()
     deadline = solution.program.get_project_submission_deadline()
-    if deadline is not None and stamp > deadline:
+    if not allow_after_deadline and deadline is not None and stamp > deadline:
         raise SolutionError("submission_closed", "Срок сдачи решения завершен.")
     solution.submission_snapshot = copy.deepcopy(
         dict(

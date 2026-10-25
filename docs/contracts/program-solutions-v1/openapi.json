@@ -3,7 +3,7 @@
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "info": {
     "title": "PROCOLLAB Program Solutions C00",
-    "version": "1.13.0",
+    "version": "1.14.0",
     "description": "Контракт решений в программах для реализации и моков BE01–BE09. API base URL задается окружением. snake_case на проводе. Старые API не меняются."
   },
   "servers": [
@@ -8491,6 +8491,188 @@
         "security": [],
         "description": "Анонимное read-only представление опубликованных неконкурсных решений. Данные остаются в ProgramSolution. Публикация определяется сохраненным published_at; GET не публикует. Конкурсная ветка еще не реализована до решения о черновиках. Cache-Control no-store."
       }
+    },
+    "/programs/{program_id}/management/solutions/actions/preview/": {
+      "post": {
+        "operationId": "previewSolutionSubmitAction",
+        "summary": "Предварительная проверка первой сдачи организатором",
+        "description": "Только существующие organizer/admin права. Signed preview привязан к actor/program/IDs и сохраненному состоянию, срок 10 минут. Поздняя первая сдача допускается; обычный submit и уже сданный snapshot не меняются. Только action=submit. private, no-store.",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolutionActionPreviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Результат",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SolutionActionPreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/programs/{program_id}/management/solutions/actions/apply/": {
+      "post": {
+        "operationId": "applySolutionSubmitAction",
+        "summary": "Подтверждение первой сдачи организатором",
+        "description": "Только существующие organizer/admin права. Signed preview привязан к actor/program/IDs и сохраненному состоянию, срок 10 минут. Поздняя первая сдача допускается; обычный submit и уже сданный snapshot не меняются. Только action=submit. private, no-store.",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolutionActionApplyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Результат",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SolutionActionResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -13080,6 +13262,137 @@
             }
           }
         }
+      },
+      "SolutionActionPreviewRequest": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "submit"
+            ]
+          },
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "minItems": 1,
+            "maxItems": 10000
+          }
+        },
+        "required": [
+          "action",
+          "ids"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionActionApplyRequest": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "submit"
+            ]
+          },
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "minItems": 1,
+            "maxItems": 10000
+          },
+          "preview_token": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200000
+          }
+        },
+        "required": [
+          "action",
+          "ids",
+          "preview_token"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionActionItem": {
+        "type": "object",
+        "properties": {
+          "application": {
+            "$ref": "#/components/schemas/SolutionRef"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            }
+          }
+        },
+        "required": [
+          "application",
+          "errors"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionActionPreview": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SolutionActionItem"
+            }
+          },
+          "ready_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "already_submitted_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "can_apply": {
+            "type": "boolean"
+          },
+          "preview_token": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "ready_count",
+          "already_submitted_count",
+          "can_apply",
+          "preview_token"
+        ],
+        "additionalProperties": false
+      },
+      "SolutionActionResult": {
+        "type": "object",
+        "properties": {
+          "changed_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "already_submitted_count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "changed_count",
+          "already_submitted_count"
+        ],
+        "additionalProperties": false
       }
     }
   }
