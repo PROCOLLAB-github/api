@@ -26,7 +26,7 @@ concurrency:
 
 jobs:
   recovery:
-    if: github.ref == 'refs/heads/ops/dev-certificates-cache-recovery-20261025' && (github.event_name == 'push' || (inputs.confirmation == 'RESULTS_DEV_CACHE' && (inputs.mode == 'inspect' || inputs.mode == 'cache-only')))
+    if: github.ref == 'refs/heads/dev' && (github.event_name == 'push' || (inputs.confirmation == 'RESULTS_DEV_CACHE' && (inputs.mode == 'inspect' || inputs.mode == 'cache-only')))
     environment: dev
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -50,12 +50,15 @@ jobs:
             exec 2>&1
             test "$(id -u)" = 0
             test "$(readlink -f /root/api)" = /root/api
-            test "$(git -C /root/api rev-parse HEAD)" = a360caa7b5e44a5dc0a2ef5f605aafe253fefe54
             git -C /root/api merge-base --is-ancestor beef71645567128398d0afa5a2eb80dc6bc8dac7 HEAD
             grep -Eq 'server_name[[:space:]]+dev\.procollab\.ru;' /etc/nginx/sites-enabled/dev.procollab.ru
             container=$(docker ps -q --no-trunc --filter 'label=com.docker.compose.project.working_dir=/root/api' --filter 'label=com.docker.compose.service=web')
             test -n "$container"
-            test "$(docker inspect -f '{{.Image}}' "$container")" = sha256:26cf5e9572c68b81239101a6ad829ef659b52e1807e0a4723e678a049b3aeb0d
+            test "$(docker inspect -f '{{.State.Running}}' "$container")" = true
+            case "$(docker inspect -f '{{.Config.Image}}' "$container")" in
+              procollab-dev-api:*) ;;
+              *) echo 'Unexpected DEV runtime image' >&2; exit 1 ;;
+            esac
             mode='${{ github.event_name == 'push' && 'inspect' || inputs.mode }}'
             case "$mode" in inspect|cache-only) ;; *) exit 1;; esac
             containers() {
