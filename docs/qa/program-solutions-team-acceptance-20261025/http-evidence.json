@@ -1,0 +1,55 @@
+{
+  "status": "PASS",
+  "c00": "1.16.0",
+  "backendBase": "ef314c30e3491e15b8232413000597b3f9df1456",
+  "sources": {
+    "partner_programs/solution_invitations.py": "f345cc950fa034daead4d621d9b59a416952edff52a86daed3dfd8eccd5ef967",
+    "partner_programs/solution_invitation_api.py": "097e16a5a1943426b6222ddad77ca0272336b82719aabd4928c6f5c768df20a9",
+    "partner_programs/tests/test_solution_invitation_roles.py": "7050bdfff6dccd2d93252a75a719f1859b3a92055e0122dabaa420a4060d79a6",
+    "partner_programs/tests/test_solution_invitations.py": "1db7f48cf2495edf2c59b62cf2c9d95642ac0f3e8f1d3ce97fa16bdc83422ec3"
+  },
+  "responses": 46,
+  "rejectedInvalidRequests": 38,
+  "checks": [
+    {
+      "program": 30,
+      "solution": 45,
+      "key": "case_championship",
+      "invitation": 51,
+      "invalidCreate": 10,
+      "invalidPatch": 9,
+      "solutionAndInvitationReadbackUnchanged": true
+    },
+    {
+      "program": 31,
+      "solution": 47,
+      "key": "hackathon",
+      "invitation": 52,
+      "invalidCreate": 10,
+      "invalidPatch": 9,
+      "solutionAndInvitationReadbackUnchanged": true
+    }
+  ],
+  "domainModels": [
+    "partner_programs.PartnerProgram",
+    "partner_programs.PartnerProgramField",
+    "partner_programs.PartnerProgramUserProfile",
+    "partner_programs.ProgramSolution",
+    "partner_programs.ProgramSolutionAnswer",
+    "partner_programs.ProgramSolutionMember",
+    "partner_programs.SolutionInvitation",
+    "project_rates.SolutionScore",
+    "project_rates.SolutionExpertAssignment",
+    "project_rates.Criteria",
+    "users.Expert",
+    "files.UserFile",
+    "projects.Project",
+    "users.Expert_programs",
+    "partner_programs.PartnerProgram_managers"
+  ],
+  "domainBefore": "f15e4e8a179c7a4e3e046a89d4b244973da0aa7f024c789b4b0964eb41423d9b",
+  "domainAfter": "f15e4e8a179c7a4e3e046a89d4b244973da0aa7f024c789b4b0964eb41423d9b",
+  "domainMutations": 0,
+  "newFixtures": 0,
+  "projectCountUnchanged": true
+}

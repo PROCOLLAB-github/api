@@ -182,13 +182,13 @@ class SolutionInvitationTests(InvitationFixture, TestCase):
             {
                 "expected_version": 1,
                 "expected_solution_version": 2,
-                "role": None,
+                "role": "Новая роль",
                 "motivational_letter": "",
             },
         )
         self.assertEqual(result.status_code, 200, result.data)
         self.validate_schema(result, "InvitationCreated")
-        self.assertIsNone(result.data["invitation"]["role"])
+        self.assertEqual(result.data["invitation"]["role"], "Новая роль")
         self.assertEqual(result.data["invitation"]["specialization"], "Данные")
         self.assertEqual(result.data["solution_version"], 3)
         self.assertEqual(result.data["invitation"]["version"], 2)
@@ -419,6 +419,7 @@ class SolutionInvitationTests(InvitationFixture, TestCase):
             actor=other.captain,
             expected_solution_version=1,
             recipient_user_id=self.recipient.pk,
+            role="Аналитик",
         )
         self.assertEqual(self.action(invite).status_code, 200)
         self.program.datetime_finished = timezone.now() - timezone.timedelta(days=1)
@@ -458,6 +459,7 @@ class SolutionInvitationConcurrencyTests(InvitationFixture, TransactionTestCase)
                 actor=self.captain,
                 expected_solution_version=1,
                 recipient_user_id=self.recipient.pk,
+                role="Аналитик",
             )
 
         results = self.parallel([create, create])
@@ -475,6 +477,7 @@ class SolutionInvitationConcurrencyTests(InvitationFixture, TransactionTestCase)
             actor=other.captain,
             expected_solution_version=1,
             recipient_user_id=self.recipient.pk,
+            role="Аналитик",
         )
 
         def accept(pk):

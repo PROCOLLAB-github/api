@@ -21,11 +21,13 @@ from partner_programs.solution_models import ProgramSolution
 class InvitationFields(StrictSerializer):
     role = NameField(
         required=False,
-        allow_null=True,
-        allow_blank=True,
+        allow_null=False,
+        allow_blank=False,
+        min_length=1,
         max_length=128,
         trim_whitespace=False,
     )
+
     specialization = NameField(
         required=False,
         allow_null=True,
@@ -41,8 +43,20 @@ class InvitationFields(StrictSerializer):
         trim_whitespace=False,
     )
 
+    def validate_role(self, value):
+        solution_invitations.require_role(value)
+        return value
+
 
 class CreateInvitationSerializer(InvitationFields):
+    role = NameField(
+        required=True,
+        allow_null=False,
+        allow_blank=False,
+        min_length=1,
+        max_length=128,
+        trim_whitespace=False,
+    )
     expected_solution_version = CommandInteger(min_value=1)
     recipient_user_id = CommandInteger(min_value=1, max_value=MAX_ID)
 

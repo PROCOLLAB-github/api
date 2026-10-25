@@ -3,7 +3,7 @@
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "info": {
     "title": "PROCOLLAB Program Solutions C00",
-    "version": "1.15.0",
+    "version": "1.16.0",
     "description": "Контракт решений в программах для реализации и моков BE01–BE09. API base URL задается окружением. snake_case на проводе. Старые API не меняются."
   },
   "servers": [
@@ -10190,15 +10190,10 @@
             "maximum": 9007199254740991
           },
           "role": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 128
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "\\S"
           },
           "specialization": {
             "anyOf": [
@@ -10225,7 +10220,8 @@
         },
         "required": [
           "expected_solution_version",
-          "recipient_user_id"
+          "recipient_user_id",
+          "role"
         ],
         "additionalProperties": false
       },
@@ -10241,15 +10237,10 @@
             "minimum": 1
           },
           "role": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 128
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "\\S"
           },
           "specialization": {
             "anyOf": [

@@ -6,7 +6,7 @@ from django.db.models import Q
 from django.http import Http404
 
 from partner_programs import solution_team
-from partner_programs.solution_errors import MAX_ID, SolutionError
+from partner_programs.solution_errors import MAX_ID, SolutionError, issue
 from partner_programs.solution_models import (
     ProgramSolution,
     ProgramSolutionMember,
@@ -57,11 +57,24 @@ def require_eligible(solution, user_id):
         )
 
 
-def require_fields(fields):
+def require_role(value):
+    if not isinstance(value, str) or not 1 <= len(value) <= 128 or not value.strip():
+        detail = "Укажите роль от 1 до 128 символов."
+        raise SolutionError(
+            "validation_error",
+            detail,
+            status=400,
+            errors=[issue("role", "invalid", detail)],
+        )
+
+
+def require_fields(fields, *, creating=False):
     if fields.keys() - {"role", "specialization", "motivational_letter"}:
         raise SolutionError(
             "validation_error", "Недопустимые поля приглашения.", status=400
         )
+    if creating or "role" in fields:
+        require_role(fields.get("role"))
 
 
 def lock_invitation(invitation_id, actor):
@@ -106,7 +119,7 @@ def create_invitation(
     recipient_user_id,
     **fields
 ):
-    require_fields(fields)
+    require_fields(fields, creating=True)
     solution = solution_team.lock_solution(program_id, solution_id, actor)
     solution_team.require_captain(solution, actor)
     solution_team.require_mutable(solution)

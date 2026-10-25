@@ -1,0 +1,246 @@
+{
+  "status": "PASS",
+  "audit": "Historical evidence reconciliation; not a new browser journey",
+  "c00": "1.16.0",
+  "schemas": 128,
+  "operations": 49,
+  "scenarios": 217,
+  "changedRequestSchemas": [
+    "CreateInvitation",
+    "UpdateInvitation"
+  ],
+  "unchangedSchemas": 126,
+  "unchangedOperations": 49,
+  "changedOldScenarios": [
+    "duplicate_invitation",
+    "max_team",
+    "team_frozen"
+  ],
+  "unchangedOldScenarios": 206,
+  "newScenarios": 8,
+  "sources": [
+    {
+      "repository": "backend",
+      "file": "partner_programs/solution_invitations.py",
+      "sha256": "f345cc950fa034daead4d621d9b59a416952edff52a86daed3dfd8eccd5ef967",
+      "reference": "6db9050",
+      "unchangedDefinitions": 12,
+      "intentionalChanges": [
+        "require_fields",
+        "require_role"
+      ]
+    },
+    {
+      "repository": "backend",
+      "file": "partner_programs/solution_invitation_api.py",
+      "sha256": "097e16a5a1943426b6222ddad77ca0272336b82719aabd4928c6f5c768df20a9",
+      "reference": "6db9050",
+      "unchangedDefinitions": 12,
+      "intentionalChanges": [
+        "CreateInvitationSerializer",
+        "InvitationFields"
+      ]
+    },
+    {
+      "repository": "backend",
+      "file": "partner_programs/solution_team.py",
+      "sha256": "38b836a54d19dc6c2b1f8f9b02db8ba5f573a44bba08ad6d0aa0e542abb14c17",
+      "reference": "6db9050",
+      "unchanged": true
+    },
+    {
+      "repository": "backend",
+      "file": "partner_programs/solution_models.py",
+      "sha256": "928fc7a89042dc5153c17df79b6a07a47904900138df1090de27d5b29f61d0d6",
+      "reference": "6db9050",
+      "unchanged": true
+    },
+    {
+      "repository": "frontend",
+      "file": "projects/social_platform/src/app/ui/pages/program/solution/solution-team.component.ts",
+      "sha256": "bb7b6e511c2a8ba0ed6ce4a3911cafd0441a69370e4a1ff3ba21c75da6f40e49",
+      "reference": "0415dddd",
+      "unchanged": true
+    },
+    {
+      "repository": "frontend",
+      "file": "projects/social_platform/src/app/ui/pages/program/solution/solution-team.component.html",
+      "sha256": "b46c60bf48dd12a7105a9ede2637f8376d15360c54ae38f0761253954d501063",
+      "reference": "0415dddd",
+      "unchanged": true
+    },
+    {
+      "repository": "frontend",
+      "file": "projects/social_platform/src/app/ui/widgets/project-invite/solution-member-invite-modal.component.ts",
+      "sha256": "2d15ee9745675ae9ba66e6413de83a225a74f906d1b1f9a3c459ef1c78e8c681",
+      "reference": "0415dddd",
+      "unchanged": true
+    },
+    {
+      "repository": "frontend",
+      "file": "projects/social_platform/src/app/ui/widgets/project-invite/member-invite-form.component.ts",
+      "sha256": "480c1ea83cfb7dc607ec552c009de23d024a62c301b4341e193067ab858e7e11",
+      "reference": "0415dddd",
+      "unchanged": true
+    },
+    {
+      "repository": "frontend",
+      "file": "projects/social_platform/src/app/ui/widgets/project-invite/member-invite-form.component.html",
+      "sha256": "f66ad1f0b847cde0aed40f65fc0b3299d88238e58cbf381ba725d9a8c2aa652f",
+      "reference": "0415dddd",
+      "unchanged": true
+    },
+    {
+      "repository": "frontend",
+      "file": "projects/social_platform/src/app/api/solution/use-cases/solution-team.use-cases.ts",
+      "sha256": "17a1e6146f697aa175fc78c1d1f4a8caad30a00bbb697911993913556d2537dd",
+      "reference": "0415dddd",
+      "unchanged": true
+    }
+  ],
+  "verifiedArtifactHashes": [
+    {
+      "file": "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-qa01-participant-browser.cjs",
+      "sha256": "308563ef23f06dcade9b73b59d310e1be6be5305ca9673a1b32fce70896b1038"
+    },
+    {
+      "file": "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-qa01-participant-verify.py",
+      "sha256": "b2a2c3658a82ea67c5bc17f95c89db52275da570698b6d5df866a57d94870ad8"
+    },
+    {
+      "file": "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-qa01-local-build.cjs",
+      "sha256": "7d7b4d4c8e8cdd3e7ba6008b0bdad4f1551daf6c2a65768249ce4110d74d6c7a"
+    },
+    {
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-participant\\case_championship-confirmation-mobile.png",
+      "sha256": "9ae2f9b47c39105fc23897ba0eff61934bf33b06c8a70a1c05975057a71a687f"
+    },
+    {
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-participant\\case_championship-materials-desktop.png",
+      "sha256": "258d58f4be62fdc9e65b23142f4d71172d199469f20a7dd8a1b74c4994ec1731"
+    },
+    {
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-participant\\case_championship-materials-mobile.png",
+      "sha256": "1cdd076dc423d273a16daf59c00aea46128c3f283e0bd3a413b232b9b7a37e83"
+    },
+    {
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-participant\\case_championship-submitted-materials-mobile.png",
+      "sha256": "25e6d6550ce189afe29255fd4e057a85598d53c2b28ad38b40e5e6963898d18f"
+    },
+    {
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-participant\\case_championship-submitted-team-mobile.png",
+      "sha256": "e74d1e4dee34078fa2bad7ba1031a8e4bd7bfd5330d8ad1ae63c0cbff68ae2ef"
+    },
+    {
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-participant\\case_championship-team-mobile.png",
+      "sha256": "4d10813040fdef13d2397123fa7d2c37a675c6d39fcb304d32302b95c5941a1d"
+    },
+    {
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-participant\\hackathon-confirmation-mobile.png",
+      "sha256": "03fa0e508aa5d68cc21429ce96dd527366ae4bac59ff9bb07ee03e52ad0f350b"
+    },
+    {
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-participant\\hackathon-materials-desktop.png",
+      "sha256": "acfdbd9a288219406a6c3198e1993e9b677b140b01144a2691cdbadf61eae948"
+    },
+    {
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-participant\\hackathon-materials-mobile.png",
+      "sha256": "d2a77a47c50907daa1f9469aac6059131f11712cae5e718cfa00b8511ec8d234"
+    },
+    {
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-participant\\hackathon-submitted-materials-mobile.png",
+      "sha256": "cd6351263b1ebfebfaef2ac387b89cd8c419d6c89ec97fc08426edc2e9bb4269"
+    },
+    {
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-participant\\hackathon-submitted-team-mobile.png",
+      "sha256": "37a205fa964ee7f6082cb936e82ac5578fa87c9f02973419927e4c2607f1a0cc"
+    },
+    {
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-participant\\hackathon-team-mobile.png",
+      "sha256": "c2fbba39f4f0bd0a70fd3573fec334e0699ad33cbb36b1f52f2a10d206b8eb22"
+    },
+    {
+      "file": "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-qa01-invitations-race.py",
+      "sha256": "180384db4b3c7010afd79f294fd34a1bc8b3d04c27f0fec3e513f9d62b801449"
+    },
+    {
+      "file": "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-qa01-invitations-browser.cjs",
+      "sha256": "e6bebdbfd9416ceed32dc167b81c62f9c359caa67edb35653c7ead44f547ef14"
+    },
+    {
+      "file": "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-qa01-invitations-verify.py",
+      "sha256": "9c1e0999c3dd626c7d48157bf40815c229445e395332d664418c3a3226e87617"
+    },
+    {
+      "file": "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-qa01-invitations-worker.py",
+      "sha256": "f3a64a1939c5719343abe58552910bc82ca5717b99e27bfe322c048aa4bfc0b3"
+    },
+    {
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-invitations\\browser-error.png",
+      "sha256": "bb558d5ef553760ba35b11a9bb7783f0b6731fc1374fba8e05536c9408509268"
+    },
+    {
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-invitations\\case_championship-final-team-1440.png",
+      "sha256": "91f1e4092f495332a84360b6b6ece26dbce0769cd042030dbb2379ff1bbfc6e7"
+    },
+    {
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-invitations\\case_championship-final-team-390.png",
+      "sha256": "07128d805a87a6453e3529517494637d88a11d8aaee903e125c6f55b02b62c1f"
+    },
+    {
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-invitations\\case_championship-long-role-1440.png",
+      "sha256": "12e03f669820a31697bc26969dedb523e03478f0c51b371bfd3e69124c744500"
+    },
+    {
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-invitations\\case_championship-long-role-390.png",
+      "sha256": "fde0422c9ad497d5ceba387f279078a97566d06b53ec81fb8db38c28133914b3"
+    },
+    {
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-invitations\\hackathon-final-team-1440.png",
+      "sha256": "e8097352a6b5df0fb49179a6b4a92c2fc7b5c8deb0bdd89e72c73ef5539d03e1"
+    },
+    {
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-invitations\\hackathon-final-team-390.png",
+      "sha256": "007c749d682d4af411b2392aeec5c74a588fd609c0b7ea940675bff04da66d96"
+    },
+    {
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-invitations\\hackathon-long-role-1440.png",
+      "sha256": "968169730d8cffd351d397a6abb603e73a03cc6ec510b661aa5eb0f5de94c1b0"
+    },
+    {
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-invitations\\hackathon-long-role-390.png",
+      "sha256": "9a3991d65164c63cb46c32b853533c9fea099c31310cba1a0d6552d6435d211a"
+    },
+    {
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-invitations\\transient-case_championship-long-role-1440.png",
+      "sha256": "55ebf7075603adabc794e1a77a5e2e8cb7cdabd78754f586693cb0c81df6ecad"
+    },
+    {
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-invitations\\transient-case_championship-long-role-390.png",
+      "sha256": "c964f4edee3a3afb2b37fd71ce25945a9a0f6378c0fd0587fe2c2ffbe6ddb941"
+    },
+    {
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-invitations\\transient-hackathon-long-role-1440.png",
+      "sha256": "a555248593cb01a5349fe62bd4449f7a0602e2beb96afe6a3aad96e08a5c7b68"
+    },
+    {
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-invitations\\transient-hackathon-long-role-390.png",
+      "sha256": "71e4599481e79db11437f01c16bd10932e6880d44798a336ead79b8d864bde59"
+    }
+  ],
+  "invitationRawResponsesValidatedAgainstCurrentC00": 120,
+  "invitationRawRequestsValidatedAgainstCurrentC00": 18,
+  "invitationUniqueChecks": 16,
+  "partRuntime": {
+    "backend": "1724bca4c7cf7907955312d1f4c9e6ec44316fbd",
+    "frontend": "e57fb04ec93fdede611712014492a529cf9172b9",
+    "c00": "1.12.0"
+  },
+  "invRuntime": {
+    "backend": "2ad4743",
+    "frontend": "0415dddd",
+    "c00": "1.13.0"
+  },
+  "newFixtures": 0,
+  "domainWrites": 0
+}
