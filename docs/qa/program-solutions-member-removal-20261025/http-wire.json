@@ -1,0 +1,4763 @@
+[
+  {
+    "actor": "captain",
+    "method": "POST",
+    "path": "/programs/38/solutions/",
+    "status": 201,
+    "request": {
+      "name": "Исключение участника case_championship qa01mr-20261025-60d40caf"
+    },
+    "response": {
+      "id": 53,
+      "program_id": 38,
+      "version": 1,
+      "name": "Исключение участника case_championship qa01mr-20261025-60d40caf",
+      "captain_id": 9,
+      "created_at": "2026-10-25T14:14:14.875029Z",
+      "updated_at": "2026-10-25T14:14:14.875029Z",
+      "team": {
+        "members": [
+          {
+            "user": {
+              "id": 9,
+              "first_name": "Илья",
+              "last_name": "Сквозной",
+              "avatar_url": null
+            },
+            "role": null,
+            "specialization": null,
+            "joined_at": "2026-10-25T14:14:14.881393Z",
+            "is_captain": true
+          }
+        ],
+        "accepted_count": 1,
+        "pending_count": 0,
+        "reserved_count": 1,
+        "min_size": 2,
+        "max_size": 3,
+        "is_frozen": false
+      },
+      "form": {
+        "program_id": 38,
+        "revision": "d28254a65cd5a20b50b5b5bd526d32a2567d7e6f19b992093b13d188904b7e99",
+        "template": "case_championship",
+        "is_configured": true,
+        "is_snapshot": false,
+        "fields": [
+          {
+            "id": 271,
+            "type": "select",
+            "purpose": "case",
+            "label": "Кейс",
+            "help_text": "",
+            "required": true,
+            "position": 0,
+            "options": ["Город", "Образование"],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 272,
+            "type": "textarea",
+            "purpose": "other",
+            "label": "Материалы",
+            "help_text": "",
+            "required": true,
+            "position": 1,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 273,
+            "type": "number",
+            "purpose": "other",
+            "label": "Число",
+            "help_text": "",
+            "required": true,
+            "position": 2,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 274,
+            "type": "checkbox",
+            "purpose": "other",
+            "label": "Флаг",
+            "help_text": "",
+            "required": true,
+            "position": 3,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          }
+        ]
+      },
+      "answers": [],
+      "submission": {
+        "required": true,
+        "status": "draft",
+        "submission_open": true,
+        "deadline": "2026-10-26T14:14:14.598410Z",
+        "submitted_at": null
+      },
+      "permissions": {
+        "can_edit": true,
+        "can_manage_team": true,
+        "can_invite": true,
+        "can_submit": true,
+        "can_leave": false
+      },
+      "readiness": {
+        "is_ready": false,
+        "issues": [
+          {
+            "path": "team",
+            "code": "team_min_size",
+            "detail": "В команде недостаточно принятых участников.",
+            "field_id": null
+          },
+          {
+            "path": "answers",
+            "code": "case_required",
+            "detail": "Выберите кейс или задачу.",
+            "field_id": 271
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 272
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 273
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 274
+          }
+        ]
+      }
+    },
+    "cacheControl": null
+  },
+  {
+    "actor": "captain",
+    "method": "GET",
+    "path": "/programs/38/solutions/53/",
+    "status": 200,
+    "request": null,
+    "response": {
+      "id": 53,
+      "program_id": 38,
+      "version": 1,
+      "name": "Исключение участника case_championship qa01mr-20261025-60d40caf",
+      "captain_id": 9,
+      "created_at": "2026-10-25T14:14:14.875029Z",
+      "updated_at": "2026-10-25T14:14:14.875029Z",
+      "team": {
+        "members": [
+          {
+            "user": {
+              "id": 9,
+              "first_name": "Илья",
+              "last_name": "Сквозной",
+              "avatar_url": null
+            },
+            "role": null,
+            "specialization": null,
+            "joined_at": "2026-10-25T14:14:14.881393Z",
+            "is_captain": true
+          }
+        ],
+        "accepted_count": 1,
+        "pending_count": 0,
+        "reserved_count": 1,
+        "min_size": 2,
+        "max_size": 3,
+        "is_frozen": false
+      },
+      "form": {
+        "program_id": 38,
+        "revision": "d28254a65cd5a20b50b5b5bd526d32a2567d7e6f19b992093b13d188904b7e99",
+        "template": "case_championship",
+        "is_configured": true,
+        "is_snapshot": false,
+        "fields": [
+          {
+            "id": 271,
+            "type": "select",
+            "purpose": "case",
+            "label": "Кейс",
+            "help_text": "",
+            "required": true,
+            "position": 0,
+            "options": ["Город", "Образование"],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 272,
+            "type": "textarea",
+            "purpose": "other",
+            "label": "Материалы",
+            "help_text": "",
+            "required": true,
+            "position": 1,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 273,
+            "type": "number",
+            "purpose": "other",
+            "label": "Число",
+            "help_text": "",
+            "required": true,
+            "position": 2,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 274,
+            "type": "checkbox",
+            "purpose": "other",
+            "label": "Флаг",
+            "help_text": "",
+            "required": true,
+            "position": 3,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          }
+        ]
+      },
+      "answers": [],
+      "submission": {
+        "required": true,
+        "status": "draft",
+        "submission_open": true,
+        "deadline": "2026-10-26T14:14:14.598410Z",
+        "submitted_at": null
+      },
+      "permissions": {
+        "can_edit": true,
+        "can_manage_team": true,
+        "can_invite": true,
+        "can_submit": true,
+        "can_leave": false
+      },
+      "readiness": {
+        "is_ready": false,
+        "issues": [
+          {
+            "path": "team",
+            "code": "team_min_size",
+            "detail": "В команде недостаточно принятых участников.",
+            "field_id": null
+          },
+          {
+            "path": "answers",
+            "code": "case_required",
+            "detail": "Выберите кейс или задачу.",
+            "field_id": 271
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 272
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 273
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 274
+          }
+        ]
+      }
+    },
+    "cacheControl": null
+  },
+  {
+    "actor": "captain",
+    "method": "POST",
+    "path": "/programs/38/solutions/53/invitations/",
+    "status": 201,
+    "request": {
+      "expected_solution_version": 1,
+      "recipient_user_id": 10,
+      "role": "Backend-разработчик"
+    },
+    "response": {
+      "invitation": {
+        "id": 56,
+        "version": 1,
+        "program": {
+          "id": 38,
+          "name": "Исключение участника case_championship qa01mr-20261025-60d40caf"
+        },
+        "solution": {
+          "kind": "solution",
+          "program_id": 38,
+          "solution_id": 53,
+          "name": "Исключение участника case_championship qa01mr-20261025-60d40caf"
+        },
+        "captain": {
+          "id": 9,
+          "first_name": "Илья",
+          "last_name": "Сквозной",
+          "avatar_url": null
+        },
+        "recipient": {
+          "id": 10,
+          "first_name": "Мария",
+          "last_name": "Сквозная",
+          "avatar_url": null
+        },
+        "role": "Backend-разработчик",
+        "specialization": null,
+        "motivational_letter": null,
+        "status": "pending",
+        "created_at": "2026-10-25T14:14:15.127265Z",
+        "updated_at": "2026-10-25T14:14:15.127265Z",
+        "permissions": {
+          "can_edit": true,
+          "can_revoke": true,
+          "can_accept": false,
+          "can_decline": false
+        }
+      },
+      "solution_version": 2
+    },
+    "cacheControl": null
+  },
+  {
+    "actor": "member",
+    "method": "POST",
+    "path": "/solution-invitations/56/accept/",
+    "status": 200,
+    "request": {
+      "expected_version": 1
+    },
+    "response": {
+      "invitation": {
+        "id": 56,
+        "version": 2,
+        "program": {
+          "id": 38,
+          "name": "Исключение участника case_championship qa01mr-20261025-60d40caf"
+        },
+        "solution": {
+          "kind": "solution",
+          "program_id": 38,
+          "solution_id": 53,
+          "name": "Исключение участника case_championship qa01mr-20261025-60d40caf"
+        },
+        "captain": {
+          "id": 9,
+          "first_name": "Илья",
+          "last_name": "Сквозной",
+          "avatar_url": null
+        },
+        "recipient": {
+          "id": 10,
+          "first_name": "Мария",
+          "last_name": "Сквозная",
+          "avatar_url": null
+        },
+        "role": "Backend-разработчик",
+        "specialization": null,
+        "motivational_letter": null,
+        "status": "accepted",
+        "created_at": "2026-10-25T14:14:15.127265Z",
+        "updated_at": "2026-10-25T14:14:15.272157Z",
+        "permissions": {
+          "can_edit": false,
+          "can_revoke": false,
+          "can_accept": false,
+          "can_decline": false
+        }
+      },
+      "application": {
+        "kind": "solution",
+        "program_id": 38,
+        "solution_id": 53,
+        "name": "Исключение участника case_championship qa01mr-20261025-60d40caf"
+      },
+      "solution_version": 3
+    },
+    "cacheControl": null
+  },
+  {
+    "actor": "captain",
+    "method": "GET",
+    "path": "/programs/38/solutions/53/",
+    "status": 200,
+    "request": null,
+    "response": {
+      "id": 53,
+      "program_id": 38,
+      "version": 3,
+      "name": "Исключение участника case_championship qa01mr-20261025-60d40caf",
+      "captain_id": 9,
+      "created_at": "2026-10-25T14:14:14.875029Z",
+      "updated_at": "2026-10-25T14:14:15.275159Z",
+      "team": {
+        "members": [
+          {
+            "user": {
+              "id": 9,
+              "first_name": "Илья",
+              "last_name": "Сквозной",
+              "avatar_url": null
+            },
+            "role": null,
+            "specialization": null,
+            "joined_at": "2026-10-25T14:14:14.881393Z",
+            "is_captain": true
+          },
+          {
+            "user": {
+              "id": 10,
+              "first_name": "Мария",
+              "last_name": "Сквозная",
+              "avatar_url": null
+            },
+            "role": "Backend-разработчик",
+            "specialization": null,
+            "joined_at": "2026-10-25T14:14:15.264093Z",
+            "is_captain": false
+          }
+        ],
+        "accepted_count": 2,
+        "pending_count": 0,
+        "reserved_count": 2,
+        "min_size": 2,
+        "max_size": 3,
+        "is_frozen": false
+      },
+      "form": {
+        "program_id": 38,
+        "revision": "d28254a65cd5a20b50b5b5bd526d32a2567d7e6f19b992093b13d188904b7e99",
+        "template": "case_championship",
+        "is_configured": true,
+        "is_snapshot": false,
+        "fields": [
+          {
+            "id": 271,
+            "type": "select",
+            "purpose": "case",
+            "label": "Кейс",
+            "help_text": "",
+            "required": true,
+            "position": 0,
+            "options": ["Город", "Образование"],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 272,
+            "type": "textarea",
+            "purpose": "other",
+            "label": "Материалы",
+            "help_text": "",
+            "required": true,
+            "position": 1,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 273,
+            "type": "number",
+            "purpose": "other",
+            "label": "Число",
+            "help_text": "",
+            "required": true,
+            "position": 2,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 274,
+            "type": "checkbox",
+            "purpose": "other",
+            "label": "Флаг",
+            "help_text": "",
+            "required": true,
+            "position": 3,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          }
+        ]
+      },
+      "answers": [],
+      "submission": {
+        "required": true,
+        "status": "draft",
+        "submission_open": true,
+        "deadline": "2026-10-26T14:14:14.598410Z",
+        "submitted_at": null
+      },
+      "permissions": {
+        "can_edit": true,
+        "can_manage_team": true,
+        "can_invite": true,
+        "can_submit": true,
+        "can_leave": false
+      },
+      "readiness": {
+        "is_ready": false,
+        "issues": [
+          {
+            "path": "answers",
+            "code": "case_required",
+            "detail": "Выберите кейс или задачу.",
+            "field_id": 271
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 272
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 273
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 274
+          }
+        ]
+      }
+    },
+    "cacheControl": null
+  },
+  {
+    "actor": "captain",
+    "method": "PATCH",
+    "path": "/programs/38/solutions/53/",
+    "status": 200,
+    "request": {
+      "expected_version": 3,
+      "expected_form_revision": "d28254a65cd5a20b50b5b5bd526d32a2567d7e6f19b992093b13d188904b7e99",
+      "answers": [
+        {
+          "field_id": 271,
+          "value": "Город"
+        },
+        {
+          "field_id": 272,
+          "value": "Материалы qa01mr-20261025-60d40caf"
+        },
+        {
+          "field_id": 273,
+          "value": 0
+        },
+        {
+          "field_id": 274,
+          "value": false
+        }
+      ]
+    },
+    "response": {
+      "id": 53,
+      "program_id": 38,
+      "version": 4,
+      "name": "Исключение участника case_championship qa01mr-20261025-60d40caf",
+      "captain_id": 9,
+      "created_at": "2026-10-25T14:14:14.875029Z",
+      "updated_at": "2026-10-25T14:14:15.518344Z",
+      "team": {
+        "members": [
+          {
+            "user": {
+              "id": 9,
+              "first_name": "Илья",
+              "last_name": "Сквозной",
+              "avatar_url": null
+            },
+            "role": null,
+            "specialization": null,
+            "joined_at": "2026-10-25T14:14:14.881393Z",
+            "is_captain": true
+          },
+          {
+            "user": {
+              "id": 10,
+              "first_name": "Мария",
+              "last_name": "Сквозная",
+              "avatar_url": null
+            },
+            "role": "Backend-разработчик",
+            "specialization": null,
+            "joined_at": "2026-10-25T14:14:15.264093Z",
+            "is_captain": false
+          }
+        ],
+        "accepted_count": 2,
+        "pending_count": 0,
+        "reserved_count": 2,
+        "min_size": 2,
+        "max_size": 3,
+        "is_frozen": false
+      },
+      "form": {
+        "program_id": 38,
+        "revision": "d28254a65cd5a20b50b5b5bd526d32a2567d7e6f19b992093b13d188904b7e99",
+        "template": "case_championship",
+        "is_configured": true,
+        "is_snapshot": false,
+        "fields": [
+          {
+            "id": 271,
+            "type": "select",
+            "purpose": "case",
+            "label": "Кейс",
+            "help_text": "",
+            "required": true,
+            "position": 0,
+            "options": ["Город", "Образование"],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 272,
+            "type": "textarea",
+            "purpose": "other",
+            "label": "Материалы",
+            "help_text": "",
+            "required": true,
+            "position": 1,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 273,
+            "type": "number",
+            "purpose": "other",
+            "label": "Число",
+            "help_text": "",
+            "required": true,
+            "position": 2,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 274,
+            "type": "checkbox",
+            "purpose": "other",
+            "label": "Флаг",
+            "help_text": "",
+            "required": true,
+            "position": 3,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          }
+        ]
+      },
+      "answers": [
+        {
+          "field_id": 271,
+          "value": "Город"
+        },
+        {
+          "field_id": 272,
+          "value": "Материалы qa01mr-20261025-60d40caf"
+        },
+        {
+          "field_id": 273,
+          "value": 0
+        },
+        {
+          "field_id": 274,
+          "value": false
+        }
+      ],
+      "submission": {
+        "required": true,
+        "status": "draft",
+        "submission_open": true,
+        "deadline": "2026-10-26T14:14:14.598410Z",
+        "submitted_at": null
+      },
+      "permissions": {
+        "can_edit": true,
+        "can_manage_team": true,
+        "can_invite": true,
+        "can_submit": true,
+        "can_leave": false
+      },
+      "readiness": {
+        "is_ready": true,
+        "issues": []
+      }
+    },
+    "cacheControl": null
+  },
+  {
+    "actor": "manager",
+    "method": "POST",
+    "path": "/programs/38/management/solutions/53/members/remove/preview/",
+    "status": 200,
+    "request": {
+      "user_id": 10
+    },
+    "response": {
+      "application": {
+        "kind": "solution",
+        "program_id": 38,
+        "solution_id": 53,
+        "name": "Исключение участника case_championship qa01mr-20261025-60d40caf"
+      },
+      "member": {
+        "user": {
+          "id": 10,
+          "first_name": "Мария",
+          "last_name": "Сквозная",
+          "avatar_url": null
+        },
+        "role": "Backend-разработчик",
+        "specialization": null,
+        "joined_at": "2026-10-25T14:14:15.264093Z",
+        "is_captain": false
+      },
+      "solution_version": 4,
+      "is_submitted": false,
+      "remaining_member_count": 1,
+      "revoked_invitation_count": 0,
+      "score_count": 0,
+      "errors": [],
+      "can_apply": true,
+      "preview_token": "[REDACTED_SIGNED_PREVIEW]"
+    },
+    "cacheControl": "private, no-store"
+  },
+  {
+    "actor": "captain",
+    "method": "POST",
+    "path": "/programs/38/solutions/53/submit/",
+    "status": 200,
+    "request": {
+      "expected_version": 4,
+      "expected_form_revision": "d28254a65cd5a20b50b5b5bd526d32a2567d7e6f19b992093b13d188904b7e99"
+    },
+    "response": {
+      "id": 53,
+      "program_id": 38,
+      "version": 5,
+      "name": "Исключение участника case_championship qa01mr-20261025-60d40caf",
+      "captain_id": 9,
+      "created_at": "2026-10-25T14:14:14.875029Z",
+      "updated_at": "2026-10-25T14:14:15.823471Z",
+      "team": {
+        "members": [
+          {
+            "user": {
+              "id": 9,
+              "first_name": "Илья",
+              "last_name": "Сквозной",
+              "avatar_url": null
+            },
+            "role": null,
+            "specialization": null,
+            "joined_at": "2026-10-25T14:14:14.881393Z",
+            "is_captain": true
+          },
+          {
+            "user": {
+              "id": 10,
+              "first_name": "Мария",
+              "last_name": "Сквозная",
+              "avatar_url": null
+            },
+            "role": "Backend-разработчик",
+            "specialization": null,
+            "joined_at": "2026-10-25T14:14:15.264093Z",
+            "is_captain": false
+          }
+        ],
+        "accepted_count": 2,
+        "pending_count": 0,
+        "reserved_count": 2,
+        "min_size": 2,
+        "max_size": 3,
+        "is_frozen": true
+      },
+      "form": {
+        "program_id": 38,
+        "revision": "d28254a65cd5a20b50b5b5bd526d32a2567d7e6f19b992093b13d188904b7e99",
+        "template": "case_championship",
+        "is_configured": true,
+        "is_snapshot": true,
+        "fields": [
+          {
+            "id": 271,
+            "type": "select",
+            "purpose": "case",
+            "label": "Кейс",
+            "help_text": "",
+            "required": true,
+            "position": 0,
+            "options": ["Город", "Образование"],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 272,
+            "type": "textarea",
+            "purpose": "other",
+            "label": "Материалы",
+            "help_text": "",
+            "required": true,
+            "position": 1,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 273,
+            "type": "number",
+            "purpose": "other",
+            "label": "Число",
+            "help_text": "",
+            "required": true,
+            "position": 2,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 274,
+            "type": "checkbox",
+            "purpose": "other",
+            "label": "Флаг",
+            "help_text": "",
+            "required": true,
+            "position": 3,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          }
+        ]
+      },
+      "answers": [
+        {
+          "field_id": 271,
+          "value": "Город"
+        },
+        {
+          "field_id": 272,
+          "value": "Материалы qa01mr-20261025-60d40caf"
+        },
+        {
+          "field_id": 273,
+          "value": 0
+        },
+        {
+          "field_id": 274,
+          "value": false
+        }
+      ],
+      "submission": {
+        "required": true,
+        "status": "submitted",
+        "submission_open": true,
+        "deadline": "2026-10-26T14:14:14.598410Z",
+        "submitted_at": "2026-10-25T14:14:15.819475Z"
+      },
+      "permissions": {
+        "can_edit": false,
+        "can_manage_team": false,
+        "can_invite": false,
+        "can_submit": false,
+        "can_leave": false
+      },
+      "readiness": {
+        "is_ready": true,
+        "issues": []
+      }
+    },
+    "cacheControl": null
+  },
+  {
+    "actor": "manager",
+    "method": "POST",
+    "path": "/programs/38/management/solutions/53/members/remove/apply/",
+    "status": 409,
+    "request": {
+      "user_id": 10,
+      "preview_token": "[REDACTED_SIGNED_PREVIEW]"
+    },
+    "response": {
+      "code": "solution_action_conflict",
+      "detail": "Состав или данные решения изменились. Проверьте их и подтвердите действие заново.",
+      "errors": [],
+      "meta": {}
+    },
+    "cacheControl": "private, no-store"
+  },
+  {
+    "actor": "captain",
+    "method": "POST",
+    "path": "/programs/38/management/solutions/53/members/remove/preview/",
+    "status": 403,
+    "request": {
+      "user_id": 10
+    },
+    "response": {
+      "code": "permission_denied",
+      "detail": "Действие доступно организатору программы.",
+      "errors": [],
+      "meta": {}
+    },
+    "cacheControl": "private, no-store"
+  },
+  {
+    "actor": "member",
+    "method": "POST",
+    "path": "/programs/38/management/solutions/53/members/remove/preview/",
+    "status": 403,
+    "request": {
+      "user_id": 10
+    },
+    "response": {
+      "code": "permission_denied",
+      "detail": "Действие доступно организатору программы.",
+      "errors": [],
+      "meta": {}
+    },
+    "cacheControl": "private, no-store"
+  },
+  {
+    "actor": "rated",
+    "method": "POST",
+    "path": "/programs/38/management/solutions/53/members/remove/preview/",
+    "status": 403,
+    "request": {
+      "user_id": 10
+    },
+    "response": {
+      "code": "permission_denied",
+      "detail": "Действие доступно организатору программы.",
+      "errors": [],
+      "meta": {}
+    },
+    "cacheControl": "private, no-store"
+  },
+  {
+    "actor": null,
+    "method": "POST",
+    "path": "/programs/38/management/solutions/53/members/remove/preview/",
+    "status": 401,
+    "request": {
+      "user_id": 10
+    },
+    "response": {
+      "code": "authentication_required",
+      "detail": "Authentication credentials were not provided.",
+      "errors": [],
+      "meta": {}
+    },
+    "cacheControl": "private, no-store"
+  },
+  {
+    "actor": "rated",
+    "method": "GET",
+    "path": "/programs/38/solutions/53/evaluation/",
+    "status": 200,
+    "request": null,
+    "response": {
+      "program": {
+        "id": 38,
+        "name": "Исключение участника case_championship qa01mr-20261025-60d40caf"
+      },
+      "solution": {
+        "id": 53,
+        "program_id": 38,
+        "version": 5,
+        "name": "Исключение участника case_championship qa01mr-20261025-60d40caf",
+        "captain_id": 9,
+        "created_at": "2026-10-25T14:14:14.875029Z",
+        "updated_at": "2026-10-25T14:14:15.823471Z",
+        "team": {
+          "members": [
+            {
+              "role": null,
+              "user": {
+                "id": 9,
+                "last_name": "Сквозной",
+                "avatar_url": null,
+                "first_name": "Илья"
+              },
+              "joined_at": "2026-10-25T14:14:14.881393Z",
+              "is_captain": true,
+              "specialization": null
+            },
+            {
+              "role": "Backend-разработчик",
+              "user": {
+                "id": 10,
+                "last_name": "Сквозная",
+                "avatar_url": null,
+                "first_name": "Мария"
+              },
+              "joined_at": "2026-10-25T14:14:15.264093Z",
+              "is_captain": false,
+              "specialization": null
+            }
+          ],
+          "accepted_count": 2,
+          "pending_count": 0,
+          "reserved_count": 2,
+          "min_size": 2,
+          "max_size": 3,
+          "is_frozen": true
+        },
+        "form": {
+          "fields": [
+            {
+              "id": 271,
+              "type": "select",
+              "label": "Кейс",
+              "options": ["Город", "Образование"],
+              "purpose": "case",
+              "position": 0,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 272,
+              "type": "textarea",
+              "label": "Материалы",
+              "options": [],
+              "purpose": "other",
+              "position": 1,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 273,
+              "type": "number",
+              "label": "Число",
+              "options": [],
+              "purpose": "other",
+              "position": 2,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 274,
+              "type": "checkbox",
+              "label": "Флаг",
+              "options": [],
+              "purpose": "other",
+              "position": 3,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            }
+          ],
+          "revision": "d28254a65cd5a20b50b5b5bd526d32a2567d7e6f19b992093b13d188904b7e99",
+          "template": "case_championship",
+          "program_id": 38,
+          "is_snapshot": true,
+          "is_configured": true
+        },
+        "answers": [
+          {
+            "value": "Город",
+            "field_id": 271
+          },
+          {
+            "value": "Материалы qa01mr-20261025-60d40caf",
+            "field_id": 272
+          },
+          {
+            "value": 0,
+            "field_id": 273
+          },
+          {
+            "value": false,
+            "field_id": 274
+          }
+        ],
+        "submission": {
+          "required": true,
+          "status": "submitted",
+          "submission_open": false,
+          "deadline": "2026-10-24T14:14:15.925692Z",
+          "submitted_at": "2026-10-25T14:14:15.819475Z"
+        },
+        "permissions": {
+          "can_edit": false,
+          "can_manage_team": false,
+          "can_invite": false,
+          "can_submit": false,
+          "can_leave": false
+        },
+        "readiness": null
+      },
+      "criteria_revision": "137b0820da62b5af55ced3e0d4f27f99e983be14c9c16787a1e35ea8efd89c10",
+      "criteria": [
+        {
+          "id": 68,
+          "name": "Комментарий",
+          "description": "Доп. поле для впечатлений о проекте",
+          "type": "str",
+          "min_value": null,
+          "max_value": null,
+          "value": null
+        },
+        {
+          "id": 69,
+          "name": "Проверка нуля 1",
+          "description": null,
+          "type": "int",
+          "min_value": 0.0,
+          "max_value": 10.0,
+          "value": "0"
+        },
+        {
+          "id": 70,
+          "name": "Проверка false 2",
+          "description": null,
+          "type": "bool",
+          "min_value": null,
+          "max_value": null,
+          "value": "False"
+        }
+      ],
+      "managed_evaluation": true,
+      "can_rate": true,
+      "blocked_reason": null,
+      "is_completed": false,
+      "rated_count": 0,
+      "max_rates": 1,
+      "required_evaluators": 2,
+      "deadline": "2026-10-27T14:14:14.598410Z"
+    },
+    "cacheControl": "private, no-store"
+  },
+  {
+    "actor": "manager",
+    "method": "POST",
+    "path": "/programs/38/management/solutions/53/members/remove/preview/",
+    "status": 200,
+    "request": {
+      "user_id": 9
+    },
+    "response": {
+      "application": {
+        "kind": "solution",
+        "program_id": 38,
+        "solution_id": 53,
+        "name": "Исключение участника case_championship qa01mr-20261025-60d40caf"
+      },
+      "member": {
+        "role": null,
+        "user": {
+          "id": 9,
+          "last_name": "Сквозной",
+          "avatar_url": null,
+          "first_name": "Илья"
+        },
+        "joined_at": "2026-10-25T14:14:14.881393Z",
+        "is_captain": true,
+        "specialization": null
+      },
+      "solution_version": 5,
+      "is_submitted": true,
+      "remaining_member_count": 1,
+      "revoked_invitation_count": 0,
+      "score_count": 2,
+      "errors": [
+        {
+          "path": "user_id",
+          "code": "captain_cannot_be_removed",
+          "detail": "Капитана нельзя исключить из состава. Для него снимите заявку с участия.",
+          "field_id": null
+        }
+      ],
+      "can_apply": false,
+      "preview_token": null
+    },
+    "cacheControl": "private, no-store"
+  },
+  {
+    "actor": "manager",
+    "method": "POST",
+    "path": "/programs/38/management/solutions/53/members/remove/preview/",
+    "status": 200,
+    "request": {
+      "user_id": 10
+    },
+    "response": {
+      "application": {
+        "kind": "solution",
+        "program_id": 38,
+        "solution_id": 53,
+        "name": "Исключение участника case_championship qa01mr-20261025-60d40caf"
+      },
+      "member": {
+        "role": "Backend-разработчик",
+        "user": {
+          "id": 10,
+          "last_name": "Сквозная",
+          "avatar_url": null,
+          "first_name": "Мария"
+        },
+        "joined_at": "2026-10-25T14:14:15.264093Z",
+        "is_captain": false,
+        "specialization": null
+      },
+      "solution_version": 5,
+      "is_submitted": true,
+      "remaining_member_count": 1,
+      "revoked_invitation_count": 0,
+      "score_count": 2,
+      "errors": [],
+      "can_apply": true,
+      "preview_token": "[REDACTED_SIGNED_PREVIEW]"
+    },
+    "cacheControl": "private, no-store"
+  },
+  {
+    "actor": "manager",
+    "method": "POST",
+    "path": "/programs/38/management/solutions/53/members/remove/apply/",
+    "status": 200,
+    "request": {
+      "user_id": 10,
+      "preview_token": "[REDACTED_SIGNED_PREVIEW]"
+    },
+    "response": {
+      "solution_id": 53,
+      "solution_version": 6,
+      "updated_at": "2026-10-25T14:14:16.844983Z"
+    },
+    "cacheControl": "private, no-store"
+  },
+  {
+    "actor": "manager",
+    "method": "POST",
+    "path": "/programs/38/management/solutions/53/members/remove/apply/",
+    "status": 409,
+    "request": {
+      "user_id": 10,
+      "preview_token": "[REDACTED_SIGNED_PREVIEW]"
+    },
+    "response": {
+      "code": "solution_action_conflict",
+      "detail": "Состав или данные решения изменились. Проверьте их и подтвердите действие заново.",
+      "errors": [],
+      "meta": {}
+    },
+    "cacheControl": "private, no-store"
+  },
+  {
+    "actor": "captain",
+    "method": "GET",
+    "path": "/programs/38/solutions/53/",
+    "status": 200,
+    "request": null,
+    "response": {
+      "id": 53,
+      "program_id": 38,
+      "version": 6,
+      "name": "Исключение участника case_championship qa01mr-20261025-60d40caf",
+      "captain_id": 9,
+      "created_at": "2026-10-25T14:14:14.875029Z",
+      "updated_at": "2026-10-25T14:14:16.844983Z",
+      "team": {
+        "members": [
+          {
+            "role": null,
+            "user": {
+              "id": 9,
+              "last_name": "Сквозной",
+              "avatar_url": null,
+              "first_name": "Илья"
+            },
+            "joined_at": "2026-10-25T14:14:14.881393Z",
+            "is_captain": true,
+            "specialization": null
+          }
+        ],
+        "accepted_count": 1,
+        "pending_count": 0,
+        "reserved_count": 1,
+        "min_size": 2,
+        "max_size": 3,
+        "is_frozen": true
+      },
+      "form": {
+        "fields": [
+          {
+            "id": 271,
+            "type": "select",
+            "label": "Кейс",
+            "options": ["Город", "Образование"],
+            "purpose": "case",
+            "position": 0,
+            "required": true,
+            "help_text": "",
+            "validation": {
+              "maximum": null,
+              "minimum": null,
+              "max_length": null,
+              "min_length": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 272,
+            "type": "textarea",
+            "label": "Материалы",
+            "options": [],
+            "purpose": "other",
+            "position": 1,
+            "required": true,
+            "help_text": "",
+            "validation": {
+              "maximum": null,
+              "minimum": null,
+              "max_length": null,
+              "min_length": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 273,
+            "type": "number",
+            "label": "Число",
+            "options": [],
+            "purpose": "other",
+            "position": 2,
+            "required": true,
+            "help_text": "",
+            "validation": {
+              "maximum": null,
+              "minimum": null,
+              "max_length": null,
+              "min_length": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 274,
+            "type": "checkbox",
+            "label": "Флаг",
+            "options": [],
+            "purpose": "other",
+            "position": 3,
+            "required": true,
+            "help_text": "",
+            "validation": {
+              "maximum": null,
+              "minimum": null,
+              "max_length": null,
+              "min_length": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          }
+        ],
+        "revision": "d28254a65cd5a20b50b5b5bd526d32a2567d7e6f19b992093b13d188904b7e99",
+        "template": "case_championship",
+        "program_id": 38,
+        "is_snapshot": true,
+        "is_configured": true
+      },
+      "answers": [
+        {
+          "value": "Город",
+          "field_id": 271
+        },
+        {
+          "value": "Материалы qa01mr-20261025-60d40caf",
+          "field_id": 272
+        },
+        {
+          "value": 0,
+          "field_id": 273
+        },
+        {
+          "value": false,
+          "field_id": 274
+        }
+      ],
+      "submission": {
+        "required": true,
+        "status": "submitted",
+        "submission_open": false,
+        "deadline": "2026-10-24T14:14:15.925692Z",
+        "submitted_at": "2026-10-25T14:14:15.819475Z"
+      },
+      "permissions": {
+        "can_edit": false,
+        "can_manage_team": false,
+        "can_invite": false,
+        "can_submit": false,
+        "can_leave": false
+      },
+      "readiness": {
+        "is_ready": true,
+        "issues": []
+      }
+    },
+    "cacheControl": null
+  },
+  {
+    "actor": "member",
+    "method": "GET",
+    "path": "/programs/38/solutions/53/",
+    "status": 404,
+    "request": null,
+    "response": {
+      "code": "not_found",
+      "detail": "Решение или программа не найдены.",
+      "errors": [],
+      "meta": {}
+    },
+    "cacheControl": null
+  },
+  {
+    "actor": "member",
+    "method": "GET",
+    "path": "/solution-invitations/56/",
+    "status": 200,
+    "request": null,
+    "response": {
+      "id": 56,
+      "version": 2,
+      "program": {
+        "id": 38,
+        "name": "Исключение участника case_championship qa01mr-20261025-60d40caf"
+      },
+      "solution": {
+        "kind": "solution",
+        "program_id": 38,
+        "solution_id": 53,
+        "name": "Исключение участника case_championship qa01mr-20261025-60d40caf"
+      },
+      "captain": {
+        "id": 9,
+        "first_name": "Илья",
+        "last_name": "Сквозной",
+        "avatar_url": null
+      },
+      "recipient": {
+        "id": 10,
+        "first_name": "Мария",
+        "last_name": "Сквозная",
+        "avatar_url": null
+      },
+      "role": "Backend-разработчик",
+      "specialization": null,
+      "motivational_letter": null,
+      "status": "accepted",
+      "created_at": "2026-10-25T14:14:15.127265Z",
+      "updated_at": "2026-10-25T14:14:15.272157Z",
+      "permissions": {
+        "can_edit": false,
+        "can_revoke": false,
+        "can_accept": false,
+        "can_decline": false
+      }
+    },
+    "cacheControl": null
+  },
+  {
+    "actor": "member",
+    "method": "POST",
+    "path": "/solution-invitations/56/accept/",
+    "status": 409,
+    "request": {
+      "expected_version": 2
+    },
+    "response": {
+      "code": "invite_already_processed",
+      "detail": "Приглашение уже обработано.",
+      "errors": [],
+      "meta": {}
+    },
+    "cacheControl": null
+  },
+  {
+    "actor": "manager",
+    "method": "GET",
+    "path": "/programs/38/management/solutions/53/history/",
+    "status": 200,
+    "request": null,
+    "response": {
+      "count": 1,
+      "offset": 0,
+      "limit": 20,
+      "results": [
+        {
+          "id": 3,
+          "application": {
+            "kind": "solution",
+            "program_id": 38,
+            "solution_id": 53,
+            "name": "Исключение участника case_championship qa01mr-20261025-60d40caf"
+          },
+          "action": "remove_member",
+          "actor": {
+            "id": 8,
+            "first_name": "Олег",
+            "last_name": "Проверки",
+            "avatar_url": null
+          },
+          "actor_name": "Олег Проверки",
+          "created_at": "2026-10-25T14:14:16.847006Z",
+          "before_version": 5,
+          "after_version": 6,
+          "removed_assignments_count": 0,
+          "score_count": 2,
+          "was_submitted": true,
+          "removed_member": {
+            "role": "Backend-разработчик",
+            "user": {
+              "id": 10,
+              "last_name": "Сквозная",
+              "avatar_url": null,
+              "first_name": "Мария"
+            },
+            "joined_at": "2026-10-25T14:14:15.264093Z",
+            "is_captain": false,
+            "specialization": null
+          },
+          "revoked_invitation_count": 0
+        }
+      ]
+    },
+    "cacheControl": "private, no-store"
+  },
+  {
+    "actor": "manager",
+    "method": "GET",
+    "path": "/programs/38/management/solutions/53/history/3/",
+    "status": 200,
+    "request": null,
+    "response": {
+      "change": {
+        "id": 3,
+        "application": {
+          "kind": "solution",
+          "program_id": 38,
+          "solution_id": 53,
+          "name": "Исключение участника case_championship qa01mr-20261025-60d40caf"
+        },
+        "action": "remove_member",
+        "actor": {
+          "id": 8,
+          "first_name": "Олег",
+          "last_name": "Проверки",
+          "avatar_url": null
+        },
+        "actor_name": "Олег Проверки",
+        "created_at": "2026-10-25T14:14:16.847006Z",
+        "before_version": 5,
+        "after_version": 6,
+        "removed_assignments_count": 0,
+        "score_count": 2,
+        "was_submitted": true,
+        "removed_member": {
+          "role": "Backend-разработчик",
+          "user": {
+            "id": 10,
+            "last_name": "Сквозная",
+            "avatar_url": null,
+            "first_name": "Мария"
+          },
+          "joined_at": "2026-10-25T14:14:15.264093Z",
+          "is_captain": false,
+          "specialization": null
+        },
+        "revoked_invitation_count": 0
+      },
+      "before_snapshot": {
+        "form": {
+          "fields": [
+            {
+              "id": 271,
+              "type": "select",
+              "label": "Кейс",
+              "options": ["Город", "Образование"],
+              "purpose": "case",
+              "position": 0,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 272,
+              "type": "textarea",
+              "label": "Материалы",
+              "options": [],
+              "purpose": "other",
+              "position": 1,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 273,
+              "type": "number",
+              "label": "Число",
+              "options": [],
+              "purpose": "other",
+              "position": 2,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 274,
+              "type": "checkbox",
+              "label": "Флаг",
+              "options": [],
+              "purpose": "other",
+              "position": 3,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            }
+          ],
+          "revision": "d28254a65cd5a20b50b5b5bd526d32a2567d7e6f19b992093b13d188904b7e99",
+          "template": "case_championship",
+          "program_id": 38,
+          "is_snapshot": true,
+          "is_configured": true
+        },
+        "name": "Исключение участника case_championship qa01mr-20261025-60d40caf",
+        "answers": [
+          {
+            "value": "Город",
+            "field_id": 271
+          },
+          {
+            "value": "Материалы qa01mr-20261025-60d40caf",
+            "field_id": 272
+          },
+          {
+            "value": 0,
+            "field_id": 273
+          },
+          {
+            "value": false,
+            "field_id": 274
+          }
+        ],
+        "members": [
+          {
+            "role": null,
+            "user": {
+              "id": 9,
+              "last_name": "Сквозной",
+              "avatar_url": null,
+              "first_name": "Илья"
+            },
+            "joined_at": "2026-10-25T14:14:14.881393Z",
+            "is_captain": true,
+            "specialization": null
+          },
+          {
+            "role": "Backend-разработчик",
+            "user": {
+              "id": 10,
+              "last_name": "Сквозная",
+              "avatar_url": null,
+              "first_name": "Мария"
+            },
+            "joined_at": "2026-10-25T14:14:15.264093Z",
+            "is_captain": false,
+            "specialization": null
+          }
+        ],
+        "captain_id": 9,
+        "submitted_at": "2026-10-25T14:14:15.819475Z"
+      },
+      "after_snapshot": {
+        "form": {
+          "fields": [
+            {
+              "id": 271,
+              "type": "select",
+              "label": "Кейс",
+              "options": ["Город", "Образование"],
+              "purpose": "case",
+              "position": 0,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 272,
+              "type": "textarea",
+              "label": "Материалы",
+              "options": [],
+              "purpose": "other",
+              "position": 1,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 273,
+              "type": "number",
+              "label": "Число",
+              "options": [],
+              "purpose": "other",
+              "position": 2,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 274,
+              "type": "checkbox",
+              "label": "Флаг",
+              "options": [],
+              "purpose": "other",
+              "position": 3,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            }
+          ],
+          "revision": "d28254a65cd5a20b50b5b5bd526d32a2567d7e6f19b992093b13d188904b7e99",
+          "template": "case_championship",
+          "program_id": 38,
+          "is_snapshot": true,
+          "is_configured": true
+        },
+        "name": "Исключение участника case_championship qa01mr-20261025-60d40caf",
+        "answers": [
+          {
+            "value": "Город",
+            "field_id": 271
+          },
+          {
+            "value": "Материалы qa01mr-20261025-60d40caf",
+            "field_id": 272
+          },
+          {
+            "value": 0,
+            "field_id": 273
+          },
+          {
+            "value": false,
+            "field_id": 274
+          }
+        ],
+        "members": [
+          {
+            "role": null,
+            "user": {
+              "id": 9,
+              "last_name": "Сквозной",
+              "avatar_url": null,
+              "first_name": "Илья"
+            },
+            "joined_at": "2026-10-25T14:14:14.881393Z",
+            "is_captain": true,
+            "specialization": null
+          }
+        ],
+        "captain_id": 9,
+        "submitted_at": "2026-10-25T14:14:15.819475Z"
+      }
+    },
+    "cacheControl": "private, no-store"
+  },
+  {
+    "actor": "rated",
+    "method": "GET",
+    "path": "/programs/38/solutions/53/evaluation/",
+    "status": 200,
+    "request": null,
+    "response": {
+      "program": {
+        "id": 38,
+        "name": "Исключение участника case_championship qa01mr-20261025-60d40caf"
+      },
+      "solution": {
+        "id": 53,
+        "program_id": 38,
+        "version": 6,
+        "name": "Исключение участника case_championship qa01mr-20261025-60d40caf",
+        "captain_id": 9,
+        "created_at": "2026-10-25T14:14:14.875029Z",
+        "updated_at": "2026-10-25T14:14:16.844983Z",
+        "team": {
+          "members": [
+            {
+              "role": null,
+              "user": {
+                "id": 9,
+                "last_name": "Сквозной",
+                "avatar_url": null,
+                "first_name": "Илья"
+              },
+              "joined_at": "2026-10-25T14:14:14.881393Z",
+              "is_captain": true,
+              "specialization": null
+            }
+          ],
+          "accepted_count": 1,
+          "pending_count": 0,
+          "reserved_count": 1,
+          "min_size": 2,
+          "max_size": 3,
+          "is_frozen": true
+        },
+        "form": {
+          "fields": [
+            {
+              "id": 271,
+              "type": "select",
+              "label": "Кейс",
+              "options": ["Город", "Образование"],
+              "purpose": "case",
+              "position": 0,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 272,
+              "type": "textarea",
+              "label": "Материалы",
+              "options": [],
+              "purpose": "other",
+              "position": 1,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 273,
+              "type": "number",
+              "label": "Число",
+              "options": [],
+              "purpose": "other",
+              "position": 2,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 274,
+              "type": "checkbox",
+              "label": "Флаг",
+              "options": [],
+              "purpose": "other",
+              "position": 3,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            }
+          ],
+          "revision": "d28254a65cd5a20b50b5b5bd526d32a2567d7e6f19b992093b13d188904b7e99",
+          "template": "case_championship",
+          "program_id": 38,
+          "is_snapshot": true,
+          "is_configured": true
+        },
+        "answers": [
+          {
+            "value": "Город",
+            "field_id": 271
+          },
+          {
+            "value": "Материалы qa01mr-20261025-60d40caf",
+            "field_id": 272
+          },
+          {
+            "value": 0,
+            "field_id": 273
+          },
+          {
+            "value": false,
+            "field_id": 274
+          }
+        ],
+        "submission": {
+          "required": true,
+          "status": "submitted",
+          "submission_open": false,
+          "deadline": "2026-10-24T14:14:15.925692Z",
+          "submitted_at": "2026-10-25T14:14:15.819475Z"
+        },
+        "permissions": {
+          "can_edit": false,
+          "can_manage_team": false,
+          "can_invite": false,
+          "can_submit": false,
+          "can_leave": false
+        },
+        "readiness": null
+      },
+      "criteria_revision": "137b0820da62b5af55ced3e0d4f27f99e983be14c9c16787a1e35ea8efd89c10",
+      "criteria": [
+        {
+          "id": 68,
+          "name": "Комментарий",
+          "description": "Доп. поле для впечатлений о проекте",
+          "type": "str",
+          "min_value": null,
+          "max_value": null,
+          "value": null
+        },
+        {
+          "id": 69,
+          "name": "Проверка нуля 1",
+          "description": null,
+          "type": "int",
+          "min_value": 0.0,
+          "max_value": 10.0,
+          "value": "0"
+        },
+        {
+          "id": 70,
+          "name": "Проверка false 2",
+          "description": null,
+          "type": "bool",
+          "min_value": null,
+          "max_value": null,
+          "value": "False"
+        }
+      ],
+      "managed_evaluation": true,
+      "can_rate": true,
+      "blocked_reason": null,
+      "is_completed": false,
+      "rated_count": 0,
+      "max_rates": 1,
+      "required_evaluators": 2,
+      "deadline": "2026-10-27T14:14:14.598410Z"
+    },
+    "cacheControl": "private, no-store"
+  },
+  {
+    "actor": "captain",
+    "method": "PATCH",
+    "path": "/programs/38/solutions/53/",
+    "status": 409,
+    "request": {
+      "expected_version": 6,
+      "expected_form_revision": "d28254a65cd5a20b50b5b5bd526d32a2567d7e6f19b992093b13d188904b7e99",
+      "name": "Недоступная правка"
+    },
+    "response": {
+      "code": "team_frozen",
+      "detail": "Состав команды зафиксирован после сдачи.",
+      "errors": [],
+      "meta": {}
+    },
+    "cacheControl": null
+  },
+  {
+    "actor": "member",
+    "method": "GET",
+    "path": "/programs/38/management/solutions/53/history/",
+    "status": 403,
+    "request": null,
+    "response": {
+      "code": "permission_denied",
+      "detail": "История доступна организатору программы.",
+      "errors": [],
+      "meta": {}
+    },
+    "cacheControl": "private, no-store"
+  },
+  {
+    "actor": "captain",
+    "method": "POST",
+    "path": "/programs/39/solutions/",
+    "status": 201,
+    "request": {
+      "name": "Исключение участника hackathon qa01mr-20261025-60d40caf"
+    },
+    "response": {
+      "id": 54,
+      "program_id": 39,
+      "version": 1,
+      "name": "Исключение участника hackathon qa01mr-20261025-60d40caf",
+      "captain_id": 9,
+      "created_at": "2026-10-25T14:14:17.988823Z",
+      "updated_at": "2026-10-25T14:14:17.988823Z",
+      "team": {
+        "members": [
+          {
+            "user": {
+              "id": 9,
+              "first_name": "Илья",
+              "last_name": "Сквозной",
+              "avatar_url": null
+            },
+            "role": null,
+            "specialization": null,
+            "joined_at": "2026-10-25T14:14:17.992981Z",
+            "is_captain": true
+          }
+        ],
+        "accepted_count": 1,
+        "pending_count": 0,
+        "reserved_count": 1,
+        "min_size": 2,
+        "max_size": 3,
+        "is_frozen": false
+      },
+      "form": {
+        "program_id": 39,
+        "revision": "f3ff0a58557e6667d16c308067b4562d96cbf7a18368465cd5d439fd6ce94e8b",
+        "template": "hackathon",
+        "is_configured": true,
+        "is_snapshot": false,
+        "fields": [
+          {
+            "id": 275,
+            "type": "select",
+            "purpose": "case",
+            "label": "Кейс",
+            "help_text": "",
+            "required": true,
+            "position": 0,
+            "options": ["Город", "Образование"],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 276,
+            "type": "textarea",
+            "purpose": "other",
+            "label": "Материалы",
+            "help_text": "",
+            "required": true,
+            "position": 1,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 277,
+            "type": "number",
+            "purpose": "other",
+            "label": "Число",
+            "help_text": "",
+            "required": true,
+            "position": 2,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 278,
+            "type": "checkbox",
+            "purpose": "other",
+            "label": "Флаг",
+            "help_text": "",
+            "required": true,
+            "position": 3,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 279,
+            "type": "url",
+            "purpose": "repository",
+            "label": "Репозиторий",
+            "help_text": "",
+            "required": true,
+            "position": 4,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          }
+        ]
+      },
+      "answers": [],
+      "submission": {
+        "required": true,
+        "status": "draft",
+        "submission_open": true,
+        "deadline": "2026-10-26T14:14:14.598410Z",
+        "submitted_at": null
+      },
+      "permissions": {
+        "can_edit": true,
+        "can_manage_team": true,
+        "can_invite": true,
+        "can_submit": true,
+        "can_leave": false
+      },
+      "readiness": {
+        "is_ready": false,
+        "issues": [
+          {
+            "path": "team",
+            "code": "team_min_size",
+            "detail": "В команде недостаточно принятых участников.",
+            "field_id": null
+          },
+          {
+            "path": "answers",
+            "code": "case_required",
+            "detail": "Выберите кейс или задачу.",
+            "field_id": 275
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 276
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 277
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 278
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 279
+          }
+        ]
+      }
+    },
+    "cacheControl": null
+  },
+  {
+    "actor": "captain",
+    "method": "GET",
+    "path": "/programs/39/solutions/54/",
+    "status": 200,
+    "request": null,
+    "response": {
+      "id": 54,
+      "program_id": 39,
+      "version": 1,
+      "name": "Исключение участника hackathon qa01mr-20261025-60d40caf",
+      "captain_id": 9,
+      "created_at": "2026-10-25T14:14:17.988823Z",
+      "updated_at": "2026-10-25T14:14:17.988823Z",
+      "team": {
+        "members": [
+          {
+            "user": {
+              "id": 9,
+              "first_name": "Илья",
+              "last_name": "Сквозной",
+              "avatar_url": null
+            },
+            "role": null,
+            "specialization": null,
+            "joined_at": "2026-10-25T14:14:17.992981Z",
+            "is_captain": true
+          }
+        ],
+        "accepted_count": 1,
+        "pending_count": 0,
+        "reserved_count": 1,
+        "min_size": 2,
+        "max_size": 3,
+        "is_frozen": false
+      },
+      "form": {
+        "program_id": 39,
+        "revision": "f3ff0a58557e6667d16c308067b4562d96cbf7a18368465cd5d439fd6ce94e8b",
+        "template": "hackathon",
+        "is_configured": true,
+        "is_snapshot": false,
+        "fields": [
+          {
+            "id": 275,
+            "type": "select",
+            "purpose": "case",
+            "label": "Кейс",
+            "help_text": "",
+            "required": true,
+            "position": 0,
+            "options": ["Город", "Образование"],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 276,
+            "type": "textarea",
+            "purpose": "other",
+            "label": "Материалы",
+            "help_text": "",
+            "required": true,
+            "position": 1,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 277,
+            "type": "number",
+            "purpose": "other",
+            "label": "Число",
+            "help_text": "",
+            "required": true,
+            "position": 2,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 278,
+            "type": "checkbox",
+            "purpose": "other",
+            "label": "Флаг",
+            "help_text": "",
+            "required": true,
+            "position": 3,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 279,
+            "type": "url",
+            "purpose": "repository",
+            "label": "Репозиторий",
+            "help_text": "",
+            "required": true,
+            "position": 4,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          }
+        ]
+      },
+      "answers": [],
+      "submission": {
+        "required": true,
+        "status": "draft",
+        "submission_open": true,
+        "deadline": "2026-10-26T14:14:14.598410Z",
+        "submitted_at": null
+      },
+      "permissions": {
+        "can_edit": true,
+        "can_manage_team": true,
+        "can_invite": true,
+        "can_submit": true,
+        "can_leave": false
+      },
+      "readiness": {
+        "is_ready": false,
+        "issues": [
+          {
+            "path": "team",
+            "code": "team_min_size",
+            "detail": "В команде недостаточно принятых участников.",
+            "field_id": null
+          },
+          {
+            "path": "answers",
+            "code": "case_required",
+            "detail": "Выберите кейс или задачу.",
+            "field_id": 275
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 276
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 277
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 278
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 279
+          }
+        ]
+      }
+    },
+    "cacheControl": null
+  },
+  {
+    "actor": "captain",
+    "method": "POST",
+    "path": "/programs/39/solutions/54/invitations/",
+    "status": 201,
+    "request": {
+      "expected_solution_version": 1,
+      "recipient_user_id": 10,
+      "role": "Backend-разработчик"
+    },
+    "response": {
+      "invitation": {
+        "id": 57,
+        "version": 1,
+        "program": {
+          "id": 39,
+          "name": "Исключение участника hackathon qa01mr-20261025-60d40caf"
+        },
+        "solution": {
+          "kind": "solution",
+          "program_id": 39,
+          "solution_id": 54,
+          "name": "Исключение участника hackathon qa01mr-20261025-60d40caf"
+        },
+        "captain": {
+          "id": 9,
+          "first_name": "Илья",
+          "last_name": "Сквозной",
+          "avatar_url": null
+        },
+        "recipient": {
+          "id": 10,
+          "first_name": "Мария",
+          "last_name": "Сквозная",
+          "avatar_url": null
+        },
+        "role": "Backend-разработчик",
+        "specialization": null,
+        "motivational_letter": null,
+        "status": "pending",
+        "created_at": "2026-10-25T14:14:18.311018Z",
+        "updated_at": "2026-10-25T14:14:18.311018Z",
+        "permissions": {
+          "can_edit": true,
+          "can_revoke": true,
+          "can_accept": false,
+          "can_decline": false
+        }
+      },
+      "solution_version": 2
+    },
+    "cacheControl": null
+  },
+  {
+    "actor": "member",
+    "method": "POST",
+    "path": "/solution-invitations/57/accept/",
+    "status": 200,
+    "request": {
+      "expected_version": 1
+    },
+    "response": {
+      "invitation": {
+        "id": 57,
+        "version": 2,
+        "program": {
+          "id": 39,
+          "name": "Исключение участника hackathon qa01mr-20261025-60d40caf"
+        },
+        "solution": {
+          "kind": "solution",
+          "program_id": 39,
+          "solution_id": 54,
+          "name": "Исключение участника hackathon qa01mr-20261025-60d40caf"
+        },
+        "captain": {
+          "id": 9,
+          "first_name": "Илья",
+          "last_name": "Сквозной",
+          "avatar_url": null
+        },
+        "recipient": {
+          "id": 10,
+          "first_name": "Мария",
+          "last_name": "Сквозная",
+          "avatar_url": null
+        },
+        "role": "Backend-разработчик",
+        "specialization": null,
+        "motivational_letter": null,
+        "status": "accepted",
+        "created_at": "2026-10-25T14:14:18.311018Z",
+        "updated_at": "2026-10-25T14:14:18.427523Z",
+        "permissions": {
+          "can_edit": false,
+          "can_revoke": false,
+          "can_accept": false,
+          "can_decline": false
+        }
+      },
+      "application": {
+        "kind": "solution",
+        "program_id": 39,
+        "solution_id": 54,
+        "name": "Исключение участника hackathon qa01mr-20261025-60d40caf"
+      },
+      "solution_version": 3
+    },
+    "cacheControl": null
+  },
+  {
+    "actor": "captain",
+    "method": "GET",
+    "path": "/programs/39/solutions/54/",
+    "status": 200,
+    "request": null,
+    "response": {
+      "id": 54,
+      "program_id": 39,
+      "version": 3,
+      "name": "Исключение участника hackathon qa01mr-20261025-60d40caf",
+      "captain_id": 9,
+      "created_at": "2026-10-25T14:14:17.988823Z",
+      "updated_at": "2026-10-25T14:14:18.431565Z",
+      "team": {
+        "members": [
+          {
+            "user": {
+              "id": 9,
+              "first_name": "Илья",
+              "last_name": "Сквозной",
+              "avatar_url": null
+            },
+            "role": null,
+            "specialization": null,
+            "joined_at": "2026-10-25T14:14:17.992981Z",
+            "is_captain": true
+          },
+          {
+            "user": {
+              "id": 10,
+              "first_name": "Мария",
+              "last_name": "Сквозная",
+              "avatar_url": null
+            },
+            "role": "Backend-разработчик",
+            "specialization": null,
+            "joined_at": "2026-10-25T14:14:18.421437Z",
+            "is_captain": false
+          }
+        ],
+        "accepted_count": 2,
+        "pending_count": 0,
+        "reserved_count": 2,
+        "min_size": 2,
+        "max_size": 3,
+        "is_frozen": false
+      },
+      "form": {
+        "program_id": 39,
+        "revision": "f3ff0a58557e6667d16c308067b4562d96cbf7a18368465cd5d439fd6ce94e8b",
+        "template": "hackathon",
+        "is_configured": true,
+        "is_snapshot": false,
+        "fields": [
+          {
+            "id": 275,
+            "type": "select",
+            "purpose": "case",
+            "label": "Кейс",
+            "help_text": "",
+            "required": true,
+            "position": 0,
+            "options": ["Город", "Образование"],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 276,
+            "type": "textarea",
+            "purpose": "other",
+            "label": "Материалы",
+            "help_text": "",
+            "required": true,
+            "position": 1,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 277,
+            "type": "number",
+            "purpose": "other",
+            "label": "Число",
+            "help_text": "",
+            "required": true,
+            "position": 2,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 278,
+            "type": "checkbox",
+            "purpose": "other",
+            "label": "Флаг",
+            "help_text": "",
+            "required": true,
+            "position": 3,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 279,
+            "type": "url",
+            "purpose": "repository",
+            "label": "Репозиторий",
+            "help_text": "",
+            "required": true,
+            "position": 4,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          }
+        ]
+      },
+      "answers": [],
+      "submission": {
+        "required": true,
+        "status": "draft",
+        "submission_open": true,
+        "deadline": "2026-10-26T14:14:14.598410Z",
+        "submitted_at": null
+      },
+      "permissions": {
+        "can_edit": true,
+        "can_manage_team": true,
+        "can_invite": true,
+        "can_submit": true,
+        "can_leave": false
+      },
+      "readiness": {
+        "is_ready": false,
+        "issues": [
+          {
+            "path": "answers",
+            "code": "case_required",
+            "detail": "Выберите кейс или задачу.",
+            "field_id": 275
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 276
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 277
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 278
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 279
+          }
+        ]
+      }
+    },
+    "cacheControl": null
+  },
+  {
+    "actor": "captain",
+    "method": "PATCH",
+    "path": "/programs/39/solutions/54/",
+    "status": 200,
+    "request": {
+      "expected_version": 3,
+      "expected_form_revision": "f3ff0a58557e6667d16c308067b4562d96cbf7a18368465cd5d439fd6ce94e8b",
+      "answers": [
+        {
+          "field_id": 275,
+          "value": "Город"
+        },
+        {
+          "field_id": 276,
+          "value": "Материалы qa01mr-20261025-60d40caf"
+        },
+        {
+          "field_id": 277,
+          "value": 0
+        },
+        {
+          "field_id": 278,
+          "value": false
+        },
+        {
+          "field_id": 279,
+          "value": "https://example.com/code/qa01mr-20261025-60d40caf"
+        }
+      ]
+    },
+    "response": {
+      "id": 54,
+      "program_id": 39,
+      "version": 4,
+      "name": "Исключение участника hackathon qa01mr-20261025-60d40caf",
+      "captain_id": 9,
+      "created_at": "2026-10-25T14:14:17.988823Z",
+      "updated_at": "2026-10-25T14:14:18.634118Z",
+      "team": {
+        "members": [
+          {
+            "user": {
+              "id": 9,
+              "first_name": "Илья",
+              "last_name": "Сквозной",
+              "avatar_url": null
+            },
+            "role": null,
+            "specialization": null,
+            "joined_at": "2026-10-25T14:14:17.992981Z",
+            "is_captain": true
+          },
+          {
+            "user": {
+              "id": 10,
+              "first_name": "Мария",
+              "last_name": "Сквозная",
+              "avatar_url": null
+            },
+            "role": "Backend-разработчик",
+            "specialization": null,
+            "joined_at": "2026-10-25T14:14:18.421437Z",
+            "is_captain": false
+          }
+        ],
+        "accepted_count": 2,
+        "pending_count": 0,
+        "reserved_count": 2,
+        "min_size": 2,
+        "max_size": 3,
+        "is_frozen": false
+      },
+      "form": {
+        "program_id": 39,
+        "revision": "f3ff0a58557e6667d16c308067b4562d96cbf7a18368465cd5d439fd6ce94e8b",
+        "template": "hackathon",
+        "is_configured": true,
+        "is_snapshot": false,
+        "fields": [
+          {
+            "id": 275,
+            "type": "select",
+            "purpose": "case",
+            "label": "Кейс",
+            "help_text": "",
+            "required": true,
+            "position": 0,
+            "options": ["Город", "Образование"],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 276,
+            "type": "textarea",
+            "purpose": "other",
+            "label": "Материалы",
+            "help_text": "",
+            "required": true,
+            "position": 1,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 277,
+            "type": "number",
+            "purpose": "other",
+            "label": "Число",
+            "help_text": "",
+            "required": true,
+            "position": 2,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 278,
+            "type": "checkbox",
+            "purpose": "other",
+            "label": "Флаг",
+            "help_text": "",
+            "required": true,
+            "position": 3,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 279,
+            "type": "url",
+            "purpose": "repository",
+            "label": "Репозиторий",
+            "help_text": "",
+            "required": true,
+            "position": 4,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          }
+        ]
+      },
+      "answers": [
+        {
+          "field_id": 275,
+          "value": "Город"
+        },
+        {
+          "field_id": 276,
+          "value": "Материалы qa01mr-20261025-60d40caf"
+        },
+        {
+          "field_id": 277,
+          "value": 0
+        },
+        {
+          "field_id": 278,
+          "value": false
+        },
+        {
+          "field_id": 279,
+          "value": "https://example.com/code/qa01mr-20261025-60d40caf"
+        }
+      ],
+      "submission": {
+        "required": true,
+        "status": "draft",
+        "submission_open": true,
+        "deadline": "2026-10-26T14:14:14.598410Z",
+        "submitted_at": null
+      },
+      "permissions": {
+        "can_edit": true,
+        "can_manage_team": true,
+        "can_invite": true,
+        "can_submit": true,
+        "can_leave": false
+      },
+      "readiness": {
+        "is_ready": true,
+        "issues": []
+      }
+    },
+    "cacheControl": null
+  },
+  {
+    "actor": "manager",
+    "method": "POST",
+    "path": "/programs/39/management/solutions/54/members/remove/preview/",
+    "status": 200,
+    "request": {
+      "user_id": 10
+    },
+    "response": {
+      "application": {
+        "kind": "solution",
+        "program_id": 39,
+        "solution_id": 54,
+        "name": "Исключение участника hackathon qa01mr-20261025-60d40caf"
+      },
+      "member": {
+        "user": {
+          "id": 10,
+          "first_name": "Мария",
+          "last_name": "Сквозная",
+          "avatar_url": null
+        },
+        "role": "Backend-разработчик",
+        "specialization": null,
+        "joined_at": "2026-10-25T14:14:18.421437Z",
+        "is_captain": false
+      },
+      "solution_version": 4,
+      "is_submitted": false,
+      "remaining_member_count": 1,
+      "revoked_invitation_count": 0,
+      "score_count": 0,
+      "errors": [],
+      "can_apply": true,
+      "preview_token": "[REDACTED_SIGNED_PREVIEW]"
+    },
+    "cacheControl": "private, no-store"
+  },
+  {
+    "actor": "captain",
+    "method": "POST",
+    "path": "/programs/39/solutions/54/submit/",
+    "status": 200,
+    "request": {
+      "expected_version": 4,
+      "expected_form_revision": "f3ff0a58557e6667d16c308067b4562d96cbf7a18368465cd5d439fd6ce94e8b"
+    },
+    "response": {
+      "id": 54,
+      "program_id": 39,
+      "version": 5,
+      "name": "Исключение участника hackathon qa01mr-20261025-60d40caf",
+      "captain_id": 9,
+      "created_at": "2026-10-25T14:14:17.988823Z",
+      "updated_at": "2026-10-25T14:14:18.917159Z",
+      "team": {
+        "members": [
+          {
+            "user": {
+              "id": 9,
+              "first_name": "Илья",
+              "last_name": "Сквозной",
+              "avatar_url": null
+            },
+            "role": null,
+            "specialization": null,
+            "joined_at": "2026-10-25T14:14:17.992981Z",
+            "is_captain": true
+          },
+          {
+            "user": {
+              "id": 10,
+              "first_name": "Мария",
+              "last_name": "Сквозная",
+              "avatar_url": null
+            },
+            "role": "Backend-разработчик",
+            "specialization": null,
+            "joined_at": "2026-10-25T14:14:18.421437Z",
+            "is_captain": false
+          }
+        ],
+        "accepted_count": 2,
+        "pending_count": 0,
+        "reserved_count": 2,
+        "min_size": 2,
+        "max_size": 3,
+        "is_frozen": true
+      },
+      "form": {
+        "program_id": 39,
+        "revision": "f3ff0a58557e6667d16c308067b4562d96cbf7a18368465cd5d439fd6ce94e8b",
+        "template": "hackathon",
+        "is_configured": true,
+        "is_snapshot": true,
+        "fields": [
+          {
+            "id": 275,
+            "type": "select",
+            "purpose": "case",
+            "label": "Кейс",
+            "help_text": "",
+            "required": true,
+            "position": 0,
+            "options": ["Город", "Образование"],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 276,
+            "type": "textarea",
+            "purpose": "other",
+            "label": "Материалы",
+            "help_text": "",
+            "required": true,
+            "position": 1,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 277,
+            "type": "number",
+            "purpose": "other",
+            "label": "Число",
+            "help_text": "",
+            "required": true,
+            "position": 2,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 278,
+            "type": "checkbox",
+            "purpose": "other",
+            "label": "Флаг",
+            "help_text": "",
+            "required": true,
+            "position": 3,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 279,
+            "type": "url",
+            "purpose": "repository",
+            "label": "Репозиторий",
+            "help_text": "",
+            "required": true,
+            "position": 4,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          }
+        ]
+      },
+      "answers": [
+        {
+          "field_id": 275,
+          "value": "Город"
+        },
+        {
+          "field_id": 276,
+          "value": "Материалы qa01mr-20261025-60d40caf"
+        },
+        {
+          "field_id": 277,
+          "value": 0
+        },
+        {
+          "field_id": 278,
+          "value": false
+        },
+        {
+          "field_id": 279,
+          "value": "https://example.com/code/qa01mr-20261025-60d40caf"
+        }
+      ],
+      "submission": {
+        "required": true,
+        "status": "submitted",
+        "submission_open": true,
+        "deadline": "2026-10-26T14:14:14.598410Z",
+        "submitted_at": "2026-10-25T14:14:18.912690Z"
+      },
+      "permissions": {
+        "can_edit": false,
+        "can_manage_team": false,
+        "can_invite": false,
+        "can_submit": false,
+        "can_leave": false
+      },
+      "readiness": {
+        "is_ready": true,
+        "issues": []
+      }
+    },
+    "cacheControl": null
+  },
+  {
+    "actor": "manager",
+    "method": "POST",
+    "path": "/programs/39/management/solutions/54/members/remove/apply/",
+    "status": 409,
+    "request": {
+      "user_id": 10,
+      "preview_token": "[REDACTED_SIGNED_PREVIEW]"
+    },
+    "response": {
+      "code": "solution_action_conflict",
+      "detail": "Состав или данные решения изменились. Проверьте их и подтвердите действие заново.",
+      "errors": [],
+      "meta": {}
+    },
+    "cacheControl": "private, no-store"
+  },
+  {
+    "actor": "captain",
+    "method": "POST",
+    "path": "/programs/39/management/solutions/54/members/remove/preview/",
+    "status": 403,
+    "request": {
+      "user_id": 10
+    },
+    "response": {
+      "code": "permission_denied",
+      "detail": "Действие доступно организатору программы.",
+      "errors": [],
+      "meta": {}
+    },
+    "cacheControl": "private, no-store"
+  },
+  {
+    "actor": "member",
+    "method": "POST",
+    "path": "/programs/39/management/solutions/54/members/remove/preview/",
+    "status": 403,
+    "request": {
+      "user_id": 10
+    },
+    "response": {
+      "code": "permission_denied",
+      "detail": "Действие доступно организатору программы.",
+      "errors": [],
+      "meta": {}
+    },
+    "cacheControl": "private, no-store"
+  },
+  {
+    "actor": "rated",
+    "method": "POST",
+    "path": "/programs/39/management/solutions/54/members/remove/preview/",
+    "status": 403,
+    "request": {
+      "user_id": 10
+    },
+    "response": {
+      "code": "permission_denied",
+      "detail": "Действие доступно организатору программы.",
+      "errors": [],
+      "meta": {}
+    },
+    "cacheControl": "private, no-store"
+  },
+  {
+    "actor": null,
+    "method": "POST",
+    "path": "/programs/39/management/solutions/54/members/remove/preview/",
+    "status": 401,
+    "request": {
+      "user_id": 10
+    },
+    "response": {
+      "code": "authentication_required",
+      "detail": "Authentication credentials were not provided.",
+      "errors": [],
+      "meta": {}
+    },
+    "cacheControl": "private, no-store"
+  },
+  {
+    "actor": "rated",
+    "method": "GET",
+    "path": "/programs/39/solutions/54/evaluation/",
+    "status": 200,
+    "request": null,
+    "response": {
+      "program": {
+        "id": 39,
+        "name": "Исключение участника hackathon qa01mr-20261025-60d40caf"
+      },
+      "solution": {
+        "id": 54,
+        "program_id": 39,
+        "version": 5,
+        "name": "Исключение участника hackathon qa01mr-20261025-60d40caf",
+        "captain_id": 9,
+        "created_at": "2026-10-25T14:14:17.988823Z",
+        "updated_at": "2026-10-25T14:14:18.917159Z",
+        "team": {
+          "members": [
+            {
+              "role": null,
+              "user": {
+                "id": 9,
+                "last_name": "Сквозной",
+                "avatar_url": null,
+                "first_name": "Илья"
+              },
+              "joined_at": "2026-10-25T14:14:17.992981Z",
+              "is_captain": true,
+              "specialization": null
+            },
+            {
+              "role": "Backend-разработчик",
+              "user": {
+                "id": 10,
+                "last_name": "Сквозная",
+                "avatar_url": null,
+                "first_name": "Мария"
+              },
+              "joined_at": "2026-10-25T14:14:18.421437Z",
+              "is_captain": false,
+              "specialization": null
+            }
+          ],
+          "accepted_count": 2,
+          "pending_count": 0,
+          "reserved_count": 2,
+          "min_size": 2,
+          "max_size": 3,
+          "is_frozen": true
+        },
+        "form": {
+          "fields": [
+            {
+              "id": 275,
+              "type": "select",
+              "label": "Кейс",
+              "options": ["Город", "Образование"],
+              "purpose": "case",
+              "position": 0,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 276,
+              "type": "textarea",
+              "label": "Материалы",
+              "options": [],
+              "purpose": "other",
+              "position": 1,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 277,
+              "type": "number",
+              "label": "Число",
+              "options": [],
+              "purpose": "other",
+              "position": 2,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 278,
+              "type": "checkbox",
+              "label": "Флаг",
+              "options": [],
+              "purpose": "other",
+              "position": 3,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 279,
+              "type": "url",
+              "label": "Репозиторий",
+              "options": [],
+              "purpose": "repository",
+              "position": 4,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            }
+          ],
+          "revision": "f3ff0a58557e6667d16c308067b4562d96cbf7a18368465cd5d439fd6ce94e8b",
+          "template": "hackathon",
+          "program_id": 39,
+          "is_snapshot": true,
+          "is_configured": true
+        },
+        "answers": [
+          {
+            "value": "Город",
+            "field_id": 275
+          },
+          {
+            "value": "Материалы qa01mr-20261025-60d40caf",
+            "field_id": 276
+          },
+          {
+            "value": 0,
+            "field_id": 277
+          },
+          {
+            "value": false,
+            "field_id": 278
+          },
+          {
+            "value": "https://example.com/code/qa01mr-20261025-60d40caf",
+            "field_id": 279
+          }
+        ],
+        "submission": {
+          "required": true,
+          "status": "submitted",
+          "submission_open": false,
+          "deadline": "2026-10-24T14:14:19.007608Z",
+          "submitted_at": "2026-10-25T14:14:18.912690Z"
+        },
+        "permissions": {
+          "can_edit": false,
+          "can_manage_team": false,
+          "can_invite": false,
+          "can_submit": false,
+          "can_leave": false
+        },
+        "readiness": null
+      },
+      "criteria_revision": "f98a11a2db7f5de736fd8f188480f615ee65a65cce0549963672829792a9fbcd",
+      "criteria": [
+        {
+          "id": 71,
+          "name": "Комментарий",
+          "description": "Доп. поле для впечатлений о проекте",
+          "type": "str",
+          "min_value": null,
+          "max_value": null,
+          "value": null
+        },
+        {
+          "id": 72,
+          "name": "Проверка нуля 3",
+          "description": null,
+          "type": "int",
+          "min_value": 0.0,
+          "max_value": 10.0,
+          "value": "0"
+        },
+        {
+          "id": 73,
+          "name": "Проверка false 4",
+          "description": null,
+          "type": "bool",
+          "min_value": null,
+          "max_value": null,
+          "value": "False"
+        }
+      ],
+      "managed_evaluation": true,
+      "can_rate": true,
+      "blocked_reason": null,
+      "is_completed": false,
+      "rated_count": 0,
+      "max_rates": 1,
+      "required_evaluators": 2,
+      "deadline": "2026-10-27T14:14:14.598410Z"
+    },
+    "cacheControl": "private, no-store"
+  },
+  {
+    "actor": "manager",
+    "method": "POST",
+    "path": "/programs/39/management/solutions/54/members/remove/preview/",
+    "status": 200,
+    "request": {
+      "user_id": 9
+    },
+    "response": {
+      "application": {
+        "kind": "solution",
+        "program_id": 39,
+        "solution_id": 54,
+        "name": "Исключение участника hackathon qa01mr-20261025-60d40caf"
+      },
+      "member": {
+        "role": null,
+        "user": {
+          "id": 9,
+          "last_name": "Сквозной",
+          "avatar_url": null,
+          "first_name": "Илья"
+        },
+        "joined_at": "2026-10-25T14:14:17.992981Z",
+        "is_captain": true,
+        "specialization": null
+      },
+      "solution_version": 5,
+      "is_submitted": true,
+      "remaining_member_count": 1,
+      "revoked_invitation_count": 0,
+      "score_count": 2,
+      "errors": [
+        {
+          "path": "user_id",
+          "code": "captain_cannot_be_removed",
+          "detail": "Капитана нельзя исключить из состава. Для него снимите заявку с участия.",
+          "field_id": null
+        }
+      ],
+      "can_apply": false,
+      "preview_token": null
+    },
+    "cacheControl": "private, no-store"
+  },
+  {
+    "actor": "manager",
+    "method": "POST",
+    "path": "/programs/39/management/solutions/54/members/remove/preview/",
+    "status": 200,
+    "request": {
+      "user_id": 10
+    },
+    "response": {
+      "application": {
+        "kind": "solution",
+        "program_id": 39,
+        "solution_id": 54,
+        "name": "Исключение участника hackathon qa01mr-20261025-60d40caf"
+      },
+      "member": {
+        "role": "Backend-разработчик",
+        "user": {
+          "id": 10,
+          "last_name": "Сквозная",
+          "avatar_url": null,
+          "first_name": "Мария"
+        },
+        "joined_at": "2026-10-25T14:14:18.421437Z",
+        "is_captain": false,
+        "specialization": null
+      },
+      "solution_version": 5,
+      "is_submitted": true,
+      "remaining_member_count": 1,
+      "revoked_invitation_count": 0,
+      "score_count": 2,
+      "errors": [],
+      "can_apply": true,
+      "preview_token": "[REDACTED_SIGNED_PREVIEW]"
+    },
+    "cacheControl": "private, no-store"
+  },
+  {
+    "actor": "manager",
+    "method": "POST",
+    "path": "/programs/39/management/solutions/54/members/remove/apply/",
+    "status": 200,
+    "request": {
+      "user_id": 10,
+      "preview_token": "[REDACTED_SIGNED_PREVIEW]"
+    },
+    "response": {
+      "solution_id": 54,
+      "solution_version": 6,
+      "updated_at": "2026-10-25T14:14:19.926401Z"
+    },
+    "cacheControl": "private, no-store"
+  },
+  {
+    "actor": "manager",
+    "method": "POST",
+    "path": "/programs/39/management/solutions/54/members/remove/apply/",
+    "status": 409,
+    "request": {
+      "user_id": 10,
+      "preview_token": "[REDACTED_SIGNED_PREVIEW]"
+    },
+    "response": {
+      "code": "solution_action_conflict",
+      "detail": "Состав или данные решения изменились. Проверьте их и подтвердите действие заново.",
+      "errors": [],
+      "meta": {}
+    },
+    "cacheControl": "private, no-store"
+  },
+  {
+    "actor": "captain",
+    "method": "GET",
+    "path": "/programs/39/solutions/54/",
+    "status": 200,
+    "request": null,
+    "response": {
+      "id": 54,
+      "program_id": 39,
+      "version": 6,
+      "name": "Исключение участника hackathon qa01mr-20261025-60d40caf",
+      "captain_id": 9,
+      "created_at": "2026-10-25T14:14:17.988823Z",
+      "updated_at": "2026-10-25T14:14:19.926401Z",
+      "team": {
+        "members": [
+          {
+            "role": null,
+            "user": {
+              "id": 9,
+              "last_name": "Сквозной",
+              "avatar_url": null,
+              "first_name": "Илья"
+            },
+            "joined_at": "2026-10-25T14:14:17.992981Z",
+            "is_captain": true,
+            "specialization": null
+          }
+        ],
+        "accepted_count": 1,
+        "pending_count": 0,
+        "reserved_count": 1,
+        "min_size": 2,
+        "max_size": 3,
+        "is_frozen": true
+      },
+      "form": {
+        "fields": [
+          {
+            "id": 275,
+            "type": "select",
+            "label": "Кейс",
+            "options": ["Город", "Образование"],
+            "purpose": "case",
+            "position": 0,
+            "required": true,
+            "help_text": "",
+            "validation": {
+              "maximum": null,
+              "minimum": null,
+              "max_length": null,
+              "min_length": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 276,
+            "type": "textarea",
+            "label": "Материалы",
+            "options": [],
+            "purpose": "other",
+            "position": 1,
+            "required": true,
+            "help_text": "",
+            "validation": {
+              "maximum": null,
+              "minimum": null,
+              "max_length": null,
+              "min_length": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 277,
+            "type": "number",
+            "label": "Число",
+            "options": [],
+            "purpose": "other",
+            "position": 2,
+            "required": true,
+            "help_text": "",
+            "validation": {
+              "maximum": null,
+              "minimum": null,
+              "max_length": null,
+              "min_length": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 278,
+            "type": "checkbox",
+            "label": "Флаг",
+            "options": [],
+            "purpose": "other",
+            "position": 3,
+            "required": true,
+            "help_text": "",
+            "validation": {
+              "maximum": null,
+              "minimum": null,
+              "max_length": null,
+              "min_length": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 279,
+            "type": "url",
+            "label": "Репозиторий",
+            "options": [],
+            "purpose": "repository",
+            "position": 4,
+            "required": true,
+            "help_text": "",
+            "validation": {
+              "maximum": null,
+              "minimum": null,
+              "max_length": null,
+              "min_length": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          }
+        ],
+        "revision": "f3ff0a58557e6667d16c308067b4562d96cbf7a18368465cd5d439fd6ce94e8b",
+        "template": "hackathon",
+        "program_id": 39,
+        "is_snapshot": true,
+        "is_configured": true
+      },
+      "answers": [
+        {
+          "value": "Город",
+          "field_id": 275
+        },
+        {
+          "value": "Материалы qa01mr-20261025-60d40caf",
+          "field_id": 276
+        },
+        {
+          "value": 0,
+          "field_id": 277
+        },
+        {
+          "value": false,
+          "field_id": 278
+        },
+        {
+          "value": "https://example.com/code/qa01mr-20261025-60d40caf",
+          "field_id": 279
+        }
+      ],
+      "submission": {
+        "required": true,
+        "status": "submitted",
+        "submission_open": false,
+        "deadline": "2026-10-24T14:14:19.007608Z",
+        "submitted_at": "2026-10-25T14:14:18.912690Z"
+      },
+      "permissions": {
+        "can_edit": false,
+        "can_manage_team": false,
+        "can_invite": false,
+        "can_submit": false,
+        "can_leave": false
+      },
+      "readiness": {
+        "is_ready": true,
+        "issues": []
+      }
+    },
+    "cacheControl": null
+  },
+  {
+    "actor": "member",
+    "method": "GET",
+    "path": "/programs/39/solutions/54/",
+    "status": 404,
+    "request": null,
+    "response": {
+      "code": "not_found",
+      "detail": "Решение или программа не найдены.",
+      "errors": [],
+      "meta": {}
+    },
+    "cacheControl": null
+  },
+  {
+    "actor": "member",
+    "method": "GET",
+    "path": "/solution-invitations/57/",
+    "status": 200,
+    "request": null,
+    "response": {
+      "id": 57,
+      "version": 2,
+      "program": {
+        "id": 39,
+        "name": "Исключение участника hackathon qa01mr-20261025-60d40caf"
+      },
+      "solution": {
+        "kind": "solution",
+        "program_id": 39,
+        "solution_id": 54,
+        "name": "Исключение участника hackathon qa01mr-20261025-60d40caf"
+      },
+      "captain": {
+        "id": 9,
+        "first_name": "Илья",
+        "last_name": "Сквозной",
+        "avatar_url": null
+      },
+      "recipient": {
+        "id": 10,
+        "first_name": "Мария",
+        "last_name": "Сквозная",
+        "avatar_url": null
+      },
+      "role": "Backend-разработчик",
+      "specialization": null,
+      "motivational_letter": null,
+      "status": "accepted",
+      "created_at": "2026-10-25T14:14:18.311018Z",
+      "updated_at": "2026-10-25T14:14:18.427523Z",
+      "permissions": {
+        "can_edit": false,
+        "can_revoke": false,
+        "can_accept": false,
+        "can_decline": false
+      }
+    },
+    "cacheControl": null
+  },
+  {
+    "actor": "member",
+    "method": "POST",
+    "path": "/solution-invitations/57/accept/",
+    "status": 409,
+    "request": {
+      "expected_version": 2
+    },
+    "response": {
+      "code": "invite_already_processed",
+      "detail": "Приглашение уже обработано.",
+      "errors": [],
+      "meta": {}
+    },
+    "cacheControl": null
+  },
+  {
+    "actor": "manager",
+    "method": "GET",
+    "path": "/programs/39/management/solutions/54/history/",
+    "status": 200,
+    "request": null,
+    "response": {
+      "count": 1,
+      "offset": 0,
+      "limit": 20,
+      "results": [
+        {
+          "id": 4,
+          "application": {
+            "kind": "solution",
+            "program_id": 39,
+            "solution_id": 54,
+            "name": "Исключение участника hackathon qa01mr-20261025-60d40caf"
+          },
+          "action": "remove_member",
+          "actor": {
+            "id": 8,
+            "first_name": "Олег",
+            "last_name": "Проверки",
+            "avatar_url": null
+          },
+          "actor_name": "Олег Проверки",
+          "created_at": "2026-10-25T14:14:19.927302Z",
+          "before_version": 5,
+          "after_version": 6,
+          "removed_assignments_count": 0,
+          "score_count": 2,
+          "was_submitted": true,
+          "removed_member": {
+            "role": "Backend-разработчик",
+            "user": {
+              "id": 10,
+              "last_name": "Сквозная",
+              "avatar_url": null,
+              "first_name": "Мария"
+            },
+            "joined_at": "2026-10-25T14:14:18.421437Z",
+            "is_captain": false,
+            "specialization": null
+          },
+          "revoked_invitation_count": 0
+        }
+      ]
+    },
+    "cacheControl": "private, no-store"
+  },
+  {
+    "actor": "manager",
+    "method": "GET",
+    "path": "/programs/39/management/solutions/54/history/4/",
+    "status": 200,
+    "request": null,
+    "response": {
+      "change": {
+        "id": 4,
+        "application": {
+          "kind": "solution",
+          "program_id": 39,
+          "solution_id": 54,
+          "name": "Исключение участника hackathon qa01mr-20261025-60d40caf"
+        },
+        "action": "remove_member",
+        "actor": {
+          "id": 8,
+          "first_name": "Олег",
+          "last_name": "Проверки",
+          "avatar_url": null
+        },
+        "actor_name": "Олег Проверки",
+        "created_at": "2026-10-25T14:14:19.927302Z",
+        "before_version": 5,
+        "after_version": 6,
+        "removed_assignments_count": 0,
+        "score_count": 2,
+        "was_submitted": true,
+        "removed_member": {
+          "role": "Backend-разработчик",
+          "user": {
+            "id": 10,
+            "last_name": "Сквозная",
+            "avatar_url": null,
+            "first_name": "Мария"
+          },
+          "joined_at": "2026-10-25T14:14:18.421437Z",
+          "is_captain": false,
+          "specialization": null
+        },
+        "revoked_invitation_count": 0
+      },
+      "before_snapshot": {
+        "form": {
+          "fields": [
+            {
+              "id": 275,
+              "type": "select",
+              "label": "Кейс",
+              "options": ["Город", "Образование"],
+              "purpose": "case",
+              "position": 0,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 276,
+              "type": "textarea",
+              "label": "Материалы",
+              "options": [],
+              "purpose": "other",
+              "position": 1,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 277,
+              "type": "number",
+              "label": "Число",
+              "options": [],
+              "purpose": "other",
+              "position": 2,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 278,
+              "type": "checkbox",
+              "label": "Флаг",
+              "options": [],
+              "purpose": "other",
+              "position": 3,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 279,
+              "type": "url",
+              "label": "Репозиторий",
+              "options": [],
+              "purpose": "repository",
+              "position": 4,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            }
+          ],
+          "revision": "f3ff0a58557e6667d16c308067b4562d96cbf7a18368465cd5d439fd6ce94e8b",
+          "template": "hackathon",
+          "program_id": 39,
+          "is_snapshot": true,
+          "is_configured": true
+        },
+        "name": "Исключение участника hackathon qa01mr-20261025-60d40caf",
+        "answers": [
+          {
+            "value": "Город",
+            "field_id": 275
+          },
+          {
+            "value": "Материалы qa01mr-20261025-60d40caf",
+            "field_id": 276
+          },
+          {
+            "value": 0,
+            "field_id": 277
+          },
+          {
+            "value": false,
+            "field_id": 278
+          },
+          {
+            "value": "https://example.com/code/qa01mr-20261025-60d40caf",
+            "field_id": 279
+          }
+        ],
+        "members": [
+          {
+            "role": null,
+            "user": {
+              "id": 9,
+              "last_name": "Сквозной",
+              "avatar_url": null,
+              "first_name": "Илья"
+            },
+            "joined_at": "2026-10-25T14:14:17.992981Z",
+            "is_captain": true,
+            "specialization": null
+          },
+          {
+            "role": "Backend-разработчик",
+            "user": {
+              "id": 10,
+              "last_name": "Сквозная",
+              "avatar_url": null,
+              "first_name": "Мария"
+            },
+            "joined_at": "2026-10-25T14:14:18.421437Z",
+            "is_captain": false,
+            "specialization": null
+          }
+        ],
+        "captain_id": 9,
+        "submitted_at": "2026-10-25T14:14:18.912690Z"
+      },
+      "after_snapshot": {
+        "form": {
+          "fields": [
+            {
+              "id": 275,
+              "type": "select",
+              "label": "Кейс",
+              "options": ["Город", "Образование"],
+              "purpose": "case",
+              "position": 0,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 276,
+              "type": "textarea",
+              "label": "Материалы",
+              "options": [],
+              "purpose": "other",
+              "position": 1,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 277,
+              "type": "number",
+              "label": "Число",
+              "options": [],
+              "purpose": "other",
+              "position": 2,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 278,
+              "type": "checkbox",
+              "label": "Флаг",
+              "options": [],
+              "purpose": "other",
+              "position": 3,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 279,
+              "type": "url",
+              "label": "Репозиторий",
+              "options": [],
+              "purpose": "repository",
+              "position": 4,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            }
+          ],
+          "revision": "f3ff0a58557e6667d16c308067b4562d96cbf7a18368465cd5d439fd6ce94e8b",
+          "template": "hackathon",
+          "program_id": 39,
+          "is_snapshot": true,
+          "is_configured": true
+        },
+        "name": "Исключение участника hackathon qa01mr-20261025-60d40caf",
+        "answers": [
+          {
+            "value": "Город",
+            "field_id": 275
+          },
+          {
+            "value": "Материалы qa01mr-20261025-60d40caf",
+            "field_id": 276
+          },
+          {
+            "value": 0,
+            "field_id": 277
+          },
+          {
+            "value": false,
+            "field_id": 278
+          },
+          {
+            "value": "https://example.com/code/qa01mr-20261025-60d40caf",
+            "field_id": 279
+          }
+        ],
+        "members": [
+          {
+            "role": null,
+            "user": {
+              "id": 9,
+              "last_name": "Сквозной",
+              "avatar_url": null,
+              "first_name": "Илья"
+            },
+            "joined_at": "2026-10-25T14:14:17.992981Z",
+            "is_captain": true,
+            "specialization": null
+          }
+        ],
+        "captain_id": 9,
+        "submitted_at": "2026-10-25T14:14:18.912690Z"
+      }
+    },
+    "cacheControl": "private, no-store"
+  },
+  {
+    "actor": "rated",
+    "method": "GET",
+    "path": "/programs/39/solutions/54/evaluation/",
+    "status": 200,
+    "request": null,
+    "response": {
+      "program": {
+        "id": 39,
+        "name": "Исключение участника hackathon qa01mr-20261025-60d40caf"
+      },
+      "solution": {
+        "id": 54,
+        "program_id": 39,
+        "version": 6,
+        "name": "Исключение участника hackathon qa01mr-20261025-60d40caf",
+        "captain_id": 9,
+        "created_at": "2026-10-25T14:14:17.988823Z",
+        "updated_at": "2026-10-25T14:14:19.926401Z",
+        "team": {
+          "members": [
+            {
+              "role": null,
+              "user": {
+                "id": 9,
+                "last_name": "Сквозной",
+                "avatar_url": null,
+                "first_name": "Илья"
+              },
+              "joined_at": "2026-10-25T14:14:17.992981Z",
+              "is_captain": true,
+              "specialization": null
+            }
+          ],
+          "accepted_count": 1,
+          "pending_count": 0,
+          "reserved_count": 1,
+          "min_size": 2,
+          "max_size": 3,
+          "is_frozen": true
+        },
+        "form": {
+          "fields": [
+            {
+              "id": 275,
+              "type": "select",
+              "label": "Кейс",
+              "options": ["Город", "Образование"],
+              "purpose": "case",
+              "position": 0,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 276,
+              "type": "textarea",
+              "label": "Материалы",
+              "options": [],
+              "purpose": "other",
+              "position": 1,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 277,
+              "type": "number",
+              "label": "Число",
+              "options": [],
+              "purpose": "other",
+              "position": 2,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 278,
+              "type": "checkbox",
+              "label": "Флаг",
+              "options": [],
+              "purpose": "other",
+              "position": 3,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 279,
+              "type": "url",
+              "label": "Репозиторий",
+              "options": [],
+              "purpose": "repository",
+              "position": 4,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            }
+          ],
+          "revision": "f3ff0a58557e6667d16c308067b4562d96cbf7a18368465cd5d439fd6ce94e8b",
+          "template": "hackathon",
+          "program_id": 39,
+          "is_snapshot": true,
+          "is_configured": true
+        },
+        "answers": [
+          {
+            "value": "Город",
+            "field_id": 275
+          },
+          {
+            "value": "Материалы qa01mr-20261025-60d40caf",
+            "field_id": 276
+          },
+          {
+            "value": 0,
+            "field_id": 277
+          },
+          {
+            "value": false,
+            "field_id": 278
+          },
+          {
+            "value": "https://example.com/code/qa01mr-20261025-60d40caf",
+            "field_id": 279
+          }
+        ],
+        "submission": {
+          "required": true,
+          "status": "submitted",
+          "submission_open": false,
+          "deadline": "2026-10-24T14:14:19.007608Z",
+          "submitted_at": "2026-10-25T14:14:18.912690Z"
+        },
+        "permissions": {
+          "can_edit": false,
+          "can_manage_team": false,
+          "can_invite": false,
+          "can_submit": false,
+          "can_leave": false
+        },
+        "readiness": null
+      },
+      "criteria_revision": "f98a11a2db7f5de736fd8f188480f615ee65a65cce0549963672829792a9fbcd",
+      "criteria": [
+        {
+          "id": 71,
+          "name": "Комментарий",
+          "description": "Доп. поле для впечатлений о проекте",
+          "type": "str",
+          "min_value": null,
+          "max_value": null,
+          "value": null
+        },
+        {
+          "id": 72,
+          "name": "Проверка нуля 3",
+          "description": null,
+          "type": "int",
+          "min_value": 0.0,
+          "max_value": 10.0,
+          "value": "0"
+        },
+        {
+          "id": 73,
+          "name": "Проверка false 4",
+          "description": null,
+          "type": "bool",
+          "min_value": null,
+          "max_value": null,
+          "value": "False"
+        }
+      ],
+      "managed_evaluation": true,
+      "can_rate": true,
+      "blocked_reason": null,
+      "is_completed": false,
+      "rated_count": 0,
+      "max_rates": 1,
+      "required_evaluators": 2,
+      "deadline": "2026-10-27T14:14:14.598410Z"
+    },
+    "cacheControl": "private, no-store"
+  },
+  {
+    "actor": "captain",
+    "method": "PATCH",
+    "path": "/programs/39/solutions/54/",
+    "status": 409,
+    "request": {
+      "expected_version": 6,
+      "expected_form_revision": "f3ff0a58557e6667d16c308067b4562d96cbf7a18368465cd5d439fd6ce94e8b",
+      "name": "Недоступная правка"
+    },
+    "response": {
+      "code": "team_frozen",
+      "detail": "Состав команды зафиксирован после сдачи.",
+      "errors": [],
+      "meta": {}
+    },
+    "cacheControl": null
+  },
+  {
+    "actor": "member",
+    "method": "GET",
+    "path": "/programs/39/management/solutions/54/history/",
+    "status": 403,
+    "request": null,
+    "response": {
+      "code": "permission_denied",
+      "detail": "История доступна организатору программы.",
+      "errors": [],
+      "meta": {}
+    },
+    "cacheControl": "private, no-store"
+  },
+  {
+    "actor": "captain",
+    "method": "GET",
+    "path": "/programs/34/solution-context/",
+    "status": 200,
+    "request": null,
+    "response": {
+      "program_id": 34,
+      "storage_mode": "legacy_project",
+      "is_registered": true,
+      "is_competitive": true,
+      "submission_open": true,
+      "submission_deadline": "2026-10-26T11:17:58.692009Z",
+      "can_create": false,
+      "blocked_reason": "already_has_application",
+      "current_application": {
+        "kind": "legacy_project",
+        "program_id": 34,
+        "project_id": 4,
+        "program_link_id": 3,
+        "name": "Заявка проекта qa01l-20261025-c6c0e219 сохранен"
+      }
+    },
+    "cacheControl": null
+  },
+  {
+    "actor": "manager",
+    "method": "POST",
+    "path": "/programs/34/management/solutions/53/members/remove/preview/",
+    "status": 409,
+    "request": {
+      "user_id": 10
+    },
+    "response": {
+      "code": "solution_mode_unavailable",
+      "detail": "Программа использует заявки на основе проектов.",
+      "errors": [],
+      "meta": {}
+    },
+    "cacheControl": "private, no-store"
+  },
+  {
+    "actor": "manager",
+    "method": "GET",
+    "path": "/programs/38/management/solutions/54/history/",
+    "status": 404,
+    "request": null,
+    "response": {
+      "code": "not_found",
+      "detail": "Решение или программа не найдены.",
+      "errors": [],
+      "meta": {}
+    },
+    "cacheControl": "private, no-store"
+  }
+]

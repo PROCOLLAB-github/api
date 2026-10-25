@@ -1,0 +1,26 @@
+# BE08B: исключение участника с сохранением истории
+
+25.10.2026. Backend product1e037afe301792fb168879f3c32c546585610431, frontend product32fe953667f09ed4d15e9c132bd8a8ae2415ccee. [Нормативный scope](../../product/program-solutions-be08-member-actions.md). C001.18.0:136 схем/53 операции/250 независимых сценариев; три shared files byte-identical.130 прежних схем,51 операция и230 сценариев неизменны; прежняя case event схема сохранена как ветвь union.
+
+Реализовано signed preview/apply исключения принятого участника до/после сдачи, кроме капитана. Срок/creation flag/текущая форма не блокируют административную операцию. Регистрация, материалы, файлы, оценки, назначения и обработанные приглашения сохраняются; pending выбранного участника отзываются. Submitted snapshot меняет только состав, исходный и новый snapshot и Member остаются в истории. Scoped internal deletion capability не ослабляет ordinary frozen guards и сбрасывается при любом выходе. Ошибка журнала откатывает всю транзакцию.
+
+Проверено:
+
+- 371 native PostgreSQL solution tests/OK.18 новых member tests входят в371, в том числе3 observed-lock races confirm×confirm/submit/score. Первый focused run имел4 ошибки тестовых fixtures/assertions: незарегистрированный дополнительный участник, неверный storage mode чужой программы и stale instance после HTTP submit. После исправления fixtures18 новых и полный371 PASS; product writers ради этих failures не ослаблялись.
+- 152 legacy Project/invitation/management/case tests/OK по12 модулям: projects.tests.test_competitive_team_policy/test_team_security/test_project_access/test_program_project_detail_access, invites.tests.test_invite_integrity/test_invite_detail_access/test_invite_decisions/test_invite_api/test_models, partner_programs.tests.test_management_project_actions/test_management_application_team_removal/test_case_lifecycle_api. Прежний checkpoint148 имел другой набор labels; числа не складываются.
+- 2887 frontend tests/482 files +strict C00 types, development build, scoped ESLint и locked Prettier3.8.3/2023 files PASS до добавления этого отчета.74 case/member/history wire checks включают22 новых member и3 новых history. Unknown query проверяется backend; frontend action client произвольный query не принимает. Invalid user отклоняется frontend до сети, missing-token400 проходит как намеренно invalid request.
+- Black/Flake8/Django check/migration consistency/C00/diff checks PASS. Общий backend Linux CI нового product этим checkpoint не объявляется.
+
+Миграция0036 применена только к local main `procollab_ci` и isolated Unicode test DB. Все прежние строки23 выбранных моделей, включая2 case revisions, совпали до/после: `ce0a2edae7fe3e68846a097634c0b39364512edb77e32ada8166e860c82bbd61`. Новые nullable/default поля истории корректны, существующие snapshots и Project не переписывались. Schema-down не является способом отката сохраненной истории.
+
+Настоящий HTTP на новом backend:57 responses и35 request bodies валидированы по C00. Свежие КЧ38/решение53/ревизия3 и хакатон39/решение54 прошли создание/приглашение/принятие/сохранение/сдачу и однократное исключение. До сдачи получен draft proof; после сдачи он отвергнут как stale. Проверены закрытый срок/creation flag=False, снятая текущая конфигурация КЧ, права, запрет исключения капитана, replay, сохранность int0/boolFalse/материалов/оценок/назначений/регистраций/accepted invite, потеря private доступа исключенного, прежний frozen PATCH и история исходного состава. Legacy context34 остается Project4/link3, новый writer там дает409; чужая пара program/solution дает404.
+
+После новых journeys прежние строки23 моделей совпадают с тем же baseline. Новых Project=0, новых Solution=2, новых member revisions=2; case revisions1/2 и решения51/52 сохранены. Все новые creation flags в концеFalse, публикацияFalse, real programs не менялись. Первый setup helper ошибся аргументом `role` для test criterion; транзакция полностью откатилась до любых HTTP. Исправленный run не повторял сдачу или подтвержденное исключение.
+
+`evidence.json` содержит source/helper/raw hashes. `http-wire.json` в Git содержит57 исходных request/response с10 скрытыми signed proof strings; C00 проверялся до redaction. Authorization/JWT/password не записывались. Необработанные wire/logs остаются локально в `design-artifacts/program-solutions-20261024/qa01-member-removal`; private baseline/manifest находятся в TEMP. Собственный API8877 остановлен после проверки; прежние8769/8871/8876 сохранены.
+
+Предыдущий backend7656b472: General40199193190 завершился success,1730 tests/OK(skipped61), лог сохранен; PG40199197945 на момент упаковки выполнялся. Эти результаты не являются CI нового BE08B. Текущие PR draft/base dev, без merge/deploy/реальных переключений/автоматического переноса.
+
+Полный первый выпуск остается открыт: снятие/архив заявки, удаление регистрации и retention; D02/D03 approval и соответствующие screens; конкурсные несданные черновики; полный QA01/REL01. Все26 исходных требований сохранены,23 PASS не изменились, AC18/19 OPEN, AC21 отдельно BE10. Новый organizer layout/routes/SCSS не добавлялся.
+
+Финальная locked format проверка с отчетом:2028 files, failures=[]; sanitized wire форматирован без изменения JSON-значений.
