@@ -2,7 +2,9 @@
 
 # C00 Контракт решения в программе
 
-Рабочая версия 1.12.0 от 25 октября 2026 года. Контракт фиксирует поведение для реализации BE01–BE09 и FE01–FE08. В BE01 реализованы модели и четыре операции контекста, создания, чтения и списка; BE02 добавляет удаление участника, выход и передачу капитанства, BE03 — цикл приглашений, BE04 — чтение/изменение формы и стартовые шаблоны, BE05 — частичное сохранение ответов и привязку файлов, BE06 — атомарную сдачу со снимком. Новый режим выключен по умолчанию. Контракт описывает JSON на проводе в snake_case; преобразование в camelCase выполняет frontend adapter.
+Рабочая версия 1.13.0 от 25 октября 2026 года. Контракт фиксирует поведение для реализации BE01–BE09 и FE01–FE08. В BE01 реализованы модели и четыре операции контекста, создания, чтения и списка; BE02 добавляет удаление участника, выход и передачу капитанства, BE03 — цикл приглашений, BE04 — чтение/изменение формы и стартовые шаблоны, BE05 — частичное сохранение ответов и привязку файлов, BE06 — атомарную сдачу со снимком. Новый режим выключен по умолчанию. Контракт описывает JSON на проводе в snake_case; преобразование в camelCase выполняет frontend adapter.
+
+Изменение 1.13.0: REL01 получает отдельный persisted `PartnerProgram.solution_creation_enabled`, default=False, без изменения storage mode. GET context добавляет значение blocked_reason=solution_creation_disabled; POST нового решения — 409 с тем же code. Повтор капитана возвращает прежнюю заявку с 200; права и currentApplication имеют прежний приоритет. Чтение, ответы, файлы, команда, приглашения, сдача, оценки и публикация существующих работ не отключаются этим флагом. Техническая команда `set_solution_creation --program-id ID --enable|--disable` делает preview, `--apply` меняет только выбранную программу под row lock. Нового API настройки нет. 120 схем/45 операций сохранены, 161 независимый сценарий (все 158 прежних неизменны). Миграция 0034 закрывает новое создание по умолчанию, не меняя данные работ. Backend/миграция → frontend; новый клиент уточняет текст существующего error state, старый использует canCreate. Полный REL01 и QA01 не объявлены завершенными.
 
 Изменение 1.12.0: manager list добавляет field_id/answer_state по applied snapshot/current форме (0/false present, новое поле не missing у старой сдачи). kind=solutions/submitted XLSX принимает те же search/scope/submission/case/field фильтры и выгружает все найденные без pagination; остальные kind отклоняют непустые фильтры. Readonly manager permissions/no-store, прежние ответы и 120 схем сохранены; 45 операций, 158 независимых сценариев. Angular UI ожидает design approval.
 
@@ -45,7 +47,7 @@ C00 фиксирует техническую основу. D00 v3 явно со
 
 Решение принадлежит одной программе. Формат формы — case_championship или hackathon. У программы одна общая форма; разные поля по кейсам не входят в v1. Кейс или задача представлены полем select с purpose:case, без новой сущности Case. Поля шаблона копируются в конфигурацию программы.
 
-Создание доступно по текущим правилам участника и дедлайна, включая существующие административные исключения. Повторное создание капитаном возвращает его заявку с HTTP 200; новое — 201. До первого включения все изменяющие endpoints проверяют технический режим программы. Наличие серверного кода при выключенном режиме не дает создать решение.
+Создание доступно по текущим правилам участника и дедлайна, включая существующие административные исключения. Повторное создание капитаном возвращает его заявку с HTTP 200; новое — 201. До первого включения все изменяющие endpoints проверяют технический режим программы. Наличие серверного кода при выключенном режиме не дает создать решение. Дополнительно новое создание требует solution_creation_enabled=True; default=False. Откат creation flag не меняет режим, текущую заявку, права или данные уже созданных работ.
 
 ## Метаданные существующей страницы программы
 
@@ -129,7 +131,7 @@ JWT Bearer и текущие правила аутентификации сох�
 
 Контекст существует и в legacy режиме. current_application — null либо ссылка с kind:solution и solution_id либо kind:legacy_project с project_id и program_link_id. Это discriminated union для навигации, а не новая сущность. Несогласованные несколько текущих заявок дают 409 ambiguous_application.
 
-blocked_reason в контексте: null, already_has_application, legacy_mode, form_not_configured, not_program_member, submission_closed или already_in_program_team. Порядок выбора: текущая заявка, legacy режим, права, закрытая подача, неготовая форма. Детали участия в чужой команде не раскрываются постороннему.
+blocked_reason в контексте: null, already_has_application, legacy_mode, form_not_configured, not_program_member, solution_creation_disabled, submission_closed или already_in_program_team. Порядок выбора: текущая заявка, legacy режим, права, выключенное создание, закрытая подача, неготовая форма. Детали участия в чужой команде не раскрываются постороннему.
 
 ## Чтение и полномочия
 
@@ -239,16 +241,16 @@ PATCH и submit — две отдельные транзакции. Если sub
 
 Новый Error содержит обязательные code, detail, errors и meta. errors — массив {path,code,field_id,detail}; field_id:null для системной ошибки. meta несет current_version или current_form_revision только при наличии права чтения.
 
-| HTTP | Коды                                                                                                                                     |
-| ---- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| 400  | validation_error, invalid_answers, required_program_fields, case_required, case_unavailable, invalid_form                                |
-| 401  | authentication_required                                                                                                                  |
-| 403  | not_program_member, not_solution_captain, not_invite_recipient, permission_denied                                                        |
-| 404  | not_found                                                                                                                                |
-| 409  | solution_mode_unavailable, form_not_configured, version_conflict, form_revision_conflict, already_in_program_team, ambiguous_application |
-| 409  | team_frozen, team_min_size, team_max_size, already_solution_member, duplicate_pending_invite, invite_already_processed                   |
-| 409  | captain_cannot_leave, captain_cannot_be_removed, captain_already_selected, not_solution_member                                           |
-| 409  | submission_closed, already_submitted, not_competitive, field_in_use, template_locked, file_in_use                                        |
+| HTTP | Коды                                                                                                                                                                 |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 400  | validation_error, invalid_answers, required_program_fields, case_required, case_unavailable, invalid_form                                                            |
+| 401  | authentication_required                                                                                                                                              |
+| 403  | not_program_member, not_solution_captain, not_invite_recipient, permission_denied                                                                                    |
+| 404  | not_found                                                                                                                                                            |
+| 409  | solution_mode_unavailable, solution_creation_disabled, form_not_configured, version_conflict, form_revision_conflict, already_in_program_team, ambiguous_application |
+| 409  | team_frozen, team_min_size, team_max_size, already_solution_member, duplicate_pending_invite, invite_already_processed                                               |
+| 409  | captain_cannot_leave, captain_cannot_be_removed, captain_already_selected, not_solution_member                                                                       |
+| 409  | submission_closed, already_submitted, not_competitive, field_in_use, template_locked, file_in_use                                                                    |
 
 Это HTTP контракты новых endpoints. Существующие статусы старых /projects/, /invites/ и submit связи не меняются. Повторное действие с удаленным приглашением дает 404. Повтор accept/decline сохраненной обработанной строки — 409 invite_already_processed.
 

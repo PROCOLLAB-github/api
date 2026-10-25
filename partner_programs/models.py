@@ -124,6 +124,11 @@ class PartnerProgram(models.Model):
         default="legacy_project",
         verbose_name="Технический режим заявки",
     )
+    solution_creation_enabled = models.BooleanField(
+        default=False,
+        editable=False,
+        verbose_name="Создание новых решений включено",
+    )
     solution_template = models.CharField(
         max_length=24,
         choices=[("case_championship", "Кейс-чемпионат"), ("hackathon", "Хакатон")],
@@ -299,6 +304,12 @@ class PartnerProgram(models.Model):
                     type(self).objects.select_for_update().filter(pk=self.pk).first()
                 )
                 self.validate_solution_template_change(previous)
+                # Обычный save устаревшей карточки не отменяет операторский откат.
+                # Служебный запуск меняется явным update_fields под program lock.
+                if previous and (
+                    fields is None or "solution_creation_enabled" not in fields
+                ):
+                    self.solution_creation_enabled = previous.solution_creation_enabled
                 return super().save(*args, **kwargs)
         return super().save(*args, **kwargs)
 

@@ -1,0 +1,53 @@
+{
+  "prefix": "rel01-20261025-f7bd7145",
+  "programs": {
+    "9": {
+      "solutionId": 8,
+      "template": "case_championship",
+      "checks": [
+        "empty draft",
+        "real invitation + accepted inbox + two pending + capacity",
+        "0/false/case retained across tabs and saved",
+        "cancel then one submit POST",
+        "snapshot and frozen materials/team",
+        "pending decline/revoke after frozen submission"
+      ],
+      "creationDisabled": true,
+      "submitted": true,
+      "reenabledDraftId": 9,
+      "rollbackVerified": true,
+      "complete": true
+    },
+    "10": {
+      "solutionId": 10,
+      "template": "hackathon",
+      "checks": [
+        "empty draft",
+        "real invitation + accepted inbox + two pending + capacity",
+        "0/false/case retained across tabs and saved",
+        "cancel then one submit POST",
+        "snapshot and frozen materials/team",
+        "pending decline/revoke after frozen submission"
+      ],
+      "creationDisabled": true,
+      "submitted": true,
+      "reenabledDraftId": 11,
+      "rollbackVerified": true,
+      "complete": true
+    }
+  },
+  "rolloutStarts": {
+    "9": {
+      "initiallyDisabled": true,
+      "directNewRouteBlocked": true,
+      "programEntryBlocked": true,
+      "postStatus": 409
+    },
+    "10": {
+      "initiallyDisabled": true,
+      "directNewRouteBlocked": true,
+      "programEntryBlocked": true,
+      "postStatus": 409
+    }
+  }
+}

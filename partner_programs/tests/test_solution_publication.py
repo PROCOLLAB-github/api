@@ -478,13 +478,14 @@ class SolutionPublicationMigrationTests(TransactionTestCase):
         before = [("partner_programs", "0032_alter_programsolution_options")]
         after = [("partner_programs", "0033_solution_publication")]
         executor = MigrationExecutor(connection)
+        latest = executor.loader.graph.leaf_nodes()
+        program, captain = (
+            create_partner_program(solution_storage_mode="solution"),
+            create_user(),
+        )
         try:
             executor.migrate(before)
             old_apps = executor.loader.project_state(before).apps
-            program, captain = (
-                create_partner_program(solution_storage_mode="solution"),
-                create_user(),
-            )
             solution = old_apps.get_model(
                 "partner_programs", "ProgramSolution"
             ).objects.create(program_id=program.pk, captain_id=captain.pk)
@@ -494,4 +495,4 @@ class SolutionPublicationMigrationTests(TransactionTestCase):
             self.assertIsNone(current.published_at)
             self.assertEqual(current.status, "draft")
         finally:
-            MigrationExecutor(connection).migrate(after)
+            MigrationExecutor(connection).migrate(latest)

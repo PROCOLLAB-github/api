@@ -1,0 +1,19 @@
+{
+  "status": "PASS",
+  "migration": "0033 -> 0034",
+  "database": "local PostgreSQL 18 / procollab_ci",
+  "unchanged": {
+    "programs": 8,
+    "partner_programs.ProgramSolution": 6,
+    "partner_programs.ProgramSolutionAnswer": 23,
+    "partner_programs.ProgramSolutionMember": 10,
+    "partner_programs.SolutionInvitation": 5,
+    "project_rates.SolutionScore": 12,
+    "project_rates.SolutionExpertAssignment": 4,
+    "files.UserFile": 5,
+    "projects.Project": 2
+  },
+  "allCreationFlagsDisabled": true,
+  "allPriorColumnsAndDomainDataUnchanged": true,
+  "stateSha256": "068f4c6db8d2ed308343dd03e450efdda67f75755d1133871e56faa615de40d9"
+}

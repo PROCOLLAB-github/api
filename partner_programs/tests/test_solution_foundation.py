@@ -30,6 +30,8 @@ from projects.models import Project
 
 
 def solution_program(**kwargs):
+    # Готовая к участию fixture; production default отдельно проверяется как False.
+    kwargs.setdefault("solution_creation_enabled", True)
     program = create_partner_program(
         solution_storage_mode="solution", solution_template="hackathon", **kwargs
     )

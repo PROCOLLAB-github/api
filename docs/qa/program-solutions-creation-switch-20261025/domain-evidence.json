@@ -1,0 +1,251 @@
+{
+  "status": "PASS",
+  "programs": [
+    {
+      "program_id": 9,
+      "template": "case_championship",
+      "submitted_solution_id": 8,
+      "reenabled_draft_solution_id": 9,
+      "final_creation_enabled": false,
+      "existing_read_and_permissions_retained": true,
+      "snapshot_and_zero_false_case_retained": true,
+      "files": [
+        {
+          "size": 597,
+          "sha256": "4722e145f386e32649b51fb43c5d7a09b559fd06c22ba2d89708a612d6f8c99e"
+        }
+      ]
+    },
+    {
+      "program_id": 10,
+      "template": "hackathon",
+      "submitted_solution_id": 10,
+      "reenabled_draft_solution_id": 11,
+      "final_creation_enabled": false,
+      "existing_read_and_permissions_retained": true,
+      "snapshot_and_zero_false_case_retained": true,
+      "files": []
+    }
+  ],
+  "httpChecks": [
+    {
+      "path": "/programs/9/solutions/8/",
+      "role": "captain",
+      "method": "GET",
+      "status": 200,
+      "code": null
+    },
+    {
+      "path": "/programs/9/solutions/8/",
+      "role": "member",
+      "method": "GET",
+      "status": 200,
+      "code": null
+    },
+    {
+      "path": "/programs/9/solutions/8/",
+      "role": "manager",
+      "method": "GET",
+      "status": 200,
+      "code": null
+    },
+    {
+      "path": "/programs/9/solutions/",
+      "role": "captain",
+      "method": "POST",
+      "status": 200,
+      "code": null
+    },
+    {
+      "path": "/programs/9/solution-context/",
+      "role": "captain",
+      "method": "GET",
+      "status": 200,
+      "code": null
+    },
+    {
+      "path": "/programs/9/solution-context/",
+      "role": "pending_a",
+      "method": "GET",
+      "status": 200,
+      "code": null
+    },
+    {
+      "path": "/programs/9/solutions/",
+      "role": "pending_a",
+      "method": "POST",
+      "status": 409,
+      "code": "solution_creation_disabled"
+    },
+    {
+      "path": "/programs/9/solutions/9/",
+      "role": "pending_b",
+      "method": "GET",
+      "status": 200,
+      "code": null
+    },
+    {
+      "path": "/programs/9/solutions/",
+      "role": "pending_b",
+      "method": "POST",
+      "status": 200,
+      "code": null
+    },
+    {
+      "path": "/programs/9/solutions/8/",
+      "role": "anonymous",
+      "method": "GET",
+      "status": 401,
+      "code": "authentication_required"
+    },
+    {
+      "path": "/programs/9/solutions/8/",
+      "role": "pending_a",
+      "method": "GET",
+      "status": 404,
+      "code": "not_found"
+    },
+    {
+      "path": "/programs/9/solutions/8/",
+      "role": "pending_b",
+      "method": "GET",
+      "status": 404,
+      "code": "not_found"
+    },
+    {
+      "path": "/programs/9/solutions/8/",
+      "role": "member",
+      "method": "PATCH",
+      "status": 403,
+      "code": "not_solution_captain"
+    },
+    {
+      "path": "/programs/9/solutions/8/",
+      "role": "captain",
+      "method": "PATCH",
+      "status": 409,
+      "code": "team_frozen"
+    },
+    {
+      "path": "/programs/9/solutions/8/submit/",
+      "role": "captain",
+      "method": "POST",
+      "status": 409,
+      "code": "already_submitted"
+    },
+    {
+      "path": "/programs/10/solutions/10/",
+      "role": "captain",
+      "method": "GET",
+      "status": 200,
+      "code": null
+    },
+    {
+      "path": "/programs/10/solutions/10/",
+      "role": "member",
+      "method": "GET",
+      "status": 200,
+      "code": null
+    },
+    {
+      "path": "/programs/10/solutions/10/",
+      "role": "manager",
+      "method": "GET",
+      "status": 200,
+      "code": null
+    },
+    {
+      "path": "/programs/10/solutions/",
+      "role": "captain",
+      "method": "POST",
+      "status": 200,
+      "code": null
+    },
+    {
+      "path": "/programs/10/solution-context/",
+      "role": "captain",
+      "method": "GET",
+      "status": 200,
+      "code": null
+    },
+    {
+      "path": "/programs/10/solution-context/",
+      "role": "pending_a",
+      "method": "GET",
+      "status": 200,
+      "code": null
+    },
+    {
+      "path": "/programs/10/solutions/",
+      "role": "pending_a",
+      "method": "POST",
+      "status": 409,
+      "code": "solution_creation_disabled"
+    },
+    {
+      "path": "/programs/10/solutions/11/",
+      "role": "pending_b",
+      "method": "GET",
+      "status": 200,
+      "code": null
+    },
+    {
+      "path": "/programs/10/solutions/",
+      "role": "pending_b",
+      "method": "POST",
+      "status": 200,
+      "code": null
+    },
+    {
+      "path": "/programs/10/solutions/10/",
+      "role": "anonymous",
+      "method": "GET",
+      "status": 401,
+      "code": "authentication_required"
+    },
+    {
+      "path": "/programs/10/solutions/10/",
+      "role": "pending_a",
+      "method": "GET",
+      "status": 404,
+      "code": "not_found"
+    },
+    {
+      "path": "/programs/10/solutions/10/",
+      "role": "pending_b",
+      "method": "GET",
+      "status": 404,
+      "code": "not_found"
+    },
+    {
+      "path": "/programs/10/solutions/10/",
+      "role": "member",
+      "method": "PATCH",
+      "status": 403,
+      "code": "not_solution_captain"
+    },
+    {
+      "path": "/programs/10/solutions/10/",
+      "role": "captain",
+      "method": "PATCH",
+      "status": 409,
+      "code": "team_frozen"
+    },
+    {
+      "path": "/programs/10/solutions/10/submit/",
+      "role": "captain",
+      "method": "POST",
+      "status": 409,
+      "code": "already_submitted"
+    }
+  ],
+  "verificationDomainMutations": 0,
+  "preexistingDomainHashMatchesMigrationBaseline": true,
+  "preexistingDomainSha256": "068f4c6db8d2ed308343dd03e450efdda67f75755d1133871e56faa615de40d9",
+  "projectCountUnchanged": true,
+  "limitations": [
+    "real browser intentionally mutated only synthetic rehearsal fixtures",
+    "local storage, no production CDN/mail/deploy",
+    "full QA01/REL01 still incomplete"
+  ]
+}

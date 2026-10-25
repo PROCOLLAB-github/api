@@ -77,6 +77,8 @@ def context_data(program, user):
         reason = "legacy_mode"
     elif not (registered or program.is_manager(user)):
         reason = "not_program_member"
+    elif not program.solution_creation_enabled:
+        reason = "solution_creation_disabled"
     elif not program.is_project_submission_open():
         reason = "submission_closed"
     elif not form_data(program)["is_configured"]:
@@ -278,6 +280,12 @@ def create_solution(program_id, user, data):
             "not_program_member",
             "Создание заявки доступно участникам программы.",
             status=403,
+        )
+    if not program.solution_creation_enabled:
+        raise SolutionError(
+            "solution_creation_disabled",
+            "Создание новых решений временно приостановлено. "
+            "Ранее созданные заявки доступны.",
         )
     if not program.is_project_submission_open():
         raise SolutionError("submission_closed", "Срок создания заявок завершен.")
