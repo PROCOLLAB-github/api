@@ -36,6 +36,8 @@ jobs:
           node-version: '24'
       - name: Install verified SSH transport
         run: npm install --prefix "$RUNNER_TEMP/dev-migration-ssh" --ignore-scripts --no-package-lock --no-audit --no-fund ssh2@1.16.0
+      - name: Verify workflow transport invocation
+        run: node --test tests/test_dev_image_retention_workflow.cjs
       - name: Plan or apply exact unused DEV image removals
         env:
           NODE_PATH: ${{ runner.temp }}/dev-migration-ssh/node_modules
@@ -55,5 +57,14 @@ jobs:
           if (mode === 'apply' && !/^[0-9a-f]{64}$/.test(digest)) throw new Error('Inspect a plan first');
           const source = fs.readFileSync('scripts/dev_image_retention.py', 'utf8');
           process.env.DEV_DEPLOY_SCRIPT = `set -euo pipefail\npython3 - ${mode} ${digest} <<'DEV_IMAGE_RETENTION_PY'\n${source}\nDEV_IMAGE_RETENTION_PY\n`;
-          require('./scripts/dev_ci_ssh.cjs');
+          require('./scripts/dev_ci_ssh.cjs').deploy({
+            host: process.env.DEV_SERVER_HOST,
+            username: process.env.DEV_SERVER_USER,
+            password: process.env.DEV_SERVER_PASSWORD,
+            hostFingerprint: process.env.DEV_SSH_HOST_KEY_SHA256,
+            script: process.env.DEV_DEPLOY_SCRIPT,
+          }).catch(error => {
+            console.error(error.message);
+            process.exitCode = 1;
+          });
           NODE
