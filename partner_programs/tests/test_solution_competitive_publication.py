@@ -337,6 +337,11 @@ class CompetitivePublicationTests(CompetitivePublicationFixture, TestCase):
 
 @override_settings(PASSWORD_HASHERS=FAST_HASHERS)
 class CompetitivePublicationLockTests(CompetitivePublicationFixture, TransactionTestCase):
+    def setUp(self):
+        if connection.vendor != "postgresql":
+            self.skipTest("Requires PostgreSQL program locks and pg_blocking_pids")
+        super().setUp()
+
     def waiting_worker(self, pool, command):
         backend = Queue()
 

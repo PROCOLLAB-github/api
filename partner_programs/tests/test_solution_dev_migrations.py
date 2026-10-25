@@ -57,7 +57,6 @@ class SolutionDevGraphTests(TestCase):
 
 class SolutionDevMigrationDataTests(TransactionTestCase):
     def setUp(self):
-        self.assertEqual(connection.vendor, "postgresql")
         self.latest = MigrationExecutor(connection).loader.graph.leaf_nodes()
 
     def before(self, branch):
