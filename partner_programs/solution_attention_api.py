@@ -43,7 +43,7 @@ class SolutionReminderConfirmSerializer(
 
 
 class SolutionExpertReminderView(SolutionAnalyticsAPIView):
-    action = "preview"
+    reminder_action = "preview"
 
     def post(self, request, pk):
         program = self.managed_program(request, pk)
@@ -55,11 +55,11 @@ class SolutionExpertReminderView(SolutionAnalyticsAPIView):
         self.query(request)
         serializer = (
             SolutionReminderConfirmSerializer
-            if self.action == "confirm"
+            if self.reminder_action == "confirm"
             else SolutionReminderPreviewSerializer
         )(data=request.data)
         serializer.is_valid(raise_exception=True)
-        if self.action == "confirm":
+        if self.reminder_action == "confirm":
             result = confirm_reminder(
                 program,
                 SOLUTION_AWAITING,

@@ -138,7 +138,7 @@ urlpatterns = [
     ),
     path(
         "<int:pk>/management/solution-analytics/attention/solutions-awaiting-evaluation/reminders/",
-        SolutionExpertReminderView.as_view(action="confirm"),
+        SolutionExpertReminderView.as_view(reminder_action="confirm"),
     ),
     path(
         "<int:pk>/management/solution-analytics/", SolutionManagerAnalyticsView.as_view()
