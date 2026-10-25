@@ -1,0 +1,76 @@
+{
+  "status": "PASS",
+  "backend": "30c0d3ec1ac8e1236dd669205b97b4a2b4463fda",
+  "frontend": "d2a2cd3f80549e7dcbc6b3e32e55fea7ead57175",
+  "c00": "1.14.0",
+  "prefix": "qa01m-20261025-b080f725",
+  "validation": {
+    "httpResponses": 31,
+    "httpRequests": 24,
+    "browserResponses": 16,
+    "browserRequests": 0
+  },
+  "programs": [
+    {
+      "program": 25,
+      "template": "case_championship",
+      "solutions": [
+        38,
+        39
+      ],
+      "winningSolution": 38,
+      "acceptedInvitation": 47,
+      "declinedInvitation": 48,
+      "memberTeams": 1,
+      "draftSolutions": 2,
+      "pendingInvitations": 0,
+      "creationFlagOff": true
+    },
+    {
+      "program": 26,
+      "template": "hackathon",
+      "solutions": [
+        40,
+        41
+      ],
+      "winningSolution": 40,
+      "acceptedInvitation": 49,
+      "declinedInvitation": 50,
+      "memberTeams": 1,
+      "draftSolutions": 2,
+      "pendingInvitations": 0,
+      "creationFlagOff": true
+    }
+  ],
+  "races": 4,
+  "browserChecks": 8,
+  "welcomeAcknowledgementRequests": 4,
+  "solutionMutationRequestsInBrowser": 0,
+  "preexistingSelectedDomainUnchanged": true,
+  "selectedDomainModels": [
+    "partner_programs.PartnerProgram",
+    "partner_programs.PartnerProgramField",
+    "partner_programs.PartnerProgramUserProfile",
+    "partner_programs.ProgramSolution",
+    "partner_programs.ProgramSolutionAnswer",
+    "partner_programs.ProgramSolutionMember",
+    "partner_programs.SolutionInvitation",
+    "project_rates.SolutionScore",
+    "project_rates.SolutionExpertAssignment",
+    "project_rates.Criteria",
+    "users.Expert",
+    "files.UserFile",
+    "projects.Project",
+    "users.Expert_programs",
+    "partner_programs.PartnerProgram_managers"
+  ],
+  "verifierDomainMutations": 0,
+  "contractCopiesByteIdentical": true,
+  "projectCountUnchanged": true,
+  "observedLimitations": [
+    "Initial setup failed before any form write because harness used revision instead of form.revision; same empty fixtures resumed under explicit guards.",
+    "First browser attempt completed captain checks, then showed an empty login page without a JS exception for a second context; cause is not established.",
+    "Second browser attempt completed all product checks but failed an overly broad zero-program-writes assertion; welcome acknowledgements are explicitly retained.",
+    "Remote avatar requests intentionally blocked; no full UI lifecycle, accessibility, zoom, load or production check."
+  ]
+}

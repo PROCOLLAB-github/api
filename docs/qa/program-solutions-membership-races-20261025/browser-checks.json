@@ -1,0 +1,185 @@
+{
+  "prefix": "qa01m-20261025-b080f725",
+  "backend": "30c0d3ec1ac8e1236dd669205b97b4a2b4463fda",
+  "frontend": "d2a2cd3f80549e7dcbc6b3e32e55fea7ead57175",
+  "build": {
+    "provenanceHead": "091d1ee11b64f5c1037a1a3213d66029355a05c1",
+    "runtimeSourceHashesMatch": true,
+    "runtimeDiff": [
+      "projects/social_platform/src/app/ui/pages/program/solution-evaluation/solution-evaluation.component.spec.ts",
+      "projects/social_platform/src/app/ui/pages/program/solution-evaluation/solution-evaluation.component.ts"
+    ],
+    "generatedOriginOnly": [
+      {
+        "file": "chunk-CHX6T2XY.js",
+        "before": "4707c125db5485fa8b5eeb9e30e23c6f90759d9f2daf86b56a5a0b332da287dd",
+        "after": "d8252699c1d7f5986df9684f6f5b9be81943d068050e6537958be0680cac6380"
+      }
+    ]
+  },
+  "checks": [
+    {
+      "program": 25,
+      "template": "case_championship",
+      "role": "captain",
+      "solution": 38,
+      "check": "Normal entry opens actual current application with creation disabled; team is inside same application",
+      "accepted": 2,
+      "pending": 0,
+      "responsive": [
+        320,
+        390,
+        768,
+        1440
+      ]
+    },
+    {
+      "program": 26,
+      "template": "hackathon",
+      "role": "captain",
+      "solution": 40,
+      "check": "Normal entry opens actual current application with creation disabled; team is inside same application",
+      "accepted": 2,
+      "pending": 0,
+      "responsive": [
+        320,
+        390,
+        768,
+        1440
+      ]
+    },
+    {
+      "program": 25,
+      "template": "case_championship",
+      "role": "pending_a",
+      "solution": 39,
+      "check": "Normal entry opens actual current application with creation disabled; team is inside same application",
+      "accepted": 1,
+      "pending": 0,
+      "responsive": [
+        320,
+        390,
+        768,
+        1440
+      ]
+    },
+    {
+      "program": 26,
+      "template": "hackathon",
+      "role": "pending_a",
+      "solution": 41,
+      "check": "Normal entry opens actual current application with creation disabled; team is inside same application",
+      "accepted": 1,
+      "pending": 0,
+      "responsive": [
+        320,
+        390,
+        768,
+        1440
+      ]
+    },
+    {
+      "program": 25,
+      "template": "case_championship",
+      "role": "member",
+      "solution": 38,
+      "check": "Normal entry opens actual current application with creation disabled; team is inside same application",
+      "accepted": 2,
+      "pending": 0,
+      "responsive": [
+        320,
+        390,
+        768,
+        1440
+      ]
+    },
+    {
+      "program": 26,
+      "template": "hackathon",
+      "role": "member",
+      "solution": 40,
+      "check": "Normal entry opens actual current application with creation disabled; team is inside same application",
+      "accepted": 2,
+      "pending": 0,
+      "responsive": [
+        320,
+        390,
+        768,
+        1440
+      ]
+    },
+    {
+      "program": 25,
+      "role": "member",
+      "check": "Other team remains inaccessible after losing acceptance and declining invitation",
+      "solution": 39,
+      "status": 404
+    },
+    {
+      "program": 26,
+      "role": "member",
+      "check": "Other team remains inaccessible after losing acceptance and declining invitation",
+      "solution": 41,
+      "status": 404
+    }
+  ],
+  "javascriptErrors": [],
+  "diagnostics": {
+    "rawEntryCount": 104,
+    "note": "Raw browser diagnostics retained locally and hashed; intentionally blocked remote avatar requests may appear as console resource errors."
+  },
+  "limits": [
+    "Read-only normal-entry checks after real HTTP races; acceptance is tested by concurrent HTTP, not two human clicks.",
+    "Reused build was generated before its source commit; changed runtime source hashes match current commit. Only one generated origins chunk is patched.",
+    "External requests blocked; no full accessibility, zoom, load or production CDN audit."
+  ],
+  "status": "PASS for completed product checks",
+  "sourceArtifact": "browser-attempt-1792917425290.json",
+  "solutionWrites": [],
+  "welcomeAcknowledgementRequests": [
+    {
+      "role": "pending_a",
+      "method": "POST",
+      "path": "/programs/25/acknowledge-welcome/"
+    },
+    {
+      "role": "pending_a",
+      "method": "POST",
+      "path": "/programs/26/acknowledge-welcome/"
+    },
+    {
+      "role": "member",
+      "method": "POST",
+      "path": "/programs/25/acknowledge-welcome/"
+    },
+    {
+      "role": "member",
+      "method": "POST",
+      "path": "/programs/26/acknowledge-welcome/"
+    }
+  ],
+  "allProgramMutationRequests": [
+    {
+      "role": "pending_a",
+      "method": "POST",
+      "path": "/programs/25/acknowledge-welcome/"
+    },
+    {
+      "role": "pending_a",
+      "method": "POST",
+      "path": "/programs/26/acknowledge-welcome/"
+    },
+    {
+      "role": "member",
+      "method": "POST",
+      "path": "/programs/25/acknowledge-welcome/"
+    },
+    {
+      "role": "member",
+      "method": "POST",
+      "path": "/programs/26/acknowledge-welcome/"
+    }
+  ],
+  "harnessFailure": "AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n+ actual - expected\n\n+ [\n+   {\n+     method: 'POST',\n+     path: '/programs/25/acknowledge-welcome/',\n+     role: 'pending_a'\n+   },\n+   {\n+     method: 'POST',\n+     path: '/programs/26/acknowledge-welcome/',\n+     role: 'pending_a'\n+   },\n+   {\n+     method: 'POST',\n+     path: '/programs/25/acknowledge-welcome/',\n+     role: 'member'\n+   },\n+   {\n+     method: 'POST',\n+     path: '/programs/26/acknowledge-welcome/',\n+     role: 'member'\n+   }\n+ ]\n- []\n\n    at C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-membership-browser.cjs:132:71",
+  "provenance": "All 8 product checks completed in the diagnostic browser attempt. Its final zero-program-writes assertion incorrectly included 4 legitimate welcome acknowledgements. Raw FAIL retained; this verifier classifies these requests explicitly and validates all captured C00 reads. No new browser run or solution writes were used to manufacture a zero-write result."
+}
