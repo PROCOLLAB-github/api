@@ -98,6 +98,7 @@ from partner_programs.certificate_views import (
     CertificateQueueView,
     CertificateJournalView,
     CertificateRetryView,
+    CertificateSelectionView,
     CertificateDownloadView,
     CertificateArchiveView,
     MyCertificatesView,
@@ -127,6 +128,9 @@ urlpatterns = [
         "<int:pk>/management/certificates/deliveries/", CertificateJournalView.as_view()
     ),
     path("<int:pk>/management/certificates/retry/", CertificateRetryView.as_view()),
+    path(
+        "<int:pk>/management/certificates/selection/", CertificateSelectionView.as_view()
+    ),
     path(
         "<int:pk>/management/certificates/deliveries/<uuid:certificate_id>/pdf/",
         CertificateDownloadView.as_view(),
