@@ -20,7 +20,7 @@ from partner_programs.certificate_models import (
     ProgramCertificateConfig,
 )
 from partner_programs.management_views import ManagementBase
-from partner_programs.services.management import managed_program, person_name
+from partner_programs.services.management import managed_program
 from partner_programs.services import certificates as service
 
 
@@ -83,10 +83,13 @@ class CertificatePreviewView(ManagementBase):
         program = managed_program(pk, request.user)
         config = service.config_for(program)
         revision_check(config, request.data)
+        long_name = serializers.BooleanField(default=False).run_validation(
+            request.data.get("long_name", False)
+        )
         content = service.render_pdf(
             config.draft,
             service.assets_for(program, config.draft),
-            person_name(request.user),
+            "Александра Константиновна Добровольская" if long_name else "Имя участника",
             program.name,
             "ПРОБНЫЙ",
             timezone.localtime(),
@@ -127,7 +130,11 @@ class CertificateActivateView(ManagementBase):
         config = service.config_for(program)
         revision_check(config, request.data)
         draft = service.validate_draft(program, config.draft)
-        if ProgramCertificateBatch.objects.filter(program=program, active=True).exists():
+        if (
+            ProgramCertificateBatch.objects.filter(program=program, active=True)
+            .exclude(snapshot__has_key="manual_action")
+            .exists()
+        ):
             raise ValidationError("Сначала приостановите текущую выдачу.")
         if ProgramCertificate.objects.filter(
             program=program, status__in=["pending", "generating", "sending", "failed"]
@@ -171,6 +178,7 @@ class CertificateQueueView(ManagementBase):
         batch = (
             ProgramCertificateBatch.objects.select_for_update()
             .filter(program=program)
+            .exclude(snapshot__has_key="manual_action")
             .order_by("-pk")
             .first()
         )
@@ -182,7 +190,9 @@ class CertificateQueueView(ManagementBase):
 
 
 class JournalQuery(serializers.Serializer):
-    status = serializers.ChoiceField(choices=["all", "sent", "failed"], default="all")
+    status = serializers.ChoiceField(
+        choices=["all", "sent", "failed", "unsent"], default="all"
+    )
     search = serializers.CharField(max_length=200, allow_blank=True, default="")
     limit = serializers.IntegerField(min_value=1, max_value=100, default=20)
     offset = serializers.IntegerField(min_value=0, default=0)
@@ -193,7 +203,9 @@ def journal_rows(program, params):
     query.is_valid(raise_exception=True)
     data = query.validated_data
     rows = ProgramCertificate.objects.filter(program=program).defer("pdf")
-    if data["status"] != "all":
+    if data["status"] == "unsent":
+        rows = rows.exclude(status="sent")
+    elif data["status"] != "all":
         rows = rows.filter(status=data["status"])
     if data["search"]:
         rows = rows.filter(
@@ -206,11 +218,20 @@ class CertificateJournalView(ManagementBase):
     def get(self, request, pk):
         program = managed_program(pk, request.user)
         rows, query = journal_rows(program, request.query_params)
+        draft = service.config_for(program).draft
+        stale_batches = [
+            batch.pk
+            for batch in ProgramCertificateBatch.objects.filter(program=program)
+            if service.template_values(batch.snapshot, program.name)
+            != service.template_values(draft, program.name)
+        ]
         summary = ProgramCertificate.objects.filter(program=program).aggregate(
             total=Count("pk"),
             ready=Count("pk", filter=Q(pdf__isnull=False)),
             sent=Count("pk", filter=Q(status="sent")),
             failed=Count("pk", filter=Q(status="failed")),
+            unsent=Count("pk", filter=~Q(status="sent")),
+            outdated=Count("pk", filter=Q(batch_id__in=stale_batches)),
         )
         offset = query["offset"]
         end = offset + query["limit"]
@@ -223,10 +244,95 @@ class CertificateJournalView(ManagementBase):
                 "pdf_ready": row.pdf_ready,
                 "error": row.error,
                 "sent_at": row.sent_at,
+                "outdated": row.batch_id in stale_batches,
             }
             for row in rows.annotate(pdf_ready=~Q(pdf__isnull=True))[offset:end]
         ]
         return Response({"count": rows.count(), "summary": summary, "results": result})
+
+
+def selected_rows(program, data):
+    class Selection(serializers.Serializer):
+        all_matching = serializers.BooleanField(default=False)
+        ids = serializers.ListField(
+            child=serializers.UUIDField(), required=False, min_length=1, max_length=1000
+        )
+        excluded_ids = serializers.ListField(
+            child=serializers.UUIDField(), default=list, max_length=1000
+        )
+
+    selection = Selection(data=data)
+    selection.is_valid(raise_exception=True)
+    values = selection.validated_data
+    if bool(values["all_matching"]) == bool(values.get("ids")):
+        raise ValidationError("Выберите участников.")
+    if values["all_matching"]:
+        rows, _ = journal_rows(program, data)
+        return rows.exclude(pk__in=values["excluded_ids"])
+    rows = ProgramCertificate.objects.filter(program=program, pk__in=values["ids"])
+    if rows.count() != len(set(values["ids"])):
+        raise ValidationError("Участник не найден в этой программе.")
+    return rows
+
+
+class CertificateSelectionView(ManagementBase):
+    @transaction.atomic
+    def post(self, request, pk):
+        program = managed_program(pk, request.user, lock=True)
+        config = service.config_for(program)
+        revision_check(config, request.data)
+        action = serializers.ChoiceField(
+            choices=["send", "refresh", "retry"]
+        ).run_validation(request.data.get("action"))
+        rows = list(
+            selected_rows(program, request.data)
+            .select_for_update(of=("self",))
+            .select_related("batch", "program")
+            .defer("pdf")
+            .order_by("pk")
+        )
+        if any(row.status in ("pending", "generating", "sending") for row in rows):
+            raise ValidationError("Дождитесь завершения текущей обработки сертификатов.")
+        selected = [row for row in rows if action == "refresh" or row.status != "sent"]
+        if not selected:
+            return Response({"count": 0, "skipped": len(rows)}, status=202)
+        draft = service.validate_draft(program, config.draft)
+        regenerate = [
+            row.pk
+            for row in selected
+            if action == "refresh" or service.outdated_certificate(row, draft)
+        ]
+        for send_email in (False, True):
+            group = [
+                row.pk
+                for row in selected
+                if (
+                    action == "send"
+                    or (action == "retry" and row.batch.snapshot["send_email"])
+                )
+                == send_email
+            ]
+            if not group:
+                continue
+            batch = service.manual_batch(
+                program,
+                draft,
+                request.build_absolute_uri("/").rstrip("/"),
+                "send" if send_email else "refresh",
+            )
+            targets = ProgramCertificate.objects.filter(pk__in=group)
+            targets.update(
+                batch=batch,
+                status="pending",
+                error="",
+                queued_at=None,
+                claimed_at=None,
+                sent_at=None,
+            )
+            targets.filter(pk__in=regenerate).update(pdf=None)
+        return Response(
+            {"count": len(selected), "skipped": len(rows) - len(selected)}, status=202
+        )
 
 
 class CertificateRetryView(ManagementBase):
@@ -247,7 +353,46 @@ class CertificateRetryView(ManagementBase):
         return Response({"count": count}, status=202)
 
 
+def current_certificate_pdf(program, config, row, public_base_url):
+    if row.status in ("pending", "generating", "sending"):
+        raise ValidationError("Сертификат еще готовится. Дождитесь завершения обработки.")
+    if not row.pdf or service.outdated_certificate(row, config.draft):
+        draft = service.validate_draft(program, config.draft)
+        content = service.render_pdf(
+            draft,
+            service.assets_for(program, draft),
+            row.name,
+            program.name,
+            str(row.pk).upper(),
+            timezone.localtime(row.created_at),
+        )
+        row.batch = service.manual_batch(program, draft, public_base_url, "refresh")
+        row.pdf = content
+        row.status = "ready"
+        row.error = ""
+        row.sent_at = None
+        row.save(update_fields=["batch", "pdf", "status", "error", "sent_at"])
+    return bytes(row.pdf)
+
+
 class CertificateDownloadView(ManagementBase):
+    @transaction.atomic
+    def post(self, request, pk, certificate_id):
+        program = managed_program(pk, request.user, lock=True)
+        config = service.config_for(program)
+        revision_check(config, request.data)
+        row = get_object_or_404(
+            ProgramCertificate.objects.select_for_update(of=("self",)).select_related(
+                "batch", "program"
+            ),
+            program=program,
+            pk=certificate_id,
+        )
+        content = current_certificate_pdf(
+            program, config, row, request.build_absolute_uri("/").rstrip("/")
+        )
+        return pdf_response(content, "certificate-" + str(row.pk)[:8])
+
     def get(self, request, pk, certificate_id):
         program = managed_program(pk, request.user)
         row = get_object_or_404(
@@ -257,6 +402,39 @@ class CertificateDownloadView(ManagementBase):
 
 
 class CertificateArchiveView(ManagementBase):
+    @transaction.atomic
+    def post(self, request, pk):
+        import tempfile
+        from django.http import FileResponse
+
+        program = managed_program(pk, request.user, lock=True)
+        config = service.config_for(program)
+        revision_check(config, request.data)
+        rows = (
+            selected_rows(program, request.data)
+            .select_for_update(of=("self",))
+            .select_related("batch", "program")
+        )
+        if rows.filter(status__in=["pending", "generating", "sending"]).exists():
+            raise ValidationError(
+                "Дождитесь завершения обработки выбранных сертификатов."
+            )
+        output = tempfile.SpooledTemporaryFile(max_size=8 * 1024 * 1024)
+        try:
+            with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
+                for row in rows.iterator(chunk_size=20):
+                    content = current_certificate_pdf(
+                        program, config, row, request.build_absolute_uri("/").rstrip("/")
+                    )
+                    archive.writestr(f"certificate-{row.pk}.pdf", content)
+            output.seek(0)
+        except Exception:
+            output.close()
+            raise
+        response = FileResponse(output, as_attachment=True, filename="certificates.zip")
+        response["Cache-Control"] = "private, no-store"
+        return response
+
     def get(self, request, pk):
         program = managed_program(pk, request.user)
         rows, _ = journal_rows(program, request.query_params)

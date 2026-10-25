@@ -93,6 +93,224 @@ class CertificateTests(TestCase):
             "signature.png", buffer.getvalue(), content_type="image/png"
         )
 
+    @patch(
+        "partner_programs.services.certificates.render_pdf", return_value=b"%PDF-preview"
+    )
+    def test_preview_matches_the_editor_name_and_long_name_switch(self, render):
+        self.assertEqual(
+            self.client.post(
+                self.root + "preview/", {"revision": 1, "long_name": True}
+            ).status_code,
+            200,
+        )
+        self.assertEqual(
+            render.call_args.args[2], "Александра Константиновна Добровольская"
+        )
+        self.client.post(self.root + "preview/", {"revision": 1, "long_name": False})
+        self.assertEqual(render.call_args.args[2], "Имя участника")
+        self.assertEqual(
+            self.client.post(
+                self.root + "preview/", {"revision": 1, "long_name": "bad"}
+            ).status_code,
+            400,
+        )
+
+    @patch(
+        "partner_programs.services.certificates.render_pdf", return_value=b"%PDF-current"
+    )
+    def test_current_download_replaces_outdated_template_and_preserves_participant_link(
+        self, render
+    ):
+        row = self.row(status="sent", pdf=b"%PDF-old", sent_at=timezone.now())
+        token = row.download_token
+        self.config.draft = deepcopy(self.config.draft)
+        self.config.draft["director"] = "Новый директор"
+        self.config.revision += 1
+        self.config.save()
+        response = self.client.post(
+            self.root + f"deliveries/{row.pk}/pdf/", {"revision": 2}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b"%PDF-current")
+        self.assertEqual(render.call_args.args[0]["director"], "Новый директор")
+        row.refresh_from_db()
+        self.assertEqual(bytes(row.pdf), b"%PDF-current")
+        self.assertEqual(row.download_token, token)
+        self.assertEqual(row.status, "ready")
+        self.assertIsNone(row.sent_at)
+        self.assertEqual(len(mail.outbox), 0)
+        self.assertFalse(service.outdated_certificate(row, self.config.draft))
+        # Downloading the same current revision again does not regenerate or send.
+        self.client.post(self.root + f"deliveries/{row.pk}/pdf/", {"revision": 2})
+        self.assertEqual(render.call_count, 1)
+
+    @patch(
+        "partner_programs.services.certificates.render_pdf", return_value=b"%PDF-current"
+    )
+    def test_selected_send_is_scoped_and_does_not_duplicate_sent_mail(self, render):
+        ready = self.row(status="ready", pdf=b"%PDF-ready")
+        sent = self.row(
+            user=self.member, status="sent", pdf=b"%PDF-sent", sent_at=timezone.now()
+        )
+        foreign = self.row(
+            program=self.foreign,
+            user=self.only_registered,
+            status="ready",
+            pdf=b"%PDF-foreign",
+        )
+        payload = {"revision": 1, "action": "send", "ids": [str(ready.pk), str(sent.pk)]}
+        response = self.client.post(self.root + "selection/", payload, format="json")
+        self.assertEqual(response.status_code, 202, response.data)
+        self.assertEqual(response.data, {"count": 1, "skipped": 1})
+        service.process(ready.pk)
+        ready.refresh_from_db()
+        self.assertEqual(ready.status, "sent")
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, [ready.email])
+        self.assertEqual(
+            self.client.post(self.root + "selection/", payload, format="json").data,
+            {"count": 0, "skipped": 2},
+        )
+        service.process(ready.pk)
+        self.assertEqual(len(mail.outbox), 1)
+        foreign.refresh_from_db()
+        self.assertEqual(foreign.status, "ready")
+        self.assertEqual(bytes(foreign.pdf), b"%PDF-foreign")
+
+    @patch(
+        "partner_programs.services.certificates.render_pdf",
+        side_effect=RuntimeError("renderer unavailable"),
+    )
+    def test_failed_current_download_preserves_previously_issued_file(self, render):
+        row = self.row(status="sent", pdf=b"%PDF-retained", sent_at=timezone.now())
+        original_batch = row.batch_id
+        self.config.draft = deepcopy(self.config.draft)
+        self.config.draft["director"] = "Новый директор"
+        self.config.save()
+        with self.assertRaises(RuntimeError):
+            self.client.post(self.root + f"deliveries/{row.pk}/pdf/", {"revision": 1})
+        row.refresh_from_db()
+        self.assertEqual(bytes(row.pdf), b"%PDF-retained")
+        self.assertEqual(row.batch_id, original_batch)
+        self.assertEqual(row.status, "sent")
+        self.assertIsNotNone(row.sent_at)
+
+    def test_select_all_uses_the_filter_and_exclusions_not_pagination(self):
+        first = self.row(status="failed", pdf=b"%PDF-first")
+        second = self.row(user=self.member, status="failed", pdf=b"%PDF-second")
+        third = self.row(user=self.only_registered, status="sent", pdf=b"%PDF-third")
+        response = self.client.post(
+            self.root + "selection/",
+            {
+                "revision": 1,
+                "action": "refresh",
+                "all_matching": True,
+                "status": "failed",
+                "limit": 1,
+                "excluded_ids": [str(first.pk)],
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 202, response.data)
+        self.assertEqual(response.data["count"], 1)
+        first.refresh_from_db()
+        second.refresh_from_db()
+        third.refresh_from_db()
+        self.assertEqual(first.status, "failed")
+        self.assertEqual(second.status, "pending")
+        self.assertIsNone(second.pdf)
+        self.assertFalse(second.batch.snapshot["send_email"])
+        self.assertEqual(third.status, "sent")
+        # Manual jobs must not replace automatic issuance controls.
+        self.assertNotEqual(service.state(self.program)["batch"]["id"], second.batch_id)
+
+    @patch(
+        "partner_programs.services.certificates.render_pdf", return_value=b"%PDF-current"
+    )
+    def test_selected_retry_preserves_platform_only_and_email_delivery_modes(
+        self, render
+    ):
+        platform_draft = deepcopy(self.config.draft)
+        platform_draft["send_email"] = False
+        platform = self.row(status="failed", batch=self.batch(snapshot=platform_draft))
+        email = self.row(user=self.member, status="failed")
+        response = self.client.post(
+            self.root + "selection/",
+            {"revision": 1, "action": "retry", "all_matching": True, "status": "failed"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 202, response.data)
+        for row in (platform, email):
+            service.process(row.pk)
+            row.refresh_from_db()
+        self.assertEqual(platform.status, "ready")
+        self.assertEqual(email.status, "sent")
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, [email.email])
+
+    def test_selection_rejects_foreign_ids_stale_revision_and_in_flight_rows(self):
+        row = self.row(status="sending", pdf=b"%PDF-inflight")
+        foreign = self.row(
+            program=self.foreign, user=self.only_registered, status="ready"
+        )
+        for payload, status in [
+            ({"revision": 1, "action": "send", "ids": [str(foreign.pk)]}, 400),
+            ({"revision": 0, "action": "send", "ids": [str(row.pk)]}, 400),
+            ({"revision": 2, "action": "send", "ids": [str(row.pk)]}, 409),
+            ({"revision": 1, "action": "refresh", "ids": [str(row.pk)]}, 400),
+            ({"revision": 1, "action": "refresh", "ids": []}, 400),
+            (
+                {
+                    "revision": 1,
+                    "action": "refresh",
+                    "ids": [str(row.pk)],
+                    "all_matching": True,
+                },
+                400,
+            ),
+        ]:
+            self.assertEqual(
+                self.client.post(
+                    self.root + "selection/", payload, format="json"
+                ).status_code,
+                status,
+            )
+        row.refresh_from_db()
+        self.assertEqual(row.status, "sending")
+        self.assertEqual(bytes(row.pdf), b"%PDF-inflight")
+        self.client.force_authenticate(self.other)
+        self.assertEqual(
+            self.client.post(
+                self.root + "selection/",
+                {"revision": 1, "action": "send", "all_matching": True},
+                format="json",
+            ).status_code,
+            403,
+        )
+
+    @patch(
+        "partner_programs.services.certificates.render_pdf", return_value=b"%PDF-current"
+    )
+    def test_current_archive_applies_template_and_respects_selected_rows(self, render):
+        import zipfile
+
+        first = self.row(status="ready", pdf=b"%PDF-old")
+        second = self.row(user=self.member, status="ready", pdf=b"%PDF-untouched")
+        self.config.draft = deepcopy(self.config.draft)
+        self.config.draft["director"] = "Новый директор"
+        self.config.save()
+        response = self.client.post(
+            self.root + "archive/", {"revision": 1, "ids": [str(first.pk)]}, format="json"
+        )
+        self.assertEqual(response.status_code, 200)
+        with zipfile.ZipFile(io.BytesIO(b"".join(response.streaming_content))) as archive:
+            self.assertEqual(archive.namelist(), [f"certificate-{first.pk}.pdf"])
+            self.assertEqual(archive.read(archive.namelist()[0]), b"%PDF-current")
+        first.refresh_from_db()
+        second.refresh_from_db()
+        self.assertEqual(bytes(first.pdf), b"%PDF-current")
+        self.assertEqual(bytes(second.pdf), b"%PDF-untouched")
+
     def test_access_requires_program_manager_and_does_not_leak_email(self):
         for user, status in [
             (None, 401),
@@ -627,7 +845,8 @@ class CertificateTests(TestCase):
         self.assertEqual(str(response.data["results"][0]["id"]), str(row.pk))
         self.assertTrue(response.data["results"][0]["pdf_ready"])
         self.assertEqual(
-            response.data["summary"], {"total": 2, "ready": 2, "sent": 1, "failed": 1}
+            response.data["summary"],
+            {"total": 2, "ready": 2, "sent": 1, "failed": 1, "unsent": 1, "outdated": 0},
         )
         self.assertEqual(
             len(self.client.get(self.root + "deliveries/?status=sent").data["results"]), 1
@@ -775,6 +994,39 @@ class CertificateConcurrencyTests(TransactionTestCase):
             futures = [executor.submit(run) for _ in range(2)]
             for future in futures:
                 future.result(timeout=20)
+
+    @skipUnlessDBFeature("has_select_for_update")
+    @patch("partner_programs.services.certificates.send_certificate")
+    def test_selected_send_is_claimed_once_with_concurrent_manager_requests(self, send):
+        self.program.managers.add(self.user)
+        config = service.config_for(self.program)
+        row = ProgramCertificate.objects.create(
+            program=self.program,
+            batch=self.batch,
+            user=self.user,
+            name="Тестовый участник",
+            email=self.user.email,
+            status="ready",
+            pdf=b"%PDF",
+        )
+        responses = []
+
+        def select():
+            client = APIClient()
+            client.force_authenticate(self.user)
+            response = client.post(
+                f"/programs/{self.program.pk}/management/certificates/selection/",
+                {"revision": config.revision, "action": "send", "ids": [str(row.pk)]},
+                format="json",
+            )
+            responses.append(response.status_code)
+
+        self.parallel(select)
+        self.assertEqual(sorted(responses), [202, 400])
+        self.parallel(lambda: service.process(row.pk))
+        send.assert_called_once()
+        row.refresh_from_db()
+        self.assertEqual(row.status, "sent")
 
     @skipUnlessDBFeature("has_select_for_update")
     def test_concurrent_initialization_has_one_certificate_per_participant(self):

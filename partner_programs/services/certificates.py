@@ -166,7 +166,10 @@ def assets_for(program, draft):
 def state(program):
     config = config_for(program)
     batch = (
-        ProgramCertificateBatch.objects.filter(program=program).order_by("-pk").first()
+        ProgramCertificateBatch.objects.filter(program=program)
+        .exclude(snapshot__has_key="manual_action")
+        .order_by("-pk")
+        .first()
     )
     return {
         "revision": config.revision,
@@ -187,6 +190,47 @@ def state(program):
         if batch
         else None,
     }
+
+
+def template_values(draft, program_name):
+    normalized = normalized_draft(draft)
+    return {
+        key: normalized[key]
+        for key in (
+            "orientation",
+            "background_id",
+            "signature_id",
+            "director",
+            "position",
+            "hidden_elements",
+            "layout",
+        )
+    } | {"program_name": draft.get("program_name", program_name)}
+
+
+def outdated_certificate(row, draft):
+    return template_values(row.batch.snapshot, row.program.name) != template_values(
+        draft, row.program.name
+    )
+
+
+def manual_batch(program, draft, public_base_url, action):
+    snapshot = {
+        **draft,
+        "program_name": program.name,
+        "manual_action": action,
+        "send_email": action == "send",
+        "timing": "manual",
+        "scheduled_at": None,
+    }
+    return ProgramCertificateBatch.objects.create(
+        program=program,
+        snapshot=snapshot,
+        **assets_for(program, draft),
+        issue_at=timezone.now(),
+        initialized_at=timezone.now(),
+        public_base_url=public_base_url,
+    )
 
 
 def upload_asset(program, kind, upload):
