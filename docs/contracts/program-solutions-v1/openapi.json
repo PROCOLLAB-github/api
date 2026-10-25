@@ -3,7 +3,7 @@
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "info": {
     "title": "PROCOLLAB Program Solutions C00",
-    "version": "1.11.0",
+    "version": "1.12.0",
     "description": "Контракт решений в программах для реализации и моков BE01–BE09. API base URL задается окружением. snake_case на проводе. Старые API не меняются."
   },
   "servers": [
@@ -7651,6 +7651,33 @@
               "type": "string",
               "maxLength": 500
             }
+          },
+          {
+            "name": "field_id",
+            "in": "query",
+            "required": false,
+            "description": "Stable ID из current формы или submitted snapshot своей программы; неизвестный/чужой ID: 400.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "answer_state",
+            "in": "query",
+            "required": false,
+            "description": "Applied snapshot/current форма; present/missing только для применимого поля; 0/false present. Не all требует field_id.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "present",
+                "missing",
+                "not_applicable"
+              ],
+              "default": "all"
+            }
           }
         ],
         "responses": {
@@ -7714,7 +7741,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Manager-only private/no-store. Все фильтры пересекаются до count/pagination. Применимость и присутствие совпадают с field_coverage; нет нового readiness правила."
       }
     },
     "/programs/{program_id}/management/solution-analytics/export/": {
@@ -7745,6 +7773,94 @@
                 "scores"
               ],
               "default": "program"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200,
+              "default": ""
+            }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "not_submitted",
+                "awaiting_evaluation"
+              ],
+              "default": "all"
+            }
+          },
+          {
+            "name": "submission",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "submitted",
+                "not_submitted"
+              ],
+              "default": "all"
+            }
+          },
+          {
+            "name": "case_scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "selected",
+                "without_case"
+              ],
+              "default": "all"
+            }
+          },
+          {
+            "name": "case_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          {
+            "name": "field_id",
+            "in": "query",
+            "required": false,
+            "description": "Stable ID из current формы или submitted snapshot своей программы; неизвестный/чужой ID: 400.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "answer_state",
+            "in": "query",
+            "required": false,
+            "description": "Applied snapshot/current форма; present/missing только для применимого поля; 0/false present. Не all требует field_id.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "present",
+                "missing",
+                "not_applicable"
+              ],
+              "default": "all"
             }
           }
         ],
@@ -7810,7 +7926,8 @@
               }
             }
           }
-        }
+        },
+        "description": "kind=solutions/submitted: те же фильтры, что JSON list, все найденные без pagination; submitted пересекает status. kind=program/scores: полный scope, непустые фильтры 400. limit/offset не поддерживаются. Private/no-store; безопасный XLSX writer."
       }
     },
     "/programs/{program_id}/management/solution-analytics/attention/solutions-awaiting-evaluation/reminder-preview/": {

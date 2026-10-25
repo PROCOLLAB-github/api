@@ -77,7 +77,7 @@ def write_people(report, program):
             )
 
 
-def write_solutions(report, context, *, submitted_only=False):
+def write_solutions(report, context, *, submitted_only=False, solution_ids=None):
     solutions = report.sheet(
         "Решения",
         [
@@ -104,6 +104,8 @@ def write_solutions(report, context, *, submitted_only=False):
         "Ответы решения", ["ID решения", "ID поля", "Поле", "Тип", "Ответ"]
     )
     for solution in context.solutions:
+        if solution_ids is not None and solution.pk not in solution_ids:
+            continue
         if submitted_only and solution.status != "submitted":
             continue
         row = context.solution_row(solution)
@@ -284,7 +286,7 @@ def write_evaluation(report, context, *, include_assignments):
         )
 
 
-def build_solution_program_report(context, kind="program"):
+def build_solution_program_report(context, kind="program", *, solution_ids=None):
     report = Report()
     if kind == "program":
         overview = context.overview()
@@ -369,7 +371,12 @@ def build_solution_program_report(context, kind="program"):
                 activity, [row["date"], row["registrations"], row["submitted_solutions"]]
             )
     if kind in ("program", "solutions", "submitted"):
-        write_solutions(report, context, submitted_only=kind == "submitted")
+        write_solutions(
+            report,
+            context,
+            submitted_only=kind == "submitted",
+            solution_ids=solution_ids,
+        )
     if kind in ("program", "scores"):
         write_evaluation(report, context, include_assignments=kind == "program")
     return report.finish()

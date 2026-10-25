@@ -1,5 +1,5 @@
 {
-  "contract_version": "1.11.0",
+  "contract_version": "1.12.0",
   "description": "Независимые примеры, не последовательность операций; фиктивные данные.",
   "scenarios": [
     {
@@ -7111,6 +7111,260 @@
       "response": {
         "code": "authentication_required",
         "detail": "Контролируемая ошибка.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "manager_solutions_field_present_zero",
+      "operation_id": "getSolutionManagerSolutions",
+      "status": 200,
+      "response": {
+        "count": 1,
+        "next": null,
+        "previous": null,
+        "submission_applicable": true,
+        "mode": "distributed",
+        "results": [
+          {
+            "application": {
+              "kind": "solution",
+              "program_id": 12,
+              "solution_id": 301,
+              "name": "Решение команды"
+            },
+            "captain": {
+              "user_id": 5,
+              "full_name": "Капитан Тест",
+              "avatar": null
+            },
+            "case_name": "Экология",
+            "submission_status": "submitted",
+            "evaluation_status": "awaiting_evaluation",
+            "created_at": "2026-10-23T00:00:00Z",
+            "submitted_at": "2026-10-24T00:00:00Z",
+            "assignments_total": 1,
+            "assignments_completed": 0,
+            "waiting_reason": "no_completed_evaluations"
+          }
+        ]
+      }
+    },
+    {
+      "name": "manager_solutions_field_present_false",
+      "operation_id": "getSolutionManagerSolutions",
+      "status": 200,
+      "response": {
+        "count": 1,
+        "next": null,
+        "previous": null,
+        "submission_applicable": true,
+        "mode": "distributed",
+        "results": [
+          {
+            "application": {
+              "kind": "solution",
+              "program_id": 12,
+              "solution_id": 301,
+              "name": "Решение команды"
+            },
+            "captain": {
+              "user_id": 5,
+              "full_name": "Капитан Тест",
+              "avatar": null
+            },
+            "case_name": "Экология",
+            "submission_status": "submitted",
+            "evaluation_status": "awaiting_evaluation",
+            "created_at": "2026-10-23T00:00:00Z",
+            "submitted_at": "2026-10-24T00:00:00Z",
+            "assignments_total": 1,
+            "assignments_completed": 0,
+            "waiting_reason": "no_completed_evaluations"
+          }
+        ]
+      }
+    },
+    {
+      "name": "manager_solutions_field_missing",
+      "operation_id": "getSolutionManagerSolutions",
+      "status": 200,
+      "response": {
+        "count": 0,
+        "next": null,
+        "previous": null,
+        "submission_applicable": false,
+        "mode": "open",
+        "results": []
+      }
+    },
+    {
+      "name": "manager_solutions_field_not_applicable_snapshot",
+      "operation_id": "getSolutionManagerSolutions",
+      "status": 200,
+      "response": {
+        "count": 1,
+        "next": null,
+        "previous": null,
+        "submission_applicable": true,
+        "mode": "distributed",
+        "results": [
+          {
+            "application": {
+              "kind": "solution",
+              "program_id": 12,
+              "solution_id": 301,
+              "name": "Решение команды"
+            },
+            "captain": {
+              "user_id": 5,
+              "full_name": "Капитан Тест",
+              "avatar": null
+            },
+            "case_name": "Экология",
+            "submission_status": "submitted",
+            "evaluation_status": "awaiting_evaluation",
+            "created_at": "2026-10-23T00:00:00Z",
+            "submitted_at": "2026-10-24T00:00:00Z",
+            "assignments_total": 1,
+            "assignments_completed": 0,
+            "waiting_reason": "no_completed_evaluations"
+          }
+        ]
+      }
+    },
+    {
+      "name": "manager_solutions_field_historical_snapshot",
+      "operation_id": "getSolutionManagerSolutions",
+      "status": 200,
+      "response": {
+        "count": 1,
+        "next": null,
+        "previous": null,
+        "submission_applicable": true,
+        "mode": "distributed",
+        "results": [
+          {
+            "application": {
+              "kind": "solution",
+              "program_id": 12,
+              "solution_id": 301,
+              "name": "Решение команды"
+            },
+            "captain": {
+              "user_id": 5,
+              "full_name": "Капитан Тест",
+              "avatar": null
+            },
+            "case_name": "Экология",
+            "submission_status": "submitted",
+            "evaluation_status": "awaiting_evaluation",
+            "created_at": "2026-10-23T00:00:00Z",
+            "submitted_at": "2026-10-24T00:00:00Z",
+            "assignments_total": 1,
+            "assignments_completed": 0,
+            "waiting_reason": "no_completed_evaluations"
+          }
+        ]
+      }
+    },
+    {
+      "name": "manager_solutions_field_noncompetitive_empty",
+      "operation_id": "getSolutionManagerSolutions",
+      "status": 200,
+      "response": {
+        "count": 0,
+        "next": null,
+        "previous": null,
+        "submission_applicable": false,
+        "mode": "open",
+        "results": []
+      }
+    },
+    {
+      "name": "manager_solutions_field_required",
+      "operation_id": "getSolutionManagerSolutions",
+      "status": 400,
+      "response": {
+        "code": "validation_error",
+        "detail": "Проверьте параметры фильтра.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "manager_solutions_field_foreign_or_unknown",
+      "operation_id": "getSolutionManagerSolutions",
+      "status": 400,
+      "response": {
+        "code": "validation_error",
+        "detail": "Проверьте параметры фильтра.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "manager_solutions_field_unsafe",
+      "operation_id": "getSolutionManagerSolutions",
+      "status": 400,
+      "response": {
+        "code": "validation_error",
+        "detail": "Проверьте параметры фильтра.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "manager_solutions_answer_state_invalid",
+      "operation_id": "getSolutionManagerSolutions",
+      "status": 400,
+      "response": {
+        "code": "validation_error",
+        "detail": "Проверьте параметры фильтра.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "manager_export_field_required",
+      "operation_id": "exportSolutionProgramAnalytics",
+      "status": 400,
+      "response": {
+        "code": "validation_error",
+        "detail": "Проверьте параметры фильтра.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "manager_export_field_foreign_or_unknown",
+      "operation_id": "exportSolutionProgramAnalytics",
+      "status": 400,
+      "response": {
+        "code": "validation_error",
+        "detail": "Проверьте параметры фильтра.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "manager_export_filters_unsupported_kind",
+      "operation_id": "exportSolutionProgramAnalytics",
+      "status": 400,
+      "response": {
+        "code": "validation_error",
+        "detail": "Проверьте параметры фильтра.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "manager_export_answer_state_invalid",
+      "operation_id": "exportSolutionProgramAnalytics",
+      "status": 400,
+      "response": {
+        "code": "validation_error",
+        "detail": "Проверьте параметры фильтра.",
         "errors": [],
         "meta": {}
       }

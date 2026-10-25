@@ -122,9 +122,7 @@ class SolutionManagerAssignmentView(SolutionAnalyticsAPIView):
         return Response(dict(**assignment, scores=context.assignment_scores(assignment)))
 
 
-class ManagerSolutionsQuery(StrictSerializer):
-    limit = serializers.IntegerField(min_value=1, max_value=100, default=20)
-    offset = serializers.IntegerField(min_value=0, default=0)
+class ManagerSolutionFilters(StrictSerializer):
     search = serializers.CharField(allow_blank=True, max_length=200, default="")
     scope = serializers.ChoiceField(
         choices=("all", "not_submitted", "awaiting_evaluation"), default="all"
@@ -138,6 +136,84 @@ class ManagerSolutionsQuery(StrictSerializer):
     case_name = serializers.CharField(
         max_length=500, required=False, trim_whitespace=False
     )
+    field_id = serializers.IntegerField(min_value=1, max_value=MAX_ID, required=False)
+    answer_state = serializers.ChoiceField(
+        choices=("all", "present", "missing", "not_applicable"), default="all"
+    )
+
+    def validate(self, attrs):
+        for key in ("field_id", "answer_state"):
+            if key in self.initial_data and self.initial_data[key] == "":
+                raise serializers.ValidationError({key: "Укажите значение фильтра."})
+        if attrs["answer_state"] != "all" and "field_id" not in attrs:
+            raise serializers.ValidationError(
+                dict(field_id="Выберите поле формы для фильтра ответа.")
+            )
+        return attrs
+
+
+class ManagerSolutionsQuery(ManagerSolutionFilters):
+    limit = serializers.IntegerField(min_value=1, max_value=100, default=20)
+    offset = serializers.IntegerField(min_value=0, default=0)
+
+
+def filtered_solution_rows(context, query):
+    """Одна выборка для JSON и всех листов выгрузки найденных решений."""
+    from partner_programs.solution_schema import empty_value
+
+    if (
+        query["case_scope"] == "selected"
+        and query.get("case_name") not in context.options
+    ):
+        raise serializers.ValidationError(
+            dict(case_name="Укажите действующий кейс программы.")
+        )
+    field_id = query.get("field_id")
+    if field_id is not None:
+        known = {field["id"] for field in context.form["fields"]}
+        for solution in context.solutions:
+            if solution.status == "submitted":
+                fields, _ = context.applied_form_and_answers(solution)
+                known.update(field["id"] for field in fields)
+        if field_id not in known:
+            raise serializers.ValidationError(
+                dict(field_id="Выберите поле формы этой программы.")
+            )
+    rows = []
+    for solution in context.solutions:
+        row = context.solution_row(solution)
+        if query["scope"] != "all":
+            states = (
+                ("not_submitted",)
+                if query["scope"] == "not_submitted"
+                else ("awaiting_evaluation", "partially_evaluated")
+            )
+            if row["evaluation_status"] not in states:
+                continue
+        if query["submission"] != "all":
+            state = "submitted" if query["submission"] == "submitted" else "draft"
+            if row["submission_status"] != state:
+                continue
+        if query["case_scope"] == "selected" and row["case_name"] != query["case_name"]:
+            continue
+        if query["case_scope"] == "without_case" and row["case_name"] is not None:
+            continue
+        if query["search"].lower() not in row["application"]["name"].lower():
+            continue
+        if field_id is not None and query["answer_state"] != "all":
+            fields, answers = context.applied_form_and_answers(solution)
+            applicable = any(field["id"] == field_id for field in fields)
+            answer_state = (
+                "not_applicable"
+                if not applicable
+                else "missing"
+                if empty_value(answers.get(field_id))
+                else "present"
+            )
+            if answer_state != query["answer_state"]:
+                continue
+        rows.append((solution, row))
+    return rows
 
 
 class SolutionManagerSolutionsView(SolutionAnalyticsAPIView):
@@ -145,31 +221,7 @@ class SolutionManagerSolutionsView(SolutionAnalyticsAPIView):
         program = self.managed_program(request, pk)
         query = self.query(request, ManagerSolutionsQuery)
         context = SolutionAnalyticsContext(program)
-        if (
-            query["case_scope"] == "selected"
-            and query.get("case_name") not in context.options
-        ):
-            raise serializers.ValidationError(
-                dict(case_name="Укажите действующий кейс программы.")
-            )
-        rows = [context.solution_row(solution) for solution in context.solutions]
-        if query["scope"] != "all":
-            states = (
-                ("not_submitted",)
-                if query["scope"] == "not_submitted"
-                else ("awaiting_evaluation", "partially_evaluated")
-            )
-            rows = [row for row in rows if row["evaluation_status"] in states]
-        if query["submission"] != "all":
-            state = "submitted" if query["submission"] == "submitted" else "draft"
-            rows = [row for row in rows if row["submission_status"] == state]
-        if query["case_scope"] == "selected":
-            rows = [row for row in rows if row["case_name"] == query["case_name"]]
-        elif query["case_scope"] == "without_case":
-            rows = [row for row in rows if row["case_name"] is None]
-        search = query["search"].lower()
-        if search:
-            rows = [row for row in rows if search in row["application"]["name"].lower()]
+        rows = [row for _, row in filtered_solution_rows(context, query)]
         count, offset, limit = len(rows), query["offset"], query["limit"]
         end = offset + limit
 
@@ -190,10 +242,22 @@ class SolutionManagerSolutionsView(SolutionAnalyticsAPIView):
         )
 
 
-class ManagerExportQuery(StrictSerializer):
+class ManagerExportQuery(ManagerSolutionFilters):
     kind = serializers.ChoiceField(
         choices=("program", "solutions", "submitted", "scores"), default="program"
     )
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        if attrs["kind"] in ("program", "scores") and any(
+            value not in (None, "", "all")
+            for key, value in attrs.items()
+            if key != "kind"
+        ):
+            raise serializers.ValidationError(
+                dict(kind="Фильтры доступны для выгрузки решений или сданных решений.")
+            )
+        return attrs
 
 
 class SolutionManagerExportView(SolutionAnalyticsAPIView):
@@ -204,9 +268,15 @@ class SolutionManagerExportView(SolutionAnalyticsAPIView):
 
         program = self.managed_program(request, pk)
         query = self.query(request, ManagerExportQuery)
+        context = SolutionAnalyticsContext(program)
+        selected_ids = (
+            {solution.pk for solution, _ in filtered_solution_rows(context, query)}
+            if query["kind"] in ("solutions", "submitted")
+            else None
+        )
         response = HttpResponse(
             build_solution_program_report(
-                SolutionAnalyticsContext(program), query["kind"]
+                context, query["kind"], solution_ids=selected_ids
             ),
             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )

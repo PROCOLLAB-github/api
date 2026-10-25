@@ -1,5 +1,51 @@
 # BE09 Аналитика, виджеты и выгрузки решений
 
+## Фильтр настраиваемого поля и выгрузка найденных: до реализации
+
+Problem/current: manager solution list поддерживает search/case/scope/submission, а XLSX analytics принимает только kind и выгружает всю программу. Фиксированная презентация не описывает материалы любой формы. Источники: solution_analytics_api.ManagerSolutionsQuery/SolutionManagerSolutionsView/ManagerExportQuery, SolutionAnalyticsContext.applied_form_and_answers/coverage и solution_schema.empty_value, solution_program_report.write_solutions. D02 показывает proposed UI фильтра; approval интерфейса еще ожидается. Этот этап расширяет только контракт/backend/frontend API layer.
+
+Target/C00 1.12.0: GET management/solution-analytics/solutions/ добавляет optional field_id (safe integer) и answer_state=all/present/missing/not_applicable (default all). Без нового фильтра поведение прежнее. present/missing применяются только к решениям, в applied форме которых есть stable field ID; not_applicable — только где ID отсутствует. Applied форма — submitted snapshot/current draft, как в coverage. empty_value сохраняется: null/пустой/пробельный текст отсутствуют, 0/false являются ответами; фильтр не вводит проверку готовности/типов/доступности файла. Field ID разрешен из текущей формы или исторической формы хотя бы одной сданной работы этой программы; неизвестный/чужой ID дает одинаковый validation_error 400. answer_state, отличный от all, требует field_id. field_id+all валидирует ID без ограничения выборки.
+
+GET management/solution-analytics/export/ для kind=solutions/submitted принимает те же непагинационные search/scope/submission/case_scope/case_name/field_id/answer_state. Одна функция выбирает решения для JSON и книги; выгружаются все найденные, включая за пределами страницы. kind=submitted дополнительно пересекает выборку со submitted. Листы Решения/Команды/Поля формы/Ответы решения содержат только выбранные IDs; no-match дает корректную пустую книгу. kind=program/scores сохраняют прежний полный scope и отклоняют непустые фильтры с 400, чтобы глобальная сводка/оценки не становились частичными молча. limit/offset в export по-прежнему отклоняются. Ответы, заголовки, порядок created_at/id, XLSX writer/защита от формул и old callers с одним kind сохраняются.
+
+Roles/permissions: существующие manager/admin, конкретная программа и solution mode; participant/expert/outsider/anonymous не получают list/XLSX. Приватные no-store/C00 errors сохраняются. Другой program/field не раскрывается; значения и регистрационные данные не добавляются в JSON list. Data/migrations: не меняются, только readonly выборка. Конкурентная редакция формы обрабатывается обычным свежим GET; новый writer/lifecycle не вводится. Public API/публикация/реальные программы не затрагиваются.
+
+| AC | Предусловие и результат |
+| --- | --- |
+| FLT01 | Без новых параметров list/four export kinds и legacy endpoints сохраняют ответы/состав/порядок |
+| FLT02 | Поле применимо: present/missing различают null/пустой/пробельный текст и 0/false, без readiness проверки |
+| FLT03 | Новое поле после сдачи — not_applicable у старого snapshot; submitted ответы/метаданные не подменяются live; исторический ID своей программы допустим |
+| FLT04 | Search/case/submission/attention и field filter пересекаются до pagination/count; links сохраняют фильтр |
+| FLT05 | XLSX solutions/submitted повторяет ту же выборку без pagination, все четыре связанных листа scoped; submitted — дополнительное пересечение, no-match корректен |
+| FLT06 | Missing field ID/unsafe/foreign/unknown/invalid state и фильтр kind=program/scores дают C00 400; invalid case и unknown query не игнорируются |
+| FLT07 | Все реальные роли/программа/mode/private headers прежние; GET и export не меняют сохраненные данные/файлы, отсутствует N+1 |
+| FLT08 | C00/оба repo/types/fixtures и API layer согласованы; query snake_case, Blob/error через текущий interceptor; строгие типы не допускают pagination/export и field filters для program/scores |
+
+Plan: зафиксировать additive C00/сценарии → общий selector/strict serializers → scoped writer → PostgreSQL matrix/старые регрессии → frontend API types/wire tests/build → real HTTP/XLSX → requirement review/draft PR. Backend → frontend rollout без миграции. Новые Angular компоненты/фасады/SCSS и решения по открытым D02/D03/конкурсным черновикам в этом блоке не реализуются.
+
+### FLT verification и requirement review
+
+| AC | Реализация и evidence | Verdict |
+| --- | --- | --- |
+| FLT01 | ManagerSolutionFilters/filtered_solution_rows, no-filter/default-all tests и прежние manager/export/legacy tests; прежние response schemas/144 сценария сохранены | PASS |
+| FLT02 | Существующий empty_value: absent/null как удаленный ответ, пустой/пробельный текст, 0/false, file/repository. DB NOT NULL не ослаблен | PASS |
+| FLT03 | applied_form_and_answers: новый required после сдачи, исторический ID только в snapshot, поздние live имя/значение не меняют результат | PASS |
+| FLT04 | Одна выборка до count/slice; case/submission/attention/search intersections; 25 работ, offset 20/limit 5, ссылки с field_id/answer_state | PASS |
+| FLT05 | ID scope всех четырех листов, JSON/XLSX parity, выгрузка за пределами страницы, submitted intersection/empty books, числовой 0 и boolean false | PASS |
+| FLT06 | Invalid pair/value/blank/unsafe/foreign/unknown/case/extra/pagination и nonempty program/scores filters — C00 400; явный blank больше не пропускается DRF HTML parser | PASS |
+| FLT07 | Manager/admin и отрицательные роли, real JWT/anonymous трех программ; данные/файлы unchanged, число SQL list/export одинаково для 1 и 9 работ | PASS |
+| FLT08 | C00 1.12.0 120/45/158 byte-identical; port/adapter snake_case/safe ID, 20 новых wire и strict export union/negative type cases | PASS |
+
+Checked by tests: **15 новых PostgreSQL tests PASS**, окончательный общий прогон всех partner_programs test_solution* + legacy services + solution evaluation + chat/Swagger permissions — **244 PASS**, включая эти 15. Log: `C:/Users/evsee/AppData/Local/Temp/procollab-solution-field-filters-regression.log`. Targeted frontend: **86 PASS** (20 новых field-filter wire + 61 manager/C00 + 5 прежних export); полный frontend **2754 tests / 478 files**, strict C00 types PASS. Logs: `procollab-solution-field-filters-wire.log`, `procollab-solution-field-filters-fe-tests.log` в Temp.
+
+Checked through running API: **143 реальных HTTP/JWT/anonymous checks** КЧ program=3, хакатона=4, неконкурсной program=6. Field/state counts совпадают с coverage; XLSX solutions/submitted — с JSON и связанными IDs; C00 400/401/403/private headers и прежние global exports проверены. Domain mutations 0: solutions/answers/team/invites/files/programs/Project public state до/после совпадают. JWT AccessToken создается без refresh/outstanding записи. Evidence: `design-artifacts/program-solutions-20261024/expert-v1/implementation/field-filters-http-evidence.json`. Локальный backend перезагружен с прежним local storage/locmem mail, production не затрагивался.
+
+Checked by source/review: JSON и XLSX используют одну выборку; known IDs ограничены current/historical формами своей программы, missing исключает not_applicable. Экспорт не обрезается страницей, program/scores не становятся частичными молча. Закрыто принятие пустого query DRF parser; frontend types запрещают filtered program/scores/pagination и guard отклоняет unsafe field ID до HTTP. Тестовая попытка SQL NULL исправлена на удаление ответа, как настоящий API; ограничения БД сохранены. Blocking findings этого блока не осталось.
+
+Checked by build/static: Angular development build PASS с прежними Sass deprecation warnings, scoped ESLint 0 errors, locked Prettier 3.8.3 по 1969 LF-normalized files, Black/Flake8/C00/diff checks PASS; makemigrations --check без изменений, manage.py check PASS. Предшествующий e5a6952: PostgreSQL CI 1637 full-suite + 39 locking и общий CI success; это не CI следующего commit с фильтрами. Собственный CI требуется после push.
+
+Not checked: manager/public Angular UI (D02/D03 approval pending), browser новых controls, production/CDN/Excel пересчет, large-volume memory benchmark. Query-count test не доказывает постоянную память. BE09 и первый выпуск целиком не объявляются завершенными.
+
 Первый блок: XLSX результатов. Общая задача BE09 еще не завершена.
 
 ## Источники и контракт до реализации
