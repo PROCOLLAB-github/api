@@ -25,7 +25,7 @@ RUN poetry config virtualenvs.create false \
     && poetry install  --no-root
 
 RUN mkdir /procollab/staticfiles
-RUN mkdir /procollab/static
+RUN mkdir -p /procollab/static /procollab/log
 
 COPY . /procollab/
 
