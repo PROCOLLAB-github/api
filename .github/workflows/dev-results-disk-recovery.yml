@@ -54,7 +54,11 @@ jobs:
             grep -Eq 'server_name[[:space:]]+dev\.procollab\.ru;' /etc/nginx/sites-enabled/dev.procollab.ru
             container=$(docker ps -q --no-trunc --filter 'label=com.docker.compose.project.working_dir=/root/api' --filter 'label=com.docker.compose.service=web')
             test -n "$container"
-            test "$(docker inspect -f '{{.Image}}' "$container")" = sha256:3c1d172f27ac3b5221ca26ebeb478b17d0bb48955be1d52bd515d5fabc6f105b
+            test "$(docker inspect -f '{{.State.Running}}' "$container")" = true
+            case "$(docker inspect -f '{{.Config.Image}}' "$container")" in
+              procollab-dev-api:*) ;;
+              *) echo 'Unexpected DEV runtime image' >&2; exit 1 ;;
+            esac
             mode='${{ github.event_name == 'push' && 'inspect' || inputs.mode }}'
             case "$mode" in inspect|cache-only) ;; *) exit 1;; esac
             containers() {
