@@ -122,6 +122,7 @@ class CertificateTests(TestCase):
         self, render
     ):
         row = self.row(status="sent", pdf=b"%PDF-old", sent_at=timezone.now())
+        sent_at = row.sent_at
         token = row.download_token
         self.config.draft = deepcopy(self.config.draft)
         self.config.draft["director"] = "Новый директор"
@@ -136,13 +137,21 @@ class CertificateTests(TestCase):
         row.refresh_from_db()
         self.assertEqual(bytes(row.pdf), b"%PDF-current")
         self.assertEqual(row.download_token, token)
-        self.assertEqual(row.status, "ready")
-        self.assertIsNone(row.sent_at)
+        self.assertEqual(row.status, "sent")
+        self.assertEqual(row.sent_at, sent_at)
         self.assertEqual(len(mail.outbox), 0)
         self.assertFalse(service.outdated_certificate(row, self.config.draft))
         # Downloading the same current revision again does not regenerate or send.
         self.client.post(self.root + f"deliveries/{row.pk}/pdf/", {"revision": 2})
         self.assertEqual(render.call_count, 1)
+        self.assertEqual(
+            self.client.post(
+                self.root + "selection/",
+                {"revision": 2, "action": "send", "ids": [str(row.pk)]},
+                format="json",
+            ).data,
+            {"count": 0, "skipped": 1},
+        )
 
     @patch(
         "partner_programs.services.certificates.render_pdf", return_value=b"%PDF-current"
@@ -218,7 +227,8 @@ class CertificateTests(TestCase):
         third.refresh_from_db()
         self.assertEqual(first.status, "failed")
         self.assertEqual(second.status, "pending")
-        self.assertIsNone(second.pdf)
+        self.assertEqual(bytes(second.pdf), b"%PDF-second")
+        self.assertNotEqual(second.rendered_batch_id, second.batch_id)
         self.assertFalse(second.batch.snapshot["send_email"])
         self.assertEqual(third.status, "sent")
         # Manual jobs must not replace automatic issuance controls.
@@ -247,6 +257,116 @@ class CertificateTests(TestCase):
         self.assertEqual(email.status, "sent")
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to, [email.email])
+
+    def test_refresh_retains_public_pdf_through_failure_then_replaces_it_atomically(self):
+        row = self.row(status="sent", pdf=b"%PDF-previous", sent_at=timezone.now())
+        sent_at = row.sent_at
+        original_batch = row.batch_id
+        token = row.download_token
+        self.config.draft = deepcopy(self.config.draft)
+        self.config.draft["layout"]["name"]["font_size"] = 52
+        self.config.save()
+        response = self.client.post(
+            self.root + "selection/",
+            {"revision": 1, "action": "refresh", "ids": [str(row.pk)]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 202, response.data)
+        row.refresh_from_db()
+        self.assertEqual(bytes(row.pdf), b"%PDF-previous")
+        self.assertEqual(row.rendered_batch_id, original_batch)
+        public_url = f"/programs/{self.program.pk}/certificates/download/{token}/"
+        self.assertEqual(self.client.get(public_url).content, b"%PDF-previous")
+        with patch(
+            "partner_programs.services.certificates.render_pdf",
+            side_effect=RuntimeError("renderer unavailable"),
+        ):
+            service.process(row.pk)
+        row.refresh_from_db()
+        self.assertEqual(row.status, "failed")
+        self.assertEqual(row.sent_at, sent_at)
+        self.assertEqual(bytes(row.pdf), b"%PDF-previous")
+        self.assertEqual(self.client.get(public_url).content, b"%PDF-previous")
+        journal = self.client.get(self.root + "deliveries/").data
+        self.assertTrue(journal["results"][0]["pdf_ready"])
+        self.assertTrue(journal["results"][0]["pdf_error"])
+        self.assertTrue(journal["results"][0]["outdated"])
+        self.assertEqual(journal["summary"]["outdated"], 1)
+        self.assertEqual(journal["summary"]["sent"], 1)
+        self.assertEqual(journal["summary"]["unsent"], 0)
+        self.assertEqual(
+            self.client.get(self.root + "deliveries/", {"status": "sent"}).data["count"],
+            1,
+        )
+        self.assertEqual(
+            self.client.get(self.root + "deliveries/", {"status": "unsent"}).data[
+                "count"
+            ],
+            0,
+        )
+        self.assertEqual(
+            self.client.post(
+                self.root + "selection/",
+                {"revision": 1, "action": "send", "ids": [str(row.pk)]},
+                format="json",
+            ).data,
+            {"count": 0, "skipped": 1},
+        )
+        self.client.post(
+            self.root + "selection/",
+            {"revision": 1, "action": "retry", "ids": [str(row.pk)]},
+            format="json",
+        )
+        with patch(
+            "partner_programs.services.certificates.render_pdf", return_value=b"%PDF-new"
+        ):
+            service.process(row.pk)
+        row.refresh_from_db()
+        self.assertEqual(row.status, "sent")
+        self.assertEqual(row.sent_at, sent_at)
+        self.assertEqual(row.rendered_batch_id, row.batch_id)
+        self.assertEqual(row.download_token, token)
+        self.assertEqual(self.client.get(public_url).content, b"%PDF-new")
+        self.assertEqual(len(mail.outbox), 0)
+        self.assertFalse(service.outdated_certificate(row, self.config.draft))
+
+    def test_worker_never_sends_another_email_for_an_already_delivered_certificate(self):
+        row = self.row(status="pending", pdf=b"%PDF-current", sent_at=timezone.now())
+        sent_at = row.sent_at
+        service.process(row.pk)
+        row.refresh_from_db()
+        self.assertEqual(row.status, "sent")
+        self.assertEqual(row.sent_at, sent_at)
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_rendered_batch_backfill_changes_only_pdf_provenance(self):
+        from importlib import import_module
+        from types import SimpleNamespace
+        from django.apps import apps
+        from django.db import connection
+
+        rendered = self.row(status="sent", pdf=b"%PDF-existing", sent_at=timezone.now())
+        pending = self.row(user=self.member)
+        token, sent_at = rendered.download_token, rendered.sent_at
+        migration = import_module(
+            "partner_programs.migrations.0031_programcertificate_rendered_batch"
+        )
+        migration.remember_rendered_batch(apps, SimpleNamespace(connection=connection))
+        rendered.refresh_from_db()
+        pending.refresh_from_db()
+        self.assertEqual(rendered.rendered_batch_id, rendered.batch_id)
+        self.assertEqual(bytes(rendered.pdf), b"%PDF-existing")
+        self.assertEqual(rendered.download_token, token)
+        self.assertEqual(rendered.sent_at, sent_at)
+        self.assertEqual(rendered.status, "sent")
+        self.assertIsNone(pending.rendered_batch_id)
+
+    def test_program_deletion_cascades_pdf_provenance_references(self):
+        row = self.row(pdf=b"%PDF-existing")
+        row.rendered_batch = row.batch
+        row.save(update_fields=["rendered_batch"])
+        self.program.delete()
+        self.assertFalse(ProgramCertificate.objects.exists())
 
     def test_selection_rejects_foreign_ids_stale_revision_and_in_flight_rows(self):
         row = self.row(status="sending", pdf=b"%PDF-inflight")
