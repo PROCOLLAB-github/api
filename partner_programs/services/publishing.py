@@ -41,7 +41,6 @@ def publish_finished_program_projects(now=None) -> int:
 def solution_publication_filter(now):
     return dict(
         solution_storage_mode="solution",
-        is_competitive=False,
         publish_projects_after_finish=True,
         datetime_finished__lte=now,
     )
@@ -56,9 +55,12 @@ def publish_solution_program(program_id, *, now):
     )
     if program is None:
         return 0
-    return ProgramSolution.objects.filter(
-        program=program, published_at__isnull=True
-    ).update(published_at=now)
+    solutions = ProgramSolution.objects.filter(program=program, published_at__isnull=True)
+    if program.is_competitive:
+        # Независимый согласованный путь сданных работ. Вопрос о публикации
+        # несданных конкурсных черновиков остается открытым.
+        solutions = solutions.filter(status="submitted")
+    return solutions.update(published_at=now)
 
 
 def publish_finished_program_solutions(now=None) -> int:

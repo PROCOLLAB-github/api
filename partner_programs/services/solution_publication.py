@@ -56,6 +56,9 @@ def published_solutions(program, search="", *, with_answers=False):
         )
         .order_by("published_at", "pk")
     )
+    if program.is_competitive:
+        # Marker сам по себе не открывает несданную конкурсную работу.
+        query = query.filter(status="submitted")
     if search:
         query = query.annotate(
             public_name=Coalesce(

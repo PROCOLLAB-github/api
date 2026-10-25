@@ -1,4 +1,4 @@
-"""Анонимное чтение только опубликованного allowlist неконкурсных материалов."""
+"""Анонимное чтение allowlist опубликованных материалов решения."""
 
 from django.http import Http404
 from rest_framework import serializers
@@ -31,7 +31,7 @@ class PublishedSolutionAPIView(SolutionAPIView):
 
     def program(self, pk):
         program = program_for(pk)
-        if program.solution_storage_mode != "solution" or program.is_competitive:
+        if program.solution_storage_mode != "solution":
             raise Http404
         return program
 

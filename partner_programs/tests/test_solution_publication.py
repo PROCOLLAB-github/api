@@ -332,20 +332,20 @@ class SolutionPublicationTests(PublicationFixture, TestCase):
             APIClient().get(foreign_url + f"{unpublished.pk}/").status_code, 404
         )
 
-    def test_legacy_and_competitive_are_not_exposed_by_partial_publication_block(self):
+    def test_legacy_is_hidden_and_marked_competitive_draft_is_not_exposed(self):
         self.publish()
-        for changes in [
-            dict(is_competitive=True),
-            dict(solution_storage_mode="legacy_project"),
-        ]:
-            PartnerProgram.objects.filter(pk=self.program.pk).update(**changes)
-            self.assertEqual(APIClient().get(self.public_url).status_code, 404)
-            self.assertEqual(
-                APIClient().get(self.public_url + f"{self.solution.pk}/").status_code, 404
-            )
-            PartnerProgram.objects.filter(pk=self.program.pk).update(
-                is_competitive=False, solution_storage_mode="solution"
-            )
+        PartnerProgram.objects.filter(pk=self.program.pk).update(is_competitive=True)
+        self.assertEqual(self.read()["count"], 0)
+        self.assertEqual(
+            APIClient().get(self.public_url + f"{self.solution.pk}/").status_code, 404
+        )
+        PartnerProgram.objects.filter(pk=self.program.pk).update(
+            solution_storage_mode="legacy_project"
+        )
+        self.assertEqual(APIClient().get(self.public_url).status_code, 404)
+        self.assertEqual(
+            APIClient().get(self.public_url + f"{self.solution.pk}/").status_code, 404
+        )
 
     def test_private_read_and_public_write_permissions_are_unchanged(self):
         self.publish()
