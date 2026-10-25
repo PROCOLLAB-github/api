@@ -209,9 +209,18 @@ def template_values(draft, program_name):
 
 
 def outdated_certificate(row, draft):
-    return template_values(row.batch.snapshot, row.program.name) != template_values(
+    snapshot = (
+        row.rendered_batch.snapshot if row.rendered_batch_id else row.batch.snapshot
+    )
+    return template_values(snapshot, row.program.name) != template_values(
         draft, row.program.name
     )
+
+
+def pdf_needs_render(row, pdf_ready=None):
+    if pdf_ready is None:
+        pdf_ready = row.pdf is not None
+    return not pdf_ready or outdated_certificate(row, row.batch.snapshot)
 
 
 def manual_batch(program, draft, public_base_url, action):
@@ -622,8 +631,8 @@ def dispatch():
 def process(certificate_id):
     with transaction.atomic():
         row = (
-            ProgramCertificate.objects.select_for_update()
-            .select_related("batch", "program")
+            ProgramCertificate.objects.select_for_update(of=("self",))
+            .select_related("batch", "rendered_batch", "program")
             .get(pk=certificate_id)
         )
         if row.status != "pending" or not row.batch.active:
@@ -633,7 +642,7 @@ def process(certificate_id):
         row.attempts += 1
         row.save(update_fields=["status", "claimed_at", "attempts"])
     try:
-        if not row.pdf:
+        if pdf_needs_render(row):
             batch = row.batch
             row.pdf = render_pdf(
                 batch.snapshot,
@@ -643,7 +652,9 @@ def process(certificate_id):
                 str(row.pk).upper(),
                 timezone.localtime(row.created_at),
             )
-            ProgramCertificate.objects.filter(pk=row.pk).update(pdf=row.pdf)
+            ProgramCertificate.objects.filter(pk=row.pk).update(
+                pdf=row.pdf, rendered_batch_id=row.batch_id
+            )
         with transaction.atomic():
             # Lock the batch in the same order as pause/retry. A paused queue cannot send.
             batch = ProgramCertificateBatch.objects.select_for_update().get(

@@ -2,7 +2,7 @@ import zipfile
 from datetime import timedelta
 
 from django.db import transaction
-from django.db.models import Count, Q
+from django.db.models import Count, F, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -231,7 +231,11 @@ class CertificateJournalView(ManagementBase):
             sent=Count("pk", filter=Q(status="sent")),
             failed=Count("pk", filter=Q(status="failed")),
             unsent=Count("pk", filter=~Q(status="sent")),
-            outdated=Count("pk", filter=Q(batch_id__in=stale_batches)),
+            outdated=Count(
+                "pk",
+                filter=Q(rendered_batch_id__in=stale_batches)
+                | Q(rendered_batch__isnull=True, batch_id__in=stale_batches),
+            ),
         )
         offset = query["offset"]
         end = offset + query["limit"]
@@ -244,9 +248,13 @@ class CertificateJournalView(ManagementBase):
                 "pdf_ready": row.pdf_ready,
                 "error": row.error,
                 "sent_at": row.sent_at,
-                "outdated": row.batch_id in stale_batches,
+                "outdated": service.outdated_certificate(row, draft),
+                "pdf_error": row.status == "failed"
+                and service.pdf_needs_render(row, row.pdf_ready),
             }
-            for row in rows.annotate(pdf_ready=~Q(pdf__isnull=True))[offset:end]
+            for row in rows.select_related("batch", "rendered_batch", "program").annotate(
+                pdf_ready=~Q(pdf__isnull=True)
+            )[offset:end]
         ]
         return Response({"count": rows.count(), "summary": summary, "results": result})
 
@@ -297,11 +305,6 @@ class CertificateSelectionView(ManagementBase):
         if not selected:
             return Response({"count": 0, "skipped": len(rows)}, status=202)
         draft = service.validate_draft(program, config.draft)
-        regenerate = [
-            row.pk
-            for row in selected
-            if action == "refresh" or service.outdated_certificate(row, draft)
-        ]
         for send_email in (False, True):
             group = [
                 row.pk
@@ -321,6 +324,10 @@ class CertificateSelectionView(ManagementBase):
                 "send" if send_email else "refresh",
             )
             targets = ProgramCertificate.objects.filter(pk__in=group)
+            # Keep the current file's snapshot before moving work to a new batch.
+            targets.filter(pdf__isnull=False, rendered_batch__isnull=True).update(
+                rendered_batch_id=F("batch_id")
+            )
             targets.update(
                 batch=batch,
                 status="pending",
@@ -329,7 +336,6 @@ class CertificateSelectionView(ManagementBase):
                 claimed_at=None,
                 sent_at=None,
             )
-            targets.filter(pk__in=regenerate).update(pdf=None)
         return Response(
             {"count": len(selected), "skipped": len(rows) - len(selected)}, status=202
         )
@@ -367,11 +373,14 @@ def current_certificate_pdf(program, config, row, public_base_url):
             timezone.localtime(row.created_at),
         )
         row.batch = service.manual_batch(program, draft, public_base_url, "refresh")
+        row.rendered_batch = row.batch
         row.pdf = content
         row.status = "ready"
         row.error = ""
         row.sent_at = None
-        row.save(update_fields=["batch", "pdf", "status", "error", "sent_at"])
+        row.save(
+            update_fields=["batch", "rendered_batch", "pdf", "status", "error", "sent_at"]
+        )
     return bytes(row.pdf)
 
 
@@ -383,7 +392,7 @@ class CertificateDownloadView(ManagementBase):
         revision_check(config, request.data)
         row = get_object_or_404(
             ProgramCertificate.objects.select_for_update(of=("self",)).select_related(
-                "batch", "program"
+                "batch", "rendered_batch", "program"
             ),
             program=program,
             pk=certificate_id,
@@ -413,7 +422,8 @@ class CertificateArchiveView(ManagementBase):
         rows = (
             selected_rows(program, request.data)
             .select_for_update(of=("self",))
-            .select_related("batch", "program")
+            .select_related("batch", "rendered_batch", "program")
+            .defer(None)
         )
         if rows.filter(status__in=["pending", "generating", "sending"]).exists():
             raise ValidationError(
