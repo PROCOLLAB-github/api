@@ -3,6 +3,7 @@
 import base64
 import io
 import logging
+from functools import lru_cache
 from datetime import timedelta
 from html import escape
 from pathlib import Path
@@ -12,7 +13,7 @@ from django.core.mail import EmailMultiAlternatives
 from django.db import transaction
 from django.db.models import Exists, OuterRef, Q
 from django.utils import timezone
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageFont, UnidentifiedImageError
 from rest_framework.exceptions import ValidationError
 
 from partner_programs.certificate_models import (
@@ -43,13 +44,13 @@ def default_draft():
     positions = [
         (10, 12, 80, 7, 40),
         (10, 23, 80, 5, 18),
-        (10, 35, 80, 10, 36),
-        (10, 50, 80, 10, 20),
-        (10, 78, 30, 5, 14),
-        (10, 84, 35, 5, 12),
-        (57, 79, 33, 5, 18),
-        (57, 85, 33, 5, 12),
-        (60, 65, 25, 12, 16),
+        (15, 42, 70, 16, 40),
+        (10, 60, 80, 7, 20),
+        (10, 80, 30, 5, 14),
+        (10, 86, 35, 5, 12),
+        (57, 80, 33, 5, 18),
+        (57, 86, 33, 5, 12),
+        (60, 70, 25, 8, 16),
     ]
     return {
         "background_id": None,
@@ -57,6 +58,7 @@ def default_draft():
         "director": "",
         "position": "",
         "show_text": True,
+        "hidden_elements": [key for key in ELEMENTS if key != "name"],
         "audience": "submitted",
         "timing": "manual",
         "scheduled_at": None,
@@ -67,6 +69,22 @@ def default_draft():
             key: dict(zip(("x", "y", "width", "height", "font_size"), pos))
             for key, pos in zip(ELEMENTS, positions)
         },
+    }
+
+
+def hidden_elements(draft):
+    """Старые черновики и снимки выдачи сохраняют прежнее отображение."""
+    hidden = set(draft.get("hidden_elements", []))
+    if not draft.get("show_text", True):
+        hidden.update(("title", "subtitle"))
+    hidden.discard("name")
+    return hidden
+
+
+def normalized_draft(draft):
+    return {
+        **draft,
+        "hidden_elements": [key for key in ELEMENTS if key in hidden_elements(draft)],
     }
 
 
@@ -139,7 +157,7 @@ def state(program):
     )
     return {
         "revision": config.revision,
-        "draft": config.draft,
+        "draft": normalized_draft(config.draft),
         "assets": {
             key: asset_data(value)
             for key, value in assets_for(program, config.draft).items()
@@ -199,7 +217,7 @@ def upload_asset(program, kind, upload):
     )
 
 
-def validate_draft(program, draft):
+def validate_draft(program, draft, previous=None):
     """The API owns allowed geometry and substitutions, not arbitrary HTML/CSS."""
     from rest_framework import serializers
 
@@ -216,6 +234,12 @@ def validate_draft(program, draft):
         director = serializers.CharField(max_length=250, allow_blank=True)
         position = serializers.CharField(max_length=250, allow_blank=True)
         show_text = serializers.BooleanField()
+        hidden_elements = serializers.ListField(
+            child=serializers.ChoiceField(
+                choices=[key for key in ELEMENTS if key != "name"]
+            ),
+            required=False,
+        )
         audience = serializers.ChoiceField(choices=["all", "submitted"])
         timing = serializers.ChoiceField(choices=["manual", "scheduled"])
         scheduled_at = serializers.DateTimeField(allow_null=True)
@@ -227,6 +251,17 @@ def validate_draft(program, draft):
     serializer = Draft(data=draft)
     serializer.is_valid(raise_exception=True)
     data = serializer.data
+    if "hidden_elements" not in data:
+        # Старый клиент не должен восстанавливать удаленные новым редактором элементы.
+        hidden = hidden_elements(previous or data)
+        if previous and data["show_text"] != previous.get("show_text", True):
+            if data["show_text"]:
+                hidden.difference_update(("title", "subtitle"))
+            else:
+                hidden.update(("title", "subtitle"))
+        data["hidden_elements"] = [key for key in ELEMENTS if key in hidden]
+    elif len(data["hidden_elements"]) != len(set(data["hidden_elements"])):
+        raise ValidationError({"hidden_elements": "Элементы не должны повторяться."})
     if set(data["layout"]) != set(ELEMENTS):
         raise ValidationError("Состав элементов шаблона изменен. Обновите страницу.")
     for element in data["layout"].values():
@@ -252,7 +287,56 @@ def validate_draft(program, draft):
                 "Доступные подстановки: {name}, {program}, {date}, {number}."
             )
     assets_for(program, data)
-    return dict(data)
+    return normalized_draft(dict(data))
+
+
+@lru_cache(maxsize=4)
+def certificate_font(bold):
+    filename = "Mont-SemiBold.ttf" if bold else "Mont-Regular.ttf"
+    return ImageFont.truetype(
+        str(Path(settings.BASE_DIR) / "assets/users/user_CV" / filename), 1000
+    )
+
+
+def fit_certificate_text(value, box, bold=False):
+    """Подгоняем реальные строки Mont по обеим сторонам бокса, без обрезки ФИО."""
+    font = certificate_font(bold)
+    width = max(1, box["width"] * 11.22 - 2)
+    height = max(1, box["height"] * 7.937 - 2)
+
+    def lines_at(size):
+        def fits(text):
+            return font.getlength(text) / 1000 * size * 1.02 <= width
+
+        lines = []
+        for paragraph in str(value).split("\n"):
+            line = ""
+            for word in paragraph.split():
+                candidate = (line + " " + word).lstrip()
+                if fits(candidate):
+                    line = candidate
+                    continue
+                if line:
+                    lines.append(line)
+                    line = ""
+                for char in word:
+                    if line and not fits(line + char):
+                        lines.append(line)
+                        line = ""
+                    line += char
+            lines.append(line)
+        return lines
+
+    low, high = 0.5, float(box["font_size"])
+    for _ in range(18):
+        size = (low + high) / 2
+        lines = lines_at(size)
+        if len(lines) * size * 1.3 <= height:
+            low = size
+        else:
+            high = size
+    size = min(float(box["font_size"]), low)
+    return size, lines_at(size)
 
 
 def render_pdf(snapshot, assets, name, program_name, number, issued_at):
@@ -293,10 +377,11 @@ def render_pdf(snapshot, assets, name, program_name, number, issued_at):
         "position": snapshot["position"],
     }
     elements = []
+    hidden = hidden_elements(snapshot)
     if assets.get("background"):
         elements.append(f'<img class="background" src="{src(assets["background"])}">')
     for key, box in snapshot["layout"].items():
-        if key in ("title", "subtitle") and not snapshot["show_text"]:
+        if key in hidden:
             continue
         style = f'left:{box["x"]}%;top:{box["y"]}%;width:{box["width"]}%;height:{box["height"]}%;'
         if key == "signature":
@@ -306,13 +391,10 @@ def render_pdf(snapshot, assets, name, program_name, number, issued_at):
                 )
         else:
             value = values[key]
-            # Conservative fit for long Cyrillic names and program titles, max three lines.
-            max_size = min(box["font_size"], box["height"] * 7.937 / 1.35)
-            size = max(
-                8, min(max_size, (box["width"] * 11.22 * 2.5) / max(len(value), 1))
-            )
+            size, lines = fit_certificate_text(value, box, key in ("name", "title"))
+            content = "<br>".join(escape(line) for line in lines)
             elements.append(
-                f'<div class="element {key}" style="{style}font-size:{size}px">{escape(value)}</div>'
+                f'<div class="element {key}" style="{style}font-size:{size}px"><span>{content}</span></div>'
             )
     html = (
         """<html><head><meta charset="utf-8"><style>
@@ -321,7 +403,8 @@ def render_pdf(snapshot, assets, name, program_name, number, issued_at):
     @page{size:297mm 210mm;margin:0}*{box-sizing:border-box}body{margin:0;font-family:Mont;color:#353535}
     .sheet{position:relative;width:297mm;height:210mm;overflow:hidden;background:white}
     .background{position:absolute;width:100%;height:100%;object-fit:cover}
-    .element{position:absolute;text-align:center;line-height:1.3;overflow:hidden;overflow-wrap:anywhere}
+    .element{position:absolute;text-align:center;line-height:1.3;overflow:hidden;padding:1px}
+    .element span{position:absolute;left:1px;right:1px;top:50%;transform:translateY(-50%);white-space:nowrap}
     .name,.title{font-weight:600}.signature{object-fit:contain}
     </style></head><body><div class="sheet">"""
         + "".join(elements)

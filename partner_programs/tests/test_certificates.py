@@ -1,4 +1,5 @@
 import io
+from copy import deepcopy
 from datetime import timedelta
 from unittest.mock import patch
 
@@ -14,6 +15,7 @@ from django.test import (
 from django.utils import timezone
 from PIL import Image
 from rest_framework.test import APIClient
+from rest_framework.exceptions import ValidationError
 
 from partner_programs.certificate_models import (
     ProgramCertificate,
@@ -144,6 +146,135 @@ class CertificateTests(TestCase):
             ).status_code,
             400,
         )
+
+    def test_new_template_has_only_required_name_centered(self):
+        draft = self.client.get(self.root).data["draft"]
+        self.assertEqual(set(draft["hidden_elements"]), set(service.ELEMENTS) - {"name"})
+        box = draft["layout"]["name"]
+        self.assertEqual(box["x"] + box["width"] / 2, 50)
+        self.assertEqual(box["y"] + box["height"] / 2, 50)
+        rows = [
+            draft["layout"][key]
+            for key in (
+                "title",
+                "subtitle",
+                "name",
+                "program",
+                "signature",
+                "director",
+                "position",
+            )
+        ]
+        for upper, lower in zip(rows, rows[1:]):
+            self.assertLessEqual(upper["y"] + upper["height"], lower["y"])
+
+    def test_optional_elements_can_be_hidden_independently_but_name_cannot(self):
+        for key in service.ELEMENTS:
+            draft = service.default_draft()
+            draft["hidden_elements"] = [key]
+            if key == "name":
+                with self.assertRaises(ValidationError):
+                    service.validate_draft(self.program, draft)
+            else:
+                self.assertEqual(
+                    service.validate_draft(self.program, draft)["hidden_elements"], [key]
+                )
+        for invalid in (["unknown"], ["date", "date"], None):
+            draft["hidden_elements"] = invalid
+            response = self.client.put(
+                self.root, {"revision": 1, "draft": draft}, format="json"
+            )
+            self.assertEqual(response.status_code, 400, response.data)
+        self.config.refresh_from_db()
+        self.assertEqual(self.config.revision, 1)
+
+    def test_legacy_draft_keeps_visibility_and_geometry_without_migration(self):
+        draft = service.default_draft()
+        draft.pop("hidden_elements")
+        draft["layout"]["name"]["x"] = 7
+        draft["layout"]["name"]["width"] = 80
+        draft["show_text"] = False
+        self.config.draft = draft
+        self.config.save()
+        result = self.client.get(self.root).data["draft"]
+        self.assertEqual(result["hidden_elements"], ["title", "subtitle"])
+        self.assertEqual(result["layout"], draft["layout"])
+        self.config.refresh_from_db()
+        self.assertNotIn("hidden_elements", self.config.draft)
+
+    def test_old_client_save_does_not_restore_hidden_elements(self):
+        draft = deepcopy(self.config.draft)
+        draft.pop("hidden_elements")
+        draft["director"] = "Другой директор"
+        response = self.client.put(
+            self.root, {"revision": 1, "draft": draft}, format="json"
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(
+            set(response.data["draft"]["hidden_elements"]),
+            set(service.ELEMENTS) - {"name"},
+        )
+
+    def test_text_fit_uses_real_font_and_both_dimensions(self):
+        box = {"width": 70, "height": 12, "font_size": 40}
+        value = "Александра Константиновна Добровольская"
+        size, lines = service.fit_certificate_text(value, box, True)
+        self.assertEqual(" ".join(lines), value)
+        self.assertLessEqual(len(lines) * size * 1.3, box["height"] * 7.937 - 2)
+        font = service.certificate_font(True)
+        for line in lines:
+            self.assertLessEqual(
+                font.getlength(line) / 1000 * size * 1.02, 70 * 11.22 - 2
+            )
+
+    @tag("native_pdf")
+    def test_ready_template_pdf_adds_only_each_participants_name(self):
+        from weasyprint import HTML
+
+        draft = service.default_draft()
+        draft["director"] = "Директор для проверки"
+        background = service.upload_asset(self.program, "background", self.image())
+        assets = {"background": background}
+        with patch("weasyprint.HTML", wraps=HTML) as render:
+            first = service.render_pdf(
+                draft,
+                assets,
+                "Анна Крылова",
+                "Скрытая программа",
+                "СКРЫТЫЙ НОМЕР",
+                timezone.now(),
+            )
+            first_html = render.call_args.kwargs["string"]
+            second = service.render_pdf(
+                draft,
+                assets,
+                "Илья Морозов",
+                "Скрытая программа",
+                "СКРЫТЫЙ НОМЕР",
+                timezone.now(),
+            )
+            second_html = render.call_args.kwargs["string"]
+        self.assertTrue(first.startswith(b"%PDF"))
+        self.assertTrue(second.startswith(b"%PDF"))
+        self.assertIn("Анна Крылова", first_html)
+        self.assertIn("Илья Морозов", second_html)
+        import re
+
+        first_background = re.search(
+            r'<img class="background" src="([^"]+)"', first_html
+        ).group(1)
+        second_background = re.search(
+            r'<img class="background" src="([^"]+)"', second_html
+        ).group(1)
+        self.assertEqual(first_background, second_background)
+        for value in (
+            "СЕРТИФИКАТ",
+            "Скрытая программа",
+            "СКРЫТЫЙ НОМЕР",
+            "Директор для проверки",
+        ):
+            self.assertNotIn(value, first_html)
+            self.assertNotIn(value, second_html)
 
     def test_foreign_assets_and_arbitrary_template_tokens_rejected(self):
         asset = service.upload_asset(self.foreign, "signature", self.image())
@@ -327,8 +458,10 @@ class CertificateTests(TestCase):
 
     @tag("native_pdf")
     def test_pdf_renderer_outputs_a4_cyrillic_without_external_fetch(self):
+        legacy = service.default_draft()
+        legacy.pop("hidden_elements")
         content = service.render_pdf(
-            service.default_draft(),
+            legacy,
             {},
             "Александра Константиновна Добровольская",
             "Программа развития",
