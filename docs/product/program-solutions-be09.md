@@ -207,3 +207,57 @@ Checked by tests: 8 новых PostgreSQL tests PASS; общий повтор с
 Checked by source/review: endpoint → managed_program → selection/preview → подписанный token → confirm lock/recheck → on_commit/outbox → delivery recheck прослежен; код изменяет только mode-aware текст message_for. Angular analytics-drilldown показывает server previewText, response/payload/permission/path не менялись. Blocking findings этого локального блока не обнаружены. Build неприменим к изменению текста Python; новая схема или migration не требуется.
 
 Not checked: новый manager Angular UI и его delivery interaction, внешний SMTP/Celery, production. Новые напоминания экспертам о решениях и остальные BE09/FE08 остаются незавершенными; этот результат не означает готовность всей feature или прохождение нового Linux CI.
+
+## Напоминания экспертам о решениях
+
+Current behavior: прежний work-reminder получает PartnerProgramProject/ProjectExpertAssignment и ведет на projects-rating. Его нельзя использовать, подставив solution_id в project_id. Существующие manager solution list/assignments уже определяют ожидание через общие критерии и реальные SolutionExpertAssignment.
+
+Target behavior: организатор выбирает ожидающие решения, получает read-only предпросмотр получателей и подтверждает его подписанным token. Одно письмо на реального активного эксперта программы включает только выбранные решения с его настоящими незавершенными назначениями. Название берется из снимка сдачи, ссылка ведет на существующий `/office/program/{pk}/solutions-rating`. Неназначенная работа не создает получателя. 0/False и допустимый пустой текст учитываются общей функцией complete_values, строка оценки сама по себе не означает завершенность.
+
+### Contract before и after
+
+До изменения в C00 1.9.0 нет solution expert reminder command. В 1.10.0 добавляются два POST под `/programs/{program_id}/management/solution-analytics/attention/solutions-awaiting-evaluation/`: `reminder-preview/` и `reminders/`. Прежний manager-overview attention endpoint и его project category остаются прежними.
+
+Preview request: `search` до 200 символов (default пустая строка) и `selection` с `mode=selected|all`, `ids`, `excluded_ids`. В ids используются настоящие **solution IDs**; selected требует непустой ids без exclusions, all допускает только exclusions. Каждый ID — положительный safe integer, не более 10000 элементов. Неизвестные поля и query params отклоняются. Поиск повторяет snapshot name; решения ограничены программой, submitted и теми же awaiting/partially_evaluated состояниями, что manager analytics. Выбор не ограничивается видимой страницей, максимум 10000 найденных строк.
+
+Preview response сохраняет знакомую форму: `token` (nullable), `selected_count`, `recipient_count`, `without_assignments_count`, `unavailable_count`, `preview_text`, первые 20 `recipients={user_id,full_name}`, `expires_in=900`. Email не раскрывается. Token подписан для actor/program/category, содержит исходные solution IDs и утвержденные настоящие assignment IDs. Если получателей нет, token null.
+
+Confirm принимает только token и возвращает `created_count/skipped_count`. Существующие outbox/idempotency/on_commit/retry сохраняются. Перед confirm и delivery актуальный набор пересекается с утвержденными source/assignment IDs: новые назначения/получатели не добавляются молча. Полностью оцененные работы, выполненные/снятые назначения, ушедшие или неактивные эксперты исключаются. Повтор token возвращает исходный receipt. Delivery нового типа блокирует программу, как операции оценивания, прежде чем повторно читать состояние.
+
+Доступ: manager/admin конкретной программы, solution mode + competitive + distributed. Ошибки C00: 400 validation/token, 401 authentication, 403 program permission, 404 not found, 409 solution_mode_unavailable/reminders_not_applicable. Все ответы private, no-store. При отключении режима после подтверждения доставка отменяется. Дедлайны и правила завершенности не переопределяются; это перенос существующего reminder flow на новый источник.
+
+Affected systems: C00 обеих репозиториев и generated frontend DTO/fixtures; новый API view; общий attention outbox с отдельной category; notification feed уже читает общий reminder. Миграций и реальных отправок не требуется. Новый Angular экран D02 остается до явного approval. Порядок: C00/spec → backend selectors/preview/confirm/delivery → API tests/legacy regressions → frontend API layer → review/draft PR.
+
+| AC | Проверяемое поведение |
+| --- | --- |
+| REM01 | Preview manager/admin закрыт от остальных ролей/чужих программ, legacy/open/noncompetitive контролируемо отклоняются; private headers и C00 errors |
+| REM02 | Выбираются только реальные submitted awaiting/partial решения текущей программы, snapshot search/order, selected/all/exclusions, safe ID/limit/strict validation |
+| REM03 | Только реальные незавершенные SolutionExpertAssignment активных экспертов программы; один получатель на user, неназначенные и missing email считаются отдельно |
+| REM04 | Полная оценка 0/False/comment не получает напоминание, partial/invalid score остается незавершенным; quota и no-criteria совпадают с manager analytics |
+| REM05 | Подписанный preview привязан к actor/program/category/TTL; подмена, истечение и чужой token не создают outbox |
+| REM06 | Confirm recheck/intersection, after-commit enqueue, rollback и повтор token не добавляют новых recipients/assignments или повторных уведомлений |
+| REM07 | Delivery recheck отменяет completed/removed/inactive/mode changes, сохраняет только утвержденные назначения; locmem письмо с snapshot names и solutions-rating URL, один email при retry |
+| REM08 | Никаких Project IDs/проектных назначений в новом flow; mixed/colliding IDs и прежние участнические/project reminders сохраняют семантику |
+| REM09 | C00 и generated frontend types/fixtures синхронизированы; API adapter передает selection/token без фиктивных Project DTO; новый UI не заявляется реализованным |
+
+### Verification и review экспертных напоминаний
+
+| AC | Evidence | Verdict |
+| --- | --- | --- |
+| REM01 | Direct API tests manager/staff/captain/expert/outsider/anonymous, foreign/missing program, legacy/open/noncompetitive; 24 реальных HTTP/JWT checks обеих форм/noncompetitive с private headers | PASS |
+| REM02 | Snapshot/live-name mismatch, selected/all/exclusions, 25 работ за пределами первой страницы, unknown keys/query, unsafe IDs и max found; независимая schema кодирует ограничения mode | PASS |
+| REM03 | Один эксперт на несколько работ, 21 получатель с preview первых 20, unassigned/missing email/inactive и foreign solution; signed source/assignment IDs соответствуют реальным моделям | PASS |
+| REM04 | Общая complete_values: 0/False/empty comment completed; partial/NaN/no criteria и quota 2→1 сохраняют семантику manager analytics | PASS |
+| REM05 | Signature tampering, TTL, actor/program/category scope отклоняются без outbox | PASS |
+| REM06 | Confirm recheck после completion/replacement/new expert, durable receipt/idempotency/on_commit/rollback; два потока PostgreSQL синхронизированы Barrier и создают один batch/notice/enqueue | PASS |
+| REM07 | Locmem delivery удаляет из письма замененное назначение, отменяет completed/left-program/open-mode, сохраняет solution route и snapshot names; два вызова дают одно письмо | PASS |
+| REM08 | Исторический Project с тем же ID и прежним проектным назначением другому эксперту не попадает в новый flow; platform notice/read принадлежит назначенному эксперту; старые attention regression tests PASS | PASS |
+| REM09 | C00 1.10.0 116/43/128 и обе копии byte-identical; 21 новых frontend wire tests + 47 analytics PASS, полный frontend 2695 tests / 476 files и strict types PASS; development build и scoped ESLint PASS | PASS |
+
+Checked by tests: **22 новых PostgreSQL tests**, вместе с прежними участническими/проектными напоминаниями, attention analytics и manager solution analytics — **144 tests PASS**, включая эти 22. Локальный PostgreSQL 18/ICU DB, helper `C:/Users/evsee/AppData/Local/Temp/procollab-test-unicode.py`; log `C:/Users/evsee/AppData/Local/Temp/procollab-solution-reminders-regression.log`. Black/Flake8, C00 validator и makemigrations --check PASS. Новых migrations нет.
+
+Checked through running API: локальный Django/PostgreSQL/JWT, 24 POST проверки preview/отклоненного confirm для manager/expert/participant/anonymous в КЧ, хакатоне и неконкурсной программе. Здесь конкурсные работы уже полностью оценены: проверены empty recipient preview/token null, invalid-token и role/mode errors. Domain mutations=0; успешные confirm и доставка с pending recipients проверены отдельными PostgreSQL/locmem tests, а не этим HTTP запуском. Evidence: `design-artifacts/program-solutions-20261024/expert-v1/implementation/solution-expert-reminder-http-evidence.json`.
+
+Checked by source/review: требование → новые C00 operations → manager/mode guards → shared selection/token/outbox → delivery прослежены. Completion и quota не дублируются; SolutionAnalyticsContext и complete_values используются повторно. Legacy CATEGORIES и старые routes/DTO не расширялись. Generated frontend port/repository/adapter/use cases принимают настоящие solution IDs и непрозрачный token. На review уточнена условная schema selection, явно синхронизирован concurrent test; незакрытых blocking findings этого блока не осталось.
+
+Checked by build: Angular development build PASS с существующими Sass deprecation warnings. Новый manager Angular UI не менялся, D02 **DESIGN APPROVAL REQUIRED**. Not checked: реальный UI reminder interaction, внешний SMTP/Celery, large-volume memory/load benchmark, production. Собственный Linux CI нового commit еще требуется. Предыдущий a66dc73 отдельно прошел PostgreSQL CI 40150230796: **1596 full-suite + 39 locking tests PASS**, это не результат нового diff. Общая feature/BE09/FE08 и QA01/REL01 остаются незавершенными.

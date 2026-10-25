@@ -1,4 +1,5 @@
 from django.urls import path
+from partner_programs.solution_attention_api import SolutionExpertReminderView
 from partner_programs.solution_analytics_api import (
     SolutionCaseAnalyticsView,
     SolutionManagerAnalyticsView,
@@ -131,6 +132,14 @@ from partner_programs.certificate_views import (
 app_name = "partner_programs"
 
 urlpatterns = [
+    path(
+        "<int:pk>/management/solution-analytics/attention/solutions-awaiting-evaluation/reminder-preview/",
+        SolutionExpertReminderView.as_view(),
+    ),
+    path(
+        "<int:pk>/management/solution-analytics/attention/solutions-awaiting-evaluation/reminders/",
+        SolutionExpertReminderView.as_view(action="confirm"),
+    ),
     path(
         "<int:pk>/management/solution-analytics/", SolutionManagerAnalyticsView.as_view()
     ),

@@ -1,5 +1,5 @@
 {
-  "contract_version": "1.9.0",
+  "contract_version": "1.10.0",
   "description": "Независимые примеры, не последовательность операций; фиктивные данные.",
   "scenarios": [
     {
@@ -6386,6 +6386,241 @@
         "detail": "Запрос недоступен.",
         "errors": [],
         "meta": {}
+      }
+    },
+    {
+      "name": "solution_reminder_preview_selected",
+      "operation_id": "previewSolutionExpertReminder",
+      "status": 200,
+      "response": {
+        "token": "opaque-signed-example-token",
+        "selected_count": 3,
+        "recipient_count": 1,
+        "without_assignments_count": 1,
+        "unavailable_count": 0,
+        "preview_text": "Эксперт, здравствуйте! В программе остались незавершенные оценки решений.",
+        "recipients": [
+          {
+            "user_id": 27,
+            "full_name": "Анна Петрова"
+          }
+        ],
+        "expires_in": 900
+      },
+      "request": {
+        "selection": {
+          "mode": "selected",
+          "ids": [
+            301,
+            302,
+            303
+          ]
+        }
+      }
+    },
+    {
+      "name": "solution_reminder_preview_all_search_excluded",
+      "operation_id": "previewSolutionExpertReminder",
+      "status": 200,
+      "response": {
+        "token": "opaque-signed-example-token",
+        "selected_count": 2,
+        "recipient_count": 1,
+        "without_assignments_count": 0,
+        "unavailable_count": 0,
+        "preview_text": "Эксперт, здравствуйте! В программе остались незавершенные оценки решений.",
+        "recipients": [
+          {
+            "user_id": 27,
+            "full_name": "Анна Петрова"
+          }
+        ],
+        "expires_in": 900
+      },
+      "request": {
+        "search": "Сервис",
+        "selection": {
+          "mode": "all",
+          "excluded_ids": [
+            304
+          ]
+        }
+      }
+    },
+    {
+      "name": "solution_reminder_preview_no_assignments",
+      "operation_id": "previewSolutionExpertReminder",
+      "status": 200,
+      "response": {
+        "token": null,
+        "selected_count": 1,
+        "recipient_count": 0,
+        "without_assignments_count": 1,
+        "unavailable_count": 0,
+        "preview_text": "",
+        "recipients": [],
+        "expires_in": 900
+      },
+      "request": {
+        "selection": {
+          "mode": "selected",
+          "ids": [
+            303
+          ]
+        }
+      }
+    },
+    {
+      "name": "solution_reminder_preview_missing_email",
+      "operation_id": "previewSolutionExpertReminder",
+      "status": 200,
+      "response": {
+        "token": null,
+        "selected_count": 1,
+        "recipient_count": 0,
+        "without_assignments_count": 0,
+        "unavailable_count": 1,
+        "preview_text": "",
+        "recipients": [],
+        "expires_in": 900
+      },
+      "request": {
+        "selection": {
+          "mode": "selected",
+          "ids": [
+            302
+          ]
+        }
+      }
+    },
+    {
+      "name": "solution_reminder_preview_no_auth",
+      "operation_id": "previewSolutionExpertReminder",
+      "status": 401,
+      "response": {
+        "code": "authentication_required",
+        "detail": "Контролируемая ошибка.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "solution_reminder_preview_forbidden",
+      "operation_id": "previewSolutionExpertReminder",
+      "status": 403,
+      "response": {
+        "code": "permission_denied",
+        "detail": "Контролируемая ошибка.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "solution_reminder_preview_not_found",
+      "operation_id": "previewSolutionExpertReminder",
+      "status": 404,
+      "response": {
+        "code": "not_found",
+        "detail": "Контролируемая ошибка.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "solution_reminder_preview_legacy",
+      "operation_id": "previewSolutionExpertReminder",
+      "status": 409,
+      "response": {
+        "code": "solution_mode_unavailable",
+        "detail": "Контролируемая ошибка.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "solution_reminder_preview_not_applicable",
+      "operation_id": "previewSolutionExpertReminder",
+      "status": 409,
+      "response": {
+        "code": "reminders_not_applicable",
+        "detail": "Контролируемая ошибка.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "solution_reminder_preview_invalid_selection",
+      "operation_id": "previewSolutionExpertReminder",
+      "status": 400,
+      "response": {
+        "code": "validation_error",
+        "detail": "Контролируемая ошибка.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "solution_reminder_confirm",
+      "operation_id": "confirmSolutionExpertReminder",
+      "status": 200,
+      "response": {
+        "created_count": 1,
+        "skipped_count": 0
+      },
+      "request": {
+        "token": "opaque-signed-example-token"
+      }
+    },
+    {
+      "name": "solution_reminder_confirm_idempotent",
+      "operation_id": "confirmSolutionExpertReminder",
+      "status": 200,
+      "response": {
+        "created_count": 1,
+        "skipped_count": 0
+      },
+      "request": {
+        "token": "opaque-signed-example-token"
+      }
+    },
+    {
+      "name": "solution_reminder_confirm_completed_before_confirm",
+      "operation_id": "confirmSolutionExpertReminder",
+      "status": 200,
+      "response": {
+        "created_count": 0,
+        "skipped_count": 1
+      },
+      "request": {
+        "token": "opaque-signed-example-token"
+      }
+    },
+    {
+      "name": "solution_reminder_confirm_bad_token",
+      "operation_id": "confirmSolutionExpertReminder",
+      "status": 400,
+      "response": {
+        "code": "validation_error",
+        "detail": "Контролируемая ошибка.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "token": "bad-token"
+      }
+    },
+    {
+      "name": "solution_reminder_confirm_cross_actor",
+      "operation_id": "confirmSolutionExpertReminder",
+      "status": 400,
+      "response": {
+        "code": "validation_error",
+        "detail": "Контролируемая ошибка.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "token": "another-actor-token"
       }
     }
   ]

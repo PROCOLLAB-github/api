@@ -3,7 +3,7 @@
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "info": {
     "title": "PROCOLLAB Program Solutions C00",
-    "version": "1.9.0",
+    "version": "1.10.0",
     "description": "Контракт решений в программах для реализации и моков BE01–BE09. API base URL задается окружением. snake_case на проводе. Старые API не меняются."
   },
   "servers": [
@@ -7812,6 +7812,188 @@
           }
         }
       }
+    },
+    "/programs/{program_id}/management/solution-analytics/attention/solutions-awaiting-evaluation/reminder-preview/": {
+      "post": {
+        "operationId": "previewSolutionExpertReminder",
+        "summary": "Проверить получателей напоминания экспертам о решениях",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успех",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SolutionReminderPreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolutionReminderPreviewRequest"
+              }
+            }
+          }
+        },
+        "description": "Организатор/администратор своей solution-программы; только competitive distributed. Selection IDs — настоящие solution IDs. Private, no-store."
+      }
+    },
+    "/programs/{program_id}/management/solution-analytics/attention/solutions-awaiting-evaluation/reminders/": {
+      "post": {
+        "operationId": "confirmSolutionExpertReminder",
+        "summary": "Подтвердить напоминание экспертам о решениях",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успех",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SolutionReminderReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolutionReminderConfirm"
+              }
+            }
+          }
+        },
+        "description": "Организатор/администратор своей solution-программы; только competitive distributed. Selection IDs — настоящие solution IDs. Private, no-store."
+      }
     }
   },
   "components": {
@@ -12043,6 +12225,215 @@
           "results"
         ],
         "additionalProperties": false
+      },
+      "SolutionReminderSelection": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "mode"
+        ],
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "selected",
+              "all"
+            ]
+          },
+          "ids": {
+            "type": "array",
+            "maxItems": 10000,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "default": []
+          },
+          "excluded_ids": {
+            "type": "array",
+            "maxItems": 10000,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "default": []
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "mode",
+              "ids"
+            ],
+            "properties": {
+              "mode": {
+                "const": "selected"
+              },
+              "ids": {
+                "type": "array",
+                "maxItems": 10000,
+                "items": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                },
+                "minItems": 1
+              },
+              "excluded_ids": {
+                "type": "array",
+                "maxItems": 0,
+                "items": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                },
+                "default": []
+              }
+            }
+          },
+          {
+            "required": [
+              "mode"
+            ],
+            "properties": {
+              "mode": {
+                "const": "all"
+              },
+              "ids": {
+                "type": "array",
+                "maxItems": 0,
+                "items": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                },
+                "default": []
+              }
+            }
+          }
+        ]
+      },
+      "SolutionReminderPreviewRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "selection"
+        ],
+        "properties": {
+          "search": {
+            "type": "string",
+            "maxLength": 200,
+            "default": ""
+          },
+          "selection": {
+            "$ref": "#/components/schemas/SolutionReminderSelection"
+          }
+        }
+      },
+      "SolutionReminderRecipient": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "user_id",
+          "full_name"
+        ],
+        "properties": {
+          "user_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "full_name": {
+            "type": "string"
+          }
+        }
+      },
+      "SolutionReminderPreview": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "token",
+          "selected_count",
+          "recipient_count",
+          "without_assignments_count",
+          "unavailable_count",
+          "preview_text",
+          "recipients",
+          "expires_in"
+        ],
+        "properties": {
+          "token": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Непрозрачный подписанный token, TTL 900 секунд; клиент не разбирает содержимое."
+          },
+          "selected_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "recipient_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "without_assignments_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unavailable_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "preview_text": {
+            "type": "string"
+          },
+          "recipients": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "$ref": "#/components/schemas/SolutionReminderRecipient"
+            }
+          },
+          "expires_in": {
+            "type": "integer",
+            "const": 900
+          }
+        }
+      },
+      "SolutionReminderConfirm": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "token"
+        ],
+        "properties": {
+          "token": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000000
+          }
+        }
+      },
+      "SolutionReminderReceipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "created_count",
+          "skipped_count"
+        ],
+        "properties": {
+          "created_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "skipped_count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
       }
     }
   }
