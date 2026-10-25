@@ -1,0 +1,150 @@
+{
+  "status": "COMPATIBILITY CHECKS PASS; full Linux CI pending; first release incomplete",
+  "productCommit": "7cfe01be1c2caba38ad04fef0ab6d68147df1d02",
+  "initialCompatibilityCommit": "9c89367f05f8051dff8d57857592168995f70e6e",
+  "previousCheckpoint": "b66cf6cbfbfaadf39753d90d847e7330f79efd9e",
+  "frontendUnchanged": "ca1b203a34fddedd6f7d7d6a45752073697dfd7c",
+  "observedBackendDev": "587a9155b9f53d9e50981a9939a7007c19fd6ecc",
+  "observedFrontendDev": "08414b794dd5b34de5471dddaa19cd0af7f4a167",
+  "prospectiveTree": "2b93d6a99be4a1ac250912b59bea7b220ebf195f",
+  "sourceManifestSha256": "8756137adcafe41c56ba1e7310d66b3bbb04107d917524a6a8428beb5e867edb",
+  "productSourceHashes": {
+    "docs/product/program-solutions-dev-compatibility.md": "4840a2daedebba3334815547d0810be590d0718fdfa82f4d3fb92e45fc0d20f5",
+    "partner_programs/certificate_models.py": "cd26cf9ed558eedeb6002ee204515d96cc09e333731169b5c5db4ae63c9a3a39",
+    "partner_programs/migrations/0031_programcertificate_rendered_batch.py": "2fe9364b189b5f7db866d67a77eb3d171a131f250215a621ac7bb280ec005e66",
+    "partner_programs/migrations/0039_merge_solution_certificate_branches.py": "d3a89c9060a5d477bfa6cc8ba88cbda239052d9f3a97f8acb04da4e944baefca",
+    "partner_programs/tests/test_solution_competitive_publication.py": "d42808ecf35cb47ab0c642b66f082331bd63977989bf5bd1f1a463b9ca201480",
+    "partner_programs/tests/test_solution_dev_migrations.py": "0fd8e91472abcf6b485befbb305f8636974de82996c09315b90c06ec11dd615f"
+  },
+  "sharedContracts": {
+    "examples.json": "60b15cd3c8209a21a2ba68cb0a606061a5ec62773de3f43fd447437c1319cea8",
+    "openapi.json": "6ed6fccefcfdd862862c0b372d20f54ce14445d3acc7fc20b745970e04bf3566",
+    "README.md": "6dc80bae4062f523a1e88fcd3edbc849c3b1fe423e20ebb0b83ece836d5500f2"
+  },
+  "contract": {
+    "version": "1.21.0",
+    "schemas": 156,
+    "operations": 59,
+    "scenarios": 305,
+    "unchangedSinceCPUB": true,
+    "original26ACByteExact": true
+  },
+  "tests": {
+    "nativePostgreSQL": {
+      "tests": 439,
+      "result": "OK",
+      "seconds": 429.683,
+      "skips": 0,
+      "source": "9c89367; final product only test guard/vendor portability changes",
+      "includesLegacyPublisher": 4
+    },
+    "focusedFinalPostgreSQL": {
+      "tests": 15,
+      "result": "OK",
+      "seconds": 51.294,
+      "skips": 0,
+      "observedLockRaces": 3,
+      "bothMigrationOrders": true,
+      "subsetNotAdditionalTotal": true
+    },
+    "focusedSQLite": {
+      "tests": 15,
+      "executed": 12,
+      "result": "OK",
+      "seconds": 51.926,
+      "skips": 3,
+      "skippedOnly": "PostgreSQL pg_blocking_pids races",
+      "bothMigrationOrdersExecuted": true
+    },
+    "failedExpandedNative": {
+      "testsFound": 459,
+      "result": "NOT COMPLETED / NOT PASS",
+      "exitCode": -1073741819,
+      "where": "WeasyPrint FontConfiguration native access violation",
+      "standaloneReproduced": true,
+      "exactDllCauseUnknown": true,
+      "rendererAndItsAssertionsUnmodified": true
+    },
+    "static": "Black5/Flake8/Django check/makemigrations PASS"
+  },
+  "migrationPolicy": {
+    "copiedExistingUpstream0031": true,
+    "emptyMerge0039": true,
+    "noRenumbering": true,
+    "noOldOperationChanges": true,
+    "mainForwardOnly": true,
+    "noRealProgramSwitch": true,
+    "branchMerge": false,
+    "rebase": false,
+    "forcePush": false,
+    "deploy": false
+  },
+  "ci": {
+    "previousPostgreSQL": {
+      "id": 40223628921,
+      "result": "failure",
+      "step": "Check migration consistency",
+      "cause": "two leaf nodes before compatibility fix"
+    },
+    "previousGeneral": {
+      "id": 40223626180,
+      "result": "failure",
+      "tests": 1809,
+      "failures": 3,
+      "skips": 69,
+      "lint": "success",
+      "cause": "PostgreSQL-only CPUB races incorrectly executed on SQLite",
+      "logFallback": "gh after connector Transport closed"
+    },
+    "newHead": "not pushed at packaging time; follow exact pushed HEAD separately"
+  },
+  "logs": {
+    "native439": {
+      "name": "procollab-solution-dev-integration-solution-native.log",
+      "bytes": 420880,
+      "sha256": "ab218795dff7496659bfa26bf48610748cea189571f94072acd8f746e38abf6b"
+    },
+    "focusedPostgreSQL15": {
+      "name": "procollab-solution-dev-integration-focused-final.log",
+      "bytes": 10221,
+      "sha256": "ba8bac4147bac1061e12f8d8a9fde476161b79aa17015c3065fc4fcfa97d7c49"
+    },
+    "focusedSQLite15": {
+      "name": "procollab-solution-dev-integration-sqlite.log",
+      "bytes": 31909,
+      "sha256": "f152215eaea6aa135c0f9914b573354b7df85cef1bcb2f3a26b4b32b6c5171c7"
+    },
+    "failedNative459": {
+      "name": "procollab-solution-dev-integration-native.log",
+      "bytes": 439112,
+      "sha256": "43809a49adfeb880b8ed3cbba572faa2b0f00c5c3ecbdc46fd09696535f645bd"
+    },
+    "mainForward": {
+      "name": "procollab-solution-dev-integration-main.log",
+      "bytes": 1051,
+      "sha256": "4cffc916164136ef68dcdadbd0f22711b971799ffa0ae0df0989f419f23744ba"
+    },
+    "readonlyRetention": {
+      "name": "procollab-solution-dev-integration-retention-final.log",
+      "bytes": 378,
+      "sha256": "8be9f55a6b27591657281125baeec08d8e7a46c6764cc17e65faddcd093cf484"
+    },
+    "prospectiveFinal": {
+      "name": "procollab-solution-dev-integration-prospective-final.log",
+      "bytes": 433,
+      "sha256": "f4823746c798d916905e202b3c74fdff89aa10aca777c7696bcce1c3c4a6a34c"
+    },
+    "oldGeneralCIFailure": {
+      "name": "procollab-solution-dev-old-general-ci-failed.log",
+      "bytes": 42467949,
+      "sha256": "4c25ee641b1c0276032e7066494a98df16382eda87b452fd5f64d0848bed4a0e"
+    }
+  },
+  "limits": [
+    "Full supported Linux certificate/backend suite pending",
+    "No new frontend code/build/browser journey in this compatibility patch",
+    "D02/D03 approvals and competitive unsent draft eligibility already pending",
+    "Original AC18/19 remain OPEN; AC21 separate BE10; complete first release still in scope",
+    "Main had no existing PDF rows; nonempty PDF/backfill retention proved by isolated native migration tests"
+  ]
+}
