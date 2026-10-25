@@ -1,0 +1,154 @@
+{
+  "status": "PASS",
+  "runId": 40227938298,
+  "jobId": 121273246458,
+  "event": "pull_request",
+  "head": "a787f0ee7d1cb01f9e777fbe2e0fa60999cc0805",
+  "actualCheckout": "020cc78ce6e45421cb1222c62a98611d8018562c",
+  "checkoutTree": "809f2c950758407d20cc6d2dbca8db4f48f8970a",
+  "parents": [
+    "587a9155b9f53d9e50981a9939a7007c19fd6ecc",
+    "a787f0ee7d1cb01f9e777fbe2e0fa60999cc0805"
+  ],
+  "prospectiveProductTree": "2b93d6a99be4a1ac250912b59bea7b220ebf195f",
+  "runtimeSourceParity": true,
+  "onlyDifferences": [
+    "docs/qa/program-solutions-dev-compatibility-20261025/README.md",
+    "docs/qa/program-solutions-dev-compatibility-20261025/evidence.json",
+    "docs/qa/program-solutions-dev-compatibility-20261025/main-migration-retention.json",
+    "docs/qa/program-solutions-dev-compatibility-20261025/native-targets.txt",
+    "docs/qa/program-solutions-dev-compatibility-20261025/prospective-source-final.json",
+    "docs/qa/program-solutions-dev-compatibility-20261025/retention-final.json"
+  ],
+  "fullSuite": {
+    "tests": 1846,
+    "seconds": 2396.359,
+    "skips": 0,
+    "command": "poetry run python manage.py test --verbosity 1 --keepdb",
+    "namedTestTrace": false,
+    "scope": "Entire Django discovery on synthetic merged source; full-suite log uses verbosity 1, not per-test evidence"
+  },
+  "focusedSuite": {
+    "tests": 39,
+    "seconds": 14.053,
+    "skips": 0,
+    "includedInFullSuite": true,
+    "scope": "Existing PostgreSQL locking/news migration/vacancy tests; not the three CPUB races alone"
+  },
+  "databaseVendorVerified": "postgresql",
+  "selectForUpdateVerified": true,
+  "steps": [
+    {
+      "name": "Set up job",
+      "conclusion": "success"
+    },
+    {
+      "name": "Initialize containers",
+      "conclusion": "success"
+    },
+    {
+      "name": "Checkout repository",
+      "conclusion": "success"
+    },
+    {
+      "name": "Set up Python",
+      "conclusion": "success"
+    },
+    {
+      "name": "Install dependencies",
+      "conclusion": "success"
+    },
+    {
+      "name": "Verify PostgreSQL connection and locking support",
+      "conclusion": "success"
+    },
+    {
+      "name": "Check Django configuration",
+      "conclusion": "success"
+    },
+    {
+      "name": "Check Django models",
+      "conclusion": "success"
+    },
+    {
+      "name": "Check migration consistency",
+      "conclusion": "success"
+    },
+    {
+      "name": "Apply migrations to empty PostgreSQL database",
+      "conclusion": "success"
+    },
+    {
+      "name": "Check CI settings formatting",
+      "conclusion": "success"
+    },
+    {
+      "name": "Lint CI settings",
+      "conclusion": "success"
+    },
+    {
+      "name": "Run PostgreSQL locking and vacancy response tests",
+      "conclusion": "success"
+    },
+    {
+      "name": "Run full backend test suite",
+      "conclusion": "success"
+    },
+    {
+      "name": "Remove retained PostgreSQL test database",
+      "conclusion": "success"
+    },
+    {
+      "name": "Post Set up Python",
+      "conclusion": "success"
+    },
+    {
+      "name": "Post Checkout repository",
+      "conclusion": "success"
+    },
+    {
+      "name": "Stop containers",
+      "conclusion": "success"
+    },
+    {
+      "name": "Complete job",
+      "conclusion": "success"
+    }
+  ],
+  "proofLines": [
+    "Backend PostgreSQL CI\tCheckout repository\t2026-10-25T19:51:04.3335695Z HEAD is now at 020cc78 Merge a787f0ee7d1cb01f9e777fbe2e0fa60999cc0805 into 587a9155b9f53d9e50981a9939a7007c19fd6ecc",
+    "Backend PostgreSQL CI\tCheckout repository\t2026-10-25T19:51:04.3410019Z 020cc78ce6e45421cb1222c62a98611d8018562c",
+    "Backend PostgreSQL CI\tVerify PostgreSQL connection and locking support\t2026-10-25T19:52:25.8372705Z Database vendor: postgresql",
+    "Backend PostgreSQL CI\tVerify PostgreSQL connection and locking support\t2026-10-25T19:52:25.8373205Z select_for_update support: True",
+    "Backend PostgreSQL CI\tApply migrations to empty PostgreSQL database\t2026-10-25T19:52:51.3045214Z   Applying partner_programs.0039_merge_solution_certificate_branches... OK",
+    "Backend PostgreSQL CI\tRun PostgreSQL locking and vacancy response tests\t2026-10-25T19:53:13.6700044Z   Applying partner_programs.0039_merge_solution_certificate_branches... OK",
+    "Backend PostgreSQL CI\tRun PostgreSQL locking and vacancy response tests\t2026-10-25T19:53:31.9992852Z Ran 39 tests in 14.053s",
+    "Backend PostgreSQL CI\tRun PostgreSQL locking and vacancy response tests\t2026-10-25T19:53:31.9993598Z OK",
+    "Backend PostgreSQL CI\tRun full backend test suite\t2026-10-25T20:33:50.2254978Z Ran 1846 tests in 2396.359s",
+    "Backend PostgreSQL CI\tRun full backend test suite\t2026-10-25T20:33:50.2255998Z OK"
+  ],
+  "log": {
+    "name": "procollab-solution-dev-integration-pg-ci-success.log",
+    "bytes": 54397367,
+    "sha256": "d4f5b20dc5d56c614ac9222686658a0cd11c4d4ff6e27544163604e72ad406c3"
+  },
+  "receipt": {
+    "name": "procollab-solution-dev-integration-pg-ci-run.json",
+    "sha256": "83f624feb68a704273961be18d39f5f608a64247d5f819998a125aa354b8e583"
+  },
+  "retrieval": "gh CLI fallback after large-log connector Transport closed; terminal original run, not restarted",
+  "generalCompanion": {
+    "run": 40227933396,
+    "tests": 1812,
+    "skips": 72,
+    "namedPDFCyrillicRendererExecuted": true
+  },
+  "notProven": [
+    "New Angular organizer/public screens",
+    "Overall AC18/19",
+    "QA01/REL01 acceptance",
+    "Production deployment",
+    "Real-program conversion"
+  ],
+  "countsMustNotBeSummed": true
+}

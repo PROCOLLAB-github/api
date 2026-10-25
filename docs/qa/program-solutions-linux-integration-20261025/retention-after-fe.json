@@ -1,0 +1,121 @@
+{
+  "status": "PASS",
+  "mode": "readonly after final solution regression",
+  "modelsPreserved": 27,
+  "hashBefore": "74555320f955379af8b51b609d5f27e6e6663fd9a2a8756ad871a9a383103ba6",
+  "hashAfter": "74555320f955379af8b51b609d5f27e6e6663fd9a2a8756ad871a9a383103ba6",
+  "models": {
+    "partner_programs.PartnerProgram": {
+      "count": 48,
+      "hash": "308db2556493ac7c8c989adfa0bd5ca077e6e6edc89784b8401697bd82b40fbb"
+    },
+    "partner_programs.PartnerProgramField": {
+      "count": 320,
+      "hash": "a622aed182b162484f79d558b63cea1f3763fcc230e25ea7762c2b75bb150059"
+    },
+    "partner_programs.PartnerProgramUserProfile": {
+      "count": 135,
+      "hash": "ceef94cd6ced45827655d53e85c011a2357d5c48e48c928c7e9207e6e1119b96"
+    },
+    "partner_programs.PartnerProgramProject": {
+      "count": 3,
+      "hash": "dce4dc89533f63c2135d54aa703d406e7d04b6baebfad64e8d7449a319908cf7"
+    },
+    "partner_programs.PartnerProgramFieldValue": {
+      "count": 2,
+      "hash": "416237656955b2207ef23cb5508dade0049e6e916cc20cd311aa46ea4644899c"
+    },
+    "partner_programs.ProgramSolution": {
+      "count": 70,
+      "hash": "d454cb8314277a1284b1190cbef363390fce5a54dcba00b93e2966584a34a735"
+    },
+    "partner_programs.ProgramSolutionAnswer": {
+      "count": 312,
+      "hash": "1ee34d6e366810e381a0bbf1f220897cdb27c26dbcba9d66eee296a131036a31"
+    },
+    "partner_programs.ProgramSolutionMember": {
+      "count": 95,
+      "hash": "600c5db76bd07c73057bd6ead7cf2f96fc14e11a582bd6e82e991c7fb53f57f9"
+    },
+    "partner_programs.SolutionInvitation": {
+      "count": 47,
+      "hash": "4e73688be7059ee868b90e9ebdcd1b0bd5e67e03f63fbe1fdf02013face712b9"
+    },
+    "project_rates.SolutionScore": {
+      "count": 52,
+      "hash": "60781436579b665a926c05c826decac12b897cedf43befb9fe17972ba6a96171"
+    },
+    "project_rates.SolutionExpertAssignment": {
+      "count": 20,
+      "hash": "0717c98555e2d2cf761e088c39816d1f05a020dbc51b52b5e56fd20de47bb15f"
+    },
+    "project_rates.Criteria": {
+      "count": 91,
+      "hash": "4221acbca6c7a4e49b0748ceda9d842fefe6e9a01449c7417136538cefbed5be"
+    },
+    "users.Expert": {
+      "count": 10,
+      "hash": "673c050537bf88d48674456a8283d0c6e106355a90ff1933f45ce357f10b2dcc"
+    },
+    "files.UserFile": {
+      "count": 11,
+      "hash": "844a7ac2122b834d1ad281deded3474cc377cdfbe866037a96e11980c7d0e141"
+    },
+    "projects.Project": {
+      "count": 4,
+      "hash": "39f1962a4d9c6ba6b94d626ba944faff0ba1638d47bece52a33ea1f10e877de6"
+    },
+    "projects.Collaborator": {
+      "count": 6,
+      "hash": "445691a8d2010219deb06e9fa548a523daff58e5735c48547acaeacc66ab3061"
+    },
+    "invites.Invite": {
+      "count": 4,
+      "hash": "450c2b93a53c67c0354f46a7fa73a88bafe09e0939aa0e904c2f572843958146"
+    },
+    "project_rates.ProjectScore": {
+      "count": 3,
+      "hash": "3440d0ca3408c76fb67a2d422a0c1cbdf0052767a91f868d1e1b60f4e671c9a3"
+    },
+    "project_rates.ProjectExpertAssignment": {
+      "count": 1,
+      "hash": "f8bd082760b34f9b9847593c27541c0a3c9e1bb55d6c9cab45d8b7531bb996d4"
+    },
+    "industries.Industry": {
+      "count": 1,
+      "hash": "9c35d62f8b66283b78118a279324d4a04f905e965f46d9a3e9665a020fb532e2"
+    },
+    "users.Expert_programs": {
+      "count": 36,
+      "hash": "7123f7d8aff60859ae5d11e0c40bb2aa2c3e40ac0915a78fdf830a3ade7e2c52"
+    },
+    "partner_programs.PartnerProgram_managers": {
+      "count": 52,
+      "hash": "dcabadee2fd446601d64c720e7d547c30d4234ba0ed5f17adf98abee62fb5b19"
+    },
+    "partner_programs.SolutionAdministrativeChange": {
+      "count": 22,
+      "hash": "33d451a2fdaf0372f28274a23bbb0985a1fe73142f1d7290bcd3a8806358ae8e"
+    },
+    "partner_programs.SolutionRegistrationRemoval": {
+      "count": 7,
+      "hash": "f44a714d07b290c0426cf9e8d67976fc6780f2c102e2ba204fe3ac27bdfbf79c"
+    },
+    "users.CustomUser": {
+      "count": 33,
+      "hash": "824038a33873b26b1a67c890398eb2f84cb57d17444f087105f42249ff049475"
+    },
+    "partner_programs.ProgramCertificate": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "partner_programs.ProgramCertificateBatch": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    }
+  },
+  "databaseMutation": false,
+  "mainReset": false,
+  "realProgramSwitch": false,
+  "allPreviouslyPresentColumnsIncluded": true
+}
