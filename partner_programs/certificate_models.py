@@ -53,6 +53,13 @@ class ProgramCertificate(models.Model):
     program = models.ForeignKey("PartnerProgram", on_delete=models.CASCADE)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     batch = models.ForeignKey(ProgramCertificateBatch, on_delete=models.RESTRICT)
+    rendered_batch = models.ForeignKey(
+        ProgramCertificateBatch,
+        null=True,
+        blank=True,
+        on_delete=models.RESTRICT,
+        related_name="rendered_certificates",
+    )
     name = models.CharField(max_length=500)
     email = models.EmailField()
     pdf = models.BinaryField(null=True)
