@@ -79,3 +79,41 @@ Target: сохранить endpoint, role priority organizer → expert → part
 - Not checked: полная основная manager analytics/attention, новые административные UI, публикация, полный a11y audit и релиз; этот блок их не закрывает. Новый commit требует своего Linux CI; предыдущий a10af12 прошел 1549 PostgreSQL tests + 39 locking и общий CI.
 
 Requirement audit WID01–WID08: PASS. Review не выявил оставшихся blocking findings в этом блоке. Основная аналитика/attention/другие экспорты остаются в полном BE09 scope; вся feature и PR пока draft.
+
+## Следующий блок: аналитика решений по кейсам, API
+
+Current: services/case_analytics.py группирует PartnerProgramProject по точному текущему option системного case, считает уникальных зарегистрированных leader/Collaborator внутри каждого bucket, дает нулевые строки текущих options и without_case для отсутствующего/устаревшего значения. Это корректно для legacy, но не источник решений. Solution уже имеет snapshot_case/team_user_ids для сданного представления и prefetch answers/members для черновика.
+
+Target/contract before implementation: отдельный GET /programs/{program_id}/management/solution-cases/ возвращает только агрегаты решений своей программы. C00 1.8.0 добавляется перед runtime реализацией. Доступ организатора/существующего can_manage_program; legacy mode дает контролируемый 409 C00. Старые overview/cases и DTO не меняются. Новый DTO содержит program_id, configured, submission_applicable, items и without_case; счетчик называется solutions_total, project_id/projects_total отсутствуют. Неприменимые submitted/not_submitted неконкурсной программы равны null, сохранение не требует submit. География/материалы/общая сводка/attention не выводятся из этого endpoint и остаются следующими блоками.
+
+| AC | Предусловие и наблюдаемый результат |
+| --- | --- |
+| CAS01 | Только организатор своей программы/текущий admin может читать; expert, captain, outsider, anonymous, foreign program и legacy проверены напрямую |
+| CAS02 | Каждое ProgramSolution учитывается ровно один раз; текущие options идут в прежнем порядке, включая zero; пустой/устаревший кейс попадает в without_case |
+| CAS03 | Submitted читает кейс и принятый состав из snapshot; draft из собственных answers/members; изменение live данных не переписывает сданный источник |
+| CAS04 | Уникальные зарегистрированные captain/accepted members внутри bucket; повторное историческое членство, pending, чужая программа и Project не увеличивают состав решения; регистрация уже защищена DB unique(user, program) |
+| CAS05 | Для noncompetitive submission_applicable=false и оба submission counts null, реальное сохраненное решение учитывается без искусственной сдачи |
+| CAS06 | GET не пишет, не раскрывает ответы/оценки/контакты, Cache-Control private/no-store; запросов ограниченное число, без роста на каждую работу |
+| CAS07 | C00 schema/examples проверяются обеими сторонами; frontend port/repository/adapter/use case передают настоящие агрегаты, 0/null и C00 errors через реальный HTTP interceptor |
+
+План: контракт/примеры → scoped service/API → PostgreSQL/schema/legacy regression → frontend API layer/wire/types/build → review и обновление draft PR. Новый продуктовый UI в этот блок не входит; его browser приемка не заявляется.
+
+## Проверка и review аналитики кейсов 25.10.2026
+
+Реализовано в services/solution_case_analytics.py и SolutionCaseAnalyticsView. Доступ и явный solution mode проверяются до чтения агрегатов; неизвестные query отклоняются. Snapshot case/team используются для submitted, живые ответы/принятые members для draft. Регистрации выбираются только этой программы, люди уникальны внутри bucket. Legacy services/DTO не переписаны. Noncompetitive учитывает сохраненную работу со submitted/not_submitted=null.
+
+| AC | Evidence | Verdict |
+| --- | --- | --- |
+| CAS01 | API tests manager/admin/participant/expert/outsider/anonymous/foreign/legacy и HTTP JWT двух форм/неконкурсной | PASS |
+| CAS02 | tests current option order/zero, empty/obsolete/missing value и сумма buckets = ProgramSolution count | PASS |
+| CAS03 | tests submitted snapshot после намеренно измененных live case/captain/members; draft case из своих answers | PASS |
+| CAS04 | tests registered accepted/pending/unregistered, historical повторное членство, legacy Project и другая программа того же капитана | PASS |
+| CAS05 | API test сохраненного draft и HTTP noncompetitive program=6: null submission counters, ни одного submit | PASS |
+| CAS06 | API test не более 10 queries с тем же количеством после восьми дополнительных решений, нет INSERT/UPDATE/DELETE, exact schema и private/no-store | PASS |
+| CAS07 | C00 88/36/80; прежние 85/35/72 структурно сохранены и обе копии byte-identical; 12 real HTTP interceptor/error/unsafe-ID frontend tests | PASS |
+
+Checked by tests: финальный PostgreSQL прогон 37 tests (9 новых solution cases, прежняя case analytics и solution widget) PASS. Первые две ошибки новой fixture касались существующего DB unique регистрации и не настроенного второго option; fixture исправлена, runtime assertions сохранены. Black/Flake8 измененных Python и manage.py check PASS. Frontend полный npm run test:ci — 2627 tests / 474 files и strict C00 types PASS; Angular development build и scoped ESLint PASS. Locked Prettier 3.8.3: 1963 LF-normalized files без нарушений; итоговый git diff --check PASS.
+
+Checked through running API: настоящий Django/PostgreSQL/JWT, КЧ program=3 и hackathon=4 с одной работой и принятым зарегистрированным составом 2/1, noncompetitive=6 с одной сохраненной работой и составом 2. Ответ соответствует C00; participant/expert 403, anonymous 401, private/no-store; 0 изменяющих HTTP. Первый запрос пришел до завершения старта локального сервера, повтор после Listening прошел; сервер не перезапускался повторно. Пользовательские/production данные не использовались.
+
+Checked by source/review: источник строго program-scoped, настоящий ID программы, нет Project полей/ID, контактов, оценок и сырого массива ответов. UI не менялся; browser приемка нового экрана неприменима. Полный нагрузочный benchmark больших программ не выполнялся; тест гарантирует число запросов, не постоянный объем памяти. Blocking findings блока не обнаружены. Общая manager analytics/attention/материалы/прочие выгрузки, подключение frontend экрана, публикация и первый выпуск по-прежнему не завершены.

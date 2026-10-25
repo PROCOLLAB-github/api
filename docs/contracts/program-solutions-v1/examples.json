@@ -1,5 +1,5 @@
 {
-  "contract_version": "1.7.0",
+  "contract_version": "1.8.0",
   "description": "Независимые примеры, не последовательность операций; фиктивные данные.",
   "scenarios": [
     {
@@ -5479,6 +5479,142 @@
       "status": 409,
       "response": {
         "detail": "Связи заявки требуют проверки организатором."
+      }
+    },
+    {
+      "name": "solution_case_analytics_competitive",
+      "operation_id": "getSolutionCaseAnalytics",
+      "status": 200,
+      "response": {
+        "program_id": 12,
+        "configured": true,
+        "submission_applicable": true,
+        "items": [
+          {
+            "name": "Экология",
+            "participants_total": 3,
+            "solutions_total": 2,
+            "not_submitted": 1,
+            "submitted": 1
+          },
+          {
+            "name": "Технологии",
+            "participants_total": 0,
+            "solutions_total": 0,
+            "not_submitted": 0,
+            "submitted": 0
+          }
+        ],
+        "without_case": {
+          "participants_total": 1,
+          "solutions_total": 1,
+          "not_submitted": 1,
+          "submitted": 0
+        }
+      }
+    },
+    {
+      "name": "solution_case_analytics_noncompetitive",
+      "operation_id": "getSolutionCaseAnalytics",
+      "status": 200,
+      "response": {
+        "program_id": 12,
+        "configured": true,
+        "submission_applicable": false,
+        "items": [
+          {
+            "name": "Экология",
+            "participants_total": 3,
+            "solutions_total": 2,
+            "not_submitted": null,
+            "submitted": null
+          },
+          {
+            "name": "Технологии",
+            "participants_total": 0,
+            "solutions_total": 0,
+            "not_submitted": null,
+            "submitted": null
+          }
+        ],
+        "without_case": {
+          "participants_total": 1,
+          "solutions_total": 1,
+          "not_submitted": null,
+          "submitted": null
+        }
+      }
+    },
+    {
+      "name": "solution_case_analytics_unconfigured",
+      "operation_id": "getSolutionCaseAnalytics",
+      "status": 200,
+      "response": {
+        "program_id": 12,
+        "configured": false,
+        "submission_applicable": true,
+        "items": [],
+        "without_case": {
+          "participants_total": 0,
+          "solutions_total": 0,
+          "not_submitted": 0,
+          "submitted": 0
+        }
+      }
+    },
+    {
+      "name": "solution_case_analytics_forbidden",
+      "operation_id": "getSolutionCaseAnalytics",
+      "status": 403,
+      "response": {
+        "code": "permission_denied",
+        "detail": "Аналитика доступна организатору программы.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "solution_case_analytics_anonymous",
+      "operation_id": "getSolutionCaseAnalytics",
+      "status": 401,
+      "response": {
+        "code": "authentication_required",
+        "detail": "Требуется авторизация.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "solution_case_analytics_missing",
+      "operation_id": "getSolutionCaseAnalytics",
+      "status": 404,
+      "response": {
+        "code": "not_found",
+        "detail": "Решение или программа не найдены.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "solution_case_analytics_legacy",
+      "operation_id": "getSolutionCaseAnalytics",
+      "status": 409,
+      "response": {
+        "code": "solution_mode_unavailable",
+        "detail": "Программа использует заявки на основе проектов.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "solution_case_analytics_unexpected_query",
+      "operation_id": "getSolutionCaseAnalytics",
+      "status": 400,
+      "response": {
+        "code": "validation_error",
+        "detail": "Проверьте данные запроса.",
+        "errors": [],
+        "meta": {}
       }
     }
   ]

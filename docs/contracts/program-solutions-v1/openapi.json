@@ -3,7 +3,7 @@
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "info": {
     "title": "PROCOLLAB Program Solutions C00",
-    "version": "1.7.0",
+    "version": "1.8.0",
     "description": "Контракт решений в программах для реализации и моков BE01–BE09. API base URL задается окружением. snake_case на проводе. Старые API не меняются."
   },
   "servers": [
@@ -7210,6 +7210,86 @@
           }
         }
       }
+    },
+    "/programs/{program_id}/management/solution-cases/": {
+      "get": {
+        "operationId": "getSolutionCaseAnalytics",
+        "summary": "Read program-scoped solution case aggregates, manager only",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current case options and unique registered accepted teams; noncompetitive submission counts are null",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseSolutionAnalytics"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -10371,6 +10451,111 @@
         ],
         "additionalProperties": true,
         "description": "Существующий DRF error contract виджета; raw body не показывается в Angular."
+      },
+      "CaseSolutionMetrics": {
+        "type": "object",
+        "required": [
+          "participants_total",
+          "solutions_total",
+          "not_submitted",
+          "submitted"
+        ],
+        "properties": {
+          "participants_total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "solutions_total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "not_submitted": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "submitted": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "CaseSolutionItem": {
+        "type": "object",
+        "required": [
+          "name",
+          "participants_total",
+          "solutions_total",
+          "not_submitted",
+          "submitted"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "participants_total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "solutions_total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "not_submitted": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "submitted": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "CaseSolutionAnalytics": {
+        "type": "object",
+        "required": [
+          "program_id",
+          "configured",
+          "submission_applicable",
+          "items",
+          "without_case"
+        ],
+        "properties": {
+          "program_id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "configured": {
+            "type": "boolean"
+          },
+          "submission_applicable": {
+            "type": "boolean"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CaseSolutionItem"
+            }
+          },
+          "without_case": {
+            "$ref": "#/components/schemas/CaseSolutionMetrics"
+          }
+        },
+        "additionalProperties": false
       }
     }
   }
