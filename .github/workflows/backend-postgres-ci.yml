@@ -17,7 +17,8 @@ jobs:
   postgres-tests:
     name: Backend PostgreSQL CI
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Полный набор вместе с подготовкой превысил 30 минут; состав проверок сохранен.
+    timeout-minutes: 60
 
     services:
       postgres:
