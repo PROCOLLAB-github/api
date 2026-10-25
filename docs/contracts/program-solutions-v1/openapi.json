@@ -3,7 +3,7 @@
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "info": {
     "title": "PROCOLLAB Program Solutions C00",
-    "version": "1.8.0",
+    "version": "1.9.0",
     "description": "Контракт решений в программах для реализации и моков BE01–BE09. API base URL задается окружением. snake_case на проводе. Старые API не меняются."
   },
   "servers": [
@@ -7290,6 +7290,528 @@
           }
         }
       }
+    },
+    "/programs/{program_id}/management/solution-analytics/": {
+      "get": {
+        "operationId": "getSolutionManagerAnalytics",
+        "summary": "getSolutionManagerAnalytics",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Program-scoped manager read; private, no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagerAnalytics"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/programs/{program_id}/management/solution-analytics/assignments/": {
+      "get": {
+        "operationId": "getSolutionManagerAssignments",
+        "summary": "getSolutionManagerAssignments",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "completed",
+                "pending"
+              ],
+              "default": "all"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Program-scoped manager read; private, no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagerAssignments"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/programs/{program_id}/management/solution-analytics/assignments/{assignment_id}/": {
+      "get": {
+        "operationId": "getSolutionManagerAssignment",
+        "summary": "getSolutionManagerAssignment",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "assignment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Program-scoped manager read; private, no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagerAssignmentDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/programs/{program_id}/management/solution-analytics/solutions/": {
+      "get": {
+        "operationId": "getSolutionManagerSolutions",
+        "summary": "getSolutionManagerSolutions",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200,
+              "default": ""
+            }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "not_submitted",
+                "awaiting_evaluation"
+              ],
+              "default": "all"
+            }
+          },
+          {
+            "name": "submission",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "submitted",
+                "not_submitted"
+              ],
+              "default": "all"
+            }
+          },
+          {
+            "name": "case_scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "selected",
+                "without_case"
+              ],
+              "default": "all"
+            }
+          },
+          {
+            "name": "case_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Program-scoped manager read; private, no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagerSolutions"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/programs/{program_id}/management/solution-analytics/export/": {
+      "get": {
+        "operationId": "exportSolutionProgramAnalytics",
+        "summary": "exportSolutionProgramAnalytics",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "program",
+                "solutions",
+                "submitted",
+                "scores"
+              ],
+              "default": "program"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Program-scoped manager read; private, no-store",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Контролируемая ошибка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -10555,6 +11077,971 @@
             "$ref": "#/components/schemas/CaseSolutionMetrics"
           }
         },
+        "additionalProperties": false
+      },
+      "ManagerTotal": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "total"
+        ],
+        "additionalProperties": false
+      },
+      "ManagerRegion": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "name",
+          "count"
+        ],
+        "additionalProperties": false
+      },
+      "ManagerRegions": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ManagerRegion"
+            }
+          }
+        },
+        "required": [
+          "total",
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "ManagerSummary": {
+        "type": "object",
+        "properties": {
+          "participants": {
+            "$ref": "#/components/schemas/ManagerTotal"
+          },
+          "solutions": {
+            "$ref": "#/components/schemas/ManagerTotal"
+          },
+          "experts": {
+            "$ref": "#/components/schemas/ManagerTotal"
+          },
+          "participant_regions": {
+            "$ref": "#/components/schemas/ManagerRegions"
+          }
+        },
+        "required": [
+          "participants",
+          "solutions",
+          "experts",
+          "participant_regions"
+        ],
+        "additionalProperties": false
+      },
+      "ManagerParticipantFunnel": {
+        "type": "object",
+        "properties": {
+          "registrations": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unique_participants": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "visited_participants": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "onboarded_participants": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "with_team": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "captains": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "submitted_captains": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          }
+        },
+        "required": [
+          "registrations",
+          "unique_participants",
+          "visited_participants",
+          "onboarded_participants",
+          "with_team",
+          "captains",
+          "submitted_captains"
+        ],
+        "additionalProperties": false
+      },
+      "ManagerSolutionFunnel": {
+        "type": "object",
+        "properties": {
+          "created": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "submission_applicable": {
+            "type": "boolean"
+          },
+          "not_submitted": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "submitted": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "evaluated": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          }
+        },
+        "required": [
+          "created",
+          "submission_applicable",
+          "not_submitted",
+          "submitted",
+          "evaluated"
+        ],
+        "additionalProperties": false
+      },
+      "ManagerEvaluationCounters": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "pending": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "evaluated": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "total",
+          "pending",
+          "evaluated"
+        ],
+        "additionalProperties": false
+      },
+      "ManagerEvaluationSolutions": {
+        "type": "object",
+        "properties": {
+          "submitted": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "awaiting_evaluation": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "partially_evaluated": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "evaluated": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "submitted",
+          "awaiting_evaluation",
+          "partially_evaluated",
+          "evaluated"
+        ],
+        "additionalProperties": false
+      },
+      "ManagerEvaluationStatus": {
+        "type": "object",
+        "properties": {
+          "applicable": {
+            "type": "boolean"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "open",
+              "distributed"
+            ]
+          },
+          "required_evaluators": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "max_evaluations_per_solution": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "assignments": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ManagerEvaluationCounters"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "solutions": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ManagerEvaluationSolutions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "applicable",
+          "mode",
+          "required_evaluators",
+          "max_evaluations_per_solution",
+          "assignments",
+          "solutions"
+        ],
+        "additionalProperties": false
+      },
+      "ManagerExpert": {
+        "type": "object",
+        "properties": {
+          "expert_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "user_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "first_name": {
+            "type": "string"
+          },
+          "last_name": {
+            "type": "string"
+          },
+          "full_name": {
+            "type": "string"
+          },
+          "avatar": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "expert_id",
+          "user_id",
+          "first_name",
+          "last_name",
+          "full_name",
+          "avatar"
+        ],
+        "additionalProperties": false
+      },
+      "ManagerAssignment": {
+        "type": "object",
+        "properties": {
+          "assignment_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "expert": {
+            "$ref": "#/components/schemas/ManagerExpert"
+          },
+          "application": {
+            "$ref": "#/components/schemas/SolutionRef"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "not_ready",
+              "pending",
+              "in_progress",
+              "completed"
+            ]
+          },
+          "assigned_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "submitted": {
+            "type": "boolean"
+          },
+          "submitted_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "waiting_since": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "waiting_seconds": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          }
+        },
+        "required": [
+          "assignment_id",
+          "expert",
+          "application",
+          "status",
+          "assigned_at",
+          "submitted",
+          "submitted_at",
+          "waiting_since",
+          "waiting_seconds"
+        ],
+        "additionalProperties": false
+      },
+      "ManagerAssignmentCriterion": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "int",
+              "float",
+              "bool",
+              "str"
+            ]
+          },
+          "min_value": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "max_value": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "value": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 1000,
+            "description": "Строка/null по прежнему типу критерия. Текстовый комментарий допускает до 1000 символов, как текущий ProjectScore; числовой диапазон и True/False продолжают проверяться отдельно."
+          },
+          "criterion_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "is_scored": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "type",
+          "min_value",
+          "max_value",
+          "value",
+          "criterion_id",
+          "is_scored"
+        ],
+        "additionalProperties": false
+      },
+      "ManagerAssignmentDetail": {
+        "type": "object",
+        "properties": {
+          "assignment_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "expert": {
+            "$ref": "#/components/schemas/ManagerExpert"
+          },
+          "application": {
+            "$ref": "#/components/schemas/SolutionRef"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "not_ready",
+              "pending",
+              "in_progress",
+              "completed"
+            ]
+          },
+          "assigned_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "submitted": {
+            "type": "boolean"
+          },
+          "submitted_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "waiting_since": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "waiting_seconds": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "scores": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ManagerAssignmentCriterion"
+            }
+          }
+        },
+        "required": [
+          "assignment_id",
+          "expert",
+          "application",
+          "status",
+          "assigned_at",
+          "submitted",
+          "submitted_at",
+          "waiting_since",
+          "waiting_seconds",
+          "scores"
+        ],
+        "additionalProperties": false
+      },
+      "ManagerAssignments": {
+        "type": "object",
+        "properties": {
+          "applicable": {
+            "type": "boolean"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "open",
+              "distributed"
+            ]
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ManagerAssignment"
+            }
+          }
+        },
+        "required": [
+          "applicable",
+          "mode",
+          "results"
+        ],
+        "additionalProperties": false
+      },
+      "ManagerDelayedExpert": {
+        "type": "object",
+        "properties": {
+          "expert_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "user_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "first_name": {
+            "type": "string"
+          },
+          "last_name": {
+            "type": "string"
+          },
+          "full_name": {
+            "type": "string"
+          },
+          "avatar": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "assignments_total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "completed": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "pending": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "overdue_24h": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "overdue_48h": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "oldest_waiting_since": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "oldest_waiting_seconds": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "critical",
+              "warning"
+            ]
+          }
+        },
+        "required": [
+          "expert_id",
+          "user_id",
+          "first_name",
+          "last_name",
+          "full_name",
+          "avatar",
+          "assignments_total",
+          "completed",
+          "pending",
+          "overdue_24h",
+          "overdue_48h",
+          "oldest_waiting_since",
+          "oldest_waiting_seconds",
+          "severity"
+        ],
+        "additionalProperties": false
+      },
+      "ManagerDelayedExperts": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ManagerDelayedExpert"
+            }
+          }
+        },
+        "required": [
+          "total",
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "ManagerAttention": {
+        "type": "object",
+        "properties": {
+          "participants_without_visit": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "participants_without_onboarding": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "participants_without_team": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "solutions_awaiting_evaluation": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "solutions_not_submitted": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "delayed_experts": {
+            "$ref": "#/components/schemas/ManagerDelayedExperts"
+          }
+        },
+        "required": [
+          "participants_without_visit",
+          "participants_without_onboarding",
+          "participants_without_team",
+          "solutions_awaiting_evaluation",
+          "solutions_not_submitted",
+          "delayed_experts"
+        ],
+        "additionalProperties": false
+      },
+      "ManagerActivity": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "registrations": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "submitted_solutions": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          }
+        },
+        "required": [
+          "date",
+          "registrations",
+          "submitted_solutions"
+        ],
+        "additionalProperties": false
+      },
+      "ManagerFieldCoverage": {
+        "type": "object",
+        "properties": {
+          "field_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "label": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/FieldType"
+          },
+          "purpose": {
+            "$ref": "#/components/schemas/Purpose"
+          },
+          "applicable": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "answered": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "required_applicable": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "required_unanswered": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "field_id",
+          "label",
+          "type",
+          "purpose",
+          "applicable",
+          "answered",
+          "required_applicable",
+          "required_unanswered"
+        ],
+        "additionalProperties": false
+      },
+      "ManagerAnalytics": {
+        "type": "object",
+        "properties": {
+          "program_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "summary": {
+            "$ref": "#/components/schemas/ManagerSummary"
+          },
+          "participant_funnel": {
+            "$ref": "#/components/schemas/ManagerParticipantFunnel"
+          },
+          "solution_funnel": {
+            "$ref": "#/components/schemas/ManagerSolutionFunnel"
+          },
+          "evaluation_status": {
+            "$ref": "#/components/schemas/ManagerEvaluationStatus"
+          },
+          "attention": {
+            "$ref": "#/components/schemas/ManagerAttention"
+          },
+          "activity": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ManagerActivity"
+            }
+          },
+          "cases": {
+            "$ref": "#/components/schemas/CaseSolutionAnalytics"
+          },
+          "field_coverage": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ManagerFieldCoverage"
+            }
+          }
+        },
+        "required": [
+          "program_id",
+          "summary",
+          "participant_funnel",
+          "solution_funnel",
+          "evaluation_status",
+          "attention",
+          "activity",
+          "cases",
+          "field_coverage"
+        ],
+        "additionalProperties": false
+      },
+      "ManagerSolutionRow": {
+        "type": "object",
+        "properties": {
+          "application": {
+            "$ref": "#/components/schemas/SolutionRef"
+          },
+          "captain": {
+            "type": "object",
+            "properties": {
+              "user_id": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "full_name": {
+                "type": "string"
+              },
+              "avatar": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "user_id",
+              "full_name",
+              "avatar"
+            ],
+            "additionalProperties": false
+          },
+          "case_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "submission_status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "submitted"
+            ]
+          },
+          "evaluation_status": {
+            "type": "string",
+            "enum": [
+              "not_applicable",
+              "not_submitted",
+              "awaiting_evaluation",
+              "partially_evaluated",
+              "evaluated"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "submitted_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "assignments_total": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "assignments_completed": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "waiting_reason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              null,
+              "no_assignments",
+              "no_completed_evaluations",
+              "partially_evaluated",
+              "awaiting_first_evaluation"
+            ]
+          }
+        },
+        "required": [
+          "application",
+          "captain",
+          "case_name",
+          "submission_status",
+          "evaluation_status",
+          "created_at",
+          "submitted_at",
+          "assignments_total",
+          "assignments_completed",
+          "waiting_reason"
+        ],
+        "additionalProperties": false
+      },
+      "ManagerSolutions": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "next": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uri"
+          },
+          "previous": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uri"
+          },
+          "submission_applicable": {
+            "type": "boolean"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "open",
+              "distributed"
+            ]
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ManagerSolutionRow"
+            }
+          }
+        },
+        "required": [
+          "count",
+          "next",
+          "previous",
+          "submission_applicable",
+          "mode",
+          "results"
+        ],
         "additionalProperties": false
       }
     }

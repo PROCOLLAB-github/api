@@ -117,3 +117,57 @@ Checked by tests: финальный PostgreSQL прогон 37 tests (9 нов�
 Checked through running API: настоящий Django/PostgreSQL/JWT, КЧ program=3 и hackathon=4 с одной работой и принятым зарегистрированным составом 2/1, noncompetitive=6 с одной сохраненной работой и составом 2. Ответ соответствует C00; participant/expert 403, anonymous 401, private/no-store; 0 изменяющих HTTP. Первый запрос пришел до завершения старта локального сервера, повтор после Listening прошел; сервер не перезапускался повторно. Пользовательские/production данные не использовались.
 
 Checked by source/review: источник строго program-scoped, настоящий ID программы, нет Project полей/ID, контактов, оценок и сырого массива ответов. UI не менялся; browser приемка нового экрана неприменима. Полный нагрузочный benchmark больших программ не выполнялся; тест гарантирует число запросов, не постоянный объем памяти. Blocking findings блока не обнаружены. Общая manager analytics/attention/материалы/прочие выгрузки, подключение frontend экрана, публикация и первый выпуск по-прежнему не завершены.
+
+## Основная manager analytics: требования до реализации
+
+Current sources: analytics.py считает Project links/ProjectScore/ProjectExpertAssignment, case analytics уже имеет отдельный solution API. Participant selectors уже выбирают принятый состав решения; definitions посещения/onboarding/региона и 30-дневного окна активности существуют. assignment_analytics.py задает waiting_since=max(assigned_at, submitted_at), pending/not_ready/completed, пять дней до дедлайна и 24/48h attention. evaluation_math.complete_values — общая проверка всех критериев, включая 0/False/пустую запись комментария. program_report.Report защищает XLSX строки от формул и сохраняет числа. Обычная форма решения не имеет отдельного Project.region; география участников остается по существующему user.city, география проектов не подменяется географией решений.
+
+Before/after API: C00 1.9.0 до runtime реализации добавляет GET management/solution-analytics/, assignments/, assignments/{assignment_id}/, solutions/ и export/. Новые агрегаты/страницы/книга содержат SolutionRef и solution IDs. Старые overview/attention/Project DTO не меняются. Доступ can_manage_program, явный solution mode, C00 errors и private/no-store. People attention продолжает использовать существующие scoped selectors; новые solution списки покрывают case drilldown, not_submitted и awaiting_evaluation. Отправка напоминаний/разрушающие команды и новый UI остаются отдельными блоками.
+
+Target: сводка, воронки, оценивание/просроченные эксперты, активность, кейсы и покрытие полей читают ProgramSolution. Distributed завершенность требует реального назначения и complete_values; open сохраняет первую оценку. Неприменимые noncompetitive submission/evaluation и open assignment aggregates равны null. Один solution учитывается один раз. Покрытие поля — описательная статистика присутствия ответа через empty_value (0/False являются ответами), а не новая проверка готовности/доступности файла. Applicable/required_applicable берутся из формы каждого решения (snapshot submitted/current draft); новое required поле не становится пропуском сданной работы. Для отображения метаданных stable field ID используется текущая definition, а для удаленной — первая сохраненная definition; содержимое сданного решения от этого не меняется.
+
+| AC | Предусловие и наблюдаемый результат |
+| --- | --- |
+| ANA01 | Прямые вызовы всех пяти API защищены manager/admin, программой и mode; participant/expert/outsider/anonymous/foreign IDs не раскрывают данные |
+| ANA02 | Summary/funnel считают реальные solutions и уникальный registered accepted состав; Project и pending не увеличивают их; zero/empty не превращаются в ошибку |
+| ANA03 | Distributed completed/partial/awaiting используют реальные назначения/required_evaluators и общую complete_values; own 0/False, blank comment row, no criteria, другой эксперт/программа проверены |
+| ANA04 | Open сохраняет первую оценку и null assignment aggregates; noncompetitive дает null submission/evaluation aggregates и учитывает сохраненные drafts |
+| ANA05 | Waiting/delayed experts сохраняют max двух времен, отсутствующий timestamp, 24/48h, порог пяти дней и deadline severity; GET не меняет статусы |
+| ANA06 | Поля/материалы учитываются только там, где применимы; submitted snapshot неизменен, новое required поле затрагивает draft; 0/False answered, пустое необязательное не становится missing required |
+| ANA07 | Activity использует 30 дней и настоящие submitted_at; case aggregates совпадают с C00 1.8; отсутствующий Project.region не выдается как вымышленная география решения |
+| ANA08 | Scoped solution list сохраняет search/case/scope/submission/pagination, реальные snapshot names и safe captain поля; count соответствует выборке, noncompetitive attention неприменим |
+| ANA09 | Manager assignments/detail используют настоящие SolutionExpertAssignment и Expert.user; scope all/completed/pending, score-row presence и revision-free readonly detail не подменяют IDs |
+| ANA10 | XLSX program/solutions/submitted/scores содержит настоящие IDs, snapshot fields/answers и ту же сводку; строки защищены от формул, числа/0/False/partial scores не теряются |
+| ANA11 | Число запросов ограничено и не растет на каждую работу, GET не пишет, legacy regressions проходят; large-volume benchmark отдельно не заявляется |
+| ANA12 | C00/независимые сценарии синхронизированы; frontend API layer передает реальные DTO/0/null/query/Blob/error, строгие типы и build проходят; новый UI не заявляется готовым |
+
+План: контракт и независимые примеры → общий scoped read context и API → книга на существующем безопасном writer → PostgreSQL/HTTP/schema/legacy tests → frontend API/wire/types/build → requirement audit/review → draft PR. Подключение существующего экрана и browser acceptance следуют после готовности всех нужных данных, без фиктивной проекции Project.
+
+## Проверка и review основной manager analytics
+
+Реализованы SolutionAnalyticsContext, пять scoped readonly/export API и solution_program_report на существующем Report writer. C00 1.9.0 зафиксирован до реализации: 110 schemas / 41 operations / 113 scenarios; прежние 88/36/80 структурно сохранены, обе копии byte-identical. Старые Project overview, assignment, attention и report services не переписывались. Shared SolutionAnalyticsAPIView сохраняет существующий C00 1.8 endpoint кейсов, добавляя только общие проверки доступа/private cache и преобразование datetime в wire strings.
+
+| AC | Evidence | Verdict |
+| --- | --- | --- |
+| ANA01 | direct API matrix всех пяти endpoints: manager/admin, captain/expert/outsider/anonymous, legacy; чужие assignment/solution IDs и ID за safe range дают 404 без выдачи данных | PASS |
+| ANA02 | API summary/funnel/attention tests accepted/pending/Project/другая программа, zero/empty; HTTP КЧ/хакатона/noncompetitive | PASS |
+| ANA03 | actual rate 0/False/blank comment row, второй эксперт/квота, unassigned/invalid scores/no criteria tests; общий complete_values | PASS |
+| ANA04 | open первая оценка, null aggregates, сохраненный noncompetitive draft и неприменимый attention API tests/HTTP | PASS |
+| ANA05 | tests max assigned/submitted, 25h/24/48h, пять дней до deadline/warning/critical, not_ready null waiting; missing historical stamp проверен in-memory без снятия DB constraint нового submitted | PASS |
+| ANA06 | новая required definition применима только draft; submitted 0/False answered, необязательная file не считается missing required; applied snapshot/current field metadata | PASS |
+| ANA07 | 30-дневное окно/zero days/реальный submitted_at tests, cases parity с 1.8, Project.region не попадает в summary | PASS |
+| ANA08 | count/page/search/case/submission/scope и snapshot name tests, invalid query/offset и waiting reason; фактический HTTP трех программ | PASS |
+| ANA09 | реальные SolutionExpertAssignment + Expert.user, scope/status/score-row presence tests; targeted detail после review загружает только solution своего scoped assignment | PASS |
+| ANA10 | настоящие XLSX program/solutions/submitted/scores, IDs/summary/snapshot answers/0/False/partial scores/no formulas; historical registration reading regression | PASS |
+| ANA11 | не более 30 queries для summary/list/assignments, одинаковое число после восьми работ, нет business writes; 114 PostgreSQL tests затронутой/legacy аналитики и отчетов PASS | PASS |
+| ANA12 | 47 новых HTTP wire tests и 5 прежних export tests PASS; полный frontend 2674 tests / 475 files и strict C00 types PASS, development build и scoped ESLint PASS | PASS |
+
+Checked by tests: широкий PostgreSQL прогон 114 tests PASS, после review scoped detail/score author query повторно 15 новых tests PASS. Первая новая fixture пыталась удалить уже заблокированные критерии после оценки; no-criteria выделен в допустимое исходное состояние, защита Criteria сохранена. Black/Flake8, makemigrations --check --dry-run, manage.py check и C00 PASS. Полный frontend/сборка указаны отдельно выше. Locked Prettier 3.8.3: 1965 LF-normalized files PASS; git diff --check обоих repos PASS.
+
+Checked through running HTTP API: реальный Django/PostgreSQL/JWT на вымышленных КЧ=3, хакатоне=4 и noncompetitive=6. Summary/cases parity, принятый зарегистрированный состав 2/1/2, actual solution list и assignment/detail, нулевой остаток завершенных оценок и noncompetitive null, participant/expert 403 и anonymous 401; все четыре книги читаются openpyxl, summary и ID согласованы, formula cells отсутствуют. Книга программы имеет 14 листов, solutions/submitted — 4, scores — 2. Evidence manager-analytics-http-evidence.json и manager-analytics-program-*.xlsx в design-artifacts/program-solutions-20261024/expert-v1/implementation. 0 изменяющих HTTP, реальные сообщения и production не использовались.
+
+Checked by source/review: новые DTO/книга используют SolutionRef и solution_id; общий расчет завершенности/просрочек и безопасный writer сохранены. На review устранены загрузка всех решений для одной assignment detail, unsafe integer до SQL и повторное чтение пользователя автора оценки (имя выбирается вместе с исходной записью). В старом поле Criteria и прежней книге поведение не изменялось. Новых blocking findings этого API-блока не осталось.
+
+Not checked: новый frontend экран и его browser acceptance, reminder confirmation/delivery, destructive management actions, оставшаяся публикация/QA01/REL01. Этот блок — полный набор указанных пяти read/export API, не готовность всей BE09/FE08. Large-volume memory/load benchmark и пересчет книги внутри Excel не выполнялись. Default legacy_project и реальные программы не переключались.
+
+Предыдущий опубликованный f75da24 прошел Linux PostgreSQL CI 40146313783: 1573 full-suite tests и 39 locking tests PASS; общий CI 40146310069 на момент следующего checkpoint еще выполнялся. Новый commit основной аналитики требует собственного CI, результат предыдущего не подменяет его проверку.

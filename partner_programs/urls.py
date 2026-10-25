@@ -1,5 +1,12 @@
 from django.urls import path
-from partner_programs.solution_analytics_api import SolutionCaseAnalyticsView
+from partner_programs.solution_analytics_api import (
+    SolutionCaseAnalyticsView,
+    SolutionManagerAnalyticsView,
+    SolutionManagerAssignmentsView,
+    SolutionManagerAssignmentView,
+    SolutionManagerSolutionsView,
+    SolutionManagerExportView,
+)
 from project_rates.solution_evaluation_api import (
     SolutionRatingsView,
     SolutionRatingView,
@@ -124,6 +131,25 @@ from partner_programs.certificate_views import (
 app_name = "partner_programs"
 
 urlpatterns = [
+    path(
+        "<int:pk>/management/solution-analytics/", SolutionManagerAnalyticsView.as_view()
+    ),
+    path(
+        "<int:pk>/management/solution-analytics/assignments/",
+        SolutionManagerAssignmentsView.as_view(),
+    ),
+    path(
+        "<int:pk>/management/solution-analytics/assignments/<int:assignment_id>/",
+        SolutionManagerAssignmentView.as_view(),
+    ),
+    path(
+        "<int:pk>/management/solution-analytics/solutions/",
+        SolutionManagerSolutionsView.as_view(),
+    ),
+    path(
+        "<int:pk>/management/solution-analytics/export/",
+        SolutionManagerExportView.as_view(),
+    ),
     path(
         "<int:pk>/management/solution-cases/",
         SolutionCaseAnalyticsView.as_view(),

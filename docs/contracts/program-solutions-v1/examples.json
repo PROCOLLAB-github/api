@@ -1,5 +1,5 @@
 {
-  "contract_version": "1.8.0",
+  "contract_version": "1.9.0",
   "description": "Независимые примеры, не последовательность операций; фиктивные данные.",
   "scenarios": [
     {
@@ -5613,6 +5613,777 @@
       "response": {
         "code": "validation_error",
         "detail": "Проверьте данные запроса.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "manager_solution_analytics_distributed",
+      "operation_id": "getSolutionManagerAnalytics",
+      "status": 200,
+      "response": {
+        "program_id": 12,
+        "summary": {
+          "participants": {
+            "total": 3
+          },
+          "solutions": {
+            "total": 1
+          },
+          "experts": {
+            "total": 1
+          },
+          "participant_regions": {
+            "total": 1,
+            "items": [
+              {
+                "name": "Москва",
+                "count": 3
+              }
+            ]
+          }
+        },
+        "participant_funnel": {
+          "registrations": 3,
+          "unique_participants": 3,
+          "visited_participants": 2,
+          "onboarded_participants": 2,
+          "with_team": 2,
+          "captains": 1,
+          "submitted_captains": 1
+        },
+        "solution_funnel": {
+          "created": 1,
+          "submission_applicable": true,
+          "not_submitted": 0,
+          "submitted": 1,
+          "evaluated": 0
+        },
+        "evaluation_status": {
+          "applicable": true,
+          "mode": "distributed",
+          "required_evaluators": 2,
+          "max_evaluations_per_solution": 3,
+          "assignments": {
+            "total": 1,
+            "pending": 1,
+            "evaluated": 0
+          },
+          "solutions": {
+            "submitted": 1,
+            "awaiting_evaluation": 1,
+            "partially_evaluated": 0,
+            "evaluated": 0
+          }
+        },
+        "attention": {
+          "participants_without_visit": 1,
+          "participants_without_onboarding": 1,
+          "participants_without_team": 1,
+          "solutions_awaiting_evaluation": 1,
+          "solutions_not_submitted": 0,
+          "delayed_experts": {
+            "total": 0,
+            "items": []
+          }
+        },
+        "activity": [
+          {
+            "date": "2026-10-24",
+            "registrations": 3,
+            "submitted_solutions": 1
+          }
+        ],
+        "cases": {
+          "program_id": 12,
+          "configured": true,
+          "submission_applicable": true,
+          "items": [
+            {
+              "name": "Экология",
+              "participants_total": 2,
+              "solutions_total": 1,
+              "not_submitted": 0,
+              "submitted": 1
+            }
+          ],
+          "without_case": {
+            "participants_total": 0,
+            "solutions_total": 0,
+            "not_submitted": 0,
+            "submitted": 0
+          }
+        },
+        "field_coverage": [
+          {
+            "field_id": 9,
+            "label": "Презентация",
+            "type": "file",
+            "purpose": "presentation",
+            "applicable": 1,
+            "answered": 0,
+            "required_applicable": 0,
+            "required_unanswered": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "manager_solution_analytics_open",
+      "operation_id": "getSolutionManagerAnalytics",
+      "status": 200,
+      "response": {
+        "program_id": 12,
+        "summary": {
+          "participants": {
+            "total": 3
+          },
+          "solutions": {
+            "total": 1
+          },
+          "experts": {
+            "total": 1
+          },
+          "participant_regions": {
+            "total": 1,
+            "items": [
+              {
+                "name": "Москва",
+                "count": 3
+              }
+            ]
+          }
+        },
+        "participant_funnel": {
+          "registrations": 3,
+          "unique_participants": 3,
+          "visited_participants": 2,
+          "onboarded_participants": 2,
+          "with_team": 2,
+          "captains": 1,
+          "submitted_captains": 1
+        },
+        "solution_funnel": {
+          "created": 1,
+          "submission_applicable": true,
+          "not_submitted": 0,
+          "submitted": 1,
+          "evaluated": 0
+        },
+        "evaluation_status": {
+          "applicable": true,
+          "mode": "open",
+          "required_evaluators": 2,
+          "max_evaluations_per_solution": 3,
+          "assignments": null,
+          "solutions": {
+            "submitted": 1,
+            "awaiting_evaluation": 1,
+            "partially_evaluated": 0,
+            "evaluated": 0
+          }
+        },
+        "attention": {
+          "participants_without_visit": 1,
+          "participants_without_onboarding": 1,
+          "participants_without_team": 1,
+          "solutions_awaiting_evaluation": 1,
+          "solutions_not_submitted": 0,
+          "delayed_experts": {
+            "total": 0,
+            "items": []
+          }
+        },
+        "activity": [
+          {
+            "date": "2026-10-24",
+            "registrations": 3,
+            "submitted_solutions": 1
+          }
+        ],
+        "cases": {
+          "program_id": 12,
+          "configured": true,
+          "submission_applicable": true,
+          "items": [
+            {
+              "name": "Экология",
+              "participants_total": 2,
+              "solutions_total": 1,
+              "not_submitted": 0,
+              "submitted": 1
+            }
+          ],
+          "without_case": {
+            "participants_total": 0,
+            "solutions_total": 0,
+            "not_submitted": 0,
+            "submitted": 0
+          }
+        },
+        "field_coverage": [
+          {
+            "field_id": 9,
+            "label": "Презентация",
+            "type": "file",
+            "purpose": "presentation",
+            "applicable": 1,
+            "answered": 0,
+            "required_applicable": 0,
+            "required_unanswered": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "manager_solution_analytics_noncompetitive",
+      "operation_id": "getSolutionManagerAnalytics",
+      "status": 200,
+      "response": {
+        "program_id": 12,
+        "summary": {
+          "participants": {
+            "total": 3
+          },
+          "solutions": {
+            "total": 1
+          },
+          "experts": {
+            "total": 1
+          },
+          "participant_regions": {
+            "total": 1,
+            "items": [
+              {
+                "name": "Москва",
+                "count": 3
+              }
+            ]
+          }
+        },
+        "participant_funnel": {
+          "registrations": 3,
+          "unique_participants": 3,
+          "visited_participants": 2,
+          "onboarded_participants": 2,
+          "with_team": 2,
+          "captains": 1,
+          "submitted_captains": null
+        },
+        "solution_funnel": {
+          "created": 1,
+          "submission_applicable": false,
+          "not_submitted": null,
+          "submitted": null,
+          "evaluated": null
+        },
+        "evaluation_status": {
+          "applicable": false,
+          "mode": "distributed",
+          "required_evaluators": 2,
+          "max_evaluations_per_solution": 3,
+          "assignments": null,
+          "solutions": null
+        },
+        "attention": {
+          "participants_without_visit": 1,
+          "participants_without_onboarding": 1,
+          "participants_without_team": 1,
+          "solutions_awaiting_evaluation": null,
+          "solutions_not_submitted": null,
+          "delayed_experts": {
+            "total": 0,
+            "items": []
+          }
+        },
+        "activity": [
+          {
+            "date": "2026-10-24",
+            "registrations": 3,
+            "submitted_solutions": null
+          }
+        ],
+        "cases": {
+          "program_id": 12,
+          "configured": true,
+          "submission_applicable": false,
+          "items": [
+            {
+              "name": "Экология",
+              "participants_total": 2,
+              "solutions_total": 1,
+              "not_submitted": null,
+              "submitted": null
+            }
+          ],
+          "without_case": {
+            "participants_total": 0,
+            "solutions_total": 0,
+            "not_submitted": null,
+            "submitted": null
+          }
+        },
+        "field_coverage": [
+          {
+            "field_id": 9,
+            "label": "Презентация",
+            "type": "file",
+            "purpose": "presentation",
+            "applicable": 1,
+            "answered": 0,
+            "required_applicable": 0,
+            "required_unanswered": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "manager_solution_assignments_pending",
+      "operation_id": "getSolutionManagerAssignments",
+      "status": 200,
+      "response": {
+        "applicable": true,
+        "mode": "distributed",
+        "results": [
+          {
+            "assignment_id": 801,
+            "expert": {
+              "expert_id": 40,
+              "user_id": 71,
+              "first_name": "Иван",
+              "last_name": "Тест",
+              "full_name": "Иван Тест",
+              "avatar": null
+            },
+            "application": {
+              "kind": "solution",
+              "program_id": 12,
+              "solution_id": 301,
+              "name": "Решение команды"
+            },
+            "status": "pending",
+            "assigned_at": "2026-10-25T00:00:00Z",
+            "submitted": true,
+            "submitted_at": "2026-10-24T00:00:00Z",
+            "waiting_since": "2026-10-25T00:00:00Z",
+            "waiting_seconds": 3600
+          }
+        ]
+      }
+    },
+    {
+      "name": "manager_solution_assignments_completed",
+      "operation_id": "getSolutionManagerAssignments",
+      "status": 200,
+      "response": {
+        "applicable": true,
+        "mode": "distributed",
+        "results": [
+          {
+            "assignment_id": 801,
+            "expert": {
+              "expert_id": 40,
+              "user_id": 71,
+              "first_name": "Иван",
+              "last_name": "Тест",
+              "full_name": "Иван Тест",
+              "avatar": null
+            },
+            "application": {
+              "kind": "solution",
+              "program_id": 12,
+              "solution_id": 301,
+              "name": "Решение команды"
+            },
+            "status": "completed",
+            "assigned_at": "2026-10-25T00:00:00Z",
+            "submitted": true,
+            "submitted_at": "2026-10-24T00:00:00Z",
+            "waiting_since": null,
+            "waiting_seconds": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "manager_solution_assignment_zero_false_comment",
+      "operation_id": "getSolutionManagerAssignment",
+      "status": 200,
+      "response": {
+        "assignment_id": 801,
+        "expert": {
+          "expert_id": 40,
+          "user_id": 71,
+          "first_name": "Иван",
+          "last_name": "Тест",
+          "full_name": "Иван Тест",
+          "avatar": null
+        },
+        "application": {
+          "kind": "solution",
+          "program_id": 12,
+          "solution_id": 301,
+          "name": "Решение команды"
+        },
+        "status": "completed",
+        "assigned_at": "2026-10-25T00:00:00Z",
+        "submitted": true,
+        "submitted_at": "2026-10-24T00:00:00Z",
+        "waiting_since": null,
+        "waiting_seconds": null,
+        "scores": [
+          {
+            "criterion_id": 7,
+            "name": "Оценка",
+            "description": null,
+            "type": "int",
+            "min_value": 0,
+            "max_value": 10,
+            "value": "0",
+            "is_scored": true
+          },
+          {
+            "criterion_id": 8,
+            "name": "Условие",
+            "description": null,
+            "type": "bool",
+            "min_value": null,
+            "max_value": null,
+            "value": "False",
+            "is_scored": true
+          },
+          {
+            "criterion_id": 9,
+            "name": "Комментарий",
+            "description": null,
+            "type": "str",
+            "min_value": null,
+            "max_value": null,
+            "value": "",
+            "is_scored": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "manager_solution_list_awaiting",
+      "operation_id": "getSolutionManagerSolutions",
+      "status": 200,
+      "response": {
+        "count": 1,
+        "next": null,
+        "previous": null,
+        "submission_applicable": true,
+        "mode": "distributed",
+        "results": [
+          {
+            "application": {
+              "kind": "solution",
+              "program_id": 12,
+              "solution_id": 301,
+              "name": "Решение команды"
+            },
+            "captain": {
+              "user_id": 5,
+              "full_name": "Капитан Тест",
+              "avatar": null
+            },
+            "case_name": "Экология",
+            "submission_status": "submitted",
+            "evaluation_status": "awaiting_evaluation",
+            "created_at": "2026-10-23T00:00:00Z",
+            "submitted_at": "2026-10-24T00:00:00Z",
+            "assignments_total": 1,
+            "assignments_completed": 0,
+            "waiting_reason": "no_completed_evaluations"
+          }
+        ]
+      }
+    },
+    {
+      "name": "manager_solution_list_empty",
+      "operation_id": "getSolutionManagerSolutions",
+      "status": 200,
+      "response": {
+        "count": 0,
+        "next": null,
+        "previous": null,
+        "submission_applicable": false,
+        "mode": "open",
+        "results": []
+      }
+    },
+    {
+      "name": "getSolutionManagerAnalytics_forbidden",
+      "operation_id": "getSolutionManagerAnalytics",
+      "status": 403,
+      "response": {
+        "code": "permission_denied",
+        "detail": "Запрос недоступен.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "getSolutionManagerAnalytics_anonymous",
+      "operation_id": "getSolutionManagerAnalytics",
+      "status": 401,
+      "response": {
+        "code": "authentication_required",
+        "detail": "Запрос недоступен.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "getSolutionManagerAnalytics_missing",
+      "operation_id": "getSolutionManagerAnalytics",
+      "status": 404,
+      "response": {
+        "code": "not_found",
+        "detail": "Запрос недоступен.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "getSolutionManagerAnalytics_legacy",
+      "operation_id": "getSolutionManagerAnalytics",
+      "status": 409,
+      "response": {
+        "code": "solution_mode_unavailable",
+        "detail": "Запрос недоступен.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "getSolutionManagerAnalytics_invalid",
+      "operation_id": "getSolutionManagerAnalytics",
+      "status": 400,
+      "response": {
+        "code": "validation_error",
+        "detail": "Запрос недоступен.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "getSolutionManagerAssignments_forbidden",
+      "operation_id": "getSolutionManagerAssignments",
+      "status": 403,
+      "response": {
+        "code": "permission_denied",
+        "detail": "Запрос недоступен.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "getSolutionManagerAssignments_anonymous",
+      "operation_id": "getSolutionManagerAssignments",
+      "status": 401,
+      "response": {
+        "code": "authentication_required",
+        "detail": "Запрос недоступен.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "getSolutionManagerAssignments_missing",
+      "operation_id": "getSolutionManagerAssignments",
+      "status": 404,
+      "response": {
+        "code": "not_found",
+        "detail": "Запрос недоступен.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "getSolutionManagerAssignments_legacy",
+      "operation_id": "getSolutionManagerAssignments",
+      "status": 409,
+      "response": {
+        "code": "solution_mode_unavailable",
+        "detail": "Запрос недоступен.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "getSolutionManagerAssignments_invalid",
+      "operation_id": "getSolutionManagerAssignments",
+      "status": 400,
+      "response": {
+        "code": "validation_error",
+        "detail": "Запрос недоступен.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "getSolutionManagerAssignment_forbidden",
+      "operation_id": "getSolutionManagerAssignment",
+      "status": 403,
+      "response": {
+        "code": "permission_denied",
+        "detail": "Запрос недоступен.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "getSolutionManagerAssignment_anonymous",
+      "operation_id": "getSolutionManagerAssignment",
+      "status": 401,
+      "response": {
+        "code": "authentication_required",
+        "detail": "Запрос недоступен.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "getSolutionManagerAssignment_missing",
+      "operation_id": "getSolutionManagerAssignment",
+      "status": 404,
+      "response": {
+        "code": "not_found",
+        "detail": "Запрос недоступен.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "getSolutionManagerAssignment_legacy",
+      "operation_id": "getSolutionManagerAssignment",
+      "status": 409,
+      "response": {
+        "code": "solution_mode_unavailable",
+        "detail": "Запрос недоступен.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "getSolutionManagerAssignment_invalid",
+      "operation_id": "getSolutionManagerAssignment",
+      "status": 400,
+      "response": {
+        "code": "validation_error",
+        "detail": "Запрос недоступен.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "getSolutionManagerSolutions_forbidden",
+      "operation_id": "getSolutionManagerSolutions",
+      "status": 403,
+      "response": {
+        "code": "permission_denied",
+        "detail": "Запрос недоступен.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "getSolutionManagerSolutions_anonymous",
+      "operation_id": "getSolutionManagerSolutions",
+      "status": 401,
+      "response": {
+        "code": "authentication_required",
+        "detail": "Запрос недоступен.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "getSolutionManagerSolutions_missing",
+      "operation_id": "getSolutionManagerSolutions",
+      "status": 404,
+      "response": {
+        "code": "not_found",
+        "detail": "Запрос недоступен.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "getSolutionManagerSolutions_legacy",
+      "operation_id": "getSolutionManagerSolutions",
+      "status": 409,
+      "response": {
+        "code": "solution_mode_unavailable",
+        "detail": "Запрос недоступен.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "getSolutionManagerSolutions_invalid",
+      "operation_id": "getSolutionManagerSolutions",
+      "status": 400,
+      "response": {
+        "code": "validation_error",
+        "detail": "Запрос недоступен.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "exportSolutionProgramAnalytics_forbidden",
+      "operation_id": "exportSolutionProgramAnalytics",
+      "status": 403,
+      "response": {
+        "code": "permission_denied",
+        "detail": "Запрос недоступен.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "exportSolutionProgramAnalytics_anonymous",
+      "operation_id": "exportSolutionProgramAnalytics",
+      "status": 401,
+      "response": {
+        "code": "authentication_required",
+        "detail": "Запрос недоступен.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "exportSolutionProgramAnalytics_missing",
+      "operation_id": "exportSolutionProgramAnalytics",
+      "status": 404,
+      "response": {
+        "code": "not_found",
+        "detail": "Запрос недоступен.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "exportSolutionProgramAnalytics_legacy",
+      "operation_id": "exportSolutionProgramAnalytics",
+      "status": 409,
+      "response": {
+        "code": "solution_mode_unavailable",
+        "detail": "Запрос недоступен.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "exportSolutionProgramAnalytics_invalid",
+      "operation_id": "exportSolutionProgramAnalytics",
+      "status": 400,
+      "response": {
+        "code": "validation_error",
+        "detail": "Запрос недоступен.",
         "errors": [],
         "meta": {}
       }
