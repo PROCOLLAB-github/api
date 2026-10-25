@@ -1,5 +1,5 @@
 {
-  "contract_version": "1.14.0",
+  "contract_version": "1.15.0",
   "description": "Независимые примеры, не последовательность операций; фиктивные данные.",
   "scenarios": [
     {
@@ -8058,6 +8058,438 @@
           301
         ],
         "preview_token": "opaque-preview-token"
+      }
+    },
+    {
+      "name": "case_action_preview_ready",
+      "operation_id": "previewSolutionCaseChange",
+      "status": 200,
+      "response": {
+        "application": {
+          "kind": "solution",
+          "program_id": 12,
+          "solution_id": 301,
+          "name": "Решение команды"
+        },
+        "case_field_id": 401,
+        "current_case": "Город",
+        "case_name": "Образование | наука",
+        "solution_version": 7,
+        "errors": [],
+        "can_apply": true,
+        "preview_token": "opaque-case-preview-token"
+      },
+      "request": {
+        "case_name": "Образование | наука"
+      }
+    },
+    {
+      "name": "case_action_preview_empty_current",
+      "operation_id": "previewSolutionCaseChange",
+      "status": 200,
+      "response": {
+        "application": {
+          "kind": "solution",
+          "program_id": 12,
+          "solution_id": 301,
+          "name": "Решение команды"
+        },
+        "case_field_id": 401,
+        "current_case": null,
+        "case_name": "Образование | наука",
+        "solution_version": 7,
+        "errors": [],
+        "can_apply": true,
+        "preview_token": "opaque-case-preview-token"
+      },
+      "request": {
+        "case_name": "Образование | наука"
+      }
+    },
+    {
+      "name": "case_action_preview_noncompetitive",
+      "operation_id": "previewSolutionCaseChange",
+      "status": 200,
+      "response": {
+        "application": {
+          "kind": "solution",
+          "program_id": 13,
+          "solution_id": 302,
+          "name": "Решение команды"
+        },
+        "case_field_id": 401,
+        "current_case": "Город",
+        "case_name": "Образование | наука",
+        "solution_version": 7,
+        "errors": [],
+        "can_apply": true,
+        "preview_token": "opaque-case-preview-token"
+      },
+      "request": {
+        "case_name": "Образование | наука"
+      }
+    },
+    {
+      "name": "case_action_preview_same",
+      "operation_id": "previewSolutionCaseChange",
+      "status": 200,
+      "response": {
+        "application": {
+          "kind": "solution",
+          "program_id": 12,
+          "solution_id": 301,
+          "name": "Решение команды"
+        },
+        "case_field_id": 401,
+        "current_case": "Образование | наука",
+        "case_name": "Образование | наука",
+        "solution_version": 7,
+        "errors": [
+          {
+            "path": "case_name",
+            "code": "case_unchanged",
+            "detail": "Выберите другой кейс.",
+            "field_id": 401
+          }
+        ],
+        "can_apply": false,
+        "preview_token": null
+      },
+      "request": {
+        "case_name": "Образование | наука"
+      }
+    },
+    {
+      "name": "case_action_preview_submitted",
+      "operation_id": "previewSolutionCaseChange",
+      "status": 200,
+      "response": {
+        "application": {
+          "kind": "solution",
+          "program_id": 12,
+          "solution_id": 301,
+          "name": "Решение команды"
+        },
+        "case_field_id": 401,
+        "current_case": "Город",
+        "case_name": "Образование | наука",
+        "solution_version": 7,
+        "errors": [
+          {
+            "path": "case_name",
+            "code": "team_frozen",
+            "detail": "Данные сданного решения зафиксированы.",
+            "field_id": 401
+          }
+        ],
+        "can_apply": false,
+        "preview_token": null
+      },
+      "request": {
+        "case_name": "Образование | наука"
+      }
+    },
+    {
+      "name": "case_action_preview_evaluation",
+      "operation_id": "previewSolutionCaseChange",
+      "status": 200,
+      "response": {
+        "application": {
+          "kind": "solution",
+          "program_id": 12,
+          "solution_id": 301,
+          "name": "Решение команды"
+        },
+        "case_field_id": 401,
+        "current_case": "Город",
+        "case_name": "Образование | наука",
+        "solution_version": 7,
+        "errors": [
+          {
+            "path": "case_name",
+            "code": "evaluation_started",
+            "detail": "У решения уже есть данные оценивания.",
+            "field_id": 401
+          }
+        ],
+        "can_apply": false,
+        "preview_token": null
+      },
+      "request": {
+        "case_name": "Образование | наука"
+      }
+    },
+    {
+      "name": "case_action_preview_bad_case",
+      "operation_id": "previewSolutionCaseChange",
+      "status": 400,
+      "response": {
+        "code": "invalid_answers",
+        "detail": "Выберите актуальный кейс.",
+        "errors": [
+          {
+            "path": "case_name",
+            "code": "case_unavailable",
+            "detail": "Вариант недоступен.",
+            "field_id": 401
+          }
+        ],
+        "meta": {}
+      },
+      "request": {
+        "case_name": "Образование | наука"
+      }
+    },
+    {
+      "name": "case_action_preview_anonymous",
+      "operation_id": "previewSolutionCaseChange",
+      "status": 401,
+      "response": {
+        "code": "authentication_required",
+        "detail": "Войдите в аккаунт.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "case_name": "Образование | наука"
+      }
+    },
+    {
+      "name": "case_action_preview_foreign_manager",
+      "operation_id": "previewSolutionCaseChange",
+      "status": 403,
+      "response": {
+        "code": "permission_denied",
+        "detail": "Действие доступно организатору программы.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "case_name": "Образование | наука"
+      }
+    },
+    {
+      "name": "case_action_preview_foreign_solution",
+      "operation_id": "previewSolutionCaseChange",
+      "status": 404,
+      "response": {
+        "code": "not_found",
+        "detail": "Решение не найдено.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "case_name": "Образование | наука"
+      }
+    },
+    {
+      "name": "case_action_preview_legacy",
+      "operation_id": "previewSolutionCaseChange",
+      "status": 409,
+      "response": {
+        "code": "solution_mode_unavailable",
+        "detail": "Программа использует проектную заявку.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "case_name": "Образование | наука"
+      }
+    },
+    {
+      "name": "case_action_preview_unconfigured",
+      "operation_id": "previewSolutionCaseChange",
+      "status": 409,
+      "response": {
+        "code": "form_not_configured",
+        "detail": "Настройте форму решения.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "case_name": "Образование | наука"
+      }
+    },
+    {
+      "name": "case_action_apply_changed",
+      "operation_id": "applySolutionCaseChange",
+      "status": 200,
+      "response": {
+        "solution_id": 301,
+        "solution_version": 8,
+        "updated_at": "2026-10-25T10:00:00Z"
+      },
+      "request": {
+        "case_name": "Образование | наука",
+        "preview_token": "opaque-case-preview-token"
+      }
+    },
+    {
+      "name": "case_action_apply_stale",
+      "operation_id": "applySolutionCaseChange",
+      "status": 409,
+      "response": {
+        "code": "solution_action_conflict",
+        "detail": "Данные решения изменились. Повторите предпросмотр.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "case_name": "Образование | наука",
+        "preview_token": "opaque-case-preview-token"
+      }
+    },
+    {
+      "name": "case_action_apply_replay",
+      "operation_id": "applySolutionCaseChange",
+      "status": 409,
+      "response": {
+        "code": "solution_action_conflict",
+        "detail": "Данные решения изменились. Повторите предпросмотр.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "case_name": "Образование | наука",
+        "preview_token": "opaque-case-preview-token"
+      }
+    },
+    {
+      "name": "case_action_apply_expired",
+      "operation_id": "applySolutionCaseChange",
+      "status": 409,
+      "response": {
+        "code": "solution_action_conflict",
+        "detail": "Данные решения изменились. Повторите предпросмотр.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "case_name": "Образование | наука",
+        "preview_token": "opaque-case-preview-token"
+      }
+    },
+    {
+      "name": "case_action_apply_cross_actor",
+      "operation_id": "applySolutionCaseChange",
+      "status": 409,
+      "response": {
+        "code": "solution_action_conflict",
+        "detail": "Данные решения изменились. Повторите предпросмотр.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "case_name": "Образование | наука",
+        "preview_token": "opaque-case-preview-token"
+      }
+    },
+    {
+      "name": "case_action_apply_cross_solution",
+      "operation_id": "applySolutionCaseChange",
+      "status": 409,
+      "response": {
+        "code": "solution_action_conflict",
+        "detail": "Данные решения изменились. Повторите предпросмотр.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "case_name": "Образование | наука",
+        "preview_token": "opaque-case-preview-token"
+      }
+    },
+    {
+      "name": "case_action_apply_cross_case",
+      "operation_id": "applySolutionCaseChange",
+      "status": 409,
+      "response": {
+        "code": "solution_action_conflict",
+        "detail": "Данные решения изменились. Повторите предпросмотр.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "case_name": "Образование | наука",
+        "preview_token": "opaque-case-preview-token"
+      }
+    },
+    {
+      "name": "case_action_apply_submitted",
+      "operation_id": "applySolutionCaseChange",
+      "status": 409,
+      "response": {
+        "code": "team_frozen",
+        "detail": "Состав и данные зафиксированы.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "case_name": "Образование | наука",
+        "preview_token": "opaque-case-preview-token"
+      }
+    },
+    {
+      "name": "case_action_apply_bad_case",
+      "operation_id": "applySolutionCaseChange",
+      "status": 400,
+      "response": {
+        "code": "invalid_answers",
+        "detail": "Выберите актуальный кейс.",
+        "errors": [
+          {
+            "path": "case_name",
+            "code": "case_unavailable",
+            "detail": "Вариант недоступен.",
+            "field_id": 401
+          }
+        ],
+        "meta": {}
+      },
+      "request": {
+        "case_name": "Образование | наука",
+        "preview_token": "opaque-case-preview-token"
+      }
+    },
+    {
+      "name": "case_action_apply_foreign_manager",
+      "operation_id": "applySolutionCaseChange",
+      "status": 403,
+      "response": {
+        "code": "permission_denied",
+        "detail": "Действие доступно организатору программы.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "case_name": "Образование | наука",
+        "preview_token": "opaque-case-preview-token"
+      }
+    },
+    {
+      "name": "case_action_apply_invalid_payload",
+      "operation_id": "applySolutionCaseChange",
+      "status": 400,
+      "response": {
+        "code": "validation_error",
+        "detail": "Проверьте данные запроса.",
+        "errors": [],
+        "meta": {}
+      }
+    },
+    {
+      "name": "case_action_apply_unknown_query",
+      "operation_id": "applySolutionCaseChange",
+      "status": 400,
+      "response": {
+        "code": "validation_error",
+        "detail": "Неизвестный параметр.",
+        "errors": [],
+        "meta": {}
+      },
+      "request": {
+        "case_name": "Образование | наука",
+        "preview_token": "opaque-case-preview-token"
       }
     }
   ]

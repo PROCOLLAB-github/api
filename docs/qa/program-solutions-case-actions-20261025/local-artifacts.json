@@ -1,0 +1,112 @@
+{
+  "rawDirectory": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-case-actions",
+  "artifacts": [
+    {
+      "file": "domain-and-contract-evidence.json",
+      "bytes": 47122,
+      "sha256": "1dd4ddce58257fbc2345fda28721c61dd4d2bdcfd06c6a9db6e94c1c72101860"
+    },
+    {
+      "file": "http-evidence.json",
+      "bytes": 43126,
+      "sha256": "f19c64a9f4b278653ebe5485ce330cbdcd0682658e2235fea63c5c67aa2a1946"
+    },
+    {
+      "file": "http-wire.json",
+      "bytes": 244974,
+      "sha256": "5f25b586c1873cd28b5a576431ce1f031884c187954f572dc38ae9e4ef46296f"
+    }
+  ],
+  "helpers": [
+    {
+      "file": "procollab-case-c00.py",
+      "sha256": "9be8494ba6e6eeed21918e1e98d6665a01bf8b0a0b391e2cba4a08d9c2ec4233"
+    },
+    {
+      "file": "procollab-case-c00-auth.py",
+      "sha256": "adb89fe02ef31e85878488eb92827a3dae156a45a2ff2d174d18ef067f901b79"
+    },
+    {
+      "file": "procollab-case-http.py",
+      "sha256": "646f5707c48a0fa234875ddafaec2c285f150a98373d84b50be87f3f8b538063"
+    },
+    {
+      "file": "procollab-case-verify.py",
+      "sha256": "282c6cd8953a92bef6713f33cff0d09c542676467bbfb52f1447ac0119fd871b"
+    },
+    {
+      "file": "procollab-case-package.py",
+      "sha256": "bdc73a7e30d0fcf22d55502c00d58c0ea2e2cabd14850bac93e13f4e42fac21a"
+    }
+  ],
+  "sources": [
+    {
+      "file": "partner_programs/services/solution_case_actions.py",
+      "sha256": "d037738e1aa3428403ea0a4e3b8f097551bf57cbb8839c8fe3d68633ccacb36b"
+    },
+    {
+      "file": "partner_programs/solution_case_action_api.py",
+      "sha256": "6048400a6f2de3e6d520e8a8653995496e1719a7760c454975378f23379ed700"
+    },
+    {
+      "file": "partner_programs/tests/test_solution_case_actions.py",
+      "sha256": "9111b16c8b49a0cde627c0db99179de8e647e41d3d89e0e94010b7b2b19a9577"
+    },
+    {
+      "file": "partner_programs/urls.py",
+      "sha256": "f4a1e2cf2dd98056e30d0fd92a7e7b88419d7516c2ff3fbd31f57e39ccf8452c"
+    }
+  ],
+  "logs": [
+    {
+      "file": "procollab-case-tests-focused.log",
+      "sha256": "c4f0b055b7e72cfa04a4661897f5ef2d753b155dafa641d2cbe9f6f371c6a176"
+    },
+    {
+      "file": "procollab-case-tests-focused2.log",
+      "sha256": "58cc5282aa0aa430d3ad9a9fda5559e0dfa17bea7c08340e1bf2d544c0d0b18a"
+    },
+    {
+      "file": "procollab-case-tests-focused-final.log",
+      "sha256": "7fdf6591de211cde982e7ef9062494afb8da5fbdbfcd234df29fa011819dceb5"
+    },
+    {
+      "file": "procollab-case-backend-regression.log",
+      "sha256": "6edaad548796b40a3ce1a1b59097d5f6656537a9154e3d7ea52e501f35b8d6b7"
+    },
+    {
+      "file": "procollab-case-final-regression.log",
+      "sha256": "d570924c9406cdbad0b410c41f2d05b4d99c2b32a9b59162996593c272623fcc"
+    },
+    {
+      "file": "procollab-case-http.log",
+      "sha256": "896b54fe131c98c49fcd4aa123053e56931e9bb8deb4ef620b2b2bb3ac157c51"
+    },
+    {
+      "file": "procollab-case-http-verify.log",
+      "sha256": "6c34d720feec09f2b23b915b4e998c9c3743c65f2dc02b00b4c97afeb9354064"
+    },
+    {
+      "file": "procollab-case-fe-focused.log",
+      "sha256": "a24e626c84ad83360dd9bd0054776076e91725a42da64343c39facd818dbf209"
+    },
+    {
+      "file": "procollab-case-fe-tests-all.log",
+      "sha256": "1854e4eef74c319812ca1b44681630e96686f216601edffbec9253d9043f1dec"
+    },
+    {
+      "file": "procollab-case-fe-types.log",
+      "sha256": "9c49338a6bd87668f4525097ed9dbc34a680477f0387588bce160c2d95c749d8"
+    },
+    {
+      "file": "procollab-case-fe-build.log",
+      "sha256": "2d1b300be8a8fbaeac9557fedb806213ff1e8706b165756ac7320e52b073ea31"
+    }
+  ],
+  "credentialsIncluded": false,
+  "notes": [
+    "Main HTTP action flow:82 responses before final strict token type guard. Current service logic unchanged; API restarted and33 additional requests verified strict types/private headers/binding/data invariants.",
+    "Broad356 tests preceded strict token guard and final race addition. Final52 tests include19 new case tests plus existing submit and legacy actions.",
+    "No new visual UI, production mail/CDN, deployment, deletion or post-submitted policy change."
+  ]
+}
