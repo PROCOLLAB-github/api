@@ -27,6 +27,11 @@ from partner_programs.services.management import person_name
 from projects.models import Collaborator
 
 logger = logging.getLogger(__name__)
+CERTIFICATE_FONTS = {
+    "mont": ("Mont", "Mont-Regular.ttf", "Mont-SemiBold.ttf", 600),
+    "pt-serif": ("Certificate PT Serif", "PTSerif-Regular.ttf", "PTSerif-Bold.ttf", 700),
+    "lobster": ("Certificate Lobster", "Lobster-Regular.ttf", "Lobster-Regular.ttf", 400),
+}
 ELEMENTS = (
     "title",
     "subtitle",
@@ -67,7 +72,9 @@ def default_draft():
         "subject": "Ваш сертификат за участие в программе {program}",
         "message": "Здравствуйте, {name}!\nСпасибо за участие в программе «{program}».\nВаш сертификат готов.",
         "layout": {
-            key: dict(zip(("x", "y", "width", "height", "font_size"), pos))
+            key: dict(
+                zip(("x", "y", "width", "height", "font_size"), pos), font_family="mont"
+            )
             for key, pos in zip(ELEMENTS, positions)
         },
     }
@@ -87,6 +94,10 @@ def normalized_draft(draft):
         **draft,
         "orientation": draft.get("orientation", "landscape"),
         "hidden_elements": [key for key in ELEMENTS if key in hidden_elements(draft)],
+        "layout": {
+            key: {**box, "font_family": box.get("font_family", "mont")}
+            for key, box in draft["layout"].items()
+        },
     }
 
 
@@ -232,6 +243,9 @@ def validate_draft(program, draft, previous=None):
         width = serializers.FloatField(min_value=2, max_value=100)
         height = serializers.FloatField(min_value=1, max_value=100)
         font_size = serializers.FloatField(min_value=8, max_value=72)
+        font_family = serializers.ChoiceField(
+            choices=list(CERTIFICATE_FONTS), required=False
+        )
 
     class Draft(serializers.Serializer):
         orientation = serializers.ChoiceField(
@@ -275,11 +289,18 @@ def validate_draft(program, draft, previous=None):
         raise ValidationError({"hidden_elements": "Элементы не должны повторяться."})
     if set(data["layout"]) != set(ELEMENTS):
         raise ValidationError("Состав элементов шаблона изменен. Обновите страницу.")
-    for element in data["layout"].values():
+    for key, element in data["layout"].items():
         import math
 
-        if not all(math.isfinite(value) for value in element.values()):
+        if not all(
+            math.isfinite(element[field])
+            for field in ("x", "y", "width", "height", "font_size")
+        ):
             raise ValidationError("Размеры и положение должны быть конечными числами.")
+        element.setdefault(
+            "font_family",
+            (previous or {}).get("layout", {}).get(key, {}).get("font_family", "mont"),
+        )
         if (
             element["x"] + element["width"] > 100.01
             or element["y"] + element["height"] > 100.01
@@ -301,12 +322,20 @@ def validate_draft(program, draft, previous=None):
     return normalized_draft(dict(data))
 
 
-@lru_cache(maxsize=4)
-def certificate_font(bold):
-    filename = "Mont-SemiBold.ttf" if bold else "Mont-Regular.ttf"
-    return ImageFont.truetype(
-        str(Path(settings.BASE_DIR) / "assets/users/user_CV" / filename), 1000
-    )
+def certificate_font_key(box):
+    key = box.get("font_family", "mont")
+    return key if key in CERTIFICATE_FONTS else "mont"
+
+
+def certificate_font_path(key, bold):
+    filename = CERTIFICATE_FONTS[key][2 if bold else 1]
+    directory = "assets/users/user_CV" if key == "mont" else "assets/certificates/fonts"
+    return Path(settings.BASE_DIR) / directory / filename
+
+
+@lru_cache(maxsize=6)
+def certificate_font(bold, family="mont"):
+    return ImageFont.truetype(str(certificate_font_path(family, bold)), 1000)
 
 
 def page_dimensions(orientation="landscape"):
@@ -314,8 +343,8 @@ def page_dimensions(orientation="landscape"):
 
 
 def fit_certificate_text(value, box, bold=False, orientation="landscape"):
-    """Подгоняем реальные строки Mont по обеим сторонам бокса, без обрезки ФИО."""
-    font = certificate_font(bold)
+    """Подгоняем реальные строки выбранного шрифта без обрезки ФИО."""
+    font = certificate_font(bold, certificate_font_key(box))
     page_width, page_height = (
         (793.7, 1122) if orientation == "portrait" else (1122, 793.7)
     )
@@ -361,21 +390,17 @@ def render_pdf(snapshot, assets, name, program_name, number, issued_at):
     from weasyprint import HTML
     from weasyprint.text.fonts import FontConfiguration
 
-    fonts = Path(settings.BASE_DIR) / "assets/users/user_CV"
     orientation = snapshot.get("orientation", "landscape")
     page_width, page_height = page_dimensions(orientation)
 
     def fetch(url):
-        if url == "certificate-font:regular":
-            return {
-                "string": (fonts / "Mont-Regular.ttf").read_bytes(),
-                "mime_type": "font/ttf",
-            }
-        if url == "certificate-font:bold":
-            return {
-                "string": (fonts / "Mont-SemiBold.ttf").read_bytes(),
-                "mime_type": "font/ttf",
-            }
+        for key in CERTIFICATE_FONTS:
+            for bold, weight in ((False, "regular"), (True, "bold")):
+                if url == f"certificate-font:{key}:{weight}":
+                    return {
+                        "string": certificate_font_path(key, bold).read_bytes(),
+                        "mime_type": "font/ttf",
+                    }
         if url.startswith("data:image/png;base64,"):
             return {
                 "string": base64.b64decode(url.split(",", 1)[1], validate=True),
@@ -411,23 +436,35 @@ def render_pdf(snapshot, assets, name, program_name, number, issued_at):
                 )
         else:
             value = values[key]
+            family = certificate_font_key(box)
+            family_name, _, _, bold_weight = CERTIFICATE_FONTS[family]
+            weight = bold_weight if key in ("name", "title") else 400
             size, lines = fit_certificate_text(
                 value, box, key in ("name", "title"), orientation
             )
             content = "<br>".join(escape(line) for line in lines)
             elements.append(
-                f'<div class="element {key}" style="{style}font-size:{size}px"><span>{content}</span></div>'
+                f'<div class="element {key}" style="{style}font-size:{size}px;'
+                f'font-family:{family_name};font-weight:{weight}"><span>{content}</span></div>'
             )
     html = (
-        """<html><head><meta charset="utf-8"><style>
-    @font-face{font-family:Mont;src:url('certificate-font:regular')}
-    @font-face{font-family:Mont;src:url('certificate-font:bold');font-weight:600}
+        '<html><head><meta charset="utf-8"><style>'
+        + "".join(
+            f"@font-face{{font-family:'{name}';src:url('certificate-font:{key}:regular');font-weight:400}}"
+            + (
+                f"@font-face{{font-family:'{name}';src:url('certificate-font:{key}:bold');font-weight:{bold_weight}}}"
+                if bold_weight != 400
+                else ""
+            )
+            for key, (name, _, _, bold_weight) in CERTIFICATE_FONTS.items()
+        )
+        + """
     @page{size:PAGE_WIDTHmm PAGE_HEIGHTmm;margin:0}*{box-sizing:border-box}body{margin:0;font-family:Mont;color:#353535}
     .sheet{position:relative;width:PAGE_WIDTHmm;height:PAGE_HEIGHTmm;overflow:hidden;background:white}
     .background{position:absolute;width:100%;height:100%;object-fit:contain}
     .element{position:absolute;text-align:center;line-height:1.3;overflow:hidden;padding:1px}
     .element span{position:absolute;left:1px;right:1px;top:50%;transform:translateY(-50%);white-space:nowrap}
-    .name,.title{font-weight:600}.signature{object-fit:contain}
+    .signature{object-fit:contain}
     </style></head><body><div class="sheet">""".replace(
             "PAGE_WIDTH", str(page_width)
         ).replace(
