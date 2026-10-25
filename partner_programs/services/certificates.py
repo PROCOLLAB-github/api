@@ -666,13 +666,14 @@ def process(certificate_id):
                 current.queued_at = None
                 current.save(update_fields=["status", "queued_at"])
                 return
-            if not batch.snapshot["send_email"]:
-                current.status = "ready"
+            should_send = batch.snapshot["send_email"] and current.sent_at is None
+            if not should_send:
+                current.status = "sent" if current.sent_at else "ready"
             else:
                 # Persist before the provider call; a crash must not trigger automatic resend.
                 current.status = "sending"
             current.save(update_fields=["status"])
-        if batch.snapshot["send_email"]:
+        if should_send:
             send_certificate(row)
             ProgramCertificate.objects.filter(pk=row.pk).update(
                 status="sent", sent_at=timezone.now(), error=""

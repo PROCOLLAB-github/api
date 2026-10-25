@@ -203,8 +203,11 @@ def journal_rows(program, params):
     query.is_valid(raise_exception=True)
     data = query.validated_data
     rows = ProgramCertificate.objects.filter(program=program).defer("pdf")
+    delivered = Q(sent_at__isnull=False) | Q(status="sent")
     if data["status"] == "unsent":
-        rows = rows.exclude(status="sent")
+        rows = rows.exclude(delivered)
+    elif data["status"] == "sent":
+        rows = rows.filter(delivered)
     elif data["status"] != "all":
         rows = rows.filter(status=data["status"])
     if data["search"]:
@@ -228,9 +231,9 @@ class CertificateJournalView(ManagementBase):
         summary = ProgramCertificate.objects.filter(program=program).aggregate(
             total=Count("pk"),
             ready=Count("pk", filter=Q(pdf__isnull=False)),
-            sent=Count("pk", filter=Q(status="sent")),
+            sent=Count("pk", filter=Q(sent_at__isnull=False) | Q(status="sent")),
             failed=Count("pk", filter=Q(status="failed")),
-            unsent=Count("pk", filter=~Q(status="sent")),
+            unsent=Count("pk", filter=Q(sent_at__isnull=True) & ~Q(status="sent")),
             outdated=Count(
                 "pk",
                 filter=Q(rendered_batch_id__in=stale_batches)
@@ -301,7 +304,13 @@ class CertificateSelectionView(ManagementBase):
         )
         if any(row.status in ("pending", "generating", "sending") for row in rows):
             raise ValidationError("Дождитесь завершения текущей обработки сертификатов.")
-        selected = [row for row in rows if action == "refresh" or row.status != "sent"]
+        selected = [
+            row
+            for row in rows
+            if action == "refresh"
+            or (action == "retry" and row.status == "failed")
+            or (row.status != "sent" and row.sent_at is None)
+        ]
         if not selected:
             return Response({"count": 0, "skipped": len(rows)}, status=202)
         draft = service.validate_draft(program, config.draft)
@@ -310,8 +319,11 @@ class CertificateSelectionView(ManagementBase):
                 row.pk
                 for row in selected
                 if (
-                    action == "send"
-                    or (action == "retry" and row.batch.snapshot["send_email"])
+                    row.sent_at is None
+                    and (
+                        action == "send"
+                        or (action == "retry" and row.batch.snapshot["send_email"])
+                    )
                 )
                 == send_email
             ]
@@ -334,7 +346,6 @@ class CertificateSelectionView(ManagementBase):
                 error="",
                 queued_at=None,
                 claimed_at=None,
-                sent_at=None,
             )
         return Response(
             {"count": len(selected), "skipped": len(rows) - len(selected)}, status=202
@@ -375,9 +386,8 @@ def current_certificate_pdf(program, config, row, public_base_url):
         row.batch = service.manual_batch(program, draft, public_base_url, "refresh")
         row.rendered_batch = row.batch
         row.pdf = content
-        row.status = "ready"
+        row.status = "sent" if row.sent_at or row.status == "sent" else "ready"
         row.error = ""
-        row.sent_at = None
         row.save(
             update_fields=["batch", "rendered_batch", "pdf", "status", "error", "sent_at"]
         )
