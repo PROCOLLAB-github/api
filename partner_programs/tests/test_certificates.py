@@ -322,6 +322,124 @@ class CertificateTests(TestCase):
                 font.getlength(line) / 1000 * size * 1.02, 70 * 11.22 - 2
             )
 
+    def test_font_choices_round_trip_and_old_clients_preserve_each_element(self):
+        draft = service.default_draft()
+        draft["layout"]["name"]["font_family"] = "pt-serif"
+        draft["layout"]["director"]["font_family"] = "lobster"
+        response = self.client.put(
+            self.root, {"revision": 1, "draft": draft}, format="json"
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        saved = self.client.get(self.root).data["draft"]
+        self.assertEqual(saved["layout"]["name"]["font_family"], "pt-serif")
+        self.assertEqual(saved["layout"]["director"]["font_family"], "lobster")
+        for box in draft["layout"].values():
+            box.pop("font_family")
+        draft["layout"]["name"]["x"] += 1
+        response = self.client.put(
+            self.root, {"revision": 2, "draft": draft}, format="json"
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(
+            response.data["draft"]["layout"]["name"]["font_family"], "pt-serif"
+        )
+        self.assertEqual(
+            response.data["draft"]["layout"]["director"]["font_family"], "lobster"
+        )
+        for invalid in (
+            "unknown",
+            "https://example.com/font.ttf",
+            "Mont; color:red",
+            None,
+        ):
+            draft["layout"]["name"]["font_family"] = invalid
+            response = self.client.put(
+                self.root, {"revision": 3, "draft": draft}, format="json"
+            )
+            self.assertEqual(response.status_code, 400, response.data)
+        self.config.refresh_from_db()
+        self.assertEqual(self.config.revision, 3)
+
+    def test_legacy_elements_default_to_mont_without_rewriting_the_snapshot(self):
+        draft = service.default_draft()
+        for box in draft["layout"].values():
+            box.pop("font_family")
+        self.config.draft = draft
+        self.config.save()
+        response = self.client.get(self.root).data["draft"]
+        self.assertEqual(
+            {box["font_family"] for box in response["layout"].values()}, {"mont"}
+        )
+        self.config.refresh_from_db()
+        self.assertTrue(
+            all("font_family" not in box for box in self.config.draft["layout"].values())
+        )
+
+    def test_all_certificate_fonts_fit_long_cyrillic_names_in_both_orientations(self):
+        value = "Александра Константиновна Добровольская"
+        for family in service.CERTIFICATE_FONTS:
+            for orientation in ("portrait", "landscape"):
+                with self.subTest(family=family, orientation=orientation):
+                    box = {
+                        "width": 65,
+                        "height": 12,
+                        "font_size": 40,
+                        "font_family": family,
+                    }
+                    size, lines = service.fit_certificate_text(
+                        value, box, True, orientation
+                    )
+                    self.assertEqual(" ".join(lines), value)
+                    width, height = (
+                        (793.7, 1122) if orientation == "portrait" else (1122, 793.7)
+                    )
+                    self.assertLessEqual(
+                        len(lines) * size * 1.3, box["height"] * height / 100 - 2
+                    )
+                    for line in lines:
+                        self.assertLessEqual(
+                            service.certificate_font(True, family).getlength(line)
+                            / 1000
+                            * size
+                            * 1.02,
+                            box["width"] * width / 100 - 2,
+                        )
+
+    @tag("native_pdf")
+    def test_selected_fonts_are_embedded_in_native_pdf(self):
+        import re
+        from weasyprint.document import Document
+
+        original = Document.write_pdf
+
+        def uncompressed(document, *args, **kwargs):
+            return original(document, *args, **{**kwargs, "uncompressed_pdf": True})
+
+        for family, expected in (
+            ("mont", b"Mont-SemiBold"),
+            ("pt-serif", b"PTSerif-Bold"),
+            ("lobster", b"Lobster"),
+        ):
+            with self.subTest(family=family):
+                draft = service.default_draft()
+                draft["layout"]["name"]["font_family"] = family
+                with patch.object(
+                    Document, "write_pdf", autospec=True, side_effect=uncompressed
+                ):
+                    pdf = service.render_pdf(
+                        draft, {}, "Анна Крылова", "Программа", "1", timezone.now()
+                    )
+                names = re.findall(rb"/BaseFont\s*/([^\s/]+)", pdf)
+                self.assertTrue(
+                    any(
+                        expected.replace(b"-", b"").lower()
+                        in name.replace(b"-", b"").lower()
+                        for name in names
+                    ),
+                    names,
+                )
+                self.assertIn(b"/FontFile2", pdf)
+
     @tag("native_pdf")
     def test_ready_template_pdf_adds_only_each_participants_name(self):
         from weasyprint import HTML
