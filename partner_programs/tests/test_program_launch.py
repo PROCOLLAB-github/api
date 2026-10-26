@@ -186,6 +186,20 @@ class ProgramCreationTests(ProgramLaunchTestCase):
         )
         self.assertEqual(response.status_code, 404, response.data)
 
+    def test_new_program_manager_can_read_page_without_becoming_a_participant(self):
+        program = PartnerProgram.objects.get(pk=self.create().data["id"])
+        program.description = "Описание новой программы"
+        program.save()
+        response = self.client.get(f"/programs/{program.pk}/")
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data["description"], program.description)
+        self.assertTrue(response.data["is_user_manager"])
+        self.assertFalse(response.data["is_user_member"])
+        self.assertIsNone(response.data["welcome_acknowledged_at"])
+        self.assertFalse(
+            PartnerProgramUserProfile.objects.filter(partner_program=program).exists()
+        )
+
     def test_personal_program_lists_do_not_reveal_drafts_even_with_a_profile(self):
         hidden = PartnerProgram.objects.get(pk=self.create().data["id"])
         published = create_partner_program(draft=False)

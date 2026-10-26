@@ -187,9 +187,15 @@ class PartnerProgramDetail(generics.RetrieveAPIView):
                 program_id=program.pk,
                 user_id=request.user.pk,
             )
+        # New creators manage the page without becoming participants.
+        manager_page = bool(
+            not is_user_member
+            and program.program_format
+            and can_manage_program(request.user, program)
+        )
         serializer_class = (
             PartnerProgramForMemberSerializer
-            if is_user_member
+            if is_user_member or manager_page
             else PartnerProgramForUnregisteredUserSerializer
         )
         serializer = serializer_class(
