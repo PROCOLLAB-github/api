@@ -2,7 +2,7 @@ from uuid import uuid4
 from unittest.mock import patch
 
 from django.contrib.auth.models import Permission
-from django.test import TestCase, TransactionTestCase
+from django.test import TestCase, TransactionTestCase, skipUnlessDBFeature
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -407,6 +407,7 @@ class ProgramPublicationTests(ProgramLaunchTestCase):
         )
 
 
+@skipUnlessDBFeature("has_select_for_update")
 class ProgramLaunchConcurrencyTests(TransactionTestCase):
     def setUp(self):
         self.creator = create_user(is_active=True)
