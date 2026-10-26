@@ -73,4 +73,3 @@ Safe operational rollback: revoke creation permission/hide new Angular entry, re
 Verification and AC audit are in `docs/feature-specs/program-creation-publication.md`. Live dev acceptance follows API→Angular deployment and is separate from local real-API browser QA.
 
 New program managers receive the full page representation on the normal detail route without changing is_user_member or creating enrollment. Legacy program representation stays unchanged. Recovery from a lost publication response confirms saved state via GET; Angular clears the obsolete error and invalidates the scoped public-detail cache before opening the program.
-
