@@ -57,9 +57,11 @@ def main():
             assert not receipt.exists(), "Use a fresh fixture key; preparation must not be replayed."
             assert not PartnerProgram.objects.filter(tag__startswith=prefix).exists()
             baseline = {}
+            baseline_values = {}
             for model in protected_models:
                 ids = list(model._base_manager.order_by("pk").values_list("pk", flat=True))
-                baseline[model._meta.label] = {"ids": ids, "hash": digest(rows(model, ids))}
+                baseline_values[model._meta.label] = rows(model, ids)
+                baseline[model._meta.label] = {"ids": ids, "hash": digest(baseline_values[model._meta.label])}
             result = {
                 "prefix": prefix,
                 "managerId": manager_id,
@@ -126,7 +128,31 @@ def main():
                     )
                 for model in protected_models:
                     entry = baseline[model._meta.label]
-                    assert digest(rows(model, entry["ids"])) == entry["hash"]
+                    current = rows(model, entry["ids"])
+                    if digest(current) != entry["hash"]:
+                        pk_name = model._meta.pk.attname
+                        old_rows = {row[pk_name]: row for row in baseline_values[model._meta.label]}
+                        changed_fields = sorted(
+                            {
+                                name
+                                for row in current
+                                for name in row
+                                if old_rows[row[pk_name]].get(name) != row[name]
+                            }
+                        )
+                        sys.stdout.write(
+                            "PREPARE_RETENTION_DIFF="
+                            + json.dumps(
+                                {
+                                    "model": model._meta.label,
+                                    "fields": changed_fields,
+                                    "beforeCount": len(old_rows),
+                                    "afterCount": len(current),
+                                }
+                            )
+                            + "\n"
+                        )
+                        raise AssertionError(model._meta.label)
             receipt.write_text(json.dumps(result, ensure_ascii=False, default=str), encoding="utf8")
             receipt.chmod(0o600)
             sys.stdout.write(
