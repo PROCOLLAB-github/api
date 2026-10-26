@@ -51,14 +51,19 @@ def main():
         and not model._meta.proxy
     ]
 
+    baseline_ids = {
+        model._meta.label: list(model._base_manager.order_by("pk").values_list("pk", flat=True))
+        for model in models
+    }
+
     def retained():
-        return {
-            model._meta.label: {
-                "count": model._base_manager.count(),
-                "hash": digest(list(model._base_manager.order_by("pk").values())),
-            }
-            for model in models
-        }
+        result = {}
+        for model in models:
+            rows = list(
+                model._base_manager.filter(pk__in=baseline_ids[model._meta.label]).order_by("pk").values()
+            )
+            result[model._meta.label] = {"count": len(rows), "hash": digest(rows)}
+        return result
 
     baseline = retained()
     legacy_ids = [
@@ -360,12 +365,19 @@ def main():
             rollback_complete = True
     finally:
         after = retained()
+        changed = {
+            label: {"before": baseline[label], "after": after[label]}
+            for label in baseline
+            if baseline[label] != after[label]
+        }
+        if changed:
+            sys.stdout.write("RETENTION_DIFF=" + json.dumps(changed, sort_keys=True) + "\n")
         assert (
             after == baseline
         ), "Existing model data changed; inspect concurrent writers before attributing any difference."
         assert (
             list(
-                PartnerProgram.objects.filter(solution_storage_mode="legacy_project")
+                PartnerProgram.objects.filter(pk__in=legacy_before, solution_storage_mode="legacy_project")
                 .order_by("pk")
                 .values_list("pk", flat=True)
             )
