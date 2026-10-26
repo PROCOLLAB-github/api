@@ -45,6 +45,8 @@ def check_routes(base_url, context=None):
     # These invalid requests cannot send reset email or change a password.
     for path, method, expected in (
         ("/auth/users/current/", "GET", 401),
+        ("/solution-invitations/?status=pending&limit=100&offset=0", "GET", 401),
+        ("/solution-form-templates/", "GET", 401),
         ("/auth/reset_password/", "POST", 400),
         ("/auth/reset_password/confirm/", "POST", 400),
         ("/auth/reset_password/validate_token/", "POST", 400),

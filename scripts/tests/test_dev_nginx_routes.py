@@ -27,7 +27,8 @@ class Backend(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
-        self.respond(401 if self.path == "/auth/users/current/" else 404)
+        protected = {"/auth/users/current/", "/solution-invitations/", "/solution-form-templates/"}
+        self.respond(401 if self.path.partition("?")[0] in protected else 404)
 
     def do_POST(self):
         self.rfile.read(int(self.headers.get("Content-Length", 0)))
@@ -104,10 +105,17 @@ class DevRoutingTests(unittest.TestCase):
                             time.sleep(0.1)
                     check_routes(base_url, context)
                     # Unknown auth URLs and protected APIs never fall through to SPA.
-                    for path in ("/auth/unknown/", "/auth/login/unrecognized/", "/programs/6/"):
+                    for path in (
+                        "/auth/unknown/", "/auth/login/unrecognized/", "/programs/6/",
+                        "/solution-invitations/123/", "/solution-invitations/123/accept/",
+                        "/solution-form-templates/unknown/",
+                    ):
                         status, content_type, body = request(base_url, path, context=context)
                         self.assertEqual((status, content_type), (404, "application/json"))
                         self.assertEqual(json.loads(body)["backend_path"], path)
+                    status, content_type, body = request(base_url, "/solution-invitations-about", context=context)
+                    self.assertEqual((status, content_type), (200, "text/html"))
+                    self.assertIn(b"<app-root", body)
                     status, _, body = request(base_url, "/asset.js", context=context)
                     self.assertEqual((status, body), (200, b"window.fixture = true;"))
                 finally:
