@@ -131,6 +131,8 @@ class ProgramCreationTests(ProgramLaunchTestCase):
                 "news/",
                 "filters/",
                 "projects/",
+                "published-projects/",
+                "published-solutions/",
                 "registration/",
                 "solution-context/",
                 "solution-form/",
