@@ -5,6 +5,20 @@ on:
     branches: 
       - dev
   workflow_dispatch:
+    inputs:
+      operation:
+        description: "DEV operation"
+        type: choice
+        default: deploy
+        options: [deploy, verify_solution_rollback, prepare_solution_browser, finalize_solution_browser]
+      fixture_key:
+        description: "Unique acceptance fixture key"
+        default: release-20261026
+        type: string
+      manager_user_id:
+        description: "Existing user who owns the new QA programs"
+        default: "28"
+        type: string
 
 permissions:
   contents: read
@@ -16,7 +30,7 @@ concurrency:
 jobs:
   deploy:
       name: Deploy
-      if: github.ref == 'refs/heads/dev'
+      if: github.ref == 'refs/heads/dev' && (github.event_name != 'workflow_dispatch' || inputs.operation == 'deploy' || inputs.operation == '')
       environment: dev
       runs-on: ubuntu-latest
       steps:
@@ -356,3 +370,67 @@ jobs:
                 exit 1
               fi
           run: node scripts/dev_ci_ssh.cjs
+  solution-acceptance:
+    name: Solution acceptance
+    if: github.ref == 'refs/heads/dev' && github.event_name == 'workflow_dispatch' && inputs.operation != 'deploy' && inputs.operation != ''
+    environment: dev
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install DEV SSH transport
+        run: npm install --prefix "$RUNNER_TEMP/dev-verification-ssh" --ignore-scripts --no-package-lock --no-audit --no-fund ssh2@1.16.0
+      - name: Verify deployed source and run bounded acceptance
+        env:
+          NODE_PATH: ${{ runner.temp }}/dev-verification-ssh/node_modules
+          DEV_SERVER_HOST: ${{ secrets.DEV_SERVER_HOST }}
+          DEV_SERVER_USER: ${{ secrets.DEV_SERVER_USER }}
+          DEV_SERVER_PASSWORD: ${{ secrets.DEV_SERVER_PASSWORD }}
+          DEV_SSH_HOST_KEY_SHA256: ${{ vars.DEV_SSH_HOST_KEY_SHA256 }}
+          VERIFY_OPERATION: ${{ inputs.operation }}
+          VERIFY_FIXTURE_KEY: ${{ inputs.fixture_key }}
+          VERIFY_MANAGER_ID: ${{ inputs.manager_user_id }}
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const { deploy } = require('./scripts/dev_ci_ssh.cjs');
+          const sha = process.env.GITHUB_SHA;
+          const operation = process.env.VERIFY_OPERATION;
+          const key = process.env.VERIFY_FIXTURE_KEY;
+          const manager = process.env.VERIFY_MANAGER_ID;
+          const phases = { verify_solution_rollback: 'verify_rollback', prepare_solution_browser: 'prepare_browser', finalize_solution_browser: 'finalize_browser' };
+          if (!/^[0-9a-f]{40}$/.test(sha) || !phases[operation] || !/^[a-z0-9-]{8,50}$/.test(key) || !/^[1-9][0-9]{0,8}$/.test(manager)) throw new Error('Invalid acceptance arguments');
+          const phase = phases[operation];
+          const file = phase === 'verify_rollback' ? 'scripts/verify_program_solutions_dev.py' : 'scripts/prepare_program_solutions_browser.py';
+          const source = fs.readFileSync(file, 'utf8');
+          const script = [
+            'set +x',
+            'set -eu',
+            'cd /root/api',
+            'test "$(git rev-parse HEAD)" = "' + sha + '"',
+            'web="$(docker compose -f docker-compose.dev-ci.yml ps -q web)"',
+            'worker="$(docker compose -f docker-compose.dev-ci.yml ps -q celerys)"',
+            'test -n "$web" && test -n "$worker"',
+            'web_image="$(docker inspect -f \'{{.Config.Image}}\' "$web")"',
+            'worker_image="$(docker inspect -f \'{{.Config.Image}}\' "$worker")"',
+            'case "$web_image" in procollab-dev-api:' + sha + '-*) ;; *) exit 31 ;; esac',
+            'test "$web_image" = "$worker_image"',
+            'test "$(docker inspect -f \'{{.Image}}\' "$web")" = "$(docker inspect -f \'{{.Image}}\' "$worker")"',
+            'echo "VERIFIED_DEV_RUNTIME_REF=' + sha + '"',
+            'docker exec "$web" python manage.py migrate --check',
+            'docker exec -e VERIFY_EXPECTED_API_SHA=' + sha + ' -e VERIFY_EXPECTED_LEGACY_IDS=1,2,3,4,5,6,7,8,9,38,39 -e VERIFY_PHASE=' + phase + ' -e VERIFY_FIXTURE_KEY=' + key + ' -e VERIFY_MANAGER_ID=' + manager + ' -i "$web" python - <<\'SOLUTION_ACCEPTANCE_PY\'',
+            source,
+            'SOLUTION_ACCEPTANCE_PY'
+          ].join('\n') + '\n';
+          deploy({
+            host: process.env.DEV_SERVER_HOST,
+            username: process.env.DEV_SERVER_USER,
+            password: process.env.DEV_SERVER_PASSWORD,
+            hostFingerprint: process.env.DEV_SSH_HOST_KEY_SHA256,
+            script,
+            timeoutMs: 9 * 60 * 1000
+          }).catch(() => { console.error('DEV solution acceptance failed; inspect masked output.'); process.exitCode = 1; });
+          NODE
