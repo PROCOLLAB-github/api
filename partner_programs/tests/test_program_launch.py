@@ -186,6 +186,24 @@ class ProgramCreationTests(ProgramLaunchTestCase):
         )
         self.assertEqual(response.status_code, 404, response.data)
 
+    def test_personal_program_lists_do_not_reveal_drafts_even_with_a_profile(self):
+        hidden = PartnerProgram.objects.get(pk=self.create().data["id"])
+        published = create_partner_program(draft=False)
+        participant = create_user()
+        for program in (hidden, published):
+            PartnerProgramUserProfile.objects.create(
+                partner_program=program, user=participant, partner_program_data={}
+            )
+        self.client.force_authenticate(participant)
+        for url in (
+            "/auth/users/current/programs/",
+            "/auth/users/current/programs/tags/",
+        ):
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, 200, response.data)
+                self.assertEqual([row["id"] for row in response.data], [published.pk])
+
     def test_draft_reads_and_hidden_responses_are_not_cacheable(self):
         pk = self.create().data["id"]
         response = self.client.get(f"/programs/{pk}/")
