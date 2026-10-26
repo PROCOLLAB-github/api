@@ -118,6 +118,12 @@ class PartnerProgramBaseSerializerMixin(serializers.ModelSerializer):
     pending_expert_invitation_id = serializers.SerializerMethodField()
     courses = serializers.SerializerMethodField()
     registration_managed = serializers.SerializerMethodField()
+    published_projects_available = serializers.SerializerMethodField()
+
+    def get_published_projects_available(self, program):
+        from partner_programs.published_projects_api import published_projects_available
+
+        return published_projects_available(program)
 
     def get_registration_managed(self, program):
         from partner_programs.services.native_registration import config_for
@@ -252,6 +258,7 @@ class PartnerProgramForMemberSerializer(PartnerProgramBaseSerializerMixin):
             "legacy_team_max_size",
             "is_user_manager",
             "welcome_acknowledged_at",
+            "published_projects_available",
             "is_user_expert",
             "solution_storage_mode",
             "pending_expert_invitation_id",
@@ -282,6 +289,7 @@ class PartnerProgramForUnregisteredUserSerializer(PartnerProgramBaseSerializerMi
             "datetime_project_submission_ends",
             "datetime_evaluation_ends",
             "publish_projects_after_finish",
+            "published_projects_available",
             "legacy_team_min_size",
             "legacy_team_max_size",
             "is_user_manager",

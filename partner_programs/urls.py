@@ -1,4 +1,5 @@
 from django.urls import path
+from partner_programs.published_projects_api import PublishedProgramProjectsView
 
 from partner_programs.solution_action_api import SolutionActionView
 from partner_programs.solution_case_action_api import SolutionCaseChangeView
@@ -147,6 +148,7 @@ from partner_programs.certificate_views import (
 app_name = "partner_programs"
 
 urlpatterns = [
+    path("<int:pk>/published-projects/", PublishedProgramProjectsView.as_view()),
     path("<int:pk>/published-solutions/", PublishedSolutionListView.as_view()),
     path(
         "<int:pk>/published-solutions/<int:solution_id>/",
