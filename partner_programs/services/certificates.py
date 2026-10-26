@@ -575,9 +575,9 @@ def initialize_batch(batch_id):
     )
     if not batch.active or batch.issue_at > timezone.now() or batch.initialized_at:
         return
-    if (
-        batch.snapshot["timing"] == "scheduled"
-        and batch.program.datetime_finished > timezone.now()
+    if batch.snapshot["timing"] == "scheduled" and (
+        batch.program.datetime_finished is None
+        or batch.program.datetime_finished > timezone.now()
     ):
         return
     rows = [

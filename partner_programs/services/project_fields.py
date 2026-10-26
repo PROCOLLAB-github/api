@@ -51,9 +51,9 @@ def resolve_legacy_program_link(project_id, user):
     return links[0]
 
 
-def program_link_fields(link_id, user):
+def program_link_fields(link_id, user, *, link=None):
     """Restricted read, current-program roles only; definitions/values are bulk loaded."""
-    link = get_program_link(link_id)
+    link = link if link is not None and link.pk == link_id else get_program_link(link_id)
     if not has_project_read_involvement(
         user, link.project, program_id=link.partner_program_id
     ):

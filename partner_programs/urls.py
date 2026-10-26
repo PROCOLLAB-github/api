@@ -144,405 +144,578 @@ from partner_programs.certificate_views import (
     PublicCertificateDownloadView,
 )
 
+from partner_programs.permissions import program_view
+from partner_programs.program_launch_views import (
+    ProgramCapabilitiesView,
+    ProgramDraftCreateView,
+    ManagedProgramsView,
+    ProgramPreviewView,
+    ProgramReadinessView,
+    ProgramPublishView,
+)
+
 app_name = "partner_programs"
 
 urlpatterns = [
-    path("<int:pk>/published-solutions/", PublishedSolutionListView.as_view()),
+    path(
+        "capabilities/",
+        program_view(ProgramCapabilitiesView),
+    ),
+    path(
+        "drafts/",
+        program_view(ProgramDraftCreateView),
+    ),
+    path(
+        "managed/",
+        program_view(ManagedProgramsView),
+    ),
+    path(
+        "<int:pk>/management/preview/",
+        program_view(ProgramPreviewView),
+    ),
+    path("<int:pk>/management/launch/", program_view(ProgramReadinessView)),
+    path("<int:pk>/management/publish/", program_view(ProgramPublishView)),
+    path(
+        "<int:pk>/published-solutions/",
+        program_view(PublishedSolutionListView),
+    ),
     path(
         "<int:pk>/published-solutions/<int:solution_id>/",
-        PublishedSolutionDetailView.as_view(),
+        program_view(PublishedSolutionDetailView),
     ),
     path(
         "<int:pk>/management/solution-analytics/attention/solutions-awaiting-evaluation/reminder-preview/",
-        SolutionExpertReminderView.as_view(),
+        program_view(SolutionExpertReminderView),
     ),
     path(
         "<int:pk>/management/solution-analytics/attention/solutions-awaiting-evaluation/reminders/",
-        SolutionExpertReminderView.as_view(reminder_action="confirm"),
+        program_view(SolutionExpertReminderView, reminder_action="confirm"),
     ),
     path(
-        "<int:pk>/management/solution-analytics/", SolutionManagerAnalyticsView.as_view()
+        "<int:pk>/management/solution-analytics/",
+        program_view(SolutionManagerAnalyticsView),
     ),
     path(
         "<int:pk>/management/solution-analytics/assignments/",
-        SolutionManagerAssignmentsView.as_view(),
+        program_view(SolutionManagerAssignmentsView),
     ),
     path(
         "<int:pk>/management/solution-analytics/assignments/<int:assignment_id>/",
-        SolutionManagerAssignmentView.as_view(),
+        program_view(SolutionManagerAssignmentView),
     ),
     path(
         "<int:pk>/management/solution-analytics/solutions/",
-        SolutionManagerSolutionsView.as_view(),
+        program_view(SolutionManagerSolutionsView),
     ),
     path(
         "<int:pk>/management/solution-analytics/export/",
-        SolutionManagerExportView.as_view(),
+        program_view(SolutionManagerExportView),
     ),
     path(
         "<int:pk>/management/solution-cases/",
-        SolutionCaseAnalyticsView.as_view(),
+        program_view(SolutionCaseAnalyticsView),
         name="solution-case-analytics",
     ),
     path(
         "<int:pk>/management/solution-evaluation/allocation/",
-        SolutionAllocationView.as_view(),
+        program_view(SolutionAllocationView),
     ),
     path(
         "<int:pk>/management/solution-evaluation/allocation/apply/",
-        SolutionAllocationApplyView.as_view(),
+        program_view(SolutionAllocationApplyView),
     ),
-    path("<int:pk>/management/solution-evaluation/quota/", SolutionQuotaView.as_view()),
-    path("<int:pk>/management/solution-results/", SolutionResultsView.as_view()),
+    path(
+        "<int:pk>/management/solution-evaluation/quota/",
+        program_view(SolutionQuotaView),
+    ),
+    path(
+        "<int:pk>/management/solution-results/",
+        program_view(SolutionResultsView),
+    ),
     path(
         "<int:pk>/management/solution-results/export/",
-        SolutionResultsExportView.as_view(),
+        program_view(SolutionResultsExportView),
     ),
-    path("<int:pk>/solution-evaluation/", SolutionRatingsView.as_view()),
     path(
-        "<int:pk>/solutions/<int:solution_id>/evaluation/", SolutionRatingView.as_view()
+        "<int:pk>/solution-evaluation/",
+        program_view(SolutionRatingsView),
+    ),
+    path(
+        "<int:pk>/solutions/<int:solution_id>/evaluation/",
+        program_view(SolutionRatingView),
     ),
     path(
         "<int:pk>/management/solution-evaluation/experts/<int:expert_id>/assignments/",
-        SolutionExpertAssignmentsView.as_view(),
+        program_view(SolutionExpertAssignmentsView),
     ),
-    path("<int:pk>/solution-form/", SolutionFormView.as_view()),
-    path("<int:pk>/management/solution-form/", ManagedSolutionFormView.as_view()),
-    path("<int:pk>/solution-context/", SolutionContextView.as_view()),
-    path("<int:pk>/solutions/", SolutionListCreateView.as_view()),
-    path("<int:pk>/solutions/<int:solution_id>/", SolutionDetailView.as_view()),
-    path("<int:pk>/solutions/<int:solution_id>/submit/", SolutionSubmitView.as_view()),
+    path(
+        "<int:pk>/solution-form/",
+        program_view(SolutionFormView),
+    ),
+    path(
+        "<int:pk>/management/solution-form/",
+        program_view(ManagedSolutionFormView),
+    ),
+    path(
+        "<int:pk>/solution-context/",
+        program_view(SolutionContextView),
+    ),
+    path(
+        "<int:pk>/solutions/",
+        program_view(SolutionListCreateView),
+    ),
+    path(
+        "<int:pk>/solutions/<int:solution_id>/",
+        program_view(SolutionDetailView),
+    ),
+    path(
+        "<int:pk>/solutions/<int:solution_id>/submit/",
+        program_view(SolutionSubmitView),
+    ),
     path(
         "<int:pk>/solutions/<int:solution_id>/members/<int:user_id>/",
-        SolutionMemberView.as_view(),
+        program_view(SolutionMemberView),
     ),
-    path("<int:pk>/solutions/<int:solution_id>/leave/", SolutionLeaveView.as_view()),
-    path("<int:pk>/solutions/<int:solution_id>/captain/", SolutionCaptainView.as_view()),
+    path(
+        "<int:pk>/solutions/<int:solution_id>/leave/",
+        program_view(SolutionLeaveView),
+    ),
+    path(
+        "<int:pk>/solutions/<int:solution_id>/captain/",
+        program_view(SolutionCaptainView),
+    ),
     path(
         "<int:pk>/solutions/<int:solution_id>/invitations/",
-        SolutionInvitationsView.as_view(),
+        program_view(SolutionInvitationsView),
     ),
-    path("<int:pk>/management/certificates/", CertificateSettingsView.as_view()),
-    path("<int:pk>/management/certificates/assets/", CertificateAssetView.as_view()),
+    path(
+        "<int:pk>/management/certificates/",
+        program_view(CertificateSettingsView),
+    ),
+    path(
+        "<int:pk>/management/certificates/assets/",
+        program_view(CertificateAssetView),
+    ),
     path(
         "<int:pk>/management/certificates/assets/<int:asset_id>/",
-        CertificateAssetView.as_view(),
+        program_view(CertificateAssetView),
     ),
-    path("<int:pk>/management/certificates/preview/", CertificatePreviewView.as_view()),
-    path("<int:pk>/management/certificates/test/", CertificateTestView.as_view()),
-    path("<int:pk>/management/certificates/activate/", CertificateActivateView.as_view()),
+    path(
+        "<int:pk>/management/certificates/preview/",
+        program_view(CertificatePreviewView),
+    ),
+    path(
+        "<int:pk>/management/certificates/test/",
+        program_view(CertificateTestView),
+    ),
+    path(
+        "<int:pk>/management/certificates/activate/",
+        program_view(CertificateActivateView),
+    ),
     path(
         "<int:pk>/management/certificates/queue/<str:action>/",
-        CertificateQueueView.as_view(),
+        program_view(CertificateQueueView),
     ),
     path(
-        "<int:pk>/management/certificates/deliveries/", CertificateJournalView.as_view()
+        "<int:pk>/management/certificates/deliveries/",
+        program_view(CertificateJournalView),
     ),
-    path("<int:pk>/management/certificates/retry/", CertificateRetryView.as_view()),
     path(
-        "<int:pk>/management/certificates/selection/", CertificateSelectionView.as_view()
+        "<int:pk>/management/certificates/retry/",
+        program_view(CertificateRetryView),
+    ),
+    path(
+        "<int:pk>/management/certificates/selection/",
+        program_view(CertificateSelectionView),
     ),
     path(
         "<int:pk>/management/certificates/deliveries/<uuid:certificate_id>/pdf/",
-        CertificateDownloadView.as_view(),
+        program_view(CertificateDownloadView),
     ),
-    path("<int:pk>/management/certificates/archive/", CertificateArchiveView.as_view()),
-    path("<int:pk>/certificates/me/", MyCertificatesView.as_view()),
+    path(
+        "<int:pk>/management/certificates/archive/",
+        program_view(CertificateArchiveView),
+    ),
+    path(
+        "<int:pk>/certificates/me/",
+        program_view(MyCertificatesView),
+    ),
     path(
         "<int:pk>/certificates/download/<uuid:token>/",
-        PublicCertificateDownloadView.as_view(),
+        program_view(PublicCertificateDownloadView),
     ),
     path(
         "<int:pk>/management/solutions/<int:solution_id>/case/preview/",
-        SolutionCaseChangeView.as_view(),
+        program_view(SolutionCaseChangeView),
     ),
     path(
         "<int:pk>/management/solutions/<int:solution_id>/members/remove/preview/",
-        SolutionMemberRemovalView.as_view(),
+        program_view(SolutionMemberRemovalView),
     ),
     path(
         "<int:pk>/management/solutions/<int:solution_id>/members/remove/apply/",
-        SolutionMemberRemovalView.as_view(apply_action=True),
+        program_view(SolutionMemberRemovalView, apply_action=True),
     ),
     path(
         "<int:pk>/management/solutions/<int:solution_id>/history/",
-        SolutionHistoryView.as_view(),
+        program_view(SolutionHistoryView),
     ),
     path(
         "<int:pk>/management/solutions/<int:solution_id>/history/<int:change_id>/",
-        SolutionHistoryView.as_view(),
+        program_view(SolutionHistoryView),
     ),
     path(
         "<int:pk>/management/solutions/<int:solution_id>/case/apply/",
-        SolutionCaseChangeView.as_view(apply_action=True),
+        program_view(SolutionCaseChangeView, apply_action=True),
     ),
     path(
         "<int:pk>/management/solutions/actions/preview/",
-        SolutionActionView.as_view(),
+        program_view(SolutionActionView),
     ),
     path(
         "<int:pk>/management/registrations/remove/preview/",
-        SolutionRegistrationRemovalView.as_view(),
+        program_view(SolutionRegistrationRemovalView),
     ),
     path(
         "<int:pk>/management/registrations/remove/apply/",
-        SolutionRegistrationRemovalView.as_view(apply_action=True),
+        program_view(SolutionRegistrationRemovalView, apply_action=True),
     ),
     path(
         "<int:pk>/management/registrations/removals/",
-        SolutionRegistrationRemovalHistoryView.as_view(),
+        program_view(SolutionRegistrationRemovalHistoryView),
     ),
     path(
         "<int:pk>/management/registrations/removals/<int:audit_id>/",
-        SolutionRegistrationRemovalHistoryView.as_view(),
+        program_view(SolutionRegistrationRemovalHistoryView),
     ),
-    path("<int:pk>/management/solutions/archive/preview/", SolutionArchiveView.as_view()),
+    path(
+        "<int:pk>/management/solutions/archive/preview/",
+        program_view(SolutionArchiveView),
+    ),
     path(
         "<int:pk>/management/solutions/archive/apply/",
-        SolutionArchiveView.as_view(apply_action=True),
+        program_view(SolutionArchiveView, apply_action=True),
     ),
     path(
         "<int:pk>/management/solutions/actions/apply/",
-        SolutionActionView.as_view(apply_action=True),
+        program_view(SolutionActionView, apply_action=True),
     ),
     path(
         "<int:pk>/management/projects/actions/preview/",
-        ManagementProjectActionPreviewView.as_view(),
+        program_view(ManagementProjectActionPreviewView),
     ),
     path(
         "<int:pk>/management/projects/actions/apply/",
-        ManagementProjectActionApplyView.as_view(),
+        program_view(ManagementProjectActionApplyView),
     ),
-    path("<int:pk>/manager-overview/export/", ProgramReportView.as_view()),
+    path(
+        "<int:pk>/manager-overview/export/",
+        program_view(ProgramReportView),
+    ),
     path(
         "<int:pk>/manager-overview/attention/<str:category>/<str:action>/",
-        AttentionActionView.as_view(),
+        program_view(AttentionActionView),
     ),
-    path("<int:pk>/management/registration/", RegistrationSettingsView.as_view()),
-    path("<int:pk>/management/registration/publish/", RegistrationPublishView.as_view()),
-    path("<int:pk>/management/registration/import/", RegistrationImportView.as_view()),
+    path(
+        "<int:pk>/management/registration/",
+        program_view(RegistrationSettingsView),
+    ),
+    path(
+        "<int:pk>/management/registration/publish/",
+        program_view(RegistrationPublishView),
+    ),
+    path(
+        "<int:pk>/management/registration/import/",
+        program_view(RegistrationImportView),
+    ),
     path(
         "<int:pk>/management/registration/connection/",
-        RegistrationConnectionView.as_view(),
+        program_view(RegistrationConnectionView),
     ),
-    path("<int:pk>/registration/", PublicRegistrationView.as_view()),
-    path("<int:pk>/registration/<str:action>/", PublicRegistrationActionView.as_view()),
-    path("organizer-invitations/<str:token>/", PublicOrganizerInvitationView.as_view()),
+    path(
+        "<int:pk>/registration/",
+        program_view(PublicRegistrationView),
+    ),
+    path(
+        "<int:pk>/registration/<str:action>/",
+        program_view(PublicRegistrationActionView),
+    ),
+    path(
+        "organizer-invitations/<str:token>/",
+        program_view(PublicOrganizerInvitationView),
+    ),
     path(
         "organizer-invitations/<str:token>/<str:action>/",
-        PublicOrganizerInvitationActionView.as_view(),
+        program_view(PublicOrganizerInvitationActionView),
     ),
-    path("<int:pk>/management/organizers/", OrganizersView.as_view()),
+    path(
+        "<int:pk>/management/organizers/",
+        program_view(OrganizersView),
+    ),
     path(
         "<int:pk>/management/organizers/<int:user_id>/remove/",
-        OrganizerAccessView.as_view(),
+        program_view(OrganizerAccessView),
     ),
     path(
         "<int:pk>/management/organizer-invitations/<int:invitation_id>/<str:action>/",
-        OrganizerInvitationActionView.as_view(),
+        program_view(OrganizerInvitationActionView),
     ),
     path(
         "<int:pk>/management/results/",
-        ManagementResultsView.as_view(),
+        program_view(ManagementResultsView),
         name="management-results",
     ),
     path(
         "<int:pk>/management/results/export/",
-        ManagementResultsExportView.as_view(),
+        program_view(ManagementResultsExportView),
         name="management-results-export",
     ),
-    path("<int:pk>/management/experts/", ExpertsView.as_view()),
-    path("<int:pk>/management/experts/bulk/", ExpertsBulkView.as_view()),
+    path(
+        "<int:pk>/management/experts/",
+        program_view(ExpertsView),
+    ),
+    path(
+        "<int:pk>/management/experts/bulk/",
+        program_view(ExpertsBulkView),
+    ),
     path(
         "<int:pk>/management/experts/<int:expert_id>/cases/",
-        ExpertCaseScopeView.as_view(),
+        program_view(ExpertCaseScopeView),
     ),
-    path("<int:pk>/management/project-experts/", ProjectExpertsView.as_view()),
+    path(
+        "<int:pk>/management/project-experts/",
+        program_view(ProjectExpertsView),
+    ),
     path(
         "<int:pk>/management/expert-invitations/<int:invitation_id>/<str:action>/",
-        InvitationActionView.as_view(),
+        program_view(InvitationActionView),
     ),
     path(
         "<int:pk>/management/experts/<int:expert_id>/assignments/",
-        ExpertAssignmentsView.as_view(),
+        program_view(ExpertAssignmentsView),
     ),
-    path("<int:pk>/management/expert-allocation/", AllocationView.as_view()),
-    path("<int:pk>/management/expert-allocation/apply/", AllocationApplyView.as_view()),
-    path("<int:pk>/management/evaluators/", EvaluatorsView.as_view()),
+    path(
+        "<int:pk>/management/expert-allocation/",
+        program_view(AllocationView),
+    ),
+    path(
+        "<int:pk>/management/expert-allocation/apply/",
+        program_view(AllocationApplyView),
+    ),
+    path(
+        "<int:pk>/management/evaluators/",
+        program_view(EvaluatorsView),
+    ),
     path(
         "<int:pk>/management/criteria/",
-        ManagementCriteriaView.as_view(),
+        program_view(ManagementCriteriaView),
         name="management-criteria",
     ),
     path(
         "<int:pk>/management/project-form/",
-        ManagementProjectFormView.as_view(),
+        program_view(ManagementProjectFormView),
         name="management-project-form",
     ),
-    path("<int:pk>/management/", ManagementView.as_view(), name="management"),
+    path(
+        "<int:pk>/management/",
+        program_view(ManagementView),
+        name="management",
+    ),
     path(
         "<int:pk>/management/participants/selection/",
-        ManagementSelectionView.as_view(),
+        program_view(ManagementSelectionView),
         {"kind": "participants"},
     ),
     path(
         "<int:pk>/management/participants/remove-preview/",
-        ManagementParticipantsRemovalPreviewView.as_view(),
+        program_view(ManagementParticipantsRemovalPreviewView),
     ),
     path(
         "<int:pk>/management/participants/remove/",
-        ManagementParticipantsRemovalView.as_view(),
+        program_view(ManagementParticipantsRemovalView),
     ),
     path(
         "<int:pk>/management/projects/selection/",
-        ManagementSelectionView.as_view(),
+        program_view(ManagementSelectionView),
         {"kind": "projects"},
     ),
     path(
         "<int:pk>/management/participants/export/",
-        ManagementParticipantsExportView.as_view(),
+        program_view(ManagementParticipantsExportView),
         name="management-participants-export",
     ),
     path(
         "<int:pk>/management/participants/",
-        ManagementParticipantsView.as_view(),
+        program_view(ManagementParticipantsView),
         name="management-participants",
     ),
     path(
         "<int:pk>/management/projects/",
-        ManagementProjectsView.as_view(),
+        program_view(ManagementProjectsView),
         name="management-projects",
     ),
     path(
         "<int:pk>/management/projects/export/",
-        ManagementProjectsExportView.as_view(),
+        program_view(ManagementProjectsExportView),
         name="management-projects-export",
     ),
     path(
         "<int:pk>/management/projects/<int:link_id>/team/",
-        ManagementTeamView.as_view(),
+        program_view(ManagementTeamView),
         name="management-team",
     ),
     path(
         "<int:pk>/management/projects/<int:link_id>/evaluation/",
-        ManagementEvaluationView.as_view(),
+        program_view(ManagementEvaluationView),
         name="management-evaluation",
     ),
     path(
         "<int:pk>/management/settings/<str:section>/",
-        ManagementSettingsView.as_view(),
+        program_view(ManagementSettingsView),
         name="management-settings",
     ),
     path(
         "<int:pk>/management/materials/",
-        ManagementMaterialsView.as_view(),
+        program_view(ManagementMaterialsView),
         name="management-materials",
     ),
     path(
         "<int:pk>/management/materials/<int:material_id>/",
-        ManagementMaterialDetailView.as_view(),
+        program_view(ManagementMaterialDetailView),
         name="management-material",
     ),
     path(
         "<int:pk>/analytics-widget/",
-        ProgramRoleWidgetAPIView.as_view(),
+        program_view(ProgramRoleWidgetAPIView),
         name="analytics-widget",
     ),
-    path("", PartnerProgramList.as_view()),
-    path("<int:pk>/", PartnerProgramDetail.as_view()),
+    path(
+        "",
+        program_view(PartnerProgramList),
+    ),
+    path(
+        "<int:pk>/",
+        program_view(PartnerProgramDetail),
+    ),
     path(
         "<int:pk>/manager-overview/",
-        ProgramManagerAnalyticsAPIView.as_view(),
+        program_view(ProgramManagerAnalyticsAPIView),
         name="manager-overview",
     ),
     path(
         "<int:pk>/manager-overview/participants-without-visit/",
-        ProgramManagerParticipantsWithoutVisitAPIView.as_view(),
+        program_view(ProgramManagerParticipantsWithoutVisitAPIView),
         name="manager-overview-participants-without-visit",
     ),
     path(
         "<int:pk>/manager-overview/participants-without-onboarding/",
-        ProgramManagerParticipantsWithoutOnboardingAPIView.as_view(),
+        program_view(ProgramManagerParticipantsWithoutOnboardingAPIView),
         name="manager-overview-participants-without-onboarding",
     ),
     path(
         "<int:pk>/manager-overview/participants-without-team/",
-        ProgramManagerParticipantsWithoutTeamAPIView.as_view(),
+        program_view(ProgramManagerParticipantsWithoutTeamAPIView),
         name="manager-overview-participants-without-team",
     ),
     path(
         "<int:pk>/manager-overview/projects-awaiting-evaluation/",
-        ProgramManagerProjectsAwaitingEvaluationAPIView.as_view(),
+        program_view(ProgramManagerProjectsAwaitingEvaluationAPIView),
         name="manager-overview-projects-awaiting-evaluation",
     ),
     path(
         "<int:pk>/manager-overview/projects-not-submitted/",
-        ProgramManagerProjectsNotSubmittedAPIView.as_view(),
+        program_view(ProgramManagerProjectsNotSubmittedAPIView),
         name="manager-overview-projects-not-submitted",
     ),
     path(
         "<int:pk>/manager-overview/assignments/",
-        ProgramManagerAssignmentsAPIView.as_view(),
+        program_view(ProgramManagerAssignmentsAPIView),
         name="manager-overview-assignments",
     ),
     path(
         "<int:pk>/manager-overview/assignments/<int:assignment_id>/scores/",
-        ProgramManagerAssignmentScoresAPIView.as_view(),
+        program_view(ProgramManagerAssignmentScoresAPIView),
         name="manager-overview-assignment-scores",
     ),
     path(
         "<int:pk>/acknowledge-welcome/",
-        PartnerProgramWelcomeAcknowledgement.as_view(),
+        program_view(PartnerProgramWelcomeAcknowledgement),
         name="partner-program-acknowledge-welcome",
     ),
     path(
         "partner-program-projects/<int:pk>/submit/",
-        PartnerProgramProjectSubmitView.as_view(),
+        program_view(PartnerProgramProjectSubmitView),
         name="partner-program-project-submit",
     ),
     path(
         "partner-program-projects/<int:pk>/fields/",
-        PartnerProgramProjectFieldsView.as_view(),
+        program_view(PartnerProgramProjectFieldsView),
         name="partner-program-project-fields",
     ),
-    path("<int:pk>/schema/", PartnerProgramDataSchema.as_view()),
-    path("<int:pk>/register/", PartnerProgramRegister.as_view()),
-    path("<int:pk>/register_new/", PartnerProgramCreateUserAndRegister.as_view()),
-    path("<int:pk>/set_liked/", PartnerProgramSetLiked.as_view()),
-    path("<int:pk>/set_viewed/", PartnerProgramSetViewed.as_view()),
-    path("<int:partnerprogram_pk>/news/", NewsList.as_view()),
-    path("<int:partnerprogram_pk>/news/<int:pk>/", NewsDetail.as_view()),
+    path(
+        "<int:pk>/schema/",
+        program_view(PartnerProgramDataSchema),
+    ),
+    path(
+        "<int:pk>/register/",
+        program_view(PartnerProgramRegister),
+    ),
+    path(
+        "<int:pk>/register_new/",
+        program_view(PartnerProgramCreateUserAndRegister),
+    ),
+    path(
+        "<int:pk>/set_liked/",
+        program_view(PartnerProgramSetLiked),
+    ),
+    path(
+        "<int:pk>/set_viewed/",
+        program_view(PartnerProgramSetViewed),
+    ),
+    path(
+        "<int:partnerprogram_pk>/news/",
+        program_view(NewsList),
+    ),
+    path(
+        "<int:partnerprogram_pk>/news/<int:pk>/",
+        program_view(NewsDetail),
+    ),
     path(
         "<int:partnerprogram_pk>/news/<int:pk>/set_viewed/",
-        NewsDetailSetViewed.as_view(),
+        program_view(NewsDetailSetViewed),
     ),
     path(
-        "<int:partnerprogram_pk>/news/<int:pk>/set_liked/", NewsDetailSetLiked.as_view()
+        "<int:partnerprogram_pk>/news/<int:pk>/set_liked/",
+        program_view(NewsDetailSetLiked),
     ),
-    path("<int:pk>/filters/", ProgramFiltersAPIView.as_view(), name="program-filters"),
+    path(
+        "<int:pk>/filters/",
+        program_view(ProgramFiltersAPIView),
+        name="program-filters",
+    ),
     path(
         "<int:pk>/projects/filter/",
-        ProgramProjectFilterAPIView.as_view(),
+        program_view(ProgramProjectFilterAPIView),
         name="program-projects-filter",
     ),
     path(
         "<int:pk>/projects/",
-        PartnerProgramProjectsAPIView.as_view(),
+        program_view(PartnerProgramProjectsAPIView),
         name="partner-program-projects",
     ),
     path(
         "<int:pk>/projects/apply/",
-        PartnerProgramProjectApplyView.as_view(),
+        program_view(PartnerProgramProjectApplyView),
         name="partner-program-project-apply",
     ),
     path(
         "<int:pk>/export-projects/",
-        PartnerProgramExportProjectsAPIView.as_view(),
+        program_view(PartnerProgramExportProjectsAPIView),
         name="partner-program-export-projects",
     ),
     path(
         "<int:pk>/export-rates/",
-        PartnerProgramExportRatesAPIView.as_view(),
+        program_view(PartnerProgramExportRatesAPIView),
         name="partner-program-export-rates",
     ),
 ]

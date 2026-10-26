@@ -143,6 +143,8 @@ class CertificateActivateView(ManagementBase):
                 "Сначала завершите предыдущую выдачу: возобновите очередь и повторите ошибки."
             )
         issue_at = timezone.now()
+        if program.datetime_finished is None:
+            raise ValidationError("Укажите окончание программы перед запуском выдачи.")
         if draft["timing"] == "scheduled":
             issue_at = parse_datetime(draft["scheduled_at"] or "")
             if (

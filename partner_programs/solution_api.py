@@ -65,11 +65,14 @@ def current_application(program, user):
     return None
 
 
-def context_data(program, user):
-    application = current_application(program, user)
-    registered = PartnerProgramUserProfile.objects.filter(
-        partner_program=program, user=user
-    ).exists()
+def context_data(program, user, *, preview_participant=False):
+    application = None if preview_participant else current_application(program, user)
+    registered = (
+        preview_participant
+        or PartnerProgramUserProfile.objects.filter(
+            partner_program=program, user=user
+        ).exists()
+    )
     reason = None
     if application:
         reason = "already_has_application"

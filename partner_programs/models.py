@@ -229,6 +229,29 @@ class PartnerProgram(models.Model):
         help_text="Пользователи, имеющие право создавать и редактировать новости",
     )
     draft = models.BooleanField(blank=False, default=True)
+    program_format = models.CharField(
+        max_length=24,
+        choices=[
+            ("case_championship", "Кейс-чемпионат"),
+            ("hackathon", "Хакатон"),
+            ("noncompetitive", "Неконкурсная программа"),
+        ],
+        null=True,
+        blank=True,
+        verbose_name="Формат программы",
+    )
+    created_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="created_partner_programs",
+        editable=False,
+    )
+    creation_key = models.UUIDField(null=True, blank=True, editable=False)
+    creation_fingerprint = models.CharField(
+        max_length=64, null=True, blank=True, editable=False
+    )
     projects_availability = models.CharField(
         choices=PROJECTS_AVAILABILITY_CHOISES,
         max_length=25,
@@ -241,6 +264,8 @@ class PartnerProgram(models.Model):
         help_text="Если включено, проекты участников станут публичными после завершения программы",
     )
     datetime_registration_ends = models.DateTimeField(
+        null=True,
+        blank=True,
         verbose_name="Дата окончания регистрации",
     )
     datetime_project_submission_ends = models.DateTimeField(
@@ -255,9 +280,13 @@ class PartnerProgram(models.Model):
         verbose_name="Дата окончания оценки проектов",
     )
     datetime_started = models.DateTimeField(
+        null=True,
+        blank=True,
         verbose_name="Дата начала",
     )
     datetime_finished = models.DateTimeField(
+        null=True,
+        blank=True,
         verbose_name="Дата окончания",
     )
     datetime_created = models.DateTimeField(
@@ -323,6 +352,19 @@ class PartnerProgram(models.Model):
 
     class Meta:
         constraints = [
+            models.UniqueConstraint(
+                fields=("created_by", "creation_key"),
+                name="program_creation_idempotency",
+            ),
+            models.CheckConstraint(
+                check=models.Q(draft=True)
+                | (
+                    models.Q(datetime_started__isnull=False)
+                    & models.Q(datetime_finished__isnull=False)
+                    & models.Q(datetime_registration_ends__isnull=False)
+                ),
+                name="published_program_requires_dates",
+            ),
             models.CheckConstraint(
                 check=models.Q(legacy_team_min_size__isnull=True)
                 | models.Q(legacy_team_min_size__gte=1),

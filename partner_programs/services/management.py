@@ -66,6 +66,8 @@ def material_data(material):
 def management_data(program):
     return {
         "id": program.pk,
+        "draft": program.draft,
+        "program_format": program.program_format,
         **{name: getattr(program, name) for name in (*BASIC_FIELDS, *DATE_FIELDS)},
         "updated_at": program.datetime_updated,
         "is_competitive": program.is_competitive,

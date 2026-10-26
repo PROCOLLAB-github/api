@@ -43,6 +43,9 @@ def register_user_to_program(
 ) -> PartnerProgramUserProfile:
     from partner_programs.services.native_registration import config_for
 
+    if program.draft:
+        raise ProgramRegistrationError("Регистрация на программу еще не открыта.")
+
     config = config_for(program)
     if config and config.published and config.published["mode"] == "native":
         raise ProgramRegistrationError(
@@ -70,6 +73,9 @@ def create_user_and_register_to_program(
     data,
 ) -> PartnerProgramUserProfile:
     from partner_programs.services.native_registration import config_for
+
+    if program.draft:
+        raise ProgramRegistrationError("Регистрация на программу еще не открыта.")
 
     config = config_for(program)
     if (
