@@ -1,0 +1,10 @@
+{
+  "status": "PASS",
+  "version": "1.13.0",
+  "schemas": 120,
+  "operations": 45,
+  "scenarios": 161,
+  "prior158ScenariosUnchanged": true,
+  "allPriorSchemasRequestsResponseSchemasAndExamplesUnchanged": true,
+  "threeContractFilesByteIdentical": true
+}

@@ -1,0 +1,27 @@
+{
+  "status": "PASS",
+  "version": "1.15.0",
+  "schemas": 128,
+  "operations": 49,
+  "scenarios": 209,
+  "oldSchemasUnchanged": 125,
+  "oldOperationsUnchanged": 47,
+  "oldScenariosUnchanged": 185,
+  "files": [
+    {
+      "file": "README.md",
+      "sha256": "b35571eb2e4cb91ff8796c1f832aec96226ffd7aed5c50370bb4d274d6235c5d",
+      "byteIdentical": true
+    },
+    {
+      "file": "openapi.json",
+      "sha256": "9aae7fd93dadfb1c4c153c4f9346b4790c8386227906dfb50fc4454db6fa33ab",
+      "byteIdentical": true
+    },
+    {
+      "file": "examples.json",
+      "sha256": "9501c5dda86b1ad396eb9b0b9f5eaa3344db6c766b230035268451e86b1f7610",
+      "byteIdentical": true
+    }
+  ]
+}

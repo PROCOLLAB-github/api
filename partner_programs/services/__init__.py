@@ -21,7 +21,10 @@ from partner_programs.services.project_filters import (
     get_filtered_program_project_links,
     validate_program_project_filters,
 )
-from partner_programs.services.publishing import publish_finished_program_projects
+from partner_programs.services.publishing import (
+    publish_finished_program_projects,
+    publish_finished_program_solutions,
+)
 from partner_programs.services.registration import (
     ProgramRegistrationError,
     create_user_and_register_to_program,
@@ -46,6 +49,7 @@ __all__ = [
     "get_filtered_program_project_links",
     "prepare_project_scores_export_data",
     "publish_finished_program_projects",
+    "publish_finished_program_solutions",
     "register_user_to_program",
     "require_can_apply_project_to_program",
     "row_dict_for_link",

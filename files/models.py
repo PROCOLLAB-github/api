@@ -27,6 +27,7 @@ class UserFile(models.Model):
     name = models.TextField(blank=False, default="file")
     extension = models.TextField(blank=True, default="")
     mime_type = models.CharField(max_length=256, default="")
+    detected_mime_type = models.CharField(max_length=256, default="", blank=True)
     size = models.PositiveBigIntegerField(null=False, blank=True, default=1)
 
     def __str__(self):

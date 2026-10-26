@@ -20,6 +20,18 @@ def text_cell(sheet, row, column, value):
 
 
 def export_results(data):
+    return _export_results(
+        data, label="Проект", group_key="projects", id_key="project_id"
+    )
+
+
+def export_solution_results(data):
+    return _export_results(
+        data, label="Решение", group_key="solutions", id_key="solution_id"
+    )
+
+
+def _export_results(data, *, label, group_key, id_key):
     workbook = Workbook()
     workbook.calculation = CalcProperties(fullCalcOnLoad=True)
     rating = workbook.active
@@ -31,19 +43,19 @@ def export_results(data):
     rating.append(
         [
             "Место",
-            "Проект",
+            label,
             "Кейс",
             "Получено оценок",
             "Требуется оценок",
             *[c["name"] + " (среднее)" for c in numeric],
             "Итог",
             "Статус",
-            "ID проекта",
+            "ID решения" if id_key == "solution_id" else "ID проекта",
         ]
     )
     experts.append(
         [
-            "Проект",
+            label,
             "Кейс",
             "Эксперт",
             "Email",
@@ -51,13 +63,13 @@ def export_results(data):
             *[c["name"] for c in numeric],
             "Сумма",
             *[c["name"] for c in other],
-            "ID проекта",
+            "ID решения" if id_key == "solution_id" else "ID проекта",
             "ID эксперта",
         ]
     )
     total_col = 6 + len(numeric)
     for group in data["groups"]:
-        for project in group["projects"]:
+        for project in group[group_key]:
             expert_rows = []
             start_row = experts.max_row + 1
             for expert in project["experts"]:
@@ -97,7 +109,7 @@ def export_results(data):
                     if criterion["type"] == "bool" and value in ("True", "False"):
                         value = "Да" if value == "True" else "Нет"
                     text_cell(experts, row, col, value)
-                experts.cell(row, total_col + len(other) + 1, project["project_id"])
+                experts.cell(row, total_col + len(other) + 1, project[id_key])
                 experts.cell(row, total_col + len(other) + 2, expert["user_id"])
             row = rating.max_row + 1
             if project["place"] is not None:
@@ -132,7 +144,7 @@ def export_results(data):
                 else "Нет оценок"
             )
             text_cell(rating, row, total_col + 1, status)
-            rating.cell(row, total_col + 2, project["project_id"])
+            rating.cell(row, total_col + 2, project[id_key])
     for sheet in (rating, experts):
         sheet.freeze_panes = "D2"
         sheet.auto_filter.ref = sheet.dimensions

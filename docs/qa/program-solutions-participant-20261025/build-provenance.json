@@ -1,0 +1,13 @@
+{
+  "source": "Z:/Документы/PROCOLLAB-dev/procollab-dev-program-solutions-fe01-20261024/dist/social_platform",
+  "target": "C:/Users/evsee/AppData/Local/Temp/procollab-qa01-angular",
+  "frontend": "e57fb04ec93fdede611712014492a529cf9172b9",
+  "changes": "only API/WebSocket development origins in copied generated JS",
+  "changed": [
+    {
+      "file": "chunk-CHX6T2XY.js",
+      "before": "4707c125db5485fa8b5eeb9e30e23c6f90759d9f2daf86b56a5a0b332da287dd",
+      "after": "9952a60a44e2cf169099556f3b81c6866212b5aa80784d253b7b1a627defd7bd"
+    }
+  ]
+}

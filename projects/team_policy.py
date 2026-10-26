@@ -114,22 +114,44 @@ def has_active_exclusivity(program):
     return program.is_competitive and program.datetime_finished > timezone.now()
 
 
-def conflicting_team_users(program, *, project_id, user_ids):
+def conflicting_team_users(program, *, project_id, user_ids, solution_id=None):
     if not has_active_exclusivity(program):
         return set()
     other_projects = Project.objects.filter(
         program_links__partner_program=program
     ).exclude(pk=project_id)
-    return set(
-        other_projects.filter(leader_id__in=user_ids).values_list("leader_id", flat=True)
-    ) | set(
-        Collaborator.objects.filter(
-            project__in=other_projects, user_id__in=user_ids
-        ).values_list("user_id", flat=True)
+    from partner_programs.solution_models import ProgramSolution, ProgramSolutionMember
+
+    other_solutions = ProgramSolution.objects.filter(program=program).exclude(
+        pk=solution_id
+    )
+    return (
+        set(
+            other_projects.filter(leader_id__in=user_ids).values_list(
+                "leader_id", flat=True
+            )
+        )
+        | set(
+            Collaborator.objects.filter(
+                project__in=other_projects, user_id__in=user_ids
+            ).values_list("user_id", flat=True)
+        )
+        | set(
+            other_solutions.filter(captain_id__in=user_ids).values_list(
+                "captain_id", flat=True
+            )
+        )
+        | set(
+            ProgramSolutionMember.objects.filter(
+                solution__in=other_solutions, user_id__in=user_ids
+            ).values_list("user_id", flat=True)
+        )
     )
 
 
-def validate_program_users(program, *, project_id, user_ids, lock=False):
+def validate_program_users(
+    program, *, project_id, user_ids, lock=False, solution_id=None
+):
     memberships = PartnerProgramUserProfile.objects.filter(
         partner_program=program, user_id__in=user_ids
     )
@@ -141,7 +163,9 @@ def validate_program_users(program, *, project_id, user_ids, lock=False):
             "not_program_member",
             "Каждый участник команды должен быть зарегистрирован в программе.",
         )
-    if conflicting_team_users(program, project_id=project_id, user_ids=user_ids):
+    if conflicting_team_users(
+        program, project_id=project_id, user_ids=user_ids, solution_id=solution_id
+    ):
         raise TeamError(
             "already_in_program_team",
             "Пользователь уже состоит в другой команде этой программы.",
@@ -245,6 +269,12 @@ def actionable_users(project, users, *, program_link_id=None):
     for program in context_for(project).programs.values():
         users = users.filter(partner_program_profiles__partner_program=program)
         if has_active_exclusivity(program):
+            from partner_programs.solution_models import (
+                ProgramSolution,
+                ProgramSolutionMember,
+            )
+
+            solutions = ProgramSolution.objects.filter(program=program)
             others = Project.objects.filter(
                 program_links__partner_program=program
             ).exclude(pk=project.pk)
@@ -254,6 +284,12 @@ def actionable_users(project, users, *, program_link_id=None):
                     pk__in=Collaborator.objects.filter(project__in=others).values(
                         "user_id"
                     )
+                )
+                | Q(pk__in=solutions.values("captain_id"))
+                | Q(
+                    pk__in=ProgramSolutionMember.objects.filter(
+                        solution__in=solutions
+                    ).values("user_id")
                 )
             )
     return users.distinct()

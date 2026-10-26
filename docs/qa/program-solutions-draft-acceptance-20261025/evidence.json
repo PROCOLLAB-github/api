@@ -1,0 +1,385 @@
+{
+  "status": "PASS",
+  "backendRuntime": "db7ffe4d6124b16232685fb49f77105f1436bacf",
+  "frontendRuntime": "f6f1ba96f369d06d502b250b98f3fbcf0963309c",
+  "c00": "1.16.0",
+  "backendSources": {
+    "partner_programs/solution_submission.py": "01518f2cd0cf6ec40de2b392f51bfc01d0da599680a5c7219f5ff69f1465a393",
+    "partner_programs/solution_answers.py": "cf088fedc7882e3cd4cb029bc3e9bb0bb056f6c8df30c3109f567b6d38a90e45",
+    "partner_programs/solution_team.py": "38b836a54d19dc6c2b1f8f9b02db8ba5f573a44bba08ad6d0aa0e542abb14c17",
+    "partner_programs/solution_forms.py": "d405d2251289d1784c02cab557fea9776ccefbf9e16adc61001a50bd2d2114b9",
+    "partner_programs/solution_api.py": "1807b55255b544cd9bf8e514912331eeffab9fba889efcd29de44a33f3d16b01",
+    "partner_programs/services/solution_program_report.py": "db1287dcb2711dcb5d0a5effc76950144910085fa7a2ac91510c9c939746faea",
+    "partner_programs/tests/test_solution_submission.py": "27ac6074dec2d6ca60d1d97b2643dc10d8427c4311dc570c08b7fe010eac09d0",
+    "partner_programs/tests/test_solution_field_filters.py": "01d02cf7845abf8d24651a477bd41b40320e4a946ee3528f36647daad4adcac6"
+  },
+  "frontendSourceAudit": {
+    "status": "PASS",
+    "reference": "37ecd71d312ff7b8d81849329fcd92fb9f52e6a7",
+    "files": [
+      {
+        "file": "projects/social_platform/src/app/api/solution/facades/solution-draft.facade.ts",
+        "normalizedSha256": "cdde59541e1f7b79e3bb3b1f49d89c29ec19aaf887563261763d19447a8f71e3",
+        "unchanged": true
+      },
+      {
+        "file": "projects/social_platform/src/app/ui/widgets/solution-fields/solution-fields.component.ts",
+        "normalizedSha256": "79f3fa6c2c166cb90615971debd619cfa852b89dc46176ff37cefdd376e8de1f",
+        "unchanged": true
+      },
+      {
+        "file": "projects/social_platform/src/app/ui/widgets/solution-fields/solution-fields.component.html",
+        "normalizedSha256": "aa7ea0361cb18f19175e591b922ad3edbe1dcab96b4d112bb447a5c75e0bf114",
+        "unchanged": true
+      },
+      {
+        "file": "projects/social_platform/src/app/utils/solution-field-controls.ts",
+        "normalizedSha256": "18e64b5d1f4b0b60547ded7eeff24d3e0a0a55690297da54a2d7130c01074504",
+        "unchanged": true
+      },
+      {
+        "file": "projects/social_platform/src/app/domain/solution/solution-values.ts",
+        "normalizedSha256": "486637dd039ce49a47bb459b6e26feef845f5a98f1975b65b70e4d0f13bfbcda",
+        "unchanged": true
+      }
+    ],
+    "methods": [
+      {
+        "file": "projects/social_platform/src/app/ui/pages/program/solution/solution.component.ts",
+        "name": "saveDraft",
+        "normalizedSha256": "b3baa4d75d8b757e50b462e6ac1d26cc172ff5e40109255e197222433e9bd56b",
+        "unchanged": true
+      },
+      {
+        "file": "projects/social_platform/src/app/ui/pages/program/solution/solution.component.ts",
+        "name": "prepareSubmission",
+        "normalizedSha256": "52ba880f2d5d7c05eda6a97d98e798be49abf2786d1068f39fd9aee83c99a05a",
+        "unchanged": true
+      },
+      {
+        "file": "projects/social_platform/src/app/ui/pages/program/solution/solution.component.ts",
+        "name": "confirmSubmission",
+        "normalizedSha256": "6d6dbc73b4962f885e918e39b0e6ad7ce3802de6abfeeb68c6c6fd157500d9df",
+        "unchanged": true
+      },
+      {
+        "file": "projects/social_platform/src/app/ui/pages/program/solution/solution.component.ts",
+        "name": "handleCommandError",
+        "normalizedSha256": "ebcc21147e340ddbc926784ad2b25a8311ca5bbd2e4a7093fe18b0e138d449f3",
+        "unchanged": true
+      },
+      {
+        "file": "projects/social_platform/src/app/ui/pages/program/solution/solution.component.ts",
+        "name": "focusIssue",
+        "normalizedSha256": "60a864fae36aba0330d0238a210c94659df674f59d70f1747a259f68ae6e4b68",
+        "unchanged": true
+      },
+      {
+        "file": "projects/social_platform/src/app/ui/pages/program/solution/solution.component.ts",
+        "name": "issueLabel",
+        "normalizedSha256": "f7276e0b5ed196a1dfc7660cbdff23a69a66d476a5f574c459933dbd679d8627",
+        "unchanged": true
+      }
+    ]
+  },
+  "nativePostgresRaceTests": [
+    "test_file_delete_and_submit_share_the_file_lock",
+    "test_submit_and_accept_never_add_a_member_to_the_frozen_roster",
+    "test_submit_and_form_change_either_conflict_or_keep_the_old_snapshot",
+    "test_submit_and_patch_serialize_without_changing_snapshot",
+    "test_submit_and_remove_keep_one_accepted_roster",
+    "test_two_submits_make_exactly_one_snapshot"
+  ],
+  "nativePostgresRaceCount": 6,
+  "nativePostgresRaceLogSha256": "25100f647b638a2e8a9092424eacb8eaf8b9c674090f4b7326770ece2a2ef10a",
+  "existingFullBackendSuite": 340,
+  "existingFullFrontendSuite": 2843,
+  "existingFrontendFiles": 480,
+  "verifiedHistoricalArtifacts": [
+    {
+      "group": "NEG",
+      "file": "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-qa01-negative-seed.py",
+      "sha256": "12fcce6c2e279eed973e1a9f9ee931c99cb454359dd30dbc06c8e9534a5a0bf3"
+    },
+    {
+      "group": "NEG",
+      "file": "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-qa01-negative-deadline.py",
+      "sha256": "7eb36d7eb66a507c5a6e9e50626abed9f65f6bb44f1747aadf4511b9756d5aec"
+    },
+    {
+      "group": "NEG",
+      "file": "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-qa01-negative-browser.cjs",
+      "sha256": "d367ba3b99d6b503bd9156c5d03a346227f9b35c762dd956bb670ff322624ab9"
+    },
+    {
+      "group": "NEG",
+      "file": "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-qa01-negative-verify.py",
+      "sha256": "de960234984d7f6c1101477129492b4c908b7de3c57a5b3679cf3b71482dce60"
+    },
+    {
+      "group": "NEG",
+      "file": "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-qa01-unknown-seed.py",
+      "sha256": "8d9fa4796af8095960d140491108d9a1b081f3af01c474c46006376bd504af63"
+    },
+    {
+      "group": "NEG",
+      "file": "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-qa01-unknown-browser.cjs",
+      "sha256": "d11fefc264bfd19a44fd6306116347655a2a97c64170057261955d9896a838f2"
+    },
+    {
+      "group": "NEG",
+      "file": "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-qa01-unknown-build.cjs",
+      "sha256": "12e80c561944b85ea91cabb854af3cb54c8a15a620d46a08a3778e03301228ff"
+    },
+    {
+      "group": "NEG",
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-negative\\baseline-evidence.json",
+      "sha256": "fb14189188916f80720e0236b8b72df97f2d204ba28d4b0e016c8427ce060c78"
+    },
+    {
+      "group": "NEG",
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-negative\\seed-evidence.json",
+      "sha256": "869689bbefa26acf09c3b2e09a915788bccd8f07c8f2a64328e3ccab796bdce8"
+    },
+    {
+      "group": "NEG",
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-negative\\browser-evidence.json",
+      "sha256": "392ed202717be8e8207d07739bedc4a2fda7aefa97694cd7f1b7115228fbcc05"
+    },
+    {
+      "group": "NEG",
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-negative\\domain-evidence.json",
+      "sha256": "26fafed76ceb3af3a075344b6fd7bd80160592220b227ecab57b751e0094f8ad"
+    },
+    {
+      "group": "NEG",
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-negative\\run-state.json",
+      "sha256": "ebd871d6d44f64af1eb7ce4df205c2d52480611d118f9fbd79c0bf33387575fe"
+    },
+    {
+      "group": "NEG",
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-negative\\attempt-1792905580688.json",
+      "sha256": "9f8de2161bf29c761c5ac62ef378cdfaefbffb43c0474470bf1909d6d25d74db"
+    },
+    {
+      "group": "NEG",
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-negative\\attempt-1792905674286.json",
+      "sha256": "cad17b0928c38f42e1c44cdc264ff81c07d27dbf411b06c3e7a7ee76d257f6b1"
+    },
+    {
+      "group": "NEG",
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-unknown-submit\\baseline-evidence.json",
+      "sha256": "51b945f2660febe09614fcb2acf2ef2981f80c98c1c83d716b1b682fc557edd6"
+    },
+    {
+      "group": "NEG",
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-unknown-submit\\seed-evidence.json",
+      "sha256": "03ef0063e641d5dd04ad57c0df5dc93a7a70d15c19cfb92e61cae423ebac9d4f"
+    },
+    {
+      "group": "NEG",
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-unknown-submit\\browser-evidence.json",
+      "sha256": "14a60232c053dd4a7302d58d4625508fef78261067cf719b9b93dbc879838148"
+    },
+    {
+      "group": "NEG",
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-unknown-submit\\domain-evidence.json",
+      "sha256": "1e45bb48c23cb3b243dccf177dd8e32d7d00f75e478b4d63ba5316e5df4106f8"
+    },
+    {
+      "group": "NEG",
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-unknown-submit\\run-state.json",
+      "sha256": "519fc280cea53165678098763478f7ae04cd9a07979210bccd9ff1c5e596a3d2"
+    },
+    {
+      "group": "NEG",
+      "file": "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-unknown-angular\\qa-build-provenance.json",
+      "sha256": "629c89f6c94bc6fa3375f451c6bf9728a3f1d4948da547cc84c26a2d8d705ace"
+    },
+    {
+      "group": "FORM",
+      "file": "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-form-qa-seed.py",
+      "sha256": "dc874134d571e7f64fe1c0b6cd2e1d0f87c4fc7010548d3a88d846c03fc1cd08"
+    },
+    {
+      "group": "FORM",
+      "file": "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-form-qa-recover-seed.py",
+      "sha256": "7f5a2ebf83da47ee731b47b6ed1af7b3cb7f3a88d928f396efbf9eb5210d9e2d"
+    },
+    {
+      "group": "FORM",
+      "file": "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-form-qa-control.py",
+      "sha256": "5a9b1ec2a7326facbda890a58096891ef1194d969c03c8a25a1ac6a096378844"
+    },
+    {
+      "group": "FORM",
+      "file": "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-form-qa-browser.cjs",
+      "sha256": "0e64d146ca6bef47cf8d261dec875a61201e736f34a57ab906b4d8073e1c469a"
+    },
+    {
+      "group": "FORM",
+      "file": "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-form-qa-build.cjs",
+      "sha256": "acd43db9de6a2d8c34c862ed4b3ac3960eea95718b81de3161eff00b7a74df2f"
+    },
+    {
+      "group": "FORM",
+      "file": "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-form-qa-spa.py",
+      "sha256": "8e846d57f360bfa5157f117f0c2cdc90a56fb19e83f6bc7e3338fa0110ed3e38"
+    },
+    {
+      "group": "FORM",
+      "file": "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-form-qa-copy.cjs",
+      "sha256": "27b8048873717c0abb1c7981556f9dbac820d04122027f5dff66f08ef8f03411"
+    },
+    {
+      "group": "FORM",
+      "file": "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-form-qa-verify.py",
+      "sha256": "a66fa670ad19c8687aaaef4b853fb92b1d3bb7a46f0b33753276d3d3a3777871"
+    },
+    {
+      "group": "FORM",
+      "file": "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-form-qa-package.py",
+      "sha256": "f580bc8bed6e8a79bf5d783cffab1be2bb7ea9c7c232bd0fe699515e2963e731"
+    },
+    {
+      "group": "FORM",
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-form-settings\\browser-attempt-1792918390582.json",
+      "sha256": "274cfba317ad631b46511fad1fa5126ca0b405694aeec543612354c849a1b608"
+    },
+    {
+      "group": "FORM",
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-form-settings\\browser-attempt-1792918748942.json",
+      "sha256": "41ba812fc31694b1f8bf9837f20387d2c005085eeb1992e0a107beabcba77b89"
+    },
+    {
+      "group": "FORM",
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-form-settings\\browser-attempt-1792918843306.json",
+      "sha256": "082d72cb73543bd0eba278d7fdc31f19badce0989ba255f2c2213e529cd66bc0"
+    },
+    {
+      "group": "FORM",
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-form-settings\\browser-failure-1792918390585.png",
+      "sha256": "ecc11995e06f86690d25d228f5d822127f6903c85f0369445363d09c6e197302"
+    },
+    {
+      "group": "FORM",
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-form-settings\\browser-failure-1792918750574.png",
+      "sha256": "1277dd318bf17b076364376af8212617f9a19282fe035b30496ab8dfd64cb2d2"
+    },
+    {
+      "group": "FORM",
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-form-settings\\browser-failure-1792918843311.png",
+      "sha256": "501fc73e9d6315217a8c63cd3482c4dafed3b4099dd9808c20574c234488db62"
+    },
+    {
+      "group": "FORM",
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-form-settings\\browser-state.json",
+      "sha256": "d61577f16c0beff382398db18106877bc8892db07878bc7e4fbdf4fa0cc47c5c"
+    },
+    {
+      "group": "FORM",
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-form-settings\\build-after.json",
+      "sha256": "bffd1fb0fd6d88491b5fb8777bc3d63bfb04fc9a164c45070ef2a78385e4134c"
+    },
+    {
+      "group": "FORM",
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-form-settings\\build-final.json",
+      "sha256": "e12985c2b8518b19fa1ba2308061ad35341cfd21da5883cf44a049ad78da89d3"
+    },
+    {
+      "group": "FORM",
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-form-settings\\case_championship-draft-zero-false.png",
+      "sha256": "6870e61a45945be75f03dedf9694ec8d43ab95974bb1546933a47bf7517ac47a"
+    },
+    {
+      "group": "FORM",
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-form-settings\\case_championship-manager-configured.png",
+      "sha256": "924ba1ee038b066181dc6a4f9134cd16377c5f1ca4926b1c934e897a65a90401"
+    },
+    {
+      "group": "FORM",
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-form-settings\\domain-and-contract-evidence.json",
+      "sha256": "a20383a09ae4abffa72ab48653f34b84997fbc20d76a20b50d5687cd1ce78a22"
+    },
+    {
+      "group": "FORM",
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-form-settings\\hackathon-draft-zero-false.png",
+      "sha256": "7269f5eb603c89b232a9a0b6f571e9cb2048c1642c7ecf5cdd429a8c6e377f3f"
+    },
+    {
+      "group": "FORM",
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-form-settings\\hackathon-manager-configured.png",
+      "sha256": "9723e132d752c35c318da7100177e5c30c1324a2a3fac2ad9908c8608772d292"
+    },
+    {
+      "group": "FORM",
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-form-settings\\noncompetitive-copy-final.json",
+      "sha256": "667e1d1227b4c32baa4d72adc82201eab187f286c7232336d90e6aa92c4cc452"
+    },
+    {
+      "group": "FORM",
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-form-settings\\noncompetitive-copy-final.png",
+      "sha256": "b233dc71891356b81c60ae4148b58bd80a6d1b16fb65aa6492eba80822bba6be"
+    },
+    {
+      "group": "FORM",
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-form-settings\\noncompetitive-draft-zero-false.png",
+      "sha256": "bf5d9c8292f9456b55b315297c4f1becc3cd67e25d1dde11f358dcf602d0005f"
+    },
+    {
+      "group": "FORM",
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-form-settings\\noncompetitive-manager-configured.png",
+      "sha256": "924ba1ee038b066181dc6a4f9134cd16377c5f1ca4926b1c934e897a65a90401"
+    },
+    {
+      "group": "FORM",
+      "file": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-form-settings\\setup-recovery.json",
+      "sha256": "910b28be662c6e93b181ece9e11f3ef05cee868858e86c3a034166241adcab9f"
+    }
+  ],
+  "formCuration": "FORM committed summaries intentionally remove raw event forms and add a separately verified final read; only raw hashes are compared for FORM, not semantic equality of curated reports.",
+  "newRawArtifacts": [
+    {
+      "file": "case_championship-answers.xlsx",
+      "sha256": "45dd742d6a66d89908fd001140cb7ab9583f076a2bffd7f5408becb6da907eca",
+      "bytes": 8150
+    },
+    {
+      "file": "hackathon-answers.xlsx",
+      "sha256": "c3d79ee5d3d96f1e0faa9e210c4d289762eef26d852265fb0e97e1eaef6674b6",
+      "bytes": 8347
+    },
+    {
+      "file": "http-evidence.json",
+      "sha256": "b3bcccad190a9768b298a7d5b868fed8ac1b2b51f8613939c5f8ca5e6b029143",
+      "bytes": 5597
+    },
+    {
+      "file": "http-wire.json",
+      "sha256": "539b9c285a0818365a701a4777640179a12cd1550aca954e335967c096720ff2",
+      "bytes": 50809
+    },
+    {
+      "file": "noncompetitive-answers.xlsx",
+      "sha256": "4e6c53e137af9765ca6a7b48c6ae84b21e8ddbc20b0b7715267dd10108d81aae",
+      "bytes": 8148
+    }
+  ],
+  "helpers": [
+    {
+      "file": "procollab-draft-accept-http.py",
+      "sha256": "ef23d8e9b08a457b5663a4d8cd290be632be04895d6910a9d0b7e9479dbb1009"
+    },
+    {
+      "file": "procollab-draft-accept-races.py",
+      "sha256": "2ce5799fe72d6cac0f6e63e20cf7f610c723bf2dd50a9b088437182a4fb28462"
+    },
+    {
+      "file": "procollab-draft-accept-front-source.cjs",
+      "sha256": "3a937703e8b796d27ddd763b6ba8b04086114e93d3cbcbcd3168cd0220aaa285"
+    }
+  ],
+  "scope": "New readonly HTTP/XLSX/snapshot verification and six existing focused PostgreSQL race tests; historical browser phases are not replayed.",
+  "domainMutations": 0,
+  "newFixtures": 0
+}

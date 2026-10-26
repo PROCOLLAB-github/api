@@ -1,0 +1,839 @@
+{
+  "status": "PASS",
+  "prefix": "qa01c-20261025-2b16a5aa",
+  "backendHead": "ad3945ea2ebcd214a26b64ab09c92d334f9d2c77",
+  "runtimeSources": {
+    "partner_programs/services/solution_case_actions.py": "d037738e1aa3428403ea0a4e3b8f097551bf57cbb8839c8fe3d68633ccacb36b",
+    "partner_programs/solution_case_action_api.py": "0299446f12958653ba8d707ed8d28212954d2fa94828b209ee0732e78104df9a",
+    "partner_programs/urls.py": "f4a1e2cf2dd98056e30d0fd92a7e7b88419d7516c2ff3fbd31f57e39ccf8452c"
+  },
+  "c00": "1.15.0",
+  "programs": [
+    {
+      "id": 30,
+      "key": "case_championship",
+      "template": "case_championship",
+      "competitive": true,
+      "caseFieldId": 230,
+      "numberId": 235,
+      "boolId": 236,
+      "primary": {
+        "id": 45,
+        "name": "Кейс primary case_championship"
+      },
+      "anchor": {
+        "id": 46,
+        "name": "Кейс anchor case_championship",
+        "snapshotSha256": "f75b467996c66c214aba02d3f252d74cb013a74c681a084a4f7f768a22e3d9cc"
+      },
+      "finalStateSha256": "01092c699a691d712d8f0248be5556a1476e4ab036bacf6f52e1a12d6acad0ba",
+      "creationFlagOff": true
+    },
+    {
+      "id": 31,
+      "key": "hackathon",
+      "template": "hackathon",
+      "competitive": true,
+      "caseFieldId": 237,
+      "numberId": 246,
+      "boolId": 247,
+      "primary": {
+        "id": 47,
+        "name": "Кейс primary hackathon"
+      },
+      "anchor": {
+        "id": 48,
+        "name": "Кейс anchor hackathon",
+        "snapshotSha256": "2fb0eda0d0b3e1c7151f88d1b9b9d033ed0e4b7dd2f6cb5c6ba1f59b76a27dd3"
+      },
+      "finalStateSha256": "a8a48b8520cfb8e3985bb0ec2b14f6af583ea1b388d5d2927114966dc5c53a60",
+      "creationFlagOff": true
+    },
+    {
+      "id": 32,
+      "key": "noncompetitive",
+      "template": "case_championship",
+      "competitive": false,
+      "caseFieldId": 248,
+      "numberId": 253,
+      "boolId": 254,
+      "primary": {
+        "id": 49,
+        "name": "Кейс primary noncompetitive"
+      },
+      "anchor": {
+        "id": 50,
+        "name": "Кейс anchor noncompetitive"
+      },
+      "finalStateSha256": "13254ad87ea9a4d6778c7c21d478e948b2999a90f22e350b1c7568d49fb2b8f7",
+      "creationFlagOff": true
+    }
+  ],
+  "checks": [
+    {
+      "program": 30,
+      "key": "case_championship",
+      "check": "read-only preview, real IDs and current case",
+      "solution": 45,
+      "current": "Город"
+    },
+    {
+      "program": 30,
+      "key": "case_championship",
+      "check": "stale confirmation after actual captain PATCH preserves new name and old case"
+    },
+    {
+      "program": 30,
+      "key": "case_championship",
+      "check": "one exact case answer and version change, 0/false/team/pending preserved; replay denied",
+      "caseName": "  Образование | наука  ",
+      "version": 5
+    },
+    {
+      "program": 30,
+      "key": "case_championship",
+      "check": "actor/target/solution binding and submitted anchor preserved",
+      "anchor": 46,
+      "competitive": true
+    },
+    {
+      "program": 31,
+      "key": "hackathon",
+      "check": "read-only preview, real IDs and current case",
+      "solution": 47,
+      "current": null
+    },
+    {
+      "program": 31,
+      "key": "hackathon",
+      "check": "stale confirmation after actual captain PATCH preserves new name and old case"
+    },
+    {
+      "program": 31,
+      "key": "hackathon",
+      "check": "one exact case answer and version change, 0/false/team/pending preserved; replay denied",
+      "caseName": "  Образование | наука  ",
+      "version": 5
+    },
+    {
+      "program": 31,
+      "key": "hackathon",
+      "check": "actor/target/solution binding and submitted anchor preserved",
+      "anchor": 48,
+      "competitive": true
+    },
+    {
+      "program": 32,
+      "key": "noncompetitive",
+      "check": "read-only preview, real IDs and current case",
+      "solution": 49,
+      "current": "Город"
+    },
+    {
+      "program": 32,
+      "key": "noncompetitive",
+      "check": "stale confirmation after actual captain PATCH preserves new name and old case"
+    },
+    {
+      "program": 32,
+      "key": "noncompetitive",
+      "check": "one exact case answer and version change, 0/false/team/pending preserved; replay denied",
+      "caseName": "  Образование | наука  ",
+      "version": 5
+    },
+    {
+      "program": 32,
+      "key": "noncompetitive",
+      "check": "actor/target/solution binding and submitted anchor preserved",
+      "anchor": 50,
+      "competitive": false
+    }
+  ],
+  "events": [
+    {
+      "role": "manager",
+      "method": "GET",
+      "path": "/programs/30/management/solution-form/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "ff861747cf13390e28e707882fd9574b0ceee944bec1344daf47a44dbf4e0011"
+    },
+    {
+      "role": "manager",
+      "method": "PUT",
+      "path": "/programs/30/management/solution-form/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "aa17d93a3729b5e2e4708847554168f05db6c4e41bf6462882fb03e5a63aa441"
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/programs/30/solutions/",
+      "status": 201,
+      "code": null,
+      "responseSha256": "374dcf8b7564faf3f241661b26cd244f0ce2483e5eed671a0d51d5cb6d1ba993"
+    },
+    {
+      "role": "captain",
+      "method": "PATCH",
+      "path": "/programs/30/solutions/45/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "fac5381abbae7f97e03ccff408d06f3789195a726be84c0b32ce514418c81a5d"
+    },
+    {
+      "role": "pending_a",
+      "method": "POST",
+      "path": "/programs/30/solutions/",
+      "status": 201,
+      "code": null,
+      "responseSha256": "25fcea2cf0425933cd9ac44e8f6941e2260164b1e506636689cf81a35db49c87"
+    },
+    {
+      "role": "pending_a",
+      "method": "PATCH",
+      "path": "/programs/30/solutions/46/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "22e5e0b1d53d2bead0abd56fb4865eccce1f37db0a15987fee9ec837dcdb6238"
+    },
+    {
+      "role": "pending_a",
+      "method": "POST",
+      "path": "/programs/30/solutions/46/submit/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "f2d2e28fa655d42f5f1137fbe56fee938f0e919a449c675f0a61400f67111f91"
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/30/solutions/45/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "fac5381abbae7f97e03ccff408d06f3789195a726be84c0b32ce514418c81a5d"
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/programs/30/solutions/45/invitations/",
+      "status": 201,
+      "code": null,
+      "responseSha256": "462d7aac69cc123878538980d7a026aa121abbe3f5b34aaf10fde37b79ee46dc"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/30/management/solutions/45/case/preview/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "2a45984cbe3596d490cbb9231c2f7cc538def570d1c8606844b729156145a1e0"
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/programs/30/management/solutions/45/case/preview/",
+      "status": 403,
+      "code": "permission_denied",
+      "responseSha256": "ab1a699a6b0e65ddc2dd7b6857258dde33fbabcb9d9acb46fb25a0591ea96abb"
+    },
+    {
+      "role": "foreign_manager",
+      "method": "POST",
+      "path": "/programs/30/management/solutions/45/case/preview/",
+      "status": 403,
+      "code": "permission_denied",
+      "responseSha256": "ab1a699a6b0e65ddc2dd7b6857258dde33fbabcb9d9acb46fb25a0591ea96abb"
+    },
+    {
+      "role": "anonymous",
+      "method": "POST",
+      "path": "/programs/30/management/solutions/45/case/preview/",
+      "status": 401,
+      "code": "authentication_required",
+      "responseSha256": "9a7fd910796627107ce589a0a564bf51b6d16b20c59430df81d2a2f5628cfb09"
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/30/solutions/45/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "30caacb40e09a2b12b846acbcc06470791766af7792e5ef858708f996fe39cce"
+    },
+    {
+      "role": "captain",
+      "method": "PATCH",
+      "path": "/programs/30/solutions/45/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "815bd0c7d4626ce1e77eaab07a4fd7a085f218576636b3fb876f8b04bebd4e99"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/30/management/solutions/45/case/apply/",
+      "status": 409,
+      "code": "solution_action_conflict",
+      "responseSha256": "3dcabf6f26877d33ae00a05b768362cd417a5f8f2e342cfe0c2287048ef0e4e8"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/30/management/solutions/45/case/preview/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "30a5dfb4c0beeb8683c1586e8ef86730afe12ae19769716c7d8a35a084719498"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/30/management/solutions/45/case/apply/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "3859380f8e01fab9e48005321e3df561c25ea1c6966e1aa1746a1ad252021e7b"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/30/management/solutions/45/case/apply/",
+      "status": 409,
+      "code": "solution_action_conflict",
+      "responseSha256": "0cf123c821c616a6336bd86cf87dceb50153cd5c30c53347c0ae4a1d37027ad9"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/30/management/solutions/45/case/preview/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "169a0a68cd7b71880d270e667002b4a6f40d3298d67371c7e657b8a2ff94e32d"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/30/management/solutions/45/case/preview/",
+      "status": 400,
+      "code": "invalid_answers",
+      "responseSha256": "4ca693e8b3475938fec09cdf3e355a7600e3b6c5862af2bad1bd85fa606af76c"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/30/management/solutions/45/case/preview/",
+      "status": 400,
+      "code": "validation_error",
+      "responseSha256": "e539c53a262209c04f26c57683ae38617d08ad30750aa8998b668ef3d173f7c4"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/30/management/solutions/45/case/preview/?unknown=1",
+      "status": 400,
+      "code": "validation_error",
+      "responseSha256": "508eeb3418d2b08707d50692269ec5442224217b20c97251403b23e10f9f8c55"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/30/management/solutions/45/case/preview/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "0540614192b3ec06af99dbeaacfbc41a1de1eb079b20c7149fcf1d5e52c1f968"
+    },
+    {
+      "role": "pending_b",
+      "method": "POST",
+      "path": "/programs/30/management/solutions/45/case/apply/",
+      "status": 409,
+      "code": "solution_action_conflict",
+      "responseSha256": "3dcabf6f26877d33ae00a05b768362cd417a5f8f2e342cfe0c2287048ef0e4e8"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/30/management/solutions/45/case/apply/",
+      "status": 409,
+      "code": "solution_action_conflict",
+      "responseSha256": "3dcabf6f26877d33ae00a05b768362cd417a5f8f2e342cfe0c2287048ef0e4e8"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/30/management/solutions/46/case/preview/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "665783298f7ec328439dc7f0292e4e304231f9c1e9836cdd1ed4ad7dfbc32cd1"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/30/management/solutions/46/case/apply/",
+      "status": 409,
+      "code": "team_frozen",
+      "responseSha256": "cc1daf856735cacd081f53d06e10bfcb853ebe3f4624b0efe1eb86dca54633ed"
+    },
+    {
+      "role": "manager",
+      "method": "GET",
+      "path": "/programs/31/management/solution-form/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "bb3b2c9a932ce8b4cbd9ec331664e909b180e73f948447caa2d402c18893c10b"
+    },
+    {
+      "role": "manager",
+      "method": "PUT",
+      "path": "/programs/31/management/solution-form/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "d71edeaf9b34421cdb1b49feb20cc5cc36687fb22fe79a605fcadd10c21939f7"
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/programs/31/solutions/",
+      "status": 201,
+      "code": null,
+      "responseSha256": "6c4c4a7579d81d7d5811e69fb6ce19227147e2389aaa8053c47126d79589bad3"
+    },
+    {
+      "role": "captain",
+      "method": "PATCH",
+      "path": "/programs/31/solutions/47/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "286f12e5780c1748b3e440dcc121ffd43c60825b5b6313c067473a912991e773"
+    },
+    {
+      "role": "pending_a",
+      "method": "POST",
+      "path": "/programs/31/solutions/",
+      "status": 201,
+      "code": null,
+      "responseSha256": "24df4b358078adc813c5a56beaa8ebb3f224305570ba452910ff1c6f1001f03f"
+    },
+    {
+      "role": "pending_a",
+      "method": "PATCH",
+      "path": "/programs/31/solutions/48/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "001027bb68661ada2a0a3fea3482f9d613a7340cae4109f10af95a0ba148102b"
+    },
+    {
+      "role": "pending_a",
+      "method": "POST",
+      "path": "/programs/31/solutions/48/submit/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "8ddd7275880cbb8a95c1f1ba42ecdee223ce8e0e2ccb89bafdcf44304d5fe055"
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/31/solutions/47/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "286f12e5780c1748b3e440dcc121ffd43c60825b5b6313c067473a912991e773"
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/programs/31/solutions/47/invitations/",
+      "status": 201,
+      "code": null,
+      "responseSha256": "d3a94572b949097248a63893fa0cad512f7750a9ef2a54e130a6f9596e50a8a6"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/31/management/solutions/47/case/preview/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "69a01b82c013ef03aac7ddce60cc0bcb01457b66de2210492ebc4ea8180c7404"
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/programs/31/management/solutions/47/case/preview/",
+      "status": 403,
+      "code": "permission_denied",
+      "responseSha256": "ab1a699a6b0e65ddc2dd7b6857258dde33fbabcb9d9acb46fb25a0591ea96abb"
+    },
+    {
+      "role": "foreign_manager",
+      "method": "POST",
+      "path": "/programs/31/management/solutions/47/case/preview/",
+      "status": 403,
+      "code": "permission_denied",
+      "responseSha256": "ab1a699a6b0e65ddc2dd7b6857258dde33fbabcb9d9acb46fb25a0591ea96abb"
+    },
+    {
+      "role": "anonymous",
+      "method": "POST",
+      "path": "/programs/31/management/solutions/47/case/preview/",
+      "status": 401,
+      "code": "authentication_required",
+      "responseSha256": "9a7fd910796627107ce589a0a564bf51b6d16b20c59430df81d2a2f5628cfb09"
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/31/solutions/47/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "4ebe54407ad08805ed9020087b215e32dd169ed26e3637160839226a5cd6c4d4"
+    },
+    {
+      "role": "captain",
+      "method": "PATCH",
+      "path": "/programs/31/solutions/47/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "cd00b72508bcc69d81f2c826b96b9cac2062a6cf9c40ec09597b6ddf68176e88"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/31/management/solutions/47/case/apply/",
+      "status": 409,
+      "code": "solution_action_conflict",
+      "responseSha256": "3dcabf6f26877d33ae00a05b768362cd417a5f8f2e342cfe0c2287048ef0e4e8"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/31/management/solutions/47/case/preview/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "e53f3ce06be51205f00a2fa467524bf44226fd70f35c591473e74a588d93a1e3"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/31/management/solutions/47/case/apply/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "d88499aa6299f988589f24ec9d5a320faa7ba4ca8537b237f65bf5011c009114"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/31/management/solutions/47/case/apply/",
+      "status": 409,
+      "code": "solution_action_conflict",
+      "responseSha256": "347e68b5376b09a3e3260b5a9055963c98d974ee46260de624facfd10b0cee81"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/31/management/solutions/47/case/preview/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "8b7c1cb66ac44b63b72edbbf11810f4a229172c8d3500d140733792a491d15f4"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/31/management/solutions/47/case/preview/",
+      "status": 400,
+      "code": "invalid_answers",
+      "responseSha256": "003592d872fca4737d13306901e7acf04b71755442b9c3de0b4d29095800de1a"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/31/management/solutions/47/case/preview/",
+      "status": 400,
+      "code": "validation_error",
+      "responseSha256": "e539c53a262209c04f26c57683ae38617d08ad30750aa8998b668ef3d173f7c4"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/31/management/solutions/47/case/preview/?unknown=1",
+      "status": 400,
+      "code": "validation_error",
+      "responseSha256": "508eeb3418d2b08707d50692269ec5442224217b20c97251403b23e10f9f8c55"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/31/management/solutions/47/case/preview/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "6f1915cc5d822401022f3538494c092e1c98ef6ad1366694c3c446113e943989"
+    },
+    {
+      "role": "pending_b",
+      "method": "POST",
+      "path": "/programs/31/management/solutions/47/case/apply/",
+      "status": 409,
+      "code": "solution_action_conflict",
+      "responseSha256": "3dcabf6f26877d33ae00a05b768362cd417a5f8f2e342cfe0c2287048ef0e4e8"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/31/management/solutions/47/case/apply/",
+      "status": 409,
+      "code": "solution_action_conflict",
+      "responseSha256": "3dcabf6f26877d33ae00a05b768362cd417a5f8f2e342cfe0c2287048ef0e4e8"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/31/management/solutions/48/case/preview/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "5fa0e80f5c39ea0a741e2949943a3adc840ee6f61dacfa38e3337d4e153fddcc"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/31/management/solutions/48/case/apply/",
+      "status": 409,
+      "code": "team_frozen",
+      "responseSha256": "cc1daf856735cacd081f53d06e10bfcb853ebe3f4624b0efe1eb86dca54633ed"
+    },
+    {
+      "role": "manager",
+      "method": "GET",
+      "path": "/programs/32/management/solution-form/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "dec1373969e56aff11439c5deb6671f795a233724761835d0fc3e395f70254a9"
+    },
+    {
+      "role": "manager",
+      "method": "PUT",
+      "path": "/programs/32/management/solution-form/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "9da3b1819923108481f42aa0dd4e93e2d8acce260565fe805c5700985ebfe049"
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/programs/32/solutions/",
+      "status": 201,
+      "code": null,
+      "responseSha256": "550135c0f7e49e0899cb720adec8c907c7162cbe2a3082712ba11a2c337a3ff5"
+    },
+    {
+      "role": "captain",
+      "method": "PATCH",
+      "path": "/programs/32/solutions/49/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "957149968df661daae052c33c8cba68ad6093ec7343c433f3015cacb56f321a8"
+    },
+    {
+      "role": "pending_a",
+      "method": "POST",
+      "path": "/programs/32/solutions/",
+      "status": 201,
+      "code": null,
+      "responseSha256": "8b896c717e14dfb70757eaef05b7cab68e127f5e36468b03e77d65114ebfafc7"
+    },
+    {
+      "role": "pending_a",
+      "method": "PATCH",
+      "path": "/programs/32/solutions/50/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "7dd023795a91424a02da67c0bfab41d9c3c5cdef4cbe0378f207a9d8c95abebe"
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/32/solutions/49/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "957149968df661daae052c33c8cba68ad6093ec7343c433f3015cacb56f321a8"
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/programs/32/solutions/49/invitations/",
+      "status": 201,
+      "code": null,
+      "responseSha256": "970e61af3ea4941ae8de9e9be6580a897dc901f2a6d53ef793e53777d437eb4e"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/32/management/solutions/49/case/preview/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "a456ade819232b944f2fedd7a7b93633ea8db45530833967d4ae428c7c697554"
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/programs/32/management/solutions/49/case/preview/",
+      "status": 403,
+      "code": "permission_denied",
+      "responseSha256": "ab1a699a6b0e65ddc2dd7b6857258dde33fbabcb9d9acb46fb25a0591ea96abb"
+    },
+    {
+      "role": "foreign_manager",
+      "method": "POST",
+      "path": "/programs/32/management/solutions/49/case/preview/",
+      "status": 403,
+      "code": "permission_denied",
+      "responseSha256": "ab1a699a6b0e65ddc2dd7b6857258dde33fbabcb9d9acb46fb25a0591ea96abb"
+    },
+    {
+      "role": "anonymous",
+      "method": "POST",
+      "path": "/programs/32/management/solutions/49/case/preview/",
+      "status": 401,
+      "code": "authentication_required",
+      "responseSha256": "9a7fd910796627107ce589a0a564bf51b6d16b20c59430df81d2a2f5628cfb09"
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/32/solutions/49/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "7fb2db0a0a9ae15aa9100779c5cdede0d629a4891e139cfbb3b789501d5f3def"
+    },
+    {
+      "role": "captain",
+      "method": "PATCH",
+      "path": "/programs/32/solutions/49/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "885864c2b5c9ddad8cc8dde8771fdaa8c8b2d5efa309058616ccef24a4ed9bb0"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/32/management/solutions/49/case/apply/",
+      "status": 409,
+      "code": "solution_action_conflict",
+      "responseSha256": "3dcabf6f26877d33ae00a05b768362cd417a5f8f2e342cfe0c2287048ef0e4e8"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/32/management/solutions/49/case/preview/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "6086758985e62e17752ff4554e0641f582c58ab433ce150411021a3988d81861"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/32/management/solutions/49/case/apply/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "d80b9430aa6f109bdd4c93b108ca671f7867e3051e4ad3e226c0cd83a195bc1d"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/32/management/solutions/49/case/apply/",
+      "status": 409,
+      "code": "solution_action_conflict",
+      "responseSha256": "4ac12e0c7b87616579fa9f819662ecdf6478fef1e45d141bb539dbfcdcb79801"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/32/management/solutions/49/case/preview/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "9cdd345df7351153541d08112fb5a944b87a7c15878d293afd6e9342972ec0df"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/32/management/solutions/49/case/preview/",
+      "status": 400,
+      "code": "invalid_answers",
+      "responseSha256": "614cee07b3f9d2163240676d2f7d031355e27db39e552a8080bd5fe167c6b6c3"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/32/management/solutions/49/case/preview/",
+      "status": 400,
+      "code": "validation_error",
+      "responseSha256": "e539c53a262209c04f26c57683ae38617d08ad30750aa8998b668ef3d173f7c4"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/32/management/solutions/49/case/preview/?unknown=1",
+      "status": 400,
+      "code": "validation_error",
+      "responseSha256": "508eeb3418d2b08707d50692269ec5442224217b20c97251403b23e10f9f8c55"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/32/management/solutions/49/case/preview/",
+      "status": 200,
+      "code": null,
+      "responseSha256": "ac299238915d2638762899a3f7bae37ec85fab2fd4948e7e70e7efcc6987ddb3"
+    },
+    {
+      "role": "pending_b",
+      "method": "POST",
+      "path": "/programs/32/management/solutions/49/case/apply/",
+      "status": 409,
+      "code": "solution_action_conflict",
+      "responseSha256": "3dcabf6f26877d33ae00a05b768362cd417a5f8f2e342cfe0c2287048ef0e4e8"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/32/management/solutions/49/case/apply/",
+      "status": 409,
+      "code": "solution_action_conflict",
+      "responseSha256": "3dcabf6f26877d33ae00a05b768362cd417a5f8f2e342cfe0c2287048ef0e4e8"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/32/management/solutions/50/case/apply/",
+      "status": 409,
+      "code": "solution_action_conflict",
+      "responseSha256": "3dcabf6f26877d33ae00a05b768362cd417a5f8f2e342cfe0c2287048ef0e4e8"
+    }
+  ],
+  "validation": {
+    "responses": 82,
+    "requests": 70,
+    "rejectedInvalidRequests": 3
+  },
+  "baselineModels": [
+    "partner_programs.PartnerProgram",
+    "partner_programs.PartnerProgramField",
+    "partner_programs.PartnerProgramUserProfile",
+    "partner_programs.ProgramSolution",
+    "partner_programs.ProgramSolutionAnswer",
+    "partner_programs.ProgramSolutionMember",
+    "partner_programs.SolutionInvitation",
+    "project_rates.SolutionScore",
+    "project_rates.SolutionExpertAssignment",
+    "project_rates.Criteria",
+    "users.Expert",
+    "files.UserFile",
+    "projects.Project",
+    "users.Expert_programs",
+    "partner_programs.PartnerProgram_managers"
+  ],
+  "preexistingDomainUnchanged": true,
+  "projectCountUnchanged": true,
+  "limits": [
+    "Only fresh synthetic programs; external mail/CDN not used.",
+    "Case action is implemented for current mutable drafts; submitted administrative policy and D02 UI remain open.",
+    "0/false/team/pending preserved by actual snapshots; no Project was created."
+  ]
+}

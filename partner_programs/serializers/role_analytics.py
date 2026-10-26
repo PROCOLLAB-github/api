@@ -47,3 +47,28 @@ class ProgramRoleWidgetSerializer(serializers.Serializer):
     participant = ParticipantWidgetSerializer(required=False)
     organizer = OrganizerWidgetSerializer(required=False)
     expert = ExpertWidgetSerializer(required=False)
+
+
+class WidgetSolutionRefSerializer(serializers.Serializer):
+    kind = serializers.ChoiceField(choices=("solution",))
+    program_id = serializers.IntegerField(min_value=1)
+    solution_id = serializers.IntegerField(min_value=1)
+    name = serializers.CharField()
+
+
+class SolutionParticipantWidgetSerializer(ParticipantWidgetSerializer):
+    participant_project = None
+    application = WidgetSolutionRefSerializer(allow_null=True)
+
+
+class SolutionOrganizerWidgetSerializer(serializers.Serializer):
+    participants = serializers.IntegerField(min_value=0)
+    solutions = serializers.IntegerField(min_value=0)
+    submitted_solutions = serializers.IntegerField(min_value=0, allow_null=True)
+    participants_without_solution = serializers.IntegerField(min_value=0)
+
+
+class SolutionProgramRoleWidgetSerializer(ProgramRoleWidgetSerializer):
+    storage_mode = serializers.ChoiceField(choices=("solution",))
+    participant = SolutionParticipantWidgetSerializer(required=False)
+    organizer = SolutionOrganizerWidgetSerializer(required=False)

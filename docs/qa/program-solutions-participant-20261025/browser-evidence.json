@@ -1,0 +1,794 @@
+{
+  "status": "PASS",
+  "checkedAt": "2026-10-25T04:18:46.802Z",
+  "prefix": "qa01-20261025-fa37de87",
+  "checks": [
+    {
+      "program": 7,
+      "check": "resume immutable submitted fixture and verify final UI/state without repeat submit"
+    },
+    {
+      "program": 8,
+      "check": "resume immutable submitted fixture and verify final UI/state without repeat submit"
+    }
+  ],
+  "programs": {
+    "7": {
+      "solutionId": 6,
+      "template": "case_championship",
+      "checks": [
+        "empty draft",
+        "real invitation + accepted inbox + two pending + capacity",
+        "0/false/case retained across tabs and saved",
+        "cancel then one submit POST",
+        "snapshot and frozen materials/team",
+        "pending decline/revoke after frozen submission"
+      ],
+      "submitted": true,
+      "complete": true
+    },
+    "8": {
+      "solutionId": 7,
+      "template": "hackathon",
+      "checks": [
+        "empty draft",
+        "real invitation + accepted inbox + two pending + capacity",
+        "0/false/case retained across tabs and saved",
+        "cancel then one submit POST",
+        "snapshot and frozen materials/team",
+        "pending decline/revoke after frozen submission"
+      ],
+      "submitted": true,
+      "complete": true
+    }
+  },
+  "events": [
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/solution-invitations/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/7/solution-context/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/solution-invitations/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/programs/7/solutions/",
+      "status": 201
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/7/solutions/6/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/7/solutions/6/invitations/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/programs/7/solutions/6/invitations/",
+      "status": 201
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/7/solutions/6/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/7/solutions/6/invitations/",
+      "status": 200
+    },
+    {
+      "role": "member",
+      "method": "GET",
+      "path": "/solution-invitations/",
+      "status": 200
+    },
+    {
+      "role": "member",
+      "method": "GET",
+      "path": "/programs/",
+      "status": 200
+    },
+    {
+      "role": "member",
+      "method": "GET",
+      "path": "/programs/7/",
+      "status": 200
+    },
+    {
+      "role": "member",
+      "method": "GET",
+      "path": "/programs/",
+      "status": 200
+    },
+    {
+      "role": "member",
+      "method": "GET",
+      "path": "/programs/7/news/",
+      "status": 200
+    },
+    {
+      "role": "member",
+      "method": "GET",
+      "path": "/programs/7/certificates/me/",
+      "status": 200
+    },
+    {
+      "role": "member",
+      "method": "GET",
+      "path": "/programs/7/analytics-widget/",
+      "status": 200
+    },
+    {
+      "role": "member",
+      "method": "GET",
+      "path": "/solution-invitations/",
+      "status": 200
+    },
+    {
+      "role": "member",
+      "method": "POST",
+      "path": "/solution-invitations/14/accept/",
+      "status": 200
+    },
+    {
+      "role": "member",
+      "method": "GET",
+      "path": "/solution-invitations/",
+      "status": 200
+    },
+    {
+      "role": "member",
+      "method": "GET",
+      "path": "/programs/7/solutions/6/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/programs/7/solutions/6/invitations/",
+      "status": 409
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/7/solutions/6/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/7/solutions/6/invitations/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/programs/7/solutions/6/invitations/",
+      "status": 201
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/7/solutions/6/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/7/solutions/6/invitations/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/programs/7/solutions/6/invitations/",
+      "status": 201
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/7/solutions/6/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/files/",
+      "status": 201
+    },
+    {
+      "role": "captain",
+      "method": "PATCH",
+      "path": "/programs/7/solutions/6/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "PATCH",
+      "path": "/programs/7/solutions/6/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "PATCH",
+      "path": "/programs/7/solutions/6/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/programs/7/solutions/6/submit/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/7/solutions/6/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/7/solutions/6/invitations/",
+      "status": 200
+    },
+    {
+      "role": "pending_a",
+      "method": "GET",
+      "path": "/programs/",
+      "status": 200
+    },
+    {
+      "role": "pending_a",
+      "method": "GET",
+      "path": "/solution-invitations/",
+      "status": 200
+    },
+    {
+      "role": "pending_a",
+      "method": "GET",
+      "path": "/programs/7/",
+      "status": 200
+    },
+    {
+      "role": "pending_a",
+      "method": "GET",
+      "path": "/programs/",
+      "status": 200
+    },
+    {
+      "role": "pending_a",
+      "method": "GET",
+      "path": "/programs/7/news/",
+      "status": 200
+    },
+    {
+      "role": "pending_a",
+      "method": "GET",
+      "path": "/programs/7/certificates/me/",
+      "status": 200
+    },
+    {
+      "role": "pending_a",
+      "method": "GET",
+      "path": "/programs/7/analytics-widget/",
+      "status": 200
+    },
+    {
+      "role": "pending_a",
+      "method": "GET",
+      "path": "/solution-invitations/",
+      "status": 200
+    },
+    {
+      "role": "pending_a",
+      "method": "POST",
+      "path": "/programs/7/acknowledge-welcome/",
+      "status": 200
+    },
+    {
+      "role": "pending_a",
+      "method": "POST",
+      "path": "/solution-invitations/15/decline/",
+      "status": 200
+    },
+    {
+      "role": "pending_a",
+      "method": "GET",
+      "path": "/solution-invitations/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/solution-invitations/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/7/solutions/6/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/7/solutions/6/invitations/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "dialog": "confirm",
+      "message": "Отозвать приглашение участнику София Сквозная?"
+    },
+    {
+      "role": "captain",
+      "method": "DELETE",
+      "path": "/solution-invitations/16/",
+      "status": 204
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/8/solution-context/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/solution-invitations/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/programs/8/solutions/",
+      "status": 201
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/8/solutions/7/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/8/solutions/7/invitations/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/programs/8/solutions/7/invitations/",
+      "status": 201
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/8/solutions/7/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/8/solutions/7/invitations/",
+      "status": 200
+    },
+    {
+      "role": "member",
+      "method": "GET",
+      "path": "/programs/8/",
+      "status": 200
+    },
+    {
+      "role": "member",
+      "method": "GET",
+      "path": "/programs/",
+      "status": 200
+    },
+    {
+      "role": "member",
+      "method": "GET",
+      "path": "/programs/8/news/",
+      "status": 200
+    },
+    {
+      "role": "member",
+      "method": "GET",
+      "path": "/programs/8/certificates/me/",
+      "status": 200
+    },
+    {
+      "role": "member",
+      "method": "GET",
+      "path": "/programs/8/analytics-widget/",
+      "status": 200
+    },
+    {
+      "role": "member",
+      "method": "GET",
+      "path": "/solution-invitations/",
+      "status": 200
+    },
+    {
+      "role": "member",
+      "method": "POST",
+      "path": "/programs/8/acknowledge-welcome/",
+      "status": 200
+    },
+    {
+      "role": "member",
+      "method": "POST",
+      "path": "/solution-invitations/17/accept/",
+      "status": 200
+    },
+    {
+      "role": "member",
+      "method": "GET",
+      "path": "/solution-invitations/",
+      "status": 200
+    },
+    {
+      "role": "member",
+      "method": "GET",
+      "path": "/programs/8/solutions/7/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/programs/8/solutions/7/invitations/",
+      "status": 409
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/8/solutions/7/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/8/solutions/7/invitations/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/programs/8/solutions/7/invitations/",
+      "status": 201
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/8/solutions/7/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/8/solutions/7/invitations/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/programs/8/solutions/7/invitations/",
+      "status": 201
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/8/solutions/7/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/8/solutions/7/invitations/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "PATCH",
+      "path": "/programs/8/solutions/7/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "PATCH",
+      "path": "/programs/8/solutions/7/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "PATCH",
+      "path": "/programs/8/solutions/7/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/programs/8/solutions/7/submit/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/8/solutions/7/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/8/solutions/7/invitations/",
+      "status": 200
+    },
+    {
+      "role": "pending_a",
+      "method": "GET",
+      "path": "/programs/8/",
+      "status": 200
+    },
+    {
+      "role": "pending_a",
+      "method": "GET",
+      "path": "/programs/",
+      "status": 200
+    },
+    {
+      "role": "pending_a",
+      "method": "GET",
+      "path": "/programs/8/news/",
+      "status": 200
+    },
+    {
+      "role": "pending_a",
+      "method": "GET",
+      "path": "/programs/8/certificates/me/",
+      "status": 200
+    },
+    {
+      "role": "pending_a",
+      "method": "GET",
+      "path": "/programs/8/analytics-widget/",
+      "status": 200
+    },
+    {
+      "role": "pending_a",
+      "method": "GET",
+      "path": "/solution-invitations/",
+      "status": 200
+    },
+    {
+      "role": "pending_a",
+      "method": "POST",
+      "path": "/programs/8/acknowledge-welcome/",
+      "status": 200
+    },
+    {
+      "role": "pending_a",
+      "method": "POST",
+      "path": "/solution-invitations/18/decline/",
+      "status": 200
+    },
+    {
+      "role": "pending_a",
+      "method": "GET",
+      "path": "/solution-invitations/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/solution-invitations/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/8/solutions/7/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/8/solutions/7/invitations/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "dialog": "confirm",
+      "message": "Отозвать приглашение участнику София Сквозная?"
+    },
+    {
+      "role": "captain",
+      "method": "DELETE",
+      "path": "/solution-invitations/19/",
+      "status": 204
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/solution-invitations/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/solution-invitations/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/7/solution-context/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/7/solutions/6/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/solution-invitations/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/7/solutions/6/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/7/solutions/6/invitations/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/8/solution-context/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/8/solutions/7/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/solution-invitations/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/solution-invitations/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/8/solutions/7/",
+      "status": 200
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/8/solutions/7/invitations/",
+      "status": 200
+    }
+  ],
+  "javascriptErrors": [],
+  "widths": [
+    320,
+    390,
+    768,
+    1440
+  ],
+  "browser": "Headless Edge / Playwright",
+  "origin": "http://127.0.0.1:8874",
+  "api": "http://127.0.0.1:8871",
+  "buildProvenance": "C:/Users/evsee/AppData/Local/Temp/procollab-qa01-angular/qa-build-provenance.json",
+  "resumedFromCompletedPhases": {
+    "file": "attempt-1792901599060.json",
+    "reason": "previous real journeys completed both submits; final assertion raced DELETE response; retested final state with explicit response wait"
+  },
+  "limitations": [
+    "participant scope only; manager/public UI pending",
+    "full AA/screen reader and actual browser zoom not claimed",
+    "phase evidence and resumed final verification are distinguished; not claimed one uninterrupted final invocation",
+    "external network requests blocked; default remote avatars are absent in screenshots",
+    "mutatingHttpRequests includes expected conflicts; it is not a count of persisted mutations"
+  ],
+  "mutatingHttpRequests": 28
+}

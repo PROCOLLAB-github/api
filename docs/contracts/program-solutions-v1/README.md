@@ -1,6 +1,50 @@
+<!-- @format -->
+
 # C00 Контракт решения в программе
 
-Версия 1.0.0 от 23 октября 2026 года. Контракт фиксирует поведение для реализации BE01–BE06 и FE01–FE06. В BE01 реализованы модели и четыре операции контекста, создания, чтения и списка; остальные операции остаются задачами BE02–BE06. Новый режим выключен по умолчанию. Контракт описывает JSON на проводе в snake_case; преобразование в camelCase выполняет frontend adapter.
+Изменение 1.21.0: публичные GET охватывают уже сданные конкурсные решения КЧ/хакатона после окончания программы и установки marker существующим publisher. Неконкурсные сохраненные материалы остаются без сдачи. DTO/156 schemas/59 operations сохраняются;6 новых независимых сценариев, итого305. Временный сценарий published_solution_list_competitive_pending_rule намеренно меняется404→200 с пустой страницей: весь конкурсный список больше не закрыт из-за отдельного вопроса о draft. Остальные298 старых сценариев структурно неизменны. Несданные конкурсные работы и архивы не выдаются, окончательная eligibility draft все еще ожидает ответа. Нового Angular UI, схемы БД или Project нет.
+
+Рабочая версия 1.20.1 от 25 октября 2026 года. Контракт фиксирует поведение для реализации BE01–BE09 и FE01–FE08. В BE01 реализованы модели и четыре операции контекста, создания, чтения и списка; BE02 добавляет удаление участника, выход и передачу капитанства, BE03 — цикл приглашений, BE04 — чтение/изменение формы и стартовые шаблоны, BE05 — частичное сохранение ответов и привязку файлов, BE06 — атомарную сдачу со снимком. Новый режим выключен по умолчанию. Контракт описывает JSON на проводе в snake_case; преобразование в camelCase выполняет frontend adapter.
+
+Изменение 1.20.1: исправлен код отказа оценивания архивного решения для пользователя с совмещенными ролями организатора/эксперта: solution_archived/409 проверяется до criteria/quota/assignment. Обычный эксперт без сохраненного доступа по-прежнему получает404. Существующая форма D01 закрывает материалы и ввод при таком отказе. Payload/59 операций/156 схем и297 прежних примеров не меняются; добавлены2 независимых примера. Миграций и изменений макета нет.
+
+Изменение 1.20.0: BE08C2 добавляет подтверждаемое удаление регистраций по registration_ids и отдельный аудит, включая регистрации без решения. Капитан снимает заявку с участия с reason=registration_removed; участник удаляется из текущего состава/снимка, pending отзываются. Архивные работы, материалы, оценки, Auth User, роли и другие программы сохраняются. Смешанная связь с Project блокирует всю команду. Старые 272 сценария не меняются; добавлены 25 независимых сценариев и 4 операции. Миграция 0038 только добавляет аудит/связи истории, без удаления данных. Новый UI остается за согласованием D02.
+
+Изменение 1.19.0: bulk archive preview/apply снимает работу с активного участия, сохраняя solution/материалы/UserFile/состав/оценки и исходную сдачу. Pending отзываются, все назначения снимаются; архив не участвует в текущей заявке/эксклюзивности/оценивании/аналитике/публикации. Собственный архив читается капитаном/составом/manager, participation=active(default)/archived/all. Optional participation добавлен в Solution/Summary; прежние payloads остаются валидны. Draft получает archive snapshot без submit. История дополнена archive ветвью и private archive_snapshot detail.9 новых схем/2 операции; итог145 схем/55 операций/272 сценариев,250 старых сценариев сохранены. Регистрации не удаляются этим action; их отдельная административная команда еще в объеме BE08. Backend/миграция → frontend API; новый UI ожидает D02, legacy Project не меняется.
+
+Изменение 1.18.0: organizer/admin получает отдельные signed preview/apply исключения принятого участника до/после сдачи. Капитан не исключается, регистрация/ответы/файлы/оценки/назначения сохраняются; pending приглашения выбранного участника отзываются, обработанные сохраняются без доступа к материалам. Текущий submitted snapshot меняет только members; исходный и новый snapshot и исключенный Member сохраняются в истории. SolutionAdminChange теперь discriminated union change_case/remove_member; прежние case payloads и все230 сценариев неизменны.5 новых схем/2 операции, итог136 схем/53 операции/250 независимых сценариев. Обычные writers остаются frozen. Удаление регистрации/архив заявки далее; Project endpoints/данные не меняются. Backend/миграция → frontend API, новый UI ожидает D02.
+
+Изменение 1.17.0: согласованные административные исключения начинают со смены кейса после сдачи. Signed preview/apply сохраняет оценки и оцененные назначения, снимает только несовместимые неоцененные; snapshot до/после и actor/version/effects сохраняются в неизменяемой истории. Обычные participant/model writers остаются frozen. Preview дополнен is_submitted/removed_assignments_count/score_count; два старых submitted mocks намеренно меняют прежний запрет на разрешенное действие. GET history/list и detail доступны только organizer/admin своей программы; snapshot использует существующую SubmissionSnapshot схему.3 новых схемы/2 операции, итог131 схем/51 операция/230 сценариев. Legacy endpoints/Project модели не меняются; удаления/отвязка/исключение участников остаются следующим объемом BE08. Backend/миграция → frontend; нового UI до D02 approval нет.
+
+Изменение 1.16.0: роль нового приглашения обязательна и содержит 1–128 символов, включая хотя бы один непробельный. PATCH может не передавать role при изменении других полей; переданная role имеет те же ограничения и не очищается в null. Это намеренное ужесточение двух request-схем CreateInvitation/UpdateInvitation под согласованный D00 v3/AC26; старые nullable role в ответах/истории/составе сохранены, accept/decline/revoke не требуют заполнения старой роли. Три прежних create error mocks дополнены корректной ролью, чтобы по-прежнему проверять duplicate/max/frozen; остальные206 старых сценариев неизменны. Добавлены8 независимых сценариев: границы/400/историческая null role. Итог128 схем/49 операций/217 сценариев. Схемы ответов и маршруты прежние; UI уже требует роль, новых экранов/миграций нет. Backend перед frontend.
+
+Изменение 1.15.0: отдельные solution case preview/apply переносят существующую смену кейса черновика организатором. Signed proof10min, exact case, program/solution/fields locks и state recheck; только case answer/version/time меняются. Submitted остается frozen до отдельного решения об административных исключениях. Старые125 схем/47 операций/185 сценариев, включая submit action, неизменны; добавлены3 схемы/2 операции/24 независимых сценария. Неконкурсные черновики поддерживаются, искусственной сдачи нет. Новый UI/удаление/отвязка этим API не реализуются.
+
+Изменение 1.13.0: REL01 получает отдельный persisted `PartnerProgram.solution_creation_enabled`, default=False, без изменения storage mode. GET context добавляет значение blocked_reason=solution_creation_disabled; POST нового решения — 409 с тем же code. Повтор капитана возвращает прежнюю заявку с 200; права и currentApplication имеют прежний приоритет. Чтение, ответы, файлы, команда, приглашения, сдача, оценки и публикация существующих работ не отключаются этим флагом. Техническая команда `set_solution_creation --program-id ID --enable|--disable` делает preview, `--apply` меняет только выбранную программу под row lock. Нового API настройки нет. 120 схем/45 операций сохранены, 161 независимый сценарий (все 158 прежних неизменны). Миграция 0034 закрывает новое создание по умолчанию, не меняя данные работ. Backend/миграция → frontend; новый клиент уточняет текст существующего error state, старый использует canCreate. Полный REL01 и QA01 не объявлены завершенными.
+
+Изменение 1.12.0: manager list добавляет field_id/answer_state по applied snapshot/current форме (0/false present, новое поле не missing у старой сдачи). kind=solutions/submitted XLSX принимает те же search/scope/submission/case/field фильтры и выгружает все найденные без pagination; остальные kind отклоняют непустые фильтры. Readonly manager permissions/no-store, прежние ответы и 120 схем сохранены; 45 операций, 158 независимых сценариев. Angular UI ожидает design approval.
+
+Изменение 1.11.0: два anonymous read-only GET published-solutions для опубликованных неконкурсных материалов и accepted team. Nullable published_at сохраняет прежнюю одноразовую публикацию после срока/флага; отдельный job не создает Project и не требует submit. Public allowlist не содержит оценок, регистрации, контактных полей профиля или приглашений. Current saved или immutable submitted snapshot, 0/False/file URL, no-store и C00 errors. Прежние 116 схем, 43 операции и 128 сценариев неизменны; итог 120 схем, 45 операций, 144 сценария. Конкурсная публикация ожидает ранее заданного решения о черновиках; публичный UI требует отдельного design approval.
+
+Изменение 1.10.0: manager-only POST reminder-preview/reminders для ожидающих решений использует настоящие solution IDs и SolutionExpertAssignment, snapshot search, selected/all/exclusions и существующий подписанный preview/outbox. Получатели — только активные эксперты программы с незавершенными назначениями; 0/False учитываются общими правилами. Confirm/delivery пересекают текущие связи с утвержденными IDs, новые назначения не добавляются, повтор token идемпотентен. Private, no-store, C00 errors; legacy/open/noncompetitive неприменимы. Прежние 110 схем, 41 операция и 113 сценариев неизменны; итог 116 схем, 43 операции, 128 сценариев. Angular API layer внедряется независимо, новый UI D02 ожидает design approval.
+
+Изменение 1.9.0: пять manager-only read/export операций solution-analytics дают сводку, реальные назначения/детали, scoped список решений и XLSX программы. Snapshot/current форма определяет применимость полей; 0/False answered, noncompetitive submission/evaluation и open assignment aggregates null. Старые Project endpoints/DTO не меняются. Прежние 88 схем, 36 операций и 80 сценариев сохранены; итог 110 схем, 41 операций, 113 сценариев. Backend → frontend API layer; UI/напоминания/разрушающие команды отдельно.
+
+Изменение 1.8.0: GET /programs/{program_id}/management/solution-cases/ дает организатору агрегаты ProgramSolution по текущим options кейса. Submitted использует snapshot, draft — собственные ответы; люди уникальны внутри bucket и только зарегистрированные captain/accepted members. Noncompetitive submission counts null, без требования submit. Старые 85 схем, 35 операций и 72 сценария сохранены; итог 88 схем, 36 операций, 80 сценариев. Старый Project overview не изменяется; новый UI и остальная аналитика внедряются отдельно.
+
+Изменение 1.7.0: существующий GET /programs/{program_id}/analytics-widget/ добавлен в C00 перед адаптацией. Legacy payload сохраняется. Новый solution payload содержит storage_mode=solution, SolutionRef участника и отдельные счетчики solutions/participants_without_solution организатора; экспертные assigned/remaining читают настоящие назначения. Стадии и null неприменимых показателей прежние, оценки и регистрации не сериализуются. Ошибки сохраняют существующий DRF detail и status, не переводятся молча в C00 Error. Все прежние схемы, операции и 59 примеров неизменны: 85 схем, 35 операций, 72 сценария. Backend → frontend; реальные программы не переключаются. Это контракт ролевого виджета, не завершенная основная аналитика BE09.
+
+Изменение 1.6.0: перед подключением FE07 синхронизированы последние согласованные правки оценивания из go to UI / PR #506 и API #823. RatingValue.value и RatingCriterion.value расширены с 50 до 1000 символов; текстовые комментарии повторяют текущий ProjectScore. Типы, диапазоны, обязательность, ID и все операции сохранены. Новый независимый пример фиксирует комментарий 1000 символов: 74 схемы, 34 операции, 59 сценариев. Optional RatingPage.evaluation_counts передает собственные счетчики после фильтров и до статуса/пагинации, как новый список проектов из PR #506; UI не считает их из одной страницы. Optional RatingPage.case_options дает эксперту только варианты кейса для текущего фильтра; доступ к закрытой живой форме не расширяется. Backend требует merge migrations для двух веток project_rates.0008 и расширение SolutionScore.value; затем backend → frontend с общей формой критериев, без преобразования ProgramSolution в Project.
+
+Изменение 1.5.0: GET /programs/{program_id}/management/solution-results/export/ возвращает бинарный XLSX с тем же расчетом, что и результаты решения. Фильтры сохранены; scope=current/all повторяет действующую выгрузку проектов. Два листа содержат ID решения, числовые ячейки и прежние формулы; пользовательские строки защищены от интерпретации как формулы. Доступ только организатору программы; ошибки остаются JSON C00. Старые операции и все схемы не меняются: 74 схемы, 34 операции, 57 независимых примеров. Успешный XLSX проверяется чтением настоящей книги в API tests, JSON-пример нового endpoint фиксирует invalid scope. Это первый блок BE09; остальная аналитика, ролевой виджет и выгрузки еще в работе.
+
+Изменение 1.4.0: GET /evaluation/applications/ возвращает одну страницу реальных назначений обоих форматов. ApplicationRef явно различает legacy_project и solution; project_id/program_link_id и solution_id не подменяются. Общие count/limit/offset применяются после объединения и фильтрации, а pending/completed/unavailable сохраняют семантику вкладок текущего кабинета. Старые /evaluation/programs/ и include=projects остаются совместимыми; счетчики нового формата читают SolutionExpertAssignment. Контракт содержит 74 схемы, 33 операции и 56 независимых примеров. Это рабочий checkpoint BE08; публичные материалы и остальные административные команды дополняются отдельно до реализации.
+
+Изменение 1.3.0: совместимое расширение BE07/FE07 добавляет десять операций оценки, назначений, распределения, числа экспертов и результатов решений. Перед реализацией зафиксированы 72 схемы и 55 независимых примеров. В errors появился optional criterion_id; field_id остается ID поля решения. На проводе оценки используют string/null, назначения — настоящие solution_id и Expert.id. Распределение требует ревизию и подписанный предпросмотр; результаты доступны организатору. Старые URL и обязательность полей сохранены. API и frontend port/adapter/use cases реализованы в рабочей ветке; экспертный UI требует согласования D01 и еще не подключен. Rollout: migration project_rates.0008 → backend → frontend; default legacy_project сохранен.
+
+Изменение 1.2.0: общий POST `/files/` принимает необязательный query-параметр `preserve_original=true`. Он сохраняет исходные байты и формат изображения для материалов решения. Без параметра остается прежнее преобразование изображений в WebP. Multipart содержит только `file`, успешный ответ по-прежнему `{url}`. Сервер хранит фактический тип содержимого внутри UserFile и проверяет его при привязке к решению; новые публичные поля ответа не добавляются. Клиент с опцией оригинала внедряется после backend с ее поддержкой.
+
+Изменение 1.1.0: добавлен необязательный `permissions.can_leave`, вычисляемый сервером для собственного выхода принятого участника. При отсутствии поля клиент считает его false. Существующие поля, URL и payload команд не меняются; C00 1.0.0 остается совместимым подмножеством. Капитан, сданная заявка и выключенный режим дают false.
 
 Источники: ТЗ «Решение вместо проекта в программах PROCOLLAB» и действующие правила ветки dev, проверенные на backend b7d9f57 и frontend bc1f961b. Старые API и обычные проекты сохраняют свои контракты.
 
@@ -19,19 +63,23 @@ C00 фиксирует техническую основу. D00 v3 явно со
 
 Решение принадлежит одной программе. Формат формы — case_championship или hackathon. У программы одна общая форма; разные поля по кейсам не входят в v1. Кейс или задача представлены полем select с purpose:case, без новой сущности Case. Поля шаблона копируются в конфигурацию программы.
 
-Создание доступно по текущим правилам участника и дедлайна, включая существующие административные исключения. Повторное создание капитаном возвращает его заявку с HTTP 200; новое — 201. До первого включения все изменяющие endpoints проверяют технический режим программы. Наличие серверного кода при выключенном режиме не дает создать решение.
+Создание доступно по текущим правилам участника и дедлайна, включая существующие административные исключения. Повторное создание капитаном возвращает его заявку с HTTP 200; новое — 201. До первого включения все изменяющие endpoints проверяют технический режим программы. Наличие серверного кода при выключенном режиме не дает создать решение. Дополнительно новое создание требует solution_creation_enabled=True; default=False. Откат creation flag не меняет режим, текущую заявку, права или данные уже созданных работ.
+
+## Метаданные существующей страницы программы
+
+GET /programs/{id}/ дополнительно передает read-only `solution_storage_mode: legacy_project | solution` в member и unregistered вариантах. Это только выбор маршрута; поле не открывает описание, форму, состав, ответы или оценки. `current_application` сохраняет прежний Project DTO. Верхний экспертный вход и ссылка виджета ведут в `solutions-rating` только при явном `solution`, иначе в `projects-rating`. Старый клиент игнорирует добавочное поле; новый клиент при его отсутствии сохраняет старый путь. Rollout: backend → frontend, без миграций. Эта совместимая метаинформация существующего API сама по себе не добавляет операций решения и не изменяет существующие схемы C00.
 
 ## Модель хранения
 
-| Объект | Данные и связи |
-| --- | --- |
-| ProgramSolution | id, program FK, captain FK User, name, version bigint, status draft/submitted, submitted_at nullable, submission_snapshot JSON nullable, created_at, updated_at |
-| ProgramSolutionMember | solution FK, user FK, role nullable, specialization nullable, joined_at |
-| SolutionInvitation | solution FK, recipient FK User, role nullable, specialization nullable, motivational_letter nullable, status pending/accepted/declined, version bigint, created_at, updated_at |
-| ProgramSolutionAnswer | solution FK, field FK PartnerProgramField, value JSON; одна запись на пару |
-| Конфигурация формы программы | template nullable до настройки; определения PartnerProgramField расширяются type, purpose, position, validation; revision считается по всей конфигурации |
-| Профиль участника программы | Существующая регистрация сохраняется. Текущая заявка определяется по принятому составу или капитанству, не только по старому profile.project |
-| UserFile | Существующий файл с первичным ключом link. Новый File ID не изобретается |
+| Объект                       | Данные и связи                                                                                                                                                                 |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| ProgramSolution              | id, program FK, captain FK User, name, version bigint, status draft/submitted, submitted_at nullable, submission_snapshot JSON nullable, created_at, updated_at                |
+| ProgramSolutionMember        | solution FK, user FK, role nullable, specialization nullable, joined_at                                                                                                        |
+| SolutionInvitation           | solution FK, recipient FK User, role nullable, specialization nullable, motivational_letter nullable, status pending/accepted/declined, version bigint, created_at, updated_at |
+| ProgramSolutionAnswer        | solution FK, field FK PartnerProgramField, value JSON; одна запись на пару                                                                                                     |
+| Конфигурация формы программы | template nullable до настройки; определения PartnerProgramField расширяются type, purpose, position, validation; revision считается по всей конфигурации                       |
+| Профиль участника программы  | Существующая регистрация сохраняется. Текущая заявка определяется по принятому составу или капитанству, не только по старому profile.project                                   |
+| UserFile                     | Существующий файл с первичным ключом link. Новый File ID не изобретается                                                                                                       |
 
 Капитан также имеет одну запись ProgramSolutionMember. При создании она добавляется в той же транзакции. При передаче капитанства меняется captain FK на уже принятого участника; прежний капитан остается участником. is_captain вычисляется сравнением user.id и captain_id. Дублировать капитана в численности нельзя.
 
@@ -40,6 +88,8 @@ C00 фиксирует техническую основу. D00 v3 явно со
 Инвариант «капитан входит в состав» и соответствие поля программе проверяются сервисом в транзакции. Их нельзя выразить обычным CHECK по строке. Создание дублей и запрет участия в двух командах активной программы обеспечиваются сериализацией через программу и повторными проверками всех поддерживаемых способов записи. Не объявляем динамическую exclusivity ограничением unique(user,program) навсегда.
 
 Физически новые приглашения хранятся в SolutionInvitation, а старые Invite не получают фиктивный project FK. Общая бизнес policy используется через адаптер владельца. Операции отзыва сохраняют действующую семантику удаления: pending приглашение удаляется; статус revoked не добавляется. accepted и declined остаются историческими строками.
+
+BE04 добавляет nullable JSON-колонку PartnerProgramField.solution_options для точного хранения вариантов, включая символ |. При null чтение использует прежний options; старые определения автоматически не переписываются. Новая форма сохраняется целиком через solution-form. Прежний project-form не изменяет определения нового конструктора, в том числе после технического выключения режима.
 
 ## Ревизии
 
@@ -71,39 +121,39 @@ JWT Bearer и текущие правила аутентификации сох�
 
 ## Endpoints
 
-| Метод и путь | Назначение |
-| --- | --- |
-| GET /programs/{program_id}/solution-context/ | Режим программы, сроки, доступность создания и текущая заявка |
-| GET /programs/{program_id}/solutions/ | Доступный пользователю список решений |
-| POST /programs/{program_id}/solutions/ | Создать решение с начальным названием либо вернуть существующее |
-| GET /programs/{program_id}/solutions/{solution_id}/ | Полная разрешенная заявка: team, form, answers, submission, permissions, readiness |
-| PATCH /programs/{program_id}/solutions/{solution_id}/ | Частично сохранить название и ответы черновика |
-| POST /programs/{program_id}/solutions/{solution_id}/submit/ | Сдать сохраненную заявку |
-| DELETE /programs/{program_id}/solutions/{solution_id}/members/{user_id}/ | Капитан удаляет участника |
-| POST /programs/{program_id}/solutions/{solution_id}/leave/ | Участник выходит |
-| POST /programs/{program_id}/solutions/{solution_id}/captain/ | Передача капитанства |
-| GET и POST /programs/{program_id}/solutions/{solution_id}/invitations/ | Капитан читает приглашения заявки или создает приглашение |
-| GET /solution-invitations/ | Входящие приглашения текущего пользователя |
-| GET /solution-invitations/{invitation_id}/ | Безопасное представление для капитана и получателя |
-| PATCH и DELETE /solution-invitations/{invitation_id}/ | Изменить или отозвать pending приглашение капитаном |
-| POST /solution-invitations/{invitation_id}/accept/ | Получатель принимает приглашение |
-| POST /solution-invitations/{invitation_id}/decline/ | Получатель отклоняет приглашение |
-| GET /programs/{program_id}/solution-form/ | Текущая форма, доступная участнику программы |
-| GET и PUT /programs/{program_id}/management/solution-form/ | Организатор читает или атомарно меняет форму |
-| GET /solution-form-templates/ | Прототипы двух шаблонов |
-| POST /files/ | Существующая multipart загрузка, ответ 201 {url} |
+| Метод и путь                                                             | Назначение                                                                         |
+| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| GET /programs/{program_id}/solution-context/                             | Режим программы, сроки, доступность создания и текущая заявка                      |
+| GET /programs/{program_id}/solutions/                                    | Доступный пользователю список решений                                              |
+| POST /programs/{program_id}/solutions/                                   | Создать решение с начальным названием либо вернуть существующее                    |
+| GET /programs/{program_id}/solutions/{solution_id}/                      | Полная разрешенная заявка: team, form, answers, submission, permissions, readiness |
+| PATCH /programs/{program_id}/solutions/{solution_id}/                    | Частично сохранить название и ответы черновика                                     |
+| POST /programs/{program_id}/solutions/{solution_id}/submit/              | Сдать сохраненную заявку                                                           |
+| DELETE /programs/{program_id}/solutions/{solution_id}/members/{user_id}/ | Капитан удаляет участника                                                          |
+| POST /programs/{program_id}/solutions/{solution_id}/leave/               | Участник выходит                                                                   |
+| POST /programs/{program_id}/solutions/{solution_id}/captain/             | Передача капитанства                                                               |
+| GET и POST /programs/{program_id}/solutions/{solution_id}/invitations/   | Капитан читает приглашения заявки или создает приглашение                          |
+| GET /solution-invitations/                                               | Входящие приглашения текущего пользователя                                         |
+| GET /solution-invitations/{invitation_id}/                               | Безопасное представление для капитана и получателя                                 |
+| PATCH и DELETE /solution-invitations/{invitation_id}/                    | Изменить или отозвать pending приглашение капитаном                                |
+| POST /solution-invitations/{invitation_id}/accept/                       | Получатель принимает приглашение                                                   |
+| POST /solution-invitations/{invitation_id}/decline/                      | Получатель отклоняет приглашение                                                   |
+| GET /programs/{program_id}/solution-form/                                | Текущая форма, доступная участнику программы                                       |
+| GET и PUT /programs/{program_id}/management/solution-form/               | Организатор читает или атомарно меняет форму                                       |
+| GET /solution-form-templates/                                            | Прототипы двух шаблонов                                                            |
+| POST /files/                                                             | Существующая multipart загрузка, ответ 201 {url}                                   |
 
 Списки solutions используют search и submission=all/submitted/not_submitted. В неконкурсной программе submission, отличный от all, возвращает 400. Списки приглашений используют status=pending/accepted/declined, default pending. Общие списки и контекст сортируются детерминированно по created_at и ID согласно текущему интерфейсу, без случайного выбора первой заявки.
 
 Контекст существует и в legacy режиме. current_application — null либо ссылка с kind:solution и solution_id либо kind:legacy_project с project_id и program_link_id. Это discriminated union для навигации, а не новая сущность. Несогласованные несколько текущих заявок дают 409 ambiguous_application.
 
-blocked_reason в контексте: null, already_has_application, legacy_mode, form_not_configured, not_program_member, submission_closed или already_in_program_team. Порядок выбора: текущая заявка, legacy режим, права, закрытая подача, неготовая форма. Детали участия в чужой команде не раскрываются постороннему.
+blocked_reason в контексте: null, already_has_application, legacy_mode, form_not_configured, not_program_member, solution_creation_disabled, submission_closed или already_in_program_team. Порядок выбора: текущая заявка, legacy режим, права, выключенное создание, закрытая подача, неготовая форма. Детали участия в чужой команде не раскрываются постороннему.
 
 ## Чтение и полномочия
 
 Капитан и принятые участники читают заявку. Организатор, эксперт и прочие зрители получают доступ в пределах текущей политики программы, назначений и публикации работ. Это не дает прав изменения или сдачи за капитана.
 
-permissions в Solution вычисляются для текущего пользователя: can_edit, can_manage_team, can_invite, can_submit. У участника и эксперта все изменяющие флаги false. can_submit означает, что капитану разрешена команда сдачи по состоянию и срокам; неполнота полей отражается отдельно в readiness. Это позволяет нажать действие и увидеть причины неготовности.
+permissions в Solution вычисляются для текущего пользователя: can_edit, can_manage_team, can_invite, can_submit и can_leave. У участника и эксперта нет прав редактирования, управления командой, приглашения и сдачи. Принятый участник может получить can_leave для собственного выхода. can_submit означает, что капитану разрешена команда сдачи по состоянию и срокам; неполнота полей отражается отдельно в readiness. Это позволяет нажать действие и увидеть причины неготовности.
 
 readiness содержит is_ready и issues. Для неконкурсных заявок и зрителей вне своей команды возвращается null. Для своей команды выводятся актуальные требования без раскрытия чужих персональных данных. Разрешение на действие не вычисляется на фронте по роли или часам браузера.
 
@@ -127,7 +177,7 @@ readiness содержит is_ready и issues. Для неконкурсных �
 
 В ожидающих приглашениях сохраняются видимые действия изменения роли и отзыва с подтверждением. Прежнее описание об отсутствии видимой кнопки редактирования относилось к старому checkout и исправлено. После сдачи применяются ограничения C00: редактирование роли и принятие запрещены, отзыв и отклонение доступны. Получатель использует существующие входящие приглашения и принять/отклонить, ссылка адаптируется к Solution.
 
-Схемы C00 для создания по recipient_user_id, изменения и отзыва уже поддерживают этот путь и не менялись. Nullable role на уровне API сохранен для совместимости с legacy моделью; UI требует заполненную нормализованную роль. Существующие проектные endpoints сохраняют работу; решения используют свой контракт. Ошибки показываются безопасным сообщением без raw backend body. Черновик заявки не отправляет приглашение автоматически.
+В C00 1.16 создание по recipient_user_id требует заполненную role1–128 с непробельным символом; PATCH не очищает переданную role, но может менять другие поля без нее. Nullable role сохраняется в ответах и исторических записях: их чтение/принятие/отклонение/отзыв не требуют искусственного заполнения. UI отправляет нормализованную роль, сервер проверяет и сохраняет полученное значение. Существующие проектные endpoints сохраняют работу; решения используют свой контракт. Ошибки показываются безопасным сообщением без raw backend body. Черновик заявки не отправляет приглашение автоматически.
 
 Принятый состав представлен team.members. accepted_count равен количеству уникальных членов, включая капитана. pending_count — уникальные pending получатели. reserved_count — количество уникальных пользователей в объединении принятого состава и pending получателей; при штатных данных равно сумме двух счетчиков.
 
@@ -145,13 +195,13 @@ remove и transfer возвращают MutationReceipt с новой solution_v
 
 Ответ представлен как {field_id,value}. Тип берется из определения поля, а не из переданного клиентом type:
 
-| Тип | JSON value |
-| --- | --- |
-| text, textarea, url | string |
-| select, radio | Точная строка из options |
-| number | JSON number, включая 0 |
-| checkbox | boolean, включая false |
-| file | {url: URL существующего UserFile} |
+| Тип                 | JSON value                        |
+| ------------------- | --------------------------------- |
+| text, textarea, url | string                            |
+| select, radio       | Точная строка из options          |
+| number              | JSON number, включая 0            |
+| checkbox            | boolean, включая false            |
+| file                | {url: URL существующего UserFile} |
 
 PATCH с value:null очищает ответ. Пустая строка и строка из пробелов также очищают текст, ссылку и выбор в черновике. В ответе GET очищенные поля отсутствуют в answers, не содержат null. Дубликат field_id в запросе отклоняется целиком. Сохраненный текст не меняется автоматически, кроме нормализации, предусмотренной текущим полем; проверка пустоты использует trim.
 
@@ -207,16 +257,16 @@ PATCH и submit — две отдельные транзакции. Если sub
 
 Новый Error содержит обязательные code, detail, errors и meta. errors — массив {path,code,field_id,detail}; field_id:null для системной ошибки. meta несет current_version или current_form_revision только при наличии права чтения.
 
-| HTTP | Коды |
-| --- | --- |
-| 400 | validation_error, invalid_answers, required_program_fields, case_required, case_unavailable, invalid_form |
-| 401 | authentication_required |
-| 403 | not_program_member, not_solution_captain, not_invite_recipient, permission_denied |
-| 404 | not_found |
-| 409 | solution_mode_unavailable, form_not_configured, version_conflict, form_revision_conflict, already_in_program_team, ambiguous_application |
-| 409 | team_frozen, team_min_size, team_max_size, already_solution_member, duplicate_pending_invite, invite_already_processed |
-| 409 | captain_cannot_leave, captain_cannot_be_removed, captain_already_selected, not_solution_member |
-| 409 | submission_closed, already_submitted, not_competitive, field_in_use, template_locked |
+| HTTP | Коды                                                                                                                                                                 |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 400  | validation_error, invalid_answers, required_program_fields, case_required, case_unavailable, invalid_form                                                            |
+| 401  | authentication_required                                                                                                                                              |
+| 403  | not_program_member, not_solution_captain, not_invite_recipient, permission_denied                                                                                    |
+| 404  | not_found                                                                                                                                                            |
+| 409  | solution_mode_unavailable, solution_creation_disabled, form_not_configured, version_conflict, form_revision_conflict, already_in_program_team, ambiguous_application |
+| 409  | team_frozen, team_min_size, team_max_size, already_solution_member, duplicate_pending_invite, invite_already_processed                                               |
+| 409  | captain_cannot_leave, captain_cannot_be_removed, captain_already_selected, not_solution_member                                                                       |
+| 409  | submission_closed, already_submitted, not_competitive, field_in_use, template_locked, file_in_use                                                                    |
 
 Это HTTP контракты новых endpoints. Существующие статусы старых /projects/, /invites/ и submit связи не меняются. Повторное действие с удаленным приглашением дает 404. Повтор accept/decline сохраненной обработанной строки — 409 invite_already_processed.
 
@@ -234,19 +284,19 @@ Legacy порядок Project → Program → program links не меняетс�
 
 ## Карта потребителей
 
-| Текущий участок | Изменение | Задача |
-| --- | --- | --- |
-| Project и PartnerProgramProject, profile.project | Владение данными переносится в ProgramSolution; профиль регистрации сохраняется | BE01, BE08, FE01 |
-| Collaborator и projects.team_policy/team_service | Общая policy, новый владелец участников; счетчики без дубля капитана | BE02, FE04 |
-| Invite и текущий inbox | Новые приглашения через SolutionInvitation и /solution-invitations/; старые /invites/ работают прежним способом | BE03, BE08, FE05 |
-| PartnerProgramField и program field values | Definitions переиспользуются; ответы нового решения — typed JSON | BE04, BE05, FE02, FE03 |
-| files.UserFile и /files/ | Текущий upload, проверка привязки и защита использования после сдачи | BE05, BE06, FE03 |
-| Link-scoped submit | Новая команда submit с теми же правилами и снимком | BE06, FE06 |
-| ProjectExpertAssignment, ProjectScore и результаты | Привязка к решению без смены критериев и формул | BE07, FE07 |
-| Management, role widgets, case analytics, exports | Чтение решения; признак материала через purpose; нет двойного учета | BE08, BE09, FE08 |
-| Уведомления и глубокие ссылки | Явная ссылка kind:solution с program_id и solution_id | BE08, FE05, FE08 |
-| История программ | legacy adapter и таблица old link → new solution | BE10 |
-| Чаты и вакансии программного Project | Не создаются автоматически для нового решения; сохраненный доступ к существующим связанным объектам проверяется до переноса | C00 карта, BE08, BE10 |
+| Текущий участок                                    | Изменение                                                                                                                   | Задача                 |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| Project и PartnerProgramProject, profile.project   | Владение данными переносится в ProgramSolution; профиль регистрации сохраняется                                             | BE01, BE08, FE01       |
+| Collaborator и projects.team_policy/team_service   | Общая policy, новый владелец участников; счетчики без дубля капитана                                                        | BE02, FE04             |
+| Invite и текущий inbox                             | Новые приглашения через SolutionInvitation и /solution-invitations/; старые /invites/ работают прежним способом             | BE03, BE08, FE05       |
+| PartnerProgramField и program field values         | Definitions переиспользуются; ответы нового решения — typed JSON                                                            | BE04, BE05, FE02, FE03 |
+| files.UserFile и /files/                           | Текущий upload, проверка привязки и защита использования после сдачи                                                        | BE05, BE06, FE03       |
+| Link-scoped submit                                 | Новая команда submit с теми же правилами и снимком                                                                          | BE06, FE06             |
+| ProjectExpertAssignment, ProjectScore и результаты | Привязка к решению без смены критериев и формул                                                                             | BE07, FE07             |
+| Management, role widgets, case analytics, exports  | Чтение решения; признак материала через purpose; нет двойного учета                                                         | BE08, BE09, FE08       |
+| Уведомления и глубокие ссылки                      | Явная ссылка kind:solution с program_id и solution_id                                                                       | BE08, FE05, FE08       |
+| История программ                                   | legacy adapter и таблица old link → new solution                                                                            | BE10                   |
+| Чаты и вакансии программного Project               | Не создаются автоматически для нового решения; сохраненный доступ к существующим связанным объектам проверяется до переноса | C00 карта, BE08, BE10  |
 
 Чаты и вакансии не являются зависимостью формы, приглашения и submit нового решения. Полный перенос их функциональности на новую сущность оформляется отдельно; существующие объекты старых программ не удаляются и не теряют маршрут. Если пилотной программе нужны эти функции, их готовность проверяется до выбора этой программы для REL01.
 
@@ -269,3 +319,7 @@ python validate_contract.py
 ```
 
 Скрипт проверяет корректность OpenAPI, все локальные refs и схемы, примеры request/response, уникальность operationId, базовые инварианты состава и snapshot. Реальные ответы BE01 дополнительно проверяются JSON Schema в `partner_programs.tests.test_solution_foundation`.
+
+## Изменение 1.14 Первая сдача организатором
+
+Два отдельных POST management/solutions/actions/preview и apply сохраняют существующее organizer/admin исключение поздней первой сдачи. action=submit и 1–10000 safe Solution IDs; signed preview на 10 минут привязан к actor/program/IDs и сохраненным материалам/составу/форме/policy/files. Предпросмотр не пишет, apply повторяет проверки атомарно и создает обычный accepted-only snapshot. Уже сданные данные/дата и captain deadline неизменны. Nullable token/can_apply/counts/per-solution Issue[] и changed_count/already_submitted_count зафиксированы. Ошибки C00/private,no-store. 125 schemas/47 operations/185 scenarios; прежние 120/45/161 структурно неизменны. Миграций нет. UI ожидает D02; post-submission case/detach/removal сюда не входят.

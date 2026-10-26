@@ -16,7 +16,13 @@ class ProgramFieldInlineFormSet(BaseInlineFormSet):
     def clean(self):
         super().clean()
         for form in self.deleted_forms:
-            if case_field_has_values(form.instance):
+            from partner_programs.solution_forms import answer_count
+
+            if case_field_has_values(form.instance) or (
+                form.instance.pk
+                and form.instance.partner_program.solution_storage_mode == "solution"
+                and answer_count(form.instance)
+            ):
                 raise ValidationError(
                     "Нельзя удалить системное поле с выбранными кейсами."
                 )

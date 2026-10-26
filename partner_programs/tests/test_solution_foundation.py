@@ -30,6 +30,8 @@ from projects.models import Project
 
 
 def solution_program(**kwargs):
+    # Готовая к участию fixture; production default отдельно проверяется как False.
+    kwargs.setdefault("solution_creation_enabled", True)
     program = create_partner_program(
         solution_storage_mode="solution", solution_template="hackathon", **kwargs
     )
@@ -69,7 +71,10 @@ class SolutionFoundationTests(TestCase):
         self.assertEqual(obj.members.get().user_id, self.user.pk)
         self.assertEqual(obj.captain_id, self.user.pk)
         self.assertEqual(response.data["team"]["accepted_count"], 1)
-        self.assertFalse(any(response.data["permissions"].values()))
+        self.assertTrue(response.data["permissions"]["can_manage_team"])
+        self.assertTrue(response.data["permissions"]["can_edit"])
+        self.assertTrue(response.data["permissions"]["can_invite"])
+        self.assertTrue(response.data["permissions"]["can_submit"])
         self.assertEqual(response.data["answers"], [])
         self.assertEqual(response.data["submission"]["status"], "draft")
         self.assertEqual(self.client.get(f"{self.url}{obj.pk}/").data, response.data)
@@ -353,14 +358,14 @@ class SolutionFoundationTests(TestCase):
             self.client.patch(
                 f"{self.url}{solution_id}/", {"name": "X"}, format="json"
             ).status_code,
-            405,
+            400,
         )
-        for suffix in ["members/", "invitations/", "submit/"]:
+        for suffix, expected_status in [("members/", 404), ("submit/", 400)]:
             self.assertEqual(
                 self.client.post(
                     f"{self.url}{solution_id}/{suffix}", {}, format="json"
                 ).status_code,
-                404,
+                expected_status,
             )
 
     def test_anonymous_api_uses_contract_error_envelope(self):

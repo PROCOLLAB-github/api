@@ -1,0 +1,42 @@
+{
+  "status": "PASS",
+  "runId": 40227933396,
+  "event": "push",
+  "head": "a787f0ee7d1cb01f9e777fbe2e0fa60999cc0805",
+  "jobId": 121273230836,
+  "tests": 1812,
+  "seconds": 1863.834,
+  "skips": 72,
+  "scope": "Linux feature push source, SQLite; merged PostgreSQL suite still separate",
+  "newPGOnlySkips": 3,
+  "bothMigrationOrdersAndGraph": true,
+  "pdfCyrillicRendererExecuted": true,
+  "proof": {
+    "test_single_leaf_empty_merge_and_unchanged_upstream_migration": "Tests\tRun tests\t2026-10-25T20:00:03.2479249Z test_single_leaf_empty_merge_and_unchanged_upstream_migration (partner_programs.tests.test_solution_dev_migrations.SolutionDevGraphTests.test_single_leaf_empty_merge_and_unchanged_upstream_migration) ... ok",
+    "test_certificate_first_preserves_original_pdf_batch_and_solutions": "Tests\tRun tests\t2026-10-25T20:21:38.1599271Z test_certificate_first_preserves_original_pdf_batch_and_solutions (partner_programs.tests.test_solution_dev_migrations.SolutionDevMigrationDataTests.test_certificate_first_preserves_original_pdf_batch_and_solutions) ... ok",
+    "test_solution_first_preserves_projects_snapshots_scores_and_history": "Tests\tRun tests\t2026-10-25T20:21:48.6742395Z test_solution_first_preserves_projects_snapshots_scores_and_history (partner_programs.tests.test_solution_dev_migrations.SolutionDevMigrationDataTests.test_solution_first_preserves_projects_snapshots_scores_and_history) ... ok",
+    "test_pdf_renderer_outputs_a4_cyrillic_without_external_fetch": {
+      "startLine": 4516,
+      "endLine": 4621,
+      "closingOK": true,
+      "notSkipped": true
+    }
+  },
+  "log": {
+    "name": "procollab-solution-dev-integration-general-ci-success.log",
+    "bytes": 33439984,
+    "sha256": "b798b850674a11fd095d635e4b9d02b52c9033d2916bc0b4421ee5c29d0b29a6"
+  },
+  "retrieval": "gh fallback after connector Transport closed; completed job only",
+  "lint": "success",
+  "allJobs": [
+    {
+      "id": 121273230653,
+      "conclusion": "success"
+    },
+    {
+      "id": 121273230836,
+      "conclusion": "success"
+    }
+  ]
+}

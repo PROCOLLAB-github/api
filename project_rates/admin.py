@@ -12,6 +12,7 @@ from users.models import Expert
 
 from .models import Criteria, ProjectExpertAssignment, ProjectScore
 from .criteria_policy import locked
+from . import solution_admin  # noqa: F401
 
 
 class CriteriaAdminForm(forms.ModelForm):

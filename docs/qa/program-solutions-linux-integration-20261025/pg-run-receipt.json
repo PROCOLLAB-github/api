@@ -1,0 +1,174 @@
+{
+  "conclusion": "success",
+  "databaseId": 40227938298,
+  "event": "pull_request",
+  "headSha": "a787f0ee7d1cb01f9e777fbe2e0fa60999cc0805",
+  "jobs": [
+    {
+      "completedAt": "2026-10-25T20:34:15Z",
+      "conclusion": "success",
+      "databaseId": 121273246458,
+      "name": "Backend PostgreSQL CI",
+      "startedAt": "2026-10-25T19:50:35Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-25T19:50:37Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-25T19:50:36Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-25T19:51:03Z",
+          "conclusion": "success",
+          "name": "Initialize containers",
+          "number": 2,
+          "startedAt": "2026-10-25T19:50:37Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-25T19:51:04Z",
+          "conclusion": "success",
+          "name": "Checkout repository",
+          "number": 3,
+          "startedAt": "2026-10-25T19:51:03Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-25T19:51:04Z",
+          "conclusion": "success",
+          "name": "Set up Python",
+          "number": 4,
+          "startedAt": "2026-10-25T19:51:04Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-25T19:52:23Z",
+          "conclusion": "success",
+          "name": "Install dependencies",
+          "number": 5,
+          "startedAt": "2026-10-25T19:51:04Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-25T19:52:26Z",
+          "conclusion": "success",
+          "name": "Verify PostgreSQL connection and locking support",
+          "number": 6,
+          "startedAt": "2026-10-25T19:52:23Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-25T19:52:28Z",
+          "conclusion": "success",
+          "name": "Check Django configuration",
+          "number": 7,
+          "startedAt": "2026-10-25T19:52:26Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-25T19:52:30Z",
+          "conclusion": "success",
+          "name": "Check Django models",
+          "number": 8,
+          "startedAt": "2026-10-25T19:52:28Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-25T19:52:32Z",
+          "conclusion": "success",
+          "name": "Check migration consistency",
+          "number": 9,
+          "startedAt": "2026-10-25T19:52:30Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-25T19:52:55Z",
+          "conclusion": "success",
+          "name": "Apply migrations to empty PostgreSQL database",
+          "number": 10,
+          "startedAt": "2026-10-25T19:52:32Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-25T19:52:56Z",
+          "conclusion": "success",
+          "name": "Check CI settings formatting",
+          "number": 11,
+          "startedAt": "2026-10-25T19:52:55Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-25T19:52:57Z",
+          "conclusion": "success",
+          "name": "Lint CI settings",
+          "number": 12,
+          "startedAt": "2026-10-25T19:52:56Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-25T19:53:32Z",
+          "conclusion": "success",
+          "name": "Run PostgreSQL locking and vacancy response tests",
+          "number": 13,
+          "startedAt": "2026-10-25T19:52:57Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-25T20:34:10Z",
+          "conclusion": "success",
+          "name": "Run full backend test suite",
+          "number": 14,
+          "startedAt": "2026-10-25T19:53:32Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-25T20:34:12Z",
+          "conclusion": "success",
+          "name": "Remove retained PostgreSQL test database",
+          "number": 15,
+          "startedAt": "2026-10-25T20:34:10Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-25T20:34:12Z",
+          "conclusion": "success",
+          "name": "Post Set up Python",
+          "number": 28,
+          "startedAt": "2026-10-25T20:34:12Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-25T20:34:12Z",
+          "conclusion": "success",
+          "name": "Post Checkout repository",
+          "number": 29,
+          "startedAt": "2026-10-25T20:34:12Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-25T20:34:13Z",
+          "conclusion": "success",
+          "name": "Stop containers",
+          "number": 30,
+          "startedAt": "2026-10-25T20:34:12Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-25T20:34:13Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 31,
+          "startedAt": "2026-10-25T20:34:13Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/PROCOLLAB-github/api/actions/runs/40227938298/job/121273246458"
+    }
+  ],
+  "name": "Backend PostgreSQL CI",
+  "status": "completed",
+  "url": "https://github.com/PROCOLLAB-github/api/actions/runs/40227938298"
+}

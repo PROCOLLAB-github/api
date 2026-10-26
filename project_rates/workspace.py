@@ -67,6 +67,10 @@ def assignment_snapshot(program):
 
 def revision(program):
     """Includes team, membership, submission and score changes invalidating a plan."""
+    if program.solution_storage_mode == "solution":
+        from project_rates.solution_assignments import revision as solution_revision
+
+        return solution_revision(program)
     data = [
         program.pk,
         program.required_evaluators,
@@ -145,6 +149,12 @@ def check_assignment_limit(program, additions, removals=()):
 
 def enable_workspace(program):
     """Explicit organizer action opts in; preserve assignments behind historical scores."""
+    if program.solution_storage_mode == "solution":
+        from project_rates.solution_assignments import (
+            enable_workspace as enable_solution_workspace,
+        )
+
+        return enable_solution_workspace(program)
     if program.required_evaluators is not None:
         return
     program.required_evaluators = target(program)
@@ -631,10 +641,23 @@ def my_programs(user):
     )
     rows = []
     for program in programs:
-        assignments = list(
-            annotated_assignment_queryset(program.pk).filter(expert__user=user)
-        )
-        done = sum(a.is_completed for a in assignments)
+        if program.solution_storage_mode == "solution":
+            from project_rates.solution_allocation import (
+                assignment_snapshot as solution_assignments,
+            )
+
+            expert_id = program.experts.get(user=user).pk
+            assignments = [
+                row
+                for row in solution_assignments(program, include_historical=False)
+                if row["expert_id"] == expert_id
+            ]
+            done = sum(row["is_completed"] for row in assignments)
+        else:
+            assignments = list(
+                annotated_assignment_queryset(program.pk).filter(expert__user=user)
+            )
+            done = sum(a.is_completed for a in assignments)
         rows.append(
             {
                 **program_card(program),

@@ -1,0 +1,11 @@
+{
+  "version": "1.18.0",
+  "schemas": 136,
+  "operations": 53,
+  "scenarios": 250,
+  "oldSchemasUnchanged": 130,
+  "oldScenariosUnchanged": 230,
+  "oldOperationsUnchanged": 51,
+  "sharedByteIdentical": 3,
+  "oldCaseSchemaPreserved": true
+}

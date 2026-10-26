@@ -11,6 +11,7 @@ from rest_framework_simplejwt.views import (
     TokenVerifyView,
 )
 from users.authentication import ActivityTrackingJWTAuthentication
+from partner_programs.solution_form_api import SolutionFormTemplatesView
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -49,6 +50,8 @@ urlpatterns = [
     path("vacancies/", include("vacancy.urls", namespace="vacancies")),
     path("core/", include("core.urls", namespace="core")),
     path("invites/", include("invites.urls", namespace="invites")),
+    path("solution-invitations/", include("partner_programs.solution_invitation_urls")),
+    path("solution-form-templates/", SolutionFormTemplatesView.as_view()),
     path("auth/", include(("users.urls", "users"), namespace="users")),
     path("chats/", include("chats.urls", namespace="chats")),
     # Модуль мероприятий сейчас отложен, поэтому публичные /events/ endpoints

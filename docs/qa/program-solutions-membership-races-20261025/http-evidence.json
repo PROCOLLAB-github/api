@@ -1,0 +1,556 @@
+{
+  "status": "PASS",
+  "source": "30c0d3ec1ac8e1236dd669205b97b4a2b4463fda",
+  "c00": "1.14.0",
+  "prefix": "qa01m-20261025-b080f725",
+  "programs": [
+    {
+      "id": 25,
+      "template": "case_championship",
+      "solutionId": 38,
+      "otherSolutionId": 39,
+      "invitationIds": [
+        47,
+        48
+      ],
+      "winningSolutionId": 38,
+      "winnerInvitationId": 47,
+      "declinedInvitationId": 48,
+      "creationRaceStatuses": [
+        200,
+        201
+      ],
+      "joinRaceStatuses": [
+        200,
+        409
+      ],
+      "creationFlagOff": true
+    },
+    {
+      "id": 26,
+      "template": "hackathon",
+      "solutionId": 40,
+      "otherSolutionId": 41,
+      "invitationIds": [
+        49,
+        50
+      ],
+      "winningSolutionId": 40,
+      "winnerInvitationId": 49,
+      "declinedInvitationId": 50,
+      "creationRaceStatuses": [
+        200,
+        201
+      ],
+      "joinRaceStatuses": [
+        200,
+        409
+      ],
+      "creationFlagOff": true
+    }
+  ],
+  "races": [
+    {
+      "program": 25,
+      "kind": "AC02 concurrent create",
+      "controllerPid": 19032,
+      "blockedWorkers": [
+        {
+          "pid": 25196,
+          "pathToController": [
+            25196,
+            19032
+          ]
+        },
+        {
+          "pid": 24644,
+          "pathToController": [
+            24644,
+            25196,
+            19032
+          ]
+        }
+      ],
+      "origins": [
+        "http://127.0.0.1:8877",
+        "http://127.0.0.1:8878"
+      ],
+      "results": [
+        {
+          "status": 201,
+          "code": null,
+          "id": 38,
+          "sha256": "799910d5fdfd0a1f9707ed90b8a76510009e94e66c34eaab3cfc48fd60489e71"
+        },
+        {
+          "status": 200,
+          "code": null,
+          "id": 38,
+          "sha256": "799910d5fdfd0a1f9707ed90b8a76510009e94e66c34eaab3cfc48fd60489e71"
+        }
+      ]
+    },
+    {
+      "program": 25,
+      "kind": "AC08 accept different teams",
+      "controllerPid": 19032,
+      "blockedWorkers": [
+        {
+          "pid": 20344,
+          "pathToController": [
+            20344,
+            19032
+          ]
+        },
+        {
+          "pid": 2240,
+          "pathToController": [
+            2240,
+            20344,
+            19032
+          ]
+        }
+      ],
+      "origins": [
+        "http://127.0.0.1:8877",
+        "http://127.0.0.1:8878"
+      ],
+      "results": [
+        {
+          "status": 200,
+          "code": null,
+          "id": null,
+          "sha256": "daf2f0cd4740f2d898eb9bbc7c0b2498a79342fc43a5b75aec9973ef7209dd05"
+        },
+        {
+          "status": 409,
+          "code": "already_in_program_team",
+          "id": null,
+          "sha256": "d39b1eeaca6c2a50d2aca98644d4c88ba0a2506853323989b0b5f317a07e0ac0"
+        }
+      ]
+    },
+    {
+      "program": 26,
+      "kind": "AC02 concurrent create",
+      "controllerPid": 19032,
+      "blockedWorkers": [
+        {
+          "pid": 9344,
+          "pathToController": [
+            9344,
+            4112,
+            19032
+          ]
+        },
+        {
+          "pid": 4112,
+          "pathToController": [
+            4112,
+            19032
+          ]
+        }
+      ],
+      "origins": [
+        "http://127.0.0.1:8877",
+        "http://127.0.0.1:8878"
+      ],
+      "results": [
+        {
+          "status": 201,
+          "code": null,
+          "id": 40,
+          "sha256": "99f1a950fc4886f98918cbb5ab1240c5821e2a45a3dcee043fdf5f78c8469152"
+        },
+        {
+          "status": 200,
+          "code": null,
+          "id": 40,
+          "sha256": "99f1a950fc4886f98918cbb5ab1240c5821e2a45a3dcee043fdf5f78c8469152"
+        }
+      ]
+    },
+    {
+      "program": 26,
+      "kind": "AC08 accept different teams",
+      "controllerPid": 19032,
+      "blockedWorkers": [
+        {
+          "pid": 32428,
+          "pathToController": [
+            32428,
+            37072,
+            19032
+          ]
+        },
+        {
+          "pid": 37072,
+          "pathToController": [
+            37072,
+            19032
+          ]
+        }
+      ],
+      "origins": [
+        "http://127.0.0.1:8877",
+        "http://127.0.0.1:8878"
+      ],
+      "results": [
+        {
+          "status": 200,
+          "code": null,
+          "id": null,
+          "sha256": "9c58c41280b44ca99ef632b237f5dd0bc32d98d6805dd2a0c92c82b6a6d79c7e"
+        },
+        {
+          "status": 409,
+          "code": "already_in_program_team",
+          "id": null,
+          "sha256": "d39b1eeaca6c2a50d2aca98644d4c88ba0a2506853323989b0b5f317a07e0ac0"
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "role": "manager",
+      "method": "GET",
+      "path": "/programs/25/management/solution-form/",
+      "status": 200,
+      "code": null,
+      "origin": "http://127.0.0.1:8877",
+      "responseSha256": "197c7c4194b429c09e6af61827870348cc8585dcad78a25b5c0730ec2422a110",
+      "requestValidated": false
+    },
+    {
+      "role": "manager",
+      "method": "GET",
+      "path": "/programs/25/management/solution-form/",
+      "status": 200,
+      "code": null,
+      "origin": "http://127.0.0.1:8877",
+      "responseSha256": "197c7c4194b429c09e6af61827870348cc8585dcad78a25b5c0730ec2422a110",
+      "requestValidated": false
+    },
+    {
+      "role": "manager",
+      "method": "PUT",
+      "path": "/programs/25/management/solution-form/",
+      "status": 200,
+      "code": null,
+      "origin": "http://127.0.0.1:8877",
+      "responseSha256": "182016902e1014a41e51b4994cd8c017e6202397fac5edac5a46d59bcd9b2f67",
+      "requestValidated": true
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/programs/25/solutions/",
+      "status": 201,
+      "code": null,
+      "origin": "http://127.0.0.1:8877",
+      "responseSha256": "799910d5fdfd0a1f9707ed90b8a76510009e94e66c34eaab3cfc48fd60489e71",
+      "requestValidated": true
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/programs/25/solutions/",
+      "status": 200,
+      "code": null,
+      "origin": "http://127.0.0.1:8878",
+      "responseSha256": "799910d5fdfd0a1f9707ed90b8a76510009e94e66c34eaab3cfc48fd60489e71",
+      "requestValidated": true
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/programs/25/solutions/",
+      "status": 200,
+      "code": null,
+      "origin": "http://127.0.0.1:8877",
+      "responseSha256": "799910d5fdfd0a1f9707ed90b8a76510009e94e66c34eaab3cfc48fd60489e71",
+      "requestValidated": true
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/25/solution-context/",
+      "status": 200,
+      "code": null,
+      "origin": "http://127.0.0.1:8877",
+      "responseSha256": "372d78408c3d9df8c9a0acb7cdbebbfc5c4e0c9c582748e23e4f0bada2d21ab9",
+      "requestValidated": false
+    },
+    {
+      "role": "pending_a",
+      "method": "POST",
+      "path": "/programs/25/solutions/",
+      "status": 201,
+      "code": null,
+      "origin": "http://127.0.0.1:8877",
+      "responseSha256": "72724e55d31df3f6e6d0b4c6df25ef50441f5f85e1f302d1f711dae54c85081c",
+      "requestValidated": true
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/programs/25/solutions/38/invitations/",
+      "status": 201,
+      "code": null,
+      "origin": "http://127.0.0.1:8877",
+      "responseSha256": "fcfc79a1b2fa697e7e37feac17972dfbc0bebdc66c6ddf6e769ca9537fbbd51e",
+      "requestValidated": true
+    },
+    {
+      "role": "pending_a",
+      "method": "POST",
+      "path": "/programs/25/solutions/39/invitations/",
+      "status": 201,
+      "code": null,
+      "origin": "http://127.0.0.1:8877",
+      "responseSha256": "af37b39aeb638dacac03a8970131080e2572d82a0dbf09231c8a977eedbd3556",
+      "requestValidated": true
+    },
+    {
+      "role": "member",
+      "method": "POST",
+      "path": "/solution-invitations/47/accept/",
+      "status": 200,
+      "code": null,
+      "origin": "http://127.0.0.1:8877",
+      "responseSha256": "daf2f0cd4740f2d898eb9bbc7c0b2498a79342fc43a5b75aec9973ef7209dd05",
+      "requestValidated": true
+    },
+    {
+      "role": "member",
+      "method": "POST",
+      "path": "/solution-invitations/48/accept/",
+      "status": 409,
+      "code": "already_in_program_team",
+      "origin": "http://127.0.0.1:8878",
+      "responseSha256": "d39b1eeaca6c2a50d2aca98644d4c88ba0a2506853323989b0b5f317a07e0ac0",
+      "requestValidated": true
+    },
+    {
+      "role": "member",
+      "method": "GET",
+      "path": "/programs/25/solution-context/",
+      "status": 200,
+      "code": null,
+      "origin": "http://127.0.0.1:8877",
+      "responseSha256": "372d78408c3d9df8c9a0acb7cdbebbfc5c4e0c9c582748e23e4f0bada2d21ab9",
+      "requestValidated": false
+    },
+    {
+      "role": "member",
+      "method": "POST",
+      "path": "/solution-invitations/48/accept/",
+      "status": 409,
+      "code": "already_in_program_team",
+      "origin": "http://127.0.0.1:8877",
+      "responseSha256": "d39b1eeaca6c2a50d2aca98644d4c88ba0a2506853323989b0b5f317a07e0ac0",
+      "requestValidated": true
+    },
+    {
+      "role": "member",
+      "method": "POST",
+      "path": "/solution-invitations/48/decline/",
+      "status": 200,
+      "code": null,
+      "origin": "http://127.0.0.1:8877",
+      "responseSha256": "c1aa849e1963bbde46728d64a0c58512f24fdf825d8e3586a5f70a46d084f433",
+      "requestValidated": true
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/programs/25/solutions/",
+      "status": 200,
+      "code": null,
+      "origin": "http://127.0.0.1:8877",
+      "responseSha256": "bd13ab97eb052f6f82095bf7bf3287bf3eb716c24288ea8938bf27232b054f78",
+      "requestValidated": true
+    },
+    {
+      "role": "manager",
+      "method": "GET",
+      "path": "/programs/26/management/solution-form/",
+      "status": 200,
+      "code": null,
+      "origin": "http://127.0.0.1:8877",
+      "responseSha256": "4263c68db61aacac97fd7721319ba52c55f95688586b225b8ceef7357af9d4b7",
+      "requestValidated": false
+    },
+    {
+      "role": "manager",
+      "method": "PUT",
+      "path": "/programs/26/management/solution-form/",
+      "status": 200,
+      "code": null,
+      "origin": "http://127.0.0.1:8877",
+      "responseSha256": "61474c4e64b9edebfee5990ff6c9d69fbe1d290ae2f6683be9d74d03d4bb2cd0",
+      "requestValidated": true
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/programs/26/solutions/",
+      "status": 201,
+      "code": null,
+      "origin": "http://127.0.0.1:8877",
+      "responseSha256": "99f1a950fc4886f98918cbb5ab1240c5821e2a45a3dcee043fdf5f78c8469152",
+      "requestValidated": true
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/programs/26/solutions/",
+      "status": 200,
+      "code": null,
+      "origin": "http://127.0.0.1:8878",
+      "responseSha256": "99f1a950fc4886f98918cbb5ab1240c5821e2a45a3dcee043fdf5f78c8469152",
+      "requestValidated": true
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/programs/26/solutions/",
+      "status": 200,
+      "code": null,
+      "origin": "http://127.0.0.1:8877",
+      "responseSha256": "99f1a950fc4886f98918cbb5ab1240c5821e2a45a3dcee043fdf5f78c8469152",
+      "requestValidated": true
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/26/solution-context/",
+      "status": 200,
+      "code": null,
+      "origin": "http://127.0.0.1:8877",
+      "responseSha256": "4a2309bcf841265215f777032f83aa2c6923106d4a5e49e9d2568afe15a4ac3b",
+      "requestValidated": false
+    },
+    {
+      "role": "pending_a",
+      "method": "POST",
+      "path": "/programs/26/solutions/",
+      "status": 201,
+      "code": null,
+      "origin": "http://127.0.0.1:8877",
+      "responseSha256": "64a8b511d3b994f1bc03c026ded0d3f436a26fd06d6650ffe733433de72a6c5c",
+      "requestValidated": true
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/programs/26/solutions/40/invitations/",
+      "status": 201,
+      "code": null,
+      "origin": "http://127.0.0.1:8877",
+      "responseSha256": "13da3d198b598ff421c76479b0174c614659d2fb25ba384bcb298b1c975640a2",
+      "requestValidated": true
+    },
+    {
+      "role": "pending_a",
+      "method": "POST",
+      "path": "/programs/26/solutions/41/invitations/",
+      "status": 201,
+      "code": null,
+      "origin": "http://127.0.0.1:8877",
+      "responseSha256": "968b63274a58f723fbccecf2dba5361278ae4d2e36d18a28e4b3af4e3867eb14",
+      "requestValidated": true
+    },
+    {
+      "role": "member",
+      "method": "POST",
+      "path": "/solution-invitations/49/accept/",
+      "status": 200,
+      "code": null,
+      "origin": "http://127.0.0.1:8877",
+      "responseSha256": "9c58c41280b44ca99ef632b237f5dd0bc32d98d6805dd2a0c92c82b6a6d79c7e",
+      "requestValidated": true
+    },
+    {
+      "role": "member",
+      "method": "POST",
+      "path": "/solution-invitations/50/accept/",
+      "status": 409,
+      "code": "already_in_program_team",
+      "origin": "http://127.0.0.1:8878",
+      "responseSha256": "d39b1eeaca6c2a50d2aca98644d4c88ba0a2506853323989b0b5f317a07e0ac0",
+      "requestValidated": true
+    },
+    {
+      "role": "member",
+      "method": "GET",
+      "path": "/programs/26/solution-context/",
+      "status": 200,
+      "code": null,
+      "origin": "http://127.0.0.1:8877",
+      "responseSha256": "4a2309bcf841265215f777032f83aa2c6923106d4a5e49e9d2568afe15a4ac3b",
+      "requestValidated": false
+    },
+    {
+      "role": "member",
+      "method": "POST",
+      "path": "/solution-invitations/50/accept/",
+      "status": 409,
+      "code": "already_in_program_team",
+      "origin": "http://127.0.0.1:8877",
+      "responseSha256": "d39b1eeaca6c2a50d2aca98644d4c88ba0a2506853323989b0b5f317a07e0ac0",
+      "requestValidated": true
+    },
+    {
+      "role": "member",
+      "method": "POST",
+      "path": "/solution-invitations/50/decline/",
+      "status": 200,
+      "code": null,
+      "origin": "http://127.0.0.1:8877",
+      "responseSha256": "a77e2328c0c63ff02a70a7dd282264cf0055fbc822a9bbeeb649a3437f5c5c66",
+      "requestValidated": true
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/programs/26/solutions/",
+      "status": 200,
+      "code": null,
+      "origin": "http://127.0.0.1:8877",
+      "responseSha256": "c28bc92ba1d228ac35aa197dac943932ea39283bafac50bf4a4ef8dedb2ce1d4",
+      "requestValidated": true
+    }
+  ],
+  "setupHarnessFailure": {
+    "artifact": "http-attempt-1792917130399478400.json",
+    "reason": "Harness read revision from envelope instead of form.revision; no form write or solution creation ran before failure."
+  },
+  "requestsValidated": 24,
+  "responsesValidated": 31,
+  "preexistingSelectedDomainUnchanged": true,
+  "baselineModels": [
+    "partner_programs.PartnerProgram",
+    "partner_programs.PartnerProgramField",
+    "partner_programs.PartnerProgramUserProfile",
+    "partner_programs.ProgramSolution",
+    "partner_programs.ProgramSolutionAnswer",
+    "partner_programs.ProgramSolutionMember",
+    "partner_programs.SolutionInvitation",
+    "project_rates.SolutionScore",
+    "project_rates.SolutionExpertAssignment",
+    "project_rates.Criteria",
+    "users.Expert",
+    "files.UserFile",
+    "projects.Project",
+    "users.Expert_programs",
+    "partner_programs.PartnerProgram_managers"
+  ],
+  "projectCountUnchanged": true,
+  "limits": [
+    "Fresh synthetic fixtures only; locmem mail, no external delivery.",
+    "Two independent API processes and two PostgreSQL wait chains observed before releasing each program lock.",
+    "HTTP acceptance/creation concurrency, not a load test or full UI acceptance."
+  ]
+}

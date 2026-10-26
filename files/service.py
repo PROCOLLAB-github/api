@@ -8,6 +8,7 @@ from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUpload
 from requests import Response
 
 from files.constants import SUPPORTED_IMAGES_TYPES
+from files.content import detect_content_type
 from files.exceptions import SelectelUploadError
 from files.helpers import convert_image_to_webp
 from files.typings import FileInfo
@@ -18,7 +19,11 @@ User = get_user_model()
 
 class File:
     def __init__(
-        self, file: TemporaryUploadedFile | InMemoryUploadedFile, quality: int = 70
+        self,
+        file: TemporaryUploadedFile | InMemoryUploadedFile,
+        quality: int = 70,
+        *,
+        preserve_original: bool = False,
     ):
         self.size = file.size
         self.name = File._get_name(file)
@@ -27,12 +32,15 @@ class File:
         self.content_type = file.content_type
 
         # we can compress given type of image
-        if self.content_type in SUPPORTED_IMAGES_TYPES:
+        if self.content_type in SUPPORTED_IMAGES_TYPES and not preserve_original:
             webp_image = convert_image_to_webp(file, quality)
             self.buffer = webp_image.buffer()
             self.size = webp_image.size
             self.content_type = "image/webp"
             self.extension = "webp"
+        self.detected_mime_type = (
+            detect_content_type(self.buffer) if self.size <= 104857600 else ""
+        )
 
     @staticmethod
     def _get_name(file) -> str:
@@ -71,6 +79,7 @@ class SelectelSwiftStorage(Storage):
             extension=file.extension,
             mime_type=file.content_type,
             size=file.size,
+            detected_mime_type=file.detected_mime_type,
         )
 
     def _upload(self, file: File, user: User) -> str:
@@ -141,5 +150,9 @@ class CDN:
         file: TemporaryUploadedFile | InMemoryUploadedFile,
         user: User,
         quality: int = 70,
+        *,
+        preserve_original: bool = False,
     ) -> FileInfo:
-        return self.storage.upload(File(file, quality), user)
+        return self.storage.upload(
+            File(file, quality, preserve_original=preserve_original), user
+        )

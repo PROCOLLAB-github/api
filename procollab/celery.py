@@ -38,6 +38,10 @@ app.conf.beat_schedule = {
         "task": "partner_programs.tasks.publish_finished_program_projects_task",
         "schedule": crontab(minute=0, hour=6),
     },
+    "publish_finished_program_solutions": {
+        "task": "partner_programs.tasks.publish_finished_program_solutions_task",
+        "schedule": crontab(minute=0, hour=6),
+    },
 }
 
 if __name__ == "__main__":

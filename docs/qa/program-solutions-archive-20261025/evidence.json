@@ -1,0 +1,253 @@
+{
+  "status": "PASS",
+  "scope": "BE08C1 archive/retention and frontend API, registration removal C2 and full QA01/REL01 still open",
+  "backendProduct": "8bb1c28fb9d72ba7981b24e571f8b438deb9b0ab",
+  "backendRuntime": "f85f610c579dd1595d085d95b07e02c1dbf96213",
+  "frontendProduct": "be380c5aad2f25522149999d709e7a75126a6397",
+  "frontendBuildRuntime": "2ac2e7438b1efe716c546f46612ef0a3f99c00fb",
+  "c00": {
+    "version": "1.19.0",
+    "schemas": 145,
+    "operations": 55,
+    "scenarios": 272,
+    "oldSchemasUnchanged": 132,
+    "oldOperationsUnchanged": 52,
+    "expandedOldOperation": "listSolutions/participation",
+    "oldScenariosUnchanged": 250,
+    "sharedByteIdentical": 3,
+    "originalQaRequirementRowsUnchanged": 26
+  },
+  "tests": {
+    "nativePostgresSolution": 391,
+    "newArchive": 20,
+    "newObservedRaces": 3,
+    "historicalMigrationSubset": 2,
+    "legacy": 152,
+    "legacyModules": 12,
+    "frontend": 2916,
+    "frontendFiles": 483,
+    "archiveHistoryWire": 48,
+    "allAdminWire": 103,
+    "newArchiveWire": 27,
+    "newHistoryWire": 2,
+    "strictTypes": true,
+    "developmentBuild": true,
+    "scopedEslint": true,
+    "black": true,
+    "flake8": true,
+    "djangoCheck": true,
+    "migrationConsistency": true,
+    "lockedFormat": {
+      "prettier": "3.8.3",
+      "locked": "3.8.3",
+      "checked": 2030,
+      "failures": [],
+      "filesWithReport": 2035,
+      "finalFailures": []
+    }
+  },
+  "http": {
+    "status": "PASS",
+    "c00": "1.19.0",
+    "validation": {
+      "responses": 109,
+      "validRequests": 53
+    },
+    "responses": 109,
+    "programs": [
+      {
+        "id": 40,
+        "kind": "case",
+        "solutions": [
+          {
+            "id": 55,
+            "change": 5
+          },
+          {
+            "id": 56,
+            "change": 6
+          }
+        ],
+        "replacement": null,
+        "state": {
+          "evaluationSeeded": true,
+          "closed": true,
+          "applied": true,
+          "complete": true
+        }
+      },
+      {
+        "id": 41,
+        "kind": "hack",
+        "solutions": [
+          {
+            "id": 57,
+            "change": 7
+          }
+        ],
+        "replacement": 58,
+        "state": {
+          "applied": true,
+          "formChanged": true,
+          "replacementComplete": true,
+          "complete": true
+        }
+      },
+      {
+        "id": 42,
+        "kind": "public",
+        "solutions": [
+          {
+            "id": 59,
+            "change": 8
+          }
+        ],
+        "replacement": null,
+        "state": {
+          "published": true,
+          "applied": true,
+          "complete": true
+        }
+      }
+    ],
+    "oldModelsUnchanged": 23,
+    "oldRowsHash": "fc500f1028354a9e8697edd516762157f9907574c4dfc4467560c21d8d0cbe0a",
+    "originalAdminEventsPreserved": 4,
+    "newProjects": 0,
+    "newSolutions": 5,
+    "newArchiveEvents": 4,
+    "onlyFreshLocalPrograms": true,
+    "creationFlagsFinalFalse": true,
+    "noBinaryOrCdnOperations": true
+  },
+  "migration": {
+    "status": "PASS",
+    "migration": "0037_solution_archive_retention",
+    "database": "local-procollab_ci",
+    "oldModelsUnchanged": 23,
+    "hashBefore": "fc500f1028354a9e8697edd516762157f9907574c4dfc4467560c21d8d0cbe0a",
+    "hashAfter": "fc500f1028354a9e8697edd516762157f9907574c4dfc4467560c21d8d0cbe0a",
+    "rowCounts": {
+      "partner_programs.PartnerProgram": 37,
+      "partner_programs.PartnerProgramField": 268,
+      "partner_programs.PartnerProgramUserProfile": 106,
+      "partner_programs.PartnerProgramProject": 3,
+      "partner_programs.PartnerProgramFieldValue": 2,
+      "partner_programs.ProgramSolution": 53,
+      "partner_programs.ProgramSolutionAnswer": 255,
+      "partner_programs.ProgramSolutionMember": 71,
+      "partner_programs.SolutionInvitation": 34,
+      "project_rates.SolutionScore": 32,
+      "project_rates.SolutionExpertAssignment": 20,
+      "project_rates.Criteria": 64,
+      "users.Expert": 7,
+      "files.UserFile": 8,
+      "projects.Project": 4,
+      "projects.Collaborator": 6,
+      "invites.Invite": 4,
+      "project_rates.ProjectScore": 3,
+      "project_rates.ProjectExpertAssignment": 1,
+      "industries.Industry": 1,
+      "users.Expert_programs": 25,
+      "partner_programs.PartnerProgram_managers": 41,
+      "partner_programs.SolutionAdministrativeChange": 4
+    },
+    "existingAdminEventsPreserved": 4,
+    "existingSolutionsArchivedOrDeleted": 0,
+    "existingProjectsMigratedOrDeleted": 0,
+    "onlyLocalSchema": true
+  },
+  "proofRedactions": 11,
+  "sourceHashes": {
+    "docs/contracts/program-solutions-v1/validate_contract.py": "7168b95906c1f2759bf5b82c73a145569e80eae4babc20e4f8617d5b84eb1766",
+    "files/admin.py": "72595b9d8ba3188bc4892db263d126466e6e55bcb9f676c412dcb1ad40cdbe72",
+    "partner_programs/migrations/0037_solution_archive_retention.py": "ba3010e9df7bacfeaedc72309efe714a19508d4f8242404b3e74f23581e11377",
+    "partner_programs/services/solution_archive_actions.py": "70fb4ab7e3d8dd784e867ace121da93603e0d1eb90e63571d429db93093141d2",
+    "partner_programs/services/solution_attention.py": "df5fb2f786f0b2a80a2872c53ce7ceced635105f6d9a71099a972e53ad3b4b3c",
+    "partner_programs/services/solution_role_analytics.py": "25008ae0381d927655c29331be67424040c013dc829d7297547052e773946f3b",
+    "partner_programs/solution_admin.py": "19aba5273777fe7e2a73c367010546bd5ac2fc505f09e48a4ea324ed7ac2ef09",
+    "partner_programs/solution_api.py": "65aabdb05e7e633be98664bc13612148b2e4cb24e84baf69c642b377872d4fdb",
+    "partner_programs/solution_archive_action_api.py": "d7e4cd44a30a23df3b12419774e27e9c1bc56fe0b9d751da531c1571c26ff0fd",
+    "partner_programs/solution_file_signals.py": "af7ebe245acdb1216c03f7be597de2daa55067369a62d81fd0eff0a4d31ff919",
+    "partner_programs/solution_files.py": "9d76e69bbdec292d44a75fb21d0f2dbe182079b769be2a427c75bc262970c9b1",
+    "partner_programs/solution_history_api.py": "75cb49f32cf630628124706a1d8bc011e995c5ecfe39413943671646206af580",
+    "partner_programs/solution_invitation_api.py": "4b71780a995bf74299695ce4f055e5b5c753df941089640a2d46fa0cedc41dee",
+    "partner_programs/solution_invitations.py": "b15e67348f6367aa62fa8ad37c4498346a2fd8075cbbf20de647e74f11d1eba5",
+    "partner_programs/solution_lifecycle_signals.py": "6ac757b56cf4f24bcb0954796c6042492df5b215d40df54f5021ef28bc98425a",
+    "partner_programs/solution_models.py": "11ffd9375d4469764b3d916f11e56baff6623364d3cb25975abbb96d3b03d9df",
+    "partner_programs/solution_participants.py": "085578ea902f5c50f4f8d2dce589cee3bbe8caa7570f471239488d1f930c347d",
+    "partner_programs/solution_team.py": "5a1abd184887b82ff249be5f3ac102145cdabdf744aaeb5123f5bd2f34c7802b",
+    "partner_programs/tests/test_solution_archive_actions.py": "440cdad58fa782028f7a8935b11c40e4cce9572e8a6e7a9885eed4c87343ff67",
+    "partner_programs/tests/test_solution_creation_switch.py": "375f83779a2a24528755952e43488898023b6cf6c9fc4a09a9fc8270b146ed27",
+    "partner_programs/tests/test_solution_publication.py": "45a9cfb4836bb8e380c91f9d0f06ae1a869d6e89a0de8d9916549054cb15896f",
+    "partner_programs/urls.py": "774dd797fe53ef8556d8995c35fe8a60e3fccc9fb05f71a08ea9bfe2e0b24536",
+    "project_rates/solution_allocation.py": "e3f1948804bdd45b2022cba1f758f9a2893750458228d47f8adbbbb59cd9f075",
+    "project_rates/solution_assignments.py": "54bea9618b9f068b197177a4f2aa98e65706cf42c2c6ddf9d88c28db47809dbb",
+    "project_rates/solution_evaluation.py": "1128a5d0d5637d4d143b7deec023d98cdb9a22f88f2e4e8c474c7055401558d2",
+    "project_rates/solution_models.py": "18d1425aab284df38dda08e11df8b6f646db40fcb7b1507f6ef35f80ba970776"
+  },
+  "rawArtifacts": {
+    "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-solution-archive\\contract-evidence.json": "441e86e07245f49183b50646b77bf0126793e5ba34c18385f6f11ba8915c6109",
+    "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-solution-archive\\http-evidence.json": "7ddb3be60fffc409b3b2108ed127c2aff89706d6d0d3fbff64ffcc7f398f56f9",
+    "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-solution-archive\\http-wire.json": "f96be14e1e5ac5f3a8d3689de8348c0fa865ee77bb88b95574d33c6cc888a935",
+    "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-solution-archive\\migration-evidence.json": "532f5b61c6391e3ae2d5d0639f93fd4c4a58702fdc74fa5a94447fede6db6ca8",
+    "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-solution-archive\\procollab-solution-archive-black.log": "bdff422390c0bebd756246d312c08c0b6286dc97ca3e8b713be43dcb5c44249b",
+    "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-solution-archive\\procollab-solution-archive-build.log": "b8e4764a1288f597dfcb86bf3f62a9b031c30759c1ae03391371117ca44d5697",
+    "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-solution-archive\\procollab-solution-archive-check.log": "f87ceb15410bde28ff826ce26228e0576558258fa64d145847921a593a61ee63",
+    "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-solution-archive\\procollab-solution-archive-eslint.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-solution-archive\\procollab-solution-archive-final-contract.log": "a205d39f53ef64f1ea64a2cf56ee600c34ab1602900bf3694c37e3d4598e1bc9",
+    "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-solution-archive\\procollab-solution-archive-flake8.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-solution-archive\\procollab-solution-archive-focused-verified.log": "9be1b0f6a522b3648fb447b6a84bf1baf892dab95ecc12d4b1759f063921b6f6",
+    "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-solution-archive\\procollab-solution-archive-focused.log": "72e5d96b86f3907bf8a7184c5cd718fd9bcd73606412ab97d5cd1d07214c2809",
+    "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-solution-archive\\procollab-solution-archive-format.log": "993ed0551f1efe9b448c1f2bd856b7ae89a46e16aab4722d2850c454aa80d758",
+    "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-solution-archive\\procollab-solution-archive-frontend-suite-verified.log": "3dba7acde7c06d93df48bd35f7bdad5636baa48b07550322b7e8e6af0e09e8ad",
+    "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-solution-archive\\procollab-solution-archive-frontend-suite.log": "d77435672f0990b17f5a9d7dfb90605022cbf090765afda87bd136baa88c10d7",
+    "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-solution-archive\\procollab-solution-archive-historical-migration-tests.log": "1a9958c529fa8219907f608e464c7f65aea2255a9dfaa6c12515205f13566485",
+    "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-solution-archive\\procollab-solution-archive-http-resumed.log": "f9bbe98459e17eece6057a4c420c5ada06eb23bf6ad8f5771d0c705a7d298c84",
+    "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-solution-archive\\procollab-solution-archive-http.log": "be36657711cd16f88f91c9bb9255223ad259ed2299bf39a995ba2e363c06fc70",
+    "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-solution-archive\\procollab-solution-archive-legacy.log": "b3be35dd6025ffe5a46058eaa2c2c92127d52863422911f3d67442eb5a60c8ec",
+    "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-solution-archive\\procollab-solution-archive-migrate.log": "5424e3997f4cd934ecf7c883c0f41501cff8505da39d74600df0d8c745908f8b",
+    "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-solution-archive\\procollab-solution-archive-migration-check.log": "93e6e2d5be3c054add80c0f19101608803f7ca8a7df1fa41f76bbb9a1f570f4a",
+    "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-solution-archive\\procollab-solution-archive-preceding-general-ci.log": "fc594849b196dd11cf9c520cf1521cf37bc754217d634883dc9fab3b597b8d88",
+    "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-solution-archive\\procollab-solution-archive-preceding-pg-ci.log": "f9237d37874bdf7d7311dbacf582fe264f5324611a3a6aa2fb1f38a54a80fcb8",
+    "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-solution-archive\\procollab-solution-archive-preceding-tests.log": "2dc8ff14fbac7dc2b0644b17fc704d749329879dbc1c3367d477e5c73d7d0700",
+    "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-solution-archive\\procollab-solution-archive-solution-suite-verified.log": "b397e31a34b5d3f7fb9988e723bce36bc8fd4d57bfc39c85edb4e801a8057ea5",
+    "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-solution-archive\\procollab-solution-archive-solution-suite.log": "49afd06ab3b39e462bf67e3be700c2efdd09b920d04428835c546e8c7633899c",
+    "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-solution-archive\\procollab-solution-archive-wire.log": "9d94349d4bc6cc1c2f16d08e4caff3c83fd8fd03a72e68c1aaf6fe4f1ab19ec4",
+    "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-solution-archive\\procollab-solution-archive-final-format.log": "efe9afb94da42b6f5eaf765b19394204a82e2ac57347ce641dd014b4feb5b554"
+  },
+  "helpers": {
+    "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-solution-archive-contract.py": "2d89c33b0af3dc4abcdb592b63ad432cc4f6e763526ff9961f66d2c0d3717982",
+    "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-solution-archive-migrate.py": "f7659b22a53cf0d1ec92281dc70a31073442b9fe28ff4d5c04bf07e8b7e12b9a",
+    "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-solution-archive-http.py": "50dff3e90a9a2420efdba5194aeb0176bbb6588724784d7d9e236317e6818afa",
+    "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-solution-archive-package.py": "504060636589935259b65fd2d2afc49659980fd65fac7275d47cd80b807e2546"
+  },
+  "precedingCi": {
+    "head": "b829e526df91718412174bfd3d272c163eca6c72",
+    "postgres": {
+      "id": 40202219920,
+      "status": "completed/success",
+      "lockingTests": 39,
+      "fullTests": 1759,
+      "skips": 0
+    },
+    "general": {
+      "id": 40202216975,
+      "status": "completed/success",
+      "fullTests": 1748,
+      "skipped": 64
+    },
+    "notProofForNewProduct": true
+  },
+  "limitations": [
+    "New UI/archive navigation still follows pending D02/D03 design gates",
+    "Registration removal and audit remain BE08C2; archive retains registrations",
+    "Full QA01/REL01 still open, BE10 separate",
+    "No merge/deploy/real-program switching or Project conversion",
+    "First native failures were a stale fixture assertion and two historical-schema tests using the current model; corrected, checks preserved",
+    "Actual HTTP resumed after activating only the new synthetic extra captain18; unexpected401 retained and validated, no repeated submit or confirmed archive",
+    "Final C00 mocks corrected pending/readiness/effect examples using actual archive state; backend runtime unchanged, final frontend suite repeated",
+    "Development build predates fixture-only correction; production source/types unchanged and fixtures have no non-test consumers",
+    "Own8877 API stopped after HTTP, old8769/8871/8876 retained"
+  ]
+}

@@ -1,0 +1,218 @@
+{
+  "status": "PASS",
+  "classification": "BE08C2 backend + FE API checkpoint; first release incomplete",
+  "backendProduct": "abfb7c7e8584365cfe5846618cc03af719cc6fad",
+  "frontendProduct": "7e5bf1183bb15f3d99b030854df8b6bca11c4cb7",
+  "contract": {
+    "status": "PASS",
+    "contract": "1.20.0",
+    "schemas": 156,
+    "operations": 59,
+    "scenarios": 297,
+    "oldSchemasUnchanged": 143,
+    "oldSchemasCompatiblyExtended": ["SolutionAdminChange", "SolutionArchiveAdminChange"],
+    "oldOperationsUnchanged": 55,
+    "oldScenariosUnchanged": 272,
+    "newScenarios": 25,
+    "sharedFileHashes": {
+      "openapi.json": "1f1350d730b66891e0c019bff92b97c0129f62ae6f3d261bab2e27a7953b7191",
+      "examples.json": "69cdb43626d6d89d8f7716d2d6f5777ed6f147496c72046dd364503fbf18a93f",
+      "README.md": "d6505ba0c6035e0486f66e2911032ff5ec430ea6dab2d8283abfc5284a2ce1ab"
+    },
+    "originalAcceptanceRowsUnchanged": 26
+  },
+  "http": {
+    "status": "PASS",
+    "contract": "1.20.0",
+    "responses": 74,
+    "validRequests": 44,
+    "programs": [
+      {
+        "id": 43,
+        "key": "case",
+        "solutions": [60, 63],
+        "audits": [1, 2, 3, 4]
+      },
+      {
+        "id": 44,
+        "key": "hack",
+        "solutions": [61],
+        "audits": [5, 7]
+      },
+      {
+        "id": 45,
+        "key": "regular",
+        "solutions": [62],
+        "audits": [6]
+      }
+    ],
+    "oldModelsUnchanged": 23,
+    "hashBefore": "717c9a664170764394fd1f9a256fca7c78fa42d929abe0e85a4557be1f684e3d",
+    "hashAfter": "717c9a664170764394fd1f9a256fca7c78fa42d929abe0e85a4557be1f684e3d",
+    "existingProjectsPreserved": 4,
+    "existingArchivesPreserved": 4,
+    "existingHistoryPreserved": 8,
+    "newProjects": 0,
+    "localOnly": true,
+    "creationFlagsFalse": true
+  },
+  "migration": {
+    "status": "PASS",
+    "migration": "0038_solution_registration_removal_audit",
+    "database": "local-procollab_ci",
+    "oldModelsUnchanged": 23,
+    "hashBefore": "717c9a664170764394fd1f9a256fca7c78fa42d929abe0e85a4557be1f684e3d",
+    "hashAfter": "717c9a664170764394fd1f9a256fca7c78fa42d929abe0e85a4557be1f684e3d",
+    "rowCounts": {
+      "partner_programs.PartnerProgram": 40,
+      "partner_programs.PartnerProgramField": 281,
+      "partner_programs.PartnerProgramUserProfile": 116,
+      "partner_programs.PartnerProgramProject": 3,
+      "partner_programs.PartnerProgramFieldValue": 2,
+      "partner_programs.ProgramSolution": 58,
+      "partner_programs.ProgramSolutionAnswer": 273,
+      "partner_programs.ProgramSolutionMember": 80,
+      "partner_programs.SolutionInvitation": 38,
+      "project_rates.SolutionScore": 34,
+      "project_rates.SolutionExpertAssignment": 20,
+      "project_rates.Criteria": 69,
+      "users.Expert": 7,
+      "files.UserFile": 8,
+      "projects.Project": 4,
+      "projects.Collaborator": 6,
+      "invites.Invite": 4,
+      "project_rates.ProjectScore": 3,
+      "project_rates.ProjectExpertAssignment": 1,
+      "industries.Industry": 1,
+      "users.Expert_programs": 27,
+      "partner_programs.PartnerProgram_managers": 44,
+      "partner_programs.SolutionAdministrativeChange": 8
+    },
+    "existingAdminEventsPreserved": 8,
+    "existingArchivedSolutionsPreserved": 4,
+    "existingRowsDeletedOrArchived": 0,
+    "existingProjectsMigratedOrDeleted": 0,
+    "onlyLocalSchema": true
+  },
+  "tests": {
+    "backendSolutions": 417,
+    "newRegistrationTests": 26,
+    "newFunctionalTests": 23,
+    "newObservedPGRaces": 2,
+    "newHistoricalMigrationTests": 1,
+    "legacyRegression": 152,
+    "frontend": 2948,
+    "frontendFiles": 484,
+    "strictTypes": "PASS",
+    "developmentBuild": "PASS",
+    "administrativeWireTests": 135,
+    "wireBreakdown": {
+      "case": 33,
+      "member": 22,
+      "archive": 27,
+      "history": 22,
+      "registration": 31
+    },
+    "lockedPrettierBeforeReports": {
+      "version": "3.8.3",
+      "files": 2037,
+      "status": "PASS"
+    },
+    "lockedPrettierWithReports": {
+      "version": "3.8.3",
+      "files": 2042,
+      "status": "PASS"
+    }
+  },
+  "sourceHashesNormalizedLF": {
+    "backend": {
+      "docs/contracts/program-solutions-v1/README.md": "d6505ba0c6035e0486f66e2911032ff5ec430ea6dab2d8283abfc5284a2ce1ab",
+      "docs/contracts/program-solutions-v1/examples.json": "d2c5b8a5d81d6376150523dd8fd2e4da70801820e92ec3b1c815ec720ae41b9f",
+      "docs/contracts/program-solutions-v1/openapi.json": "5d417fac5d9dcc56a96c26176bfdb68c3e8c30f9cfb85084d285be0fdc70a397",
+      "docs/product/program-solutions-be08-admin-exceptions.md": "530041af9c96734cc6f88c57ec3800df448900263c6c5f19ef1d108b7b503c27",
+      "docs/product/program-solutions-be08-registration-removal.md": "59a9b188cf28d77b3e49d1bda94c02c988dd71c328c483e198af383789da6a1a",
+      "docs/product/program-solutions-qa01.md": "f6f6aa876478b0e6d7c1637ef8a69043e8ace402e13130e13b9325cbef3681be",
+      "docs/product/program-solutions-rel01.md": "1a9b3a7a132fa575484a529ecf03a8251ae63560864152763fe68363bf008cf7",
+      "partner_programs/migrations/0038_solution_registration_removal_audit.py": "a55958f8662cfb5b3d3fb55cfe5ee76d0ee6ff5d83595e206dcc84ac77a2017e",
+      "partner_programs/services/solution_archive_actions.py": "7571e0dff1b6bbcabccc69336c23e9de377ff6d31e9ed094542499991bebd7e5",
+      "partner_programs/services/solution_member_actions.py": "573679c07be01575d355f2556c1880ab3ebc0289c757b1b4910070cfed3ac1b3",
+      "partner_programs/services/solution_registration_actions.py": "799756778ac9b50c20ad106eb3863a3d455ed372b42e35be7f5bc667ba1fddbd",
+      "partner_programs/solution_admin.py": "e0bcacb374c18a4e495f5b4425e471483ec593f24844470f590bd4d5d00cf093",
+      "partner_programs/solution_history_api.py": "7417e9ede5889cfbac2ddc7be0167445b522d56a1fdba290286f624d5014c95f",
+      "partner_programs/solution_lifecycle_signals.py": "ab586c9344d83296679fabb36b7cd67ad048eecb8d8b6e6ba7abd8a548a6ce34",
+      "partner_programs/solution_models.py": "af30b98eb2bda77bea9ffbc5c4e33e2f2479d9c2bc9e6c301013416efc762803",
+      "partner_programs/solution_registration_action_api.py": "809d706802f2b090a4e871de284ea5fb813af0dfee9ab9c5faa07650efcf9e10",
+      "partner_programs/tests/test_solution_registration_actions.py": "d3c4acab25d915e2c5fa873ae7c4d7f1f9e528e96ef471efc9dadac88057099c",
+      "partner_programs/urls.py": "a5ea50390d1de3a76f56a456547cbb17504408eb2477f35af327b622f8dd851d"
+    },
+    "frontend": {
+      "docs/contracts/program-solutions-v1/README.md": "d6505ba0c6035e0486f66e2911032ff5ec430ea6dab2d8283abfc5284a2ce1ab",
+      "docs/contracts/program-solutions-v1/examples.json": "d2c5b8a5d81d6376150523dd8fd2e4da70801820e92ec3b1c815ec720ae41b9f",
+      "docs/contracts/program-solutions-v1/openapi.json": "5d417fac5d9dcc56a96c26176bfdb68c3e8c30f9cfb85084d285be0fdc70a397",
+      "projects/social_platform/src/app/api/solution/solution-registration-removal-contract.spec.ts": "ac8391f523917d264db8e2132d536091c71fb31ab53e2299468aa45d1a097780",
+      "projects/social_platform/src/app/api/solution/use-cases/solution-registration-removal.use-cases.ts": "a74bc7bc6d772bd6911e4fd3d621f7815bed0c3faa08ec4c0befe8692336026b",
+      "projects/social_platform/src/app/domain/solution/ports/solution.repository.port.ts": "1149ef61a7b7df36399ac0dc8e5234543e76d8154dfd470342a733f6ede01ba2",
+      "projects/social_platform/src/app/domain/solution/solution-contract.fixture.ts": "0e2fa788fa51b2b4dce80100ce7d85c4c8696f3281b4ef67e040f030b0b1d728",
+      "projects/social_platform/src/app/domain/solution/solution-contract.model.ts": "15f682687c0a437c2700da3dda35978bdca5b48f8c45eb94b42766e6d2cce801",
+      "projects/social_platform/src/app/infrastructure/adapters/solution/solution-http.adapter.ts": "83e34263a224e20ffdcff393df3e85da85aa39633119d1c3e073617e1a8bb742",
+      "projects/social_platform/src/app/infrastructure/repository/solution/solution.repository.ts": "698dfaddddb8e40adf862e9083b9bfc54e13648d9bd81bd4f7ffba781dfc61bf",
+      "tools/verify-solution-contract-types.ts": "0dfa81db6386ff479fad5c42351cd0f9d4a1f5345b449840c098bfc9027667d1"
+    }
+  },
+  "rawArtifacts": {
+    "contract-evidence.json": "afc0dd26e3e6b6ca06975c451a056b74b103623c4d65708da7ec4695ebbeaee8",
+    "http-evidence.json": "dd2d4624589c2b601c20d699e82f89ca29999ecd61cfab26ef7e5b7c349c8678",
+    "http-wire.json": "c08bb97c9e77823ccf5a9d4f46fff4893a07f2c1d3c1295a669b48c587cb8f83",
+    "migration-evidence.json": "baa84cade150fb0ec2a635aa133ddacfe5d67de9ec9090eb57321a1e98571179",
+    "procollab-registration-contract-evidence.py": "4b982019e2c48cf3e079f7b0f61ef6dd1cb257c03782a43f38751b6e429d304b",
+    "procollab-registration-contract.py": "f80a5c3baa380fc31f4f7c9254fe716170160e4cbdea4a53b7f7cec82b339df3",
+    "procollab-registration-fe.py": "2cab10b1e7ec8f028d4a207f381f9607b164c91b1a91402ceec4702ccf92e32a",
+    "procollab-registration-migration-order.py": "b823b89c361b8c978bd8d68c8ec5ea66c6df3898265baff077e263e6813c2284",
+    "procollab-registration-product-docs.py": "ee50d34a8a067073e1218fd4b5364033e3717298b658412bb69857fce53ed264",
+    "procollab-registration-refactor.py": "25a038886d297dfa36c6615a761436979155799f2c4de00d7ff07ab0f0638c57",
+    "procollab-solution-registration-fe-build.log": "1044af952d79b8eeedbbfea14dc214844e935ba5dc7d01184ebb08f5c3d39e58",
+    "procollab-solution-registration-fe-focused.log": "94bab194d822f8e2b3023c62168236733f79fa264ee02d7652eb63ee9ad21d12",
+    "procollab-solution-registration-fe-suite.log": "4c39cd4c6b166675923dee94ff891e916497aa3ee626c00d5320b42ccf91b7c3",
+    "procollab-solution-registration-focused.log": "6bbcccaa7eb9fa6940805292ece4c8ae1e79dbd18bc75e19c3e826ddd701b453",
+    "procollab-solution-registration-http-final.log": "3e7c93f2d26256e4c0734717be2bf7f6851e3898a6ce6a66bbaabfa2986dc366",
+    "procollab-solution-registration-http.log": "ce990abb70cb4ee201b634ef702ccddf5d097c94a44a3717540f7511e6800e04",
+    "procollab-solution-registration-http.py": "02ee0f6fd48ec257ce3fdc2120a08bf64cbb2b1ae3ee166283e88c5d9ba2dacb",
+    "procollab-solution-registration-legacy.log": "e7dd155a56641e2bf7af21983729db35195b690aecdfef8c05be9009b9d73abb",
+    "procollab-solution-registration-migrate.py": "a243dea3bfa4f5dc436a68b7e096cd609c03558afadb3502f71746fb21f61d67",
+    "procollab-solution-registration-preceding-pg-ci.log": "b825f20caaa349eab8cde15cbae34bb23bf792c471d8f538f07d07ddceb96691",
+    "procollab-solution-registration-server.py": "2b2edeffed8c144f469726a59db01561f309ddb0c792927cc44a4948a0aa1e27",
+    "procollab-solution-registration-suite-final.log": "c00acfd82f3f812a89a2cf4b7e70267920073a5d7e15effdbc5ee91237f3918e",
+    "procollab-solution-registration-suite.log": "87b83b32a56774d3856415476dfb035fd7bb0d1305ab98288c75835208e7ac01",
+    "procollab-solution-registration-final-format.json": "7b9282c7f10eef7761182843bc43761099da5080beb561f7299ab1fa3954b9b7"
+  },
+  "retainedAttempts": [
+    "First native focused 22/OK; later final new test group26 is included in417.",
+    "First FE focused31 passed; negative TS assertion directive moved after Prettier before final full2948/types/build.",
+    "Initial full416 passed; final417 repeated after binding display identity in no-solution preview.",
+    "Initial68 HTTP responses retained; final74 includes an actual stale identity confirmation on the final restarted API."
+  ],
+  "publication": "Program-only storage remains unchanged; competitive unsent drafts eligibility pending.",
+  "qa": {
+    "originalAcceptanceRows": 26,
+    "passCount": 23,
+    "passAC": "01-17,20,22-26",
+    "openAC": ["18", "19"],
+    "separateBE10": "21"
+  },
+  "limitations": [
+    "No new organizer/public UI/browser/mobile acceptance in this checkpoint.",
+    "D02/D03 approval, manager/reminder/actions/results/public screens, archive navigation, competitive draft eligibility and full QA01/REL01 remain in first release.",
+    "No merge/deploy/real-program switch/Project migration or deletion.",
+    "Current HEAD Linux CI is not yet claimed; preceding C1 PG run40208633691:39 locking +1783 full/OK. General40208630839 still in progress at packaging."
+  ],
+  "helpers": {
+    "ownedApiStopped": true,
+    "releasedPort": 8877,
+    "oldServersUnchanged": {
+      "8769": 20920,
+      "8871": 19092,
+      "8876": 33332
+    }
+  },
+  "redactedSignedProofOccurrences": 25
+}

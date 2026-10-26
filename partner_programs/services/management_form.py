@@ -129,6 +129,13 @@ def form_data(program):
 @transaction.atomic
 def save_form(program_id, user, payload):
     program = managed_program(program_id, user, lock=True)
+    if (
+        program.solution_storage_mode == "solution"
+        or program.fields.filter(solution_options__isnull=False).exists()
+    ):
+        raise ValidationError(
+            {"code": "solution_form_required", "detail": "Используйте форму решения."}
+        )
     # Same link -> definition order as field PUT/submit; application creation
     # already locks the program, so the first project cannot race configuration.
     list(

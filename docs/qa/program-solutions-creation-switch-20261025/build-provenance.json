@@ -1,0 +1,28 @@
+{
+  "source": "Z:\\Документы\\PROCOLLAB-dev\\procollab-dev-program-solutions-fe01-20261024\\dist\\social_platform",
+  "target": "C:/Users/evsee/AppData/Local/Temp/procollab-creation-angular",
+  "frontendBase": "e57fb04ec93fdede611712014492a529cf9172b9",
+  "frontendState": "working tree with creation-switch error copy and C00 1.13; source hashes identify runtime input",
+  "changes": "only API/WebSocket origins in copied generated JS",
+  "changed": [
+    {
+      "file": "chunk-CHX6T2XY.js",
+      "before": "4707c125db5485fa8b5eeb9e30e23c6f90759d9f2daf86b56a5a0b332da287dd",
+      "after": "9952a60a44e2cf169099556f3b81c6866212b5aa80784d253b7b1a627defd7bd"
+    }
+  ],
+  "sources": [
+    {
+      "file": "projects/social_platform/src/app/api/solution/solution-navigation.ts",
+      "sha256": "f08e39b9feb74fbec0fb40056b1a680841f2fc382cf71d7b77b65fafe3a1195e"
+    },
+    {
+      "file": "projects/social_platform/src/app/ui/pages/program/solution/solution.component.ts",
+      "sha256": "41f826edc9725830c287c7f13b1559419002a7ccef448509fe4baea2a04acf49"
+    },
+    {
+      "file": "projects/social_platform/src/app/ui/widgets/detail/services/program/detail-program-info.service.ts",
+      "sha256": "08828f85f0a61eeb57b8aff4a510b70a45b2268edb146cc2053cb6db967ac739"
+    }
+  ]
+}

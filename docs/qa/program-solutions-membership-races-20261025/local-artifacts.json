@@ -1,0 +1,125 @@
+{
+  "rawDirectory": "Z:\\Документы\\PROCOLLAB-dev\\design-artifacts\\program-solutions-20261024\\qa01-membership-races",
+  "artifacts": [
+    {
+      "file": "browser-attempt-1792917329139.json",
+      "bytes": 18942,
+      "sha256": "21379ebddb69b54a6011fd9fc12926d9d0a77761c3d90752c7303f42808b4e9d"
+    },
+    {
+      "file": "browser-attempt-1792917425290.json",
+      "bytes": 66735,
+      "sha256": "315ff6b7d388e6133885ed43381d7797092ffb6e71a428eec030a63b0d5818b7"
+    },
+    {
+      "file": "browser-checks.json",
+      "bytes": 20098,
+      "sha256": "8345a62add9772d1c06dff5ff0beeffc4d6fe29b5c8ef9c7e5c3bddd41f6ff0b"
+    },
+    {
+      "file": "browser-failure-1792917329143.png",
+      "bytes": 15230,
+      "sha256": "0605b73598d8125a86c1f6823ae9bdaef2964bd88ee02b379ce8d4f0aba51f27"
+    },
+    {
+      "file": "case_championship-captain-team-390.png",
+      "bytes": 63385,
+      "sha256": "3f0395c2d63a55476447358a296705adadeae61fce09d7f641acac2dcca318e5"
+    },
+    {
+      "file": "case_championship-member-team-390.png",
+      "bytes": 56692,
+      "sha256": "99187d6c96467e9dbadaacf4b0ee8201594f79f5b9dc99ff3b39cf43b285a84a"
+    },
+    {
+      "file": "domain-and-contract-evidence.json",
+      "bytes": 2567,
+      "sha256": "169d129045928aad632f6d7e6d51e2d9b2d1acebd88f4eade99eb219fdd33824"
+    },
+    {
+      "file": "hackathon-captain-team-390.png",
+      "bytes": 63381,
+      "sha256": "94daa6aa11c34918eb297f714d44dabc5d1a0fe5ee80c588e88d693010938fe2"
+    },
+    {
+      "file": "hackathon-member-team-390.png",
+      "bytes": 54376,
+      "sha256": "689047f2eb4d149e94a215755a241b38bc30f7a03b69c6e6cf87a8a367f7d444"
+    },
+    {
+      "file": "http-attempt-1792917130399478400.json",
+      "bytes": 1438,
+      "sha256": "d85d6e3ec82e7a80efb8e19da18ae33eae203b36495bdba7d75f16beef17cfc5"
+    },
+    {
+      "file": "http-evidence.json",
+      "bytes": 16284,
+      "sha256": "8d3d222a32083c506ce6198f38ef3a78469b06dd77402f3b9da458a55d3da5b3"
+    },
+    {
+      "file": "http-wire.json",
+      "bytes": 112112,
+      "sha256": "228f1a0b6af81beac8cbba43c8d305cf5422a6edda2908f91cd7a45315f5859c"
+    }
+  ],
+  "helpers": [
+    {
+      "path": "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-membership-race-worker.py",
+      "sha256": "eafa77a94d86c435a474350ab4e34249fe34ece981a152c3fceb4a6b99f3219e"
+    },
+    {
+      "path": "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-membership-race.py",
+      "sha256": "7d51615e140a8cdb71099d85a7a10b047b4391c496de0ed11289c41ab75c4a84"
+    },
+    {
+      "path": "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-membership-browser.cjs",
+      "sha256": "10cdf7cf671f0e0446d405dad3696286b2bc16d7bb4f891ca343399f341c2fe1"
+    },
+    {
+      "path": "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-membership-verify.py",
+      "sha256": "7da052fdca8ac196441c9c05ede0e645f4ba4bfe71a1e067d6fa1c0d4dae89b7"
+    },
+    {
+      "path": "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-membership-package.py",
+      "sha256": "a614efac75f5406d6725a57e0151c6de650c2a3614e7fffa491db01e13b6eb0c"
+    },
+    {
+      "path": "C:\\Users\\evsee\\AppData\\Local\\Temp\\procollab-expert-revision-spa.py",
+      "sha256": "b21c6cbb30700708b413a6d9b9aefcdf7c7c8fd89d6824cc86972fb95f7ee629"
+    }
+  ],
+  "sources": [
+    {
+      "file": "partner_programs/solution_api.py",
+      "sha256": "1807b55255b544cd9bf8e514912331eeffab9fba889efcd29de44a33f3d16b01"
+    },
+    {
+      "file": "partner_programs/solution_team.py",
+      "sha256": "38b836a54d19dc6c2b1f8f9b02db8ba5f573a44bba08ad6d0aa0e542abb14c17"
+    },
+    {
+      "file": "partner_programs/solution_invitations.py",
+      "sha256": "886fbc7b120425a1fd101a03dfef4dbc3b690fbe54d8eec797db674feb97e64a"
+    },
+    {
+      "file": "partner_programs/tests/test_solution_foundation.py",
+      "sha256": "9e7c4eb0b7e1b173c95a504f4b9768534e5c93a834591fa04f89294c9e26358c"
+    },
+    {
+      "file": "partner_programs/tests/test_solution_invitations.py",
+      "sha256": "653bf43f619b1bb6df326386f5247735dc65dbaf8eeafab1bdeecaa7d49151e4"
+    },
+    {
+      "file": "partner_programs/tests/test_solution_submission.py",
+      "sha256": "27ac6074dec2d6ca60d1d97b2643dc10d8427c4311dc570c08b7fe010eac09d0"
+    }
+  ],
+  "copiedJsonSemanticEquality": true,
+  "privateCredentialsIncluded": false,
+  "notes": [
+    "4 screenshots retained locally; case captain and hackathon member at 390 were visually inspected.",
+    "Initial setup FAIL and two browser FAIL attempts preserved; no synthetic data was reset.",
+    "The second browser attempt completed 8 checks, then failed only a broad zero-write assertion. Curated report retains its error and 4 welcome acknowledgements.",
+    "No runtime code, contracts, migrations, deployments or real program switches changed in this checkpoint."
+  ]
+}

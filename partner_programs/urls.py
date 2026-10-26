@@ -1,8 +1,47 @@
 from django.urls import path
+
+from partner_programs.solution_action_api import SolutionActionView
+from partner_programs.solution_case_action_api import SolutionCaseChangeView
+from partner_programs.solution_history_api import SolutionHistoryView
+from partner_programs.solution_member_action_api import SolutionMemberRemovalView
+from partner_programs.solution_archive_action_api import SolutionArchiveView
+from partner_programs.solution_registration_action_api import (
+    SolutionRegistrationRemovalView,
+    SolutionRegistrationRemovalHistoryView,
+)
+from partner_programs.solution_publication_api import (
+    PublishedSolutionListView,
+    PublishedSolutionDetailView,
+)
+from partner_programs.solution_attention_api import SolutionExpertReminderView
+from partner_programs.solution_analytics_api import (
+    SolutionCaseAnalyticsView,
+    SolutionManagerAnalyticsView,
+    SolutionManagerAssignmentsView,
+    SolutionManagerAssignmentView,
+    SolutionManagerSolutionsView,
+    SolutionManagerExportView,
+)
+from project_rates.solution_evaluation_api import (
+    SolutionRatingsView,
+    SolutionRatingView,
+    SolutionExpertAssignmentsView,
+    SolutionAllocationView,
+    SolutionAllocationApplyView,
+    SolutionQuotaView,
+    SolutionResultsView,
+    SolutionResultsExportView,
+)
+from partner_programs.solution_submission_api import SolutionSubmitView
+from partner_programs.solution_form_api import ManagedSolutionFormView, SolutionFormView
+from partner_programs.solution_invitation_api import SolutionInvitationsView
 from partner_programs.solution_api import (
+    SolutionCaptainView,
     SolutionContextView,
     SolutionDetailView,
+    SolutionLeaveView,
     SolutionListCreateView,
+    SolutionMemberView,
 )
 from partner_programs.attention_views import AttentionActionView
 from partner_programs.report_views import ProgramReportView
@@ -108,9 +147,81 @@ from partner_programs.certificate_views import (
 app_name = "partner_programs"
 
 urlpatterns = [
+    path("<int:pk>/published-solutions/", PublishedSolutionListView.as_view()),
+    path(
+        "<int:pk>/published-solutions/<int:solution_id>/",
+        PublishedSolutionDetailView.as_view(),
+    ),
+    path(
+        "<int:pk>/management/solution-analytics/attention/solutions-awaiting-evaluation/reminder-preview/",
+        SolutionExpertReminderView.as_view(),
+    ),
+    path(
+        "<int:pk>/management/solution-analytics/attention/solutions-awaiting-evaluation/reminders/",
+        SolutionExpertReminderView.as_view(reminder_action="confirm"),
+    ),
+    path(
+        "<int:pk>/management/solution-analytics/", SolutionManagerAnalyticsView.as_view()
+    ),
+    path(
+        "<int:pk>/management/solution-analytics/assignments/",
+        SolutionManagerAssignmentsView.as_view(),
+    ),
+    path(
+        "<int:pk>/management/solution-analytics/assignments/<int:assignment_id>/",
+        SolutionManagerAssignmentView.as_view(),
+    ),
+    path(
+        "<int:pk>/management/solution-analytics/solutions/",
+        SolutionManagerSolutionsView.as_view(),
+    ),
+    path(
+        "<int:pk>/management/solution-analytics/export/",
+        SolutionManagerExportView.as_view(),
+    ),
+    path(
+        "<int:pk>/management/solution-cases/",
+        SolutionCaseAnalyticsView.as_view(),
+        name="solution-case-analytics",
+    ),
+    path(
+        "<int:pk>/management/solution-evaluation/allocation/",
+        SolutionAllocationView.as_view(),
+    ),
+    path(
+        "<int:pk>/management/solution-evaluation/allocation/apply/",
+        SolutionAllocationApplyView.as_view(),
+    ),
+    path("<int:pk>/management/solution-evaluation/quota/", SolutionQuotaView.as_view()),
+    path("<int:pk>/management/solution-results/", SolutionResultsView.as_view()),
+    path(
+        "<int:pk>/management/solution-results/export/",
+        SolutionResultsExportView.as_view(),
+    ),
+    path("<int:pk>/solution-evaluation/", SolutionRatingsView.as_view()),
+    path(
+        "<int:pk>/solutions/<int:solution_id>/evaluation/", SolutionRatingView.as_view()
+    ),
+    path(
+        "<int:pk>/management/solution-evaluation/experts/<int:expert_id>/assignments/",
+        SolutionExpertAssignmentsView.as_view(),
+    ),
+    path("<int:pk>/solution-form/", SolutionFormView.as_view()),
+    path("<int:pk>/management/solution-form/", ManagedSolutionFormView.as_view()),
     path("<int:pk>/solution-context/", SolutionContextView.as_view()),
     path("<int:pk>/solutions/", SolutionListCreateView.as_view()),
     path("<int:pk>/solutions/<int:solution_id>/", SolutionDetailView.as_view()),
+    path("<int:pk>/solutions/<int:solution_id>/submit/", SolutionSubmitView.as_view()),
+    path(
+        "<int:pk>/solutions/<int:solution_id>/members/<int:user_id>/",
+        SolutionMemberView.as_view(),
+    ),
+    path("<int:pk>/solutions/<int:solution_id>/leave/", SolutionLeaveView.as_view()),
+    path("<int:pk>/solutions/<int:solution_id>/captain/", SolutionCaptainView.as_view()),
+    path(
+        "<int:pk>/solutions/<int:solution_id>/invitations/",
+        SolutionInvitationsView.as_view(),
+    ),
     path("<int:pk>/management/certificates/", CertificateSettingsView.as_view()),
     path("<int:pk>/management/certificates/assets/", CertificateAssetView.as_view()),
     path(
@@ -140,6 +251,59 @@ urlpatterns = [
     path(
         "<int:pk>/certificates/download/<uuid:token>/",
         PublicCertificateDownloadView.as_view(),
+    ),
+    path(
+        "<int:pk>/management/solutions/<int:solution_id>/case/preview/",
+        SolutionCaseChangeView.as_view(),
+    ),
+    path(
+        "<int:pk>/management/solutions/<int:solution_id>/members/remove/preview/",
+        SolutionMemberRemovalView.as_view(),
+    ),
+    path(
+        "<int:pk>/management/solutions/<int:solution_id>/members/remove/apply/",
+        SolutionMemberRemovalView.as_view(apply_action=True),
+    ),
+    path(
+        "<int:pk>/management/solutions/<int:solution_id>/history/",
+        SolutionHistoryView.as_view(),
+    ),
+    path(
+        "<int:pk>/management/solutions/<int:solution_id>/history/<int:change_id>/",
+        SolutionHistoryView.as_view(),
+    ),
+    path(
+        "<int:pk>/management/solutions/<int:solution_id>/case/apply/",
+        SolutionCaseChangeView.as_view(apply_action=True),
+    ),
+    path(
+        "<int:pk>/management/solutions/actions/preview/",
+        SolutionActionView.as_view(),
+    ),
+    path(
+        "<int:pk>/management/registrations/remove/preview/",
+        SolutionRegistrationRemovalView.as_view(),
+    ),
+    path(
+        "<int:pk>/management/registrations/remove/apply/",
+        SolutionRegistrationRemovalView.as_view(apply_action=True),
+    ),
+    path(
+        "<int:pk>/management/registrations/removals/",
+        SolutionRegistrationRemovalHistoryView.as_view(),
+    ),
+    path(
+        "<int:pk>/management/registrations/removals/<int:audit_id>/",
+        SolutionRegistrationRemovalHistoryView.as_view(),
+    ),
+    path("<int:pk>/management/solutions/archive/preview/", SolutionArchiveView.as_view()),
+    path(
+        "<int:pk>/management/solutions/archive/apply/",
+        SolutionArchiveView.as_view(apply_action=True),
+    ),
+    path(
+        "<int:pk>/management/solutions/actions/apply/",
+        SolutionActionView.as_view(apply_action=True),
     ),
     path(
         "<int:pk>/management/projects/actions/preview/",

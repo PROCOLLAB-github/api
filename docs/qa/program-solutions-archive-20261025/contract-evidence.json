@@ -1,0 +1,12 @@
+{
+  "version": "1.19.0",
+  "schemas": 145,
+  "operations": 55,
+  "scenarios": 272,
+  "oldSchemasUnchanged": 132,
+  "oldOperationsUnchanged": 52,
+  "expandedOldOperation": "listSolutions/participation",
+  "oldScenariosUnchanged": 250,
+  "sharedByteIdentical": 3,
+  "originalQaRequirementRowsUnchanged": 26
+}

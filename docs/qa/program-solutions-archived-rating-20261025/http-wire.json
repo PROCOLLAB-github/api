@@ -1,0 +1,4248 @@
+[
+  {
+    "role": "captain",
+    "method": "POST",
+    "path": "/programs/47/solutions/",
+    "status": 201,
+    "request": {
+      "name": "Работа для оценки case_championship qa01ar-20261025-2d84767a"
+    },
+    "response": {
+      "id": 64,
+      "program_id": 47,
+      "version": 1,
+      "name": "Работа для оценки case_championship qa01ar-20261025-2d84767a",
+      "captain_id": 29,
+      "created_at": "2026-10-25T17:07:40.016648Z",
+      "updated_at": "2026-10-25T17:07:40.016648Z",
+      "participation": {
+        "status": "active",
+        "archived_at": null,
+        "reason": null
+      },
+      "team": {
+        "members": [
+          {
+            "user": {
+              "id": 29,
+              "first_name": "Program",
+              "last_name": "User",
+              "avatar_url": null
+            },
+            "role": null,
+            "specialization": null,
+            "joined_at": "2026-10-25T17:07:40.021769Z",
+            "is_captain": true
+          }
+        ],
+        "accepted_count": 1,
+        "pending_count": 0,
+        "reserved_count": 1,
+        "min_size": 1,
+        "max_size": 4,
+        "is_frozen": false
+      },
+      "form": {
+        "program_id": 47,
+        "revision": "75df2b206fd3312e54b034f8d9f032e97092e98b12d8af688a699f676600a778",
+        "template": "case_championship",
+        "is_configured": true,
+        "is_snapshot": false,
+        "fields": [
+          {
+            "id": 306,
+            "type": "select",
+            "purpose": "case",
+            "label": "Кейс",
+            "help_text": "",
+            "required": true,
+            "position": 0,
+            "options": ["Город", "Образование"],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 307,
+            "type": "textarea",
+            "purpose": "other",
+            "label": "Материалы",
+            "help_text": "",
+            "required": true,
+            "position": 1,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 308,
+            "type": "number",
+            "purpose": "other",
+            "label": "Число",
+            "help_text": "",
+            "required": true,
+            "position": 2,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 309,
+            "type": "checkbox",
+            "purpose": "other",
+            "label": "Флаг",
+            "help_text": "",
+            "required": true,
+            "position": 3,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          }
+        ]
+      },
+      "answers": [],
+      "submission": {
+        "required": true,
+        "status": "draft",
+        "submission_open": true,
+        "deadline": "2026-10-26T17:07:39.820702Z",
+        "submitted_at": null
+      },
+      "permissions": {
+        "can_edit": true,
+        "can_manage_team": true,
+        "can_invite": true,
+        "can_submit": true,
+        "can_leave": false
+      },
+      "readiness": {
+        "is_ready": false,
+        "issues": [
+          {
+            "path": "answers",
+            "code": "case_required",
+            "detail": "Выберите кейс или задачу.",
+            "field_id": 306
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 307
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 308
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 309
+          }
+        ]
+      }
+    }
+  },
+  {
+    "role": "captain",
+    "method": "GET",
+    "path": "/programs/47/solutions/64/",
+    "status": 200,
+    "request": null,
+    "response": {
+      "id": 64,
+      "program_id": 47,
+      "version": 1,
+      "name": "Работа для оценки case_championship qa01ar-20261025-2d84767a",
+      "captain_id": 29,
+      "created_at": "2026-10-25T17:07:40.016648Z",
+      "updated_at": "2026-10-25T17:07:40.016648Z",
+      "participation": {
+        "status": "active",
+        "archived_at": null,
+        "reason": null
+      },
+      "team": {
+        "members": [
+          {
+            "user": {
+              "id": 29,
+              "first_name": "Program",
+              "last_name": "User",
+              "avatar_url": null
+            },
+            "role": null,
+            "specialization": null,
+            "joined_at": "2026-10-25T17:07:40.021769Z",
+            "is_captain": true
+          }
+        ],
+        "accepted_count": 1,
+        "pending_count": 0,
+        "reserved_count": 1,
+        "min_size": 1,
+        "max_size": 4,
+        "is_frozen": false
+      },
+      "form": {
+        "program_id": 47,
+        "revision": "75df2b206fd3312e54b034f8d9f032e97092e98b12d8af688a699f676600a778",
+        "template": "case_championship",
+        "is_configured": true,
+        "is_snapshot": false,
+        "fields": [
+          {
+            "id": 306,
+            "type": "select",
+            "purpose": "case",
+            "label": "Кейс",
+            "help_text": "",
+            "required": true,
+            "position": 0,
+            "options": ["Город", "Образование"],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 307,
+            "type": "textarea",
+            "purpose": "other",
+            "label": "Материалы",
+            "help_text": "",
+            "required": true,
+            "position": 1,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 308,
+            "type": "number",
+            "purpose": "other",
+            "label": "Число",
+            "help_text": "",
+            "required": true,
+            "position": 2,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 309,
+            "type": "checkbox",
+            "purpose": "other",
+            "label": "Флаг",
+            "help_text": "",
+            "required": true,
+            "position": 3,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          }
+        ]
+      },
+      "answers": [],
+      "submission": {
+        "required": true,
+        "status": "draft",
+        "submission_open": true,
+        "deadline": "2026-10-26T17:07:39.820702Z",
+        "submitted_at": null
+      },
+      "permissions": {
+        "can_edit": true,
+        "can_manage_team": true,
+        "can_invite": true,
+        "can_submit": true,
+        "can_leave": false
+      },
+      "readiness": {
+        "is_ready": false,
+        "issues": [
+          {
+            "path": "answers",
+            "code": "case_required",
+            "detail": "Выберите кейс или задачу.",
+            "field_id": 306
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 307
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 308
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 309
+          }
+        ]
+      }
+    }
+  },
+  {
+    "role": "captain",
+    "method": "POST",
+    "path": "/programs/47/solutions/64/invitations/",
+    "status": 201,
+    "request": {
+      "expected_solution_version": 1,
+      "recipient_user_id": 30,
+      "role": "Аналитик"
+    },
+    "response": {
+      "invitation": {
+        "id": 68,
+        "version": 1,
+        "program": {
+          "id": 47,
+          "name": "Архив и открытая оценка case_championship qa01ar-20261025-2d84767a"
+        },
+        "solution": {
+          "kind": "solution",
+          "program_id": 47,
+          "solution_id": 64,
+          "name": "Работа для оценки case_championship qa01ar-20261025-2d84767a"
+        },
+        "captain": {
+          "id": 29,
+          "first_name": "Program",
+          "last_name": "User",
+          "avatar_url": null
+        },
+        "recipient": {
+          "id": 30,
+          "first_name": "Program",
+          "last_name": "User",
+          "avatar_url": null
+        },
+        "role": "Аналитик",
+        "specialization": null,
+        "motivational_letter": null,
+        "status": "pending",
+        "created_at": "2026-10-25T17:07:40.193334Z",
+        "updated_at": "2026-10-25T17:07:40.193334Z",
+        "permissions": {
+          "can_edit": true,
+          "can_revoke": true,
+          "can_accept": false,
+          "can_decline": false
+        }
+      },
+      "solution_version": 2
+    }
+  },
+  {
+    "role": "member",
+    "method": "POST",
+    "path": "/solution-invitations/68/accept/",
+    "status": 200,
+    "request": {
+      "expected_version": 1
+    },
+    "response": {
+      "invitation": {
+        "id": 68,
+        "version": 2,
+        "program": {
+          "id": 47,
+          "name": "Архив и открытая оценка case_championship qa01ar-20261025-2d84767a"
+        },
+        "solution": {
+          "kind": "solution",
+          "program_id": 47,
+          "solution_id": 64,
+          "name": "Работа для оценки case_championship qa01ar-20261025-2d84767a"
+        },
+        "captain": {
+          "id": 29,
+          "first_name": "Program",
+          "last_name": "User",
+          "avatar_url": null
+        },
+        "recipient": {
+          "id": 30,
+          "first_name": "Program",
+          "last_name": "User",
+          "avatar_url": null
+        },
+        "role": "Аналитик",
+        "specialization": null,
+        "motivational_letter": null,
+        "status": "accepted",
+        "created_at": "2026-10-25T17:07:40.193334Z",
+        "updated_at": "2026-10-25T17:07:40.278679Z",
+        "permissions": {
+          "can_edit": false,
+          "can_revoke": false,
+          "can_accept": false,
+          "can_decline": false
+        }
+      },
+      "application": {
+        "kind": "solution",
+        "program_id": 47,
+        "solution_id": 64,
+        "name": "Работа для оценки case_championship qa01ar-20261025-2d84767a"
+      },
+      "solution_version": 3
+    }
+  },
+  {
+    "role": "captain",
+    "method": "GET",
+    "path": "/programs/47/solutions/64/",
+    "status": 200,
+    "request": null,
+    "response": {
+      "id": 64,
+      "program_id": 47,
+      "version": 3,
+      "name": "Работа для оценки case_championship qa01ar-20261025-2d84767a",
+      "captain_id": 29,
+      "created_at": "2026-10-25T17:07:40.016648Z",
+      "updated_at": "2026-10-25T17:07:40.280828Z",
+      "participation": {
+        "status": "active",
+        "archived_at": null,
+        "reason": null
+      },
+      "team": {
+        "members": [
+          {
+            "user": {
+              "id": 29,
+              "first_name": "Program",
+              "last_name": "User",
+              "avatar_url": null
+            },
+            "role": null,
+            "specialization": null,
+            "joined_at": "2026-10-25T17:07:40.021769Z",
+            "is_captain": true
+          },
+          {
+            "user": {
+              "id": 30,
+              "first_name": "Program",
+              "last_name": "User",
+              "avatar_url": null
+            },
+            "role": "Аналитик",
+            "specialization": null,
+            "joined_at": "2026-10-25T17:07:40.273637Z",
+            "is_captain": false
+          }
+        ],
+        "accepted_count": 2,
+        "pending_count": 0,
+        "reserved_count": 2,
+        "min_size": 1,
+        "max_size": 4,
+        "is_frozen": false
+      },
+      "form": {
+        "program_id": 47,
+        "revision": "75df2b206fd3312e54b034f8d9f032e97092e98b12d8af688a699f676600a778",
+        "template": "case_championship",
+        "is_configured": true,
+        "is_snapshot": false,
+        "fields": [
+          {
+            "id": 306,
+            "type": "select",
+            "purpose": "case",
+            "label": "Кейс",
+            "help_text": "",
+            "required": true,
+            "position": 0,
+            "options": ["Город", "Образование"],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 307,
+            "type": "textarea",
+            "purpose": "other",
+            "label": "Материалы",
+            "help_text": "",
+            "required": true,
+            "position": 1,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 308,
+            "type": "number",
+            "purpose": "other",
+            "label": "Число",
+            "help_text": "",
+            "required": true,
+            "position": 2,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 309,
+            "type": "checkbox",
+            "purpose": "other",
+            "label": "Флаг",
+            "help_text": "",
+            "required": true,
+            "position": 3,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          }
+        ]
+      },
+      "answers": [],
+      "submission": {
+        "required": true,
+        "status": "draft",
+        "submission_open": true,
+        "deadline": "2026-10-26T17:07:39.820702Z",
+        "submitted_at": null
+      },
+      "permissions": {
+        "can_edit": true,
+        "can_manage_team": true,
+        "can_invite": true,
+        "can_submit": true,
+        "can_leave": false
+      },
+      "readiness": {
+        "is_ready": false,
+        "issues": [
+          {
+            "path": "answers",
+            "code": "case_required",
+            "detail": "Выберите кейс или задачу.",
+            "field_id": 306
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 307
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 308
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 309
+          }
+        ]
+      }
+    }
+  },
+  {
+    "role": "captain",
+    "method": "PATCH",
+    "path": "/programs/47/solutions/64/",
+    "status": 200,
+    "request": {
+      "expected_version": 3,
+      "expected_form_revision": "75df2b206fd3312e54b034f8d9f032e97092e98b12d8af688a699f676600a778",
+      "answers": [
+        {
+          "field_id": 306,
+          "value": "Город"
+        },
+        {
+          "field_id": 307,
+          "value": "Материалы архивной проверки qa01ar-20261025-2d84767a"
+        },
+        {
+          "field_id": 308,
+          "value": 0
+        },
+        {
+          "field_id": 309,
+          "value": false
+        }
+      ]
+    },
+    "response": {
+      "id": 64,
+      "program_id": 47,
+      "version": 4,
+      "name": "Работа для оценки case_championship qa01ar-20261025-2d84767a",
+      "captain_id": 29,
+      "created_at": "2026-10-25T17:07:40.016648Z",
+      "updated_at": "2026-10-25T17:07:40.445560Z",
+      "participation": {
+        "status": "active",
+        "archived_at": null,
+        "reason": null
+      },
+      "team": {
+        "members": [
+          {
+            "user": {
+              "id": 29,
+              "first_name": "Program",
+              "last_name": "User",
+              "avatar_url": null
+            },
+            "role": null,
+            "specialization": null,
+            "joined_at": "2026-10-25T17:07:40.021769Z",
+            "is_captain": true
+          },
+          {
+            "user": {
+              "id": 30,
+              "first_name": "Program",
+              "last_name": "User",
+              "avatar_url": null
+            },
+            "role": "Аналитик",
+            "specialization": null,
+            "joined_at": "2026-10-25T17:07:40.273637Z",
+            "is_captain": false
+          }
+        ],
+        "accepted_count": 2,
+        "pending_count": 0,
+        "reserved_count": 2,
+        "min_size": 1,
+        "max_size": 4,
+        "is_frozen": false
+      },
+      "form": {
+        "program_id": 47,
+        "revision": "75df2b206fd3312e54b034f8d9f032e97092e98b12d8af688a699f676600a778",
+        "template": "case_championship",
+        "is_configured": true,
+        "is_snapshot": false,
+        "fields": [
+          {
+            "id": 306,
+            "type": "select",
+            "purpose": "case",
+            "label": "Кейс",
+            "help_text": "",
+            "required": true,
+            "position": 0,
+            "options": ["Город", "Образование"],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 307,
+            "type": "textarea",
+            "purpose": "other",
+            "label": "Материалы",
+            "help_text": "",
+            "required": true,
+            "position": 1,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 308,
+            "type": "number",
+            "purpose": "other",
+            "label": "Число",
+            "help_text": "",
+            "required": true,
+            "position": 2,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 309,
+            "type": "checkbox",
+            "purpose": "other",
+            "label": "Флаг",
+            "help_text": "",
+            "required": true,
+            "position": 3,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          }
+        ]
+      },
+      "answers": [
+        {
+          "field_id": 306,
+          "value": "Город"
+        },
+        {
+          "field_id": 307,
+          "value": "Материалы архивной проверки qa01ar-20261025-2d84767a"
+        },
+        {
+          "field_id": 308,
+          "value": 0
+        },
+        {
+          "field_id": 309,
+          "value": false
+        }
+      ],
+      "submission": {
+        "required": true,
+        "status": "draft",
+        "submission_open": true,
+        "deadline": "2026-10-26T17:07:39.820702Z",
+        "submitted_at": null
+      },
+      "permissions": {
+        "can_edit": true,
+        "can_manage_team": true,
+        "can_invite": true,
+        "can_submit": true,
+        "can_leave": false
+      },
+      "readiness": {
+        "is_ready": true,
+        "issues": []
+      }
+    }
+  },
+  {
+    "role": "captain",
+    "method": "POST",
+    "path": "/programs/47/solutions/64/submit/",
+    "status": 200,
+    "request": {
+      "expected_version": 4,
+      "expected_form_revision": "75df2b206fd3312e54b034f8d9f032e97092e98b12d8af688a699f676600a778"
+    },
+    "response": {
+      "id": 64,
+      "program_id": 47,
+      "version": 5,
+      "name": "Работа для оценки case_championship qa01ar-20261025-2d84767a",
+      "captain_id": 29,
+      "created_at": "2026-10-25T17:07:40.016648Z",
+      "updated_at": "2026-10-25T17:07:40.551010Z",
+      "participation": {
+        "status": "active",
+        "archived_at": null,
+        "reason": null
+      },
+      "team": {
+        "members": [
+          {
+            "user": {
+              "id": 29,
+              "first_name": "Program",
+              "last_name": "User",
+              "avatar_url": null
+            },
+            "role": null,
+            "specialization": null,
+            "joined_at": "2026-10-25T17:07:40.021769Z",
+            "is_captain": true
+          },
+          {
+            "user": {
+              "id": 30,
+              "first_name": "Program",
+              "last_name": "User",
+              "avatar_url": null
+            },
+            "role": "Аналитик",
+            "specialization": null,
+            "joined_at": "2026-10-25T17:07:40.273637Z",
+            "is_captain": false
+          }
+        ],
+        "accepted_count": 2,
+        "pending_count": 0,
+        "reserved_count": 2,
+        "min_size": 1,
+        "max_size": 4,
+        "is_frozen": true
+      },
+      "form": {
+        "program_id": 47,
+        "revision": "75df2b206fd3312e54b034f8d9f032e97092e98b12d8af688a699f676600a778",
+        "template": "case_championship",
+        "is_configured": true,
+        "is_snapshot": true,
+        "fields": [
+          {
+            "id": 306,
+            "type": "select",
+            "purpose": "case",
+            "label": "Кейс",
+            "help_text": "",
+            "required": true,
+            "position": 0,
+            "options": ["Город", "Образование"],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 307,
+            "type": "textarea",
+            "purpose": "other",
+            "label": "Материалы",
+            "help_text": "",
+            "required": true,
+            "position": 1,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 308,
+            "type": "number",
+            "purpose": "other",
+            "label": "Число",
+            "help_text": "",
+            "required": true,
+            "position": 2,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 309,
+            "type": "checkbox",
+            "purpose": "other",
+            "label": "Флаг",
+            "help_text": "",
+            "required": true,
+            "position": 3,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          }
+        ]
+      },
+      "answers": [
+        {
+          "field_id": 306,
+          "value": "Город"
+        },
+        {
+          "field_id": 307,
+          "value": "Материалы архивной проверки qa01ar-20261025-2d84767a"
+        },
+        {
+          "field_id": 308,
+          "value": 0
+        },
+        {
+          "field_id": 309,
+          "value": false
+        }
+      ],
+      "submission": {
+        "required": true,
+        "status": "submitted",
+        "submission_open": true,
+        "deadline": "2026-10-26T17:07:39.820702Z",
+        "submitted_at": "2026-10-25T17:07:40.548989Z"
+      },
+      "permissions": {
+        "can_edit": false,
+        "can_manage_team": false,
+        "can_invite": false,
+        "can_submit": false,
+        "can_leave": false
+      },
+      "readiness": {
+        "is_ready": true,
+        "issues": []
+      }
+    }
+  },
+  {
+    "role": "expert",
+    "method": "GET",
+    "path": "/programs/47/solutions/64/evaluation/",
+    "status": 200,
+    "request": null,
+    "response": {
+      "program": {
+        "id": 47,
+        "name": "Архив и открытая оценка case_championship qa01ar-20261025-2d84767a"
+      },
+      "solution": {
+        "id": 64,
+        "program_id": 47,
+        "version": 5,
+        "name": "Работа для оценки case_championship qa01ar-20261025-2d84767a",
+        "captain_id": 29,
+        "created_at": "2026-10-25T17:07:40.016648Z",
+        "updated_at": "2026-10-25T17:07:40.551010Z",
+        "participation": {
+          "status": "active",
+          "archived_at": null,
+          "reason": null
+        },
+        "team": {
+          "members": [
+            {
+              "role": null,
+              "user": {
+                "id": 29,
+                "last_name": "User",
+                "avatar_url": null,
+                "first_name": "Program"
+              },
+              "joined_at": "2026-10-25T17:07:40.021769Z",
+              "is_captain": true,
+              "specialization": null
+            },
+            {
+              "role": "Аналитик",
+              "user": {
+                "id": 30,
+                "last_name": "User",
+                "avatar_url": null,
+                "first_name": "Program"
+              },
+              "joined_at": "2026-10-25T17:07:40.273637Z",
+              "is_captain": false,
+              "specialization": null
+            }
+          ],
+          "accepted_count": 2,
+          "pending_count": 0,
+          "reserved_count": 2,
+          "min_size": 1,
+          "max_size": 4,
+          "is_frozen": true
+        },
+        "form": {
+          "fields": [
+            {
+              "id": 306,
+              "type": "select",
+              "label": "Кейс",
+              "options": ["Город", "Образование"],
+              "purpose": "case",
+              "position": 0,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 307,
+              "type": "textarea",
+              "label": "Материалы",
+              "options": [],
+              "purpose": "other",
+              "position": 1,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 308,
+              "type": "number",
+              "label": "Число",
+              "options": [],
+              "purpose": "other",
+              "position": 2,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 309,
+              "type": "checkbox",
+              "label": "Флаг",
+              "options": [],
+              "purpose": "other",
+              "position": 3,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            }
+          ],
+          "revision": "75df2b206fd3312e54b034f8d9f032e97092e98b12d8af688a699f676600a778",
+          "template": "case_championship",
+          "program_id": 47,
+          "is_snapshot": true,
+          "is_configured": true
+        },
+        "answers": [
+          {
+            "value": "Город",
+            "field_id": 306
+          },
+          {
+            "value": "Материалы архивной проверки qa01ar-20261025-2d84767a",
+            "field_id": 307
+          },
+          {
+            "value": 0,
+            "field_id": 308
+          },
+          {
+            "value": false,
+            "field_id": 309
+          }
+        ],
+        "submission": {
+          "required": true,
+          "status": "submitted",
+          "submission_open": true,
+          "deadline": "2026-10-26T17:07:39.820702Z",
+          "submitted_at": "2026-10-25T17:07:40.548989Z"
+        },
+        "permissions": {
+          "can_edit": false,
+          "can_manage_team": false,
+          "can_invite": false,
+          "can_submit": false,
+          "can_leave": false
+        },
+        "readiness": null
+      },
+      "criteria_revision": "4e05c1aa16267989a173957781f526689a67669fc52c26790ae62fc771ce74f4",
+      "criteria": [
+        {
+          "id": 85,
+          "name": "Комментарий",
+          "description": "Доп. поле для впечатлений о проекте",
+          "type": "str",
+          "min_value": null,
+          "max_value": null,
+          "value": null
+        },
+        {
+          "id": 86,
+          "name": "Качество 3",
+          "description": null,
+          "type": "int",
+          "min_value": 0,
+          "max_value": 10,
+          "value": null
+        },
+        {
+          "id": 87,
+          "name": "Проверено 4",
+          "description": null,
+          "type": "bool",
+          "min_value": null,
+          "max_value": null,
+          "value": null
+        },
+        {
+          "id": 88,
+          "name": "Комментарий 5",
+          "description": null,
+          "type": "str",
+          "min_value": null,
+          "max_value": null,
+          "value": null
+        }
+      ],
+      "managed_evaluation": true,
+      "can_rate": true,
+      "blocked_reason": null,
+      "is_completed": false,
+      "rated_count": 0,
+      "max_rates": 2,
+      "required_evaluators": 2,
+      "deadline": "2026-10-27T17:07:39.820702Z"
+    }
+  },
+  {
+    "role": "expert",
+    "method": "POST",
+    "path": "/programs/47/solutions/64/evaluation/",
+    "status": 200,
+    "request": {
+      "expected_criteria_revision": "4e05c1aa16267989a173957781f526689a67669fc52c26790ae62fc771ce74f4",
+      "scores": [
+        {
+          "criterion_id": 86,
+          "value": "0"
+        },
+        {
+          "criterion_id": 87,
+          "value": "False"
+        },
+        {
+          "criterion_id": 88,
+          "value": "Сохраненный комментарий qa01ar-20261025-2d84767a"
+        }
+      ]
+    },
+    "response": {
+      "program": {
+        "id": 47,
+        "name": "Архив и открытая оценка case_championship qa01ar-20261025-2d84767a"
+      },
+      "solution": {
+        "id": 64,
+        "program_id": 47,
+        "version": 5,
+        "name": "Работа для оценки case_championship qa01ar-20261025-2d84767a",
+        "captain_id": 29,
+        "created_at": "2026-10-25T17:07:40.016648Z",
+        "updated_at": "2026-10-25T17:07:40.551010Z",
+        "participation": {
+          "status": "active",
+          "archived_at": null,
+          "reason": null
+        },
+        "team": {
+          "members": [
+            {
+              "role": null,
+              "user": {
+                "id": 29,
+                "last_name": "User",
+                "avatar_url": null,
+                "first_name": "Program"
+              },
+              "joined_at": "2026-10-25T17:07:40.021769Z",
+              "is_captain": true,
+              "specialization": null
+            },
+            {
+              "role": "Аналитик",
+              "user": {
+                "id": 30,
+                "last_name": "User",
+                "avatar_url": null,
+                "first_name": "Program"
+              },
+              "joined_at": "2026-10-25T17:07:40.273637Z",
+              "is_captain": false,
+              "specialization": null
+            }
+          ],
+          "accepted_count": 2,
+          "pending_count": 0,
+          "reserved_count": 2,
+          "min_size": 1,
+          "max_size": 4,
+          "is_frozen": true
+        },
+        "form": {
+          "fields": [
+            {
+              "id": 306,
+              "type": "select",
+              "label": "Кейс",
+              "options": ["Город", "Образование"],
+              "purpose": "case",
+              "position": 0,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 307,
+              "type": "textarea",
+              "label": "Материалы",
+              "options": [],
+              "purpose": "other",
+              "position": 1,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 308,
+              "type": "number",
+              "label": "Число",
+              "options": [],
+              "purpose": "other",
+              "position": 2,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 309,
+              "type": "checkbox",
+              "label": "Флаг",
+              "options": [],
+              "purpose": "other",
+              "position": 3,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            }
+          ],
+          "revision": "75df2b206fd3312e54b034f8d9f032e97092e98b12d8af688a699f676600a778",
+          "template": "case_championship",
+          "program_id": 47,
+          "is_snapshot": true,
+          "is_configured": true
+        },
+        "answers": [
+          {
+            "value": "Город",
+            "field_id": 306
+          },
+          {
+            "value": "Материалы архивной проверки qa01ar-20261025-2d84767a",
+            "field_id": 307
+          },
+          {
+            "value": 0,
+            "field_id": 308
+          },
+          {
+            "value": false,
+            "field_id": 309
+          }
+        ],
+        "submission": {
+          "required": true,
+          "status": "submitted",
+          "submission_open": true,
+          "deadline": "2026-10-26T17:07:39.820702Z",
+          "submitted_at": "2026-10-25T17:07:40.548989Z"
+        },
+        "permissions": {
+          "can_edit": false,
+          "can_manage_team": false,
+          "can_invite": false,
+          "can_submit": false,
+          "can_leave": false
+        },
+        "readiness": null
+      },
+      "criteria_revision": "4e05c1aa16267989a173957781f526689a67669fc52c26790ae62fc771ce74f4",
+      "criteria": [
+        {
+          "id": 85,
+          "name": "Комментарий",
+          "description": "Доп. поле для впечатлений о проекте",
+          "type": "str",
+          "min_value": null,
+          "max_value": null,
+          "value": ""
+        },
+        {
+          "id": 86,
+          "name": "Качество 3",
+          "description": null,
+          "type": "int",
+          "min_value": 0,
+          "max_value": 10,
+          "value": "0"
+        },
+        {
+          "id": 87,
+          "name": "Проверено 4",
+          "description": null,
+          "type": "bool",
+          "min_value": null,
+          "max_value": null,
+          "value": "False"
+        },
+        {
+          "id": 88,
+          "name": "Комментарий 5",
+          "description": null,
+          "type": "str",
+          "min_value": null,
+          "max_value": null,
+          "value": "Сохраненный комментарий qa01ar-20261025-2d84767a"
+        }
+      ],
+      "managed_evaluation": true,
+      "can_rate": true,
+      "blocked_reason": null,
+      "is_completed": true,
+      "rated_count": 1,
+      "max_rates": 2,
+      "required_evaluators": 2,
+      "deadline": "2026-10-27T17:07:39.820702Z"
+    }
+  },
+  {
+    "role": "captain",
+    "method": "POST",
+    "path": "/programs/48/solutions/",
+    "status": 201,
+    "request": {
+      "name": "Работа для оценки hackathon qa01ar-20261025-2d84767a"
+    },
+    "response": {
+      "id": 65,
+      "program_id": 48,
+      "version": 1,
+      "name": "Работа для оценки hackathon qa01ar-20261025-2d84767a",
+      "captain_id": 29,
+      "created_at": "2026-10-25T17:07:41.076815Z",
+      "updated_at": "2026-10-25T17:07:41.076815Z",
+      "participation": {
+        "status": "active",
+        "archived_at": null,
+        "reason": null
+      },
+      "team": {
+        "members": [
+          {
+            "user": {
+              "id": 29,
+              "first_name": "Program",
+              "last_name": "User",
+              "avatar_url": null
+            },
+            "role": null,
+            "specialization": null,
+            "joined_at": "2026-10-25T17:07:41.081475Z",
+            "is_captain": true
+          }
+        ],
+        "accepted_count": 1,
+        "pending_count": 0,
+        "reserved_count": 1,
+        "min_size": 1,
+        "max_size": 4,
+        "is_frozen": false
+      },
+      "form": {
+        "program_id": 48,
+        "revision": "2c2c11723594f7d313c4e646de339469ae81326fb7149fa403e55a5b6fa7a56b",
+        "template": "hackathon",
+        "is_configured": true,
+        "is_snapshot": false,
+        "fields": [
+          {
+            "id": 310,
+            "type": "select",
+            "purpose": "case",
+            "label": "Кейс",
+            "help_text": "",
+            "required": true,
+            "position": 0,
+            "options": ["Город", "Образование"],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 311,
+            "type": "textarea",
+            "purpose": "other",
+            "label": "Материалы",
+            "help_text": "",
+            "required": true,
+            "position": 1,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 312,
+            "type": "number",
+            "purpose": "other",
+            "label": "Число",
+            "help_text": "",
+            "required": true,
+            "position": 2,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 313,
+            "type": "checkbox",
+            "purpose": "other",
+            "label": "Флаг",
+            "help_text": "",
+            "required": true,
+            "position": 3,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 314,
+            "type": "url",
+            "purpose": "repository",
+            "label": "Репозиторий",
+            "help_text": "",
+            "required": true,
+            "position": 4,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          }
+        ]
+      },
+      "answers": [],
+      "submission": {
+        "required": true,
+        "status": "draft",
+        "submission_open": true,
+        "deadline": "2026-10-26T17:07:39.820702Z",
+        "submitted_at": null
+      },
+      "permissions": {
+        "can_edit": true,
+        "can_manage_team": true,
+        "can_invite": true,
+        "can_submit": true,
+        "can_leave": false
+      },
+      "readiness": {
+        "is_ready": false,
+        "issues": [
+          {
+            "path": "answers",
+            "code": "case_required",
+            "detail": "Выберите кейс или задачу.",
+            "field_id": 310
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 311
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 312
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 313
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 314
+          }
+        ]
+      }
+    }
+  },
+  {
+    "role": "captain",
+    "method": "GET",
+    "path": "/programs/48/solutions/65/",
+    "status": 200,
+    "request": null,
+    "response": {
+      "id": 65,
+      "program_id": 48,
+      "version": 1,
+      "name": "Работа для оценки hackathon qa01ar-20261025-2d84767a",
+      "captain_id": 29,
+      "created_at": "2026-10-25T17:07:41.076815Z",
+      "updated_at": "2026-10-25T17:07:41.076815Z",
+      "participation": {
+        "status": "active",
+        "archived_at": null,
+        "reason": null
+      },
+      "team": {
+        "members": [
+          {
+            "user": {
+              "id": 29,
+              "first_name": "Program",
+              "last_name": "User",
+              "avatar_url": null
+            },
+            "role": null,
+            "specialization": null,
+            "joined_at": "2026-10-25T17:07:41.081475Z",
+            "is_captain": true
+          }
+        ],
+        "accepted_count": 1,
+        "pending_count": 0,
+        "reserved_count": 1,
+        "min_size": 1,
+        "max_size": 4,
+        "is_frozen": false
+      },
+      "form": {
+        "program_id": 48,
+        "revision": "2c2c11723594f7d313c4e646de339469ae81326fb7149fa403e55a5b6fa7a56b",
+        "template": "hackathon",
+        "is_configured": true,
+        "is_snapshot": false,
+        "fields": [
+          {
+            "id": 310,
+            "type": "select",
+            "purpose": "case",
+            "label": "Кейс",
+            "help_text": "",
+            "required": true,
+            "position": 0,
+            "options": ["Город", "Образование"],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 311,
+            "type": "textarea",
+            "purpose": "other",
+            "label": "Материалы",
+            "help_text": "",
+            "required": true,
+            "position": 1,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 312,
+            "type": "number",
+            "purpose": "other",
+            "label": "Число",
+            "help_text": "",
+            "required": true,
+            "position": 2,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 313,
+            "type": "checkbox",
+            "purpose": "other",
+            "label": "Флаг",
+            "help_text": "",
+            "required": true,
+            "position": 3,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 314,
+            "type": "url",
+            "purpose": "repository",
+            "label": "Репозиторий",
+            "help_text": "",
+            "required": true,
+            "position": 4,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          }
+        ]
+      },
+      "answers": [],
+      "submission": {
+        "required": true,
+        "status": "draft",
+        "submission_open": true,
+        "deadline": "2026-10-26T17:07:39.820702Z",
+        "submitted_at": null
+      },
+      "permissions": {
+        "can_edit": true,
+        "can_manage_team": true,
+        "can_invite": true,
+        "can_submit": true,
+        "can_leave": false
+      },
+      "readiness": {
+        "is_ready": false,
+        "issues": [
+          {
+            "path": "answers",
+            "code": "case_required",
+            "detail": "Выберите кейс или задачу.",
+            "field_id": 310
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 311
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 312
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 313
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 314
+          }
+        ]
+      }
+    }
+  },
+  {
+    "role": "captain",
+    "method": "POST",
+    "path": "/programs/48/solutions/65/invitations/",
+    "status": 201,
+    "request": {
+      "expected_solution_version": 1,
+      "recipient_user_id": 30,
+      "role": "Аналитик"
+    },
+    "response": {
+      "invitation": {
+        "id": 69,
+        "version": 1,
+        "program": {
+          "id": 48,
+          "name": "Архив и открытая оценка hackathon qa01ar-20261025-2d84767a"
+        },
+        "solution": {
+          "kind": "solution",
+          "program_id": 48,
+          "solution_id": 65,
+          "name": "Работа для оценки hackathon qa01ar-20261025-2d84767a"
+        },
+        "captain": {
+          "id": 29,
+          "first_name": "Program",
+          "last_name": "User",
+          "avatar_url": null
+        },
+        "recipient": {
+          "id": 30,
+          "first_name": "Program",
+          "last_name": "User",
+          "avatar_url": null
+        },
+        "role": "Аналитик",
+        "specialization": null,
+        "motivational_letter": null,
+        "status": "pending",
+        "created_at": "2026-10-25T17:07:41.292822Z",
+        "updated_at": "2026-10-25T17:07:41.292822Z",
+        "permissions": {
+          "can_edit": true,
+          "can_revoke": true,
+          "can_accept": false,
+          "can_decline": false
+        }
+      },
+      "solution_version": 2
+    }
+  },
+  {
+    "role": "member",
+    "method": "POST",
+    "path": "/solution-invitations/69/accept/",
+    "status": 200,
+    "request": {
+      "expected_version": 1
+    },
+    "response": {
+      "invitation": {
+        "id": 69,
+        "version": 2,
+        "program": {
+          "id": 48,
+          "name": "Архив и открытая оценка hackathon qa01ar-20261025-2d84767a"
+        },
+        "solution": {
+          "kind": "solution",
+          "program_id": 48,
+          "solution_id": 65,
+          "name": "Работа для оценки hackathon qa01ar-20261025-2d84767a"
+        },
+        "captain": {
+          "id": 29,
+          "first_name": "Program",
+          "last_name": "User",
+          "avatar_url": null
+        },
+        "recipient": {
+          "id": 30,
+          "first_name": "Program",
+          "last_name": "User",
+          "avatar_url": null
+        },
+        "role": "Аналитик",
+        "specialization": null,
+        "motivational_letter": null,
+        "status": "accepted",
+        "created_at": "2026-10-25T17:07:41.292822Z",
+        "updated_at": "2026-10-25T17:07:41.384597Z",
+        "permissions": {
+          "can_edit": false,
+          "can_revoke": false,
+          "can_accept": false,
+          "can_decline": false
+        }
+      },
+      "application": {
+        "kind": "solution",
+        "program_id": 48,
+        "solution_id": 65,
+        "name": "Работа для оценки hackathon qa01ar-20261025-2d84767a"
+      },
+      "solution_version": 3
+    }
+  },
+  {
+    "role": "captain",
+    "method": "GET",
+    "path": "/programs/48/solutions/65/",
+    "status": 200,
+    "request": null,
+    "response": {
+      "id": 65,
+      "program_id": 48,
+      "version": 3,
+      "name": "Работа для оценки hackathon qa01ar-20261025-2d84767a",
+      "captain_id": 29,
+      "created_at": "2026-10-25T17:07:41.076815Z",
+      "updated_at": "2026-10-25T17:07:41.388626Z",
+      "participation": {
+        "status": "active",
+        "archived_at": null,
+        "reason": null
+      },
+      "team": {
+        "members": [
+          {
+            "user": {
+              "id": 29,
+              "first_name": "Program",
+              "last_name": "User",
+              "avatar_url": null
+            },
+            "role": null,
+            "specialization": null,
+            "joined_at": "2026-10-25T17:07:41.081475Z",
+            "is_captain": true
+          },
+          {
+            "user": {
+              "id": 30,
+              "first_name": "Program",
+              "last_name": "User",
+              "avatar_url": null
+            },
+            "role": "Аналитик",
+            "specialization": null,
+            "joined_at": "2026-10-25T17:07:41.381325Z",
+            "is_captain": false
+          }
+        ],
+        "accepted_count": 2,
+        "pending_count": 0,
+        "reserved_count": 2,
+        "min_size": 1,
+        "max_size": 4,
+        "is_frozen": false
+      },
+      "form": {
+        "program_id": 48,
+        "revision": "2c2c11723594f7d313c4e646de339469ae81326fb7149fa403e55a5b6fa7a56b",
+        "template": "hackathon",
+        "is_configured": true,
+        "is_snapshot": false,
+        "fields": [
+          {
+            "id": 310,
+            "type": "select",
+            "purpose": "case",
+            "label": "Кейс",
+            "help_text": "",
+            "required": true,
+            "position": 0,
+            "options": ["Город", "Образование"],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 311,
+            "type": "textarea",
+            "purpose": "other",
+            "label": "Материалы",
+            "help_text": "",
+            "required": true,
+            "position": 1,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 312,
+            "type": "number",
+            "purpose": "other",
+            "label": "Число",
+            "help_text": "",
+            "required": true,
+            "position": 2,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 313,
+            "type": "checkbox",
+            "purpose": "other",
+            "label": "Флаг",
+            "help_text": "",
+            "required": true,
+            "position": 3,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 314,
+            "type": "url",
+            "purpose": "repository",
+            "label": "Репозиторий",
+            "help_text": "",
+            "required": true,
+            "position": 4,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          }
+        ]
+      },
+      "answers": [],
+      "submission": {
+        "required": true,
+        "status": "draft",
+        "submission_open": true,
+        "deadline": "2026-10-26T17:07:39.820702Z",
+        "submitted_at": null
+      },
+      "permissions": {
+        "can_edit": true,
+        "can_manage_team": true,
+        "can_invite": true,
+        "can_submit": true,
+        "can_leave": false
+      },
+      "readiness": {
+        "is_ready": false,
+        "issues": [
+          {
+            "path": "answers",
+            "code": "case_required",
+            "detail": "Выберите кейс или задачу.",
+            "field_id": 310
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 311
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 312
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 313
+          },
+          {
+            "path": "answers",
+            "code": "required",
+            "detail": "Заполните обязательное поле.",
+            "field_id": 314
+          }
+        ]
+      }
+    }
+  },
+  {
+    "role": "captain",
+    "method": "PATCH",
+    "path": "/programs/48/solutions/65/",
+    "status": 200,
+    "request": {
+      "expected_version": 3,
+      "expected_form_revision": "2c2c11723594f7d313c4e646de339469ae81326fb7149fa403e55a5b6fa7a56b",
+      "answers": [
+        {
+          "field_id": 310,
+          "value": "Город"
+        },
+        {
+          "field_id": 311,
+          "value": "Материалы архивной проверки qa01ar-20261025-2d84767a"
+        },
+        {
+          "field_id": 312,
+          "value": 0
+        },
+        {
+          "field_id": 313,
+          "value": false
+        },
+        {
+          "field_id": 314,
+          "value": "https://example.com/archived-rating/qa01ar-20261025-2d84767a"
+        }
+      ]
+    },
+    "response": {
+      "id": 65,
+      "program_id": 48,
+      "version": 4,
+      "name": "Работа для оценки hackathon qa01ar-20261025-2d84767a",
+      "captain_id": 29,
+      "created_at": "2026-10-25T17:07:41.076815Z",
+      "updated_at": "2026-10-25T17:07:41.571272Z",
+      "participation": {
+        "status": "active",
+        "archived_at": null,
+        "reason": null
+      },
+      "team": {
+        "members": [
+          {
+            "user": {
+              "id": 29,
+              "first_name": "Program",
+              "last_name": "User",
+              "avatar_url": null
+            },
+            "role": null,
+            "specialization": null,
+            "joined_at": "2026-10-25T17:07:41.081475Z",
+            "is_captain": true
+          },
+          {
+            "user": {
+              "id": 30,
+              "first_name": "Program",
+              "last_name": "User",
+              "avatar_url": null
+            },
+            "role": "Аналитик",
+            "specialization": null,
+            "joined_at": "2026-10-25T17:07:41.381325Z",
+            "is_captain": false
+          }
+        ],
+        "accepted_count": 2,
+        "pending_count": 0,
+        "reserved_count": 2,
+        "min_size": 1,
+        "max_size": 4,
+        "is_frozen": false
+      },
+      "form": {
+        "program_id": 48,
+        "revision": "2c2c11723594f7d313c4e646de339469ae81326fb7149fa403e55a5b6fa7a56b",
+        "template": "hackathon",
+        "is_configured": true,
+        "is_snapshot": false,
+        "fields": [
+          {
+            "id": 310,
+            "type": "select",
+            "purpose": "case",
+            "label": "Кейс",
+            "help_text": "",
+            "required": true,
+            "position": 0,
+            "options": ["Город", "Образование"],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 311,
+            "type": "textarea",
+            "purpose": "other",
+            "label": "Материалы",
+            "help_text": "",
+            "required": true,
+            "position": 1,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 312,
+            "type": "number",
+            "purpose": "other",
+            "label": "Число",
+            "help_text": "",
+            "required": true,
+            "position": 2,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 313,
+            "type": "checkbox",
+            "purpose": "other",
+            "label": "Флаг",
+            "help_text": "",
+            "required": true,
+            "position": 3,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 314,
+            "type": "url",
+            "purpose": "repository",
+            "label": "Репозиторий",
+            "help_text": "",
+            "required": true,
+            "position": 4,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          }
+        ]
+      },
+      "answers": [
+        {
+          "field_id": 310,
+          "value": "Город"
+        },
+        {
+          "field_id": 311,
+          "value": "Материалы архивной проверки qa01ar-20261025-2d84767a"
+        },
+        {
+          "field_id": 312,
+          "value": 0
+        },
+        {
+          "field_id": 313,
+          "value": false
+        },
+        {
+          "field_id": 314,
+          "value": "https://example.com/archived-rating/qa01ar-20261025-2d84767a"
+        }
+      ],
+      "submission": {
+        "required": true,
+        "status": "draft",
+        "submission_open": true,
+        "deadline": "2026-10-26T17:07:39.820702Z",
+        "submitted_at": null
+      },
+      "permissions": {
+        "can_edit": true,
+        "can_manage_team": true,
+        "can_invite": true,
+        "can_submit": true,
+        "can_leave": false
+      },
+      "readiness": {
+        "is_ready": true,
+        "issues": []
+      }
+    }
+  },
+  {
+    "role": "captain",
+    "method": "POST",
+    "path": "/programs/48/solutions/65/submit/",
+    "status": 200,
+    "request": {
+      "expected_version": 4,
+      "expected_form_revision": "2c2c11723594f7d313c4e646de339469ae81326fb7149fa403e55a5b6fa7a56b"
+    },
+    "response": {
+      "id": 65,
+      "program_id": 48,
+      "version": 5,
+      "name": "Работа для оценки hackathon qa01ar-20261025-2d84767a",
+      "captain_id": 29,
+      "created_at": "2026-10-25T17:07:41.076815Z",
+      "updated_at": "2026-10-25T17:07:41.685460Z",
+      "participation": {
+        "status": "active",
+        "archived_at": null,
+        "reason": null
+      },
+      "team": {
+        "members": [
+          {
+            "user": {
+              "id": 29,
+              "first_name": "Program",
+              "last_name": "User",
+              "avatar_url": null
+            },
+            "role": null,
+            "specialization": null,
+            "joined_at": "2026-10-25T17:07:41.081475Z",
+            "is_captain": true
+          },
+          {
+            "user": {
+              "id": 30,
+              "first_name": "Program",
+              "last_name": "User",
+              "avatar_url": null
+            },
+            "role": "Аналитик",
+            "specialization": null,
+            "joined_at": "2026-10-25T17:07:41.381325Z",
+            "is_captain": false
+          }
+        ],
+        "accepted_count": 2,
+        "pending_count": 0,
+        "reserved_count": 2,
+        "min_size": 1,
+        "max_size": 4,
+        "is_frozen": true
+      },
+      "form": {
+        "program_id": 48,
+        "revision": "2c2c11723594f7d313c4e646de339469ae81326fb7149fa403e55a5b6fa7a56b",
+        "template": "hackathon",
+        "is_configured": true,
+        "is_snapshot": true,
+        "fields": [
+          {
+            "id": 310,
+            "type": "select",
+            "purpose": "case",
+            "label": "Кейс",
+            "help_text": "",
+            "required": true,
+            "position": 0,
+            "options": ["Город", "Образование"],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 311,
+            "type": "textarea",
+            "purpose": "other",
+            "label": "Материалы",
+            "help_text": "",
+            "required": true,
+            "position": 1,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 312,
+            "type": "number",
+            "purpose": "other",
+            "label": "Число",
+            "help_text": "",
+            "required": true,
+            "position": 2,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 313,
+            "type": "checkbox",
+            "purpose": "other",
+            "label": "Флаг",
+            "help_text": "",
+            "required": true,
+            "position": 3,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 314,
+            "type": "url",
+            "purpose": "repository",
+            "label": "Репозиторий",
+            "help_text": "",
+            "required": true,
+            "position": 4,
+            "options": [],
+            "validation": {
+              "min_length": null,
+              "max_length": null,
+              "minimum": null,
+              "maximum": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          }
+        ]
+      },
+      "answers": [
+        {
+          "field_id": 310,
+          "value": "Город"
+        },
+        {
+          "field_id": 311,
+          "value": "Материалы архивной проверки qa01ar-20261025-2d84767a"
+        },
+        {
+          "field_id": 312,
+          "value": 0
+        },
+        {
+          "field_id": 313,
+          "value": false
+        },
+        {
+          "field_id": 314,
+          "value": "https://example.com/archived-rating/qa01ar-20261025-2d84767a"
+        }
+      ],
+      "submission": {
+        "required": true,
+        "status": "submitted",
+        "submission_open": true,
+        "deadline": "2026-10-26T17:07:39.820702Z",
+        "submitted_at": "2026-10-25T17:07:41.682257Z"
+      },
+      "permissions": {
+        "can_edit": false,
+        "can_manage_team": false,
+        "can_invite": false,
+        "can_submit": false,
+        "can_leave": false
+      },
+      "readiness": {
+        "is_ready": true,
+        "issues": []
+      }
+    }
+  },
+  {
+    "role": "expert",
+    "method": "GET",
+    "path": "/programs/48/solutions/65/evaluation/",
+    "status": 200,
+    "request": null,
+    "response": {
+      "program": {
+        "id": 48,
+        "name": "Архив и открытая оценка hackathon qa01ar-20261025-2d84767a"
+      },
+      "solution": {
+        "id": 65,
+        "program_id": 48,
+        "version": 5,
+        "name": "Работа для оценки hackathon qa01ar-20261025-2d84767a",
+        "captain_id": 29,
+        "created_at": "2026-10-25T17:07:41.076815Z",
+        "updated_at": "2026-10-25T17:07:41.685460Z",
+        "participation": {
+          "status": "active",
+          "archived_at": null,
+          "reason": null
+        },
+        "team": {
+          "members": [
+            {
+              "role": null,
+              "user": {
+                "id": 29,
+                "last_name": "User",
+                "avatar_url": null,
+                "first_name": "Program"
+              },
+              "joined_at": "2026-10-25T17:07:41.081475Z",
+              "is_captain": true,
+              "specialization": null
+            },
+            {
+              "role": "Аналитик",
+              "user": {
+                "id": 30,
+                "last_name": "User",
+                "avatar_url": null,
+                "first_name": "Program"
+              },
+              "joined_at": "2026-10-25T17:07:41.381325Z",
+              "is_captain": false,
+              "specialization": null
+            }
+          ],
+          "accepted_count": 2,
+          "pending_count": 0,
+          "reserved_count": 2,
+          "min_size": 1,
+          "max_size": 4,
+          "is_frozen": true
+        },
+        "form": {
+          "fields": [
+            {
+              "id": 310,
+              "type": "select",
+              "label": "Кейс",
+              "options": ["Город", "Образование"],
+              "purpose": "case",
+              "position": 0,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 311,
+              "type": "textarea",
+              "label": "Материалы",
+              "options": [],
+              "purpose": "other",
+              "position": 1,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 312,
+              "type": "number",
+              "label": "Число",
+              "options": [],
+              "purpose": "other",
+              "position": 2,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 313,
+              "type": "checkbox",
+              "label": "Флаг",
+              "options": [],
+              "purpose": "other",
+              "position": 3,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 314,
+              "type": "url",
+              "label": "Репозиторий",
+              "options": [],
+              "purpose": "repository",
+              "position": 4,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            }
+          ],
+          "revision": "2c2c11723594f7d313c4e646de339469ae81326fb7149fa403e55a5b6fa7a56b",
+          "template": "hackathon",
+          "program_id": 48,
+          "is_snapshot": true,
+          "is_configured": true
+        },
+        "answers": [
+          {
+            "value": "Город",
+            "field_id": 310
+          },
+          {
+            "value": "Материалы архивной проверки qa01ar-20261025-2d84767a",
+            "field_id": 311
+          },
+          {
+            "value": 0,
+            "field_id": 312
+          },
+          {
+            "value": false,
+            "field_id": 313
+          },
+          {
+            "value": "https://example.com/archived-rating/qa01ar-20261025-2d84767a",
+            "field_id": 314
+          }
+        ],
+        "submission": {
+          "required": true,
+          "status": "submitted",
+          "submission_open": true,
+          "deadline": "2026-10-26T17:07:39.820702Z",
+          "submitted_at": "2026-10-25T17:07:41.682257Z"
+        },
+        "permissions": {
+          "can_edit": false,
+          "can_manage_team": false,
+          "can_invite": false,
+          "can_submit": false,
+          "can_leave": false
+        },
+        "readiness": null
+      },
+      "criteria_revision": "63e6f2a731b85b50a8ca1fb6a479c725e925135f7d0644f67835a39a91fe12ac",
+      "criteria": [
+        {
+          "id": 89,
+          "name": "Комментарий",
+          "description": "Доп. поле для впечатлений о проекте",
+          "type": "str",
+          "min_value": null,
+          "max_value": null,
+          "value": null
+        },
+        {
+          "id": 90,
+          "name": "Качество 6",
+          "description": null,
+          "type": "int",
+          "min_value": 0,
+          "max_value": 10,
+          "value": null
+        },
+        {
+          "id": 91,
+          "name": "Проверено 7",
+          "description": null,
+          "type": "bool",
+          "min_value": null,
+          "max_value": null,
+          "value": null
+        },
+        {
+          "id": 92,
+          "name": "Комментарий 8",
+          "description": null,
+          "type": "str",
+          "min_value": null,
+          "max_value": null,
+          "value": null
+        }
+      ],
+      "managed_evaluation": true,
+      "can_rate": true,
+      "blocked_reason": null,
+      "is_completed": false,
+      "rated_count": 0,
+      "max_rates": 2,
+      "required_evaluators": 2,
+      "deadline": "2026-10-27T17:07:39.820702Z"
+    }
+  },
+  {
+    "role": "expert",
+    "method": "POST",
+    "path": "/programs/48/solutions/65/evaluation/",
+    "status": 200,
+    "request": {
+      "expected_criteria_revision": "63e6f2a731b85b50a8ca1fb6a479c725e925135f7d0644f67835a39a91fe12ac",
+      "scores": [
+        {
+          "criterion_id": 90,
+          "value": "0"
+        },
+        {
+          "criterion_id": 91,
+          "value": "False"
+        },
+        {
+          "criterion_id": 92,
+          "value": "Сохраненный комментарий qa01ar-20261025-2d84767a"
+        }
+      ]
+    },
+    "response": {
+      "program": {
+        "id": 48,
+        "name": "Архив и открытая оценка hackathon qa01ar-20261025-2d84767a"
+      },
+      "solution": {
+        "id": 65,
+        "program_id": 48,
+        "version": 5,
+        "name": "Работа для оценки hackathon qa01ar-20261025-2d84767a",
+        "captain_id": 29,
+        "created_at": "2026-10-25T17:07:41.076815Z",
+        "updated_at": "2026-10-25T17:07:41.685460Z",
+        "participation": {
+          "status": "active",
+          "archived_at": null,
+          "reason": null
+        },
+        "team": {
+          "members": [
+            {
+              "role": null,
+              "user": {
+                "id": 29,
+                "last_name": "User",
+                "avatar_url": null,
+                "first_name": "Program"
+              },
+              "joined_at": "2026-10-25T17:07:41.081475Z",
+              "is_captain": true,
+              "specialization": null
+            },
+            {
+              "role": "Аналитик",
+              "user": {
+                "id": 30,
+                "last_name": "User",
+                "avatar_url": null,
+                "first_name": "Program"
+              },
+              "joined_at": "2026-10-25T17:07:41.381325Z",
+              "is_captain": false,
+              "specialization": null
+            }
+          ],
+          "accepted_count": 2,
+          "pending_count": 0,
+          "reserved_count": 2,
+          "min_size": 1,
+          "max_size": 4,
+          "is_frozen": true
+        },
+        "form": {
+          "fields": [
+            {
+              "id": 310,
+              "type": "select",
+              "label": "Кейс",
+              "options": ["Город", "Образование"],
+              "purpose": "case",
+              "position": 0,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 311,
+              "type": "textarea",
+              "label": "Материалы",
+              "options": [],
+              "purpose": "other",
+              "position": 1,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 312,
+              "type": "number",
+              "label": "Число",
+              "options": [],
+              "purpose": "other",
+              "position": 2,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 313,
+              "type": "checkbox",
+              "label": "Флаг",
+              "options": [],
+              "purpose": "other",
+              "position": 3,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 314,
+              "type": "url",
+              "label": "Репозиторий",
+              "options": [],
+              "purpose": "repository",
+              "position": 4,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            }
+          ],
+          "revision": "2c2c11723594f7d313c4e646de339469ae81326fb7149fa403e55a5b6fa7a56b",
+          "template": "hackathon",
+          "program_id": 48,
+          "is_snapshot": true,
+          "is_configured": true
+        },
+        "answers": [
+          {
+            "value": "Город",
+            "field_id": 310
+          },
+          {
+            "value": "Материалы архивной проверки qa01ar-20261025-2d84767a",
+            "field_id": 311
+          },
+          {
+            "value": 0,
+            "field_id": 312
+          },
+          {
+            "value": false,
+            "field_id": 313
+          },
+          {
+            "value": "https://example.com/archived-rating/qa01ar-20261025-2d84767a",
+            "field_id": 314
+          }
+        ],
+        "submission": {
+          "required": true,
+          "status": "submitted",
+          "submission_open": true,
+          "deadline": "2026-10-26T17:07:39.820702Z",
+          "submitted_at": "2026-10-25T17:07:41.682257Z"
+        },
+        "permissions": {
+          "can_edit": false,
+          "can_manage_team": false,
+          "can_invite": false,
+          "can_submit": false,
+          "can_leave": false
+        },
+        "readiness": null
+      },
+      "criteria_revision": "63e6f2a731b85b50a8ca1fb6a479c725e925135f7d0644f67835a39a91fe12ac",
+      "criteria": [
+        {
+          "id": 89,
+          "name": "Комментарий",
+          "description": "Доп. поле для впечатлений о проекте",
+          "type": "str",
+          "min_value": null,
+          "max_value": null,
+          "value": ""
+        },
+        {
+          "id": 90,
+          "name": "Качество 6",
+          "description": null,
+          "type": "int",
+          "min_value": 0,
+          "max_value": 10,
+          "value": "0"
+        },
+        {
+          "id": 91,
+          "name": "Проверено 7",
+          "description": null,
+          "type": "bool",
+          "min_value": null,
+          "max_value": null,
+          "value": "False"
+        },
+        {
+          "id": 92,
+          "name": "Комментарий 8",
+          "description": null,
+          "type": "str",
+          "min_value": null,
+          "max_value": null,
+          "value": "Сохраненный комментарий qa01ar-20261025-2d84767a"
+        }
+      ],
+      "managed_evaluation": true,
+      "can_rate": true,
+      "blocked_reason": null,
+      "is_completed": true,
+      "rated_count": 1,
+      "max_rates": 2,
+      "required_evaluators": 2,
+      "deadline": "2026-10-27T17:07:39.820702Z"
+    }
+  },
+  {
+    "role": "browser-expert",
+    "method": "GET",
+    "path": "/programs/47/solutions/64/evaluation/",
+    "status": 200,
+    "request": null,
+    "response": {
+      "program": {
+        "id": 47,
+        "name": "Архив и открытая оценка case_championship qa01ar-20261025-2d84767a"
+      },
+      "solution": {
+        "id": 64,
+        "program_id": 47,
+        "version": 5,
+        "name": "Работа для оценки case_championship qa01ar-20261025-2d84767a",
+        "captain_id": 29,
+        "created_at": "2026-10-25T17:07:40.016648Z",
+        "updated_at": "2026-10-25T17:07:40.551010Z",
+        "participation": {
+          "status": "active",
+          "archived_at": null,
+          "reason": null
+        },
+        "team": {
+          "members": [
+            {
+              "role": null,
+              "user": {
+                "id": 29,
+                "last_name": "User",
+                "avatar_url": null,
+                "first_name": "Program"
+              },
+              "joined_at": "2026-10-25T17:07:40.021769Z",
+              "is_captain": true,
+              "specialization": null
+            },
+            {
+              "role": "Аналитик",
+              "user": {
+                "id": 30,
+                "last_name": "User",
+                "avatar_url": null,
+                "first_name": "Program"
+              },
+              "joined_at": "2026-10-25T17:07:40.273637Z",
+              "is_captain": false,
+              "specialization": null
+            }
+          ],
+          "accepted_count": 2,
+          "pending_count": 0,
+          "reserved_count": 2,
+          "min_size": 1,
+          "max_size": 4,
+          "is_frozen": true
+        },
+        "form": {
+          "fields": [
+            {
+              "id": 306,
+              "type": "select",
+              "label": "Кейс",
+              "options": ["Город", "Образование"],
+              "purpose": "case",
+              "position": 0,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 307,
+              "type": "textarea",
+              "label": "Материалы",
+              "options": [],
+              "purpose": "other",
+              "position": 1,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 308,
+              "type": "number",
+              "label": "Число",
+              "options": [],
+              "purpose": "other",
+              "position": 2,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 309,
+              "type": "checkbox",
+              "label": "Флаг",
+              "options": [],
+              "purpose": "other",
+              "position": 3,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            }
+          ],
+          "revision": "75df2b206fd3312e54b034f8d9f032e97092e98b12d8af688a699f676600a778",
+          "template": "case_championship",
+          "program_id": 47,
+          "is_snapshot": true,
+          "is_configured": true
+        },
+        "answers": [
+          {
+            "value": "Город",
+            "field_id": 306
+          },
+          {
+            "value": "Материалы архивной проверки qa01ar-20261025-2d84767a",
+            "field_id": 307
+          },
+          {
+            "value": 0,
+            "field_id": 308
+          },
+          {
+            "value": false,
+            "field_id": 309
+          }
+        ],
+        "submission": {
+          "required": true,
+          "status": "submitted",
+          "submission_open": true,
+          "deadline": "2026-10-26T17:07:39.820702Z",
+          "submitted_at": "2026-10-25T17:07:40.548989Z"
+        },
+        "permissions": {
+          "can_edit": false,
+          "can_manage_team": false,
+          "can_invite": false,
+          "can_submit": false,
+          "can_leave": false
+        },
+        "readiness": null
+      },
+      "criteria_revision": "4e05c1aa16267989a173957781f526689a67669fc52c26790ae62fc771ce74f4",
+      "criteria": [
+        {
+          "id": 85,
+          "name": "Комментарий",
+          "description": "Доп. поле для впечатлений о проекте",
+          "type": "str",
+          "min_value": null,
+          "max_value": null,
+          "value": ""
+        },
+        {
+          "id": 86,
+          "name": "Качество 3",
+          "description": null,
+          "type": "int",
+          "min_value": 0,
+          "max_value": 10,
+          "value": "0"
+        },
+        {
+          "id": 87,
+          "name": "Проверено 4",
+          "description": null,
+          "type": "bool",
+          "min_value": null,
+          "max_value": null,
+          "value": "False"
+        },
+        {
+          "id": 88,
+          "name": "Комментарий 5",
+          "description": null,
+          "type": "str",
+          "min_value": null,
+          "max_value": null,
+          "value": "Сохраненный комментарий qa01ar-20261025-2d84767a"
+        }
+      ],
+      "managed_evaluation": true,
+      "can_rate": true,
+      "blocked_reason": null,
+      "is_completed": true,
+      "rated_count": 1,
+      "max_rates": 2,
+      "required_evaluators": 2,
+      "deadline": "2026-10-27T17:07:39.820702Z"
+    }
+  },
+  {
+    "role": "dual-role-expert-manager",
+    "method": "POST",
+    "path": "/programs/47/management/solutions/archive/preview/",
+    "status": 200,
+    "request": {
+      "ids": [64]
+    },
+    "response": {
+      "items": [
+        {
+          "application": {
+            "kind": "solution",
+            "program_id": 47,
+            "solution_id": 64,
+            "name": "Работа для оценки case_championship qa01ar-20261025-2d84767a"
+          },
+          "solution_version": 5,
+          "is_submitted": true,
+          "is_archived": false,
+          "score_count": 4,
+          "removed_assignments_count": 1,
+          "revoked_invitation_count": 0,
+          "errors": []
+        }
+      ],
+      "score_count": 4,
+      "removed_assignments_count": 1,
+      "revoked_invitation_count": 0,
+      "can_apply": true,
+      "preview_token": "<redacted-signed-preview>"
+    }
+  },
+  {
+    "role": "dual-role-expert-manager",
+    "method": "POST",
+    "path": "/programs/47/management/solutions/archive/apply/",
+    "status": 200,
+    "request": {
+      "ids": [64],
+      "preview_token": "<redacted-signed-preview>"
+    },
+    "response": {
+      "changed_count": 1,
+      "items": [
+        {
+          "application": {
+            "kind": "solution",
+            "program_id": 47,
+            "solution_id": 64,
+            "name": "Работа для оценки case_championship qa01ar-20261025-2d84767a"
+          },
+          "solution_version": 6,
+          "archived_at": "2026-10-25T17:09:11.219357Z"
+        }
+      ]
+    }
+  },
+  {
+    "role": "browser-expert",
+    "method": "POST",
+    "path": "/programs/47/solutions/64/evaluation/",
+    "status": 409,
+    "request": {
+      "expected_criteria_revision": "4e05c1aa16267989a173957781f526689a67669fc52c26790ae62fc771ce74f4",
+      "scores": [
+        {
+          "criterion_id": 85,
+          "value": ""
+        },
+        {
+          "criterion_id": 86,
+          "value": "2"
+        },
+        {
+          "criterion_id": 87,
+          "value": "False"
+        },
+        {
+          "criterion_id": 88,
+          "value": "Несохраненная оценка qa01ar-20261025-2d84767a"
+        }
+      ]
+    },
+    "response": {
+      "code": "solution_archived",
+      "detail": "Решение снято с участия. Материалы доступны для просмотра.",
+      "errors": [],
+      "meta": {}
+    }
+  },
+  {
+    "role": "browser-expert",
+    "method": "GET",
+    "path": "/programs/47/solutions/64/evaluation/",
+    "status": 404,
+    "request": null,
+    "response": {
+      "code": "not_found",
+      "detail": "Решение или программа не найдены.",
+      "errors": [],
+      "meta": {}
+    }
+  },
+  {
+    "role": "dual-role-expert-manager",
+    "method": "GET",
+    "path": "/programs/47/solution-evaluation/?status=completed",
+    "status": 200,
+    "request": null,
+    "response": {
+      "count": 0,
+      "next": null,
+      "previous": null,
+      "results": [],
+      "evaluation_counts": {
+        "pending": 0,
+        "completed": 0
+      },
+      "case_options": ["Город", "Образование"]
+    }
+  },
+  {
+    "role": "browser-expert",
+    "method": "GET",
+    "path": "/programs/48/solutions/65/evaluation/",
+    "status": 200,
+    "request": null,
+    "response": {
+      "program": {
+        "id": 48,
+        "name": "Архив и открытая оценка hackathon qa01ar-20261025-2d84767a"
+      },
+      "solution": {
+        "id": 65,
+        "program_id": 48,
+        "version": 5,
+        "name": "Работа для оценки hackathon qa01ar-20261025-2d84767a",
+        "captain_id": 29,
+        "created_at": "2026-10-25T17:07:41.076815Z",
+        "updated_at": "2026-10-25T17:07:41.685460Z",
+        "participation": {
+          "status": "active",
+          "archived_at": null,
+          "reason": null
+        },
+        "team": {
+          "members": [
+            {
+              "role": null,
+              "user": {
+                "id": 29,
+                "last_name": "User",
+                "avatar_url": null,
+                "first_name": "Program"
+              },
+              "joined_at": "2026-10-25T17:07:41.081475Z",
+              "is_captain": true,
+              "specialization": null
+            },
+            {
+              "role": "Аналитик",
+              "user": {
+                "id": 30,
+                "last_name": "User",
+                "avatar_url": null,
+                "first_name": "Program"
+              },
+              "joined_at": "2026-10-25T17:07:41.381325Z",
+              "is_captain": false,
+              "specialization": null
+            }
+          ],
+          "accepted_count": 2,
+          "pending_count": 0,
+          "reserved_count": 2,
+          "min_size": 1,
+          "max_size": 4,
+          "is_frozen": true
+        },
+        "form": {
+          "fields": [
+            {
+              "id": 310,
+              "type": "select",
+              "label": "Кейс",
+              "options": ["Город", "Образование"],
+              "purpose": "case",
+              "position": 0,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 311,
+              "type": "textarea",
+              "label": "Материалы",
+              "options": [],
+              "purpose": "other",
+              "position": 1,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 312,
+              "type": "number",
+              "label": "Число",
+              "options": [],
+              "purpose": "other",
+              "position": 2,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 313,
+              "type": "checkbox",
+              "label": "Флаг",
+              "options": [],
+              "purpose": "other",
+              "position": 3,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            },
+            {
+              "id": 314,
+              "type": "url",
+              "label": "Репозиторий",
+              "options": [],
+              "purpose": "repository",
+              "position": 4,
+              "required": true,
+              "help_text": "",
+              "validation": {
+                "maximum": null,
+                "minimum": null,
+                "max_length": null,
+                "min_length": null,
+                "allowed_extensions": [],
+                "max_file_size_bytes": null
+              }
+            }
+          ],
+          "revision": "2c2c11723594f7d313c4e646de339469ae81326fb7149fa403e55a5b6fa7a56b",
+          "template": "hackathon",
+          "program_id": 48,
+          "is_snapshot": true,
+          "is_configured": true
+        },
+        "answers": [
+          {
+            "value": "Город",
+            "field_id": 310
+          },
+          {
+            "value": "Материалы архивной проверки qa01ar-20261025-2d84767a",
+            "field_id": 311
+          },
+          {
+            "value": 0,
+            "field_id": 312
+          },
+          {
+            "value": false,
+            "field_id": 313
+          },
+          {
+            "value": "https://example.com/archived-rating/qa01ar-20261025-2d84767a",
+            "field_id": 314
+          }
+        ],
+        "submission": {
+          "required": true,
+          "status": "submitted",
+          "submission_open": true,
+          "deadline": "2026-10-26T17:07:39.820702Z",
+          "submitted_at": "2026-10-25T17:07:41.682257Z"
+        },
+        "permissions": {
+          "can_edit": false,
+          "can_manage_team": false,
+          "can_invite": false,
+          "can_submit": false,
+          "can_leave": false
+        },
+        "readiness": null
+      },
+      "criteria_revision": "63e6f2a731b85b50a8ca1fb6a479c725e925135f7d0644f67835a39a91fe12ac",
+      "criteria": [
+        {
+          "id": 89,
+          "name": "Комментарий",
+          "description": "Доп. поле для впечатлений о проекте",
+          "type": "str",
+          "min_value": null,
+          "max_value": null,
+          "value": ""
+        },
+        {
+          "id": 90,
+          "name": "Качество 6",
+          "description": null,
+          "type": "int",
+          "min_value": 0,
+          "max_value": 10,
+          "value": "0"
+        },
+        {
+          "id": 91,
+          "name": "Проверено 7",
+          "description": null,
+          "type": "bool",
+          "min_value": null,
+          "max_value": null,
+          "value": "False"
+        },
+        {
+          "id": 92,
+          "name": "Комментарий 8",
+          "description": null,
+          "type": "str",
+          "min_value": null,
+          "max_value": null,
+          "value": "Сохраненный комментарий qa01ar-20261025-2d84767a"
+        }
+      ],
+      "managed_evaluation": true,
+      "can_rate": true,
+      "blocked_reason": null,
+      "is_completed": true,
+      "rated_count": 1,
+      "max_rates": 2,
+      "required_evaluators": 2,
+      "deadline": "2026-10-27T17:07:39.820702Z"
+    }
+  },
+  {
+    "role": "dual-role-expert-manager",
+    "method": "POST",
+    "path": "/programs/48/management/solutions/archive/preview/",
+    "status": 200,
+    "request": {
+      "ids": [65]
+    },
+    "response": {
+      "items": [
+        {
+          "application": {
+            "kind": "solution",
+            "program_id": 48,
+            "solution_id": 65,
+            "name": "Работа для оценки hackathon qa01ar-20261025-2d84767a"
+          },
+          "solution_version": 5,
+          "is_submitted": true,
+          "is_archived": false,
+          "score_count": 4,
+          "removed_assignments_count": 0,
+          "revoked_invitation_count": 0,
+          "errors": []
+        }
+      ],
+      "score_count": 4,
+      "removed_assignments_count": 0,
+      "revoked_invitation_count": 0,
+      "can_apply": true,
+      "preview_token": "<redacted-signed-preview>"
+    }
+  },
+  {
+    "role": "dual-role-expert-manager",
+    "method": "POST",
+    "path": "/programs/48/management/solutions/archive/apply/",
+    "status": 200,
+    "request": {
+      "ids": [65],
+      "preview_token": "<redacted-signed-preview>"
+    },
+    "response": {
+      "changed_count": 1,
+      "items": [
+        {
+          "application": {
+            "kind": "solution",
+            "program_id": 48,
+            "solution_id": 65,
+            "name": "Работа для оценки hackathon qa01ar-20261025-2d84767a"
+          },
+          "solution_version": 6,
+          "archived_at": "2026-10-25T17:09:18.327974Z"
+        }
+      ]
+    }
+  },
+  {
+    "role": "browser-expert",
+    "method": "POST",
+    "path": "/programs/48/solutions/65/evaluation/",
+    "status": 409,
+    "request": {
+      "expected_criteria_revision": "63e6f2a731b85b50a8ca1fb6a479c725e925135f7d0644f67835a39a91fe12ac",
+      "scores": [
+        {
+          "criterion_id": 89,
+          "value": ""
+        },
+        {
+          "criterion_id": 90,
+          "value": "2"
+        },
+        {
+          "criterion_id": 91,
+          "value": "False"
+        },
+        {
+          "criterion_id": 92,
+          "value": "Несохраненная оценка qa01ar-20261025-2d84767a"
+        }
+      ]
+    },
+    "response": {
+      "code": "solution_archived",
+      "detail": "Решение снято с участия. Материалы доступны для просмотра.",
+      "errors": [],
+      "meta": {}
+    }
+  },
+  {
+    "role": "browser-expert",
+    "method": "GET",
+    "path": "/programs/48/solutions/65/evaluation/",
+    "status": 404,
+    "request": null,
+    "response": {
+      "code": "not_found",
+      "detail": "Решение или программа не найдены.",
+      "errors": [],
+      "meta": {}
+    }
+  },
+  {
+    "role": "dual-role-expert-manager",
+    "method": "GET",
+    "path": "/programs/48/solution-evaluation/?status=completed",
+    "status": 200,
+    "request": null,
+    "response": {
+      "count": 0,
+      "next": null,
+      "previous": null,
+      "results": [],
+      "evaluation_counts": {
+        "pending": 0,
+        "completed": 0
+      },
+      "case_options": ["Город", "Образование"]
+    }
+  },
+  {
+    "role": "other",
+    "method": "GET",
+    "path": "/programs/47/solutions/64/evaluation/",
+    "status": 404,
+    "request": null,
+    "response": {
+      "code": "not_found",
+      "detail": "Решение или программа не найдены.",
+      "errors": [],
+      "meta": {}
+    }
+  },
+  {
+    "role": "other",
+    "method": "POST",
+    "path": "/programs/47/solutions/64/evaluation/",
+    "status": 404,
+    "request": {
+      "expected_criteria_revision": "4e05c1aa16267989a173957781f526689a67669fc52c26790ae62fc771ce74f4",
+      "scores": [
+        {
+          "criterion_id": 86,
+          "value": "2"
+        },
+        {
+          "criterion_id": 87,
+          "value": "False"
+        },
+        {
+          "criterion_id": 88,
+          "value": "Запрещенная запись"
+        }
+      ]
+    },
+    "response": {
+      "code": "not_found",
+      "detail": "Решение или программа не найдены.",
+      "errors": [],
+      "meta": {}
+    }
+  },
+  {
+    "role": "captain",
+    "method": "GET",
+    "path": "/programs/47/solutions/64/",
+    "status": 200,
+    "request": null,
+    "response": {
+      "id": 64,
+      "program_id": 47,
+      "version": 6,
+      "name": "Работа для оценки case_championship qa01ar-20261025-2d84767a",
+      "captain_id": 29,
+      "created_at": "2026-10-25T17:07:40.016648Z",
+      "updated_at": "2026-10-25T17:09:11.219357Z",
+      "participation": {
+        "status": "archived",
+        "archived_at": "2026-10-25T17:09:11.219357Z",
+        "reason": "detached"
+      },
+      "team": {
+        "members": [
+          {
+            "role": null,
+            "user": {
+              "id": 29,
+              "last_name": "User",
+              "avatar_url": null,
+              "first_name": "Program"
+            },
+            "joined_at": "2026-10-25T17:07:40.021769Z",
+            "is_captain": true,
+            "specialization": null
+          },
+          {
+            "role": "Аналитик",
+            "user": {
+              "id": 30,
+              "last_name": "User",
+              "avatar_url": null,
+              "first_name": "Program"
+            },
+            "joined_at": "2026-10-25T17:07:40.273637Z",
+            "is_captain": false,
+            "specialization": null
+          }
+        ],
+        "accepted_count": 2,
+        "pending_count": 0,
+        "reserved_count": 2,
+        "min_size": 1,
+        "max_size": 4,
+        "is_frozen": true
+      },
+      "form": {
+        "fields": [
+          {
+            "id": 306,
+            "type": "select",
+            "label": "Кейс",
+            "options": ["Город", "Образование"],
+            "purpose": "case",
+            "position": 0,
+            "required": true,
+            "help_text": "",
+            "validation": {
+              "maximum": null,
+              "minimum": null,
+              "max_length": null,
+              "min_length": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 307,
+            "type": "textarea",
+            "label": "Материалы",
+            "options": [],
+            "purpose": "other",
+            "position": 1,
+            "required": true,
+            "help_text": "",
+            "validation": {
+              "maximum": null,
+              "minimum": null,
+              "max_length": null,
+              "min_length": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 308,
+            "type": "number",
+            "label": "Число",
+            "options": [],
+            "purpose": "other",
+            "position": 2,
+            "required": true,
+            "help_text": "",
+            "validation": {
+              "maximum": null,
+              "minimum": null,
+              "max_length": null,
+              "min_length": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 309,
+            "type": "checkbox",
+            "label": "Флаг",
+            "options": [],
+            "purpose": "other",
+            "position": 3,
+            "required": true,
+            "help_text": "",
+            "validation": {
+              "maximum": null,
+              "minimum": null,
+              "max_length": null,
+              "min_length": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          }
+        ],
+        "revision": "75df2b206fd3312e54b034f8d9f032e97092e98b12d8af688a699f676600a778",
+        "template": "case_championship",
+        "program_id": 47,
+        "is_snapshot": true,
+        "is_configured": true
+      },
+      "answers": [
+        {
+          "value": "Город",
+          "field_id": 306
+        },
+        {
+          "value": "Материалы архивной проверки qa01ar-20261025-2d84767a",
+          "field_id": 307
+        },
+        {
+          "value": 0,
+          "field_id": 308
+        },
+        {
+          "value": false,
+          "field_id": 309
+        }
+      ],
+      "submission": {
+        "required": true,
+        "status": "submitted",
+        "submission_open": true,
+        "deadline": "2026-10-26T17:07:39.820702Z",
+        "submitted_at": "2026-10-25T17:07:40.548989Z"
+      },
+      "permissions": {
+        "can_edit": false,
+        "can_manage_team": false,
+        "can_invite": false,
+        "can_submit": false,
+        "can_leave": false
+      },
+      "readiness": {
+        "is_ready": false,
+        "issues": [
+          {
+            "path": "participation",
+            "code": "solution_archived",
+            "detail": "Решение снято с участия.",
+            "field_id": null
+          }
+        ]
+      }
+    }
+  },
+  {
+    "role": "other",
+    "method": "GET",
+    "path": "/programs/48/solutions/65/evaluation/",
+    "status": 404,
+    "request": null,
+    "response": {
+      "code": "not_found",
+      "detail": "Решение или программа не найдены.",
+      "errors": [],
+      "meta": {}
+    }
+  },
+  {
+    "role": "other",
+    "method": "POST",
+    "path": "/programs/48/solutions/65/evaluation/",
+    "status": 404,
+    "request": {
+      "expected_criteria_revision": "63e6f2a731b85b50a8ca1fb6a479c725e925135f7d0644f67835a39a91fe12ac",
+      "scores": [
+        {
+          "criterion_id": 90,
+          "value": "2"
+        },
+        {
+          "criterion_id": 91,
+          "value": "False"
+        },
+        {
+          "criterion_id": 92,
+          "value": "Запрещенная запись"
+        }
+      ]
+    },
+    "response": {
+      "code": "not_found",
+      "detail": "Решение или программа не найдены.",
+      "errors": [],
+      "meta": {}
+    }
+  },
+  {
+    "role": "captain",
+    "method": "GET",
+    "path": "/programs/48/solutions/65/",
+    "status": 200,
+    "request": null,
+    "response": {
+      "id": 65,
+      "program_id": 48,
+      "version": 6,
+      "name": "Работа для оценки hackathon qa01ar-20261025-2d84767a",
+      "captain_id": 29,
+      "created_at": "2026-10-25T17:07:41.076815Z",
+      "updated_at": "2026-10-25T17:09:18.327974Z",
+      "participation": {
+        "status": "archived",
+        "archived_at": "2026-10-25T17:09:18.327974Z",
+        "reason": "detached"
+      },
+      "team": {
+        "members": [
+          {
+            "role": null,
+            "user": {
+              "id": 29,
+              "last_name": "User",
+              "avatar_url": null,
+              "first_name": "Program"
+            },
+            "joined_at": "2026-10-25T17:07:41.081475Z",
+            "is_captain": true,
+            "specialization": null
+          },
+          {
+            "role": "Аналитик",
+            "user": {
+              "id": 30,
+              "last_name": "User",
+              "avatar_url": null,
+              "first_name": "Program"
+            },
+            "joined_at": "2026-10-25T17:07:41.381325Z",
+            "is_captain": false,
+            "specialization": null
+          }
+        ],
+        "accepted_count": 2,
+        "pending_count": 0,
+        "reserved_count": 2,
+        "min_size": 1,
+        "max_size": 4,
+        "is_frozen": true
+      },
+      "form": {
+        "fields": [
+          {
+            "id": 310,
+            "type": "select",
+            "label": "Кейс",
+            "options": ["Город", "Образование"],
+            "purpose": "case",
+            "position": 0,
+            "required": true,
+            "help_text": "",
+            "validation": {
+              "maximum": null,
+              "minimum": null,
+              "max_length": null,
+              "min_length": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 311,
+            "type": "textarea",
+            "label": "Материалы",
+            "options": [],
+            "purpose": "other",
+            "position": 1,
+            "required": true,
+            "help_text": "",
+            "validation": {
+              "maximum": null,
+              "minimum": null,
+              "max_length": null,
+              "min_length": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 312,
+            "type": "number",
+            "label": "Число",
+            "options": [],
+            "purpose": "other",
+            "position": 2,
+            "required": true,
+            "help_text": "",
+            "validation": {
+              "maximum": null,
+              "minimum": null,
+              "max_length": null,
+              "min_length": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 313,
+            "type": "checkbox",
+            "label": "Флаг",
+            "options": [],
+            "purpose": "other",
+            "position": 3,
+            "required": true,
+            "help_text": "",
+            "validation": {
+              "maximum": null,
+              "minimum": null,
+              "max_length": null,
+              "min_length": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          },
+          {
+            "id": 314,
+            "type": "url",
+            "label": "Репозиторий",
+            "options": [],
+            "purpose": "repository",
+            "position": 4,
+            "required": true,
+            "help_text": "",
+            "validation": {
+              "maximum": null,
+              "minimum": null,
+              "max_length": null,
+              "min_length": null,
+              "allowed_extensions": [],
+              "max_file_size_bytes": null
+            }
+          }
+        ],
+        "revision": "2c2c11723594f7d313c4e646de339469ae81326fb7149fa403e55a5b6fa7a56b",
+        "template": "hackathon",
+        "program_id": 48,
+        "is_snapshot": true,
+        "is_configured": true
+      },
+      "answers": [
+        {
+          "value": "Город",
+          "field_id": 310
+        },
+        {
+          "value": "Материалы архивной проверки qa01ar-20261025-2d84767a",
+          "field_id": 311
+        },
+        {
+          "value": 0,
+          "field_id": 312
+        },
+        {
+          "value": false,
+          "field_id": 313
+        },
+        {
+          "value": "https://example.com/archived-rating/qa01ar-20261025-2d84767a",
+          "field_id": 314
+        }
+      ],
+      "submission": {
+        "required": true,
+        "status": "submitted",
+        "submission_open": true,
+        "deadline": "2026-10-26T17:07:39.820702Z",
+        "submitted_at": "2026-10-25T17:07:41.682257Z"
+      },
+      "permissions": {
+        "can_edit": false,
+        "can_manage_team": false,
+        "can_invite": false,
+        "can_submit": false,
+        "can_leave": false
+      },
+      "readiness": {
+        "is_ready": false,
+        "issues": [
+          {
+            "path": "participation",
+            "code": "solution_archived",
+            "detail": "Решение снято с участия.",
+            "field_id": null
+          }
+        ]
+      }
+    }
+  }
+]

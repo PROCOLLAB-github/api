@@ -2,7 +2,7 @@
 import json
 from pathlib import Path
 
-from jsonschema import Draft202012Validator, FormatChecker
+from jsonschema import Draft202012Validator, FormatChecker, ValidationError
 from openapi_spec_validator import validate_spec
 
 ROOT = Path(__file__).resolve().parent
@@ -37,13 +37,22 @@ for scenario in examples["scenarios"]:
     if "request" in scenario:
         content = operation["requestBody"]["content"]["application/json"]
         check(scenario["request"], content["schema"])
+    if "invalid_request" in scenario:
+        assert scenario["status"] == 400, name
+        content = operation["requestBody"]["content"]["application/json"]
+        try:
+            check(scenario["invalid_request"], content["schema"])
+        except ValidationError:
+            pass
+        else:
+            raise AssertionError("Invalid request unexpectedly matches C00: " + name)
     response = operation["responses"][str(scenario["status"])]
     if scenario["status"] == 204:
         assert "response" not in scenario, name
     else:
         check(scenario["response"], response["content"]["application/json"]["schema"])
     payload = scenario.get("response", {})
-    if "team" in payload:
+    if "team" in payload and "form" in payload and "submission" in payload:
         team = payload["team"]
         user_ids = [member["user"]["id"] for member in team["members"]]
         assert len(user_ids) == len(set(user_ids)) == team["accepted_count"], name
@@ -76,12 +85,28 @@ for scenario in examples["scenarios"]:
             assert team["is_frozen"] and payload["form"]["is_snapshot"], name
             assert payload["submission"]["submitted_at"] is not None, name
             assert not any(payload["permissions"].values()), name
+        if payload.get("participation", {}).get("status") == "archived":
+            assert team["is_frozen"] and payload["form"]["is_snapshot"], name
+            assert team["pending_count"] == 0, name
+            assert team["reserved_count"] == team["accepted_count"], name
+            assert not any(payload["permissions"].values()), name
+            if payload["readiness"]:
+                assert not payload["readiness"]["is_ready"], name
+                assert any(i["code"] == "solution_archived" for i in payload["readiness"]["issues"]), name
         if payload["readiness"] and payload["readiness"]["is_ready"]:
             answered = {a["field_id"] for a in payload["answers"]}
             assert {f["id"] for f in fields.values() if f["required"]} <= answered, name
             assert (
                 team["min_size"] is None or team["accepted_count"] >= team["min_size"]
             ), name
+    if "published_at" in payload and "fields" in payload:
+        team = payload["team"]
+        ids = [row["user"]["id"] for row in team["members"]]
+        assert len(set(ids)) == len(ids) == team["accepted_count"], name
+        assert sum(row["is_captain"] for row in team["members"]) == 1, name
+        fields = {field["id"] for field in payload["fields"]}
+        answers = [answer["field_id"] for answer in payload["answers"]]
+        assert len(set(answers)) == len(answers) and set(answers) <= fields, name
 assert covered == set(operations), (
     "Operations missing examples",
     sorted(set(operations) - covered),

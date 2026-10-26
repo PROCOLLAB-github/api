@@ -1,0 +1,187 @@
+{
+  "status": "CPUB_PASS_FEATURE_INCOMPLETE",
+  "backendProduct": "8d089229617893745c5dfa749f20d891152b9caa",
+  "frontendProduct": "609253594c88fc8255e4841c918fc375a72e47e5",
+  "contract": {
+    "status": "PASS",
+    "version": "1.21.0",
+    "schemas": 156,
+    "all156SchemasUnchanged": true,
+    "operations": 59,
+    "operationDescriptionsOnly": ["getPublishedSolutions", "getPublishedSolution"],
+    "priorOperationsOtherwiseUnchanged": 59,
+    "unchangedPriorScenarios": 298,
+    "intentionallyRevisedScenario": "published_solution_list_competitive_pending_rule",
+    "priorStatus": 404,
+    "newStatus": 200,
+    "addedScenarios": 6,
+    "totalScenarios": 305,
+    "sharedFilesByteIdentical": 3
+  },
+  "tests": {
+    "nativePostgreSQL": 432,
+    "newNative": 12,
+    "nativeSkipped": 0,
+    "legacyPublisher": 4,
+    "focusedBeforeFinalExtension": 30,
+    "frontend": 2955,
+    "frontendFiles": 484,
+    "publicWireSubset": 31,
+    "strictTypes": "PASS",
+    "developmentBuild": "PASS (pre-existing Sass warnings)",
+    "scopedESLint": "PASS",
+    "static": [
+      {
+        "command": [
+          "python.exe",
+          "-m",
+          "black",
+          "--check",
+          "partner_programs/services/publishing.py",
+          "partner_programs/services/solution_publication.py",
+          "partner_programs/solution_publication_api.py",
+          "partner_programs/tests/test_solution_publication.py",
+          "partner_programs/tests/test_solution_competitive_publication.py"
+        ],
+        "exitCode": 0,
+        "output": "All done! ✨ 🍰 ✨\n5 files would be left unchanged.\n"
+      },
+      {
+        "command": [
+          "python.exe",
+          "-m",
+          "flake8",
+          "partner_programs/services/publishing.py",
+          "partner_programs/services/solution_publication.py",
+          "partner_programs/solution_publication_api.py",
+          "partner_programs/tests/test_solution_publication.py",
+          "partner_programs/tests/test_solution_competitive_publication.py"
+        ],
+        "exitCode": 0,
+        "output": ""
+      },
+      {
+        "command": ["python.exe", "manage.py", "check"],
+        "exitCode": 0,
+        "output": "System check identified no issues (0 silenced).\n"
+      },
+      {
+        "command": ["python.exe", "manage.py", "makemigrations", "--check", "--dry-run"],
+        "exitCode": 0,
+        "output": "No changes detected\n"
+      },
+      {
+        "command": ["python.exe", "docs/contracts/program-solutions-v1/validate_contract.py"],
+        "exitCode": 0,
+        "output": "PASS: OpenAPI; 156 schemas; 59 operations; 305 scenarios\n"
+      }
+    ],
+    "lockedPrettierBeforeReports": {
+      "version": "3.8.3",
+      "files": 2061,
+      "status": "PASS"
+    },
+    "lockedPrettierWithReports": {
+      "version": "3.8.3",
+      "files": 2068,
+      "status": "PASS"
+    }
+  },
+  "http": {
+    "responses": 97,
+    "validRequests": 34,
+    "APIResponsesNotMocked": true,
+    "publisherScopedOwnProgramsOnly": true,
+    "signedProofOccurrencesRedactedOnlyInGitCopy": 12
+  },
+  "retention": {
+    "status": "PASS",
+    "oldModelsUnchanged": 25,
+    "baseline": "54631ba6896d1d18cadf7f855ca1fd1b83b0a2396a72b28e2b61b720f1783169",
+    "afterAllNativeFrontendBuildChecks": true,
+    "globalRegistrationAuditsRetained": 7,
+    "fixtures": [
+      {
+        "program": 49,
+        "solution": 66,
+        "scoreRows": 4,
+        "archived": true
+      },
+      {
+        "program": 50,
+        "solution": 68,
+        "scoreRows": 4,
+        "archived": true
+      },
+      {
+        "program": 51,
+        "solution": 70,
+        "scoreRows": 0,
+        "archived": false
+      }
+    ]
+  },
+  "sourceHashes": {
+    "backend/partner_programs/services/publishing.py": "f81d1c1257f26081709567e554fdf523f2df0a7b3f1bdf507870ea1e7f06afc9",
+    "backend/partner_programs/services/solution_publication.py": "48f21b691c2d880d30bac0b18d08b15545edf9e07967ea717eeb7f2e2f4451bf",
+    "backend/partner_programs/solution_publication_api.py": "01e36a9dc0b37d62fb2921a26d9d59e60097c3dcfddcc909b6a99cd59c677f87",
+    "backend/partner_programs/tests/test_solution_publication.py": "a26e733eb5156ded66f03bf87f7cd6befa9677b4f88277803d510feb0874e085",
+    "backend/partner_programs/tests/test_solution_competitive_publication.py": "9f0d9c0f5d0da44660d6bb8a08cd36c4131224fe5b66f2c8402173506db31709",
+    "frontend/projects/social_platform/src/app/domain/solution/solution-contract.model.ts": "2f0e764f5bb7d0f871e7377f2127d127e77f049e6e021aa985cd2181a3412cd1",
+    "frontend/projects/social_platform/src/app/domain/solution/solution-contract.fixture.ts": "1763b9122cd0429f64b8a6a42fc9b4a1226c09205418a26114b33dce2b5fc82f"
+  },
+  "logs": {
+    "procollab-competitive-publication-red.log": "30e3e0a5311cef424d181447fba74ff95c83dfbf68f1b272fe0a1e9a8ec8d5e9",
+    "procollab-competitive-publication-focused.log": "7c1aaaef685c845f6568d4b242fab5eac8962fc790d53f349baf216ab85f9f76",
+    "procollab-competitive-publication-focused-final.log": "b8236336be3061806f79393436c07ef0f462abf87871bd89ebf5e73db7d2f592",
+    "procollab-competitive-publication-native.log": "b0bd91e3ee79e68a730637dc712883d8f2e84f2828441c4abb5517fd7df5bcad",
+    "procollab-competitive-publication-native-final.log": "de9e614d81492c33836b272e95a54cd9eba7abc4f6e349eb2d6556ee5077cddc",
+    "procollab-competitive-publication-legacy.log": "0bd9a87af5abafd59ab1a4a13363d81db267e334da2a224e5d093e950922e2bc",
+    "procollab-competitive-publication-frontend.log": "51fe37f4c40dc9ee0dcd27ec22e626baa96c283cd5ec49ee10bc0ce9ebae9366",
+    "procollab-competitive-publication-build.log": "5ad22324570492434867d6a897a024d2092abfb77172785d36516bac7bd41b14"
+  },
+  "retainedAttempts": [
+    "red3 failed before implementation",
+    "first focused30 had2 fixture errors: missing target case option and text score in int criterion; corrected fixture, no validator weakened",
+    "focused30 then431 passed; final432 includes added required-field and submitted-only pagination/foreign-scope assertions",
+    "first AC row verifier counted table header; exact26 rows verified unchanged afterward"
+  ],
+  "review": {
+    "CPUB01to08": "PASS in bounded API scope",
+    "fullFeature": "NEEDS_CHANGES",
+    "majorIntegrationFinding": "Observed dev certificate0031 and solution0038 form two leaves in read-only overlay; reconcile models/migrations without renumbering or deleting historical data"
+  },
+  "qa": {
+    "original26RowsUnchanged": true,
+    "passed": "23: AC01–17/20/22–26",
+    "open": ["AC18", "AC19"],
+    "separate": "AC21/BE10"
+  },
+  "pending": [
+    "existing D02 approval",
+    "existing D03 approval",
+    "competitive unsent draft eligibility",
+    "new Angular organizer/public screens and full QA01/REL01",
+    "observed dev migration/model integration"
+  ],
+  "noNewMigrationInCPUB": true,
+  "noMergeDeployRealProgramSwitch": true,
+  "ownedHelpers": {
+    "stopped": true,
+    "wrapper": 10408,
+    "child": 39748,
+    "releasedPort": 8877,
+    "oldListenersUnchanged": {
+      "8769": 20920,
+      "8871": 19092,
+      "8876": 33332,
+      "55439": 8688
+    }
+  },
+  "notChecked": [
+    "new Angular public UI",
+    "CDN bytes: owned metadata fixtures only",
+    "production",
+    "latest dev combined implementation (prospective graph conflict observed)"
+  ]
+}

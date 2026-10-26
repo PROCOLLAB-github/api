@@ -1,0 +1,67 @@
+{
+  "localDirectory": "Z:/Документы/PROCOLLAB-dev/design-artifacts/program-solutions-20261024/qa01-participant",
+  "helpers": [
+    {
+      "file": "procollab-qa01-participant-browser.cjs",
+      "sha256": "308563ef23f06dcade9b73b59d310e1be6be5305ca9673a1b32fce70896b1038"
+    },
+    {
+      "file": "procollab-qa01-participant-verify.py",
+      "sha256": "b2a2c3658a82ea67c5bc17f95c89db52275da570698b6d5df866a57d94870ad8"
+    },
+    {
+      "file": "procollab-qa01-local-build.cjs",
+      "sha256": "7d7b4d4c8e8cdd3e7ba6008b0bdad4f1551daf6c2a65768249ce4110d74d6c7a"
+    }
+  ],
+  "screenshots": [
+    {
+      "file": "case_championship-confirmation-mobile.png",
+      "sha256": "9ae2f9b47c39105fc23897ba0eff61934bf33b06c8a70a1c05975057a71a687f"
+    },
+    {
+      "file": "case_championship-materials-desktop.png",
+      "sha256": "258d58f4be62fdc9e65b23142f4d71172d199469f20a7dd8a1b74c4994ec1731"
+    },
+    {
+      "file": "case_championship-materials-mobile.png",
+      "sha256": "1cdd076dc423d273a16daf59c00aea46128c3f283e0bd3a413b232b9b7a37e83"
+    },
+    {
+      "file": "case_championship-submitted-materials-mobile.png",
+      "sha256": "25e6d6550ce189afe29255fd4e057a85598d53c2b28ad38b40e5e6963898d18f"
+    },
+    {
+      "file": "case_championship-submitted-team-mobile.png",
+      "sha256": "e74d1e4dee34078fa2bad7ba1031a8e4bd7bfd5330d8ad1ae63c0cbff68ae2ef"
+    },
+    {
+      "file": "case_championship-team-mobile.png",
+      "sha256": "4d10813040fdef13d2397123fa7d2c37a675c6d39fcb304d32302b95c5941a1d"
+    },
+    {
+      "file": "hackathon-confirmation-mobile.png",
+      "sha256": "03fa0e508aa5d68cc21429ce96dd527366ae4bac59ff9bb07ee03e52ad0f350b"
+    },
+    {
+      "file": "hackathon-materials-desktop.png",
+      "sha256": "acfdbd9a288219406a6c3198e1993e9b677b140b01144a2691cdbadf61eae948"
+    },
+    {
+      "file": "hackathon-materials-mobile.png",
+      "sha256": "d2a77a47c50907daa1f9469aac6059131f11712cae5e718cfa00b8511ec8d234"
+    },
+    {
+      "file": "hackathon-submitted-materials-mobile.png",
+      "sha256": "cd6351263b1ebfebfaef2ac387b89cd8c419d6c89ec97fc08426edc2e9bb4269"
+    },
+    {
+      "file": "hackathon-submitted-team-mobile.png",
+      "sha256": "37a205fa964ee7f6082cb936e82ac5578fa87c9f02973419927e4c2607f1a0cc"
+    },
+    {
+      "file": "hackathon-team-mobile.png",
+      "sha256": "c2fbba39f4f0bd0a70fd3573fec334e0699ad33cbb36b1f52f2a10d206b8eb22"
+    }
+  ]
+}

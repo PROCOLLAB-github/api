@@ -1,0 +1,16 @@
+{
+  "status": "PASS",
+  "version": "1.21.0",
+  "schemas": 156,
+  "all156SchemasUnchanged": true,
+  "operations": 59,
+  "operationDescriptionsOnly": ["getPublishedSolutions", "getPublishedSolution"],
+  "priorOperationsOtherwiseUnchanged": 59,
+  "unchangedPriorScenarios": 298,
+  "intentionallyRevisedScenario": "published_solution_list_competitive_pending_rule",
+  "priorStatus": 404,
+  "newStatus": 200,
+  "addedScenarios": 6,
+  "totalScenarios": 305,
+  "sharedFilesByteIdentical": 3
+}

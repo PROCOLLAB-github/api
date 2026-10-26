@@ -1,0 +1,47 @@
+{
+  "status": "PASS",
+  "checks": [
+    {
+      "program": 47,
+      "solution": 64,
+      "template": "case_championship",
+      "distributed": true,
+      "status": "PASS",
+      "submittedScoreAfterArchive": 409,
+      "code": "solution_archived",
+      "retry": 404,
+      "fieldsAndControlsRemoved": true,
+      "noUnsavedCopy": true,
+      "teamTabRetainedInput": true,
+      "activeExpertCounts": {
+        "pending": 0,
+        "completed": 0
+      },
+      "widths": [390, 1440]
+    },
+    {
+      "program": 48,
+      "solution": 65,
+      "template": "hackathon",
+      "distributed": false,
+      "status": "PASS",
+      "submittedScoreAfterArchive": 409,
+      "code": "solution_archived",
+      "retry": 404,
+      "fieldsAndControlsRemoved": true,
+      "noUnsavedCopy": true,
+      "teamTabRetainedInput": true,
+      "activeExpertCounts": {
+        "pending": 0,
+        "completed": 0
+      },
+      "widths": [390, 1440]
+    }
+  ],
+  "javascriptErrors": [],
+  "oneInvocation": true,
+  "realLogin": true,
+  "networkResponsesMocked": false,
+  "browserVersion": "156.0.8078.47",
+  "channel": "chrome"
+}

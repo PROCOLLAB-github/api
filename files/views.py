@@ -22,7 +22,32 @@ class FileView(generics.GenericAPIView):
         Creates a UserFile object and uploads the file to Selectel
         """
 
-        info = self.cdn.upload(request.FILES["file"], request.user)
+        if "file" not in request.FILES:
+            return Response(
+                {
+                    "code": "validation_error",
+                    "detail": "Выберите файл.",
+                    "errors": [],
+                    "meta": {},
+                },
+                status=400,
+            )
+        original = request.query_params.get("preserve_original", "false")
+        if original not in ("true", "false"):
+            return Response(
+                {
+                    "code": "validation_error",
+                    "detail": "preserve_original должен быть true или false.",
+                    "errors": [],
+                    "meta": {},
+                },
+                status=400,
+            )
+        info = (
+            self.cdn.upload(request.FILES["file"], request.user, preserve_original=True)
+            if original == "true"
+            else self.cdn.upload(request.FILES["file"], request.user)
+        )
         UserFile.objects.create(
             user=request.user,
             link=info.url,
@@ -30,9 +55,11 @@ class FileView(generics.GenericAPIView):
             size=info.size,
             extension=info.extension,
             mime_type=info.mime_type,
+            detected_mime_type=info.detected_mime_type,
         )
         return Response({"url": info.url}, status=status.HTTP_201_CREATED)
 
+    @transaction.atomic
     def delete(self, request, *args, **kwargs):
         """deletes the file (only if the request is sent by the user who owns it!)
         The link has to be specified in the JSON body, not in the URL arguments.
@@ -47,9 +74,16 @@ class FileView(generics.GenericAPIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        instance = get_object_or_404(self.get_queryset(), link=link)
+        instance = get_object_or_404(self.get_queryset().select_for_update(), link=link)
         if instance.user != request.user:
             return Response(status=status.HTTP_403_FORBIDDEN)
+        from partner_programs.solution_files import protect_solution_file
+        from partner_programs.solution_errors import SolutionError
+
+        try:
+            protect_solution_file(instance)
+        except SolutionError as error:
+            return Response(error.payload, status=error.status_code)
         self.cdn.delete(instance.link)  # delete the file via api
         instance.delete()  # delete the UserFile object
         return Response(status=status.HTTP_204_NO_CONTENT)

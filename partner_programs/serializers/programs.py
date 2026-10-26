@@ -112,6 +112,9 @@ class PartnerProgramBaseSerializerMixin(serializers.ModelSerializer):
     materials = serializers.SerializerMethodField()
     is_user_manager = serializers.SerializerMethodField()
     is_user_expert = serializers.SerializerMethodField()
+    solution_storage_mode = serializers.ChoiceField(
+        choices=("legacy_project", "solution"), read_only=True
+    )
     pending_expert_invitation_id = serializers.SerializerMethodField()
     courses = serializers.SerializerMethodField()
     registration_managed = serializers.SerializerMethodField()
@@ -250,6 +253,7 @@ class PartnerProgramForMemberSerializer(PartnerProgramBaseSerializerMixin):
             "is_user_manager",
             "welcome_acknowledged_at",
             "is_user_expert",
+            "solution_storage_mode",
             "pending_expert_invitation_id",
             "courses",
         )
@@ -282,6 +286,7 @@ class PartnerProgramForUnregisteredUserSerializer(PartnerProgramBaseSerializerMi
             "legacy_team_max_size",
             "is_user_manager",
             "is_user_expert",
+            "solution_storage_mode",
             "pending_expert_invitation_id",
             "courses",
         )

@@ -1,0 +1,110 @@
+{
+  "localDirectory": "Z:/Документы/PROCOLLAB-dev/design-artifacts/program-solutions-20261024/qa01-creation-switch",
+  "helpers": [
+    {
+      "file": "procollab-solution-creation-browser.cjs",
+      "sha256": "1677dc1d314da5a2409262bc6d63b818089eec5ae2b17fc503a486f6eb27fe17"
+    },
+    {
+      "file": "procollab-solution-creation-verify.py",
+      "sha256": "1bbc7088f093c24c9deb25e202449c1d7494b98677eec80398bcdf835d313537"
+    },
+    {
+      "file": "procollab-solution-creation-toggle.py",
+      "sha256": "8cc1ac288f2b4ffe1ebce112adee8fa4eb83c78d073a360b8bc2f0cb8d73e2da"
+    },
+    {
+      "file": "procollab-solution-creation-seed.py",
+      "sha256": "467e8eb38ceb43e604eccc87aef794467c23887ebc7a26198ba6d693874f55f4"
+    },
+    {
+      "file": "procollab-solution-creation-migrate-local.py",
+      "sha256": "762b2c0d4840fc5931d804a46b41231fca6a8a14a98058325a24f3e30778eb85"
+    },
+    {
+      "file": "procollab-solution-creation-build.cjs",
+      "sha256": "f5eca6a58ec46095aa905d13cb8b9e7831f927fc092bf1ef018446329e824e82"
+    }
+  ],
+  "screenshots": [
+    {
+      "file": "case_championship-confirmation-mobile.png",
+      "sha256": "9ae2f9b47c39105fc23897ba0eff61934bf33b06c8a70a1c05975057a71a687f"
+    },
+    {
+      "file": "case_championship-creation-paused-mobile.png",
+      "sha256": "3a198fe2ca2aa97726757a2ccba0e8916f1cefe04f29cdb74fe20fee3f54294a"
+    },
+    {
+      "file": "case_championship-entry-paused-mobile.png",
+      "sha256": "e2681d97aaea2475081b51f44cfd1d6f532d15215c920b95ab46dd87264d9378"
+    },
+    {
+      "file": "case_championship-materials-desktop.png",
+      "sha256": "258d58f4be62fdc9e65b23142f4d71172d199469f20a7dd8a1b74c4994ec1731"
+    },
+    {
+      "file": "case_championship-materials-mobile.png",
+      "sha256": "97811566514d95263c51ca7c18939ab68963d796c762bd52f3daf535f3204d02"
+    },
+    {
+      "file": "case_championship-submitted-materials-mobile.png",
+      "sha256": "11e05db830115ced3757ec217a5f9124226e244ee6f1174c8d1716bb2c6f895c"
+    },
+    {
+      "file": "case_championship-submitted-team-mobile.png",
+      "sha256": "6d13a128997bb388ebb5ca7b499ccbfad61bb3df9548ee14bd46c6098d883c54"
+    },
+    {
+      "file": "case_championship-team-mobile.png",
+      "sha256": "25fdff02ec74f726f3e5456fcdf08221b1bf19ad81517098afaaa85b819dbeab"
+    },
+    {
+      "file": "hackathon-confirmation-mobile.png",
+      "sha256": "03fa0e508aa5d68cc21429ce96dd527366ae4bac59ff9bb07ee03e52ad0f350b"
+    },
+    {
+      "file": "hackathon-creation-paused-mobile.png",
+      "sha256": "3a198fe2ca2aa97726757a2ccba0e8916f1cefe04f29cdb74fe20fee3f54294a"
+    },
+    {
+      "file": "hackathon-entry-paused-mobile.png",
+      "sha256": "85224fcc89ab8e136241100b2db28e9559de2eecb73571aecfaf837bafeb90cc"
+    },
+    {
+      "file": "hackathon-materials-desktop.png",
+      "sha256": "b1daf10bb0fe99f7c5c5c64a5d773d1544ff98cdcb5bad09ac0c4e80b18cd94c"
+    },
+    {
+      "file": "hackathon-materials-mobile.png",
+      "sha256": "bd067c0306ed91d36ad476f3cc7b1fc27861c4958507d06083ac11499d055b0b"
+    },
+    {
+      "file": "hackathon-submitted-materials-mobile.png",
+      "sha256": "9a73031b1d36da4162fd946a96fc4bdd0bf3c6585821ee4c57b430d0bc203d21"
+    },
+    {
+      "file": "hackathon-submitted-team-mobile.png",
+      "sha256": "b8831da779046313cf4d1dc71f97d30fa6fd9c30f976241ae59ea7069e96e23e"
+    },
+    {
+      "file": "hackathon-team-mobile.png",
+      "sha256": "67d70d91bb3db815ff33fd1a5cc76ec0407f9bf1bc1ef8e8ec30ba6212e2ca09"
+    }
+  ],
+  "finalBackendSources": [
+    {
+      "file": "partner_programs/models.py",
+      "sha256": "b74a813717a0d73790ed11d7d5dfb34fdebb307e4b42dfe13f2331904d0b9689"
+    },
+    {
+      "file": "partner_programs/solution_api.py",
+      "sha256": "1807b55255b544cd9bf8e514912331eeffab9fba889efcd29de44a33f3d16b01"
+    },
+    {
+      "file": "partner_programs/management/commands/set_solution_creation.py",
+      "sha256": "85542885bfedbbeccd0010d7cbce413ccfb7de5d509e52c9558c5206faabd11a"
+    }
+  ],
+  "finalReview": "browser journey preceded the final stale-program-save protection; 261 regression tests and 30 real HTTP checks ran after that fix and server restart"
+}

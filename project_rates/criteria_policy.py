@@ -29,11 +29,12 @@ def revision(program):
 
 
 def locked(program):
-    from project_rates.models import ProjectScore
+    from project_rates.models import ProjectScore, SolutionScore
 
     return (
         bool(program.evaluation_criteria_locked_at)
         or ProjectScore.objects.filter(criteria__partner_program=program).exists()
+        or SolutionScore.objects.filter(criteria__partner_program=program).exists()
     )
 
 

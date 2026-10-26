@@ -1,0 +1,18 @@
+{
+  "status": "PASS",
+  "contract": "1.20.0",
+  "schemas": 156,
+  "operations": 59,
+  "scenarios": 297,
+  "oldSchemasUnchanged": 143,
+  "oldSchemasCompatiblyExtended": ["SolutionAdminChange", "SolutionArchiveAdminChange"],
+  "oldOperationsUnchanged": 55,
+  "oldScenariosUnchanged": 272,
+  "newScenarios": 25,
+  "sharedFileHashes": {
+    "openapi.json": "1f1350d730b66891e0c019bff92b97c0129f62ae6f3d261bab2e27a7953b7191",
+    "examples.json": "69cdb43626d6d89d8f7716d2d6f5777ed6f147496c72046dd364503fbf18a93f",
+    "README.md": "d6505ba0c6035e0486f66e2911032ff5ec430ea6dab2d8283abfc5284a2ce1ab"
+  },
+  "originalAcceptanceRowsUnchanged": 26
+}

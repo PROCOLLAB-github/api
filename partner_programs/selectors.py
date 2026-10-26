@@ -98,6 +98,18 @@ def program_participants(program_id: int):
 
 
 def program_participants_without_project(program_id: int):
+    from partner_programs.solution_participants import (
+        uses_solutions,
+        participant_profiles,
+    )
+
+    if uses_solutions(program_id):
+        profiles = participant_profiles(program_id, _participant_profiles(program_id))
+        return User.objects.filter(
+            id__in=profiles.filter(
+                is_project_leader=False, is_project_collaborator=False
+            ).values("user_id")
+        ).distinct()
     profiles = _participant_profiles(program_id)
     leader_exists = Exists(
         PartnerProgramProject.objects.filter(
@@ -120,6 +132,21 @@ def program_participants_without_project(program_id: int):
 
 
 def program_participants_without_project_registered_on(program_id: int, target_date):
+    from partner_programs.solution_participants import (
+        uses_solutions,
+        participant_profiles,
+    )
+
+    if uses_solutions(program_id):
+        profiles = participant_profiles(
+            program_id,
+            _participant_profiles(program_id).filter(datetime_created__date=target_date),
+        )
+        return User.objects.filter(
+            id__in=profiles.filter(
+                is_project_leader=False, is_project_collaborator=False
+            ).values("user_id")
+        ).distinct()
     profiles = _participant_profiles(program_id).filter(
         datetime_created__date=target_date
     )
@@ -144,9 +171,23 @@ def program_participants_without_project_registered_on(program_id: int, target_d
 
 
 def program_participants_with_unsubmitted_project(program_id: int):
-    participant_ids = _participant_profiles(program_id).values_list(
-        "user_id", flat=True
-    )
+    from partner_programs.solution_participants import uses_solutions
+
+    if uses_solutions(program_id):
+        from partner_programs.solution_models import ProgramSolution
+
+        solutions = ProgramSolution.objects.filter(program_id=program_id, status="draft")
+        return (
+            User.objects.filter(
+                id__in=_participant_profiles(program_id).values("user_id")
+            )
+            .filter(
+                Q(id__in=solutions.values("captain_id"))
+                | Q(id__in=solutions.values("members__user_id"))
+            )
+            .distinct()
+        )
+    participant_ids = _participant_profiles(program_id).values_list("user_id", flat=True)
     leader_ids = PartnerProgramProject.objects.filter(
         partner_program_id=program_id, submitted=False
     ).values_list("project__leader_id", flat=True)
@@ -154,9 +195,11 @@ def program_participants_with_unsubmitted_project(program_id: int):
         project__program_links__partner_program_id=program_id,
         project__program_links__submitted=False,
     ).values_list("user_id", flat=True)
-    return User.objects.filter(id__in=participant_ids).filter(
-        Q(id__in=leader_ids) | Q(id__in=collab_ids)
-    ).distinct()
+    return (
+        User.objects.filter(id__in=participant_ids)
+        .filter(Q(id__in=leader_ids) | Q(id__in=collab_ids))
+        .distinct()
+    )
 
 
 def program_participants_with_inactive_account(program_id: int, program_started_at):
@@ -167,7 +210,9 @@ def program_participants_with_inactive_account(program_id: int, program_started_
 def program_participants_with_inactive_account_registered_on(
     program_id: int, target_date, program_started_at
 ):
-    participant_ids = _participant_profiles(program_id).filter(
-        datetime_created__date=target_date
-    ).values_list("user_id", flat=True)
+    participant_ids = (
+        _participant_profiles(program_id)
+        .filter(datetime_created__date=target_date)
+        .values_list("user_id", flat=True)
+    )
     return _inactive_program_users(participant_ids, program_started_at)

@@ -1,7 +1,4 @@
-"""Основа контракта C00: контекст, создание и чтение. Команды BE02–BE06 закрыты."""
-
-import hashlib
-import json
+"""C00: контекст, создание, чтение и команды состава решения."""
 
 from django.db import transaction
 from django.db.models import Q
@@ -12,33 +9,14 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
-from partner_programs.permissions import can_manage_program
+from partner_programs.models import PartnerProgramUserProfile
 from partner_programs.services.role_analytics import participant_project_links
 from partner_programs.solution_models import ProgramSolution, ProgramSolutionMember
-
-MAX_ID = 2**53 - 1
-VALIDATION_DEFAULTS = dict(
-    min_length=None,
-    max_length=None,
-    minimum=None,
-    maximum=None,
-    allowed_extensions=[],
-    max_file_size_bytes=None,
-)
-
-
-class SolutionError(APIException):
-    def __init__(self, code, detail, status=409, *, errors=None, meta=None):
-        self.status_code = status
-        self.payload = dict(
-            code=code, detail=detail, errors=errors or [], meta=meta or {}
-        )
-        super().__init__(detail=detail, code=code)
-
-
-def issue(path, code, detail, field_id=None):
-    return dict(path=path, code=code, detail=detail, field_id=field_id)
+from partner_programs.solution_errors import MAX_ID, SolutionError, issue
+from partner_programs.solution_schema import form_data
+from partner_programs.solution_submission import readiness_issues
+from partner_programs import solution_team
+from partner_programs.solution_team import program_for, visible_solutions
 
 
 def iso(value):
@@ -52,16 +30,6 @@ def user_data(user):
         last_name=user.last_name,
         avatar_url=user.avatar or None,
     )
-
-
-def program_for(pk, *, lock=False):
-    if not 0 < pk <= MAX_ID:
-        raise Http404
-    query = PartnerProgram.objects.select_for_update() if lock else PartnerProgram.objects
-    try:
-        return query.get(pk=pk)
-    except PartnerProgram.DoesNotExist:
-        raise Http404
 
 
 def current_application(program, user):
@@ -97,47 +65,6 @@ def current_application(program, user):
     return None
 
 
-def form_data(program):
-    fields = [
-        dict(
-            id=f.pk,
-            type=f.field_type,
-            purpose="case" if f.name == "case" else f.purpose,
-            label=f.label,
-            help_text=f.help_text or "",
-            required=f.is_required,
-            position=f.position,
-            options=f.get_options_list(),
-            validation={
-                key: f.validation.get(key, default)
-                for key, default in VALIDATION_DEFAULTS.items()
-            },
-        )
-        for f in program.fields.order_by("position", "pk")
-    ]
-    definition = dict(template=program.solution_template, fields=fields)
-    revision = hashlib.sha256(
-        json.dumps(
-            definition, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-        ).encode()
-    ).hexdigest()
-    configured = program.solution_template in ("case_championship", "hackathon") and any(
-        f["purpose"] == "case"
-        and f["type"] == "select"
-        and f["required"]
-        and f["options"]
-        for f in fields
-    )
-    return dict(
-        program_id=program.pk,
-        revision=revision,
-        template=program.solution_template,
-        is_configured=bool(configured),
-        is_snapshot=False,
-        fields=fields,
-    )
-
-
 def context_data(program, user):
     application = current_application(program, user)
     registered = PartnerProgramUserProfile.objects.filter(
@@ -150,6 +77,8 @@ def context_data(program, user):
         reason = "legacy_mode"
     elif not (registered or program.is_manager(user)):
         reason = "not_program_member"
+    elif not program.solution_creation_enabled:
+        reason = "solution_creation_disabled"
     elif not program.is_project_submission_open():
         reason = "submission_closed"
     elif not form_data(program)["is_configured"]:
@@ -167,12 +96,12 @@ def context_data(program, user):
     )
 
 
-def visible_solutions(program, user):
-    query = ProgramSolution.objects.filter(program=program)
-    # Экспертные назначения и публикация подключаются в BE07/BE08; до этого закрыты.
-    if can_manage_program(user, program):
-        return query
-    return query.filter(Q(captain=user) | Q(members__user=user)).distinct()
+def participation_data(solution):
+    return dict(
+        status="archived" if solution.archived_at else "active",
+        archived_at=iso(solution.archived_at),
+        reason=solution.archive_reason,
+    )
 
 
 def solution_data(solution, user):
@@ -186,6 +115,8 @@ def solution_data(solution, user):
     )
     own = solution.captain_id == user.pk or user.pk in accepted
     submitted = solution.status == "submitted"
+    archived = solution.archived_at is not None
+    frozen = submitted or archived
     form = form_data(program)
     answers = [
         dict(field_id=a.field_id, value=a.value)
@@ -202,8 +133,8 @@ def solution_data(solution, user):
         )
         for m in members
     ]
-    snapshot = solution.submission_snapshot
-    if submitted and snapshot:
+    snapshot = solution.archive_snapshot if archived else solution.submission_snapshot
+    if frozen and snapshot:
         name, captain_id = snapshot["name"], snapshot["captain_id"]
         form, answers, member_data = (
             snapshot["form"],
@@ -212,33 +143,12 @@ def solution_data(solution, user):
         )
         accepted = {member["user"]["id"] for member in member_data}
     problems = []
-    if program.is_competitive and own:
-        if not name.strip():
-            problems.append(issue("name", "required", "Укажите название решения."))
-        if program.legacy_team_min_size and len(accepted) < program.legacy_team_min_size:
-            problems.append(
-                issue(
-                    "team", "team_min_size", "В команде недостаточно принятых участников."
-                )
-            )
-        if program.legacy_team_max_size and len(accepted) > program.legacy_team_max_size:
-            problems.append(
-                issue("team", "team_max_size", "Превышен максимальный размер команды.")
-            )
-        values = {a["field_id"]: a["value"] for a in answers}
-        for field in form["fields"]:
-            value = values.get(field["id"])
-            if field["required"] and (
-                value is None or isinstance(value, str) and not value.strip()
-            ):
-                problems.append(
-                    issue(
-                        f"answers.{field['id']}",
-                        "required",
-                        "Заполните обязательное поле.",
-                        field["id"],
-                    )
-                )
+    if archived:
+        problems = [
+            issue("participation", "solution_archived", "Решение снято с участия.")
+        ]
+    elif program.is_competitive and own and not submitted:
+        problems = readiness_issues(solution, form, answers, accepted)
     return dict(
         id=solution.pk,
         program_id=program.pk,
@@ -247,6 +157,7 @@ def solution_data(solution, user):
         captain_id=captain_id,
         created_at=iso(solution.created_at),
         updated_at=iso(solution.updated_at),
+        participation=participation_data(solution),
         team=dict(
             members=member_data,
             accepted_count=len(accepted),
@@ -254,7 +165,7 @@ def solution_data(solution, user):
             reserved_count=len(accepted | pending),
             min_size=program.legacy_team_min_size,
             max_size=program.legacy_team_max_size,
-            is_frozen=submitted,
+            is_frozen=frozen,
         ),
         form=form,
         answers=answers,
@@ -265,9 +176,35 @@ def solution_data(solution, user):
             deadline=iso(program.get_project_submission_deadline()),
             submitted_at=iso(solution.submitted_at),
         ),
-        # BE01 не публикует еще не реализованные команды BE02–BE06.
         permissions=dict(
-            can_edit=False, can_manage_team=False, can_invite=False, can_submit=False
+            can_edit=(
+                solution.captain_id == user.pk
+                and program.solution_storage_mode == "solution"
+                and not frozen
+            ),
+            can_manage_team=(
+                solution.captain_id == user.pk
+                and program.solution_storage_mode == "solution"
+                and not frozen
+            ),
+            can_invite=(
+                solution.captain_id == user.pk
+                and program.solution_storage_mode == "solution"
+                and not frozen
+            ),
+            can_submit=(
+                solution.captain_id == user.pk
+                and program.solution_storage_mode == "solution"
+                and not frozen
+                and program.is_competitive
+                and program.is_project_submission_open()
+            ),
+            can_leave=(
+                user.pk in accepted
+                and solution.captain_id != user.pk
+                and program.solution_storage_mode == "solution"
+                and not frozen
+            ),
         ),
         readiness=dict(is_ready=not problems, issues=problems)
         if program.is_competitive and own
@@ -295,10 +232,40 @@ class CreateSolutionSerializer(StrictSerializer):
     name = NameField(required=False, min_length=1, max_length=256, trim_whitespace=False)
 
 
+class CommandInteger(serializers.IntegerField):
+    def to_internal_value(self, value):
+        if isinstance(value, bool) or not isinstance(value, int):
+            self.fail("invalid")
+        return super().to_internal_value(value)
+
+
+class TeamCommandSerializer(StrictSerializer):
+    expected_solution_version = CommandInteger(min_value=1)
+
+
+class CaptainCommandSerializer(TeamCommandSerializer):
+    new_captain_user_id = CommandInteger(min_value=1, max_value=MAX_ID)
+
+
+class TeamVersionQuery(StrictSerializer):
+    expected_solution_version = serializers.RegexField(r"^[1-9][0-9]*$")
+
+
+def mutation_receipt(solution):
+    return dict(
+        solution_id=solution.pk,
+        solution_version=solution.version,
+        updated_at=iso(solution.updated_at),
+    )
+
+
 class SolutionListQuery(StrictSerializer):
     limit = serializers.IntegerField(min_value=1, max_value=100, default=20)
     offset = serializers.IntegerField(min_value=0, default=0)
     search = serializers.CharField(required=False, allow_blank=True)
+    participation = serializers.ChoiceField(
+        choices=["active", "archived", "all"], default="active"
+    )
     submission = serializers.ChoiceField(
         choices=["all", "submitted", "not_submitted"], default="all"
     )
@@ -331,6 +298,12 @@ def create_solution(program_id, user, data):
             "not_program_member",
             "Создание заявки доступно участникам программы.",
             status=403,
+        )
+    if not program.solution_creation_enabled:
+        raise SolutionError(
+            "solution_creation_disabled",
+            "Создание новых решений временно приостановлено. "
+            "Ранее созданные заявки доступны.",
         )
     if not program.is_project_submission_open():
         raise SolutionError("submission_closed", "Срок создания заявок завершен.")
@@ -408,10 +381,14 @@ class SolutionListCreateView(SolutionAPIView):
         if not program.is_competitive and data["submission"] != "all":
             raise ValidationError({"submission": "Фильтр сдачи неприменим."})
         rows = (
-            visible_solutions(program, request.user)
+            visible_solutions(
+                program, request.user, include_archived=data["participation"] != "active"
+            )
             .select_related("captain")
             .order_by("created_at", "pk")
         )
+        if data["participation"] == "archived":
+            rows = rows.filter(archived_at__isnull=False)
         if data.get("search"):
             rows = rows.filter(name__icontains=data["search"])
         if data["submission"] != "all":
@@ -427,8 +404,10 @@ class SolutionListCreateView(SolutionAPIView):
             name, captain = row.name, user_data(row.captain)
             accepted_count = row.members.count()
             case_value = case.value if case else None
-            if row.status == "submitted" and row.submission_snapshot:
-                snapshot = row.submission_snapshot
+            snapshot = (
+                row.archive_snapshot if row.archived_at else row.submission_snapshot
+            )
+            if snapshot and (row.status == "submitted" or row.archived_at):
                 name = snapshot["name"]
                 accepted_count = len(snapshot["members"])
                 captain = next(m["user"] for m in snapshot["members"] if m["is_captain"])
@@ -453,6 +432,7 @@ class SolutionListCreateView(SolutionAPIView):
                     case_value=case_value,
                     status=row.status,
                     submitted_at=iso(row.submitted_at),
+                    participation=participation_data(row),
                 )
             )
 
@@ -478,16 +458,68 @@ class SolutionListCreateView(SolutionAPIView):
 
 
 class SolutionDetailView(SolutionAPIView):
+    def patch(self, request, pk, solution_id):
+        from partner_programs.solution_answer_api import patch_solution
+
+        return patch_solution(request, pk, solution_id)
+
     def get(self, request, pk, solution_id):
         program = program_for(pk)
         if not 0 < solution_id <= MAX_ID:
             raise Http404
         try:
             solution = (
-                visible_solutions(program, request.user)
+                visible_solutions(program, request.user, include_archived=True)
                 .select_related("program")
                 .get(pk=solution_id)
             )
         except ProgramSolution.DoesNotExist:
             raise Http404
         return Response(solution_data(solution, request.user))
+
+
+class SolutionMemberView(SolutionAPIView):
+    def delete(self, request, pk, solution_id, user_id):
+        query = TeamVersionQuery(data=request.query_params)
+        query.is_valid(raise_exception=True)
+        if request.data:
+            raise ValidationError({"body": "Передайте версию в параметрах запроса."})
+        solution = solution_team.remove_member(
+            program_id=pk,
+            solution_id=solution_id,
+            user_id=user_id,
+            actor=request.user,
+            expected_version=query.validated_data["expected_solution_version"],
+        )
+        return Response(mutation_receipt(solution))
+
+
+class SolutionLeaveView(SolutionAPIView):
+    def post(self, request, pk, solution_id):
+        query = StrictSerializer(data=request.query_params)
+        query.is_valid(raise_exception=True)
+        serializer = TeamCommandSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        solution_team.leave_team(
+            program_id=pk,
+            solution_id=solution_id,
+            actor=request.user,
+            expected_version=serializer.validated_data["expected_solution_version"],
+        )
+        return Response(status=204)
+
+
+class SolutionCaptainView(SolutionAPIView):
+    def post(self, request, pk, solution_id):
+        query = StrictSerializer(data=request.query_params)
+        query.is_valid(raise_exception=True)
+        serializer = CaptainCommandSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        solution = solution_team.transfer_captain(
+            program_id=pk,
+            solution_id=solution_id,
+            user_id=serializer.validated_data["new_captain_user_id"],
+            actor=request.user,
+            expected_version=serializer.validated_data["expected_solution_version"],
+        )
+        return Response(mutation_receipt(solution))

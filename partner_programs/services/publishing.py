@@ -1,4 +1,5 @@
 from django.utils import timezone
+from django.db import transaction
 
 from partner_programs.models import (
     PartnerProgram,
@@ -6,6 +7,7 @@ from partner_programs.models import (
     PartnerProgramUserProfile,
 )
 from projects.models import Project
+from partner_programs.solution_models import ProgramSolution
 
 
 def publish_finished_program_projects(now=None) -> int:
@@ -13,6 +15,7 @@ def publish_finished_program_projects(now=None) -> int:
         now = timezone.now()
 
     program_ids = PartnerProgram.objects.filter(
+        solution_storage_mode="legacy_project",
         publish_projects_after_finish=True,
         datetime_finished__lte=now,
     ).values_list("id", flat=True)
@@ -33,3 +36,41 @@ def publish_finished_program_projects(now=None) -> int:
         is_public=False,
         draft=False,
     ).update(is_public=True)
+
+
+def solution_publication_filter(now):
+    return dict(
+        solution_storage_mode="solution",
+        publish_projects_after_finish=True,
+        datetime_finished__lte=now,
+    )
+
+
+@transaction.atomic
+def publish_solution_program(program_id, *, now):
+    program = (
+        PartnerProgram.objects.select_for_update()
+        .filter(pk=program_id, **solution_publication_filter(now))
+        .first()
+    )
+    if program is None:
+        return 0
+    solutions = ProgramSolution.objects.filter(program=program, published_at__isnull=True)
+    if program.is_competitive:
+        # Независимый согласованный путь сданных работ. Вопрос о публикации
+        # несданных конкурсных черновиков остается открытым.
+        solutions = solutions.filter(status="submitted")
+    return solutions.update(published_at=now)
+
+
+def publish_finished_program_solutions(now=None) -> int:
+    now = timezone.now() if now is None else now
+    program_ids = (
+        PartnerProgram.objects.filter(**solution_publication_filter(now))
+        .order_by("pk")
+        .values_list("pk", flat=True)
+    )
+    return sum(
+        publish_solution_program(program_id, now=now)
+        for program_id in program_ids.iterator()
+    )

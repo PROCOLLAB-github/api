@@ -1,7 +1,10 @@
 import logging
 
 from procollab.celery import app
-from partner_programs.services import publish_finished_program_projects
+from partner_programs.services import (
+    publish_finished_program_projects,
+    publish_finished_program_solutions,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -134,6 +137,13 @@ def dispatch_attention_reminders(batch_id=None):
 def publish_finished_program_projects_task() -> int:
     updated_count = publish_finished_program_projects()
     logger.info("Published %s program projects after finish", updated_count)
+    return updated_count
+
+
+@app.task
+def publish_finished_program_solutions_task() -> int:
+    updated_count = publish_finished_program_solutions()
+    logger.info("Published %s program solutions after finish", updated_count)
     return updated_count
 
 

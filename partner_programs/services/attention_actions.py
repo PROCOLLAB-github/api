@@ -17,6 +17,7 @@ from openpyxl import Workbook
 from rest_framework.exceptions import ValidationError
 
 from partner_programs.models import (
+    PartnerProgram,
     ProgramAttentionReminder,
     ProgramAttentionReminderBatch,
 )
@@ -30,6 +31,12 @@ from partner_programs.services.analytics import (
 from partner_programs.services.assignment_analytics import annotated_assignment_queryset
 from partner_programs.services.exports import _literal_excel_cell
 from partner_programs.services.management import managed_program, person_name
+from partner_programs.services.solution_attention import (
+    SOLUTION_AWAITING,
+    solution_assignment_sources,
+    solution_recipient_targets,
+    solution_reminder_rows,
+)
 from users.models import CustomUser
 
 logger = logging.getLogger(__name__)
@@ -40,10 +47,13 @@ LABELS = {
     "participants-without-visit": "Участники еще не заходили на платформу",
     "participants-without-team": "Участники без команды",
     "projects-awaiting-evaluation": "Работы ожидают оценивания",
+    SOLUTION_AWAITING: "Решения ожидают оценивания",
 }
 
 
 def selected_rows(program, category, payload):
+    if category == SOLUTION_AWAITING:
+        return solution_reminder_rows(program, payload)
     search, selection = payload["search"], payload["selection"]
     if category == "projects-awaiting-evaluation":
         rows = projects_awaiting_evaluation_rows(program)
@@ -78,11 +88,15 @@ def selected_rows(program, category, payload):
 
 
 def source_id(row, category):
+    if category == SOLUTION_AWAITING:
+        return row["application"]["solution_id"]
     return row.pk if category == "projects-awaiting-evaluation" else row["user_id"]
 
 
 def recipient_targets(program, category, rows):
     """One recipient per real user; no inferred or newly suggested assignments."""
+    if category == SOLUTION_AWAITING:
+        return solution_recipient_targets(program, rows)
     if category != "projects-awaiting-evaluation":
         return [
             {
@@ -123,11 +137,19 @@ def message_for(program, category, recipient, rows):
         text = f"Вы зарегистрированы в программе «{program.name}». Зайдите на PROCOLLAB, чтобы начать участие."
         path = f"/office/program/{program.pk}"
     elif category == "participants-without-team":
+        work_type = "решение" if program.solution_storage_mode == "solution" else "проект"
         text = (
             f"Вы участвуете в программе «{program.name}», но пока не состоите в команде. "
-            "Создайте проект или присоединитесь к команде."
+            f"Создайте {work_type} или присоединитесь к команде."
         )
         path = f"/office/program/{program.pk}/members"
+    elif category == SOLUTION_AWAITING:
+        names = "; ".join(f'«{row["application"]["name"]}»' for row in rows)
+        text = (
+            f"В программе «{program.name}» у вас остались незавершенные оценки по решениям: {names}. "
+            "Завершите оценивание на PROCOLLAB."
+        )
+        path = f"/office/program/{program.pk}/solutions-rating"
     else:
         names = "; ".join(f"«{row.project.name}»" for row in rows)
         text = (
@@ -176,7 +198,7 @@ def preview_reminder(program, category, actor, payload):
         "selected_count": len(rows),
         "recipient_count": len(available),
         "without_assignments_count": len(rows) - len(assigned_sources)
-        if category == "projects-awaiting-evaluation"
+        if category in ("projects-awaiting-evaluation", SOLUTION_AWAITING)
         else 0,
         "unavailable_count": len(targets) - len(available),
         "preview_text": preview_text,
@@ -196,7 +218,9 @@ def fresh_targets(program, category, ids, snapshot):
     )
     current = {t["user_id"]: t for t in recipient_targets(program, category, rows)}
     assignment_sources = {}
-    if category == "projects-awaiting-evaluation":
+    if category == SOLUTION_AWAITING:
+        assignment_sources = solution_assignment_sources(rows)
+    elif category == "projects-awaiting-evaluation":
         links = {r.project_id: r.pk for r in rows}
         assignment_ids = [aid for t in current.values() for aid in t["assignment_ids"]]
         assignment_sources = {
@@ -217,11 +241,12 @@ def fresh_targets(program, category, ids, snapshot):
             set(target["assignment_ids"]) & set(approved["assignment_ids"])
         )
         if target["source_ids"] and (
-            category != "projects-awaiting-evaluation" or target["assignment_ids"]
+            category not in ("projects-awaiting-evaluation", SOLUTION_AWAITING)
+            or target["assignment_ids"]
         ):
-            # The project assignment may have been replaced after preview. Retain only
-            # sources belonging to the approved, still unfinished assignments.
-            if category == "projects-awaiting-evaluation":
+            # После предпросмотра назначение могли заменить. Оставляем только
+            # источники утвержденных и по-прежнему незавершенных назначений.
+            if category in ("projects-awaiting-evaluation", SOLUTION_AWAITING):
                 target["source_ids"] = sorted(
                     {assignment_sources[aid] for aid in target["assignment_ids"]}
                 )
@@ -346,6 +371,8 @@ def deliver_reminder(pk):
         ):
             return
         program, category = notice.batch.program, notice.batch.category
+        if category == SOLUTION_AWAITING:
+            program = PartnerProgram.objects.select_for_update().get(pk=program.pk)
         rows, targets = fresh_targets(
             program,
             category,

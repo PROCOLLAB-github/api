@@ -1,0 +1,397 @@
+{
+  "status": "PASS",
+  "prefix": "qa01c-20261025-2b16a5aa",
+  "c00": "1.15.0",
+  "validation": {
+    "responses": 115,
+    "requests": 88,
+    "rejectedInvalidRequests": 15
+  },
+  "primaryResponses": 82,
+  "postReviewRequests": 33,
+  "programs": [
+    {
+      "program": 30,
+      "key": "case_championship",
+      "solution": 45,
+      "version": 5,
+      "anchor": 46,
+      "anchorSubmitted": true,
+      "caseField": 230,
+      "caseName": "  Образование | наука  ",
+      "accepted": 1,
+      "pending": 1,
+      "zeroFalsePreserved": true,
+      "creationFlagOff": true,
+      "unchangedSinceAction": true
+    },
+    {
+      "program": 31,
+      "key": "hackathon",
+      "solution": 47,
+      "version": 5,
+      "anchor": 48,
+      "anchorSubmitted": true,
+      "caseField": 237,
+      "caseName": "  Образование | наука  ",
+      "accepted": 1,
+      "pending": 1,
+      "zeroFalsePreserved": true,
+      "creationFlagOff": true,
+      "unchangedSinceAction": true
+    },
+    {
+      "program": 32,
+      "key": "noncompetitive",
+      "solution": 49,
+      "version": 5,
+      "anchor": 50,
+      "anchorSubmitted": false,
+      "caseField": 248,
+      "caseName": "  Образование | наука  ",
+      "accepted": 1,
+      "pending": 1,
+      "zeroFalsePreserved": true,
+      "creationFlagOff": true,
+      "unchangedSinceAction": true
+    }
+  ],
+  "runtimeSources": {
+    "partner_programs/services/solution_case_actions.py": "d037738e1aa3428403ea0a4e3b8f097551bf57cbb8839c8fe3d68633ccacb36b",
+    "partner_programs/solution_case_action_api.py": "6048400a6f2de3e6d520e8a8653995496e1719a7760c454975378f23379ed700",
+    "partner_programs/urls.py": "f4a1e2cf2dd98056e30d0fd92a7e7b88419d7516c2ff3fbd31f57e39ccf8452c"
+  },
+  "earlierRuntimeSources": {
+    "partner_programs/services/solution_case_actions.py": "d037738e1aa3428403ea0a4e3b8f097551bf57cbb8839c8fe3d68633ccacb36b",
+    "partner_programs/solution_case_action_api.py": "0299446f12958653ba8d707ed8d28212954d2fa94828b209ee0732e78104df9a",
+    "partner_programs/urls.py": "f4a1e2cf2dd98056e30d0fd92a7e7b88419d7516c2ff3fbd31f57e39ccf8452c"
+  },
+  "preexistingSelectedDomainUnchanged": true,
+  "baselineModels": [
+    "partner_programs.PartnerProgram",
+    "partner_programs.PartnerProgramField",
+    "partner_programs.PartnerProgramUserProfile",
+    "partner_programs.ProgramSolution",
+    "partner_programs.ProgramSolutionAnswer",
+    "partner_programs.ProgramSolutionMember",
+    "partner_programs.SolutionInvitation",
+    "project_rates.SolutionScore",
+    "project_rates.SolutionExpertAssignment",
+    "project_rates.Criteria",
+    "users.Expert",
+    "files.UserFile",
+    "projects.Project",
+    "users.Expert_programs",
+    "partner_programs.PartnerProgram_managers"
+  ],
+  "verificationDomainMutations": 0,
+  "oldSchemasUnchanged": 125,
+  "oldOperationsUnchanged": 47,
+  "oldScenariosUnchanged": 185,
+  "contractCopiesByteIdentical": true,
+  "events": [
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/30/solutions/45/",
+      "status": 200,
+      "code": null,
+      "cacheControl": null,
+      "responseSha256": "248cca612aba91bae2387b971aea87d489bc8dfa2fe9b0dfdc9d61114445932d"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/30/management/solutions/45/case/preview/",
+      "status": 200,
+      "code": null,
+      "cacheControl": "private, no-store",
+      "responseSha256": "b2bb126e60bb4b9de0b6c7baf0fe98e763d041108fb9396260a368fbac3c8c29"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/30/management/solutions/45/case/apply/",
+      "status": 400,
+      "code": "validation_error",
+      "cacheControl": "private, no-store",
+      "responseSha256": "0d468d663c6542412e14a4a841d83184fe8fd8b3fd65c0b57ee001a60a116fdb"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/30/management/solutions/45/case/apply/",
+      "status": 400,
+      "code": "validation_error",
+      "cacheControl": "private, no-store",
+      "responseSha256": "0d468d663c6542412e14a4a841d83184fe8fd8b3fd65c0b57ee001a60a116fdb"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/30/management/solutions/45/case/apply/",
+      "status": 400,
+      "code": "validation_error",
+      "cacheControl": "private, no-store",
+      "responseSha256": "0d468d663c6542412e14a4a841d83184fe8fd8b3fd65c0b57ee001a60a116fdb"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/30/management/solutions/45/case/apply/",
+      "status": 400,
+      "code": "validation_error",
+      "cacheControl": "private, no-store",
+      "responseSha256": "0d468d663c6542412e14a4a841d83184fe8fd8b3fd65c0b57ee001a60a116fdb"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/30/management/solutions/45/case/apply/",
+      "status": 409,
+      "code": "solution_action_conflict",
+      "cacheControl": "private, no-store",
+      "responseSha256": "3dcabf6f26877d33ae00a05b768362cd417a5f8f2e342cfe0c2287048ef0e4e8"
+    },
+    {
+      "role": "pending_b",
+      "method": "POST",
+      "path": "/programs/30/management/solutions/45/case/apply/",
+      "status": 409,
+      "code": "solution_action_conflict",
+      "cacheControl": "private, no-store",
+      "responseSha256": "3dcabf6f26877d33ae00a05b768362cd417a5f8f2e342cfe0c2287048ef0e4e8"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/30/management/solutions/45/case/preview/",
+      "status": 200,
+      "code": null,
+      "cacheControl": "private, no-store",
+      "responseSha256": "169a0a68cd7b71880d270e667002b4a6f40d3298d67371c7e657b8a2ff94e32d"
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/programs/30/management/solutions/45/case/preview/",
+      "status": 403,
+      "code": "permission_denied",
+      "cacheControl": "private, no-store",
+      "responseSha256": "ab1a699a6b0e65ddc2dd7b6857258dde33fbabcb9d9acb46fb25a0591ea96abb"
+    },
+    {
+      "role": "anonymous",
+      "method": "POST",
+      "path": "/programs/30/management/solutions/45/case/preview/",
+      "status": 401,
+      "code": "authentication_required",
+      "cacheControl": "private, no-store",
+      "responseSha256": "9a7fd910796627107ce589a0a564bf51b6d16b20c59430df81d2a2f5628cfb09"
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/31/solutions/47/",
+      "status": 200,
+      "code": null,
+      "cacheControl": null,
+      "responseSha256": "2252a561b419575ab56593e8905e2a214639ec0dbe22a47c15fef3725b181f66"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/31/management/solutions/47/case/preview/",
+      "status": 200,
+      "code": null,
+      "cacheControl": "private, no-store",
+      "responseSha256": "b9e81736cab6b5a9e1411ba7a12cadbfae7a019dc4f71ed0be5d47c81a26859d"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/31/management/solutions/47/case/apply/",
+      "status": 400,
+      "code": "validation_error",
+      "cacheControl": "private, no-store",
+      "responseSha256": "0d468d663c6542412e14a4a841d83184fe8fd8b3fd65c0b57ee001a60a116fdb"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/31/management/solutions/47/case/apply/",
+      "status": 400,
+      "code": "validation_error",
+      "cacheControl": "private, no-store",
+      "responseSha256": "0d468d663c6542412e14a4a841d83184fe8fd8b3fd65c0b57ee001a60a116fdb"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/31/management/solutions/47/case/apply/",
+      "status": 400,
+      "code": "validation_error",
+      "cacheControl": "private, no-store",
+      "responseSha256": "0d468d663c6542412e14a4a841d83184fe8fd8b3fd65c0b57ee001a60a116fdb"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/31/management/solutions/47/case/apply/",
+      "status": 400,
+      "code": "validation_error",
+      "cacheControl": "private, no-store",
+      "responseSha256": "0d468d663c6542412e14a4a841d83184fe8fd8b3fd65c0b57ee001a60a116fdb"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/31/management/solutions/47/case/apply/",
+      "status": 409,
+      "code": "solution_action_conflict",
+      "cacheControl": "private, no-store",
+      "responseSha256": "3dcabf6f26877d33ae00a05b768362cd417a5f8f2e342cfe0c2287048ef0e4e8"
+    },
+    {
+      "role": "pending_b",
+      "method": "POST",
+      "path": "/programs/31/management/solutions/47/case/apply/",
+      "status": 409,
+      "code": "solution_action_conflict",
+      "cacheControl": "private, no-store",
+      "responseSha256": "3dcabf6f26877d33ae00a05b768362cd417a5f8f2e342cfe0c2287048ef0e4e8"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/31/management/solutions/47/case/preview/",
+      "status": 200,
+      "code": null,
+      "cacheControl": "private, no-store",
+      "responseSha256": "8b7c1cb66ac44b63b72edbbf11810f4a229172c8d3500d140733792a491d15f4"
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/programs/31/management/solutions/47/case/preview/",
+      "status": 403,
+      "code": "permission_denied",
+      "cacheControl": "private, no-store",
+      "responseSha256": "ab1a699a6b0e65ddc2dd7b6857258dde33fbabcb9d9acb46fb25a0591ea96abb"
+    },
+    {
+      "role": "anonymous",
+      "method": "POST",
+      "path": "/programs/31/management/solutions/47/case/preview/",
+      "status": 401,
+      "code": "authentication_required",
+      "cacheControl": "private, no-store",
+      "responseSha256": "9a7fd910796627107ce589a0a564bf51b6d16b20c59430df81d2a2f5628cfb09"
+    },
+    {
+      "role": "captain",
+      "method": "GET",
+      "path": "/programs/32/solutions/49/",
+      "status": 200,
+      "code": null,
+      "cacheControl": null,
+      "responseSha256": "60ca01c767478f713a3f3c8e9d1871a901c83e765a9b27ed4c3c395498b56fc7"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/32/management/solutions/49/case/preview/",
+      "status": 200,
+      "code": null,
+      "cacheControl": "private, no-store",
+      "responseSha256": "f40474ac5b50fbcc5cebec3ad1723ee77f5aa1949d74f2194d06e52cead45b6b"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/32/management/solutions/49/case/apply/",
+      "status": 400,
+      "code": "validation_error",
+      "cacheControl": "private, no-store",
+      "responseSha256": "0d468d663c6542412e14a4a841d83184fe8fd8b3fd65c0b57ee001a60a116fdb"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/32/management/solutions/49/case/apply/",
+      "status": 400,
+      "code": "validation_error",
+      "cacheControl": "private, no-store",
+      "responseSha256": "0d468d663c6542412e14a4a841d83184fe8fd8b3fd65c0b57ee001a60a116fdb"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/32/management/solutions/49/case/apply/",
+      "status": 400,
+      "code": "validation_error",
+      "cacheControl": "private, no-store",
+      "responseSha256": "0d468d663c6542412e14a4a841d83184fe8fd8b3fd65c0b57ee001a60a116fdb"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/32/management/solutions/49/case/apply/",
+      "status": 400,
+      "code": "validation_error",
+      "cacheControl": "private, no-store",
+      "responseSha256": "0d468d663c6542412e14a4a841d83184fe8fd8b3fd65c0b57ee001a60a116fdb"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/32/management/solutions/49/case/apply/",
+      "status": 409,
+      "code": "solution_action_conflict",
+      "cacheControl": "private, no-store",
+      "responseSha256": "3dcabf6f26877d33ae00a05b768362cd417a5f8f2e342cfe0c2287048ef0e4e8"
+    },
+    {
+      "role": "pending_b",
+      "method": "POST",
+      "path": "/programs/32/management/solutions/49/case/apply/",
+      "status": 409,
+      "code": "solution_action_conflict",
+      "cacheControl": "private, no-store",
+      "responseSha256": "3dcabf6f26877d33ae00a05b768362cd417a5f8f2e342cfe0c2287048ef0e4e8"
+    },
+    {
+      "role": "manager",
+      "method": "POST",
+      "path": "/programs/32/management/solutions/49/case/preview/",
+      "status": 200,
+      "code": null,
+      "cacheControl": "private, no-store",
+      "responseSha256": "9cdd345df7351153541d08112fb5a944b87a7c15878d293afd6e9342972ec0df"
+    },
+    {
+      "role": "captain",
+      "method": "POST",
+      "path": "/programs/32/management/solutions/49/case/preview/",
+      "status": 403,
+      "code": "permission_denied",
+      "cacheControl": "private, no-store",
+      "responseSha256": "ab1a699a6b0e65ddc2dd7b6857258dde33fbabcb9d9acb46fb25a0591ea96abb"
+    },
+    {
+      "role": "anonymous",
+      "method": "POST",
+      "path": "/programs/32/management/solutions/49/case/preview/",
+      "status": 401,
+      "code": "authentication_required",
+      "cacheControl": "private, no-store",
+      "responseSha256": "9a7fd910796627107ce589a0a564bf51b6d16b20c59430df81d2a2f5628cfb09"
+    }
+  ],
+  "limits": [
+    "Primary 82 HTTP responses preceded a final strict-token type guard; service logic is byte-identical. API was restarted, and current-source checks reject non-string tokens and revalidate state/privacy/binding.",
+    "Old local test-fixture assumptions (second case absent, stale in-memory version, authentication code) were corrected; no product data reset.",
+    "Current submitted administrative policy remains frozen pending user decision; D02 and destructive removal are not implemented by this case endpoint."
+  ],
+  "curation": "Raw post-review request/response bodies retained locally; committed trace uses SHA256 and never includes signed tokens."
+}

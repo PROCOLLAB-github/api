@@ -1,0 +1,113 @@
+{
+  "status": "PASS",
+  "contract": "1.21.0",
+  "responses": 97,
+  "validRequests": 34,
+  "programs": [
+    {
+      "program": 49,
+      "solution": 66,
+      "draft": 67,
+      "template": "case_championship",
+      "competitive": true,
+      "marker": "2026-10-25T18:25:12.448804+00:00",
+      "status": "PASS"
+    },
+    {
+      "program": 50,
+      "solution": 68,
+      "draft": 69,
+      "template": "hackathon",
+      "competitive": true,
+      "marker": "2026-10-25T18:25:15.456936+00:00",
+      "status": "PASS"
+    },
+    {
+      "program": 51,
+      "solution": 70,
+      "draft": 71,
+      "template": "hackathon",
+      "competitive": false,
+      "marker": "2026-10-25T18:25:18.652630+00:00",
+      "status": "PASS"
+    }
+  ],
+  "publisherInvocations": [
+    {
+      "program": 49,
+      "count": 0,
+      "at": "2026-10-25T18:25:12.429609+00:00"
+    },
+    {
+      "program": 49,
+      "count": 0,
+      "at": "2026-10-25T18:25:12.439459+00:00"
+    },
+    {
+      "program": 49,
+      "count": 1,
+      "at": "2026-10-25T18:25:12.451951+00:00"
+    },
+    {
+      "program": 49,
+      "count": 0,
+      "at": "2026-10-25T18:25:12.462700+00:00"
+    },
+    {
+      "program": 50,
+      "count": 0,
+      "at": "2026-10-25T18:25:15.422372+00:00"
+    },
+    {
+      "program": 50,
+      "count": 0,
+      "at": "2026-10-25T18:25:15.441363+00:00"
+    },
+    {
+      "program": 50,
+      "count": 1,
+      "at": "2026-10-25T18:25:15.459000+00:00"
+    },
+    {
+      "program": 50,
+      "count": 0,
+      "at": "2026-10-25T18:25:15.477111+00:00"
+    },
+    {
+      "program": 51,
+      "count": 0,
+      "at": "2026-10-25T18:25:18.606239+00:00"
+    },
+    {
+      "program": 51,
+      "count": 0,
+      "at": "2026-10-25T18:25:18.628576+00:00"
+    },
+    {
+      "program": 51,
+      "count": 2,
+      "at": "2026-10-25T18:25:18.654701+00:00"
+    },
+    {
+      "program": 51,
+      "count": 0,
+      "at": "2026-10-25T18:25:18.679348+00:00"
+    }
+  ],
+  "oldModelsUnchanged": 25,
+  "hashBefore": "54631ba6896d1d18cadf7f855ca1fd1b83b0a2396a72b28e2b61b720f1783169",
+  "hashAfter": "54631ba6896d1d18cadf7f855ca1fd1b83b0a2396a72b28e2b61b720f1783169",
+  "projectCount": 4,
+  "noNewProject": true,
+  "creationFlagsFalse": true,
+  "closedScoresRetained": true,
+  "privateDataNotExposed": true,
+  "noncompetitiveHasNoArtificialSubmit": true,
+  "apiResponsesNotMocked": true,
+  "notChecked": [
+    "new Angular public UI",
+    "CDN file bytes (owned metadata fixture only)",
+    "production",
+    "final competitive draft eligibility"
+  ]
+}

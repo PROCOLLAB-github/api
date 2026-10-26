@@ -1,0 +1,176 @@
+{
+  "status": "PASS",
+  "checkedAt": "2026-10-25T04:22:33.150928+00:00",
+  "programs": [
+    {
+      "program_id": 7,
+      "solution_id": 6,
+      "template": "case_championship",
+      "accepted_members": 2,
+      "pending": 0,
+      "invitation_states": [
+        "accepted",
+        "declined"
+      ],
+      "revoked_invitation_deleted": true,
+      "zeroFalseCaseAndSnapshot": true,
+      "files": [
+        {
+          "field_id": 30,
+          "size": 597,
+          "sha256": "4722e145f386e32649b51fb43c5d7a09b559fd06c22ba2d89708a612d6f8c99e"
+        }
+      ]
+    },
+    {
+      "program_id": 8,
+      "solution_id": 7,
+      "template": "hackathon",
+      "accepted_members": 2,
+      "pending": 0,
+      "invitation_states": [
+        "accepted",
+        "declined"
+      ],
+      "revoked_invitation_deleted": true,
+      "zeroFalseCaseAndSnapshot": true,
+      "files": []
+    }
+  ],
+  "httpChecks": [
+    {
+      "path": "/programs/7/solutions/6/",
+      "role": "captain",
+      "method": "GET",
+      "status": 200,
+      "code": null
+    },
+    {
+      "path": "/programs/7/solutions/6/",
+      "role": "member",
+      "method": "GET",
+      "status": 200,
+      "code": null
+    },
+    {
+      "path": "/programs/7/solution-context/",
+      "role": "captain",
+      "method": "GET",
+      "status": 200,
+      "code": null
+    },
+    {
+      "path": "/programs/7/solutions/6/",
+      "role": "pending_a",
+      "method": "GET",
+      "status": 404,
+      "code": "not_found"
+    },
+    {
+      "path": "/programs/7/solutions/6/",
+      "role": "pending_b",
+      "method": "GET",
+      "status": 404,
+      "code": "not_found"
+    },
+    {
+      "path": "/programs/7/solutions/6/",
+      "role": "anonymous",
+      "method": "GET",
+      "status": 401,
+      "code": "authentication_required"
+    },
+    {
+      "path": "/programs/7/solutions/6/",
+      "role": "member",
+      "method": "PATCH",
+      "status": 403,
+      "code": "not_solution_captain"
+    },
+    {
+      "path": "/programs/7/solutions/6/",
+      "role": "captain",
+      "method": "PATCH",
+      "status": 409,
+      "code": "team_frozen"
+    },
+    {
+      "path": "/programs/7/solutions/6/submit/",
+      "role": "captain",
+      "method": "POST",
+      "status": 409,
+      "code": "already_submitted"
+    },
+    {
+      "path": "/programs/8/solutions/7/",
+      "role": "captain",
+      "method": "GET",
+      "status": 200,
+      "code": null
+    },
+    {
+      "path": "/programs/8/solutions/7/",
+      "role": "member",
+      "method": "GET",
+      "status": 200,
+      "code": null
+    },
+    {
+      "path": "/programs/8/solution-context/",
+      "role": "captain",
+      "method": "GET",
+      "status": 200,
+      "code": null
+    },
+    {
+      "path": "/programs/8/solutions/7/",
+      "role": "pending_a",
+      "method": "GET",
+      "status": 404,
+      "code": "not_found"
+    },
+    {
+      "path": "/programs/8/solutions/7/",
+      "role": "pending_b",
+      "method": "GET",
+      "status": 404,
+      "code": "not_found"
+    },
+    {
+      "path": "/programs/8/solutions/7/",
+      "role": "anonymous",
+      "method": "GET",
+      "status": 401,
+      "code": "authentication_required"
+    },
+    {
+      "path": "/programs/8/solutions/7/",
+      "role": "member",
+      "method": "PATCH",
+      "status": 403,
+      "code": "not_solution_captain"
+    },
+    {
+      "path": "/programs/8/solutions/7/",
+      "role": "captain",
+      "method": "PATCH",
+      "status": 409,
+      "code": "team_frozen"
+    },
+    {
+      "path": "/programs/8/solutions/7/submit/",
+      "role": "captain",
+      "method": "POST",
+      "status": 409,
+      "code": "already_submitted"
+    }
+  ],
+  "negativeVerificationDomainMutations": 0,
+  "projectCountUnchanged": true,
+  "standaloneTeamModels": [],
+  "limitations": [
+    "actual browser journeys intentionally mutated synthetic data; this verifier did not",
+    "local storage file bytes verified, not production CDN",
+    "manager/public UI and full QA01 remain incomplete"
+  ]
+}

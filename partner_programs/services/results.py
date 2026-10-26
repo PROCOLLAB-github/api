@@ -1,7 +1,6 @@
 """Organizer results: one calculation for the ranking and its Excel export."""
 
 from collections import defaultdict
-from decimal import Decimal, ROUND_HALF_UP
 
 from django.utils import timezone
 from rest_framework import serializers
@@ -10,7 +9,7 @@ from partner_programs.services.case_analytics import project_case_links
 from partner_programs.services.case_fields import get_program_case_field
 from partner_programs.services.management import person_name
 from project_rates.models import Criteria, ProjectExpertAssignment, ProjectScore
-from project_rates.validators import ProjectScoreValidator
+from project_rates.evaluation_math import evaluation_totals, assign_places, numeric
 
 
 class ResultsQuery(serializers.Serializer):
@@ -26,27 +25,6 @@ class ResultsQuery(serializers.Serializer):
     status = serializers.ChoiceField(
         choices=["all", "complete", "pending"], default="all"
     )
-
-
-def rounded(value):
-    return value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-
-
-def numeric(value):
-    return float(value) if value is not None else None
-
-
-def valid_score(criterion, value):
-    try:
-        ProjectScoreValidator.validate(
-            criteria_type=criterion.type,
-            value=value,
-            criteria_min_value=criterion.min_value,
-            criteria_max_value=criterion.max_value,
-        )
-        return True
-    except (TypeError, ValueError):
-        return False
 
 
 def results_data(program, query, *, project_link_id=None):
@@ -75,32 +53,28 @@ def results_data(program, query, *, project_link_id=None):
     ).select_related("expert__user"):
         people[assignment.project_id][assignment.expert.user_id] = assignment.expert.user
     required = program.required_evaluators or program.max_project_rates or 1
-    maximum = (
-        sum(Decimal(str(c.max_value)) for c in numeric_criteria)
-        if numeric_criteria and all(c.max_value is not None for c in numeric_criteria)
-        else None
-    )
+    maximum = evaluation_totals(criteria, {})["maximum"]
     buckets = {name: [] for name in [*options, None]}
     for link in links:
+        totals = evaluation_totals(
+            criteria,
+            {
+                user_id: values[(link.project_id, user_id)]
+                for user_id in people[link.project_id]
+            },
+        )
         experts = []
         for user_id, user in sorted(people[link.project_id].items()):
             scores = values[(link.project_id, user_id)]
-            complete = bool(criteria) and all(
-                c.pk in scores and valid_score(c, scores[c.pk]) for c in criteria
-            )
-            total = (
-                sum(Decimal(scores[c.pk]) for c in numeric_criteria)
-                if complete and numeric_criteria
-                else None
-            )
+            evaluation = totals["evaluations"][user_id]
             experts.append(
                 {
                     "user_id": user_id,
                     "name": person_name(user),
                     "email": user.email,
                     "avatar": user.avatar or None,
-                    "complete": complete,
-                    "total": numeric(total),
+                    "complete": evaluation["complete"],
+                    "total": evaluation["total"],
                     "values": [
                         {"criterion_id": c.pk, "value": scores.get(c.pk)}
                         for c in criteria
@@ -108,24 +82,8 @@ def results_data(program, query, *, project_link_id=None):
                 }
             )
         completed = [e for e in experts if e["complete"]]
-        score = (
-            rounded(sum(Decimal(str(e["total"])) for e in completed) / len(completed))
-            if completed and numeric_criteria
-            else None
-        )
-        averages = {
-            str(c.pk): numeric(
-                rounded(
-                    sum(
-                        Decimal(values[(link.project_id, e["user_id"])][c.pk])
-                        for e in completed
-                    )
-                    / len(completed)
-                )
-            )
-            for c in numeric_criteria
-            if completed
-        }
+        score = totals["score"]
+        averages = totals["averages"]
         buckets.setdefault(link.case_name, []).append(
             {
                 "id": link.pk,
@@ -146,17 +104,9 @@ def results_data(program, query, *, project_link_id=None):
         )
     groups = []
     for case_name, projects in buckets.items():
-        ready = sorted(
-            [p for p in projects if p["ready"]],
-            key=lambda p: (-p["score"], p["name"].lower(), p["id"]),
-        )
-        last_score, place = None, 0
         # A single-project projection cannot determine a place among its peers.
-        for index, project in enumerate(ready if project_link_id is None else [], 1):
-            if project["score"] != last_score:
-                place = index
-            project["place"] = place
-            last_score = project["score"]
+        if project_link_id is None:
+            assign_places(projects, "id")
         if query["scope"] != "all":
             if query["case_scope"] == "selected" and case_name != query.get("case_name"):
                 continue

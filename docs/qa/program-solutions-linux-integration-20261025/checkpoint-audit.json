@@ -1,0 +1,21 @@
+{
+  "originalACRows": 26,
+  "originalACRowsByteEqual": true,
+  "originalACRowsSha256": "80be11fa4e7783b0539dfc237182eb3c3b0a2f6a5625f4288409e09a2b87613d",
+  "contract": "1.21.0/156 schemas/59 operations/305 scenarios; unchanged",
+  "testedBackendFeature": "a787f0ee7d1cb01f9e777fbe2e0fa60999cc0805",
+  "testedBackendSynthetic": "020cc78ce6e45421cb1222c62a98611d8018562c",
+  "testedFrontendProspectiveTree": "2f4f4f23b39b198247c3da01685685debf534faa",
+  "newChanges": "Documentation and synthetic design artifacts only; no production models/services/Angular/contracts changed",
+  "release": "Incomplete; original AC18/19 OPEN, AC21 BE10 separate",
+  "noMergeDeployRealProgramSwitch": true,
+  "files": {
+    "general-linux-ci-evidence.json": "a4bb467b1bff6d45ebb3e072cc60e1f12f7632dd40263907479c3a50d69b6eb6",
+    "general-run-receipt.json": "54e5a1bad3d5f45a71572a19a751db1feeb6c6c2c41f2f3ba87dbada272b1e30",
+    "pg-run-receipt.json": "e5e3e97869be1654aa2865c6ab95461a43071dfdb7b411e3b86680c1734ebc5f",
+    "postgres-linux-ci-evidence.json": "70478863884986c6ce2312156923f75c0ba466fae11f3fb559887d7aa05b2c6e",
+    "retention-after-fe.json": "8413fe6251288ed5a6a1a4b507c0caa4571f5825010e74c2a15f332e6b8ffdae"
+  },
+  "operatorDocumentsOriginalPrefixExact": true,
+  "formattingScope": "New reports formatted; original operator document prefixes restored byte-exact after formatting tried table padding"
+}
