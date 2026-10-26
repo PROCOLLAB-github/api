@@ -9,6 +9,12 @@ from pathlib import Path
 from unittest.mock import patch
 
 
+def stable_json_value(value):
+    if isinstance(value, (memoryview, bytes, bytearray)):
+        return {"binary_hex": bytes(value).hex()}
+    return str(value)
+
+
 def main():
     sys.path.insert(0, os.getcwd())
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "procollab.settings")
@@ -39,7 +45,9 @@ def main():
     manager = get_user_model().objects.get(pk=manager_id, is_active=True)
 
     def digest(value):
-        return hashlib.sha256(json.dumps(value, sort_keys=True, default=str).encode()).hexdigest()
+        return hashlib.sha256(
+            json.dumps(value, sort_keys=True, default=stable_json_value).encode()
+        ).hexdigest()
 
     def rows(model, ids):
         return list(model._base_manager.filter(pk__in=ids).order_by("pk").values())

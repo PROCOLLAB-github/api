@@ -1,6 +1,12 @@
 """Приемка API на dev; новые записи всегда откатываются транзакцией."""
 
 
+def stable_json_value(value):
+    if isinstance(value, (memoryview, bytes, bytearray)):
+        return {"binary_hex": bytes(value).hex()}
+    return str(value)
+
+
 def main():
     import hashlib
     import io
@@ -42,7 +48,9 @@ def main():
     checks, wire, programs = [], [], []
 
     def digest(value):
-        return hashlib.sha256(json.dumps(value, sort_keys=True, default=str).encode()).hexdigest()
+        return hashlib.sha256(
+            json.dumps(value, sort_keys=True, default=stable_json_value).encode()
+        ).hexdigest()
 
     models = [
         model
