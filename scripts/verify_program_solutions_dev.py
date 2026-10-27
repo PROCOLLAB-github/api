@@ -384,7 +384,7 @@ def main():
                 request(None, "get", f"/projects/{work.pk}/")
                 checks.append("legacy-immediate-publication-without-job-only-is-public-changed")
                 for old in PartnerProgram.objects.filter(pk__in=legacy_before).order_by("pk"):
-                    request(None, "get", f"/programs/{old.pk}/")
+                    request(None, "get", f"/programs/{old.pk}/", expected=404 if old.draft else 200)
                     manager = old.managers.first()
                     if manager is not None:
                         request(manager, "get", f"/programs/{old.pk}/management/projects/")

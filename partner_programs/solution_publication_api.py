@@ -31,7 +31,7 @@ class PublishedSolutionAPIView(SolutionAPIView):
         return response
 
     def program(self, pk):
-        program = program_for(pk)
+        program = getattr(self, "visibility_program", None) or program_for(pk)
         if program.draft or program.solution_storage_mode != "solution":
             raise Http404
         return program

@@ -198,7 +198,7 @@ class SolutionPublicationTests(PublicationFixture, TestCase):
     def test_program_page_publishes_and_draft_program_stays_private(self):
         PartnerProgram.objects.filter(pk=self.program.pk).update(draft=True)
         self.assertEqual(APIClient().get(self.public_url).status_code, 404)
-        self.assertEqual(APIClient().get(f"/programs/{self.program.pk}/").status_code, 200)
+        self.assertEqual(APIClient().get(f"/programs/{self.program.pk}/").status_code, 404)
         self.assertEqual(self.publish(), 0)
         self.solution.refresh_from_db()
         self.assertIsNone(self.solution.published_at)

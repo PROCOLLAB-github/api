@@ -126,7 +126,7 @@ def main():
                     and program.datetime_finished <= now
                 )
                 # The ordinary program page must be sufficient; no task/service call here.
-                read(root)
+                read(root, 404 if program.draft else 200)
                 if program.solution_storage_mode == "legacy_project":
                     path = root + "published-projects/"
                     if due:
@@ -156,11 +156,12 @@ def main():
                             assert set(material) == {"application", "published_at", "fields", "answers", "team"}
                             assert material["application"]["program_id"] == program.pk
                             assert material["application"]["solution_id"] == pk
-                read(root + "projects/", 401)
+                read(root + "projects/", 404 if program.draft else 401)
                 results.append(dict(
                     program_id=program.pk, mode=program.solution_storage_mode,
                     draft=program.draft, publication_enabled=program.publish_projects_after_finish,
-                    finished=program.datetime_finished <= now, published_count=len(actual),
+                    finished=bool(program.datetime_finished and program.datetime_finished <= now),
+                    published_count=len(actual),
                 ))
 
             assert dict(Project.objects.values_list("pk", "is_public")) == expected_projects
@@ -169,7 +170,7 @@ def main():
             assert after == before, "Non-publication data changed"
             # Repeat every program request; original publication timestamps must survive.
             for program in programs:
-                read(f"/programs/{program.pk}/")
+                read(f"/programs/{program.pk}/", 404 if program.draft else 200)
             assert dict(Project.objects.values_list("pk", "is_public")) == expected_projects
             assert dict(ProgramSolution.all_objects.values_list("pk", "published_at")) == expected_solutions
             assert snapshot() == before

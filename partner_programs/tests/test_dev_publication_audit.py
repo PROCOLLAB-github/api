@@ -47,6 +47,10 @@ class DevPublicationAuditTests(PublicationFixture, TestCase):
                 for key, value in changes.items():
                     setattr(program, key, value)
                 program.save()
+        create_partner_program(
+            solution_storage_mode="solution", draft=True,
+            datetime_started=None, datetime_finished=None, datetime_registration_ends=None,
+        )
         with patch.dict(os.environ, VERIFY_EXPECTED_API_SHA="a" * 40, VERIFY_PHASE="verify_publication"):
             with patch("builtins.print") as output:
                 main()
