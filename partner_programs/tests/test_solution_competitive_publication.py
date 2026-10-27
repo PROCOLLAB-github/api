@@ -235,17 +235,17 @@ class CompetitivePublicationTests(CompetitivePublicationFixture, TestCase):
         self.solution.refresh_from_db()
         self.assertEqual(self.solution.published_at, self.now)
 
-    def test_get_and_first_submission_do_not_publish_without_job(self):
+    def test_first_get_after_submission_publishes_without_job_and_keeps_drafts_closed(self):
         self.assertEqual(self.read()["count"], 0)
+        draft = self.other_solution()
         self.submit_ready()
-        self.assertEqual(self.read()["count"], 0)
-        self.assertEqual(
-            APIClient().get(self.public_url + f"{self.solution.pk}/").status_code, 404
-        )
+        self.read(self.solution)
         self.solution.refresh_from_db()
-        self.assertIsNone(self.solution.published_at)
-        self.assertEqual(self.publish(), 1)
+        self.assertIsNotNone(self.solution.published_at)
+        self.assertEqual(self.publish(), 0)
         self.assertEqual(self.read()["count"], 1)
+        draft.refresh_from_db()
+        self.assertIsNone(draft.published_at)
 
     def test_public_reads_never_query_or_expose_private_scores_and_assignments(self):
         self.submit_ready()

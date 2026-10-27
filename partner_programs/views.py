@@ -30,6 +30,7 @@ from partner_programs.permissions import (
     can_manage_program,
 )
 from partner_programs.selectors import get_current_program_application
+from partner_programs.services.publishing import publish_program_if_due
 from partner_programs.serializers import (
     PartnerProgramDataSchemaSerializer,
     PartnerProgramFieldSerializer,
@@ -155,6 +156,7 @@ class PartnerProgramDetail(generics.RetrieveAPIView):
 
     def get(self, request, *args, **kwargs):
         program = self.get_object()
+        publish_program_if_due(program)
         program_user_profile = None
         if request.user.is_authenticated:
             program_user_profile = (
