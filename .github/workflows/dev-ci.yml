@@ -10,7 +10,7 @@ on:
         description: "DEV operation"
         type: choice
         default: deploy
-        options: [deploy, verify_solution_rollback, prepare_solution_browser, finalize_solution_browser, verify_program_publication]
+        options: [deploy, verify_solution_rollback, prepare_solution_browser, finalize_solution_browser, verify_program_publication, grant_program_creator_11]
       fixture_key:
         description: "Unique acceptance fixture key"
         default: release-20261026
@@ -401,10 +401,10 @@ jobs:
           const operation = process.env.VERIFY_OPERATION;
           const key = process.env.VERIFY_FIXTURE_KEY;
           const manager = process.env.VERIFY_MANAGER_ID;
-          const phases = { verify_solution_rollback: 'verify_rollback', prepare_solution_browser: 'prepare_browser', finalize_solution_browser: 'finalize_browser', verify_program_publication: 'verify_publication' };
+          const phases = { verify_solution_rollback: 'verify_rollback', prepare_solution_browser: 'prepare_browser', finalize_solution_browser: 'finalize_browser', verify_program_publication: 'verify_publication', grant_program_creator_11: 'grant_creator_11' };
           if (!/^[0-9a-f]{40}$/.test(sha) || !phases[operation] || !/^[a-z0-9-]{8,50}$/.test(key) || !/^[1-9][0-9]{0,8}$/.test(manager)) throw new Error('Invalid acceptance arguments');
           const phase = phases[operation];
-          const file = phase === 'verify_publication' ? 'scripts/verify_program_publication_dev.py' : phase === 'verify_rollback' ? 'scripts/verify_program_solutions_dev.py' : 'scripts/prepare_program_solutions_browser.py';
+          const file = phase === 'grant_creator_11' ? 'scripts/grant_dev_program_creation_20261027.py' : phase === 'verify_publication' ? 'scripts/verify_program_publication_dev.py' : phase === 'verify_rollback' ? 'scripts/verify_program_solutions_dev.py' : 'scripts/prepare_program_solutions_browser.py';
           const source = fs.readFileSync(file, 'utf8');
           const script = [
             'set +x',
