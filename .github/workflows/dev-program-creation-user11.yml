@@ -1,0 +1,65 @@
+name: DEV program creator 11 acceptance access
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: api-deploy-dev
+  cancel-in-progress: false
+
+jobs:
+  grant:
+    if: github.ref == 'refs/heads/dev'
+    environment: dev
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install existing DEV SSH transport
+        run: npm install --prefix "$RUNNER_TEMP/dev-access-ssh" --ignore-scripts --no-package-lock --no-audit --no-fund ssh2@1.16.0
+      - name: Grant only the approved permission on the deployed DEV source
+        env:
+          NODE_PATH: ${{ runner.temp }}/dev-access-ssh/node_modules
+          DEV_SERVER_HOST: ${{ secrets.DEV_SERVER_HOST }}
+          DEV_SERVER_USER: ${{ secrets.DEV_SERVER_USER }}
+          DEV_SERVER_PASSWORD: ${{ secrets.DEV_SERVER_PASSWORD }}
+          DEV_SSH_HOST_KEY_SHA256: ${{ vars.DEV_SSH_HOST_KEY_SHA256 }}
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const { deploy } = require('./scripts/dev_ci_ssh.cjs');
+          const sha = process.env.GITHUB_SHA;
+          if (!/^[0-9a-f]{40}$/.test(sha)) throw new Error('Invalid DEV source');
+          const source = fs.readFileSync('scripts/grant_dev_program_creation_20261027.py', 'utf8');
+          const script = [
+            'set +x',
+            'set -eu',
+            'cd /root/api',
+            'test "$(git rev-parse HEAD)" = "' + sha + '"',
+            'web="$(docker compose -f docker-compose.dev-ci.yml ps -q web)"',
+            'test -n "$web"',
+            'image="$(docker inspect -f \'{{.Config.Image}}\' "$web")"',
+            'case "$image" in procollab-dev-api:' + sha + '-*) ;; *) exit 31 ;; esac',
+            'echo "VERIFIED_DEV_RUNTIME_REF=' + sha + '"',
+            'docker exec -i "$web" python - <<\'DEV_PROGRAM_CREATOR_11_PY\'',
+            source,
+            'DEV_PROGRAM_CREATOR_11_PY'
+          ].join('\n') + '\n';
+          deploy({
+            host: process.env.DEV_SERVER_HOST,
+            username: process.env.DEV_SERVER_USER,
+            password: process.env.DEV_SERVER_PASSWORD,
+            hostFingerprint: process.env.DEV_SSH_HOST_KEY_SHA256,
+            script,
+            timeoutMs: 120000
+          }).catch(() => {
+            console.error('DEV permission grant failed; inspect masked output.');
+            process.exitCode = 1;
+          });
+          NODE
