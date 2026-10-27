@@ -76,6 +76,15 @@ class RegistrationAdminTests(TestCase):
             self.assertContains(page, label)
         self.assertFalse(ProgramRegistration.objects.exists())
 
+    def test_editor_assets_use_admin_static_route_available_in_dev(self):
+        from django.contrib.staticfiles import finders
+
+        page = self.client.get(self.url)
+        for filename in ("admin_registration.js", "admin_registration.css"):
+            path = f"admin/partner_programs/{filename}"
+            self.assertContains(page, f"/static/{path}")
+            self.assertIsNotNone(finders.find(path))
+
     def test_create_draft_then_publish_and_enroll_via_public_api(self):
         self.assertEqual(self.client.post(self.url, self.payload()).status_code, 302)
         config = ProgramRegistration.objects.get(program=self.program)
