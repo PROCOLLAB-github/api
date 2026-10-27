@@ -14,6 +14,7 @@ from core.admin import SkillToObjectInline
 from core.utils import XlsxFileToExport, build_xlsx_download_response
 from mailing.views import MailingTemplateRender
 from users.models import UserAchievementFile
+from users.admin_forms import CustomUserAdminForm
 from users.services.users_activity import UserActivityDataPreparer
 
 from .helpers import force_verify_user, send_verification_completed_email
@@ -75,6 +76,8 @@ def make_active(modeladmin, request, queryset):
 
 @admin.register(CustomUser)
 class CustomUserAdmin(admin.ModelAdmin):
+    form = CustomUserAdminForm
+
     fieldsets = (
         (
             "Аккаунт",
@@ -129,6 +132,7 @@ class CustomUserAdmin(admin.ModelAdmin):
                 "fields": (
                     "is_staff",
                     "is_superuser",
+                    "can_create_programs",
                     "groups",
                     "user_permissions",
                 )

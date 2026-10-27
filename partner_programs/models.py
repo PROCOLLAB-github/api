@@ -107,6 +107,7 @@ class PartnerProgram(models.Model):
     )
     tag = models.TextField(
         verbose_name="Тег",
+        blank=True,
     )
     description = models.TextField(
         null=True,
