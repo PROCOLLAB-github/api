@@ -1,6 +1,8 @@
 import os
+from unittest import skipUnless
 from unittest.mock import patch
 
+from django.db import connection
 from django.test import TestCase
 from django.utils import timezone
 
@@ -14,6 +16,7 @@ from partner_programs.tests.test_solution_publication import PublicationFixture
 from scripts.verify_program_publication_dev import main
 
 
+@skipUnless(connection.vendor == "postgresql", "DEV audit requires PostgreSQL")
 class DevPublicationAuditTests(PublicationFixture, TestCase):
     def test_all_program_audit_checks_eligible_closed_and_draft_without_business_edits(self):
         self.seed_publication()
