@@ -1,0 +1,12 @@
+<fieldset class="registration-field">
+    <legend>Поле анкеты</legend>
+    {{ field_form.non_field_errors }}
+    {% for hidden in field_form.hidden_fields %}{{ hidden }}{{ hidden.errors }}{% endfor %}
+    {% for field in field_form.visible_fields %}
+        <div class="form-row">
+            {{ field.errors }}
+            {{ field.label_tag }} {{ field }}
+            {% if field.help_text %}<p class="help">{{ field.help_text }}</p>{% endif %}
+        </div>
+    {% endfor %}
+</fieldset>

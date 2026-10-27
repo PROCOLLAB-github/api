@@ -109,6 +109,8 @@ class DevRoutingTests(unittest.TestCase):
                         "/auth/unknown/", "/auth/login/unrecognized/", "/programs/6/",
                         "/solution-invitations/123/", "/solution-invitations/123/accept/",
                         "/solution-form-templates/unknown/",
+                        "/static/admin/partner_programs/admin_registration.js",
+                        "/static/admin/partner_programs/admin_registration.css",
                     ):
                         status, content_type, body = request(base_url, path, context=context)
                         self.assertEqual((status, content_type), (404, "application/json"))

@@ -107,6 +107,7 @@ MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "core.admin_language.AdminRussianLanguageMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -174,6 +175,14 @@ RUNNING_TESTS = "test" in sys.argv
 
 if RUNNING_TESTS:
     os.environ.setdefault("DJANGO_ALLOW_ASYNC_UNSAFE", "true")
+    # Каждый TestClient создает свой middleware, а файловые обработчики Loguru
+    # остаются глобальными. Тысячи обработчиков замедляют CI и конфликтуют при
+    # ротации файлов. В тестах достаточно стандартного вывода логов сервисов.
+    MIDDLEWARE = [
+        middleware
+        for middleware in MIDDLEWARE
+        if middleware != "core.log.middleware.CustomLoguruMiddleware"
+    ]
 
 if DEBUG:
     INSTALLED_APPS.append("debug_toolbar")

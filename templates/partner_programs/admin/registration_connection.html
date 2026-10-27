@@ -1,0 +1,7 @@
+{% extends "admin/change_form.html" %}
+{% block object-tools-items %}
+    {% if original %}
+        <li><a href="{% url 'admin:partner_programs_partnerprogram_registration' original.program_id %}">Редактировать анкету регистрации</a></li>
+    {% endif %}
+    {{ block.super }}
+{% endblock %}

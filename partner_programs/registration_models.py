@@ -13,25 +13,43 @@ class ProgramRegistration(models.Model):
         "partner_programs.PartnerProgram",
         on_delete=models.CASCADE,
         related_name="registration_config",
+        verbose_name="Программа",
     )
-    draft = models.JSONField(default=dict)
-    published = models.JSONField(null=True, blank=True, editable=False)
-    revision = models.PositiveIntegerField(default=0, editable=False)
-    published_version = models.PositiveIntegerField(default=0, editable=False)
-    published_at = models.DateTimeField(null=True, editable=False)
+    draft = models.JSONField("Черновик анкеты", default=dict)
+    published = models.JSONField(
+        "Опубликованная анкета", null=True, blank=True, editable=False
+    )
+    revision = models.PositiveIntegerField("Версия настроек", default=0, editable=False)
+    published_version = models.PositiveIntegerField(
+        "Версия опубликованной анкеты", default=0, editable=False
+    )
+    published_at = models.DateTimeField("Дата публикации", null=True, editable=False)
     external_status = models.CharField(
+        "Статус подключения внешней формы",
         max_length=20,
         default="not_connected",
-        choices=[(v, v) for v in ("not_connected", "requested", "connected")],
+        choices=[
+            ("not_connected", "Не подключена"),
+            ("requested", "Запрос отправлен"),
+            ("connected", "Подключена"),
+        ],
     )
-    external_url = models.URLField(blank=True)
+    external_url = models.URLField("Адрес подключенной формы", blank=True)
     connection_website_url = models.URLField("Сайт мероприятия", blank=True)
-    connection_comment = models.TextField(blank=True)
+    connection_comment = models.TextField("Комментарий к подключению", blank=True)
     connection_contact = models.CharField("Контакт для связи", max_length=500, blank=True)
     requested_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        verbose_name="Кто запросил подключение",
     )
-    requested_at = models.DateTimeField(null=True, blank=True)
+    requested_at = models.DateTimeField("Дата запроса подключения", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Регистрация программы"
+        verbose_name_plural = "Регистрации программ"
 
     def clean(self):
         super().clean()

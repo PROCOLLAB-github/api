@@ -429,11 +429,19 @@ class UserLinkAdmin(admin.ModelAdmin):
     list_display_links = ("id", "user", "link")
 
 
+class ExpertProgramFilter(admin.RelatedFieldListFilter):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.title = "По программе"
+
+
 @admin.register(Expert)
 class ExpertAdmin(admin.ModelAdmin):
     list_display = ("id", "user")
     search_fields = ("user__first_name", "user__last_name", "user__email")
-    list_filter = ("user__partner_program_profiles__partner_program",)
+    list_filter = (
+        ("user__partner_program_profiles__partner_program", ExpertProgramFilter),
+    )
     list_select_related = ("user",)
 
 

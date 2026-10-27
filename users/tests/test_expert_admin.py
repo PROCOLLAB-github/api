@@ -72,16 +72,16 @@ class ExpertAdminTests(TestCase):
         self.assertEqual(response.context["cl"].result_count, len(users))
 
     def test_changelist_has_standard_search_and_program_choices(self):
-        with translation.override("en"):
+        with translation.override("ru"):
             response = self.changelist()
             self.assertContains(response, 'id="searchbar"')
             self.assertContains(response, 'id="changelist-filter"')
-            self.assertContains(response, "By partner program")
+            self.assertContains(response, "По программе")
             changelist = response.context["cl"]
             program_filter = changelist.filter_specs[0]
             self.assertIsInstance(program_filter, RelatedFieldListFilter)
             choices = list(program_filter.choices(changelist))
-            self.assertEqual(choices[0]["display"], "All")
+            self.assertEqual(choices[0]["display"], "Все")
             self.assertTrue(choices[0]["selected"])
             self.assertCountEqual(
                 [choice["display"] for choice in choices[1:]],

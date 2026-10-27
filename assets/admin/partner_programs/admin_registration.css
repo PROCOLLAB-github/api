@@ -1,0 +1,27 @@
+.registration-admin { max-width: 1000px; }
+.registration-admin .module { margin-bottom: 24px; padding-bottom: 16px; }
+.registration-admin .module > p,
+.registration-admin .module > form,
+.registration-admin .module > label { margin: 12px 16px; }
+.registration-admin .registration-status { padding: 0 16px 16px; }
+.registration-admin .registration-status h2 { margin: 0 -16px 16px; }
+.registration-admin input[type="url"] { width: min(95%, 660px); }
+.registration-field { border: 1px solid var(--hairline-color); border-radius: 4px; margin: 16px; padding: 12px; }
+.registration-field legend { padding: 0 8px; font-weight: 600; }
+.registration-admin .form-row label { display: block; float: none; width: auto; margin-bottom: 6px; }
+.registration-admin .form-row input[type="checkbox"] + label { display: inline; }
+.registration-admin textarea,
+.registration-admin input[type="text"] { width: min(95%, 660px); box-sizing: border-box; }
+.registration-admin button.button { padding: 10px 15px; border: 0; cursor: pointer; margin: 4px; }
+.registration-admin button.default { background: var(--default-button-bg); }
+.registration-admin .errorlist { margin: 12px 0; }
+.registration-preview-body { padding: 16px; max-width: 760px; border: 1px solid var(--hairline-color); }
+.registration-preview-body.mobile { max-width: 360px; }
+.registration-preview-body label { display: block; margin-bottom: 8px; }
+.registration-preview-body input,
+.registration-preview-body select,
+.registration-preview-body textarea { max-width: 100%; }
+@media (max-width: 600px) {
+  .registration-field { margin: 10px 0; padding: 8px; }
+  .registration-admin .submit-row { display: flex; flex-wrap: wrap; gap: 8px; }
+}

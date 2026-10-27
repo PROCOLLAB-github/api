@@ -199,6 +199,35 @@ def save_settings(pk, user, data, *, publish=False):
     return settings_data(program)
 
 
+@transaction.atomic
+def request_connection(pk, user, data):
+    program = managed_program(pk, user, lock=True)
+    config = locked_config(program)
+    if config.external_status != "connected":
+        duplicate = (
+            config.external_status == "requested"
+            and config.connection_website_url == data["url"]
+            and config.connection_comment == data["comment"]
+            and config.connection_contact == data["contact"]
+            and config.connection_requests.exists()
+        )
+        if not duplicate:
+            config.connection_website_url = data["url"]
+            config.connection_comment = data["comment"]
+            config.connection_contact = data["contact"]
+            config.requested_by = user
+            config.requested_at = timezone.now()
+            config.external_status = "requested"
+            config.revision += 1
+            config.save()
+            from partner_programs.services.registration_notifications import (
+                record_request,
+            )
+
+            record_request(config, user)
+    return settings_data(program)
+
+
 def open_program(pk, *, lock=False):
     rows = PartnerProgram.objects.select_for_update() if lock else PartnerProgram.objects
     return get_object_or_404(rows, pk=pk, draft=False)

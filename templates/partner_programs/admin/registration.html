@@ -1,0 +1,109 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrastyle %}{{ block.super }}
+<link rel="stylesheet" href="{% static 'admin/partner_programs/admin_registration.css' %}">
+{% endblock %}
+{% block extrahead %}{{ block.super }}
+<script src="{% static 'admin/partner_programs/admin_registration.js' %}" defer></script>
+{% endblock %}
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">Главная</a> &rsaquo;
+    <a href="{% url 'admin:partner_programs_partnerprogram_changelist' %}">Программы</a> &rsaquo;
+    <a href="{{ change_url }}">{{ program.name }}</a> &rsaquo; Регистрация
+</div>
+{% endblock %}
+{% block content %}
+<div class="registration-admin">
+    <p><a href="{{ change_url }}">Вернуться к программе</a></p>
+    <section class="module registration-status">
+        <h2>Страница регистрации</h2>
+        {% if program.draft %}
+            <p>Программа в черновике. Кнопка «Опубликовать программу и форму» откроет программу и регистрацию после проверки названия, описания и сроков.</p>
+        {% elif state.published %}
+            <p>Форма опубликована. Версия: {{ state.published_version }}. Сохранение черновика не меняет действующую форму.</p>
+        {% else %}
+            <p>Форма еще не опубликована. Настройте анкету, проверьте ее и опубликуйте.</p>
+        {% endif %}
+        {% if state.link %}
+            <label for="registration-link">Ссылка на регистрацию</label>
+            <input id="registration-link" type="url" readonly value="{{ state.link }}">
+            <button type="button" class="button" data-copy-link>Скопировать ссылку</button>
+            <a href="{{ state.link }}" target="_blank" rel="noopener">Открыть страницу регистрации</a>
+            <span role="status" data-copy-status></span>
+        {% endif %}
+    </section>
+    <form method="post" enctype="multipart/form-data" id="registration-editor">
+        {% csrf_token %}
+        {{ form.revision }}
+        {{ form.non_field_errors }}
+        {{ form.revision.errors }}
+        <section class="module aligned">
+            <h2>Способ регистрации</h2>
+            <div class="form-row">{{ form.mode.errors }}{{ form.mode }}</div>
+            <p>Через PROCOLLAB: анкета, аккаунт и участие в одном месте. Через внешний сайт: требуется подключенная внешняя форма.</p>
+        </section>
+        <section class="module aligned">
+            <h2>Аккаунт PROCOLLAB</h2>
+            <p>Для нового пользователя: имя, фамилия, электронная почта, дата рождения, пароль и согласия. У вошедшего участника повторно их не запрашиваем.</p>
+        </section>
+        <section class="module aligned">
+            <h2>Анкета участника</h2>
+            <p>Для вопросов с выбором ответа укажите свой список или общий справочник. Позиция задает порядок полей в анкете.</p>
+            <p>Если на убираемое поле уже есть ответы, они сохранятся в карточках участников и выгрузке. Изменения станут доступны участникам после публикации.</p>
+            {{ fields.management_form }}
+            {{ fields.non_form_errors }}
+            <div id="registration-fields">
+                {% for field_form in fields %}
+                    {% include "partner_programs/admin/registration_field.html" %}
+                {% empty %}
+                    <p data-empty-fields>Дополнительных вопросов пока нет. Можно опубликовать регистрацию без них.</p>
+                {% endfor %}
+            </div>
+            <button type="submit" name="action" value="add" class="button" id="add-registration-field" formnovalidate>Добавить поле</button>
+            <button type="submit" name="action" value="import" class="button">Проверить и применить импорт</button>
+            <p>Импорт заменяет варианты в выбранном поле. Для сохранения анкеты нажмите «Сохранить черновик» или кнопку публикации.</p>
+            <div class="form-row">{{ form.confirm_archive.errors }}{{ form.confirm_archive }} {{ form.confirm_archive.label_tag }}</div>
+        </section>
+        <div class="submit-row">
+            <button type="submit" name="action" value="save" class="button">Сохранить черновик</button>
+            <button type="submit" name="action" value="preview" class="button">Предпросмотр</button>
+            <button type="submit" name="action" value="publish" class="button default">{% if program.draft %}Опубликовать программу и форму{% else %}Опубликовать форму{% endif %}</button>
+        </div>
+    </form>
+    <template id="registration-empty-field">
+        {% with field_form=fields.empty_form %}{% include "partner_programs/admin/registration_field.html" %}{% endwith %}
+    </template>
+    <section class="module aligned">
+        <h2>Внешняя форма регистрации</h2>
+        <p>Статус: {% if state.external_status == 'connected' %}Подключена{% elif state.external_status == 'requested' %}Запрос отправлен{% else %}Не подключена{% endif %}.</p>
+        {% if state.external_url %}<p>Адрес формы: <a href="{{ state.external_url }}">{{ state.external_url }}</a></p>{% endif %}
+        {% if connection_url %}<p><a href="{{ connection_url }}">Настроить подключение внешней формы</a></p>{% endif %}
+        <p>Для размещения ссылки на встроенную форму на лендинге подключение интеграции не требуется.</p>
+        {% if state.external_status != 'connected' %}
+            <form method="post">
+                {% csrf_token %}
+                {{ connection.as_p }}
+                <button type="submit" name="action" value="request_connection" class="button">Отправить запрос на подключение</button>
+            </form>
+        {% endif %}
+    </section>
+    {% if preview is not None %}
+        <section class="module aligned" id="registration-preview" tabindex="-1">
+            <h2>Предпросмотр анкеты участника</h2>
+            <p>Это предпросмотр. Аккаунт и участие не создаются.</p>
+            <label><input type="checkbox" data-mobile-preview> Ширина телефона</label>
+            <div class="registration-preview-body">
+                {% if form.cleaned_data.mode == 'external' %}
+                    <p>Участник перейдет на подключенную внешнюю форму.</p>
+                {% else %}
+                    <p>Новый пользователь также заполнит данные аккаунта PROCOLLAB.</p>
+                    {{ preview.as_p }}
+                    <button type="button" class="button" disabled>Зарегистрироваться</button>
+                {% endif %}
+            </div>
+        </section>
+    {% endif %}
+</div>
+{% endblock %}
