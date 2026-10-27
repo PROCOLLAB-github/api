@@ -4,6 +4,7 @@ from partner_programs.registration_models import ProgramRegistration
 import tablib
 from django import forms
 from django.contrib import admin
+from django.db import transaction
 from . import solution_admin  # noqa: F401
 from projects.team_admin import TeamValidationAdminMixin
 from django.db.models import QuerySet
@@ -27,6 +28,7 @@ from partner_programs.forms import (
     ProgramFieldValueInlineFormSet,
 )
 from partner_programs.services.case_fields import case_field_has_values
+from partner_programs.admin_registration import ProgramRegistrationAdminMixin
 
 
 class PartnerProgramMaterialInline(admin.StackedInline):
@@ -44,7 +46,7 @@ class PartnerProgramFieldInline(admin.TabularInline):
 
 
 @admin.register(PartnerProgram)
-class PartnerProgramAdmin(admin.ModelAdmin):
+class PartnerProgramAdmin(ProgramRegistrationAdminMixin, admin.ModelAdmin):
     class PartnerProgramAdminForm(forms.ModelForm):
         class Meta:
             model = PartnerProgram
@@ -123,11 +125,22 @@ class PartnerProgramAdmin(admin.ModelAdmin):
         if "Руководитель программы" in request.user.groups.all().values_list(
             "name", flat=True
         ):
-            user_programs: list[int] = request.user.expert.programs.values_list(
-                "id", flat=True
-            )
-            qs = qs.filter(id__in=user_programs)
+            expert = getattr(request.user, "expert", None)
+            user_programs = expert.programs.values_list("id", flat=True) if expert else []
+            from django.db.models import Q
+
+            qs = qs.filter(Q(id__in=user_programs) | Q(managers=request.user)).distinct()
         return qs
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+
+    def save_related(self, request, form, formsets, change):
+        super().save_related(request, form, formsets, change)
+        if not change:
+            form.instance.managers.add(request.user)
 
     def change_view(self, request, object_id, form_url="", extra_context=None):
         if "Руководитель программы" in request.user.groups.all().values_list(
@@ -368,6 +381,7 @@ class PartnerProgramFieldAdmin(admin.ModelAdmin):
 
 @admin.register(ProgramRegistration)
 class ProgramRegistrationAdmin(admin.ModelAdmin):
+    change_form_template = "partner_programs/admin/registration_connection.html"
     list_display = ("program", "external_status", "requested_at", "published_at")
     list_filter = ("external_status",)
     search_fields = (
@@ -388,6 +402,28 @@ class ProgramRegistrationAdmin(admin.ModelAdmin):
         "connection_website_url",
         "connection_contact",
     )
+
+    def get_queryset(self, request):
+        programs = self.admin_site._registry[PartnerProgram].get_queryset(request)
+        return super().get_queryset(request).filter(program__in=programs)
+
+    def has_change_permission(self, request, obj=None):
+        return super().has_change_permission(request, obj) and (
+            obj is None
+            or self.admin_site._registry[PartnerProgram].has_change_permission(
+                request, obj.program
+            )
+        )
+
+    @transaction.atomic
+    def save_model(self, request, obj, form, change):
+        # Подключение формы участвует в той же блокировке и версии, что редакторы анкеты.
+        PartnerProgram.objects.select_for_update().get(pk=obj.program_id)
+        current = ProgramRegistration.objects.select_for_update().get(pk=obj.pk)
+        for name in self.readonly_fields:
+            setattr(obj, name, getattr(current, name))
+        obj.revision = current.revision + 1
+        super().save_model(request, obj, form, change)
 
     def has_add_permission(self, request):
         return False
