@@ -41,7 +41,7 @@ Registration settings add `program_draft`. For a draft, `POST .../management/reg
 - `can_publish`: draft with no blockers;
 - `links`: `{program,registration}`; registration null until publication.
 
-Minimum: nonblank name/description; all3dates; finish after start; registration deadline in the future; saved valid registration schema. An empty additional questionnaire is valid because account requirements are handled by existing enrollment. External mode additionally requires administrator connection and a valid HTTP(S) URL. No new relative registration/start/finish cutoff is introduced.
+Minimum: nonblank name/description; all3dates; finish after start; registration deadline in the future; saved valid registration schema. An empty additional questionnaire is valid because account requirements are handled by existing enrollment. External mode additionally requires administrator connection and a valid HTTP(S) URL. For first publication, the registration deadline may be after the program starts but must be no later than the program finish (equality is valid). A deadline after finish returns a dates blocker and publication HTTP400 without changing program/questionnaire state. Existing published-program date editing is unchanged.
 
 URLs use existing `EXPERT_WORKSPACE_FRONTEND_URL`; set it to the dev frontend origin in dev. Native registration URL remains `/program-registration/{id}`. External registration uses the connected URL.
 

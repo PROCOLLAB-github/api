@@ -169,10 +169,10 @@ def _date_problem(program):
         return "Укажите начало, окончание программы и окончание регистрации."
     if program.datetime_finished <= program.datetime_started:
         return "Окончание программы должно быть позже начала."
-    # Enrollment may continue after the program starts, as in the existing API.
-    # No new relative registration cutoff is introduced by this launch flow.
     if program.datetime_registration_ends <= timezone.now():
         return "Окончание регистрации должно быть в будущем, чтобы открыть прием."
+    if program.datetime_registration_ends > program.datetime_finished:
+        return "Регистрация должна завершиться не позже окончания программы."
     return None
 
 

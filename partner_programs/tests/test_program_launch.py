@@ -390,6 +390,39 @@ class ProgramPublicationTests(ProgramLaunchTestCase):
         self.assertEqual([r["code"] for r in self.state()["blockers"]], ["dates"])
         self.assertEqual(self.publish().status_code, 400)
 
+    def test_registration_after_program_finish_blocks_publication_without_changes(self):
+        config = self.configure()
+        self.program.datetime_registration_ends = (
+            self.program.datetime_finished + timezone.timedelta(seconds=1)
+        )
+        self.program.save()
+        state = self.state()
+        self.assertFalse(state["can_publish"])
+        self.assertEqual([r["code"] for r in state["blockers"]], ["dates"])
+        self.assertEqual(
+            state["blockers"][0]["detail"],
+            "Регистрация должна завершиться не позже окончания программы.",
+        )
+        response = self.publish(state["revision"])
+        self.assertEqual(response.status_code, 400, response.data)
+        self.assertEqual(response.data["code"], "program_not_ready")
+        self.program.refresh_from_db()
+        config.refresh_from_db()
+        self.assertTrue(self.program.draft)
+        self.assertIsNone(config.published)
+        self.assertIsNone(config.published_at)
+        self.assertEqual(config.published_version, 0)
+
+    def test_registration_can_finish_exactly_when_the_program_finishes(self):
+        self.configure()
+        self.program.datetime_registration_ends = self.program.datetime_finished
+        self.program.save()
+        self.assertTrue(self.state()["can_publish"])
+        response = self.publish()
+        self.assertEqual(response.status_code, 200, response.data)
+        self.program.refresh_from_db()
+        self.assertFalse(self.program.draft)
+
     def test_published_program_keeps_existing_nonnullable_dates_contract(self):
         self.configure()
         self.publish()
