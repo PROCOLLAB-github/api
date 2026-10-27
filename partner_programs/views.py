@@ -115,6 +115,21 @@ class PartnerProgramList(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     pagination_class = PartnerProgramPagination
 
+    def get_permissions(self):
+        from partner_programs.permissions import CanCreateProgram
+
+        checks = super().get_permissions()
+        return [*checks, CanCreateProgram()] if self.request.method == "POST" else checks
+
+    def perform_create(self, serializer):
+        from django.db import transaction
+        from partner_programs.permissions import require_create_program
+
+        require_create_program(self.request.user)
+        with transaction.atomic():
+            program = serializer.save(created_by=self.request.user)
+            program.managers.add(self.request.user)
+
     def get_queryset(self):
         base_qs = super().get_queryset()
         participating_flag = self.request.query_params.get("participating")
@@ -172,9 +187,15 @@ class PartnerProgramDetail(generics.RetrieveAPIView):
                 program_id=program.pk,
                 user_id=request.user.pk,
             )
+        # New creators manage the page without becoming participants.
+        manager_page = bool(
+            not is_user_member
+            and program.program_format
+            and can_manage_program(request.user, program)
+        )
         serializer_class = (
             PartnerProgramForMemberSerializer
-            if is_user_member
+            if is_user_member or manager_page
             else PartnerProgramForUnregisteredUserSerializer
         )
         serializer = serializer_class(
@@ -188,6 +209,22 @@ class PartnerProgramDetail(generics.RetrieveAPIView):
         data = serializer.data
         data["is_user_member"] = is_user_member
         data["current_application"] = current_application
+        if (
+            program.program_format
+            and program.solution_storage_mode == "solution"
+            and is_user_member
+        ):
+            from partner_programs.solution_api import context_data
+
+            solution_context = context_data(program, request.user)
+            available = (
+                solution_context["can_create"]
+                or solution_context["current_application"] is not None
+            )
+            data["solution_action_available"] = available
+            data["solution_action_blocked_reason"] = (
+                None if available else solution_context["blocked_reason"]
+            )
         data["is_user_expert"] = bool(
             request.user.is_authenticated
             and program.experts.filter(user_id=request.user.pk).exists()
@@ -389,7 +426,11 @@ class PartnerProgramProjectFieldsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk, *args, **kwargs):
-        return Response(program_link_fields(pk, request.user))
+        return Response(
+            program_link_fields(
+                pk, request.user, link=getattr(self, "visibility_program_link", None)
+            )
+        )
 
     @swagger_auto_schema(request_body=PartnerProgramFieldValueUpdateSerializer(many=True))
     def put(self, request, pk, *args, **kwargs):
@@ -423,7 +464,9 @@ class ProgramManagerAnalyticsAccessAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get_program(self, request, pk):
-        program = get_object_or_404(PartnerProgram, pk=pk)
+        program = getattr(self, "visibility_program", None)
+        if program is None:
+            program = get_object_or_404(PartnerProgram, pk=pk)
         if not can_manage_program(request.user, program):
             raise PermissionDenied("Недостаточно прав.")
         return program

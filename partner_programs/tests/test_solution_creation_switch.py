@@ -462,27 +462,28 @@ class SolutionCreationSwitchMigrationTests(SubmissionFixture, TransactionTestCas
         self.ready()
         self.assertEqual(self.submit().status_code, 200)
         create_partner_program()
-        columns = [
-            f.attname
-            for f in PartnerProgram._meta.fields
-            if f.name != "solution_creation_enabled"
-        ]
-        before_programs = list(PartnerProgram.objects.order_by("pk").values(*columns))
         executor = MigrationExecutor(connection)
         latest = executor.loader.graph.leaf_nodes()
         before = [("partner_programs", "0033_solution_publication")]
         after = [("partner_programs", "0034_solution_creation_switch")]
         historical = executor.loader.project_state(after).apps
+        historical_program = historical.get_model("partner_programs", "PartnerProgram")
+        columns = [
+            f.attname
+            for f in historical_program._meta.fields
+            if f.name != "solution_creation_enabled"
+        ]
+        before_programs = list(PartnerProgram.objects.order_by("pk").values(*columns))
         before_data = domain_state(historical)
         try:
             executor.migrate(before)
             executor = MigrationExecutor(connection)
             executor.migrate(after)
             self.assertFalse(
-                PartnerProgram.objects.filter(solution_creation_enabled=True).exists()
+                historical_program.objects.filter(solution_creation_enabled=True).exists()
             )
             self.assertEqual(
-                list(PartnerProgram.objects.order_by("pk").values(*columns)),
+                list(historical_program.objects.order_by("pk").values(*columns)),
                 before_programs,
             )
             self.assertEqual(domain_state(historical), before_data)

@@ -325,6 +325,7 @@ def bind_project_to_program(*, project_id, program_id, actor, program_link_id=No
     if program:
         if (
             not program.is_project_submission_open()
+            or program.datetime_finished is None
             or program.datetime_finished < timezone.now()
         ):
             raise TeamError(

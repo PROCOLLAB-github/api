@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 from django.utils import timezone
 from django.db.models import Q
-from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.permissions import SAFE_METHODS, BasePermission
 
 from partner_programs.models import (
@@ -187,7 +187,10 @@ class TimingAfterEndsProgramPermission(BasePermission):
         )
         moscow_time: datetime = timezone.localtime(timezone.now())
 
-        if program_profile:
+        if (
+            program_profile
+            and program_profile.partner_program.datetime_finished is not None
+        ):
             date_from_end_program: timedelta = (
                 moscow_time - program_profile.partner_program.datetime_finished
             )
@@ -276,6 +279,9 @@ class CanBindProjectToProgram(BasePermission):
             program = PartnerProgram.objects.get(pk=program_id)
         except PartnerProgram.DoesNotExist:
             raise ValidationError({"partner_program_id": "Программа не найдена."})
+
+        if program.draft:
+            raise NotFound()
 
         submission_deadline = program.get_project_submission_deadline()
         if submission_deadline and submission_deadline < timezone.now():

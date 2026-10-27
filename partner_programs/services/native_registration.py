@@ -134,6 +134,7 @@ def clean_schema(data, *, publishing=False):
 def settings_data(program):
     config = config_for(program)
     return {
+        "program_draft": program.draft,
         "draft": config.draft if config else initial_draft(program),
         "published": config.published if config else None,
         "revision": config.revision if config else 0,
@@ -188,13 +189,12 @@ def save_settings(pk, user, data, *, publish=False):
     config.draft = schema
     config.revision += 1
     if publish:
-        if program.draft:
-            raise ValidationError("Сначала опубликуйте саму программу в Django admin.")
         if schema["mode"] == "external" and config.external_status != "connected":
             raise ValidationError("Дождитесь подключения внешней формы администратором.")
-        config.published = copy.deepcopy(schema)
-        config.published_at = timezone.now()
-        config.published_version += 1
+        if not program.draft:
+            config.published = copy.deepcopy(schema)
+            config.published_at = timezone.now()
+            config.published_version += 1
     config.save()
     return settings_data(program)
 

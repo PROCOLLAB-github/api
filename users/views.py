@@ -165,7 +165,10 @@ class CurrentUserProgramsTags(RetrieveAPIView):
         user = User.objects.get(id=request.user.id)
         # fixme: mb hide finished programs
         programs = [
-            profile.partner_program for profile in user.partner_program_profiles.all()
+            profile.partner_program
+            for profile in user.partner_program_profiles.select_related(
+                "partner_program"
+            ).filter(partner_program__draft=False)
         ]
         serializer = self.get_serializer(programs, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -180,7 +183,10 @@ class CurrentUserPrograms(RetrieveAPIView):
         user = User.objects.get(id=request.user.id)
         # fixme: mb hide finished programs
         programs = [
-            profile.partner_program for profile in user.partner_program_profiles.all()
+            profile.partner_program
+            for profile in user.partner_program_profiles.select_related(
+                "partner_program"
+            ).filter(partner_program__draft=False)
         ]
         serializer = self.get_serializer(programs, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)

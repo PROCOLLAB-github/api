@@ -1,6 +1,76 @@
-from rest_framework.permissions import BasePermission
+from functools import wraps
+
+from rest_framework.exceptions import NotFound, PermissionDenied
+from rest_framework.permissions import BasePermission, SAFE_METHODS
 
 from partner_programs.models import PartnerProgram
+
+
+def can_create_program(user) -> bool:
+    return bool(
+        user
+        and user.is_authenticated
+        and user.has_perm("partner_programs.add_partnerprogram")
+    )
+
+
+def require_create_program(user):
+    if not can_create_program(user):
+        raise PermissionDenied("Администратор еще не выдал вам право создания программ.")
+
+
+class CanCreateProgram(BasePermission):
+    def has_permission(self, request, view):
+        require_create_program(request.user)
+        return True
+
+
+class ProgramDraftVisibility(BasePermission):
+    """One boundary for every program route, after DRF authentication."""
+
+    def has_permission(self, request, view):
+        from partner_programs.models import PartnerProgramProject
+
+        if "partner-program-projects/" in request.path:
+            link = (
+                PartnerProgramProject.objects.select_related("partner_program", "project")
+                .filter(pk=view.kwargs.get("pk"))
+                .first()
+            )
+            view.visibility_program_link = link
+            program = link.partner_program if link else None
+        else:
+            pk = view.kwargs.get("partnerprogram_pk") or view.kwargs.get("pk")
+            program = PartnerProgram.objects.filter(pk=pk).first() if pk else None
+        # Reuse this read in read-only views, never for transactional writes.
+        view.visibility_program = program
+        if program is None or not program.draft:
+            return True
+        setattr(getattr(request, "_request", request), "_program_draft_response", True)
+        if not can_manage_program(request.user, program):
+            raise NotFound()
+        if request.method not in SAFE_METHODS and not (
+            "/management/" in request.path or "/news/" in request.path
+        ):
+            # Previewing a draft never enrolls, views, likes or creates a solution.
+            raise NotFound()
+        return True
+
+
+def program_view(view_class, **kwargs):
+    view = view_class.as_view(
+        permission_classes=[ProgramDraftVisibility, *view_class.permission_classes],
+        **kwargs,
+    )
+
+    @wraps(view)
+    def dispatch(request, *args, **view_kwargs):
+        response = view(request, *args, **view_kwargs)
+        if getattr(request, "_program_draft_response", False):
+            response["Cache-Control"] = "private, no-store"
+        return response
+
+    return dispatch
 
 
 def can_manage_program(user, program: PartnerProgram) -> bool:

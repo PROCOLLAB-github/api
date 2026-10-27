@@ -111,7 +111,11 @@ def reserved_user_ids(project):
 
 
 def has_active_exclusivity(program):
-    return program.is_competitive and program.datetime_finished > timezone.now()
+    return (
+        program.is_competitive
+        and program.datetime_finished is not None
+        and program.datetime_finished > timezone.now()
+    )
 
 
 def conflicting_team_users(program, *, project_id, user_ids, solution_id=None):

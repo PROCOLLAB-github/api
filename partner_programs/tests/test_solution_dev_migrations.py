@@ -33,7 +33,9 @@ class SolutionDevGraphTests(TestCase):
     def test_single_leaf_empty_merge_and_unchanged_upstream_migration(self):
         loader = MigrationLoader(None)
         self.assertEqual(loader.detect_conflicts(), {})
-        self.assertEqual(loader.graph.leaf_nodes("partner_programs"), [MERGED])
+        leaves = loader.graph.leaf_nodes("partner_programs")
+        self.assertEqual(len(leaves), 1)
+        self.assertIn(MERGED, loader.graph.forwards_plan(leaves[0]))
         migration = loader.disk_migrations[MERGED]
         self.assertCountEqual(migration.dependencies, [CERTIFICATE, SOLUTION])
         self.assertEqual(migration.operations, [])

@@ -222,6 +222,13 @@ class ManagementSettingsSerializer(StrictFieldsMixin, serializers.ModelSerialize
                 del fields[name]
         for name in allowed:
             fields[name].required = False
+            if (
+                name
+                in ("datetime_started", "datetime_finished", "datetime_registration_ends")
+                and self.instance is not None
+                and not self.instance.draft
+            ):
+                fields[name].allow_null = False
             if name.endswith("_address") or name == "registration_link":
                 fields[name] = HttpURLField(
                     required=False, allow_null=True, allow_blank=True
