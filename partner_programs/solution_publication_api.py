@@ -1,6 +1,7 @@
 """Анонимное чтение allowlist опубликованных материалов решения."""
 
 from django.http import Http404
+from partner_programs.services.publishing import publish_program_if_due
 from rest_framework import serializers
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -31,7 +32,7 @@ class PublishedSolutionAPIView(SolutionAPIView):
 
     def program(self, pk):
         program = program_for(pk)
-        if program.solution_storage_mode != "solution":
+        if program.draft or program.solution_storage_mode != "solution":
             raise Http404
         return program
 
@@ -42,6 +43,7 @@ class PublishedSolutionListView(PublishedSolutionAPIView):
         query = PublishedSolutionQuery(data=request.query_params)
         query.is_valid(raise_exception=True)
         data = query.validated_data
+        publish_program_if_due(program)
         rows = published_solutions(program, data["search"])
         count, limit, offset = rows.count(), data["limit"], data["offset"]
         stop = offset + limit
@@ -69,6 +71,7 @@ class PublishedSolutionDetailView(PublishedSolutionAPIView):
         query.is_valid(raise_exception=True)
         if not 0 < solution_id <= MAX_ID:
             raise Http404
+        publish_program_if_due(program)
         solution = (
             published_solutions(program, with_answers=True).filter(pk=solution_id).first()
         )

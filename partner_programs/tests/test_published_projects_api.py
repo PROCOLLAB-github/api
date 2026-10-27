@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -31,16 +33,51 @@ class PublishedProjectsTests(TestCase):
     def read(self, path=None, **kwargs):
         return self.client.get(path or self.url, secure=True, **kwargs)
 
-    def test_anonymous_reader_only_returns_published_non_draft_projects(self):
+    def test_anonymous_reader_publishes_due_non_drafts_without_waiting_for_task(self):
         response = self.read()
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
-            [row["id"] for row in response.data["results"]], [self.public.pk]
+            [row["id"] for row in response.data["results"]],
+            [self.public.pk, self.private.pk],
         )
         self.assertNotIn("program_data", response.data["results"][0])
         self.assertNotIn("scores", response.data["results"][0])
         self.private.refresh_from_db()
-        self.assertFalse(self.private.is_public)  # GET does not publish.
+        self.assertTrue(self.private.is_public)
+        self.assertEqual(response["Cache-Control"], "no-store")
+
+    def test_publication_happens_at_exact_deadline_and_on_late_flag_enable(self):
+        deadline = timezone.now()
+        self.program.datetime_finished = deadline
+        self.program.save(update_fields=["datetime_finished"])
+        with patch("django.utils.timezone.now", return_value=deadline - timezone.timedelta(microseconds=1)):
+            self.assertEqual(self.read().status_code, 404)
+        self.private.refresh_from_db()
+        self.assertFalse(self.private.is_public)
+        with patch("django.utils.timezone.now", return_value=deadline):
+            self.assertEqual(self.read().data["count"], 2)
+        late = create_project(is_public=False)
+        create_program_member(self.program, project=late)
+        self.program.publish_projects_after_finish = False
+        self.program.save(update_fields=["publish_projects_after_finish"])
+        self.assertEqual(self.read().status_code, 404)
+        late.refresh_from_db()
+        self.assertFalse(late.is_public)
+        self.program.publish_projects_after_finish = True
+        self.program.save(update_fields=["publish_projects_after_finish"])
+        self.assertEqual(self.read().data["count"], 3)
+        late.refresh_from_db()
+        self.assertTrue(late.is_public)
+
+    def test_program_page_and_direct_project_link_publish_without_list_visit(self):
+        self.assertEqual(self.read(f"/projects/{self.private.pk}/").status_code, 200)
+        self.private.refresh_from_db()
+        self.assertTrue(self.private.is_public)
+        late = create_project(is_public=False)
+        create_program_member(self.program, project=late)
+        self.assertEqual(self.read(f"/programs/{self.program.pk}/").status_code, 200)
+        late.refresh_from_db()
+        self.assertTrue(late.is_public)
 
     def test_member_and_unregistered_detail_expose_server_capability(self):
         for registered in (False, True):
@@ -65,6 +102,8 @@ class PublishedProjectsTests(TestCase):
                     publish_projects_after_finish=True,
                     datetime_finished=timezone.now() - timezone.timedelta(days=1),
                 )
+                hidden = create_project(is_public=False)
+                PartnerProgramProject.objects.create(partner_program=program, project=hidden)
                 for key, value in values.items():
                     setattr(program, key, value)
                 program.save()
@@ -72,6 +111,10 @@ class PublishedProjectsTests(TestCase):
                     self.read(f"/programs/{program.pk}/published-projects/").status_code,
                     404,
                 )
+                self.assertEqual(self.read(f"/programs/{program.pk}/").status_code, 200)
+                self.assertIn(self.read(f"/projects/{hidden.pk}/").status_code, (401, 403))
+                hidden.refresh_from_db()
+                self.assertFalse(hidden.is_public)
 
     def test_profile_source_search_pagination_and_duplicate_links(self):
         create_program_member(self.program, user=self.user, project=self.public)

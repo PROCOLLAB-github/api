@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Barrier
 from unittest import skipUnless
+from unittest.mock import patch
 
 from django.contrib import admin
 from django.db import close_old_connections, connection
@@ -168,12 +169,43 @@ class SolutionPublicationTests(PublicationFixture, TestCase):
         self.assertTrue(any(field["required"] for field in data["fields"]))
         self.assertEqual(data["team"]["accepted_count"], 1)
 
-    def test_get_is_read_only_and_does_not_publish_an_eligible_work(self):
-        self.assertEqual(self.read()["count"], 0)
-        response = APIClient().get(self.public_url + f"{self.solution.pk}/")
-        self.assertEqual(response.status_code, 404)
+    def test_first_public_detail_publishes_eligible_work_without_periodic_task(self):
+        before = ProgramSolution.objects.filter(pk=self.solution.pk).values().get()
+        with patch("django.utils.timezone.now", return_value=self.now):
+            self.read(self.solution)
+        self.solution.refresh_from_db()
+        self.assertEqual(self.solution.published_at, self.now)
+        after = ProgramSolution.objects.filter(pk=self.solution.pk).values().get()
+        self.assertEqual(after, dict(before, published_at=self.now))
+        self.assertEqual(self.read()["count"], 1)
+
+    def test_first_list_at_deadline_and_late_flag_enable_are_immediate(self):
+        PartnerProgram.objects.filter(pk=self.program.pk).update(datetime_finished=self.now)
+        with patch("django.utils.timezone.now", return_value=self.now - timezone.timedelta(microseconds=1)):
+            self.assertEqual(self.read()["count"], 0)
+        with patch("django.utils.timezone.now", return_value=self.now):
+            self.assertEqual(self.read()["count"], 1)
+        second = self.other_solution()
+        PartnerProgram.objects.filter(pk=self.program.pk).update(publish_projects_after_finish=False)
+        self.assertEqual(self.read()["count"], 1)
+        second.refresh_from_db()
+        self.assertIsNone(second.published_at)
+        PartnerProgram.objects.filter(pk=self.program.pk).update(publish_projects_after_finish=True)
+        self.assertEqual(self.read()["count"], 2)
+        second.refresh_from_db()
+        self.assertIsNotNone(second.published_at)
+
+    def test_program_page_publishes_and_draft_program_stays_private(self):
+        PartnerProgram.objects.filter(pk=self.program.pk).update(draft=True)
+        self.assertEqual(APIClient().get(self.public_url).status_code, 404)
+        self.assertEqual(APIClient().get(f"/programs/{self.program.pk}/").status_code, 200)
+        self.assertEqual(self.publish(), 0)
         self.solution.refresh_from_db()
         self.assertIsNone(self.solution.published_at)
+        PartnerProgram.objects.filter(pk=self.program.pk).update(draft=False)
+        self.assertEqual(APIClient().get(f"/programs/{self.program.pk}/").status_code, 200)
+        self.solution.refresh_from_db()
+        self.assertIsNotNone(self.solution.published_at)
 
     def test_public_materials_keep_zero_false_files_and_only_accepted_people(self):
         member, pending = create_user(), create_user()
@@ -319,6 +351,9 @@ class SolutionPublicationTests(PublicationFixture, TestCase):
         unpublished = self.other_solution()
         self.publish()
         later = self.other_solution()
+        PartnerProgram.objects.filter(pk=self.program.pk).update(
+            publish_projects_after_finish=False
+        )
         for actor in [None, self.captain, self.manager, create_user()]:
             for identifier in [later.pk, MAX_ID, MAX_ID + 1, 0]:
                 response = call(actor, "get", self.public_url + f"{identifier}/")

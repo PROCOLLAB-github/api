@@ -64,7 +64,7 @@ class ProjectVisibilityPermission(BasePermission):
             return True
 
         try:
-            project = Project.objects.only("id", "leader_id", "is_public").get(
+            project = Project.objects.only("id", "leader_id", "is_public", "draft").get(
                 pk=project_id
             )
         except Project.DoesNotExist:
@@ -84,6 +84,13 @@ class ProjectVisibilityPermission(BasePermission):
     def _can_view_project(self, request, project: Project) -> bool:
         if project.is_public:
             return True
+        if request.method in SAFE_METHODS and not project.draft:
+            from partner_programs.services.publishing import publish_project_if_due
+
+            publish_project_if_due(project.pk)
+            project.refresh_from_db(fields=["is_public"])
+            if project.is_public:
+                return True
         return has_project_read_involvement(getattr(request, "user", None), project)
 
 

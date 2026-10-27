@@ -31,8 +31,10 @@ def main():
     from rest_framework.test import APIClient
     from partner_programs.models import PartnerProgram, PartnerProgramField
     from partner_programs.solution_models import ProgramSolution
-    from partner_programs.tests.helpers import create_user, create_partner_program, create_program_member
-    from partner_programs.services.publishing import publish_solution_program
+    from partner_programs.tests.helpers import (
+        create_user, create_partner_program, create_program_member,
+        create_program_project, create_project,
+    )
     from project_rates.tests.helpers import create_rate_expert, create_rate_criteria
     from project_rates.criteria_policy import revision
 
@@ -325,12 +327,13 @@ def main():
                         binary=True,
                     )
                     assert export.startswith(b"PK")
-                    assert publish_solution_program(program.pk, now=now) == 0
+                    assert request(None, "get", base + "published-solutions/")["count"] == 0
+                    assert ProgramSolution.objects.get(pk=solution["id"]).published_at is None
                     PartnerProgram.objects.filter(pk=program.pk, tag__startswith=prefix).update(
                         datetime_finished=now - timezone.timedelta(seconds=1)
                     )
-                    assert publish_solution_program(program.pk, now=now) == 1
                     public = request(None, "get", base + f"published-solutions/{solution['id']}/")
+                    assert ProgramSolution.objects.get(pk=solution["id"]).published_at is not None
                     assert public["team"]["accepted_count"] == 2
                     public_keys = json.dumps(public, default=str)
                     assert all(
@@ -355,12 +358,31 @@ def main():
                     checks.append(
                         template
                         + (":competitive" if competitive else ":noncompetitive")
-                        + ":create-team-save-permissions-analytics-xlsx-publication-creation-stop"
+                        + ":create-team-save-permissions-analytics-xlsx-immediate-publication-without-job-creation-stop"
                     )
                     programs.append(
                         {"template": template, "competitive": competitive, "transientProgramId": program.pk}
                     )
                 assert apps.get_model("projects.Project").objects.count() == project_count
+                legacy = create_partner_program(
+                    name=prefix, tag=prefix + "-legacy-immediate",
+                    publish_projects_after_finish=True,
+                    datetime_finished=now + timezone.timedelta(days=1),
+                )
+                work = create_project(is_public=False)
+                create_program_project(legacy, project=work)
+                before_work = apps.get_model("projects.Project").objects.filter(pk=work.pk).values().get()
+                path = f"/programs/{legacy.pk}/published-projects/"
+                request(None, "get", path, expected=404)
+                PartnerProgram.objects.filter(pk=legacy.pk, tag__startswith=prefix).update(
+                    datetime_finished=now - timezone.timedelta(seconds=1)
+                )
+                page = request(None, "get", path)
+                assert page["count"] == 1 and page["results"][0]["id"] == work.pk
+                after_work = apps.get_model("projects.Project").objects.filter(pk=work.pk).values().get()
+                assert after_work == dict(before_work, is_public=True)
+                request(None, "get", f"/projects/{work.pk}/")
+                checks.append("legacy-immediate-publication-without-job-only-is-public-changed")
                 for old in PartnerProgram.objects.filter(pk__in=legacy_before).order_by("pk"):
                     request(None, "get", f"/programs/{old.pk}/")
                     manager = old.managers.first()

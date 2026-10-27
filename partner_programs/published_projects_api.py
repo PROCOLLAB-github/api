@@ -8,6 +8,7 @@ from rest_framework.permissions import AllowAny
 
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 from partner_programs.pagination import PartnerProgramPagination
+from partner_programs.services.publishing import publish_program_if_due
 from projects.models import Project
 from projects.serializers import ProjectListSerializer
 
@@ -30,6 +31,11 @@ class PublishedProgramProjectsView(generics.ListAPIView):
     serializer_class = ProjectListSerializer
     pagination_class = PublishedProjectsPagination
 
+    def finalize_response(self, request, response, *args, **kwargs):
+        response = super().finalize_response(request, response, *args, **kwargs)
+        response["Cache-Control"] = "no-store"
+        return response
+
     def get_queryset(self):
         program = get_object_or_404(
             PartnerProgram,
@@ -39,7 +45,7 @@ class PublishedProgramProjectsView(generics.ListAPIView):
             publish_projects_after_finish=True,
             datetime_finished__lte=timezone.now(),
         )
-        # The existing publisher can use either source. Never publish as a GET side effect.
+        publish_program_if_due(program)
         projects = (
             Project.objects.filter(
                 Q(program_links__partner_program=program)
