@@ -298,6 +298,7 @@ class RegistrationAdminTests(TestCase):
         self.program.save()
         page = self.client.post(self.url, self.payload(action="publish"))
         self.assertContains(page, "Заполните название и описание программы")
+        self.assertNotIn("basic", str(page.context["form"].non_field_errors()))
         self.assertFalse(ProgramRegistration.objects.exists())
         self.program.refresh_from_db()
         self.assertTrue(self.program.draft)

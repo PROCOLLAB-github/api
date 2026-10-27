@@ -34,7 +34,9 @@ SOURCES = (
 def error_text(detail):
     if isinstance(detail, dict):
         # Служебные коды API не являются текстом интерфейса.
-        return " ".join(error_text(v) for k, v in detail.items() if k != "code")
+        return " ".join(
+            error_text(v) for k, v in detail.items() if k not in ("code", "section")
+        )
     if isinstance(detail, (list, tuple)):
         return " ".join(error_text(v) for v in detail)
     return str(detail)
