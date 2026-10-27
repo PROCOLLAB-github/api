@@ -5,12 +5,14 @@ from rest_framework.permissions import BasePermission, SAFE_METHODS
 
 from partner_programs.models import PartnerProgram
 
+PROGRAM_CREATION_PERMISSION = "partner_programs.add_partnerprogram"
+
 
 def can_create_program(user) -> bool:
     return bool(
         user
         and user.is_authenticated
-        and user.has_perm("partner_programs.add_partnerprogram")
+        and user.has_perm(PROGRAM_CREATION_PERMISSION)
     )
 
 
