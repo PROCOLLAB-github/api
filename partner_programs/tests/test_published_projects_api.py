@@ -111,7 +111,10 @@ class PublishedProjectsTests(TestCase):
                     self.read(f"/programs/{program.pk}/published-projects/").status_code,
                     404,
                 )
-                self.assertEqual(self.read(f"/programs/{program.pk}/").status_code, 200)
+                self.assertEqual(
+                    self.read(f"/programs/{program.pk}/").status_code,
+                    404 if program.draft else 200,
+                )
                 self.assertIn(self.read(f"/projects/{hidden.pk}/").status_code, (401, 403))
                 hidden.refresh_from_db()
                 self.assertFalse(hidden.is_public)
