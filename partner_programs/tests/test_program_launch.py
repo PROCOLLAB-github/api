@@ -111,6 +111,26 @@ class ProgramCreationTests(ProgramLaunchTestCase):
             self.assertEqual(self.create(**data).status_code, 400)
         self.assertFalse(PartnerProgram.objects.exists())
 
+    def test_managed_cards_include_saved_logo_and_keep_object_scope(self):
+        mine = PartnerProgram.objects.get(pk=self.create().data["id"])
+        mine.image_address = "https://example.com/program-logo.png"
+        mine.image_framing = {"logo": {"x": 0.2, "y": 0.7, "zoom": 1.5}}
+        mine.save(update_fields=["image_address", "image_framing"])
+        empty = self.create(name="Без логотипа").data["id"]
+        foreign = create_partner_program(name="Чужой черновик", draft=True)
+        foreign.image_address = "https://example.com/private-logo.png"
+        foreign.save(update_fields=["image_address"])
+
+        response = self.client.get("/programs/managed/")
+
+        self.assertEqual(response.status_code, 200)
+        rows = {row["id"]: row for row in response.data["results"]}
+        self.assertEqual(set(rows), {mine.pk, empty})
+        self.assertEqual(rows[mine.pk]["image_address"], mine.image_address)
+        self.assertEqual(rows[mine.pk]["image_framing"], mine.image_framing)
+        self.assertIsNone(rows[empty]["image_address"])
+        self.assertEqual(rows[empty]["image_framing"], {})
+
     def test_legacy_catalog_post_cannot_bypass_permission(self):
         user = create_user()
         self.client.force_authenticate(user)
