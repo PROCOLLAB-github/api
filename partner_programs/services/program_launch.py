@@ -27,6 +27,8 @@ def summary(program):
     return {
         "id": program.pk,
         "name": program.name,
+        "image_address": program.image_address,
+        "image_framing": program.image_framing,
         "draft": program.draft,
         "program_format": program.program_format,
         "solution_storage_mode": program.solution_storage_mode,
