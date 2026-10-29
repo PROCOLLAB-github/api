@@ -29,6 +29,11 @@ from partner_programs.forms import (
 )
 from partner_programs.services.case_fields import case_field_has_values
 from partner_programs.admin_registration import ProgramRegistrationAdminMixin
+from partner_programs.program_dates import (
+    DATE_FIELDS,
+    program_date_errors,
+    reopens_program_deadline,
+)
 
 
 class PartnerProgramMaterialInline(admin.StackedInline):
@@ -48,6 +53,38 @@ class PartnerProgramFieldInline(admin.TabularInline):
 @admin.register(PartnerProgram)
 class PartnerProgramAdmin(ProgramRegistrationAdminMixin, admin.ModelAdmin):
     class PartnerProgramAdminForm(forms.ModelForm):
+        confirm_reopen = forms.BooleanField(
+            required=False,
+            label="Подтверждаю повторное открытие приема или оценивания",
+            help_text="Нужно при переносе завершенного срока на будущую дату.",
+        )
+
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            if "city" in self.fields:
+                self.fields["city"].required = False
+
+        def clean(self):
+            data = super().clean()
+            if not self.instance.pk or any(
+                key in self.changed_data for key in (*DATE_FIELDS, "draft")
+            ):
+                errors = program_date_errors(
+                    data, require_complete=not data.get("draft", True)
+                )
+                if self.instance.pk and not data.get("confirm_reopen"):
+                    previous = PartnerProgram.objects.values(*DATE_FIELDS).get(
+                        pk=self.instance.pk
+                    )
+                    if reopens_program_deadline(previous, data, now=timezone.now()):
+                        errors["confirm_reopen"] = (
+                            "Изменение срока снова откроет прием или оценивание. "
+                            "Подтвердите сохранение."
+                        )
+                if errors:
+                    raise forms.ValidationError(errors)
+            return data
+
         class Meta:
             model = PartnerProgram
             fields = "__all__"
@@ -102,6 +139,7 @@ class PartnerProgramAdmin(ProgramRegistrationAdminMixin, admin.ModelAdmin):
                         "datetime_evaluation_ends",
                         "datetime_finished",
                     ),
+                    "confirm_reopen",
                     (
                         "image_address",
                         "cover_image_address",
