@@ -247,7 +247,10 @@ class ManagementSettingsSerializer(StrictFieldsMixin, serializers.ModelSerialize
     class Meta:
         model = PartnerProgram
         fields = (*BASIC_FIELDS, *DATE_FIELDS, "expected_updated_at", "confirm_reopen")
-        extra_kwargs = {"name": {"allow_blank": False}}
+        extra_kwargs = {
+            "name": {"allow_blank": False},
+            "city": {"allow_blank": True},
+        }
 
 
 class ManagementMaterialWrite(StrictFieldsMixin, serializers.Serializer):

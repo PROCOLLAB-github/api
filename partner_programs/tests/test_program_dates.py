@@ -124,9 +124,14 @@ class ProgramDatesTests(TestCase):
         )
         self.assertEqual(response.status_code, 200, response.data)
 
-    def test_admin_can_edit_a_frontend_program_without_city(self):
-        self.program.city = ""
-        self.program.save()
+    def test_city_can_be_cleared_in_both_interfaces(self):
+        response = self.client.patch(
+            f"/programs/{self.program.pk}/management/settings/basic/",
+            {"city": "", "expected_updated_at": self.program.datetime_updated},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data["city"], "")
         form = self.admin_form(datetime_finished=self.now + timedelta(days=35))
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
