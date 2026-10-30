@@ -153,6 +153,7 @@ from partner_programs.program_launch_views import (
     ProgramPreviewView,
     ProgramReadinessView,
     ProgramPublishView,
+    ProgramReturnToDraftView,
 )
 
 app_name = "partner_programs"
@@ -176,6 +177,7 @@ urlpatterns = [
     ),
     path("<int:pk>/management/launch/", program_view(ProgramReadinessView)),
     path("<int:pk>/management/publish/", program_view(ProgramPublishView)),
+    path("<int:pk>/management/unpublish/", program_view(ProgramReturnToDraftView)),
     path(
         "<int:pk>/published-solutions/",
         program_view(PublishedSolutionListView),
