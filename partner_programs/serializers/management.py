@@ -7,6 +7,7 @@ from rest_framework import serializers
 
 from files.models import UserFile
 from partner_programs.models import PartnerProgram
+from partner_programs.program_dates import DATE_FIELDS, program_date_errors
 
 
 class StrictFieldsMixin:
@@ -198,13 +199,6 @@ BASIC_FIELDS = (
     "registration_link",
     "presentation_address",
 )
-DATE_FIELDS = (
-    "datetime_started",
-    "datetime_registration_ends",
-    "datetime_project_submission_ends",
-    "datetime_evaluation_ends",
-    "datetime_finished",
-)
 
 
 class ManagementSettingsSerializer(StrictFieldsMixin, serializers.ModelSerializer):
@@ -240,12 +234,23 @@ class ManagementSettingsSerializer(StrictFieldsMixin, serializers.ModelSerialize
         editable = BASIC_FIELDS if self.context["section"] == "basic" else DATE_FIELDS
         if not any(key in attrs for key in editable):
             raise serializers.ValidationError("Нет измененных полей.")
+        if self.context["section"] == "dates":
+            values = {
+                key: attrs.get(key, getattr(self.instance, key, None))
+                for key in DATE_FIELDS
+            }
+            errors = program_date_errors(values, require_complete=not self.instance.draft)
+            if errors:
+                raise serializers.ValidationError(errors)
         return attrs
 
     class Meta:
         model = PartnerProgram
         fields = (*BASIC_FIELDS, *DATE_FIELDS, "expected_updated_at", "confirm_reopen")
-        extra_kwargs = {"name": {"allow_blank": False}}
+        extra_kwargs = {
+            "name": {"allow_blank": False},
+            "city": {"allow_blank": True},
+        }
 
 
 class ManagementMaterialWrite(StrictFieldsMixin, serializers.Serializer):

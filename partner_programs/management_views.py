@@ -318,26 +318,13 @@ class ManagementSettingsView(ManagementBase):
                 "Программа изменена другим организатором. Обновите данные перед сохранением.",
             )
         confirm = values.pop("confirm_reopen", False)
-        before = [
-            program.datetime_registration_ends,
-            program.get_project_submission_deadline(),
-            program.datetime_evaluation_ends,
-        ]
+        from partner_programs.program_dates import DATE_FIELDS, reopens_program_deadline
+
+        before = {key: getattr(program, key) for key in DATE_FIELDS}
         for key, value in values.items():
             setattr(program, key, value)
-        after = [
-            program.datetime_registration_ends,
-            program.get_project_submission_deadline(),
-            program.datetime_evaluation_ends,
-        ]
-        now = timezone.now()
-        if (
-            any(
-                old is not None and old < now and (new is None or new >= now)
-                for old, new in zip(before, after)
-            )
-            and not confirm
-        ):
+        after = {key: getattr(program, key) for key in DATE_FIELDS}
+        if reopens_program_deadline(before, after, now=timezone.now()) and not confirm:
             return conflict(
                 "reopen_confirmation_required",
                 "Изменение срока снова откроет прием или оценивание. Подтвердите сохранение.",

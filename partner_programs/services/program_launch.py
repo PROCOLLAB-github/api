@@ -16,9 +16,10 @@ from rest_framework.exceptions import ValidationError
 from partner_programs.models import PartnerProgram, ProgramRegistration
 from partner_programs.permissions import require_create_program
 from partner_programs.services.management import managed_program
-from partner_programs.serializers.management import BASIC_FIELDS, DATE_FIELDS
+from partner_programs.serializers.management import BASIC_FIELDS
 from partner_programs.services import native_registration as registration
 from project_rates.workspace import WorkspaceConflict
+from partner_programs.program_dates import DATE_FIELDS, program_date_errors
 
 FORMATS = ("case_championship", "hackathon", "noncompetitive")
 
@@ -169,12 +170,11 @@ def _date_problem(program):
         )
     ):
         return "Укажите начало, окончание программы и окончание регистрации."
-    if program.datetime_finished <= program.datetime_started:
-        return "Окончание программы должно быть позже начала."
+    errors = program_date_errors({key: getattr(program, key) for key in DATE_FIELDS})
+    if errors:
+        return next(iter(errors.values()))
     if program.datetime_registration_ends <= timezone.now():
         return "Окончание регистрации должно быть в будущем, чтобы открыть прием."
-    if program.datetime_registration_ends > program.datetime_finished:
-        return "Регистрация должна завершиться не позже окончания программы."
     return None
 
 
