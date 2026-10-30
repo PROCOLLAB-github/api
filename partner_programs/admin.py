@@ -29,6 +29,7 @@ from partner_programs.forms import (
 )
 from partner_programs.services.case_fields import case_field_has_values
 from partner_programs.admin_registration import ProgramRegistrationAdminMixin
+from partner_programs.admin_publication import ProgramPublicationAdminMixin
 from partner_programs.program_dates import (
     DATE_FIELDS,
     program_date_errors,
@@ -51,7 +52,9 @@ class PartnerProgramFieldInline(admin.TabularInline):
 
 
 @admin.register(PartnerProgram)
-class PartnerProgramAdmin(ProgramRegistrationAdminMixin, admin.ModelAdmin):
+class PartnerProgramAdmin(
+    ProgramPublicationAdminMixin, ProgramRegistrationAdminMixin, admin.ModelAdmin
+):
     class PartnerProgramAdminForm(forms.ModelForm):
         confirm_reopen = forms.BooleanField(
             required=False,

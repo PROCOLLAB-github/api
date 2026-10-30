@@ -9,6 +9,7 @@ from partner_programs.pagination import ProgramAttentionPagination
 from partner_programs.permissions import can_create_program, require_create_program
 from partner_programs.serializers.management import StrictFieldsMixin
 from partner_programs.services import program_launch as service
+from partner_programs.services.management import management_data
 
 
 class CreateProgramInput(StrictFieldsMixin, serializers.Serializer):
@@ -73,3 +74,17 @@ class ProgramPublishView(ManagementBase):
         return Response(
             service.publish_program(pk, request.user, data.validated_data["revision"])
         )
+
+
+class ReturnToDraftInput(StrictFieldsMixin, serializers.Serializer):
+    expected_updated_at = serializers.DateTimeField()
+
+
+class ProgramReturnToDraftView(ManagementBase):
+    def post(self, request, pk):
+        data = ReturnToDraftInput(data=request.data)
+        data.is_valid(raise_exception=True)
+        program = service.return_to_draft(
+            pk, request.user, data.validated_data["expected_updated_at"]
+        )
+        return Response(management_data(program))

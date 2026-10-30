@@ -4,6 +4,9 @@
 {% block object-tools-items %}
     {% if original and has_change_permission %}
         <li><a href="{% url 'admin:partner_programs_partnerprogram_registration' original.pk %}">Регистрация</a></li>
+        {% if not original.draft %}
+            <li><a href="{% url 'admin:partner_programs_partnerprogram_unpublish' original.pk %}">Вернуть в черновик</a></li>
+        {% endif %}
     {% endif %}
     {{ block.super }}
 {% endblock %}

@@ -248,6 +248,23 @@ def readiness(pk, user):
 
 
 @transaction.atomic
+def return_to_draft(pk, user, expected_updated_at):
+    """Скрыть программу, сохранив анкету, участие, решения и оценки."""
+    program = managed_program(pk, user, lock=True)
+    if program.draft:
+        # Повтор после потерянного ответа не меняет версию программы.
+        return program
+    if program.datetime_updated != expected_updated_at:
+        raise WorkspaceConflict(
+            "stale_settings",
+            "Программа изменена другим организатором. Обновите данные перед повтором.",
+        )
+    program.draft = True
+    program.save(update_fields=["draft", "datetime_updated"])
+    return program
+
+
+@transaction.atomic
 def publish_program(pk, user, revision):
     program = managed_program(pk, user, lock=True)
     config = (
