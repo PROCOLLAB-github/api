@@ -5,7 +5,13 @@ from threading import Barrier
 
 from django.contrib.auth.models import Permission
 from django.db import connections
-from django.test import Client, TestCase, TransactionTestCase, override_settings
+from django.test import (
+    Client,
+    TestCase,
+    TransactionTestCase,
+    override_settings,
+    skipUnlessDBFeature,
+)
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -261,6 +267,7 @@ class ProgramUnpublishAdminTests(TestCase):
         self.assertFalse(self.program.draft)
 
 
+@skipUnlessDBFeature("has_select_for_update")
 class ProgramUnpublishConcurrencyTests(TransactionTestCase):
     def test_simultaneous_retries_write_one_transition(self):
         manager = create_user(is_active=True)
