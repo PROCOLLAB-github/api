@@ -137,6 +137,23 @@ class AuthThrottleTests(TestCase):
         self.assertEqual(second_response.status_code, 429)
 
     @override_settings(
+        REST_FRAMEWORK=throttle_settings(auth_reset_password="1/min")
+    )
+    @patch("users.signals.EmailMultiAlternatives")
+    def test_unknown_email_reset_is_generic_and_still_scoped_throttled(self, email_mock):
+        payload = {"email": "unknown-reset@example.invalid"}
+        first_response = self.client.post(
+            "/auth/reset_password/", payload, format="json", REMOTE_ADDR="203.0.113.15"
+        )
+        second_response = self.client.post(
+            "/auth/reset_password/", payload, format="json", REMOTE_ADDR="203.0.113.15"
+        )
+
+        self.assertEqual(first_response.status_code, 200)
+        self.assertEqual(second_response.status_code, 429)
+        email_mock.assert_not_called()
+
+    @override_settings(
         REST_FRAMEWORK=throttle_settings(auth_register="1/min")
     )
     def test_post_only_throttle_allows_get_and_options(self):
