@@ -14,6 +14,47 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  docker-image:
+    name: Backend Docker image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build release Dockerfile
+        run: docker build --tag procollab-backend-ci .
+
+      - name: Check application inside the image
+        run: |
+          docker run --rm \
+            -e DJANGO_SETTINGS_MODULE=procollab.settings_ci \
+            -e DJANGO_SECRET_KEY=ci-only-docker-check-not-a-production-secret \
+            procollab-backend-ci python manage.py check
+
+      - name: Render Cyrillic certificate inside the image
+        run: |
+          docker run --rm -i \
+            -e DJANGO_SETTINGS_MODULE=procollab.settings_ci \
+            -e DJANGO_SECRET_KEY=ci-only-docker-check-not-a-production-secret \
+            procollab-backend-ci python - <<'PY'
+          import django
+          import weasyprint
+
+          django.setup()
+
+          from django.utils import timezone
+          from partner_programs.services.certificates import default_draft, render_pdf
+
+          draft = default_draft()
+          draft["hidden_elements"] = []
+          content = render_pdf(
+              draft, {}, "Александра Константиновна Добровольская",
+              "Тестовая программа", "CI-001", timezone.now(),
+          )
+          assert content.startswith(b"%PDF") and len(content) > 5000
+          print(f"Django {django.get_version()}, WeasyPrint {weasyprint.__version__}: PDF OK")
+          PY
+
   postgres-tests:
     name: Backend PostgreSQL CI
     runs-on: ubuntu-latest
