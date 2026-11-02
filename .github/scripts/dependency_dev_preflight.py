@@ -116,6 +116,67 @@ except Exception as error:
 print(json.dumps(result))
 """
 
+PROGRAM_COMPARE = r"""
+import base64, json, os, re
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'procollab.settings')
+import django
+django.setup()
+from django.db import connection, transaction
+payload = json.loads(base64.b64decode(ARCHIVE_PROGRAM_PAYLOAD))
+def decode_copy(value):
+    if value == r'\N':
+        return None
+    replacements = {b'b': b'\b', b'f': b'\f', b'n': b'\n', b'r': b'\r', b't': b'\t', b'v': b'\v'}
+    def replace(match):
+        value = match.group(1)
+        if value[:1] in b'01234567':
+            return bytes([int(value, 8)])
+        if value.startswith(b'x'):
+            return bytes([int(value[1:], 16)])
+        return replacements.get(value, value)
+    return re.sub(rb'\\([0-7]{1,3}|x[0-9a-fA-F]{1,2}|.)', replace, value.encode()).decode()
+result = {'differences': [], 'archive_identities': []}
+with transaction.atomic():
+    with connection.cursor() as cursor:
+        cursor.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY')
+        cursor.execute("SET LOCAL statement_timeout = '60s'")
+        cursor.execute('SELECT current_database()')
+        if cursor.fetchone()[0] != 'procollab_db_dev':
+            raise RuntimeError('Unexpected database')
+        cursor.execute(
+            'SELECT attname, pg_catalog.format_type(atttypid, atttypmod) '
+            "FROM pg_attribute WHERE attrelid='public.partner_programs_partnerprogram'::regclass "
+            'AND attnum>0 AND NOT attisdropped ORDER BY attnum'
+        )
+        columns = cursor.fetchall()
+        if set(payload['columns']) != {name for name, kind in columns}:
+            raise RuntimeError('Program archive schema mismatch')
+        row_expression = 'ROW(' + ','.join('%s::' + kind for name, kind in columns)
+        row_expression += ')::public.partner_programs_partnerprogram'
+        query = (
+            'WITH archived AS (SELECT (' + row_expression + ').*) '
+            'SELECT a.id, c.id IS NOT NULL, ARRAY('
+            'SELECT field FROM jsonb_object_keys(to_jsonb(c)) AS keys(field) '
+            "WHERE field NOT IN ('datetime_updated','last_activity','last_login') "
+            'AND (to_jsonb(c)->field) IS DISTINCT FROM (to_jsonb(a)->field)), '
+            "encode(sha256(convert_to(jsonb_build_array(a.id)::text,'UTF8')),'hex') "
+            'FROM archived a LEFT JOIN public.partner_programs_partnerprogram c USING(id)'
+        )
+        for line in payload['copy_data'].split('\n'):
+            if not line:
+                continue
+            values = [decode_copy(value) for value in line.split('\t')]
+            if len(values) != len(payload['columns']):
+                raise RuntimeError('Program archive column count mismatch')
+            record = dict(zip(payload['columns'], values))
+            cursor.execute(query, [record[name] for name, kind in columns])
+            identity, present, changed, fingerprint = cursor.fetchone()
+            result['archive_identities'].append(fingerprint)
+            if changed or not present:
+                result['differences'].append({'id': identity, 'present': present, 'fields': changed})
+print(json.dumps(result))
+"""
+
 
 def emit(message, *, file=sys.stdout, flush=True):
     file.write(message + "\n")
@@ -227,6 +288,59 @@ def native_client(major):
         if versions[0] == versions[1] and major <= versions[0] <= 18:
             return str(dump_path), str(restore_path), versions[0]
     return None
+
+
+def parse_program_archive(source):
+    lines = source.split("\n")
+    pattern = re.compile(
+        r"^COPY public\.partner_programs_partnerprogram \(([^)]+)\) FROM stdin;$"
+    )
+    for index, line in enumerate(lines):
+        match = pattern.fullmatch(line)
+        if match is None:
+            continue
+        columns = [name.strip().strip('"') for name in match.group(1).split(",")]
+        if not all(re.fullmatch(r"[a-z_][a-z0-9_]*", name) for name in columns):
+            raise RuntimeError("Unexpected program archive columns")
+        for end in range(index + 1, len(lines)):
+            if lines[end] == r"\.":
+                start = index + 1
+                return {
+                    "columns": columns,
+                    "copy_data": "\n".join(lines[start:end]),
+                }
+        raise RuntimeError("Incomplete program COPY data")
+    raise RuntimeError("Program COPY data not found")
+
+
+def compare_program_archive(web, dump, major):
+    native = native_client(major)
+    if native is None:
+        raise RuntimeError("Native pg_restore required for program comparison")
+    restored = output(
+        [
+            native[1],
+            "--data-only",
+            "--table=partner_programs_partnerprogram",
+            "--file=-",
+            str(dump),
+        ],
+        timeout=120,
+        stage="program_archive_read",
+    )
+    payload = parse_program_archive(restored.decode())
+    encoded = base64.b64encode(json.dumps(payload).encode()).decode()
+    source = "ARCHIVE_PROGRAM_PAYLOAD = " + repr(encoded) + "\n" + PROGRAM_COMPARE
+    result = json.loads(
+        output(
+            ["docker", "exec", "-i", web, "python", "-"],
+            input=source.encode(),
+            timeout=180,
+            stage="program_archive_comparison",
+        )
+    )
+    emit("PROGRAM_ARCHIVE_FIELD_DIFF=" + json.dumps(result["differences"]))
+    return result
 
 
 def check_services(web):
@@ -447,11 +561,21 @@ def main():
                 changed[table] = len(different)
         emit("REMOVED_EXISTING_RECORDS=" + json.dumps(removed))
         emit("CHANGED_EXISTING_RECORDS=" + json.dumps(changed))
+        table = "partner_programs_partnerprogram"
+        if table in changed:
+            compared = compare_program_archive(
+                web, folder / "database.dump", current["server_major"]
+            )
+            if not compared["differences"] and set(compared["archive_identities"]) == set(
+                before["snapshot"]["tables"][table]
+            ):
+                changed.pop(table)
+                emit("PROGRAM_ARCHIVE_CONTENT_MATCH=true")
+        check_services(web)
         if removed or changed:
             raise RuntimeError("Existing DEV records changed; inspect before continuing")
         emit("EXISTING_DEV_DATA_PRESERVED=true")
         emit("CURRENT_IMAGE=" + runtime["Config"]["Image"])
-        check_services(web)
     emit(
         "PROTECTED_TABLE_COUNTS="
         + json.dumps({name: len(rows) for name, rows in current["tables"].items()})
