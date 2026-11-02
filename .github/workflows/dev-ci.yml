@@ -1,0 +1,63 @@
+name: Dependency DEV backup and verification
+
+on:
+  workflow_dispatch:
+    inputs:
+      phase:
+        type: choice
+        options: [backup, verify]
+        required: true
+        default: backup
+      backup_key:
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: api-deploy-dev
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    if: github.ref == 'refs/heads/codex/dependency-dev-preflight'
+    environment: dev
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install pinned SSH transport
+        run: npm install --prefix "$RUNNER_TEMP/dependency-dev-ssh" --ignore-scripts --no-package-lock --no-audit --no-fund ssh2@1.16.0
+      - name: Back up or verify DEV data
+        env:
+          NODE_PATH: ${{ runner.temp }}/dependency-dev-ssh/node_modules
+          DEV_SERVER_HOST: ${{ secrets.DEV_SERVER_HOST }}
+          DEV_SERVER_USER: ${{ secrets.DEV_SERVER_USER }}
+          DEV_SERVER_PASSWORD: ${{ secrets.DEV_SERVER_PASSWORD }}
+          DEV_SSH_HOST_KEY_SHA256: ${{ vars.DEV_SSH_HOST_KEY_SHA256 }}
+          PREFLIGHT_PHASE: ${{ inputs.phase }}
+          PREFLIGHT_BACKUP_KEY: ${{ inputs.backup_key }}
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const { deploy } = require('./scripts/dev_ci_ssh.cjs');
+          const phase = process.env.PREFLIGHT_PHASE;
+          const key = process.env.PREFLIGHT_BACKUP_KEY || '';
+          if (!['backup', 'verify'].includes(phase) || (key && !/^dependency-[0-9]{8}T[0-9]{6}Z-[a-f0-9]{8}$/.test(key))) throw new Error('Invalid preflight arguments');
+          const source = fs.readFileSync('.github/scripts/dependency_dev_preflight.py', 'utf8');
+          const script = [
+            'set +x', 'set -eu', 'cd /root/api',
+            'test "$(readlink -f /root/api)" = /root/api',
+            'grep -Eq "server_name[[:space:]]+dev\\.procollab\\.ru;" /etc/nginx/sites-enabled/dev.procollab.ru',
+            `python3 - '${phase}' '${key}' <<'DEPENDENCY_DEV_PY'`,
+            source, 'DEPENDENCY_DEV_PY',
+          ].join('\n') + '\n';
+          deploy({ host: process.env.DEV_SERVER_HOST, username: process.env.DEV_SERVER_USER,
+            password: process.env.DEV_SERVER_PASSWORD, hostFingerprint: process.env.DEV_SSH_HOST_KEY_SHA256,
+            script, timeoutMs: 22 * 60 * 1000,
+          }).catch(() => { console.error('DEV dependency preflight failed; inspect protected output.'); process.exitCode = 1; });
+          NODE
