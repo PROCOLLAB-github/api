@@ -1,14 +1,14 @@
 const { Client } = require('ssh2');
-const { createHash } = require('node:crypto');
 const fs = require('node:fs');
+const { fingerprint, trustedHostKeys, algorithms } = require('./prod_host_trust.cjs');
 
-// Public ED25519 keys already trusted in the owner's Windows known_hosts.
-// The dev server key is deliberately absent.
-const trustedKeys = new Set([
-  'SHA256:zsdhcHGxocYksE6KyAmlG0hPdtdIU4uE04g2WWGZUHA',
-  'SHA256:a+re/FT9OaJs/A06Iwqra4sQPiEOWnoU4f2oYJcbs7Y',
-  'SHA256:S2fELiIUBNq+EuEmsH+k+C8wTqlID+ETbaaInNwg5EI',
-]);
+// Only keys already trusted for this exact hostname can authorize authentication.
+const trustedKeys = trustedHostKeys(process.env.PROD_EXISTING_KNOWN_HOSTS, process.env.SERVER_HOST);
+if (!trustedKeys.size || !algorithms(trustedKeys).length) {
+  process.stdout.write('PROD_EXISTING_HOST_KEY_ANCHOR_FOUND=false\n');
+  process.exit(2);
+}
+process.stdout.write('PROD_EXISTING_HOST_KEY_ANCHOR_FOUND=true\n');
 const ssh = new Client();
 let finished = false;
 const finish = (code, message) => {
@@ -36,9 +36,9 @@ ssh.connect({
   host: process.env.SERVER_HOST,
   username: process.env.SERVER_USER,
   password: process.env.SERVER_PASSWORD,
-  algorithms: { serverHostKey: ['ssh-ed25519'] },
+  algorithms: { serverHostKey: algorithms(trustedKeys) },
   hostVerifier: key => {
-    const value = 'SHA256:' + createHash('sha256').update(key).digest('base64').replace(/=+$/, '');
+    const value = fingerprint(key);
     const accepted = trustedKeys.has(value);
     process.stdout.write('PROD_SSH_TRUSTED_HOST_KEY=' + accepted + '\n');
     if (!accepted) process.stdout.write('PROD_SSH_UNRECOGNIZED_PUBLIC_KEY=' + value + '\n');

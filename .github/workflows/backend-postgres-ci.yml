@@ -24,4 +24,5 @@ jobs:
           SERVER_HOST: ${{ secrets.SERVER_HOST }}
           SERVER_USER: ${{ secrets.SERVER_USER }}
           SERVER_PASSWORD: ${{ secrets.SERVER_PASSWORD }}
+          PROD_EXISTING_KNOWN_HOSTS: ${{ secrets.REACT_DEV_SSH_KNOWN_HOSTS }}
         run: node .github/scripts/prod_preflight_ssh.cjs
