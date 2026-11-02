@@ -79,12 +79,33 @@ def emit(message, *, file=sys.stdout, flush=True):
         file.flush()
 
 
-def command(args, **kwargs):
+def command(args, stage="check", **kwargs):
     try:
         return subprocess.run(args, check=True, stderr=subprocess.PIPE, **kwargs)
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+        message = error.stderr or b""
+        if isinstance(message, str):
+            message = message.encode()
+        message = message.lower()
+        category = "command_failure"
+        for marker, label in (
+            (b"permission denied", "permission_denied"),
+            (b"authentication failed", "authentication_failed"),
+            (b"too many requests", "registry_rate_limit"),
+            (b"toomanyrequests", "registry_rate_limit"),
+            (b"could not translate host", "hostname_resolution"),
+            (b"connection refused", "connection_refused"),
+            (b"timeout", "timeout"),
+            (b"server version", "client_server_version"),
+        ):
+            if marker in message:
+                category = label
+                break
+        if isinstance(error, subprocess.TimeoutExpired):
+            category = "timeout"
+        code = getattr(error, "returncode", "timeout")
         raise RuntimeError(
-            "A DEV backup/check command failed; no credentials are printed"
+            f"DEV command failed: stage={stage}, code={code}, category={category}"
         ) from None
 
 
@@ -117,6 +138,36 @@ def digest(path):
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             value.update(chunk)
     return value.hexdigest()
+
+
+def native_client(major):
+    candidates = [
+        (
+            Path(f"/usr/lib/postgresql/{major}/bin/pg_dump"),
+            Path(f"/usr/lib/postgresql/{major}/bin/pg_restore"),
+        )
+    ]
+    dump_path, restore_path = shutil.which("pg_dump"), shutil.which("pg_restore")
+    if dump_path and restore_path:
+        candidates.append((Path(dump_path), Path(restore_path)))
+    for dump_path, restore_path in candidates:
+        if not dump_path.is_file() or not restore_path.is_file():
+            continue
+        versions = []
+        for executable in (dump_path, restore_path):
+            result = subprocess.run(
+                [str(executable), "--version"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=10,
+            )
+            match = re.search(rb"PostgreSQL\) (\d+)", result.stdout)
+            versions.append(
+                int(match.group(1)) if result.returncode == 0 and match else 0
+            )
+        if versions[0] == versions[1] and major <= versions[0] <= 18:
+            return str(dump_path), str(restore_path), versions[0]
+    return None
 
 
 def main():
@@ -183,29 +234,50 @@ def main():
             environment[destination] = config[source]
         client = "postgres:" + str(current["server_major"]) + "-alpine"
         container_name = "dependency-backup-" + uuid4().hex[:12]
+        native = native_client(current["server_major"])
+        if native:
+            dump_command = [native[0]]
+            restore_command = [native[1], "--file=/dev/null"]
+            emit("BACKUP_CLIENT=native-postgresql-" + str(native[2]))
+        else:
+            dump_command = [
+                "docker",
+                "run",
+                "--rm",
+                "--name",
+                container_name,
+                "--network",
+                "container:" + web,
+                "--env",
+                "PGHOST",
+                "--env",
+                "PGPORT",
+                "--env",
+                "PGDATABASE",
+                "--env",
+                "PGUSER",
+                "--env",
+                "PGPASSWORD",
+                client,
+                "pg_dump",
+            ]
+            restore_command = [
+                "docker",
+                "run",
+                "--rm",
+                "-i",
+                client,
+                "pg_restore",
+                "--file=/dev/null",
+            ]
+            emit("BACKUP_CLIENT=" + client)
+        emit("PG_DUMP_START=true")
         try:
             with dump.open("xb") as handle:
                 command(
-                    [
-                        "docker",
-                        "run",
-                        "--rm",
-                        "--name",
-                        container_name,
-                        "--network",
-                        "container:" + web,
-                        "--env",
-                        "PGHOST",
-                        "--env",
-                        "PGPORT",
-                        "--env",
-                        "PGDATABASE",
-                        "--env",
-                        "PGUSER",
-                        "--env",
-                        "PGPASSWORD",
-                        client,
-                        "pg_dump",
+                    dump_command
+                    + [
+                        "--no-password",
                         "--format=custom",
                         "--no-owner",
                         "--no-acl",
@@ -214,6 +286,7 @@ def main():
                     env=environment,
                     stdout=handle,
                     timeout=600,
+                    stage="pg_dump",
                 )
         finally:
             subprocess.run(
@@ -221,15 +294,17 @@ def main():
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
+        emit("PG_DUMP_BYTES=" + str(dump.stat().st_size))
         with dump.open("rb") as handle:
             if handle.read(5) != b"PGDMP":
                 raise RuntimeError("Invalid backup archive")
             handle.seek(0)
             command(
-                ["docker", "run", "--rm", "-i", client, "pg_restore", "--file=/dev/null"],
+                restore_command,
                 stdin=handle,
                 stdout=subprocess.DEVNULL,
                 timeout=600,
+                stage="pg_restore_validation",
             )
         rollback = "procollab-dependency-rollback:" + key
         command(["docker", "tag", runtime["Image"], rollback], stdout=subprocess.DEVNULL)
