@@ -442,24 +442,28 @@ def fit_certificate_text(value, box, bold=False, orientation="landscape"):
 def render_pdf(snapshot, assets, name, program_name, number, issued_at):
     from weasyprint import HTML
     from weasyprint.text.fonts import FontConfiguration
+    from weasyprint.urls import URLFetcher, URLFetcherResponse
 
     orientation = snapshot.get("orientation", "landscape")
     page_width, page_height = page_dimensions(orientation)
 
-    def fetch(url):
-        for key in CERTIFICATE_FONTS:
-            for bold, weight in ((False, "regular"), (True, "bold")):
-                if url == f"certificate-font:{key}:{weight}":
-                    return {
-                        "string": certificate_font_path(key, bold).read_bytes(),
-                        "mime_type": "font/ttf",
-                    }
-        if url.startswith("data:image/png;base64,"):
-            return {
-                "string": base64.b64decode(url.split(",", 1)[1], validate=True),
-                "mime_type": "image/png",
-            }
-        raise ValueError("External PDF resources are forbidden")
+    class CertificateURLFetcher(URLFetcher):
+        def fetch(self, url, headers=None):
+            for key in CERTIFICATE_FONTS:
+                for bold, weight in ((False, "regular"), (True, "bold")):
+                    if url == f"certificate-font:{key}:{weight}":
+                        return URLFetcherResponse(
+                            url,
+                            certificate_font_path(key, bold).read_bytes(),
+                            {"Content-Type": "font/ttf"},
+                        )
+            if url.startswith("data:image/png;base64,"):
+                return URLFetcherResponse(
+                    url,
+                    base64.b64decode(url.split(",", 1)[1], validate=True),
+                    {"Content-Type": "image/png"},
+                )
+            raise ValueError("External PDF resources are forbidden")
 
     def src(asset):
         return "data:image/png;base64," + base64.b64encode(bytes(asset.content)).decode()
@@ -526,7 +530,8 @@ def render_pdf(snapshot, assets, name, program_name, number, issued_at):
         + "".join(elements)
         + "</div></body></html>"
     )
-    return HTML(string=html, url_fetcher=fetch).write_pdf(font_config=FontConfiguration())
+    fetcher = CertificateURLFetcher(allowed_protocols=("certificate-font", "data"))
+    return HTML(string=html, url_fetcher=fetcher).write_pdf(font_config=FontConfiguration())
 
 
 def substitute(text, values):

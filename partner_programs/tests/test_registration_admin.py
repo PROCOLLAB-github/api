@@ -16,7 +16,10 @@ from partner_programs.tests.helpers import create_partner_program, create_user
 
 
 @override_settings(
-    STATICFILES_STORAGE="django.contrib.staticfiles.storage.StaticFilesStorage"
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
 )
 class RegistrationAdminTests(TestCase):
     def setUp(self):

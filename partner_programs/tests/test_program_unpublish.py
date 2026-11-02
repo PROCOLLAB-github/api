@@ -204,7 +204,10 @@ class ProgramUnpublishTests(TestCase):
 
 
 @override_settings(
-    STATICFILES_STORAGE="django.contrib.staticfiles.storage.StaticFilesStorage"
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
 )
 class ProgramUnpublishAdminTests(TestCase):
     def setUp(self):

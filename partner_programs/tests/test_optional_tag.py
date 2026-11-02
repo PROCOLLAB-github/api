@@ -8,7 +8,10 @@ from partner_programs.models import PartnerProgram
 from partner_programs.tests.helpers import create_user
 
 
-@override_settings(STATICFILES_STORAGE="django.contrib.staticfiles.storage.StaticFilesStorage")
+@override_settings(STORAGES={
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+})
 class OptionalProgramTagTests(TestCase):
     def setUp(self):
         self.admin = create_user(is_staff=True, is_superuser=True, is_active=True)
