@@ -140,6 +140,21 @@ def digest(path):
     return value.hexdigest()
 
 
+def validate_archive(path, restore_command):
+    # The child inherits the OS file position, so do not buffer the header read.
+    with path.open("rb", buffering=0) as handle:
+        if handle.read(5) != b"PGDMP":
+            raise RuntimeError("Invalid backup archive")
+        handle.seek(0)
+        command(
+            restore_command,
+            stdin=handle,
+            stdout=subprocess.DEVNULL,
+            timeout=600,
+            stage="pg_restore_validation",
+        )
+
+
 def native_client(major):
     candidates = [
         (
@@ -295,17 +310,7 @@ def main():
                 stderr=subprocess.DEVNULL,
             )
         emit("PG_DUMP_BYTES=" + str(dump.stat().st_size))
-        with dump.open("rb") as handle:
-            if handle.read(5) != b"PGDMP":
-                raise RuntimeError("Invalid backup archive")
-            handle.seek(0)
-            command(
-                restore_command,
-                stdin=handle,
-                stdout=subprocess.DEVNULL,
-                timeout=600,
-                stage="pg_restore_validation",
-            )
+        validate_archive(dump, restore_command)
         rollback = "procollab-dependency-rollback:" + key
         command(["docker", "tag", runtime["Image"], rollback], stdout=subprocess.DEVNULL)
         shutil.copyfile(REPO / ".env", folder / "runtime.env")
