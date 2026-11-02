@@ -38,17 +38,17 @@ with transaction.atomic():
             primary = [row[0] for row in cursor.fetchall()]
             if not primary:
                 raise RuntimeError('Missing primary key in a protected table')
-            cursor.execute('SELECT to_jsonb(t) FROM ' + connection.ops.quote_name(table) + ' t')
+            identity = 'jsonb_build_array(' + ','.join('t.' + connection.ops.quote_name(key) for key in primary) + ')::text'
+            record = "(to_jsonb(t) - 'last_activity' - 'last_login' - 'datetime_updated')::text"
+            hash_sql = lambda expression: "encode(sha256(convert_to(" + expression + ", 'UTF8')), 'hex')"
+            cursor.execute('SELECT ' + hash_sql(identity) + ',' + hash_sql(record) + ' FROM ' + connection.ops.quote_name(table) + ' t')
             records = {}
             while True:
                 batch = cursor.fetchmany(500)
                 if not batch:
                     break
-                for (record,) in batch:
-                    identity = hashlib.sha256(json.dumps([record[key] for key in primary], sort_keys=True, ensure_ascii=False).encode()).hexdigest()
-                    for ignored in ('last_activity', 'last_login', 'datetime_updated'):
-                        record.pop(ignored, None)
-                    records[identity] = hashlib.sha256(json.dumps(record, sort_keys=True, ensure_ascii=False, separators=(',', ':')).encode()).hexdigest()
+                for identity, record_hash in batch:
+                    records[identity] = record_hash
             payload['tables'][table] = records
 print(json.dumps(payload, ensure_ascii=False))
 '''
@@ -181,4 +181,6 @@ if __name__ == '__main__':
         main()
     except Exception as error:
         print('DEV_DEPENDENCY_PREFLIGHT_FAILED=' + type(error).__name__, file=sys.stderr)
+        if isinstance(error, RuntimeError):
+            print(str(error), file=sys.stderr)
         raise SystemExit(1)
