@@ -1,6 +1,7 @@
 """DEV-only read-only data checks and a protected, validated database backup."""
 
 import hashlib
+import base64
 import json
 import os
 from pathlib import Path
@@ -70,6 +71,49 @@ with transaction.atomic():
                     records[identity] = record_hash
             payload['tables'][table] = records
 print(json.dumps(payload, ensure_ascii=False))
+"""
+
+SERVICES = r"""
+import base64, json, os
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'procollab.settings')
+import django
+django.setup()
+from django.conf import settings
+from django.core.mail import EmailMessage
+from django.core.validators import validate_email
+import requests
+from files.service import SelectelSwiftStorage
+result = {'cdn_ok': False, 'email_attempted': False, 'email_accepted': False}
+original_request = requests.sessions.Session.request
+def bounded(self, *args, **kwargs):
+    kwargs.setdefault('timeout', 15)
+    return original_request(self, *args, **kwargs)
+requests.sessions.Session.request = bounded
+try:
+    token = SelectelSwiftStorage._get_auth_token()
+    response = requests.head(
+        settings.SELECTEL_SWIFT_URL, headers={'X-Auth-Token': token}, timeout=15
+    )
+    result['cdn_status'] = response.status_code
+    result['cdn_ok'] = response.status_code in (200, 204)
+    if not result['cdn_ok']:
+        raise RuntimeError('CDN HEAD check failed')
+    recipient = base64.b64decode(CONTROL_RECIPIENT_B64, validate=True).decode().strip()
+    if recipient:
+        validate_email(recipient)
+        message = EmailMessage(
+            'Проверка PROCOLLAB dev после обновления',
+            'Контрольное письмо для проверки доставки после обновления '
+            'серверных зависимостей PROCOLLAB dev. Действий с вашей стороны не требуется.',
+            settings.EMAIL_USER, [recipient],
+        )
+        result['email_attempted'] = True
+        result['email_accepted'] = message.send(fail_silently=False) == 1
+        status = getattr(message, 'anymail_status', None)
+        result['email_status'] = sorted(getattr(status, 'status', set()))
+except Exception as error:
+    result['error_type'] = type(error).__name__
+print(json.dumps(result))
 """
 
 
@@ -183,6 +227,56 @@ def native_client(major):
         if versions[0] == versions[1] and major <= versions[0] <= 18:
             return str(dump_path), str(restore_path), versions[0]
     return None
+
+
+def check_services(web):
+    encoded = os.environ.get("DEPENDENCY_TEST_RECIPIENT_B64", "")
+    recipient = base64.b64decode(encoded, validate=True).decode().strip()
+    receipt = None
+    previous = False
+    if recipient:
+        identity = hashlib.sha256(recipient.lower().encode()).hexdigest()
+        receipt = BACKUPS / ("mail-test-django-5.2.18-" + identity + ".json")
+        if receipt.exists():
+            state = json.loads(receipt.read_text(encoding="utf8"))
+            if not state.get("accepted"):
+                raise RuntimeError(
+                    "Prior control-email outcome is uncertain; manual review required"
+                )
+            encoded = ""
+            previous = True
+        else:
+            with receipt.open("x", encoding="utf8") as handle:
+                json.dump({"attempted": True, "accepted": False}, handle)
+    source = "CONTROL_RECIPIENT_B64 = " + repr(encoded) + "\n" + SERVICES
+    result = json.loads(
+        output(
+            ["docker", "exec", "-i", web, "python", "-"],
+            input=source.encode(),
+            timeout=120,
+            stage="external_service_checks",
+        )
+    )
+    if receipt is not None and not previous:
+        if result.get("email_accepted"):
+            receipt.write_text(
+                json.dumps({"attempted": True, "accepted": True}), encoding="utf8"
+            )
+        elif not result.get("email_attempted"):
+            receipt.unlink()
+    emit("CDN_AUTH_AND_HEAD_OK=" + str(bool(result.get("cdn_ok"))).lower())
+    emit(
+        "CONTROL_EMAIL_ACCEPTED="
+        + str(previous or bool(result.get("email_accepted"))).lower()
+    )
+    if result.get("error_type"):
+        emit("EXTERNAL_SERVICE_ERROR_TYPE=" + result["error_type"])
+    if not result.get("cdn_ok") or (
+        recipient and not previous and not result.get("email_accepted")
+    ):
+        raise RuntimeError(
+            "External service acceptance failed; inspect safe status markers"
+        )
 
 
 def main():
@@ -357,6 +451,7 @@ def main():
             raise RuntimeError("Existing DEV records changed; inspect before continuing")
         emit("EXISTING_DEV_DATA_PRESERVED=true")
         emit("CURRENT_IMAGE=" + runtime["Config"]["Image"])
+        check_services(web)
     emit(
         "PROTECTED_TABLE_COUNTS="
         + json.dumps({name: len(rows) for name, rows in current["tables"].items()})

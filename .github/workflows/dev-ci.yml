@@ -463,18 +463,24 @@ jobs:
           DEV_SSH_HOST_KEY_SHA256: ${{ vars.DEV_SSH_HOST_KEY_SHA256 }}
           PREFLIGHT_PHASE: ${{ inputs.operation == 'dependency_backup' && 'backup' || 'verify' }}
           PREFLIGHT_BACKUP_KEY: ${{ inputs.dependency_backup_key }}
+          DEV_DEPENDENCY_TEST_RECIPIENT: ${{ secrets.DEV_DEPENDENCY_TEST_RECIPIENT }}
         run: |
           node <<'NODE'
           const fs = require('node:fs');
           const { deploy } = require('./scripts/dev_ci_ssh.cjs');
           const phase = process.env.PREFLIGHT_PHASE;
           const key = process.env.PREFLIGHT_BACKUP_KEY || '';
+          const recipient = process.env.DEV_DEPENDENCY_TEST_RECIPIENT || '';
+          const encodedRecipient = Buffer.from(recipient).toString('base64');
+          if (recipient) console.log('::add-mask::' + recipient);
+          if (encodedRecipient) console.log('::add-mask::' + encodedRecipient);
           if (!['backup', 'verify'].includes(phase) || (key && !/^dependency-[0-9]{8}T[0-9]{6}Z-[a-f0-9]{8}$/.test(key))) throw new Error('Invalid preflight arguments');
           const source = fs.readFileSync('.github/scripts/dependency_dev_preflight.py', 'utf8');
           const script = [
             'set +x', 'set -eu', 'cd /root/api',
             'test "$(readlink -f /root/api)" = /root/api',
             'grep -Eq "server_name[[:space:]]+dev\\.procollab\\.ru;" /etc/nginx/sites-enabled/dev.procollab.ru',
+            `export DEPENDENCY_TEST_RECIPIENT_B64='${encodedRecipient}'`,
             `python3 - '${phase}' '${key}' <<'DEPENDENCY_DEV_PY'`,
             source, 'DEPENDENCY_DEV_PY',
           ].join('\n') + '\n';
