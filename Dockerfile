@@ -1,7 +1,7 @@
 FROM python:3.11
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpango-1.0-0 libpangoft2-1.0-0 fontconfig libjpeg62-turbo libopenjp2-7 \
+    libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 fontconfig libjpeg62-turbo libopenjp2-7 \
     && rm -rf /var/lib/apt/lists/*
 
 ENV PYTHONFAULTHANDLER=1 \
@@ -10,7 +10,7 @@ ENV PYTHONFAULTHANDLER=1 \
     PIP_NO_CACHE_DIR=off \
     PIP_DISABLE_PIP_VERSION_CHECK=on \
     PIP_DEFAULT_TIMEOUT=100 \
-    POETRY_VERSION=1.2.2
+    POETRY_VERSION=2.5.1
 
 RUN pip install "poetry==$POETRY_VERSION"
 

@@ -15,7 +15,7 @@ Backend API для продукта Procollab.
 ## Базовые команды
 
 ```bash
-poetry install
+poetry install --no-root
 poetry run python manage.py migrate
 poetry run python manage.py runserver
 poetry run python manage.py test
@@ -25,6 +25,7 @@ poetry run python manage.py test
 
 - [Навигация по документации](docs/readme.md)
 - [Разработка](docs/development.md)
+- [Обновление зависимостей до Django 5.2 LTS](docs/dependency-upgrade-20261102.md)
 - [Архитектура](docs/architecture.md)
 - [API](docs/api.md)
 - [Инфраструктура и деплой](docs/devops-state.md)

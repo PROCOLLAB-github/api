@@ -61,8 +61,8 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libpango-1.0-0 libpangoft2-1.0-0 fontconfig poppler-utils
-          python -m pip install "poetry==1.2.2"
+          sudo apt-get install -y libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 fontconfig poppler-utils
+          python -m pip install "poetry==2.5.1"
           poetry config virtualenvs.create true
           poetry install --no-interaction --no-ansi --no-root
 

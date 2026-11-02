@@ -1046,6 +1046,26 @@ class CertificateTests(TestCase):
                 self.assertRegex(info, r"Pages:\s+1\b")
                 self.assertRegex(info, r"Page size:\s+841\.\d+ x 595\.\d+")
 
+    def test_certificate_fetcher_rejects_all_unlisted_resources(self):
+        with (
+            patch("weasyprint.HTML") as html,
+            patch("weasyprint.urls.URLFetcher.fetch") as fallback,
+        ):
+            service.render_pdf(
+                service.default_draft(), {}, "Участник", "Программа", "1", timezone.now()
+            )
+            fetcher = html.call_args.kwargs["url_fetcher"]
+            for url in (
+                "https://example.invalid/image.png",
+                "http://127.0.0.1/private",
+                "file:///etc/passwd",
+                "data:text/plain;base64,cHJpdmF0ZQ==",
+                "certificate-font:unknown:regular",
+            ):
+                with self.subTest(url=url), self.assertRaises(ValueError):
+                    fetcher(url)
+            fallback.assert_not_called()
+
     def test_program_deletion_still_cascades_its_certificates_and_assets(self):
         asset = service.upload_asset(self.program, "signature", self.image())
         batch = self.batch(signature=asset)

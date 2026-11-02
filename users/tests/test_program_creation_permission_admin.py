@@ -12,7 +12,10 @@ from users.models import CustomUser
 from users.tests.helpers import build_specialization, build_superuser, build_user
 
 
-@override_settings(STATICFILES_STORAGE="django.contrib.staticfiles.storage.StaticFilesStorage")
+@override_settings(STORAGES={
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+})
 class ProgramCreationPermissionAdminTests(TestCase):
     def setUp(self):
         self.admin = build_superuser()
