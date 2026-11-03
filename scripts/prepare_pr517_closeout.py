@@ -66,9 +66,9 @@ def prepare(
         raise ValueError("Fixture users already exist")
     plan = dict(
         prefix=prefix,
-        new_programs=2,
+        new_programs=4,
         new_users=18,
-        solution_count=21,
+        solution_count=23,
         legacy_project_count=4,
         mail_sent=False,
         published=False,
@@ -111,7 +111,13 @@ def prepare(
         now = timezone.now()
         programs = []
         work = {}
-        for mode, suffix in [("legacy_project", "project"), ("solution", "solution")]:
+        scenarios = [
+            ("legacy_project", "project", "case_championship", True, True),
+            ("solution", "solution", "case_championship", True, True),
+            ("solution", "hackathon", "hackathon", True, False),
+            ("solution", "noncompetitive", "hackathon", False, False),
+        ]
+        for mode, suffix, template, competitive, distributed in scenarios:
             program = PartnerProgram.objects.create(
                 name=f"PR517 {key} — {suffix}",
                 tag=prefix + "-" + suffix,
@@ -121,12 +127,12 @@ def prepare(
                 projects_availability="all_users",
                 data_schema={},
                 solution_storage_mode=mode,
-                solution_template="case_championship",
+                solution_template=template,
                 solution_creation_enabled=mode == "solution",
-                is_competitive=True,
-                is_distributed_evaluation=True,
-                required_evaluators=1,
-                max_project_rates=1,
+                is_competitive=competitive,
+                is_distributed_evaluation=distributed,
+                required_evaluators=1 if competitive else None,
+                max_project_rates=1 if competitive else None,
                 legacy_team_min_size=1,
                 legacy_team_max_size=4,
                 datetime_started=now - timezone.timedelta(days=1),
@@ -136,7 +142,11 @@ def prepare(
                 datetime_finished=now + timezone.timedelta(days=9),
             )
             program.managers.add(users[manager_id], users[captain_ids[0]])
-            active_captains = captains[:4] if mode == "legacy_project" else captains
+            active_captains = (
+                captains[:4]
+                if mode == "legacy_project"
+                else captains if suffix == "solution" else captains[:1]
+            )
             registered = {user.pk: user for user in active_captains}
             registered.update(
                 {pk: users[pk] for pk in (manager_id, participant_id, *expert_user_ids)}
@@ -161,6 +171,10 @@ def prepare(
                         ("pr517_no", "Дополнительная опция", "checkbox", "other", False),
                     ]
                 )
+            if template == "hackathon":
+                definitions.append(
+                    ("repository", "Ссылка на репозиторий", "url", "repository", True)
+                )
             for position, (name, label, kind, purpose, required_field) in enumerate(
                 definitions
             ):
@@ -180,7 +194,8 @@ def prepare(
                         ),
                     )
                 )
-            for kind, name in [("int", "PR517 Баллы"), ("bool", "PR517 Да/Нет")]:
+            criteria = [("int", "PR517 Баллы"), ("bool", "PR517 Да/Нет")]
+            for kind, name in criteria if competitive else []:
                 Criteria.objects.create(
                     partner_program=program,
                     name=name,
@@ -222,6 +237,13 @@ def prepare(
                     )
                     assert created
                     revision = form_data(program)["revision"]
+                    values = {
+                        PROGRAM_CASE_FIELD_NAME: case,
+                        "pr517_description": "PR517: материалы тестовой работы.",
+                        "pr517_zero": 0,
+                        "pr517_no": False,
+                        "repository": "https://example.invalid/pr517",
+                    }
                     update_solution(
                         program_id=program.pk,
                         solution_id=solution.pk,
@@ -229,15 +251,12 @@ def prepare(
                         expected_version=solution.version,
                         expected_form_revision=revision,
                         answers=[
-                            {"field_id": field.pk, "value": value}
-                            for field, value in zip(
-                                fields,
-                                [case, "PR517: материалы тестовой работы.", 0, False],
-                            )
+                            {"field_id": field.pk, "value": values[field.name]}
+                            for field in fields
                         ],
                     )
                     solution.refresh_from_db()
-                    if index in (1, 3, 4):
+                    if competitive and (index in (1, 3, 4) or suffix == "hackathon"):
                         submit_solution(
                             program_id=program.pk,
                             solution_id=solution.pk,
@@ -258,12 +277,15 @@ def prepare(
                 {
                     "id": program.pk,
                     "mode": mode,
+                    "scenario": suffix,
+                    "template": template,
+                    "competitive": competitive,
                     "draft": True,
                     "creation_enabled": False,
                     "work": ids,
                 }
             )
-            work[mode] = len(ids)
+            work[mode if mode == "legacy_project" else suffix] = len(ids)
         for model, ids, before in baseline:
             if _digest(model, ids) != before:
                 raise AssertionError("Existing data changed: " + model._meta.label)

@@ -49,7 +49,7 @@ class PR517CloseoutFixtureTests(TestCase):
         counts = (get_user_model().objects.count(), PartnerProgram.objects.count())
         result = prepare(*self.args)
         self.assertFalse(result["applied"])
-        self.assertEqual(result["solution_count"], 21)
+        self.assertEqual(result["solution_count"], 23)
         self.assertEqual(
             (get_user_model().objects.count(), PartnerProgram.objects.count()), counts
         )
@@ -58,15 +58,24 @@ class PR517CloseoutFixtureTests(TestCase):
 
     def test_apply_is_private_bounded_and_preserves_existing_rows(self):
         result = prepare(*self.args, apply=True)
-        self.assertEqual(result["work_counts"], {"legacy_project": 4, "solution": 21})
-        self.assertEqual(PartnerProgram.objects.filter(draft=True).count(), 2)
+        self.assertEqual(
+            result["work_counts"],
+            {"legacy_project": 4, "solution": 21, "hackathon": 1, "noncompetitive": 1},
+        )
+        self.assertEqual(PartnerProgram.objects.filter(draft=True).count(), 4)
         programs = [row["id"] for row in result["programs"]]
         self.assertFalse(
             PartnerProgram.objects.filter(
                 pk__in=programs, solution_creation_enabled=True
             ).exists()
         )
-        self.assertEqual(ProgramSolution.objects.filter(status="submitted").count(), 3)
+        self.assertEqual(ProgramSolution.objects.filter(status="submitted").count(), 4)
+        noncompetitive = PartnerProgram.objects.get(
+            pk=next(row["id"] for row in result["programs"] if not row["competitive"])
+        )
+        self.assertFalse(noncompetitive.criterias.exclude(type="str").exists())
+        self.assertFalse(noncompetitive.is_distributed_evaluation)
+        self.assertIsNone(noncompetitive.required_evaluators)
         self.assertFalse(ProgramSolution.objects.exclude(published_at=None).exists())
         self.assertEqual(
             PartnerProgramProject.objects.filter(partner_program_id__in=programs).count(),
