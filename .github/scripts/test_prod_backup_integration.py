@@ -81,6 +81,7 @@ services:
       POSTGRES_DB: procollab_backup_fixture
       POSTGRES_USER: fixture
       POSTGRES_PASSWORD: synthetic-password-canary
+      PGPASSWORD: synthetic-password-canary
   redis:
     image: redis:7-alpine
 """)
@@ -103,14 +104,15 @@ compose = [
 
 
 def run(args, **kwargs):
-    return subprocess.run(
-        args,
-        check=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        timeout=600,
-        **kwargs
-    ).stdout
+    result = subprocess.run(
+        args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=600, **kwargs
+    )
+    if result.returncode:
+        detail = result.stderr.decode(errors="replace")[:1200]
+        for canary in ("synthetic-password-canary", "synthetic-private-record-canary"):
+            detail = detail.replace(canary, "<synthetic-redacted>")
+        raise RuntimeError("Disposable fixture command failed: " + detail)
+    return result.stdout
 
 
 try:
@@ -123,11 +125,16 @@ try:
                 "exec",
                 "-T",
                 "postgres",
-                "pg_isready",
+                "psql",
+                "-h",
+                "127.0.0.1",
+                "-At",
                 "-U",
                 "fixture",
                 "-d",
                 "procollab_backup_fixture",
+                "-c",
+                "SELECT 1",
             ],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
