@@ -232,10 +232,13 @@ print(json.dumps({key:cfg.get(key,'') for key in ('NAME','USER','PASSWORD','HOST
     import base64
 
     expected = base64.b64decode(prod_preflight.EXPECTED_DATABASE_NAME_B64).decode()
+    endpoint = json.loads(base64.b64decode(prod_preflight.EXPECTED_DATABASE_ENDPOINT_B64))
     if (
         not expected
         or config["NAME"] != expected
-        or any(value in expected.lower() for value in ("dev", "test", "_ci"))
+        or str(config.get("HOST", "")).lower() != str(endpoint.get("HOST", "")).lower()
+        or str(config.get("PORT") or "5432") != str(endpoint.get("PORT") or "5432")
+        or config["NAME"] != endpoint.get("NAME")
     ):
         raise RuntimeError("Unexpected production database configuration")
     options = config.get("OPTIONS") or {}

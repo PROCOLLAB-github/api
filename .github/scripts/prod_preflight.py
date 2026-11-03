@@ -10,6 +10,7 @@ import textwrap
 
 REPO = Path("/home/app/procollab-backend")
 EXPECTED_DATABASE_NAME_B64 = globals().get("EXPECTED_DATABASE_NAME_B64", "")
+EXPECTED_DATABASE_ENDPOINT_B64 = globals().get("EXPECTED_DATABASE_ENDPOINT_B64", "")
 PROBE = r"""
 import base64, json, os
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'procollab.settings')
@@ -37,11 +38,18 @@ with transaction.atomic():
         matches_config = name == settings.DATABASES['default']['NAME']
         expected = base64.b64decode(EXPECTED_DATABASE_NAME_B64).decode()
         matches_expected = bool(expected) and name == expected
+        endpoint = json.loads(base64.b64decode(EXPECTED_DATABASE_ENDPOINT_B64))
+        runtime = settings.DATABASES['default']
+        endpoint_matches = (
+            str(runtime.get('HOST', '')).lower() == str(endpoint.get('HOST', '')).lower()
+            and str(runtime.get('PORT') or '5432') == str(endpoint.get('PORT') or '5432')
+            and name == endpoint.get('NAME')
+        )
         looks_nonproduction = any(marker in name.lower() for marker in ('dev', 'test', '_ci'))
         result.update(database_matches_runtime=matches_config,
-                      database_matches_github=matches_expected,
+                      database_matches_github=matches_expected and endpoint_matches,
                       nonproduction_name_marker=looks_nonproduction)
-        if not matches_config or not matches_expected or looks_nonproduction:
+        if not matches_config or not matches_expected or not endpoint_matches:
             raise RuntimeError('Unexpected production database')
         result.update(postgresql_version_num=version, database_bytes=size, supports_django_52=version >= 140000)
         stage = 'migration_metadata'
@@ -67,6 +75,9 @@ print(json.dumps(result))
 
 def probe_source():
     source = "EXPECTED_DATABASE_NAME_B64 = " + repr(EXPECTED_DATABASE_NAME_B64) + "\n"
+    source += (
+        "EXPECTED_DATABASE_ENDPOINT_B64 = " + repr(EXPECTED_DATABASE_ENDPOINT_B64) + "\n"
+    )
     source += 'stage="django_setup"\ntry:\n' + textwrap.indent(PROBE, "    ")
     source += """
 except Exception as error:

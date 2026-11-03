@@ -59,5 +59,7 @@ jobs:
           PROD_EXISTING_KNOWN_HOSTS: ${{ secrets.REACT_DEV_SSH_KNOWN_HOSTS }}
           PROD_CONFIRMED_SSH_HOST_KEY_SHA256: ${{ vars.PROD_SSH_HOST_KEY_SHA256 }}
           PROD_EXPECTED_DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
+          PROD_EXPECTED_DATABASE_HOST: ${{ secrets.DATABASE_HOST }}
+          PROD_EXPECTED_DATABASE_PORT: ${{ secrets.DATABASE_PORT }}
           PROD_DEPENDENCY_OPERATION: ${{ inputs.operation }}
         run: node .github/scripts/prod_preflight_ssh.cjs

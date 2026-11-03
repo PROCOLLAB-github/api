@@ -62,7 +62,7 @@ DATABASES={'default':{
 CELERY_BROKER_URL='redis://redis:6379/0'
 """)
 (ROOT / ".env").write_text(
-    "DATABASE_NAME=procollab_backup_fixture\nDATABASE_HOST=postgres\nDATABASE_PASSWORD=synthetic-password-canary\n"
+    "DATABASE_NAME=procollab_backup_dev_fixture\nDATABASE_HOST=postgres\nDATABASE_PASSWORD=synthetic-password-canary\n"
 )
 (ROOT / ".env").chmod(0o600)
 (ROOT / ".gitignore").write_text(".env\n")
@@ -78,7 +78,7 @@ services:
   postgres:
     image: postgres:14-alpine
     environment:
-      POSTGRES_DB: procollab_backup_fixture
+      POSTGRES_DB: procollab_backup_dev_fixture
       POSTGRES_USER: fixture
       POSTGRES_PASSWORD: synthetic-password-canary
       PGPASSWORD: synthetic-password-canary
@@ -132,7 +132,7 @@ try:
                 "-U",
                 "fixture",
                 "-d",
-                "procollab_backup_fixture",
+                "procollab_backup_dev_fixture",
                 "-c",
                 "SELECT 1",
             ],
@@ -155,7 +155,7 @@ try:
             "-U",
             "fixture",
             "-d",
-            "procollab_backup_fixture",
+            "procollab_backup_dev_fixture",
             "-v",
             "ON_ERROR_STOP=1",
         ],
@@ -170,7 +170,12 @@ try:
     import prod_backup
 
     prod_preflight.EXPECTED_DATABASE_NAME_B64 = base64.b64encode(
-        b"procollab_backup_fixture"
+        b"procollab_backup_dev_fixture"
+    ).decode()
+    prod_preflight.EXPECTED_DATABASE_ENDPOINT_B64 = base64.b64encode(
+        json.dumps(
+            {"NAME": "procollab_backup_dev_fixture", "HOST": "postgres", "PORT": "5432"}
+        ).encode()
     ).decode()
     prod_backup.native_clients = lambda major: None
     with contextlib.redirect_stdout(io.StringIO()) as captured:

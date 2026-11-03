@@ -46,11 +46,14 @@ async function main() {
   }
   if (!process.env.PROD_EXPECTED_DATABASE_NAME) throw new Error('Expected production database configuration is missing');
   const encodedName = Buffer.from(process.env.PROD_EXPECTED_DATABASE_NAME).toString('base64');
+  const encodedEndpoint = Buffer.from(JSON.stringify({NAME:process.env.PROD_EXPECTED_DATABASE_NAME,HOST:process.env.PROD_EXPECTED_DATABASE_HOST || '',PORT:process.env.PROD_EXPECTED_DATABASE_PORT || '5432'})).toString('base64');
   console.log('::add-mask::' + encodedName);
+  console.log('::add-mask::' + encodedEndpoint);
   const probe = fs.readFileSync('.github/scripts/prod_preflight.py').toString('base64');
   let script = 'import base64,sys,types\n' +
     'module=types.ModuleType("prod_preflight")\n' +
     'module.EXPECTED_DATABASE_NAME_B64=' + JSON.stringify(encodedName) + '\n' +
+    'module.EXPECTED_DATABASE_ENDPOINT_B64=' + JSON.stringify(encodedEndpoint) + '\n' +
     'sys.modules["prod_preflight"]=module\n' +
     'exec(compile(base64.b64decode(' + JSON.stringify(probe) + '),"<prod-readonly-preflight>","exec"),module.__dict__)\n';
   if (operation === 'backup') {
