@@ -109,6 +109,25 @@ def repository_read(*arguments):
     return read(command + list(arguments))
 
 
+def storage_summary(image_id):
+    mounts = []
+    for row in Path("/proc/self/mountinfo").read_text().splitlines():
+        left, right = row.split(" - ", 1)
+        parts = left.split()
+        source = right.split()[1]
+        location = parts[4].replace("\\040", " ")
+        if location != "/" and not source.startswith("/dev/"):
+            continue
+        if location.startswith("/var/lib/docker/") or not Path(location).is_dir():
+            continue
+        usage = shutil.disk_usage(location)
+        mounts.append({"path": location, "total_bytes": usage.total, "free_bytes": usage.free})
+    image_bytes = json.loads(read(["docker", "image", "inspect", "--format", "{{json .Size}}", image_id]))
+    docker = read(["docker", "system", "df", "--format", "{{json .}}"])
+    return {"mounts": mounts, "running_image_bytes": image_bytes,
+            "docker_usage": [json.loads(line) for line in docker.splitlines()]}
+
+
 def inspect_runtime():
     if not REPO.is_dir() or REPO.resolve() != REPO:
         raise RuntimeError("Unexpected repository location")
@@ -166,11 +185,13 @@ def inspect_runtime():
         tracked_tree_clean=not bool(
             repository_read("status", "--porcelain", "--untracked-files=no")
         ),
+        tracked_changed_paths=repository_read("diff", "HEAD", "--name-only").splitlines(),
         web_worker_same_image=True,
         image=containers["web"][2],
         image_id=containers["web"][1],
         disk_free_bytes=shutil.disk_usage(REPO).free,
     )
+    result["storage"] = storage_summary(containers["web"][1])
     memory = dict(
         line.split(":", 1) for line in Path("/proc/meminfo").read_text().splitlines()
     )
