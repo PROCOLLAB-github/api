@@ -56,7 +56,7 @@ async function main() {
   if (operation === 'backup') {
     const backup = fs.readFileSync('.github/scripts/prod_backup.py').toString('base64');
     script += 'exec(compile(base64.b64decode(' + JSON.stringify(backup) + '),"<prod-protected-backup>","exec"),globals())\n';
-  } else script += 'module.main()\n';
+  } else script += 'try:\n module.main()\nexcept Exception as error:\n print("PROD_PREFLIGHT_FAILED="+type(error).__name__)\n if isinstance(error,RuntimeError): print(str(error))\n sys.exit(1)\n';
 
   await new Promise((resolve, reject) => {
     const ssh = new Client();

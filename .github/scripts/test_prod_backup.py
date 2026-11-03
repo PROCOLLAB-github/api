@@ -10,9 +10,25 @@ import unittest
 from unittest.mock import patch
 
 import prod_backup as backup
+import prod_preflight as preflight
 
 
 class ProductionBackupTests(unittest.TestCase):
+    def test_root_reads_app_repository_as_its_owner(self):
+        owner = SimpleNamespace(st_uid=1001)
+        accounts = SimpleNamespace(getpwuid=lambda uid: SimpleNamespace(pw_name="app"))
+        with patch.object(
+            preflight.REPO.__class__, "stat", return_value=owner
+        ), patch.object(preflight.os, "geteuid", return_value=0, create=True), patch.dict(
+            sys.modules, {"pwd": accounts}
+        ), patch.object(
+            preflight, "read", return_value="synthetic-sha"
+        ) as read:
+            self.assertEqual(
+                preflight.repository_read("rev-parse", "HEAD"), "synthetic-sha"
+            )
+        self.assertEqual(read.call_args.args[0][:4], ["sudo", "-n", "-u", "app"])
+
     def test_archive_validation_child_sees_offset_zero(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "synthetic.dump"

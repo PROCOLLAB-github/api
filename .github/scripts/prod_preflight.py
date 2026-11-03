@@ -1,6 +1,7 @@
 """Inspect the existing production containers using read-only database queries."""
 
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -58,8 +59,19 @@ def read(args, *, source=None):
         args, input=source, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=90
     )
     if result.returncode:
-        raise RuntimeError("Read-only production command failed")
+        raise RuntimeError("Read-only production command failed: " + "-".join(args[:2]))
     return result.stdout.decode().strip()
+
+
+def repository_read(*arguments):
+    # A root SSH login must read an app-owned repository as app, not run its hooks as root.
+    owner = REPO.stat().st_uid
+    command = ["git", "-C", str(REPO)]
+    if os.geteuid() == 0 and owner != 0:
+        from pwd import getpwuid
+
+        command = ["sudo", "-n", "-u", getpwuid(owner).pw_name] + command
+    return read(command + list(arguments))
 
 
 def inspect_runtime():
@@ -74,8 +86,6 @@ def inspect_runtime():
         "prod",
     ]
     # IMAGE_TAG is required by Compose interpolation even for a read-only ps command.
-    import os
-
     os.environ.setdefault("IMAGE_TAG", "preflight-unused")
     containers = {}
     for service in ("web", "celerys"):
@@ -118,11 +128,9 @@ def inspect_runtime():
         )
     )
     result.update(
-        source_sha=read(["git", "-C", str(REPO), "rev-parse", "HEAD"]),
+        source_sha=repository_read("rev-parse", "HEAD"),
         tracked_tree_clean=not bool(
-            read(
-                ["git", "-C", str(REPO), "status", "--porcelain", "--untracked-files=no"]
-            )
+            repository_read("status", "--porcelain", "--untracked-files=no")
         ),
         web_worker_same_image=True,
         image=containers["web"][2],
