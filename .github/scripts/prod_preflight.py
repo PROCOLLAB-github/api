@@ -76,7 +76,9 @@ print(json.dumps(result))
 def probe_source():
     source = "EXPECTED_DATABASE_NAME_B64 = " + repr(EXPECTED_DATABASE_NAME_B64) + "\n"
     source += (
-        "EXPECTED_DATABASE_ENDPOINT_B64 = " + repr(EXPECTED_DATABASE_ENDPOINT_B64) + "\n"
+        "EXPECTED_DATABASE_ENDPOINT_B64 = "
+        + repr(EXPECTED_DATABASE_ENDPOINT_B64)
+        + "\n"
     )
     source += 'stage="django_setup"\ntry:\n' + textwrap.indent(PROBE, "    ")
     source += """
@@ -203,7 +205,9 @@ def inspect_runtime():
         tracked_tree_clean=not bool(
             repository_read("status", "--porcelain", "--untracked-files=no")
         ),
-        tracked_changed_paths=repository_read("diff", "HEAD", "--name-only").splitlines(),
+        tracked_changed_paths=repository_read(
+            "diff", "HEAD", "--name-only"
+        ).splitlines(),
         web_worker_same_image=True,
         image=containers["web"][2],
         image_id=containers["web"][1],
@@ -233,5 +237,7 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as error:
-        sys.stdout.write("PROD_READONLY_PREFLIGHT_FAILED=" + type(error).__name__ + "\n")
+        sys.stdout.write(
+            "PROD_READONLY_PREFLIGHT_FAILED=" + type(error).__name__ + "\n"
+        )
         raise SystemExit(1)
