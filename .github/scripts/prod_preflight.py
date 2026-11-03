@@ -7,8 +7,9 @@ import subprocess
 import sys
 
 REPO = Path("/home/app/procollab-backend")
+EXPECTED_DATABASE_NAME_B64 = globals().get("EXPECTED_DATABASE_NAME_B64", "")
 PROBE = r"""
-import json, os
+import base64, json, os
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'procollab.settings')
 import django
 django.setup()
@@ -27,8 +28,10 @@ with transaction.atomic():
         )
         name, version, size = cursor.fetchone()
         matches_config = name == settings.DATABASES['default']['NAME']
+        expected = base64.b64decode(EXPECTED_DATABASE_NAME_B64).decode()
+        matches_expected = bool(expected) and name == expected
         looks_nonproduction = any(marker in name.lower() for marker in ('dev', 'test', '_ci'))
-        if not matches_config or looks_nonproduction:
+        if not matches_config or not matches_expected or looks_nonproduction:
             raise RuntimeError('Unexpected production database')
         result.update(postgresql_version_num=version, database_bytes=size, supports_django_52=version >= 140000)
         cursor.execute('SELECT app,name FROM django_migrations ORDER BY app,name')
@@ -59,7 +62,7 @@ def read(args, *, source=None):
     return result.stdout.decode().strip()
 
 
-def main():
+def inspect_runtime():
     if not REPO.is_dir() or REPO.resolve() != REPO:
         raise RuntimeError("Unexpected repository location")
     compose = [
@@ -106,7 +109,12 @@ def main():
                 "python",
                 "-",
             ],
-            source=PROBE.encode(),
+            source=(
+                "EXPECTED_DATABASE_NAME_B64 = "
+                + repr(EXPECTED_DATABASE_NAME_B64)
+                + "\n"
+                + PROBE
+            ).encode(),
         )
     )
     result.update(
@@ -131,6 +139,11 @@ def main():
         result["native_postgres_clients"][client] = (
             read([executable, "--version"]) if executable else None
         )
+    return result, containers
+
+
+def main():
+    result, _containers = inspect_runtime()
     sys.stdout.write("PROD_READONLY_PREFLIGHT=" + json.dumps(result) + "\n")
 
 

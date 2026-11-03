@@ -1,16 +1,48 @@
-name: Production dependency preflight (read only)
+name: Production dependency check and protected backup (no deployment)
 
 on:
   workflow_dispatch:
+    inputs:
+      operation:
+        type: choice
+        description: "Production operation; no deployment or migrations"
+        default: check
+        options: [discover, self_test, check, backup]
 
 permissions:
   contents: read
 
+concurrency:
+  group: api-prod-dependency-maintenance
+  cancel-in-progress: false
+
 jobs:
-  readonly-production-preflight:
-    name: Read-only production preflight (no deployment)
+  backup-self-test:
+    name: Backup proof on disposable runner (no production secrets)
+    if: inputs.operation != 'discover'
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Test backup guards and public-key verification
+        run: |
+          python .github/scripts/test_prod_backup.py
+          node --test .github/scripts/test_prod_host_trust.cjs
+      - name: Prove database restore and image backup using synthetic data
+        run: python .github/scripts/test_prod_backup_integration.py
+
+  readonly-production-preflight:
+    name: Production check or backup (no deployment)
+    runs-on: ubuntu-latest
+    needs: [backup-self-test]
+    if: always() && !cancelled() && inputs.operation != 'self_test' && (inputs.operation == 'discover' || needs.backup-self-test.result == 'success')
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -18,11 +50,14 @@ jobs:
           node-version: "24"
       - name: Install pinned SSH transport
         run: npm install --prefix "$RUNNER_TEMP/prod-preflight-ssh" --ignore-scripts --no-package-lock --no-audit --no-fund ssh2@1.16.0
-      - name: Inspect existing production runtime without changes
+      - name: Run selected production check or protected backup
         env:
           NODE_PATH: ${{ runner.temp }}/prod-preflight-ssh/node_modules
           SERVER_HOST: ${{ secrets.SERVER_HOST }}
           SERVER_USER: ${{ secrets.SERVER_USER }}
           SERVER_PASSWORD: ${{ secrets.SERVER_PASSWORD }}
           PROD_EXISTING_KNOWN_HOSTS: ${{ secrets.REACT_DEV_SSH_KNOWN_HOSTS }}
+          PROD_CONFIRMED_SSH_HOST_KEY_SHA256: ${{ vars.PROD_SSH_HOST_KEY_SHA256 }}
+          PROD_EXPECTED_DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
+          PROD_DEPENDENCY_OPERATION: ${{ inputs.operation }}
         run: node .github/scripts/prod_preflight_ssh.cjs
