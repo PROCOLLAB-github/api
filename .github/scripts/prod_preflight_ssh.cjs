@@ -6,7 +6,7 @@ const net = require('node:net');
 const { fingerprint, trustedHostKeys, algorithms } = require('./prod_host_trust.cjs');
 
 const operation = process.env.PROD_DEPENDENCY_OPERATION || 'check';
-if (!['discover', 'check', 'backup'].includes(operation)) throw new Error('Invalid production operation');
+if (!['discover', 'check', 'backup', 'cleanup_and_backup'].includes(operation)) throw new Error('Invalid production operation');
 
 async function configuredHostKeys() {
   let keys = trustedHostKeys(process.env.PROD_EXISTING_KNOWN_HOSTS, process.env.SERVER_HOST);
@@ -56,7 +56,13 @@ async function main() {
     'module.EXPECTED_DATABASE_ENDPOINT_B64=' + JSON.stringify(encodedEndpoint) + '\n' +
     'sys.modules["prod_preflight"]=module\n' +
     'exec(compile(base64.b64decode(' + JSON.stringify(probe) + '),"<prod-readonly-preflight>","exec"),module.__dict__)\n';
-  if (operation === 'backup') {
+  if (operation === 'cleanup_and_backup') {
+    const cleanup = fs.readFileSync('.github/scripts/prod_image_cleanup.py').toString('base64');
+    script += 'cleanup=types.ModuleType("prod_image_cleanup")\n' +
+      'exec(compile(base64.b64decode(' + JSON.stringify(cleanup) + '),"<prod-approved-image-cleanup>","exec"),cleanup.__dict__)\n' +
+      'try:\n cleanup.main("prod-obsolete-images-20261103-v1")\nexcept Exception as error:\n print("PROD_IMAGE_CLEANUP_FAILED="+type(error).__name__)\n if isinstance(error,RuntimeError): print(str(error))\n sys.exit(1)\n';
+  }
+  if (operation === 'backup' || operation === 'cleanup_and_backup') {
     const backup = fs.readFileSync('.github/scripts/prod_backup.py').toString('base64');
     script += 'exec(compile(base64.b64decode(' + JSON.stringify(backup) + '),"<prod-protected-backup>","exec"),globals())\n';
   } else script += 'try:\n module.main()\nexcept Exception as error:\n print("PROD_PREFLIGHT_FAILED="+type(error).__name__)\n if isinstance(error,RuntimeError): print(str(error))\n sys.exit(1)\n';
@@ -71,7 +77,7 @@ async function main() {
       ssh.end();
       error ? reject(error) : resolve();
     };
-    const timer = setTimeout(() => { finish(new Error('Production operation timed out')); ssh.destroy(); }, operation === 'backup' ? 50 * 60 * 1000 : 120000);
+    const timer = setTimeout(() => { finish(new Error('Production operation timed out')); ssh.destroy(); }, ['backup', 'cleanup_and_backup'].includes(operation) ? 50 * 60 * 1000 : 120000);
     ssh.on('error', () => finish(new Error('Production SSH connection failed')));
     ssh.on('close', () => { if (!finished) finish(new Error('Production SSH closed early')); });
     ssh.on('ready', () => {

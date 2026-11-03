@@ -7,7 +7,7 @@ on:
         type: choice
         description: "Production operation; no deployment or migrations"
         default: check
-        options: [discover, self_test, check, backup]
+        options: [discover, self_test, check, backup, cleanup_and_backup]
 
 permissions:
   contents: read
@@ -33,6 +33,7 @@ jobs:
       - name: Test backup guards and public-key verification
         run: |
           python .github/scripts/test_prod_backup.py
+          python .github/scripts/test_prod_image_cleanup.py
           node --test .github/scripts/test_prod_host_trust.cjs
       - name: Prove database restore and image backup using synthetic data
         run: python .github/scripts/test_prod_backup_integration.py
