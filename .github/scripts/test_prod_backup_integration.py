@@ -190,7 +190,7 @@ try:
     assert folder.stat().st_mode & 0o077 == 0
     for name, record in manifest["files"].items():
         path = folder / name
-        assert path.stat().st_mode & 0o077 == 0
+        assert path.stat().st_mode & 0o077 == 0, (name, oct(path.stat().st_mode))
         assert hashlib.sha256(path.read_bytes()).hexdigest() == record["sha256"]
     pg_container = run(compose + ["ps", "-q", "postgres"]).decode().strip()
     run(

@@ -53,6 +53,7 @@ def guarded_archive(args, destination, *, stage, environment=None, timeout=900):
     with destination.open("xb") as archive, tempfile.TemporaryFile(
         dir=destination.parent
     ) as errors:
+        os.chmod(destination, 0o600)
         process = subprocess.Popen(args, stdout=archive, stderr=errors, env=environment)
         start = time.monotonic()
         try:
@@ -68,6 +69,7 @@ def guarded_archive(args, destination, *, stage, environment=None, timeout=900):
                 raise RuntimeError("Production backup failed: " + stage + ":" + category)
             archive.flush()
             os.fsync(archive.fileno())
+            os.chmod(destination, 0o600)
         finally:
             if process.poll() is None:
                 process.terminate()
@@ -315,6 +317,7 @@ print(json.dumps({key:cfg.get(key,'') for key in ('NAME','USER','PASSWORD','HOST
             + [
                 "--no-password",
                 "--format=custom",
+                "--compress=3",
                 "--no-owner",
                 "--no-acl",
                 "--lock-wait-timeout=5s",
@@ -382,6 +385,7 @@ print(json.dumps({key:cfg.get(key,'') for key in ('NAME','USER','PASSWORD','HOST
         "container-environments.json",
     ):
         path = folder / filename
+        os.chmod(path, 0o600)
         files[filename] = {"bytes": path.stat().st_size, "sha256": digest(path)}
     manifest = {
         "complete": True,
@@ -394,6 +398,7 @@ print(json.dumps({key:cfg.get(key,'') for key in ('NAME','USER','PASSWORD','HOST
         "database_restore_performed": False,
     }
     (folder / "manifest.json").write_text(json.dumps(manifest), encoding="utf8")
+    os.chmod(folder / "manifest.json", 0o600)
     emit("PROD_BACKUP_COMPLETE=" + key)
     emit("PROD_BACKUP_DATABASE_BYTES=" + str(files["database.dump"]["bytes"]))
     emit("PROD_BACKUP_DATABASE_SHA256=" + files["database.dump"]["sha256"])
