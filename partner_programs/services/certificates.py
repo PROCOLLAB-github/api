@@ -106,6 +106,18 @@ def recipients(program, audience):
         partner_program=program, user__isnull=False
     )
     if audience == "submitted":
+        if program.solution_storage_mode == "solution":
+            from partner_programs.solution_models import ProgramSolution
+            from project_rates.solution_evaluation import team_user_ids
+
+            users = set()
+            for solution in (
+                ProgramSolution.objects.filter(program=program, status="submitted")
+                .only("captain_id", "status", "submission_snapshot")
+                .iterator()
+            ):
+                users.update(team_user_ids(solution))
+            return profiles.filter(user_id__in=users)
         leaders = PartnerProgramProject.objects.filter(
             partner_program=program,
             submitted=True,

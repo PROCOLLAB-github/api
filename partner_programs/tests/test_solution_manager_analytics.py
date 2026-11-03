@@ -384,6 +384,24 @@ class SolutionManagerAnalyticsTests(EvaluationFixture, TestCase):
             [],
         )
 
+    def test_draft_xlsx_has_one_captain_and_preserves_accepted_member_role(self):
+        draft = self.another_solution(submitted=False)
+        member = create_user()
+        ProgramSolutionMember.objects.create(
+            solution=draft, user=member, role="Разработчик"
+        )
+
+        book = self.book("solutions")
+        team = [row for row in list(book["Команды"].values)[1:] if row[0] == draft.pk]
+        self.assertEqual(
+            [(row[2], row[4]) for row in team],
+            [(draft.captain_id, "Капитан"), (member.pk, "Разработчик")],
+        )
+        solution = next(
+            row for row in list(book["Решения"].values)[1:] if row[0] == draft.pk
+        )
+        self.assertEqual(solution[6], len(team))
+
     def test_xlsx_program_subsets_snapshot_answers_scores_and_formula_safety(self):
         self.assertEqual(self.rate().status_code, 200)
         SolutionScore.objects.create(

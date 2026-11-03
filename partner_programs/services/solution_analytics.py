@@ -238,6 +238,7 @@ class SolutionAnalyticsContext:
                     is_captain=False,
                 )
                 for m in solution.members.all()
+                if m.user_id != captain.pk
             ],
         ]
 
