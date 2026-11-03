@@ -6,6 +6,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import textwrap
 
 REPO = Path("/home/app/procollab-backend")
 EXPECTED_DATABASE_NAME_B64 = globals().get("EXPECTED_DATABASE_NAME_B64", "")
@@ -17,7 +18,12 @@ django.setup()
 from django.conf import settings
 from django.db import connection, transaction
 import redis
-result = {'django': django.get_version(), 'nextgen_surface_enabled': settings.NEXTGEN_SURFACE_ENABLED}
+result = {
+    'django': django.get_version(),
+    'nextgen_surface_configured': hasattr(settings, 'NEXTGEN_SURFACE_ENABLED'),
+    'nextgen_surface_enabled': getattr(settings, 'NEXTGEN_SURFACE_ENABLED', None),
+}
+stage = 'database_connection'
 with transaction.atomic():
     with connection.cursor() as cursor:
         cursor.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY')
@@ -32,9 +38,13 @@ with transaction.atomic():
         expected = base64.b64decode(EXPECTED_DATABASE_NAME_B64).decode()
         matches_expected = bool(expected) and name == expected
         looks_nonproduction = any(marker in name.lower() for marker in ('dev', 'test', '_ci'))
+        result.update(database_matches_runtime=matches_config,
+                      database_matches_github=matches_expected,
+                      nonproduction_name_marker=looks_nonproduction)
         if not matches_config or not matches_expected or looks_nonproduction:
             raise RuntimeError('Unexpected production database')
         result.update(postgresql_version_num=version, database_bytes=size, supports_django_52=version >= 140000)
+        stage = 'migration_metadata'
         cursor.execute('SELECT app,name FROM django_migrations ORDER BY app,name')
         result['applied_migrations'] = cursor.fetchall()
         cursor.execute("SELECT has_schema_privilege(current_user,'public','CREATE')")
@@ -45,6 +55,7 @@ with transaction.atomic():
             "WHERE n.nspname='public' AND c.relkind='r'"
         )
         result['table_count'], result['migration_role_owns_existing_tables'] = cursor.fetchone()
+stage = 'redis_ping'
 client = redis.Redis.from_url(settings.CELERY_BROKER_URL, socket_connect_timeout=5, socket_timeout=5)
 try:
     result['redis_ping_ok'] = bool(client.ping())
@@ -52,6 +63,19 @@ finally:
     client.close()
 print(json.dumps(result))
 """
+
+
+def probe_source():
+    source = "EXPECTED_DATABASE_NAME_B64 = " + repr(EXPECTED_DATABASE_NAME_B64) + "\n"
+    source += 'stage="django_setup"\ntry:\n' + textwrap.indent(PROBE, "    ")
+    source += """
+except Exception as error:
+    import json
+    safe = globals().get('result', {})
+    safe.update(probe_error_type=type(error).__name__, probe_error_stage=stage)
+    print(json.dumps(safe))
+"""
+    return source.encode()
 
 
 def read(args, *, source=None):
@@ -119,14 +143,13 @@ def inspect_runtime():
                 "python",
                 "-",
             ],
-            source=(
-                "EXPECTED_DATABASE_NAME_B64 = "
-                + repr(EXPECTED_DATABASE_NAME_B64)
-                + "\n"
-                + PROBE
-            ).encode(),
+            source=probe_source(),
         )
     )
+    if result.get("probe_error_type"):
+        sys.stdout.write("PROD_PROBE_DIAGNOSTIC=" + json.dumps(result) + "\n")
+        sys.stdout.flush()
+        raise RuntimeError("Production probe stopped at " + result["probe_error_stage"])
     result.update(
         source_sha=repository_read("rev-parse", "HEAD"),
         tracked_tree_clean=not bool(
