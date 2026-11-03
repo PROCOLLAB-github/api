@@ -121,11 +121,20 @@ def storage_summary(image_id):
         if location.startswith("/var/lib/docker/") or not Path(location).is_dir():
             continue
         usage = shutil.disk_usage(location)
-        mounts.append({"path": location, "total_bytes": usage.total, "free_bytes": usage.free})
-    image_bytes = json.loads(read(["docker", "image", "inspect", "--format", "{{json .Size}}", image_id]))
+        mounts.append(
+            {"path": location, "total_bytes": usage.total, "free_bytes": usage.free}
+        )
+    image_bytes = json.loads(
+        read(["docker", "image", "inspect", "--format", "{{json .Size}}", image_id])
+    )
     docker = read(["docker", "system", "df", "--format", "{{json .}}"])
-    return {"mounts": mounts, "running_image_bytes": image_bytes,
-            "docker_usage": [json.loads(line) for line in docker.splitlines()]}
+    images = read(["docker", "system", "df", "--verbose"])
+    return {
+        "mounts": mounts,
+        "running_image_bytes": image_bytes,
+        "docker_usage": [json.loads(line) for line in docker.splitlines()],
+        "image_disk_usage": images.split("Containers space usage:", 1)[0].strip(),
+    }
 
 
 def inspect_runtime():
@@ -142,6 +151,7 @@ def inspect_runtime():
     # IMAGE_TAG is required by Compose interpolation even for a read-only ps command.
     os.environ.setdefault("IMAGE_TAG", "preflight-unused")
     containers = {}
+    mounts = {}
     for service in ("web", "celerys"):
         container = read(compose + ["ps", "-q", service])
         if not container or "\n" in container:
@@ -159,6 +169,14 @@ def inspect_runtime():
         if str(REPO / "docker-compose.prod-ci.yml") not in files:
             raise RuntimeError("Production compose path does not match")
         containers[service] = (container, info["Image"], info["Config"]["Image"])
+        mounts[service] = [
+            {
+                "type": mount["Type"],
+                "destination": mount["Destination"],
+                "writable": mount["RW"],
+            }
+            for mount in info.get("Mounts", [])
+        ]
     if containers["web"][1] != containers["celerys"][1]:
         raise RuntimeError("Production web and worker images differ")
     result = json.loads(
@@ -190,6 +208,7 @@ def inspect_runtime():
         image=containers["web"][2],
         image_id=containers["web"][1],
         disk_free_bytes=shutil.disk_usage(REPO).free,
+        service_mounts=mounts,
     )
     result["storage"] = storage_summary(containers["web"][1])
     memory = dict(
