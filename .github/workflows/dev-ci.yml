@@ -13,7 +13,7 @@ on:
         description: "DEV operation"
         type: choice
         default: deploy
-        options: [deploy, verify_solution_rollback, prepare_solution_browser, finalize_solution_browser, verify_program_publication, grant_program_creator_11, dependency_backup, dependency_verify]
+        options: [deploy, verify_solution_rollback, prepare_solution_browser, finalize_solution_browser, verify_program_publication, grant_program_creator_11, dependency_backup, dependency_verify, prepare_pr517_closeout]
       dependency_backup_key:
         description: "Ключ резервной копии для проверки сохранности данных dev"
         type: string
@@ -26,6 +26,10 @@ on:
         description: "Existing user who owns the new QA programs"
         default: "28"
         type: string
+      apply_fixture:
+        description: "Apply the bounded PR517 fixture plan; false only previews it"
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -400,6 +404,7 @@ jobs:
           VERIFY_OPERATION: ${{ inputs.operation }}
           VERIFY_FIXTURE_KEY: ${{ inputs.fixture_key }}
           VERIFY_MANAGER_ID: ${{ inputs.manager_user_id }}
+          VERIFY_FIXTURE_APPLY: ${{ inputs.apply_fixture && 'true' || 'false' }}
         run: |
           node <<'NODE'
           const fs = require('node:fs');
@@ -408,10 +413,12 @@ jobs:
           const operation = process.env.VERIFY_OPERATION;
           const key = process.env.VERIFY_FIXTURE_KEY;
           const manager = process.env.VERIFY_MANAGER_ID;
-          const phases = { verify_solution_rollback: 'verify_rollback', prepare_solution_browser: 'prepare_browser', finalize_solution_browser: 'finalize_browser', verify_program_publication: 'verify_publication', grant_program_creator_11: 'grant_creator_11' };
+          const applyFixture = process.env.VERIFY_FIXTURE_APPLY;
+          const phases = { verify_solution_rollback: 'verify_rollback', prepare_solution_browser: 'prepare_browser', finalize_solution_browser: 'finalize_browser', verify_program_publication: 'verify_publication', grant_program_creator_11: 'grant_creator_11', prepare_pr517_closeout: 'prepare_pr517_closeout' };
           if (!/^[0-9a-f]{40}$/.test(sha) || !phases[operation] || !/^[a-z0-9-]{8,50}$/.test(key) || !/^[1-9][0-9]{0,8}$/.test(manager)) throw new Error('Invalid acceptance arguments');
+          if (!['true', 'false'].includes(applyFixture)) throw new Error('Invalid fixture apply flag');
           const phase = phases[operation];
-          const file = phase === 'grant_creator_11' ? 'scripts/grant_dev_program_creation_20261027.py' : phase === 'verify_publication' ? 'scripts/verify_program_publication_dev.py' : phase === 'verify_rollback' ? 'scripts/verify_program_solutions_dev.py' : 'scripts/prepare_program_solutions_browser.py';
+          const file = phase === 'prepare_pr517_closeout' ? 'scripts/prepare_pr517_closeout.py' : phase === 'grant_creator_11' ? 'scripts/grant_dev_program_creation_20261027.py' : phase === 'verify_publication' ? 'scripts/verify_program_publication_dev.py' : phase === 'verify_rollback' ? 'scripts/verify_program_solutions_dev.py' : 'scripts/prepare_program_solutions_browser.py';
           const source = fs.readFileSync(file, 'utf8');
           const script = [
             'set +x',
@@ -428,7 +435,7 @@ jobs:
             'test "$(docker inspect -f \'{{.Image}}\' "$web")" = "$(docker inspect -f \'{{.Image}}\' "$worker")"',
             'echo "VERIFIED_DEV_RUNTIME_REF=' + sha + '"',
             'docker exec "$web" python manage.py migrate --check',
-            'docker exec -e VERIFY_EXPECTED_API_SHA=' + sha + ' -e VERIFY_EXPECTED_LEGACY_IDS=1,2,3,4,5,6,7,8,9,38,39 -e VERIFY_PHASE=' + phase + ' -e VERIFY_FIXTURE_KEY=' + key + ' -e VERIFY_MANAGER_ID=' + manager + ' -i "$web" python - <<\'SOLUTION_ACCEPTANCE_PY\'',
+            'docker exec -e VERIFY_EXPECTED_API_SHA=' + sha + ' -e VERIFY_EXPECTED_LEGACY_IDS=1,2,3,4,5,6,7,8,9,38,39 -e VERIFY_PHASE=' + phase + ' -e VERIFY_FIXTURE_KEY=' + key + ' -e VERIFY_MANAGER_ID=' + manager + ' -e VERIFY_FIXTURE_APPLY=' + applyFixture + ' -i "$web" python - <<\'SOLUTION_ACCEPTANCE_PY\'',
             source,
             'SOLUTION_ACCEPTANCE_PY'
           ].join('\n') + '\n';
