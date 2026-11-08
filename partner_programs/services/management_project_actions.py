@@ -345,8 +345,6 @@ def apply_action(program_id, actor, data):
             links,
             ["submitted", "datetime_submitted", "datetime_updated", "submitted_form"],
         )
-        from projects.models import Project
-
         Project.objects.filter(pk__in=[link.project_id for link in links]).update(
             draft=False, datetime_updated=now
         )

@@ -1026,13 +1026,16 @@ class UserProjectListSerializer(serializers.ModelSerializer[Project]):
             .first()
         )
         if link and link.partner_program:
-            return {
+            program = {
                 "id": link.partner_program_id,
                 "name": link.partner_program.name,
                 "program_link_id": link.pk,
                 "program_id": link.partner_program_id,
                 "is_submitted": link.submitted,
             }
+            if link.source_project_id:
+                program["source_project_id"] = link.source_project_id
+            return program
         return None
 
     class Meta:

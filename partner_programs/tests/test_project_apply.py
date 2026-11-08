@@ -38,6 +38,14 @@ class PartnerProgramProjectApplyAPITests(TestCase):
         self.assertNotEqual(link.project_id, link.source_project_id)
         self.assertEqual(link.source_project.name, "Проект команды")
         self.assertFalse(link.source_project.program_links.exists())
+        projects = {
+            item["id"]: item for item in self.client.get("/auth/users/projects/").data["results"]
+        }
+        self.assertIsNone(projects[link.source_project_id]["partner_program"])
+        self.assertEqual(
+            projects[link.project_id]["partner_program"]["source_project_id"],
+            link.source_project_id,
+        )
         fields_url = f"/programs/partner-program-projects/{link.pk}/fields/"
         self.assertEqual(
             self.client.put(
