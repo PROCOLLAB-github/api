@@ -275,7 +275,8 @@ print(json.dumps({key:cfg.get(key,'') for key in ('NAME','USER','PASSWORD','HOST
         environment[destination] = str(config[source])
     environment["PGCONNECT_TIMEOUT"] = "10"
     environment["PGSSLMODE"] = options.get("sslmode", "prefer")
-    environment["PGOPTIONS"] = "-c default_transaction_read_only=on"
+    # The database proxy rejects startup options. pg_dump starts a read-only snapshot.
+    environment.pop("PGOPTIONS", None)
 
     native = native_clients(major)
     helper_name = "prod-dependency-pgdump-" + uuid4().hex[:12]
@@ -292,7 +293,6 @@ print(json.dumps({key:cfg.get(key,'') for key in ('NAME','USER','PASSWORD','HOST
             "PGPASSWORD",
             "PGCONNECT_TIMEOUT",
             "PGSSLMODE",
-            "PGOPTIONS",
         ]
         flags = [part for name in pg_environment for part in ("--env", name)]
         dump_command = (
