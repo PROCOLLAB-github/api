@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import QuerySet
 from django.shortcuts import get_object_or_404
+from django.utils.decorators import method_decorator
 from django_filters import rest_framework as filters
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
@@ -30,7 +31,6 @@ from projects.helpers import (
 )
 from projects.models import (
     Achievement,
-    Collaborator,
     Company,
     Project,
     ProjectCompany,
@@ -584,6 +584,7 @@ class DuplicateProjectView(APIView):
         )
 
 
+@method_decorator(transaction.atomic, name="dispatch")
 class GoalViewSet(viewsets.ModelViewSet):
     queryset = ProjectGoal.objects.select_related("project", "responsible")
     serializer_class = ProjectGoalSerializer
@@ -635,6 +636,7 @@ class GoalViewSet(viewsets.ModelViewSet):
         serializer.save(project=self.get_object().project)
 
 
+@method_decorator(transaction.atomic, name="dispatch")
 class CompanyViewSet(viewsets.ModelViewSet):
     queryset = Company.objects.all().order_by("name")
     serializer_class = CompanySerializer
@@ -643,6 +645,7 @@ class CompanyViewSet(viewsets.ModelViewSet):
     search_fields = ("name", "inn")
 
 
+@method_decorator(transaction.atomic, name="dispatch")
 class ResourceViewSet(viewsets.ModelViewSet):
     queryset = Resource.objects.select_related("project", "partner_company").all()
     serializer_class = ResourceSerializer
@@ -662,6 +665,7 @@ class ResourceViewSet(viewsets.ModelViewSet):
         serializer.save(project_id=project_pk)
 
 
+@method_decorator(transaction.atomic, name="dispatch")
 class ProjectCompanyUpsertView(APIView):
     """
     POST /projects/<project_id>/companies/
@@ -727,6 +731,7 @@ class ProjectCompaniesListView(ListAPIView):
         )
 
 
+@method_decorator(transaction.atomic, name="dispatch")
 class ProjectCompanyDetailView(APIView):
     """
     PATCH - частично обновляет вклад/ответственного в связи ProjectCompany

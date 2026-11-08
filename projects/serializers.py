@@ -14,9 +14,6 @@ from partner_programs.models import (
     PartnerProgram,
     PartnerProgramProject,
 )
-from partner_programs.serializers import (
-    PartnerProgramFieldSerializer,
-)
 from projects.models import (
     Achievement,
     Collaborator,
@@ -118,38 +115,31 @@ class PartnerProgramProjectSerializer(serializers.ModelSerializer):
             and obj.partner_program.is_project_submission_open()
         )
 
-    def get_program_fields(self, obj):
-        from partner_programs.project_form import visible_project_fields
-
-        if obj.submitted and obj.submitted_form:
-            return [
-                {k: v for k, v in field.items() if k != "value"}
-                for field in obj.submitted_form["fields"]
-            ]
-        return PartnerProgramFieldSerializer(
-            visible_project_fields(obj.partner_program), many=True
-        ).data
-
-    def get_program_field_values(self, obj):
+    def to_representation(self, instance):
         from partner_programs.services.project_fields import form_snapshot
 
-        form = (
-            obj.submitted_form
-            if obj.submitted and obj.submitted_form
-            else form_snapshot(obj)
+        self._form = (
+            instance.submitted_form
+            if instance.submitted and instance.submitted_form
+            else form_snapshot(instance)
         )
+        return super().to_representation(instance)
+
+    def get_program_fields(self, obj):
+        return [
+            {key: value for key, value in field.items() if key != "value"}
+            for field in self._form["fields"]
+        ]
+
+    def get_program_field_values(self, obj):
         return [
             {"field_name": field["name"], "value": field["value"]}
-            for field in form["fields"]
+            for field in self._form["fields"]
             if field["value"] is not None
         ]
 
     def get_sections(self, obj):
-        from partner_programs.project_form import project_sections
-
-        if obj.submitted and obj.submitted_form:
-            return obj.submitted_form["sections"]
-        return project_sections(obj.partner_program)
+        return self._form["sections"]
 
 
 class ResponsibleMiniSerializer(serializers.ModelSerializer):

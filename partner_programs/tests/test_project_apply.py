@@ -72,6 +72,12 @@ class PartnerProgramProjectApplyAPITests(TestCase):
         )
         link.project.refresh_from_db()
         self.assertEqual(link.project.name, "Проект команды")
+        self.assertEqual(
+            self.client.post(
+                f"/projects/{link.project_id}/goals/", [], format="json"
+            ).status_code,
+            403,
+        )
 
     def test_member_can_get_project_apply_schema(self):
         create_program_member(self.program, user=self.user)

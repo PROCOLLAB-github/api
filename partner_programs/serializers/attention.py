@@ -103,7 +103,7 @@ class ProgramAttentionProjectSerializer(serializers.Serializer):
     experts = serializers.SerializerMethodField()
 
     def get_experts(self, link):
-        return self.context.get("experts_by_project", {}).get(link.project_id, [])
+        return self.context.get("experts_by_project", {}).get(link.project.id, [])
 
     def get_reason(self, link):
         """Причина следует из общего статуса и реальных назначений, не из лимита."""

@@ -193,6 +193,13 @@ def preview_reminder(program, category, actor, payload):
         if available
         else None
     )
+    recipients = []
+    for target in available[:20] if category == SOLUTION_AWAITING else available:
+        user = users[target["user_id"]]
+        recipient = {"user_id": user.pk, "full_name": person_name(user)}
+        if category != SOLUTION_AWAITING:
+            recipient.update(email=user.email, avatar=user.avatar)
+        recipients.append(recipient)
     return {
         "token": token,
         "selected_count": len(rows),
@@ -204,15 +211,7 @@ def preview_reminder(program, category, actor, payload):
         ),
         "unavailable_count": len(targets) - len(available),
         "preview_text": preview_text,
-        "recipients": [
-            {
-                "user_id": target["user_id"],
-                "full_name": person_name(users[target["user_id"]]),
-                "email": users[target["user_id"]].email,
-                "avatar": users[target["user_id"]].avatar,
-            }
-            for target in available
-        ],
+        "recipients": recipients,
         "expires_in": PREVIEW_TTL,
     }
 

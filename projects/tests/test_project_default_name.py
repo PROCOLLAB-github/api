@@ -62,15 +62,16 @@ class ProjectDefaultNameTests(TestCase):
                 project.refresh_from_db()
                 self.assertEqual(project.name, expected_name)
 
-    def test_normalization_does_not_bypass_other_publication_validation(self):
+    def test_publication_allows_an_empty_optional_description(self):
         project = Project.objects.create(leader=self.user, name="Название")
         response = self.client.put(
             f"/projects/{project.pk}/",
             {"name": "", "description": "", "draft": False},
             format="json",
         )
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("description", response.data)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["name"], DEFAULT_PROJECT_NAME)
+        self.assertEqual(response.data["description"], "")
 
     def test_published_default_name_is_searchable(self):
         project = Project.objects.create(leader=self.user)

@@ -14,6 +14,13 @@ from partner_programs.models import (
 from projects.models import Project
 
 
+def require_editable_submission(project):
+    if project.program_links.filter(
+        submitted=True, partner_program__is_competitive=True
+    ).exists():
+        raise PermissionDenied("Проект зафиксирован после сдачи в программу.")
+
+
 def has_project_read_involvement(user, project: Project, *, program_id=None) -> bool:
     """Restricted READ; optional program scope limits program roles, never grants WRITE."""
     if not user or not user.is_authenticated:
@@ -187,10 +194,7 @@ class TimingAfterEndsProgramPermission(BasePermission):
     def has_object_permission(self, request, view, obj) -> bool:
         if request.method in SAFE_METHODS:
             return True
-        if obj.program_links.filter(
-            submitted=True, partner_program__is_competitive=True
-        ).exists():
-            raise PermissionDenied("Проект зафиксирован после сдачи в программу.")
+        require_editable_submission(obj)
 
         program_profile = (
             PartnerProgramUserProfile.objects.filter(user=request.user, project=obj)
@@ -262,11 +266,18 @@ class IsProjectLeaderOrReadOnly(BasePermission):
             return False
 
         try:
-            project = Project.objects.only("id", "leader_id").get(pk=project_id)
+            project = (
+                Project.objects.select_for_update()
+                .only("id", "leader_id")
+                .get(pk=project_id)
+            )
         except Project.DoesNotExist:
             return False
 
-        return project.leader_id == request.user.id
+        if project.leader_id != request.user.id:
+            return False
+        require_editable_submission(project)
+        return True
 
     def has_object_permission(self, request, view, obj):
         if request.method in SAFE_METHODS:

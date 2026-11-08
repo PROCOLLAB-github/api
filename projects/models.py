@@ -43,6 +43,7 @@ class AbstractDefaultProjectImage(models.Model):
             cls.objects.exclude(image_id__isnull=True)
             .exclude(image_id="")
             .select_related("image")
+            .only("image", "image__link")
             .order_by("?")
             .first()
         )
