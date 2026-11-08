@@ -47,6 +47,40 @@ class ResourceInline(admin.StackedInline):
         return formset
 
 
+class ProjectLeaderFilter(admin.SimpleListFilter):
+    title = "Лидер"
+    parameter_name = "leader"
+    template = "admin/projects/leader_filter.html"
+
+    def lookups(self, request, model_admin):
+        return ()
+
+    def has_output(self):
+        return True
+
+    def choices(self, changelist):
+        yield {
+            "params": [
+                (name, value)
+                for name, value in changelist.params.items()
+                if name != self.parameter_name
+            ],
+            "reset_url": changelist.get_query_string({self.parameter_name: None}),
+        }
+
+    def queryset(self, request, queryset):
+        value = (self.value() or "").strip()
+        if not value:
+            return queryset
+        if value.isdecimal() and len(value) <= 19:
+            leader_id = int(value)
+            if leader_id <= 2**63 - 1:
+                return queryset.filter(leader_id=leader_id)
+        if "@" in value and len(value) <= 254 and "\x00" not in value:
+            return queryset.filter(leader__email__iexact=value)
+        return queryset.none()
+
+
 @admin.register(Project)
 class ProjectAdmin(admin.ModelAdmin):
     list_display = (
@@ -61,7 +95,7 @@ class ProjectAdmin(admin.ModelAdmin):
     )
     list_display_links = ("id", "name")
     search_fields = ("name",)
-    list_filter = ("draft", "is_public", "is_company", "trl")
+    list_filter = (ProjectLeaderFilter, "draft", "is_public", "is_company", "trl")
 
     fieldsets = (
         (

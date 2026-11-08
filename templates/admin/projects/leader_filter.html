@@ -1,0 +1,23 @@
+<details data-filter-title="{{ title }}" open>
+    <summary>{{ title }}</summary>
+    <ul>
+        {% for choice in choices %}
+        <li>
+            <form method="get">
+                {% for name, value in choice.params %}
+                <input type="hidden" name="{{ name }}" value="{{ value }}">
+                {% endfor %}
+                <label for="project-leader-filter">Email или ID пользователя</label>
+                <p>
+                    <input type="search" id="project-leader-filter" name="{{ spec.parameter_name }}"
+                           value="{{ spec.value|default_if_none:'' }}" size="18" maxlength="254">
+                </p>
+                <button type="submit">Найти</button>
+            </form>
+        </li>
+        {% if spec.value %}
+        <li><a href="{{ choice.reset_url }}">Сбросить фильтр</a></li>
+        {% endif %}
+        {% endfor %}
+    </ul>
+</details>
