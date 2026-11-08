@@ -38,10 +38,26 @@ def safe_failure(stderr):
     for marker, category in (
         (b"permission denied", "permission_denied"),
         (b"authentication failed", "authentication_failed"),
+        (b"unsupported startup parameter", "unsupported_startup_parameter"),
+        (b"no pg_hba.conf entry", "postgres_connection_rule"),
         (b"connection refused", "connection_refused"),
+        (b"could not translate host name", "database_dns_resolution"),
+        (b"no route to host", "network_unreachable"),
+        (b"server closed the connection unexpectedly", "connection_closed"),
+        (b"ssl", "tls_error"),
         (b"server version", "client_server_version"),
         (b"lock timeout", "lock_timeout"),
         (b"timeout", "timeout"),
+        (b"timed out", "timeout"),
+        (b"row-level security", "row_level_security"),
+        (b"query failed", "postgres_query_failed"),
+        (b"toomanyrequests", "registry_rate_limit"),
+        (b"pull access denied", "registry_access_denied"),
+        (b"no matching manifest", "registry_platform_mismatch"),
+        (b"no such host", "docker_dns_resolution"),
+        (b"cpu cfs", "docker_cpu_limit_unsupported"),
+        (b"error response from daemon", "docker_daemon_error"),
+        (b"pg_dump: error:", "postgres_dump_error"),
     ):
         if marker in lowered:
             return category
@@ -66,7 +82,9 @@ def guarded_archive(args, destination, *, stage, environment=None, timeout=900):
             if process.returncode:
                 errors.seek(0)
                 category = safe_failure(errors.read(65536))
-                raise RuntimeError("Production backup failed: " + stage + ":" + category)
+                raise RuntimeError(
+                    f"Production backup failed: {stage}:{category}:exit={process.returncode}"
+                )
             archive.flush()
             os.fsync(archive.fileno())
             os.chmod(destination, 0o600)
