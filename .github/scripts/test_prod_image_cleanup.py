@@ -26,6 +26,16 @@ class CleanupTests(unittest.TestCase):
                 self.prefix, self.tag, self.image, {self.image["Id"]}
             )
 
+    def test_nanoseconds_preserve_cutoff_check(self):
+        self.image["Created"] = "2026-05-02T23:59:59.999999999Z"
+        self.assertEqual(
+            cleanup.validate_candidate(self.prefix, self.tag, self.image, set()),
+            self.image["Id"],
+        )
+        self.image["Created"] = "2026-05-03T00:00:00.000000001Z"
+        with self.assertRaises(RuntimeError):
+            cleanup.validate_candidate(self.prefix, self.tag, self.image, set())
+
     def test_tag_identity_age_or_new_reference_changes_block_removal(self):
         for key, value in (
             ("Id", "sha256:" + "f" * 64),

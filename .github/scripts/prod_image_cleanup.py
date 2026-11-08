@@ -2,6 +2,7 @@
 
 from datetime import datetime, timezone
 import json
+import re
 import shutil
 import subprocess
 
@@ -29,7 +30,12 @@ def used_images():
 
 def validate_candidate(prefix, tag, info, used):
     identity = info["Id"]
-    created = datetime.fromisoformat(info["Created"].replace("Z", "+00:00"))
+    # Docker can report nanoseconds, which older host Python versions cannot parse.
+    timestamp = re.sub(r"\.\d+(?=Z|[+-])", "", info["Created"])
+    try:
+        created = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+    except ValueError as error:
+        raise RuntimeError("Obsolete image creation time is invalid") from error
     if (
         prefix not in CANDIDATES
         or CANDIDATES[prefix] != tag
