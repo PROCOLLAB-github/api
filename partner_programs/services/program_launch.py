@@ -5,6 +5,7 @@ import json
 import copy
 from html import unescape
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
@@ -13,7 +14,11 @@ from django.core.validators import URLValidator
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.exceptions import ValidationError
 
-from partner_programs.models import PartnerProgram, ProgramRegistration
+from partner_programs.models import (
+    PartnerProgram,
+    PartnerProgramField,
+    ProgramRegistration,
+)
 from partner_programs.permissions import require_create_program
 from partner_programs.services.management import managed_program
 from partner_programs.serializers.management import BASIC_FIELDS
@@ -22,6 +27,21 @@ from project_rates.workspace import WorkspaceConflict
 from partner_programs.program_dates import DATE_FIELDS, program_date_errors
 
 FORMATS = ("case_championship", "hackathon", "noncompetitive")
+
+PROJECT_FORM_FIELDS = {
+    "case_championship": (
+        ("solution_description", "Описание решения", "textarea", True),
+        ("project_presentation", "Презентация", "file", True),
+        ("prototype_url", "Ссылка на прототип", "url", False),
+    ),
+    "hackathon": (
+        ("implementation", "Описание реализации", "textarea", True),
+        ("repository", "Репозиторий", "url", True),
+        ("launch", "Инструкция запуска", "textarea", True),
+        ("demo", "Демо", "url", False),
+        ("project_presentation", "Презентация", "file", False),
+    ),
+}
 
 
 def summary(program):
@@ -59,6 +79,7 @@ def create_program(user, data):
             )
         return previous, False
     competitive = data["format"] != "noncompetitive"
+    use_solutions = competitive and settings.PROGRAM_SOLUTIONS_ENABLED
     program = PartnerProgram.objects.create(
         name=data["name"],
         tag="",
@@ -69,12 +90,31 @@ def create_program(user, data):
         creation_key=data["idempotency_key"],
         creation_fingerprint=fingerprint,
         is_competitive=competitive,
-        solution_storage_mode="solution" if competitive else "legacy_project",
-        solution_template=data["format"] if competitive else None,
-        # Only a new program opts in. Existing switches and operator rollback stay intact.
-        solution_creation_enabled=competitive,
+        solution_storage_mode="solution" if use_solutions else "legacy_project",
+        solution_template=data["format"] if use_solutions else None,
+        solution_creation_enabled=use_solutions,
     )
     program.managers.add(actor)
+    if competitive and not use_solutions:
+        program.project_sections = {
+            "partners": False,
+            "achievements": False,
+            "vacancies": False,
+        }
+        program.save(update_fields=["project_sections"])
+        PartnerProgramField.objects.bulk_create(
+            PartnerProgramField(
+                partner_program=program,
+                name=name,
+                label=label,
+                field_type=kind,
+                is_required=required,
+            )
+            for name, label, kind, required in (
+                ("project_description", "Описание проекта", "textarea", False),
+                *PROJECT_FORM_FIELDS[data["format"]],
+            )
+        )
     return program, True
 
 
@@ -102,9 +142,11 @@ def preview_program(pk, user, request):
         "submission_open": program.is_project_submission_open(),
     }
     participant[
-        "application"
-        if program.solution_storage_mode == "solution"
-        else "participant_project"
+        (
+            "application"
+            if program.solution_storage_mode == "solution"
+            else "participant_project"
+        )
     ] = None
     data["preview_widget"] = {
         "program_id": program.pk,
@@ -128,14 +170,16 @@ def _revision(program, config):
             name: getattr(program, name) for name in (*BASIC_FIELDS, *DATE_FIELDS)
         },
         "updated_at": program.datetime_updated,
-        "registration": {
-            "revision": config.revision,
-            "draft": config.draft,
-            "external_status": config.external_status,
-            "external_url": config.external_url,
-        }
-        if config
-        else None,
+        "registration": (
+            {
+                "revision": config.revision,
+                "draft": config.draft,
+                "external_status": config.external_status,
+                "external_url": config.external_url,
+            }
+            if config
+            else None
+        ),
     }
     return hashlib.sha256(
         json.dumps(values, sort_keys=True, default=str).encode()
@@ -228,17 +272,17 @@ def readiness_data(program, config=None):
         "revision": _revision(program, config),
         "checks": checks,
         "blockers": blockers,
-        "warnings": [
-            "Форму решения, критерии и экспертов можно настроить после публикации."
-        ]
-        if program.is_competitive
-        else [],
+        "warnings": (
+            ["Форму решения, критерии и экспертов можно настроить после публикации."]
+            if program.is_competitive
+            else []
+        ),
         "can_publish": program.draft and not blockers,
         "links": {
             "program": f"{registration.frontend_url()}/office/program/{program.pk}",
-            "registration": registration.public_link(program)
-            if not program.draft
-            else None,
+            "registration": (
+                registration.public_link(program) if not program.draft else None
+            ),
         },
     }
 

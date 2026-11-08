@@ -11,10 +11,16 @@ from rest_framework import serializers
 from rest_framework.exceptions import APIException, ValidationError
 
 from partner_programs.models import PartnerProgramField, PartnerProgramProject
+from partner_programs.project_form import (
+    PROJECT_FIELDS,
+    PROJECT_SECTIONS,
+    project_sections,
+    protected_project_field,
+)
 from partner_programs.serializers.management import StrictFieldsMixin
 from partner_programs.services.management import managed_program
 
-SUPPORTED_TYPES = ("text", "textarea", "select", "file")
+SUPPORTED_TYPES = ("text", "textarea", "select", "file", "url")
 
 
 class StaleProjectForm(APIException):
@@ -33,6 +39,7 @@ class FormFieldWrite(StrictFieldsMixin, serializers.Serializer):
         choices=[p[0] for p in PartnerProgramField.FIELD_TYPES]
     )
     is_required = serializers.BooleanField()
+    is_visible = serializers.BooleanField(required=False)
     help_text = serializers.CharField(
         required=False, allow_blank=True, default="", max_length=4000
     )
@@ -48,6 +55,14 @@ class ProjectFormWrite(StrictFieldsMixin, serializers.Serializer):
         child=serializers.CharField(max_length=1000), max_length=200
     )
     fields = FormFieldWrite(many=True)
+    sections = serializers.DictField(child=serializers.BooleanField(), required=False)
+    team_min_size = serializers.IntegerField(min_value=1, allow_null=True, required=False)
+    team_max_size = serializers.IntegerField(min_value=1, allow_null=True, required=False)
+
+    def validate_sections(self, value):
+        if set(value) - set(PROJECT_SECTIONS):
+            raise serializers.ValidationError("Выберите доступные разделы проекта.")
+        return value
 
     def validate_fields(self, value):
         if len(value) > 100:
@@ -79,6 +94,8 @@ def form_data(program):
             "label": f.label,
             "field_type": f.field_type,
             "is_required": f.is_required,
+            "is_visible": f.is_visible,
+            "standard": f.name in PROJECT_FIELDS,
             "help_text": f.help_text or "",
             "options": f.get_options_list(),
             "show_filter": f.show_filter,
@@ -109,6 +126,14 @@ def form_data(program):
         "has_projects": PartnerProgramProject.objects.filter(
             partner_program=program
         ).exists(),
+        "sections": project_sections(program),
+        "case_required": bool(case)
+        or program.program_format in ("case_championship", "hackathon"),
+        "case_label": (
+            "Задача или трек" if program.program_format == "hackathon" else "Кейс"
+        ),
+        "team_min_size": program.legacy_team_min_size,
+        "team_max_size": program.legacy_team_max_size,
         "cases": [
             {"name": option, "projects_count": case_counts.get(option, 0)}
             for option in (case.get_options_list() if case else [])
@@ -154,6 +179,15 @@ def save_form(program_id, user, payload):
     ):
         raise StaleProjectForm()
     cases = _options(data["cases"])
+    min_size = data.get("team_min_size", program.legacy_team_min_size)
+    max_size = data.get("team_max_size", program.legacy_team_max_size)
+    if min_size and max_size and min_size > max_size:
+        raise ValidationError(
+            {"team_max_size": "Максимум должен быть не меньше минимума."}
+        )
+    program.legacy_team_min_size = min_size
+    program.legacy_team_max_size = max_size
+    program.project_sections = {**program.project_sections, **data.get("sections", {})}
     generic = {f.pk: f for f in existing if f.name != "case"}
     case = next((f for f in existing if f.name == "case"), None)
     ids = {item["id"] for item in data["fields"] if item.get("id") is not None}
@@ -161,9 +195,9 @@ def save_form(program_id, user, payload):
         raise ValidationError({"fields": "Поле не относится к этой программе."})
     for pk, field in generic.items():
         if pk not in ids:
-            if field.values.filter(value_text__regex=r"\S").exists():
+            if protected_project_field(field):
                 raise ValidationError(
-                    {"fields": "Нельзя удалить поле с сохраненными ответами."}
+                    {"fields": "Стандартное поле или поле с ответами можно скрыть."}
                 )
             field.delete()
     for item in data["fields"]:
@@ -195,6 +229,12 @@ def save_form(program_id, user, payload):
                             "fields": "Нельзя удалить или переименовать использованный вариант ответа."
                         }
                     )
+        if (
+            field
+            and field.name in PROJECT_FIELDS
+            and field.field_type != item["field_type"]
+        ):
+            raise ValidationError({"fields": "Тип стандартного поля изменить нельзя."})
         if field and field.field_type not in SUPPORTED_TYPES:
             if (
                 item["field_type"] != field.field_type
@@ -213,6 +253,7 @@ def save_form(program_id, user, payload):
         field.label = item["label"]
         field.field_type = item["field_type"]
         field.is_required = item["is_required"]
+        field.is_visible = item.get("is_visible", field.is_visible)
         field.help_text = item["help_text"]
         field.options = "|".join(options)
         try:
@@ -237,11 +278,18 @@ def save_form(program_id, user, payload):
         PartnerProgramField.objects.create(
             partner_program=program,
             name="case",
-            label="Кейс",
+            label="Задача или трек" if program.program_format == "hackathon" else "Кейс",
             field_type="select",
             is_required=True,
             show_filter=True,
             options="|".join(cases),
         )
-    program.save(update_fields=["datetime_updated"])
+    program.save(
+        update_fields=[
+            "legacy_team_min_size",
+            "legacy_team_max_size",
+            "project_sections",
+            "datetime_updated",
+        ]
+    )
     return form_data(program)

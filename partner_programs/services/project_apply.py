@@ -11,11 +11,12 @@ from partner_programs.models import (
     PartnerProgramProject,
     PartnerProgramUserProfile,
 )
+from partner_programs.project_form import PROJECT_FIELDS, visible_project_fields
 from partner_programs.services.case_fields import (
     get_program_case_field,
     validate_case_value,
 )
-from projects.models import Project
+from projects.models import Collaborator, Project
 
 User = get_user_model()
 
@@ -30,6 +31,48 @@ class ProgramProjectAlreadyApplied(Exception):
 class ProgramProjectApplicationResult:
     project: Project
     program_link: PartnerProgramProject
+
+
+def copy_project(source, *, leader):
+    copy = Project.objects.create(
+        name=source.name,
+        description=source.description,
+        region=source.region,
+        hidden_score=source.hidden_score,
+        actuality=source.actuality,
+        target_audience=source.target_audience,
+        trl=source.trl,
+        implementation_deadline=source.implementation_deadline,
+        problem=source.problem,
+        industry_id=source.industry_id,
+        presentation_address=source.presentation_address,
+        image_address=source.image_address,
+        leader=leader,
+        draft=True,
+        is_public=False,
+        is_company=source.is_company,
+        cover_image_address=source.cover_image_address,
+        cover_id=source.cover_id,
+    )
+    members = []
+    for member in source.collaborator_set.all():
+        if member.user_id == leader.pk:
+            Collaborator.objects.update_or_create(
+                user_id=leader.pk,
+                project=copy,
+                defaults={"role": member.role, "specialization": member.specialization},
+            )
+        else:
+            members.append(
+                Collaborator(
+                    user_id=member.user_id,
+                    project=copy,
+                    role=member.role,
+                    specialization=member.specialization,
+                )
+            )
+    Collaborator.objects.bulk_create(members)
+    return copy
 
 
 def require_can_apply_project_to_program(
@@ -120,6 +163,12 @@ def apply_project_to_program(
 
     _validate_unique_program_fields(values_data)
     _validate_program_field_ownership(program=program, values_data=values_data)
+    if values_data:
+        visible_ids = set(visible_project_fields(program).values_list("pk", flat=True))
+        if any(item["field"].pk not in visible_ids for item in values_data):
+            raise ValidationError(
+                {"program_field_values": "Форма программы изменилась. Обновите страницу."}
+            )
 
     with transaction.atomic():
         # Missing case is valid at draft creation; an explicit choice must stay valid
@@ -132,15 +181,24 @@ def apply_project_to_program(
                         validate_case_value(case_field, item.get("value_text"))
                     except DjangoValidationError as error:
                         raise ValidationError({"program_field_values": error.messages})
-        project = Project.objects.create(
+        source = Project.objects.create(
             leader=user,
             draft=True,
             is_public=False,
             **project_data,
         )
+        project = copy_project(source, leader=user) if program.is_competitive else source
+        project_changes = {
+            PROJECT_FIELDS[item["field"].name]: item.get("value_text") or None
+            for item in values_data
+            if item["field"].name in PROJECT_FIELDS
+        }
+        if project_changes:
+            Project.objects.filter(pk=project.pk).update(**project_changes)
         program_link = PartnerProgramProject.objects.create(
             partner_program=program,
             project=project,
+            source_project=source if project.pk != source.pk else None,
         )
 
         profile = PartnerProgramUserProfile.objects.filter(
@@ -158,7 +216,7 @@ def apply_project_to_program(
                 value_text=item.get("value_text") or "",
             )
             for item in values_data
-            if item.get("value_text")
+            if item.get("value_text") and item["field"].name not in PROJECT_FIELDS
         ]
         if value_objs:
             PartnerProgramFieldValue.objects.bulk_create(value_objs)

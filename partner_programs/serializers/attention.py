@@ -100,6 +100,10 @@ class ProgramAttentionProjectSerializer(serializers.Serializer):
     reason_label = serializers.SerializerMethodField()
     assignments_total = serializers.IntegerField(allow_null=True)
     assignments_completed = serializers.IntegerField(allow_null=True)
+    experts = serializers.SerializerMethodField()
+
+    def get_experts(self, link):
+        return self.context.get("experts_by_project", {}).get(link.project_id, [])
 
     def get_reason(self, link):
         """Причина следует из общего статуса и реальных назначений, не из лимита."""

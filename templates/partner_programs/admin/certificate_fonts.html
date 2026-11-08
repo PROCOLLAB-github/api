@@ -1,0 +1,10 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<p><a href="{{ change_url }}">{{ program.name }}</a></p>
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <div class="submit-row"><input type="submit" value="Сохранить шрифт элемента" class="default"></div>
+</form>
+{% endblock %}

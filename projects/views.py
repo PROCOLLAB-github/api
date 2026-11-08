@@ -8,7 +8,7 @@ from django_filters import rest_framework as filters
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import generics, permissions, status, viewsets
-from rest_framework.exceptions import NotFound
+from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -20,6 +20,7 @@ from partner_programs.models import (
     PartnerProgram,
     PartnerProgramUserProfile,
 )
+from partner_programs.services.project_apply import copy_project
 from projects.cover_reset import reset_project_cover
 from projects.filters import ProjectFilter
 from projects.helpers import (
@@ -170,6 +171,13 @@ class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
+    def lock_for_edit(self):
+        from projects.team_policy import lock_team
+
+        project = lock_team(self.get_object().pk).project
+        self.check_object_permissions(self.request, project)
+        return project
+
     @transaction.atomic
     def put(self, request, pk, **kwargs):
         # fixme: add partner_program_id to docs
@@ -178,7 +186,7 @@ class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
             update_partner_program(
                 partner_program_id,
                 request.user,
-                self.get_object(),
+                self.lock_for_edit(),
                 program_link_id=requested_program_link(request),
             )
         except PartnerProgram.DoesNotExist:
@@ -202,7 +210,7 @@ class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
             update_partner_program(
                 partner_program_id,
                 request.user,
-                self.get_object(),
+                self.lock_for_edit(),
                 program_link_id=requested_program_link(request),
             )
         except PartnerProgram.DoesNotExist:
@@ -217,6 +225,10 @@ class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
             )
         check_related_fields_update(request.data, pk)
         return super(ProjectDetail, self).put(request, pk)
+
+    @transaction.atomic
+    def perform_destroy(self, instance):
+        super().perform_destroy(self.lock_for_edit())
 
 
 class ProjectResetCover(generics.GenericAPIView):
@@ -517,45 +529,6 @@ class SwitchLeaderRole(generics.GenericAPIView):
 class DuplicateProjectView(APIView):
     permission_classes = [IsAuthenticated, CanBindProjectToProgram]
 
-    @staticmethod
-    def _copy_collaborators(original_project: Project, new_project: Project) -> None:
-        """
-        Copy all collaborators from the source project to the duplicated one.
-        Keep the leader collaborator (auto-created by signal) in sync with the original.
-        """
-        leader_id = new_project.leader_id
-        collaborators_to_create: list[Collaborator] = []
-        leader_collaborator = None
-
-        for collaborator in original_project.collaborator_set.select_related(
-            "user"
-        ).all():
-            if collaborator.user_id == leader_id:
-                leader_collaborator = collaborator
-                continue
-
-            collaborators_to_create.append(
-                Collaborator(
-                    user=collaborator.user,
-                    project=new_project,
-                    role=collaborator.role,
-                    specialization=collaborator.specialization,
-                )
-            )
-
-        if collaborators_to_create:
-            Collaborator.objects.bulk_create(collaborators_to_create)
-
-        if leader_collaborator:
-            Collaborator.objects.update_or_create(
-                user_id=leader_id,
-                project=new_project,
-                defaults={
-                    "role": leader_collaborator.role,
-                    "specialization": leader_collaborator.specialization,
-                },
-            )
-
     @swagger_auto_schema(
         request_body=ProjectDuplicateRequestSerializer,
         responses={201: ProjectDuplicateRequestSerializer(), 400: "Validation error"},
@@ -578,32 +551,27 @@ class DuplicateProjectView(APIView):
                 original_project.pk, extra_program_ids=[partner_program.pk]
             ).project
             team_service.require_team_manager(original_project, request.user)
-            new_project = Project.objects.create(
-                name=original_project.name,
-                description=original_project.description,
-                region=original_project.region,
-                hidden_score=original_project.hidden_score,
-                actuality=original_project.actuality,
-                target_audience=original_project.target_audience,
-                trl=original_project.trl,
-                implementation_deadline=original_project.implementation_deadline,
-                problem=original_project.problem,
-                industry=original_project.industry,
-                image_address=original_project.image_address,
-                leader=request.user,
-                draft=True,
-                is_public=False,
-                is_company=original_project.is_company,
-                cover_image_address=original_project.cover_image_address,
-                cover=original_project.cover,
-            )
-
-            self._copy_collaborators(original_project, new_project)
-
+            if original_project.program_links.filter(
+                source_project__isnull=False
+            ).exists():
+                raise ValidationError("Выберите исходный проект.")
+            existing = original_project.program_copies.filter(
+                partner_program=partner_program
+            ).first()
+            if existing:
+                return Response(
+                    {
+                        "new_project_id": existing.project_id,
+                        "program_link_id": existing.id,
+                        "partner_program": partner_program.name,
+                    }
+                )
+            new_project = copy_project(original_project, leader=request.user)
             program_link = team_service.bind_project_to_program(
                 project_id=new_project.pk,
                 program_id=partner_program.pk,
                 actor=request.user,
+                source_project=original_project,
             )
 
         return Response(

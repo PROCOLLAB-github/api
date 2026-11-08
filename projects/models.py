@@ -39,10 +39,14 @@ class AbstractDefaultProjectImage(models.Model):
 
     @classmethod
     def get_random_file(cls) -> Optional[UserFile]:
-        if not cls.objects.exists():
-            return None
-        obj = cls.objects.order_by("?").first()
-        return obj.image if obj and obj.image else None
+        row = (
+            cls.objects.exclude(image_id__isnull=True)
+            .exclude(image_id="")
+            .select_related("image")
+            .order_by("?")
+            .first()
+        )
+        return row.image if row else None
 
     @classmethod
     def get_random_file_link(cls) -> Optional[str]:
@@ -232,11 +236,16 @@ class Project(models.Model):
             if kwargs.get("update_fields"):
                 kwargs["update_fields"] = {*kwargs["update_fields"], "name"}
 
-        if not self.cover_image_address:
-            self.cover_image_address = DefaultProjectCover.get_random_file_link()
-
-        if not self.image_address:
-            self.image_address = DefaultProjectAvatar.get_random_file_link()
+        for field, catalog in (
+            ("cover_image_address", DefaultProjectCover),
+            ("image_address", DefaultProjectAvatar),
+        ):
+            if not getattr(self, field):
+                url = catalog.get_random_file_link()
+                if url:
+                    setattr(self, field, url)
+                    if kwargs.get("update_fields"):
+                        kwargs["update_fields"] = {*kwargs["update_fields"], field}
 
         super().save(*args, **kwargs)
 

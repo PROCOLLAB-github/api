@@ -6,6 +6,7 @@ from partner_programs.models import (
     PartnerProgramFieldValue,
     PartnerProgramProject,
 )
+from partner_programs.project_form import visible_project_fields
 
 
 class ProgramProjectFilterError(Exception):
@@ -15,10 +16,7 @@ class ProgramProjectFilterError(Exception):
 
 
 def get_filterable_program_fields(program: PartnerProgram):
-    return PartnerProgramField.objects.filter(
-        partner_program=program,
-        show_filter=True,
-    )
+    return visible_project_fields(program).filter(show_filter=True)
 
 
 def validate_program_project_filters(

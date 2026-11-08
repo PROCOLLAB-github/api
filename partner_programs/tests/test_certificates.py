@@ -424,12 +424,41 @@ class CertificateTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         with zipfile.ZipFile(io.BytesIO(b"".join(response.streaming_content))) as archive:
-            self.assertEqual(archive.namelist(), [f"certificate-{first.pk}.pdf"])
+            self.assertEqual(archive.namelist(), [f"{first.name}.pdf"])
             self.assertEqual(archive.read(archive.namelist()[0]), b"%PDF-current")
         first.refresh_from_db()
         second.refresh_from_db()
         self.assertEqual(bytes(first.pdf), b"%PDF-current")
         self.assertEqual(bytes(second.pdf), b"%PDF-untouched")
+
+    def test_download_existing_archive_never_updates_platform_copy(self):
+        import zipfile
+
+        first = self.row(status="ready", pdf=b"%PDF-one")
+        second = self.row(user=self.member, status="ready", pdf=b"%PDF-two")
+        first.name = second.name = "../Анна Крылова"
+        first.save(update_fields=["name"])
+        second.save(update_fields=["name"])
+        response = self.client.post(
+            self.root + "archive/",
+            {
+                "revision": 1,
+                "ids": [str(first.pk), str(second.pk)],
+                "published_only": True,
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        with zipfile.ZipFile(io.BytesIO(b"".join(response.streaming_content))) as archive:
+            self.assertEqual(
+                set(archive.namelist()), {"_Анна Крылова.pdf", "_Анна Крылова (2).pdf"}
+            )
+            self.assertEqual(
+                {archive.read(name) for name in archive.namelist()},
+                {b"%PDF-one", b"%PDF-two"},
+            )
+        first.refresh_from_db()
+        self.assertEqual(bytes(first.pdf), b"%PDF-one")
 
     def test_access_requires_program_manager_and_does_not_leak_email(self):
         for user, status in [
@@ -711,6 +740,37 @@ class CertificateTests(TestCase):
         self.config.refresh_from_db()
         self.assertTrue(
             all("font_family" not in box for box in self.config.draft["layout"].values())
+        )
+
+    def test_uploaded_font_is_private_and_preview_uses_element_styles(self):
+        upload = SimpleUploadedFile(
+            "Mont Bold.ttf",
+            service.certificate_font_path("mont-bold", False).read_bytes(),
+        )
+        response = self.client.post(
+            self.root + "assets/", {"kind": "font", "file": upload}, format="multipart"
+        )
+        self.assertEqual(response.status_code, 201, response.data)
+        asset_id = response.data["id"]
+        draft = service.default_draft()
+        draft["layout"]["name"]["font_family"] = f"custom-{asset_id}"
+        draft["layout"]["subtitle"]["font_family"] = "mont-light"
+        draft["hidden_elements"].remove("subtitle")
+        response = self.client.put(
+            self.root, {"revision": 1, "draft": draft}, format="json"
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(
+            response.data["draft"]["layout"]["subtitle"]["font_family"], "mont-light"
+        )
+        response = self.client.post(
+            self.root + "preview/", {"revision": 2}, format="json"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.content.startswith(b"%PDF"))
+        self.client.force_authenticate(self.other)
+        self.assertEqual(
+            self.client.get(self.root + f"assets/{asset_id}/").status_code, 403
         )
 
     def test_all_certificate_fonts_fit_long_cyrillic_names_in_both_orientations(self):

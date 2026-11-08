@@ -29,6 +29,14 @@ from projects.models import Collaborator
 logger = logging.getLogger(__name__)
 CERTIFICATE_FONTS = {
     "mont": ("Mont", "Mont-Regular.ttf", "Mont-SemiBold.ttf", 600),
+    "mont-regular": (
+        "Certificate Mont Regular",
+        "Mont-Regular.ttf",
+        "Mont-Regular.ttf",
+        400,
+    ),
+    "mont-light": ("Certificate Mont Light", "Mont-Light.ttf", "Mont-Light.ttf", 400),
+    "mont-bold": ("Certificate Mont Bold", "Mont-Bold.ttf", "Mont-Bold.ttf", 400),
     "pt-serif": ("Certificate PT Serif", "PTSerif-Regular.ttf", "PTSerif-Bold.ttf", 700),
     "lobster": ("Certificate Lobster", "Lobster-Regular.ttf", "Lobster-Regular.ttf", 400),
 }
@@ -175,6 +183,20 @@ def assets_for(program, draft):
     return result
 
 
+def uploaded_fonts(program_id, draft):
+    keys = {box.get("font_family", "") for box in draft["layout"].values()}
+    ids = {int(key.removeprefix("custom-")) for key in keys if key.startswith("custom-")}
+    if not ids:
+        return {}
+    rows = ProgramCertificateAsset.objects.filter(
+        program_id=program_id, kind="font", pk__in=ids
+    )
+    fonts = {f"custom-{asset.pk}": asset for asset in rows}
+    if len(fonts) != len(ids):
+        raise ValidationError("Шрифт не найден в этой программе.")
+    return fonts
+
+
 def state(program):
     config = config_for(program)
     batch = (
@@ -186,6 +208,14 @@ def state(program):
     return {
         "revision": config.revision,
         "draft": normalized_draft(config.draft),
+        "fonts": [
+            asset_data(asset)
+            for asset in ProgramCertificateAsset.objects.filter(
+                program=program, kind="font"
+            )
+            .defer("content")
+            .order_by("pk")
+        ],
         "assets": {
             key: asset_data(value)
             for key, value in assets_for(program, config.draft).items()
@@ -193,14 +223,16 @@ def state(program):
         "eligible_counts": {
             a: recipient_users(program, a).count() for a in ("all", "submitted")
         },
-        "batch": {
-            "id": batch.pk,
-            "active": batch.active,
-            "issue_at": batch.issue_at,
-            "initialized_at": batch.initialized_at,
-        }
-        if batch
-        else None,
+        "batch": (
+            {
+                "id": batch.pk,
+                "active": batch.active,
+                "issue_at": batch.issue_at,
+                "initialized_at": batch.initialized_at,
+            }
+            if batch
+            else None
+        ),
     }
 
 
@@ -255,6 +287,8 @@ def manual_batch(program, draft, public_base_url, action):
 
 
 def upload_asset(program, kind, upload):
+    if kind == "font":
+        return upload_font(program, upload)
     if kind not in ("background", "signature") or not upload:
         raise ValidationError("Выберите фон или подпись и файл.")
     if upload.size > 10 * 1024 * 1024:
@@ -298,6 +332,33 @@ def upload_asset(program, kind, upload):
     )
 
 
+@transaction.atomic
+def upload_font(program, upload):
+    if not upload or upload.size > 2 * 1024 * 1024:
+        raise ValidationError("Выберите файл шрифта TTF или OTF размером до 2 МБ.")
+    name = Path(upload.name).name[:255]
+    content = upload.read()
+    try:
+        if (Path(name).suffix.lower(), content[:4]) not in (
+            (".ttf", b"\x00\x01\x00\x00"),
+            (".otf", b"OTTO"),
+        ):
+            raise ValueError()
+        font = ImageFont.truetype(io.BytesIO(content), 40)
+        font.getlength("Имя участника")
+    except (OSError, ValueError) as error:
+        raise ValidationError(
+            "Не удалось прочитать шрифт. Загрузите файл TTF или OTF."
+        ) from error
+    type(program).objects.select_for_update().get(pk=program.pk)
+    fonts = ProgramCertificateAsset.objects.filter(program=program, kind="font")
+    if fonts.count() >= 24:
+        raise ValidationError("Можно загрузить до 24 шрифтов на программу.")
+    return fonts.create(
+        program=program, kind="font", name=name, content=content, width=0, height=0
+    )
+
+
 def validate_draft(program, draft, previous=None):
     """The API owns allowed geometry and substitutions, not arbitrary HTML/CSS."""
     from rest_framework import serializers
@@ -308,8 +369,9 @@ def validate_draft(program, draft, previous=None):
         width = serializers.FloatField(min_value=2, max_value=100)
         height = serializers.FloatField(min_value=1, max_value=100)
         font_size = serializers.FloatField(min_value=8, max_value=72)
-        font_family = serializers.ChoiceField(
-            choices=list(CERTIFICATE_FONTS), required=False
+        font_family = serializers.RegexField(
+            r"^(?:mont(?:-regular|-light|-bold)?|pt-serif|lobster|custom-[1-9][0-9]{0,17})\Z",
+            required=False,
         )
 
     class Draft(serializers.Serializer):
@@ -384,6 +446,7 @@ def validate_draft(program, draft, previous=None):
                 "Доступные подстановки: {name}, {program}, {date}, {number}."
             )
     assets_for(program, data)
+    uploaded_fonts(program.pk, data)
     return normalized_draft(dict(data))
 
 
@@ -394,7 +457,9 @@ def certificate_font_key(box):
 
 def certificate_font_path(key, bold):
     filename = CERTIFICATE_FONTS[key][2 if bold else 1]
-    directory = "assets/users/user_CV" if key == "mont" else "assets/certificates/fonts"
+    directory = (
+        "assets/users/user_CV" if key.startswith("mont") else "assets/certificates/fonts"
+    )
     return Path(settings.BASE_DIR) / directory / filename
 
 
@@ -407,9 +472,10 @@ def page_dimensions(orientation="landscape"):
     return (210, 297) if orientation == "portrait" else (297, 210)
 
 
-def fit_certificate_text(value, box, bold=False, orientation="landscape"):
+def fit_certificate_text(value, box, bold=False, orientation="landscape", font=None):
     """Подгоняем реальные строки выбранного шрифта без обрезки ФИО."""
-    font = certificate_font(bold, certificate_font_key(box))
+    if font is None:
+        font = certificate_font(bold, certificate_font_key(box))
     page_width, page_height = (
         (793.7, 1122) if orientation == "portrait" else (1122, 793.7)
     )
@@ -451,16 +517,28 @@ def fit_certificate_text(value, box, bold=False, orientation="landscape"):
     return size, lines_at(size)
 
 
-def render_pdf(snapshot, assets, name, program_name, number, issued_at):
+def render_pdf(
+    snapshot, assets, name, program_name, number, issued_at, *, program_id=None
+):
     from weasyprint import HTML
     from weasyprint.text.fonts import FontConfiguration
     from weasyprint.urls import URLFetcher, URLFetcherResponse
 
     orientation = snapshot.get("orientation", "landscape")
     page_width, page_height = page_dimensions(orientation)
+    fonts = uploaded_fonts(program_id, snapshot)
+    custom_faces = {
+        key: ImageFont.truetype(io.BytesIO(bytes(asset.content)), 1000)
+        for key, asset in fonts.items()
+    }
 
     class CertificateURLFetcher(URLFetcher):
         def fetch(self, url, headers=None):
+            custom = fonts.get(url.removeprefix("certificate-font:"))
+            if custom and url.startswith("certificate-font:"):
+                return URLFetcherResponse(
+                    url, bytes(custom.content), {"Content-Type": "font/sfnt"}
+                )
             for key in CERTIFICATE_FONTS:
                 for bold, weight in ((False, "regular"), (True, "bold")):
                     if url == f"certificate-font:{key}:{weight}":
@@ -505,11 +583,17 @@ def render_pdf(snapshot, assets, name, program_name, number, issued_at):
                 )
         else:
             value = values[key]
-            family = certificate_font_key(box)
-            family_name, _, _, bold_weight = CERTIFICATE_FONTS[family]
-            weight = bold_weight if key in ("name", "title") else 400
+            custom_key = box.get("font_family")
+            custom_font = custom_faces.get(custom_key)
+            bold = key in ("name", "title")
+            if custom_font:
+                family_name, weight = custom_key, 400
+            else:
+                family = certificate_font_key(box)
+                family_name, _, _, bold_weight = CERTIFICATE_FONTS[family]
+                weight = bold_weight if bold else 400
             size, lines = fit_certificate_text(
-                value, box, key in ("name", "title"), orientation
+                value, box, bold, orientation, font=custom_font
             )
             content = "<br>".join(escape(line) for line in lines)
             elements.append(
@@ -518,6 +602,10 @@ def render_pdf(snapshot, assets, name, program_name, number, issued_at):
             )
     html = (
         '<html><head><meta charset="utf-8"><style>'
+        + "".join(
+            f"@font-face{{font-family:'{key}';src:url('certificate-font:{key}');font-weight:400}}"
+            for key in fonts
+        )
         + "".join(
             f"@font-face{{font-family:'{name}';src:url('certificate-font:{key}:regular');font-weight:400}}"
             + (
@@ -543,7 +631,9 @@ def render_pdf(snapshot, assets, name, program_name, number, issued_at):
         + "</div></body></html>"
     )
     fetcher = CertificateURLFetcher(allowed_protocols=("certificate-font", "data"))
-    return HTML(string=html, url_fetcher=fetcher).write_pdf(font_config=FontConfiguration())
+    return HTML(string=html, url_fetcher=fetcher).write_pdf(
+        font_config=FontConfiguration()
+    )
 
 
 def substitute(text, values):
@@ -668,6 +758,7 @@ def process(certificate_id):
                 batch.snapshot.get("program_name", row.program.name),
                 str(row.pk).upper(),
                 timezone.localtime(row.created_at),
+                program_id=batch.program_id,
             )
             ProgramCertificate.objects.filter(pk=row.pk).update(
                 pdf=row.pdf, rendered_batch_id=row.batch_id

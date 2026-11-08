@@ -72,7 +72,8 @@ class CertificateAssetView(ManagementBase):
     def get(self, request, pk, asset_id):
         program = managed_program(pk, request.user)
         asset = get_object_or_404(ProgramCertificateAsset, pk=asset_id, program=program)
-        response = HttpResponse(bytes(asset.content), content_type="image/png")
+        content_type = "font/sfnt" if asset.kind == "font" else "image/png"
+        response = HttpResponse(bytes(asset.content), content_type=content_type)
         response["Cache-Control"] = "private, no-store"
         response["X-Content-Type-Options"] = "nosniff"
         return response
@@ -93,6 +94,7 @@ class CertificatePreviewView(ManagementBase):
             program.name,
             "ПРОБНЫЙ",
             timezone.localtime(),
+            program_id=program.pk,
         )
         return pdf_response(content, "certificate-preview")
 
@@ -384,6 +386,7 @@ def current_certificate_pdf(program, config, row, public_base_url):
             program.name,
             str(row.pk).upper(),
             timezone.localtime(row.created_at),
+            program_id=program.pk,
         )
         row.batch = service.manual_batch(program, draft, public_base_url, "refresh")
         row.rendered_batch = row.batch
@@ -430,13 +433,21 @@ class CertificateArchiveView(ManagementBase):
 
         program = managed_program(pk, request.user, lock=True)
         config = service.config_for(program)
-        revision_check(config, request.data)
         rows = (
             selected_rows(program, request.data)
             .select_for_update(of=("self",))
             .select_related("batch", "rendered_batch", "program")
             .defer(None)
         )
+        published_only = serializers.BooleanField(default=False).run_validation(
+            request.data.get("published_only", False)
+        )
+        if not published_only:
+            revision_check(config, request.data)
+        if published_only and rows.filter(pdf__isnull=True).exists():
+            raise ValidationError(
+                "Сначала подготовьте PDF для всех выбранных участников."
+            )
         if rows.filter(status__in=["pending", "generating", "sending"]).exists():
             raise ValidationError(
                 "Дождитесь завершения обработки выбранных сертификатов."
@@ -444,11 +455,19 @@ class CertificateArchiveView(ManagementBase):
         output = tempfile.SpooledTemporaryFile(max_size=8 * 1024 * 1024)
         try:
             with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
+                names = set()
                 for row in rows.iterator(chunk_size=20):
-                    content = current_certificate_pdf(
-                        program, config, row, request.build_absolute_uri("/").rstrip("/")
+                    content = (
+                        bytes(row.pdf)
+                        if published_only
+                        else current_certificate_pdf(
+                            program,
+                            config,
+                            row,
+                            request.build_absolute_uri("/").rstrip("/"),
+                        )
                     )
-                    archive.writestr(f"certificate-{row.pk}.pdf", content)
+                    archive.writestr(certificate_archive_name(row.name, names), content)
             output.seek(0)
         except Exception:
             output.close()
@@ -466,14 +485,37 @@ class CertificateArchiveView(ManagementBase):
 
         output = tempfile.SpooledTemporaryFile(max_size=8 * 1024 * 1024)
         with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
+            names = set()
             for row in (
-                rows.filter(pdf__isnull=False).only("pk", "pdf").iterator(chunk_size=50)
+                rows.filter(pdf__isnull=False)
+                .only("pk", "name", "pdf")
+                .iterator(chunk_size=50)
             ):
-                archive.writestr(f"certificate-{row.pk}.pdf", bytes(row.pdf))
+                archive.writestr(
+                    certificate_archive_name(row.name, names), bytes(row.pdf)
+                )
         output.seek(0)
         response = FileResponse(output, as_attachment=True, filename="certificates.zip")
         response["Cache-Control"] = "private, no-store"
         return response
+
+
+def certificate_archive_name(name, used):
+    import re
+    from pathlib import PureWindowsPath
+    from unicodedata import normalize
+
+    stem = re.sub(r'[\\/:*?"<>|\x00-\x1f\x7f]', "_", normalize("NFC", name))
+    stem = stem[:120].strip(" .") or "Сертификат"
+    if PureWindowsPath(stem).is_reserved():
+        stem = "Сертификат " + stem
+    filename = stem + ".pdf"
+    suffix = 2
+    while filename.casefold() in used:
+        filename = f"{stem} ({suffix}).pdf"
+        suffix += 1
+    used.add(filename.casefold())
+    return filename
 
 
 class MyCertificatesView(ManagementBase):

@@ -149,6 +149,9 @@ class PartnerProgram(models.Model):
         verbose_name="Максимум участников legacy-команды",
         help_text="NULL — без максимума. Ожидающие приглашения резервируют места.",
     )
+    project_sections = models.JSONField(
+        default=dict, blank=True, verbose_name="Разделы проекта в программе"
+    )
     city = models.TextField(
         verbose_name="Город",
     )
@@ -298,6 +301,17 @@ class PartnerProgram(models.Model):
     def clean(self):
         super().clean()
         self.validate_solution_template_change()
+        from partner_programs.project_form import PROJECT_SECTIONS
+
+        if not isinstance(self.project_sections, dict) or any(
+            key not in PROJECT_SECTIONS or not isinstance(value, bool)
+            for key, value in self.project_sections.items()
+        ):
+            raise ValidationError(
+                {
+                    "project_sections": "Укажите доступные разделы и значения true или false."
+                }
+            )
         for field in ("legacy_team_min_size", "legacy_team_max_size"):
             value = getattr(self, field)
             if value is not None and value < 1:
@@ -518,6 +532,16 @@ class PartnerProgramProject(models.Model):
     project = models.ForeignKey(
         Project, on_delete=models.CASCADE, related_name="program_links"
     )
+    source_project = models.ForeignKey(
+        Project,
+        null=True,
+        blank=True,
+        editable=False,
+        on_delete=models.SET_NULL,
+        related_name="program_copies",
+        verbose_name="Исходный проект",
+    )
+    submitted_form = models.JSONField(null=True, blank=True, editable=False)
     datetime_created = models.DateTimeField(auto_now_add=True)
     datetime_updated = models.DateTimeField(auto_now=True)
     submitted = models.BooleanField(default=False, verbose_name="Проект сдан")
@@ -584,6 +608,17 @@ class PartnerProgramProject(models.Model):
         self.project = context.project
         self.partner_program = context.programs[self.partner_program_id]
         self.clean()
+        fields = kwargs.get("update_fields")
+        if (
+            self.submitted
+            and self.submitted_form is None
+            and (fields is None or "submitted" in fields)
+        ):
+            from partner_programs.services.project_fields import form_snapshot
+
+            self.submitted_form = form_snapshot(self)
+            if fields is not None:
+                kwargs["update_fields"] = {*fields, "submitted_form"}
         return super().save(*args, **kwargs)
 
     @transaction.atomic
@@ -638,6 +673,7 @@ class PartnerProgramField(models.Model):
     label = models.CharField(max_length=256, verbose_name="Отображаемое название")
     field_type = models.CharField(max_length=20, choices=FIELD_TYPES)
     is_required = models.BooleanField(default=False)
+    is_visible = models.BooleanField(default=True, verbose_name="Показывать в форме")
     purpose = models.CharField(max_length=24, default="other")
     position = models.PositiveIntegerField(default=0)
     validation = models.JSONField(default=dict, blank=True)

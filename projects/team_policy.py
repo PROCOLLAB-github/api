@@ -237,8 +237,9 @@ def validate_project_binding(project, program):
 
 def validate_required_program_fields(link):
     from django.core.exceptions import ValidationError
+    from partner_programs.project_form import field_value, visible_project_fields
 
-    fields = link.partner_program.fields.filter(is_required=True).order_by("pk")
+    fields = visible_project_fields(link.partner_program).filter(is_required=True)
     if connection.in_atomic_block:
         fields = fields.select_for_update()
     required = list(fields)
@@ -251,13 +252,13 @@ def validate_required_program_fields(link):
         if link.pk
         else {}
     )
-    if any(
-        field.pk not in values
-        or values[field.pk] is None
-        or not str(values[field.pk]).strip()
+    missing = [
+        field.label
         for field in required
-    ):
-        raise ValidationError("Не заполнены обязательные поля программы.")
+        if not str(field_value(link, field, values) or "").strip()
+    ]
+    if missing:
+        raise ValidationError("Заполните обязательные поля: " + ", ".join(missing) + ".")
 
 
 def actionable_users(project, users, *, program_link_id=None):

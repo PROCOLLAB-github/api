@@ -20,6 +20,59 @@ class PartnerProgramProjectApplyAPITests(TestCase):
         self.user = create_user(prefix="program-apply-user")
         self.program = create_partner_program()
 
+    def test_title_only_creates_source_and_submission_freezes_only_copy(self):
+        self.program.is_competitive = True
+        self.program.save(update_fields=["is_competitive"])
+        create_program_member(self.program, user=self.user)
+        field = create_program_field(
+            self.program, name="answer", label="Ответ", is_required=True
+        )
+        self.client.force_authenticate(self.user)
+        response = self.client.post(
+            f"/programs/{self.program.pk}/projects/apply/",
+            {"project": {"name": "Проект команды"}},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201, response.data)
+        link = PartnerProgramProject.objects.get(pk=response.data["program_link_id"])
+        self.assertNotEqual(link.project_id, link.source_project_id)
+        self.assertEqual(link.source_project.name, "Проект команды")
+        self.assertFalse(link.source_project.program_links.exists())
+        fields_url = f"/programs/partner-program-projects/{link.pk}/fields/"
+        self.assertEqual(
+            self.client.put(
+                fields_url,
+                [{"field_id": field.pk, "value_text": "Первый ответ"}],
+                format="json",
+            ).status_code,
+            200,
+        )
+        response = self.client.post(
+            f"/programs/partner-program-projects/{link.pk}/submit/", {}, format="json"
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        field.is_visible = False
+        field.save(update_fields=["is_visible"])
+        self.assertEqual(
+            self.client.get(fields_url).data["fields"][0]["value"], "Первый ответ"
+        )
+        self.assertEqual(
+            self.client.patch(
+                f"/projects/{link.project_id}/", {"name": "Правка копии"}, format="json"
+            ).status_code,
+            403,
+        )
+        self.assertEqual(
+            self.client.patch(
+                f"/projects/{link.source_project_id}/",
+                {"name": "Правка оригинала"},
+                format="json",
+            ).status_code,
+            200,
+        )
+        link.project.refresh_from_db()
+        self.assertEqual(link.project.name, "Проект команды")
+
     def test_member_can_get_project_apply_schema(self):
         create_program_member(self.program, user=self.user)
         field = create_program_field(

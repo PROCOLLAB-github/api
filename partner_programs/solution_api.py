@@ -209,9 +209,11 @@ def solution_data(solution, user):
                 and not frozen
             ),
         ),
-        readiness=dict(is_ready=not problems, issues=problems)
-        if program.is_competitive and own
-        else None,
+        readiness=(
+            dict(is_ready=not problems, issues=problems)
+            if program.is_competitive and own
+            else None
+        ),
     )
 
 
@@ -320,7 +322,9 @@ def create_solution(program_id, user, data):
 
 
 class SolutionAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    from partner_programs.permissions import SolutionFlowEnabled
+
+    permission_classes = [SolutionFlowEnabled, IsAuthenticated]
 
     def handle_exception(self, exc):
         if isinstance(exc, SolutionError):
@@ -371,6 +375,9 @@ class SolutionAPIView(APIView):
 
 
 class SolutionContextView(SolutionAPIView):
+    # Older project clients read the context before opening the V1 entry form.
+    permission_classes = [IsAuthenticated]
+
     def get(self, request, pk):
         return Response(context_data(program_for(pk), request.user))
 

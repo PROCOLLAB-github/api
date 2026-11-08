@@ -1,5 +1,6 @@
 from functools import wraps
 
+from django.conf import settings
 from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 
@@ -10,9 +11,7 @@ PROGRAM_CREATION_PERMISSION = "partner_programs.add_partnerprogram"
 
 def can_create_program(user) -> bool:
     return bool(
-        user
-        and user.is_authenticated
-        and user.has_perm(PROGRAM_CREATION_PERMISSION)
+        user and user.is_authenticated and user.has_perm(PROGRAM_CREATION_PERMISSION)
     )
 
 
@@ -24,6 +23,19 @@ def require_create_program(user):
 class CanCreateProgram(BasePermission):
     def has_permission(self, request, view):
         require_create_program(request.user)
+        return True
+
+
+def active_programs(queryset):
+    if not settings.PROGRAM_SOLUTIONS_ENABLED:
+        return queryset.exclude(solution_storage_mode="solution")
+    return queryset
+
+
+class SolutionFlowEnabled(BasePermission):
+    def has_permission(self, request, view):
+        if not settings.PROGRAM_SOLUTIONS_ENABLED:
+            raise NotFound()
         return True
 
 
@@ -46,6 +58,15 @@ class ProgramDraftVisibility(BasePermission):
             program = PartnerProgram.objects.filter(pk=pk).first() if pk else None
         # Reuse this read in read-only views, never for transactional writes.
         view.visibility_program = program
+        if (
+            program
+            and program.solution_storage_mode == "solution"
+            and not settings.PROGRAM_SOLUTIONS_ENABLED
+        ):
+            setattr(
+                getattr(request, "_request", request), "_program_draft_response", True
+            )
+            raise NotFound()
         if program is None or not program.draft:
             return True
         setattr(getattr(request, "_request", request), "_program_draft_response", True)
