@@ -4,7 +4,7 @@ from rest_framework.test import APIClient
 
 from core.models import Like, View
 from news.models import News
-from partner_programs.models import PartnerProgramProject
+from partner_programs.models import PartnerProgramProject, PartnerProgramUserProfile
 
 from .helpers import (
     create_news_for,
@@ -112,6 +112,9 @@ class ProjectScopedNewsAPITests(TestCase):
         program.is_competitive = True
         program.save(update_fields=["is_competitive"])
         project_copy = create_project(leader=self.leader)
+        PartnerProgramUserProfile.objects.create(
+            partner_program=program, user=self.leader, project=project_copy
+        )
         news = create_news_for(project_copy, text="News saved before submission")
         PartnerProgramProject.objects.create(
             partner_program=program,
