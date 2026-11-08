@@ -30,7 +30,7 @@ def request(base_url, path, method="GET", context=None):
         return response.status, response.headers.get_content_type(), response.read()
 
 
-def check_routes(base_url, context=None):
+def check_routes(base_url, context=None, *, solution_templates_status=401):
     status, content_type, index = request(base_url, "/", context=context)
     assert status == 200 and content_type == "text/html" and b"<app-root" in index, "SPA index unavailable"
     for path in (*AUTH_PAGES, "/office/program/all", "/expert-password-reset/"):
@@ -46,7 +46,7 @@ def check_routes(base_url, context=None):
     for path, method, expected in (
         ("/auth/users/current/", "GET", 401),
         ("/solution-invitations/?status=pending&limit=100&offset=0", "GET", 401),
-        ("/solution-form-templates/", "GET", 401),
+        ("/solution-form-templates/", "GET", solution_templates_status),
         ("/auth/reset_password/", "POST", 400),
         ("/auth/reset_password/confirm/", "POST", 400),
         ("/auth/reset_password/validate_token/", "POST", 400),
@@ -61,5 +61,6 @@ def check_routes(base_url, context=None):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("base_url")
+    parser.add_argument("--solution-templates-status", type=int, choices=(401, 404), default=401)
     args = parser.parse_args()
-    check_routes(args.base_url.rstrip("/"))
+    check_routes(args.base_url.rstrip("/"), solution_templates_status=args.solution_templates_status)

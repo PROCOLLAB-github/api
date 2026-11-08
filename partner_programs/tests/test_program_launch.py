@@ -66,6 +66,11 @@ class ProgramCreationTests(ProgramLaunchTestCase):
         )
         archived.refresh_from_db()
         self.assertEqual(archived.solution_storage_mode, "solution")
+        inbox = self.client.get("/solution-invitations/")
+        self.assertEqual(inbox.status_code, 200)
+        self.assertEqual(inbox.data, {"count": 0, "next": None, "previous": None, "results": []})
+        self.client.force_authenticate(None)
+        self.assertEqual(self.client.get("/solution-invitations/").status_code, 401)
 
     def test_all_formats_start_private_without_fake_dates_and_enrollment(self):
         for kind in ("case_championship", "hackathon", "noncompetitive"):

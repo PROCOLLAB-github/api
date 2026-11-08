@@ -341,7 +341,12 @@ jobs:
                 exit 1
               fi &&
 
-              if ! python3 scripts/check_dev_routes.py https://dev.procollab.ru; then
+              solution_templates_status="$(
+                docker compose -f docker-compose.dev-ci.yml exec -T web python -c \
+                  'from procollab.settings import PROGRAM_SOLUTIONS_ENABLED; print(401 if PROGRAM_SOLUTIONS_ENABLED else 404)'
+              )"
+              if ! python3 scripts/check_dev_routes.py https://dev.procollab.ru \
+                --solution-templates-status "$solution_templates_status"; then
                 echo "Frontend/API routing smoke check failed" >&2
                 exit 1
               fi &&

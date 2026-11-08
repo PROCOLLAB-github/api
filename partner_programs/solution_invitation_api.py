@@ -1,8 +1,10 @@
 """HTTP-контракт C00 для принадлежащих решению приглашений."""
 
+from django.conf import settings
 from django.http import Http404
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from partner_programs import solution_invitations, solution_team
@@ -208,15 +210,16 @@ class SolutionInvitationsView(SolutionAPIView):
 
 
 class MySolutionInvitationsView(SolutionAPIView):
+    # The global inbox keeps its pagination contract when V2 is archived.
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
-        return Response(
-            invitation_page(
-                solution_invitations.visible_invitations(request.user).filter(
-                    recipient=request.user
-                ),
-                request,
-            )
+        invites = solution_invitations.visible_invitations(request.user).filter(
+            recipient=request.user
         )
+        if not settings.PROGRAM_SOLUTIONS_ENABLED:
+            invites = invites.none()
+        return Response(invitation_page(invites, request))
 
 
 class SolutionInvitationDetailView(SolutionAPIView):
