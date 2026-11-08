@@ -193,19 +193,25 @@ def preview_reminder(program, category, actor, payload):
         if available
         else None
     )
+    recipients = []
+    for target in available[:20] if category == SOLUTION_AWAITING else available:
+        user = users[target["user_id"]]
+        recipient = {"user_id": user.pk, "full_name": person_name(user)}
+        if category != SOLUTION_AWAITING:
+            recipient.update(email=user.email, avatar=user.avatar)
+        recipients.append(recipient)
     return {
         "token": token,
         "selected_count": len(rows),
         "recipient_count": len(available),
-        "without_assignments_count": len(rows) - len(assigned_sources)
-        if category in ("projects-awaiting-evaluation", SOLUTION_AWAITING)
-        else 0,
+        "without_assignments_count": (
+            len(rows) - len(assigned_sources)
+            if category in ("projects-awaiting-evaluation", SOLUTION_AWAITING)
+            else 0
+        ),
         "unavailable_count": len(targets) - len(available),
         "preview_text": preview_text,
-        "recipients": [
-            {"user_id": t["user_id"], "full_name": person_name(users[t["user_id"]])}
-            for t in available[:20]
-        ],
+        "recipients": recipients,
         "expires_in": PREVIEW_TTL,
     }
 
@@ -254,7 +260,7 @@ def fresh_targets(program, category, ids, snapshot):
     return rows, result
 
 
-def confirm_reminder(program, category, actor, token):
+def confirm_reminder(program, category, actor, token, *, excluded_recipient_ids=()):
     try:
         data = signing.loads(token, salt=SALT, max_age=PREVIEW_TTL)
     except signing.BadSignature:
@@ -269,6 +275,12 @@ def confirm_reminder(program, category, actor, token):
         raise ValidationError(
             {"detail": "Предпросмотр относится к другому списку или пользователю."}
         )
+    excluded = set(excluded_recipient_ids)
+    if excluded - {target["user_id"] for target in data["targets"]}:
+        raise ValidationError({"detail": "Получатель не входит в список напоминаний."})
+    snapshot = [target for target in data["targets"] if target["user_id"] not in excluded]
+    if not snapshot:
+        raise ValidationError({"detail": "Оставьте хотя бы одного получателя."})
     with transaction.atomic():
         # Serialize confirmations for the same program; token UUID is the durable
         # idempotency key, including when the client loses the HTTP response.
@@ -278,16 +290,14 @@ def confirm_reminder(program, category, actor, token):
         ).first()
         if existing:
             return existing.result
-        rows, targets = fresh_targets(
-            program, category, data["source_ids"], data["targets"]
-        )
+        rows, targets = fresh_targets(program, category, data["source_ids"], snapshot)
         users = CustomUser.objects.in_bulk([t["user_id"] for t in targets])
         targets = [
             t for t in targets if users.get(t["user_id"]) and users[t["user_id"]].email
         ]
         result = {
             "created_count": len(targets),
-            "skipped_count": len(data["targets"]) - len(targets),
+            "skipped_count": len(snapshot) - len(targets),
         }
         batch = ProgramAttentionReminderBatch.objects.create(
             id=data["request_id"],

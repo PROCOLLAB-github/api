@@ -12,12 +12,7 @@ from files.serializers import UserFileSerializer
 from industries.models import Industry
 from partner_programs.models import (
     PartnerProgram,
-    PartnerProgramFieldValue,
     PartnerProgramProject,
-)
-from partner_programs.serializers import (
-    PartnerProgramFieldSerializer,
-    PartnerProgramFieldValueSerializer,
 )
 from projects.models import (
     Achievement,
@@ -92,6 +87,8 @@ class PartnerProgramProjectSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source="partner_program.name", read_only=True)
     program_link_id = serializers.IntegerField(source="pk", read_only=True)
     program_id = serializers.IntegerField(source="partner_program.id", read_only=True)
+    source_project_id = serializers.IntegerField(read_only=True)
+    sections = serializers.SerializerMethodField()
     is_submitted = serializers.BooleanField(source="submitted", read_only=True)
     can_submit = serializers.SerializerMethodField()
     program_fields = serializers.SerializerMethodField()
@@ -104,6 +101,8 @@ class PartnerProgramProjectSerializer(serializers.ModelSerializer):
             "program_link_id",
             "program_id",
             "is_submitted",
+            "source_project_id",
+            "sections",
             "can_submit",
             "program_fields",
             "program_field_values",
@@ -116,15 +115,31 @@ class PartnerProgramProjectSerializer(serializers.ModelSerializer):
             and obj.partner_program.is_project_submission_open()
         )
 
+    def to_representation(self, instance):
+        from partner_programs.services.project_fields import form_snapshot
+
+        self._form = (
+            instance.submitted_form
+            if instance.submitted and instance.submitted_form
+            else form_snapshot(instance)
+        )
+        return super().to_representation(instance)
+
     def get_program_fields(self, obj):
-        fields_qs = obj.partner_program.fields.all()
-        return PartnerProgramFieldSerializer(fields_qs, many=True).data
+        return [
+            {key: value for key, value in field.items() if key != "value"}
+            for field in self._form["fields"]
+        ]
 
     def get_program_field_values(self, obj):
-        values_qs = PartnerProgramFieldValue.objects.filter(
-            program_project=obj
-        ).select_related("field")
-        return PartnerProgramFieldValueSerializer(values_qs, many=True).data
+        return [
+            {"field_name": field["name"], "value": field["value"]}
+            for field in self._form["fields"]
+            if field["value"] is not None
+        ]
+
+    def get_sections(self, obj):
+        return self._form["sections"]
 
 
 class ResponsibleMiniSerializer(serializers.ModelSerializer):
@@ -277,6 +292,7 @@ class ProjectDetailSerializer(TeamPolicySerializerMixin, serializers.ModelSerial
     views_count = serializers.SerializerMethodField(method_name="count_views")
     links = serializers.SerializerMethodField()
     partner_program = serializers.SerializerMethodField()
+    program_copies = serializers.SerializerMethodField()
     partner_program_tags = serializers.SerializerMethodField()
     actuality = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     problem = serializers.CharField(required=False, allow_null=True, allow_blank=True)
@@ -325,6 +341,28 @@ class ProjectDetailSerializer(TeamPolicySerializerMixin, serializers.ModelSerial
             project.program_links.select_related("partner_program").order_by("pk").first()
         )
         return PartnerProgramProjectSerializer(link).data if link is not None else None
+
+    def get_program_copies(self, project):
+        request = self.context.get("request")
+        if getattr(getattr(request, "user", None), "pk", None) != project.leader_id:
+            return []
+        from partner_programs.permissions import active_programs
+
+        copies = (
+            project.program_copies.select_related("partner_program")
+            .filter(partner_program__in=active_programs(PartnerProgram.objects.all()))
+            .order_by("pk")
+        )
+        return [
+            {
+                "project_id": link.project_id,
+                "program_id": link.partner_program_id,
+                "program_link_id": link.pk,
+                "name": link.partner_program.name,
+                "submitted": link.submitted,
+            }
+            for link in copies
+        ]
 
     @classmethod
     def get_partner_program_tags(cls, project):
@@ -393,6 +431,7 @@ class ProjectDetailSerializer(TeamPolicySerializerMixin, serializers.ModelSerial
             "trl",
             "partner_program_tags",
             "partner_program",
+            "program_copies",
         ]
         read_only_fields = [
             "leader",

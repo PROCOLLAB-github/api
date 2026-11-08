@@ -40,3 +40,8 @@ class AttentionActionSerializer(serializers.Serializer):
 
 class AttentionConfirmationSerializer(serializers.Serializer):
     token = serializers.CharField(max_length=1000000)
+    excluded_recipient_ids = serializers.ListField(
+        child=serializers.IntegerField(min_value=1),
+        max_length=MAX_SELECTION,
+        default=list,
+    )

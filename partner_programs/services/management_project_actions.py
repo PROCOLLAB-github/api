@@ -330,9 +330,24 @@ def apply_action(program_id, actor, data):
         ).delete()
     else:
         # Только этот endpoint разрешает сдачу после срока, после повторной валидации.
-        PartnerProgramProject.objects.filter(
-            partner_program=program, pk__in=data["ids"], submitted=False
-        ).update(submitted=True, datetime_submitted=now, datetime_updated=now)
+        from partner_programs.services.project_fields import form_snapshot
+
+        links = list(
+            PartnerProgramProject.objects.filter(
+                partner_program=program, pk__in=data["ids"], submitted=False
+            ).select_related("project", "partner_program")
+        )
+        for link in links:
+            link.submitted = True
+            link.datetime_submitted = link.datetime_updated = now
+            link.submitted_form = form_snapshot(link)
+        PartnerProgramProject.objects.bulk_update(
+            links,
+            ["submitted", "datetime_submitted", "datetime_updated", "submitted_form"],
+        )
+        Project.objects.filter(pk__in=[link.project_id for link in links]).update(
+            draft=False, datetime_updated=now
+        )
     logger.info(
         "Program project action program=%s actor=%s action=%s links=%s",
         program.pk,

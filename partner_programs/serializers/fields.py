@@ -51,6 +51,7 @@ class PartnerProgramFieldValueUpdateSerializer(serializers.Serializer):
             "select": self._validate_select,
             "radio": self._validate_radio,
             "file": self._validate_file,
+            "url": self._validate_file,
         }
         try:
             return validators[field.field_type]

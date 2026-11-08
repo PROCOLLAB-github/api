@@ -49,6 +49,8 @@ def validate_program_case_configuration(field):
         errors["field_type"] = "Системный кейс должен быть полем select."
     if not field.is_required:
         errors["is_required"] = "Кейс обязателен перед сдачей проекта."
+    if not field.is_visible:
+        errors["is_visible"] = "Кейс должен быть доступен в форме сдачи."
     if not field.show_filter:
         errors["show_filter"] = "Системный кейс должен быть доступен для фильтрации."
     options = (
@@ -64,9 +66,9 @@ def validate_program_case_configuration(field):
         errors["options"] = "Укажите хотя бы один кейс без пустых вариантов."
         options = []
     elif len({value.strip().casefold() for value in options}) != len(options):
-        errors[
-            "options"
-        ] = "Варианты кейсов не должны повторяться (без учета регистра и внешних пробелов)."
+        errors["options"] = (
+            "Варианты кейсов не должны повторяться (без учета регистра и внешних пробелов)."
+        )
     if field.pk:
         used = set(field.values.values_list("value_text", flat=True).distinct())
         if used - set(options):
@@ -89,6 +91,14 @@ def validate_case_before_submission(program_project, *, for_update=True):
     """Lock config inside the caller's transaction; validate this link only."""
     field = get_program_case_field(program_project.partner_program, for_update=for_update)
     if field is None:
+        program = program_project.partner_program
+        if program.is_competitive and program.program_format in (
+            "case_championship",
+            "hackathon",
+        ):
+            raise ValidationError(
+                "Организатор еще не настроил кейсы или треки программы."
+            )
         return
     value = (
         program_project.field_values.filter(field=field)

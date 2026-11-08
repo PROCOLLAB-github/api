@@ -1,5 +1,5 @@
 from django.contrib.auth import get_user_model
-from django.db.models import Exists, F, OuterRef, Value
+from django.db.models import Exists, F, OuterRef, Q, Value
 from django.db.models.functions import Concat
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -132,7 +132,9 @@ class PartnerProgramList(generics.ListCreateAPIView):
             program.managers.add(self.request.user)
 
     def get_queryset(self):
-        base_qs = super().get_queryset()
+        from partner_programs.permissions import active_programs
+
+        base_qs = active_programs(super().get_queryset())
         participating_flag = self.request.query_params.get("participating")
         if not participating_flag:
             qs = base_qs
@@ -144,6 +146,23 @@ class PartnerProgramList(generics.ListCreateAPIView):
                 partner_program_profiles__user=self.request.user,
                 datetime_finished__gte=now,
             ).distinct()
+        if self.request.query_params.get("project_submission") == "true":
+            now = timezone.now()
+            qs = qs.filter(
+                is_competitive=True,
+                solution_storage_mode="legacy_project",
+                datetime_finished__gte=now,
+            ).filter(
+                Q(datetime_project_submission_ends__gte=now)
+                | Q(
+                    datetime_project_submission_ends__isnull=True,
+                    datetime_registration_ends__gte=now,
+                )
+                | Q(
+                    datetime_project_submission_ends__isnull=True,
+                    datetime_registration_ends__isnull=True,
+                )
+            )
 
         user = self.request.user
         if not user.is_authenticated:
@@ -274,7 +293,9 @@ class PartnerProgramProjectApplyView(GenericAPIView):
         program = self.get_object()
         require_can_apply_project_to_program(program=program, user=request.user)
 
-        fields_qs = program.fields.all()
+        from partner_programs.project_form import visible_project_fields
+
+        fields_qs = visible_project_fields(program)
         return Response(
             {
                 "program_id": program.id,
@@ -524,7 +545,9 @@ class ProgramManagerAttentionListAPIView(ProgramManagerAnalyticsAccessAPIView):
         queryset = self.get_queryset(program, query.validated_data["search"])
         page = paginator.paginate_queryset(queryset, request, view=self)
         response = paginator.get_paginated_response(
-            self.serializer_class(page, many=True).data
+            self.serializer_class(
+                page, many=True, context=self.serializer_context(program, page)
+            ).data
         )
         response.data.update(self.get_metadata(program))
         return response
@@ -535,6 +558,9 @@ class ProgramManagerAttentionListAPIView(ProgramManagerAnalyticsAccessAPIView):
             return {
                 "mode": "distributed" if program.is_distributed_evaluation else "open"
             }
+        return {}
+
+    def serializer_context(self, program, page):
         return {}
 
 
@@ -583,6 +609,29 @@ class ProgramManagerProjectsAwaitingEvaluationAPIView(ProgramManagerAttentionLis
         if search:
             queryset = queryset.filter(project__name__icontains=search)
         return queryset.order_by(F("datetime_submitted").asc(nulls_last=True), "pk")
+
+    def serializer_context(self, program, page):
+        from partner_programs.services.assignment_analytics import (
+            annotated_assignment_queryset,
+        )
+        from partner_programs.services.management import person_name
+
+        experts_by_project = {}
+        assignments = (
+            annotated_assignment_queryset(program.pk)
+            .filter(project_id__in=[link.project_id for link in page])
+            .select_related("expert__user")
+            .order_by("pk")
+        )
+        for assignment in assignments:
+            experts_by_project.setdefault(assignment.project_id, []).append(
+                {
+                    "id": assignment.expert_id,
+                    "full_name": person_name(assignment.expert.user),
+                    "completed": assignment.is_completed,
+                }
+            )
+        return {"experts_by_project": experts_by_project}
 
 
 class ProgramManagerProjectsNotSubmittedAPIView(ProgramManagerAttentionListAPIView):

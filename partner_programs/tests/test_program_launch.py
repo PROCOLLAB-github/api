@@ -2,7 +2,12 @@ from uuid import uuid4
 from unittest.mock import patch
 
 from django.contrib.auth.models import Permission
-from django.test import TestCase, TransactionTestCase, skipUnlessDBFeature
+from django.test import (
+    TestCase,
+    TransactionTestCase,
+    override_settings,
+    skipUnlessDBFeature,
+)
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -37,6 +42,31 @@ class ProgramLaunchTestCase(TestCase):
 
 
 class ProgramCreationTests(ProgramLaunchTestCase):
+    @override_settings(PROGRAM_SOLUTIONS_ENABLED=False)
+    def test_v1_switch_selects_project_templates_and_archives_v2_routes(self):
+        archived = create_partner_program(
+            is_competitive=True, solution_storage_mode="solution"
+        )
+        archived.managers.add(self.creator)
+        response = self.create(format="hackathon")
+        self.assertEqual(response.status_code, 201, response.data)
+        program = PartnerProgram.objects.get(pk=response.data["id"])
+        self.assertEqual(program.solution_storage_mode, "legacy_project")
+        self.assertFalse(program.solution_creation_enabled)
+        self.assertTrue(
+            program.fields.filter(name="repository", is_required=True).exists()
+        )
+        self.assertEqual(self.client.get(f"/programs/{archived.pk}/").status_code, 404)
+        self.assertEqual(
+            self.client.get(f"/programs/{archived.pk}/solution-context/").status_code, 404
+        )
+        self.assertNotIn(
+            archived.pk,
+            [row["id"] for row in self.client.get("/programs/managed/").data["results"]],
+        )
+        archived.refresh_from_db()
+        self.assertEqual(archived.solution_storage_mode, "solution")
+
     def test_all_formats_start_private_without_fake_dates_and_enrollment(self):
         for kind in ("case_championship", "hackathon", "noncompetitive"):
             with self.subTest(kind=kind):

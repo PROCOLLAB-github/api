@@ -18,6 +18,8 @@ DEBUG = config("DEBUG", default=False, cast=bool)
 EXPERT_WORKSPACE_FRONTEND_URL = config(
     "EXPERT_WORKSPACE_FRONTEND_URL", default="https://app.procollab.ru"
 )
+PROGRAM_SOLUTIONS_ENABLED = config("PROGRAM_SOLUTIONS_ENABLED", default=True, cast=bool)
+PROJECT_DEFAULT_PACK_URL = config("PROJECT_DEFAULT_PACK_URL", default="")
 
 AUTOPOSTING_ON = config("AUTOPOSTING_ON", default=False, cast=bool)
 

@@ -7,6 +7,12 @@ from django.utils import timezone
 from rest_framework.exceptions import APIException, PermissionDenied, ValidationError
 
 from partner_programs.models import PartnerProgramFieldValue, PartnerProgramProject
+from partner_programs.project_form import (
+    PROJECT_FIELDS,
+    field_value,
+    project_sections,
+    visible_project_fields,
+)
 from partner_programs.serializers import (
     PartnerProgramFieldSerializer,
     PartnerProgramFieldValueUpdateSerializer,
@@ -58,10 +64,11 @@ def program_link_fields(link_id, user, *, link=None):
         user, link.project, program_id=link.partner_program_id
     ):
         raise PermissionDenied("У вас нет доступа к полям этой программы проекта.")
-    values = dict(link.field_values.values_list("field_id", "value_text"))
-    fields = PartnerProgramFieldSerializer(
-        link.partner_program.fields.order_by("pk"), many=True
-    ).data
+    form = (
+        link.submitted_form
+        if link.submitted and link.submitted_form
+        else form_snapshot(link)
+    )
     program = link.partner_program
     submission_open = program.is_project_submission_open()
     return {
@@ -73,13 +80,33 @@ def program_link_fields(link_id, user, *, link=None):
         "submission_open": submission_open,
         "submission_deadline": program.get_project_submission_deadline(),
         "can_submit": program.is_competitive and not link.submitted and submission_open,
-        "fields": [{**field, "value": values.get(field["id"])} for field in fields],
+        **form,
+    }
+
+
+def form_snapshot(link):
+    definitions = list(visible_project_fields(link.partner_program))
+    values = (
+        dict(link.field_values.values_list("field_id", "value_text")) if link.pk else {}
+    )
+    return {
+        "sections": project_sections(link.partner_program),
+        "fields": [
+            {**data, "value": field_value(link, field, values)}
+            for field, data in zip(
+                definitions, PartnerProgramFieldSerializer(definitions, many=True).data
+            )
+        ],
     }
 
 
 @transaction.atomic
 def update_program_link_fields(link_id, user, data):
     """Atomic partial update; link lock also serializes this write with submission."""
+    from projects.team_policy import lock_team
+
+    reference = get_program_link(link_id)
+    lock_team(reference.project_id)
     link = get_program_link(link_id, for_update=True)
     require_link_leader(link, user)
     if link.partner_program.is_competitive and link.submitted:
@@ -99,8 +126,20 @@ def update_program_link_fields(link_id, user, data):
     field_ids = [item["field"].pk for item in serializer.validated_data]
     if len(field_ids) != len(set(field_ids)):
         raise ValidationError({"detail": "В запросе не должны повторяться field_id."})
+    visible_ids = set(
+        visible_project_fields(link.partner_program).values_list("pk", flat=True)
+    )
+    if set(field_ids) - visible_ids:
+        raise ValidationError(
+            {"detail": "Форма программы изменилась. Обновите страницу."}
+        )
     try:
+        project_changes = {}
         for item in serializer.validated_data:
+            attribute = PROJECT_FIELDS.get(item["field"].name)
+            if attribute:
+                project_changes[attribute] = item.get("value_text") or None
+                continue
             if not item.get("value_text"):
                 link.field_values.filter(field=item["field"]).delete()
                 continue
@@ -108,6 +147,10 @@ def update_program_link_fields(link_id, user, data):
                 program_project=link,
                 field=item["field"],
                 defaults={"value_text": item.get("value_text")},
+            )
+        if project_changes:
+            Project.objects.filter(pk=link.project_id).update(
+                **project_changes, datetime_updated=timezone.now()
             )
     except DjangoValidationError as error:
         raise ValidationError({"detail": error.messages})
@@ -142,3 +185,6 @@ def submit_program_project(link_id, user):
     link.submitted = True
     link.datetime_submitted = timezone.now()
     link.save(update_fields=["submitted", "datetime_submitted", "datetime_updated"])
+    Project.objects.filter(pk=link.project_id).update(
+        draft=False, datetime_updated=link.datetime_submitted
+    )

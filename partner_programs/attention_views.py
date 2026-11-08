@@ -36,7 +36,13 @@ class AttentionActionView(APIView):
         if action == "reminders":
             response = Response(
                 confirm_reminder(
-                    program, category, request.user, serializer.validated_data["token"]
+                    program,
+                    category,
+                    request.user,
+                    serializer.validated_data["token"],
+                    excluded_recipient_ids=serializer.validated_data[
+                        "excluded_recipient_ids"
+                    ],
                 )
             )
         elif action == "reminder-preview":

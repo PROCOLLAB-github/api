@@ -4,6 +4,7 @@ from django.core.exceptions import ValidationError
 from django.forms.models import BaseInlineFormSet
 
 from partner_programs.services.case_fields import case_field_has_values
+from partner_programs.project_form import protected_project_field
 from partner_programs.services.field_values import (
     FIELD_VALUES_FROZEN_MESSAGE,
     program_field_values_are_frozen,
@@ -18,13 +19,19 @@ class ProgramFieldInlineFormSet(BaseInlineFormSet):
         for form in self.deleted_forms:
             from partner_programs.solution_forms import answer_count
 
-            if case_field_has_values(form.instance) or (
-                form.instance.pk
-                and form.instance.partner_program.solution_storage_mode == "solution"
-                and answer_count(form.instance)
+            field = form.instance
+            if not field.pk:
+                continue
+            if case_field_has_values(field) or (
+                field.partner_program.solution_storage_mode == "solution"
+                and answer_count(field)
             ):
                 raise ValidationError(
                     "Нельзя удалить системное поле с выбранными кейсами."
+                )
+            if protected_project_field(field):
+                raise ValidationError(
+                    "Стандартное поле или поле с ответами можно скрыть."
                 )
 
 

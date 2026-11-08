@@ -22,7 +22,6 @@ from project_rates.models import Criteria, ProjectExpertAssignment, ProjectScore
 from project_rates.tests.helpers import create_rate_expert
 from projects.models import Collaborator
 
-
 NOW = datetime(2026, 9, 5, 12, tzinfo=datetime_timezone.utc)
 PARTICIPANTS = "manager-overview-participants-without-team"
 ONBOARDING = "manager-overview-participants-without-onboarding"
@@ -773,6 +772,7 @@ class ProjectsAwaitingEvaluationTests(AttentionAnalyticsTestCase):
                 "reason_label",
                 "assignments_total",
                 "assignments_completed",
+                "experts",
             },
         )
         self.assertEqual(
@@ -782,6 +782,7 @@ class ProjectsAwaitingEvaluationTests(AttentionAnalyticsTestCase):
             item["leader"],
             {"user_id": leader.pk, "full_name": "Анна Иванова", "avatar": None},
         )
+        self.assertEqual(item["experts"], [])
         self.assertEqual(parse_datetime(item["submitted_at"]), NOW - timedelta(hours=1))
 
     def test_serializer_only_defensively_accepts_null_leader_without_schema_change(self):
@@ -884,4 +885,4 @@ class ProjectsAwaitingEvaluationTests(AttentionAnalyticsTestCase):
             data = self.get(PROJECTS, limit=100)
         self.assertEqual(len(data["results"]), 31)
         self.assertEqual(len(small), len(large))
-        self.assertLessEqual(len(large), 4)
+        self.assertLessEqual(len(large), 5)

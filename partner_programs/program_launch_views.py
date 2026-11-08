@@ -6,7 +6,11 @@ from rest_framework.response import Response
 from partner_programs.management_views import ManagementBase
 from partner_programs.models import PartnerProgram
 from partner_programs.pagination import ProgramAttentionPagination
-from partner_programs.permissions import can_create_program, require_create_program
+from partner_programs.permissions import (
+    active_programs,
+    can_create_program,
+    require_create_program,
+)
 from partner_programs.serializers.management import StrictFieldsMixin
 from partner_programs.services import program_launch as service
 from partner_programs.services.management import management_data
@@ -42,7 +46,7 @@ class ManagedProgramsView(ManagementBase):
     def get(self, request):
         form = ManagedProgramsQuery(data=request.query_params)
         form.is_valid(raise_exception=True)
-        rows = PartnerProgram.objects.all()
+        rows = active_programs(PartnerProgram.objects.all())
         if not (request.user.is_staff or request.user.is_superuser):
             rows = rows.filter(managers=request.user)
         if form.validated_data["search"]:

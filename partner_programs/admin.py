@@ -30,6 +30,7 @@ from partner_programs.forms import (
 from partner_programs.services.case_fields import case_field_has_values
 from partner_programs.admin_registration import ProgramRegistrationAdminMixin
 from partner_programs.admin_publication import ProgramPublicationAdminMixin
+from partner_programs.admin_certificate_fonts import ProgramCertificateFontsAdminMixin
 from partner_programs.program_dates import (
     DATE_FIELDS,
     program_date_errors,
@@ -53,7 +54,10 @@ class PartnerProgramFieldInline(admin.TabularInline):
 
 @admin.register(PartnerProgram)
 class PartnerProgramAdmin(
-    ProgramPublicationAdminMixin, ProgramRegistrationAdminMixin, admin.ModelAdmin
+    ProgramPublicationAdminMixin,
+    ProgramRegistrationAdminMixin,
+    ProgramCertificateFontsAdminMixin,
+    admin.ModelAdmin,
 ):
     class PartnerProgramAdminForm(forms.ModelForm):
         confirm_reopen = forms.BooleanField(
@@ -130,6 +134,7 @@ class PartnerProgramAdmin(
                     "is_competitive",
                     "legacy_team_min_size",
                     "legacy_team_max_size",
+                    "project_sections",
                     "projects_availability",
                     "publish_projects_after_finish",
                     "max_project_rates",
@@ -398,13 +403,18 @@ class PartnerProgramFieldAdmin(admin.ModelAdmin):
             objs, request
         )
         for obj in objs:
+            from partner_programs.project_form import protected_project_field
             from partner_programs.solution_forms import answer_count
 
-            if case_field_has_values(obj) or (
-                obj.partner_program.solution_storage_mode == "solution"
-                and answer_count(obj)
+            if (
+                protected_project_field(obj)
+                or case_field_has_values(obj)
+                or (
+                    obj.partner_program.solution_storage_mode == "solution"
+                    and answer_count(obj)
+                )
             ):
-                protected.append(f"Используемое поле кейса: {obj}")
+                protected.append(f"Стандартное поле или поле с ответами: {obj}")
         return deleted, counts, permissions_needed, protected
 
     list_display = (
@@ -414,6 +424,7 @@ class PartnerProgramFieldAdmin(admin.ModelAdmin):
         "label",
         "field_type",
         "is_required",
+        "is_visible",
         "show_filter",
     )
     list_filter = ("partner_program",)

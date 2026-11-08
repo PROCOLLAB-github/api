@@ -14,6 +14,8 @@ services:
     environment:
       HOST: 0.0.0.0
       EXPERT_WORKSPACE_FRONTEND_URL: https://dev.procollab.ru
+      PROGRAM_SOLUTIONS_ENABLED: ${PROGRAM_SOLUTIONS_ENABLED:-false}
+      PROJECT_DEFAULT_PACK_URL: https://dev.procollab.ru/assets/project-defaults
     ports:
       - "127.0.0.1:8000:8000" 
 
@@ -34,6 +36,7 @@ services:
       - .env
     environment:
       EXPERT_WORKSPACE_FRONTEND_URL: https://dev.procollab.ru
+      PROGRAM_SOLUTIONS_ENABLED: ${PROGRAM_SOLUTIONS_ENABLED:-false}
     command: bash ./scripts/celery.sh
     depends_on:
       - redis

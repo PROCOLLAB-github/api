@@ -59,6 +59,12 @@ class ProgramLinkFieldsAPITests(TestCase):
                 "submission_open": True,
                 "submission_deadline": self.program.datetime_registration_ends,
                 "can_submit": True,
+                "sections": {
+                    "partners": True,
+                    "achievements": True,
+                    "vacancies": True,
+                    "program_data": True,
+                },
             },
         )
         fields = response.data["fields"]

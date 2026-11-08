@@ -57,6 +57,7 @@ def send_test_program_certificate(program_id, user_id, snapshot):
         program.name,
         "ПРОБНЫЙ",
         row.created_at,
+        program_id=program.pk,
     )
     send_certificate(row, test=True)
 

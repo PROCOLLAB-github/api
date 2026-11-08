@@ -301,7 +301,9 @@ def add_member(
 
 
 @transaction.atomic
-def bind_project_to_program(*, project_id, program_id, actor, program_link_id=None):
+def bind_project_to_program(
+    *, project_id, program_id, actor, program_link_id=None, source_project=None
+):
     if program_id is None:
         return
     try:
@@ -354,7 +356,9 @@ def bind_project_to_program(*, project_id, program_id, actor, program_link_id=No
         current_link.delete()
     if program:
         link, _created = PartnerProgramProject.objects.get_or_create(
-            project=project, partner_program=program
+            project=project,
+            partner_program=program,
+            defaults={"source_project": source_project},
         )
         project.is_public = False
         project.save(update_fields=["is_public"])
