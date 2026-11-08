@@ -1,4 +1,7 @@
+from contextlib import contextmanager
+
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
@@ -27,7 +30,7 @@ from news.services import (
 )
 from partner_programs.models import PartnerProgram
 from projects.models import Project
-from projects.permissions import ProjectVisibilityPermission
+from projects.permissions import ProjectVisibilityPermission, require_editable_submission
 
 User = get_user_model()
 
@@ -46,6 +49,21 @@ DETAIL_RESPONSE_SERIALIZERS = {
 
 
 class ContextNewsAPIView:
+    @contextmanager
+    def editable_project_news(self):
+        project_id = self.kwargs.get("project_pk")
+        if project_id is None:
+            yield None
+            return
+
+        # Submission takes the same Project lock before setting submitted.
+        with transaction.atomic():
+            project = get_object_or_404(
+                Project.objects.select_for_update(), pk=project_id
+            )
+            require_editable_submission(project)
+            yield project
+
     def get_queryset(self):
         return get_news_queryset_for_context(self.kwargs)
 
@@ -82,12 +100,12 @@ class NewsList(ContextNewsAPIView, generics.ListCreateAPIView):
         data = serializer.validated_data
 
         if kwargs.get("project_pk"):
-            project = get_object_or_404(Project, pk=kwargs["project_pk"])
-            news = create_project_news(project, request.user, data)
-            return Response(
-                self.get_detail_response_serializer_class()(news).data,
-                status=status.HTTP_201_CREATED,
-            )
+            with self.editable_project_news() as project:
+                news = create_project_news(project, request.user, data)
+                return Response(
+                    self.get_detail_response_serializer_class()(news).data,
+                    status=status.HTTP_201_CREATED,
+                )
         if kwargs.get("user_pk"):
             user = get_object_or_404(User, pk=kwargs["user_pk"])
             news = create_user_news(user, request.user, data)
@@ -128,19 +146,24 @@ class NewsDetail(ContextNewsAPIView, generics.RetrieveUpdateDestroyAPIView):
         )
 
     def update(self, request: Request, *args, **kwargs) -> Response:
-        news = self.get_news_object()
-        context = {"user": request.user}
-        serializer = NewsUpdateSerializer(
-            news,
-            data=request.data,
-            context={"request": request},
-            partial=kwargs.get("partial", False),
-        )
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(
-            self.get_detail_response_serializer_class()(news, context=context).data
-        )
+        with self.editable_project_news():
+            news = self.get_news_object()
+            context = {"user": request.user}
+            serializer = NewsUpdateSerializer(
+                news,
+                data=request.data,
+                context={"request": request},
+                partial=kwargs.get("partial", False),
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(
+                self.get_detail_response_serializer_class()(news, context=context).data
+            )
+
+    def destroy(self, request: Request, *args, **kwargs) -> Response:
+        with self.editable_project_news():
+            return super().destroy(request, *args, **kwargs)
 
 
 class NewsDetailSetViewed(ContextNewsAPIView, generics.CreateAPIView):

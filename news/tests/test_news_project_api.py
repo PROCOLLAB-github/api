@@ -4,8 +4,15 @@ from rest_framework.test import APIClient
 
 from core.models import Like, View
 from news.models import News
+from partner_programs.models import PartnerProgramProject
 
-from .helpers import create_news_for, create_project, create_user, create_user_file
+from .helpers import (
+    create_news_for,
+    create_partner_program,
+    create_project,
+    create_user,
+    create_user_file,
+)
 
 
 class ProjectScopedNewsAPITests(TestCase):
@@ -98,6 +105,44 @@ class ProjectScopedNewsAPITests(TestCase):
 
         self.assertEqual(delete_response.status_code, 204)
         self.assertFalse(News.objects.filter(pk=news.id).exists())
+
+    def test_submitted_project_copy_preserves_news_and_original_can_publish(self):
+        self.client.force_authenticate(self.leader)
+        program = create_partner_program()
+        program.is_competitive = True
+        program.save(update_fields=["is_competitive"])
+        project_copy = create_project(leader=self.leader)
+        news = create_news_for(project_copy, text="News saved before submission")
+        PartnerProgramProject.objects.create(
+            partner_program=program,
+            project=project_copy,
+            source_project=self.project,
+            submitted=True,
+        )
+        feed_url = f"/projects/{project_copy.id}/news/"
+        entry_url = f"{feed_url}{news.id}/"
+
+        self.assertEqual(self.client.get(feed_url).status_code, 200)
+        self.assertEqual(self.client.get(entry_url).status_code, 200)
+        self.assertEqual(
+            self.client.post(feed_url, {"text": "New post"}, format="json").status_code,
+            403,
+        )
+        self.assertEqual(
+            self.client.patch(entry_url, {"text": "Changed"}, format="json").status_code,
+            403,
+        )
+        self.assertEqual(self.client.delete(entry_url).status_code, 403)
+        news.refresh_from_db()
+        self.assertEqual(news.text, "News saved before submission")
+        self.assertEqual(
+            self.client.post(
+                f"/projects/{self.project.id}/news/",
+                {"text": "New post on the original"},
+                format="json",
+            ).status_code,
+            201,
+        )
 
     def test_project_news_update_rejects_file_of_another_user(self):
         self.client.force_authenticate(self.leader)
