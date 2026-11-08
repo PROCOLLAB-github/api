@@ -113,7 +113,10 @@ class ProjectScopedNewsAPITests(TestCase):
         program.save(update_fields=["is_competitive"])
         project_copy = create_project(leader=self.leader)
         PartnerProgramUserProfile.objects.create(
-            partner_program=program, user=self.leader, project=project_copy
+            partner_program=program,
+            user=self.leader,
+            project=project_copy,
+            partner_program_data={},
         )
         news = create_news_for(project_copy, text="News saved before submission")
         PartnerProgramProject.objects.create(
