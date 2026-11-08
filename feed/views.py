@@ -4,24 +4,35 @@ from rest_framework.views import APIView
 from feed.pagination import FeedPagination
 from feed.services import get_liked_news
 from news.models import News
+from news.services import FEED_RECORD_TEXT
 from projects.models import Project
 from vacancy.models import Vacancy
 
 from .serializers import FeedItemResponseSerializer
 
 
+PROJECT_FEED = Q(content_type__model="project")
+PROJECT_RECORD = Q(text=FEED_RECORD_TEXT)
+PROJECT_NEWS = PROJECT_FEED & ~PROJECT_RECORD
+NEW_PROJECTS = PROJECT_FEED & PROJECT_RECORD
+COMMUNITY_NEWS = Q(content_type__model="customuser")
+VACANCIES = Q(content_type__model="vacancy")
+
+FEED_FILTERS = {
+    "all_news": PROJECT_NEWS | COMMUNITY_NEWS,
+    "project_news": PROJECT_NEWS,
+    "news": COMMUNITY_NEWS,
+    "vacancy": VACANCIES,
+    "new_project": NEW_PROJECTS,
+    # Existing clients still request the combined project category.
+    "project": PROJECT_FEED,
+    "customuser": COMMUNITY_NEWS,
+}
+
+
 class NewSimpleFeed(APIView):
     serializer_class = FeedItemResponseSerializer
     pagination_class = FeedPagination
-
-    def _get_filter_data(self) -> list[str]:
-        filter_queries: str | None = self.request.query_params.get("type")
-        filter_queries: str = filter_queries if filter_queries else ""  # existence check
-
-        news_types: list[str] = filter_queries.split("|")
-        if "news" in news_types:
-            news_types.append("customuser")
-        return [news_type for news_type in news_types if news_type != "partnerprogram"]
 
     def get_visible_queryset(self) -> QuerySet[News]:
         queryset = News.objects.select_related("content_type").prefetch_related(
@@ -46,21 +57,29 @@ class NewSimpleFeed(APIView):
         return queryset
 
     def get_queryset(self) -> QuerySet[News]:
+        filters = Q(pk__in=[])
+        for category in self.request.query_params.get("type", "").split("|"):
+            if category in FEED_FILTERS:
+                filters |= FEED_FILTERS[category]
+
         return (
             self.get_visible_queryset()
-            .filter(content_type__model__in=self._get_filter_data())
+            .filter(filters)
             .order_by("-datetime_created", "-pk")
         )
 
     def get_category_counts(self) -> dict[str, int]:
         # Программы и образование пока не включены в ленту; не считаем скрытый контент.
         counts = self.get_visible_queryset().aggregate(
-            project=Count("pk", filter=Q(content_type__model="project")),
-            vacancy=Count("pk", filter=Q(content_type__model="vacancy")),
-            news=Count("pk", filter=Q(content_type__model="customuser")),
+            project_news=Count("pk", filter=PROJECT_NEWS),
+            new_project=Count("pk", filter=NEW_PROJECTS),
+            vacancy=Count("pk", filter=VACANCIES),
+            news=Count("pk", filter=COMMUNITY_NEWS),
         )
         return {
             "all": sum(counts.values()),
+            "all_news": counts["project_news"] + counts["news"],
+            "project": counts["project_news"] + counts["new_project"],
             **counts,
             "partnerprogram": 0,
             "education": 0,

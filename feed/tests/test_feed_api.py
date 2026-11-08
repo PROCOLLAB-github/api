@@ -84,6 +84,38 @@ class FeedAPITests(TestCase):
             self.get_feed_record(project).datetime_created,
         )
 
+    def test_feed_separates_publications_from_new_projects_before_pagination(self):
+        project = create_project(name="Project with a publication")
+        project_news = create_news_for(project, text="Project publication")
+        user_news = create_news_for(self.user, text="Community publication")
+        new_project = create_project(name="Newest project without a publication")
+        vacancy = create_vacancy(project=project)
+        create_news_for(create_partner_program(name="Program"), text="Program publication")
+
+        cases = (
+            ("all_news", [("news", user_news.pk), ("news", project_news.pk)]),
+            ("project_news", [("news", project_news.pk)]),
+            ("news", [("news", user_news.pk)]),
+            ("vacancy", [("vacancy", vacancy.pk)]),
+            ("new_project", [("project", new_project.pk), ("project", project.pk)]),
+            ("partnerprogram", []),
+            ("education", []),
+        )
+        for category, expected in cases:
+            with self.subTest(category=category):
+                received = []
+                for offset in range(max(len(expected), 1)):
+                    response = self.client.get(
+                        "/feed/", {"type": category, "limit": 1, "offset": offset}
+                    )
+                    self.assertEqual(response.status_code, 200)
+                    self.assertEqual(response.data["count"], len(expected))
+                    received.extend(
+                        (item["type_model"], item["content"]["id"])
+                        for item in response.data["results"]
+                    )
+                self.assertEqual(received, expected)
+
     def test_feed_returns_vacancy_feed_record_as_vacancy_content(self):
         vacancy = create_vacancy(role="Backend developer")
 
@@ -129,7 +161,10 @@ class FeedAPITests(TestCase):
 
         expected_counts = {
             "all": 5,
+            "all_news": 2,
             "project": 2,
+            "project_news": 1,
+            "new_project": 1,
             "vacancy": 2,
             "news": 1,
             "partnerprogram": 0,
