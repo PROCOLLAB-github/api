@@ -18,10 +18,36 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  docker-image:
+    name: Production Docker image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build production Dockerfile without publishing
+        run: docker build --tag procollab-prod-dependencies-ci .
+
+      - name: Check production configuration inside the image
+        run: |
+          docker run --rm \
+            -e DJANGO_SETTINGS_MODULE=procollab.settings_ci \
+            -e DJANGO_SECRET_KEY=ci-only-image-test-secret \
+            procollab-prod-dependencies-ci python manage.py check
+
+      - name: Test native CV PDF and persisted credentials inside the image
+        run: |
+          docker run --rm \
+            -e DEBUG=True \
+            -e NEXTGEN_SURFACE_ENABLED=False \
+            -e DJANGO_SECRET_KEY=ci-only-image-test-secret \
+            procollab-prod-dependencies-ci python manage.py test \
+            core.test_dependency_compatibility users.tests.test_cv_native_pdf --verbosity 2
+
   postgres-tests:
     name: Backend PostgreSQL CI
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
 
     services:
       postgres:
@@ -64,7 +90,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install "poetry==1.2.2"
+          python -m pip install "poetry==2.5.1"
           poetry config virtualenvs.create true
           poetry install --no-interaction --no-ansi --no-root
 
