@@ -272,7 +272,11 @@ def public_data(program, user):
     if is_white_label_program(program.pk):
         data["account_mode"] = "email_password"
         brand = get_instance_config()
-        data["branding"] = {"name": brand.brand_name, "logo_url": brand.logo_url}
+        data["branding"] = {
+            "name": brand.brand_name,
+            "logo_url": brand.logo_url,
+            "logo_background": brand.logo_background,
+        }
     return data
 
 

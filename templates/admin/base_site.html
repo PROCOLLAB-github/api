@@ -1,0 +1,8 @@
+{% extends "admin/base_site.html" %}
+{% block title %}{% if instance_brand %}{{ title }} | {{ instance_brand.brand_name }}{% else %}{{ block.super }}{% endif %}{% endblock %}
+{% block branding %}
+{% if instance_brand %}
+<div id="site-name"><a href="{% url 'admin:index' %}">{% if instance_brand.logo_url %}<img src="{{ instance_brand.logo_url }}" alt="{{ instance_brand.brand_name }}" height="32" style="vertical-align:middle;margin-right:12px;{% if instance_brand.logo_background == 'dark' %}background:#222;padding:6px{% endif %}">{% endif %}{{ instance_brand.brand_name }} — администрирование</a></div>
+{% else %}{{ block.super }}{% endif %}
+{% endblock %}
+{% block extrahead %}{{ block.super }}{% if instance_brand.favicon_url %}<link rel="icon" href="{{ instance_brand.favicon_url }}">{% endif %}{% endblock %}

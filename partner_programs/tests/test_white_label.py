@@ -32,11 +32,29 @@ WHITE_LABEL_SETTINGS = {
     "WHITE_LABEL_BRAND_NAME": "Кейс-чемпионат клиента",
     "WHITE_LABEL_FRONTEND_URL": "https://championship.example.test",
     "WHITE_LABEL_LOGO_URL": "https://championship.example.test/logo.svg",
+    "WHITE_LABEL_FAVICON_URL": "",
+    "WHITE_LABEL_LOGO_BACKGROUND": "transparent",
 }
 
 
 @override_settings(**WHITE_LABEL_SETTINGS)
 class WhiteLabelConfigurationTests(SimpleTestCase):
+    def test_favicon_and_logo_background_validation(self):
+        for changed in (
+            {
+                "WHITE_LABEL_FAVICON_URL": "https://user:secret@outside.example.test/icon.svg"
+            },
+            {"WHITE_LABEL_FAVICON_URL": "http://outside.example.test/icon.svg"},
+            {"WHITE_LABEL_LOGO_BACKGROUND": "url(https://outside.example.test)"},
+        ):
+            with self.subTest(changed=changed), override_settings(**changed):
+                self.assertTrue(check_white_label(None))
+        with override_settings(
+            WHITE_LABEL_FAVICON_URL="https://client.example.test/icon.svg",
+            WHITE_LABEL_LOGO_BACKGROUND="dark",
+        ):
+            self.assertEqual(check_white_label(None), [])
+
     def test_valid_configuration(self):
         self.assertEqual(check_white_label(None), [])
 
@@ -79,6 +97,55 @@ class WhiteLabelConfigurationTests(SimpleTestCase):
 
 @override_settings(**TEST_REGISTRATION_SETTINGS)
 class WhiteLabelRegistrationTests(TestCase):
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_role_invitations_use_instance_brand_and_keep_normal_fallback(self):
+        from partner_programs.models import OrganizerInvitation
+        from partner_programs.tasks import send_organizer_invitation
+        from project_rates.models import ExpertInvitation
+        from project_rates.tasks import send_expert_invitation
+        from project_rates.workspace import digest
+
+        for model, task, role in (
+            (OrganizerInvitation, send_organizer_invitation, "organizer"),
+            (ExpertInvitation, send_expert_invitation, "expert"),
+        ):
+            token = f"synthetic-{role}-invitation-token"
+            row = model.objects.create(
+                partner_program=self.program,
+                email=f"{role}@example.test",
+                token_digest=digest(token),
+                expires_at=timezone.now() + timedelta(days=1),
+            )
+            task(row.pk, token)
+            message = mail.outbox[-1]
+            self.assertIn(WHITE_LABEL_SETTINGS["WHITE_LABEL_BRAND_NAME"], message.subject)
+            self.assertIn(
+                f"https://championship.example.test/{role}-invitation/{token}",
+                message.body,
+            )
+            self.assertNotIn("PROCOLLAB", message.body + message.alternatives[0][0])
+            with override_settings(WHITE_LABEL_ENABLED=False):
+                task(row.pk, token)
+            self.assertIn("PROCOLLAB", mail.outbox[-1].subject)
+
+    def test_demo_limits_registration_to_synthetic_email_without_partial_account(self):
+        with override_settings(WHITE_LABEL_DEMO_EMAIL_DOMAIN="example.test"):
+            result = self.signup(email="participant@example.com")
+        self.assertEqual(result.status_code, 400)
+        self.assertFalse(
+            CustomUser.objects.filter(email="participant@example.com").exists()
+        )
+
+    def test_admin_uses_instance_brand_and_normal_mode_keeps_default(self):
+        admin = create_user(is_staff=True, is_superuser=True, is_active=True)
+        self.client.force_login(admin)
+        response = self.client.get("/admin/")
+        self.assertContains(response, "Кейс-чемпионат клиента — администрирование")
+        self.assertNotContains(response, "| Django site admin")
+        with override_settings(WHITE_LABEL_ENABLED=False):
+            normal = self.client.get("/admin/")
+        self.assertNotContains(normal, "Кейс-чемпионат клиента — администрирование")
+
     def setUp(self):
         cache.clear()
         self.addCleanup(cache.clear)
@@ -127,6 +194,9 @@ class WhiteLabelRegistrationTests(TestCase):
                 "program_id",
                 "brand_name",
                 "logo_url",
+                "favicon_url",
+                "logo_background",
+                "demo_mode",
                 "frontend_url",
                 "registration_url",
                 "program_url",
@@ -148,6 +218,7 @@ class WhiteLabelRegistrationTests(TestCase):
             {
                 "name": WHITE_LABEL_SETTINGS["WHITE_LABEL_BRAND_NAME"],
                 "logo_url": WHITE_LABEL_SETTINGS["WHITE_LABEL_LOGO_URL"],
+                "logo_background": "transparent",
             },
         )
         other = f"/programs/{self.other_program.pk}/registration/"

@@ -35,7 +35,14 @@ class Command(BaseCommand):
         if not (
             getattr(settings, "WHITE_LABEL_DEMO_ALLOWED", False)
             and connection.vendor == "postgresql"
-            and database["HOST"] in ("127.0.0.1", "localhost", "::1")
+            and (
+                database["HOST"] in ("127.0.0.1", "localhost", "::1")
+                or (
+                    database["HOST"] == "db"
+                    and getattr(settings, "WHITE_LABEL_DEMO_CONTAINER_HOST", None) == "db"
+                    and database["NAME"].startswith("procollab_white_label_pilot")
+                )
+            )
             and database["NAME"].startswith(
                 ("procollab_white_label", "test_procollab_white_label")
             )
@@ -86,7 +93,7 @@ class Command(BaseCommand):
         program, created = PartnerProgram.objects.get_or_create(
             pk=config.program_id,
             defaults={
-                "name": "Демонстрационный кейс-чемпионат",
+                "name": f"Демо кейс-чемпионата «{config.brand_name}»",
                 "tag": "white-label-demo",
                 "city": "Тестовая среда",
                 "description": "Вымышленные данные для проверки отдельного экземпляра.",

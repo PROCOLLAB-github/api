@@ -19,6 +19,8 @@ class WhiteLabelConfig:
     brand_name: str = "PROCOLLAB"
     logo_url: str = ""
     frontend_url: str = ""
+    favicon_url: str = ""
+    logo_background: str = "transparent"
 
 
 def get_config() -> WhiteLabelConfig:
@@ -29,6 +31,10 @@ def get_config() -> WhiteLabelConfig:
     brand_name = getattr(settings, "WHITE_LABEL_BRAND_NAME", "").strip()
     origin = getattr(settings, "WHITE_LABEL_FRONTEND_URL", "").rstrip("/")
     logo_url = getattr(settings, "WHITE_LABEL_LOGO_URL", "").strip()
+    favicon_url = getattr(settings, "WHITE_LABEL_FAVICON_URL", "").strip()
+    logo_background = getattr(settings, "WHITE_LABEL_LOGO_BACKGROUND", "transparent")
+    if logo_background not in ("transparent", "dark"):
+        raise ImproperlyConfigured("WHITE_LABEL_LOGO_BACKGROUND: transparent или dark.")
     if isinstance(program_id, bool) or not isinstance(program_id, int) or program_id < 1:
         raise ImproperlyConfigured("WHITE_LABEL_PROGRAM_ID: укажите положительный ID.")
     if (
@@ -55,9 +61,11 @@ def get_config() -> WhiteLabelConfig:
             )
         ):
             raise ValidationError("origin")
-        if logo_url:
-            URLValidator(schemes=["https"])(logo_url)
-            logo = urlsplit(logo_url)
+        for asset in (logo_url, favicon_url):
+            if not asset:
+                continue
+            URLValidator(schemes=["https"])(asset)
+            logo = urlsplit(asset)
             if logo.username or logo.password:
                 raise ValidationError("logo credentials")
     except (ValidationError, ValueError):
@@ -65,7 +73,14 @@ def get_config() -> WhiteLabelConfig:
             "Укажите HTTPS origin в WHITE_LABEL_FRONTEND_URL и HTTPS URL логотипа. "
             "HTTP разрешен только для локальной разработки."
         )
-    return WhiteLabelConfig(True, program_id, brand_name, logo_url, origin)
+    return WhiteLabelConfig(
+        True, program_id, brand_name, logo_url, origin, favicon_url, logo_background
+    )
+
+
+def template_context(request):
+    config = get_config()
+    return {"instance_brand": config} if config.enabled else {}
 
 
 def is_white_label_program(program_id) -> bool:
@@ -99,6 +114,9 @@ class InstanceConfigView(APIView):
                 program_id=config.program_id,
                 brand_name=config.brand_name,
                 logo_url=config.logo_url,
+                favicon_url=config.favicon_url,
+                logo_background=config.logo_background,
+                demo_mode=bool(getattr(settings, "WHITE_LABEL_DEMO_EMAIL_DOMAIN", "")),
                 frontend_url=config.frontend_url,
                 registration_url=(
                     f"{config.frontend_url}/program-registration/{config.program_id}"

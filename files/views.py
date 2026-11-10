@@ -4,7 +4,7 @@ from rest_framework import permissions, status
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
-from files.service import CDN, SelectelSwiftStorage
+from files.service import CDN, configured_storage
 from files.models import UserFile
 from files.serializers import UserFileSerializer
 
@@ -14,7 +14,7 @@ class FileView(generics.GenericAPIView):
     serializer_class = UserFileSerializer
     queryset = UserFile.objects.all()
 
-    cdn = CDN(storage=SelectelSwiftStorage())
+    cdn = CDN(storage=configured_storage())
 
     @transaction.atomic
     def post(self, request):

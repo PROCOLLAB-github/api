@@ -8,11 +8,11 @@ from django.db.models import Q
 from rest_framework.exceptions import APIException
 
 from files.models import UserFile
-from files.service import CDN, SelectelSwiftStorage
+from files.service import CDN, configured_storage
 from projects.models import DefaultProjectAvatar, DefaultProjectCover, Project
 
 logger = logging.getLogger(__name__)
-cdn = CDN(storage=SelectelSwiftStorage())
+cdn = CDN(storage=configured_storage())
 
 
 class DefaultCoverUnavailable(APIException):

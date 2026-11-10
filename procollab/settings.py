@@ -26,6 +26,10 @@ WHITE_LABEL_ENABLED = config("WHITE_LABEL_ENABLED", default=False, cast=bool)
 WHITE_LABEL_PROGRAM_ID = config("WHITE_LABEL_PROGRAM_ID", default=0, cast=int)
 WHITE_LABEL_BRAND_NAME = config("WHITE_LABEL_BRAND_NAME", default="", cast=str)
 WHITE_LABEL_LOGO_URL = config("WHITE_LABEL_LOGO_URL", default="", cast=str)
+WHITE_LABEL_FAVICON_URL = config("WHITE_LABEL_FAVICON_URL", default="", cast=str)
+WHITE_LABEL_LOGO_BACKGROUND = config(
+    "WHITE_LABEL_LOGO_BACKGROUND", default="transparent", cast=str
+)
 WHITE_LABEL_FRONTEND_URL = config("WHITE_LABEL_FRONTEND_URL", default="", cast=str)
 WHITE_LABEL_API_HOST = config("WHITE_LABEL_API_HOST", default="", cast=str)
 WHITE_LABEL_DEMO_ALLOWED = config("WHITE_LABEL_DEMO_ALLOWED", default=False, cast=bool)
@@ -157,6 +161,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "procollab.white_label.template_context",
             ],
         },
     },

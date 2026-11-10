@@ -82,6 +82,16 @@ class SignupWrite(EnrollmentWrite):
 
 
 class WhiteLabelSignupWrite(SignupWrite):
+    def validate_email(self, value):
+        from django.conf import settings
+
+        domain = getattr(settings, "WHITE_LABEL_DEMO_EMAIL_DOMAIN", "")
+        if domain and value.rsplit("@", 1)[-1].lower() != domain:
+            raise serializers.ValidationError(
+                "В демо используйте адрес с доменом example.test."
+            )
+        return value
+
     first_name = serializers.CharField(
         max_length=255,
         validators=CustomUser._meta.get_field("first_name").validators,

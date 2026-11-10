@@ -1,0 +1,92 @@
+name: procollab-pilot
+
+services:
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    mem_limit: 384m
+    cpus: 0.25
+    environment:
+      POSTGRES_DB: ${DATABASE_NAME}
+      POSTGRES_USER: ${DATABASE_USER}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+    volumes:
+      - pilot-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    mem_limit: 128m
+    cpus: 0.10
+    volumes:
+      - pilot-redis:/data
+
+  web:
+    build:
+      context: ./api
+    image: procollab-pilot-api:local
+    command: ["daphne", "-b", "0.0.0.0", "-p", "8000", "--root-path", "/backend", "procollab.asgi:application"]
+    restart: unless-stopped
+    mem_limit: 768m
+    cpus: 0.75
+    env_file: .env
+    environment:
+      DJANGO_SETTINGS_MODULE: procollab.settings_pilot
+      DEBUG: "False"
+      DATABASE_HOST: db
+      DATABASE_PORT: "5432"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - ./data:/procollab/pilot-data
+      - ./logs:/procollab/log
+
+  worker:
+    image: procollab-pilot-api:local
+    restart: unless-stopped
+    mem_limit: 512m
+    cpus: 0.25
+    env_file: .env
+    environment:
+      DJANGO_SETTINGS_MODULE: procollab.settings_pilot
+      DEBUG: "False"
+      DATABASE_HOST: db
+      DATABASE_PORT: "5432"
+    command: ["celery", "-A", "procollab", "worker", "--loglevel=INFO", "--concurrency=1"]
+    depends_on:
+      - web
+    volumes:
+      - ./data:/procollab/pilot-data
+      - ./logs:/procollab/log
+
+  gateway:
+    image: nginx:1.28-alpine
+    restart: unless-stopped
+    mem_limit: 64m
+    cpus: 0.10
+    command:
+      - sh
+      - -c
+      - cp /run/pilot.htpasswd /etc/nginx/pilot.htpasswd && chown nginx:nginx /etc/nginx/pilot.htpasswd && chmod 400 /etc/nginx/pilot.htpasswd && exec nginx -g 'daemon off;'
+    ports:
+      - "127.0.0.1:18081:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./access.htpasswd:/run/pilot.htpasswd:ro
+      - ./frontend:/srv/pilot/frontend:ro
+      - ./brand:/srv/pilot/brand:ro
+      - ./data:/srv/pilot/data:ro
+    depends_on:
+      - web
+
+volumes:
+  pilot-db:
+  pilot-redis:

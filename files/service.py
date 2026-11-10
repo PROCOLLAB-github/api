@@ -1,9 +1,13 @@
 import time
+from pathlib import PurePosixPath
+from urllib.parse import unquote, urlsplit
+from uuid import uuid4
 from abc import ABC, abstractmethod
 
 import requests
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.files.storage import FileSystemStorage
 from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
 from requests import Response
 
@@ -136,6 +140,50 @@ class SelectelSwiftStorage(Storage):
                 "Couldn't generate a token for Selectel Swift API (selcdn)"
             )
         return response.headers["x-subject-token"]
+
+
+class PilotFileStorage(Storage):
+    """Файлы изолированного пилота не используют общий контейнер Selectel."""
+
+    def __init__(self):
+        self.storage = FileSystemStorage()
+
+    def upload(self, file: File, user: User) -> FileInfo:
+        suffix = f".{file.extension}" if file.extension else ""
+        name = self.storage.save(f"uploads/{user.pk}/{uuid4().hex}{suffix}", file.buffer)
+        return FileInfo(
+            url=settings.WHITE_LABEL_FRONTEND_URL.rstrip("/") + self.storage.url(name),
+            name=file.name,
+            extension=file.extension,
+            mime_type=file.content_type,
+            size=file.size,
+            detected_mime_type=file.detected_mime_type,
+        )
+
+    def delete(self, url: str) -> Response:
+        origin = settings.WHITE_LABEL_FRONTEND_URL.rstrip("/")
+        prefix = origin + settings.MEDIA_URL
+        if not url.startswith(prefix):
+            raise ValueError("Файл не принадлежит хранилищу пилота.")
+        offset = len(settings.MEDIA_URL)
+        name = unquote(urlsplit(url).path[offset:])
+        if (
+            not name
+            or PurePosixPath(name).is_absolute()
+            or ".." in PurePosixPath(name).parts
+            or "\\" in name
+        ):
+            raise ValueError("Некорректный путь файла.")
+        self.storage.delete(name)
+        response = Response()
+        response.status_code = 204
+        return response
+
+
+def configured_storage() -> Storage:
+    if getattr(settings, "PILOT_LOCAL_FILES", False):
+        return PilotFileStorage()
+    return SelectelSwiftStorage()
 
 
 class CDN:
