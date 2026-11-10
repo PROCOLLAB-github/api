@@ -7,6 +7,7 @@ from django.template.loader import render_to_string
 from django_rest_passwordreset.signals import reset_password_token_created
 
 from users.models import CustomUser, Expert, Investor, Member, Mentor
+from procollab.white_label import frontend_url, get_config
 
 
 @receiver(post_save, sender=CustomUser)
@@ -46,8 +47,10 @@ def update_dataset_migration_applied(sender, instance, **kwargs):
 
 @receiver(reset_password_token_created)
 def password_reset_token_created(sender, instance, reset_password_token, *args, **kwargs):
+    brand = get_config()
     reset_password_url = (
-        f"https://app.procollab.ru/auth/reset_password/?token={reset_password_token.key}"
+        f"{frontend_url('https://app.procollab.ru')}/auth/reset_password/"
+        f"?token={reset_password_token.key}"
     )
     registration_program = getattr(getattr(instance, "request", None), "data", {}).get(
         "registration_program_id"
@@ -62,7 +65,7 @@ def password_reset_token_created(sender, instance, reset_password_token, *args, 
             registration_config__published__mode="native",
         ).exists():
             reset_password_url = (
-                settings.EXPERT_WORKSPACE_FRONTEND_URL.rstrip("/")
+                frontend_url(settings.EXPERT_WORKSPACE_FRONTEND_URL)
                 + "/program-password-reset/?"
                 + urlencode(
                     {
@@ -87,7 +90,7 @@ def password_reset_token_created(sender, instance, reset_password_token, *args, 
             invitation = None
         if invitation and invitation.email == reset_password_token.user.email.lower():
             reset_password_url = (
-                settings.EXPERT_WORKSPACE_FRONTEND_URL.rstrip("/")
+                frontend_url(settings.EXPERT_WORKSPACE_FRONTEND_URL)
                 + "/expert-password-reset/?"
                 + urlencode(
                     {
@@ -114,7 +117,7 @@ def password_reset_token_created(sender, instance, reset_password_token, *args, 
             and invitation.email.lower() == reset_password_token.user.email.lower()
         ):
             reset_password_url = (
-                settings.EXPERT_WORKSPACE_FRONTEND_URL.rstrip("/")
+                frontend_url(settings.EXPERT_WORKSPACE_FRONTEND_URL)
                 + "/organizer-password-reset/?"
                 + urlencode(
                     {
@@ -127,13 +130,17 @@ def password_reset_token_created(sender, instance, reset_password_token, *args, 
         "user": reset_password_token.user,
         "email": reset_password_token.user.email,
         "reset_password_url": reset_password_url,
+        "brand_name": brand.brand_name,
     }
 
-    email_html_message = render_to_string("email/password_reset_email.html", context)
-    email_plaintext_message = render_to_string("email/password_reset_email.txt", context)
+    template = "white_label_password_reset" if brand.enabled else "password_reset_email"
+    email_html_message = render_to_string(f"email/{template}.html", context)
+    email_plaintext_message = render_to_string(f"email/{template}.txt", context)
 
     msg = EmailMultiAlternatives(
-        "Сброс пароля | Procollab",
+        f"Сброс пароля | {brand.brand_name}"
+        if brand.enabled
+        else "Сброс пароля | Procollab",
         email_plaintext_message,
         settings.EMAIL_USER,
         [reset_password_token.user.email],

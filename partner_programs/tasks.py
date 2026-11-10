@@ -84,6 +84,7 @@ def send_program_registration_confirmation(pending_id, generation):
     from django.core.mail import EmailMultiAlternatives
     from django.template.loader import render_to_string
     from urllib.parse import urlencode
+    from procollab.white_label import get_config
     from partner_programs.models import PendingProgramRegistration
     from partner_programs.services.native_registration import (
         confirmation_token,
@@ -96,15 +97,17 @@ def send_program_registration_confirmation(pending_id, generation):
     pending = rows.select_related("program", "user").first()
     if not pending:
         return
+    brand = get_config()
     context = {
         "program_name": pending.program.name,
         "first_name": pending.user.first_name,
+        "brand_name": brand.brand_name,
         "confirmation_url": f"{frontend_url()}/program-registration/{pending.program_id}#"
         + urlencode({"confirmation": confirmation_token(pending)}),
     }
     try:
         message = EmailMultiAlternatives(
-            "Подтвердите регистрацию в программе | PROCOLLAB",
+            f"Подтвердите регистрацию в программе | {brand.brand_name}",
             render_to_string("email/program_registration.txt", context),
             settings.EMAIL_USER,
             [pending.user.email],

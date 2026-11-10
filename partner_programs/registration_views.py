@@ -15,6 +15,7 @@ from partner_programs.services.management import managed_program
 from partner_programs.services import native_registration as service
 from project_rates.workspace_views import PrivateView
 from users.models import CustomUser
+from procollab.white_label import is_white_label_program
 
 
 class RegistrationInput(StrictFieldsMixin, serializers.Serializer):
@@ -57,9 +58,9 @@ class SignupWrite(EnrollmentWrite):
             raise serializers.ValidationError(
                 {"accept_policy": "Подтвердите согласие с условиями платформы."}
             )
-        if (
-            not data["accept_age"]
-            or (timezone.now().date() - data["birthday"]).days < 14 * 365
+        if not data["accept_age"] or (
+            data["birthday"] is not None
+            and (timezone.now().date() - data["birthday"]).days < 14 * 365
         ):
             raise serializers.ValidationError(
                 {"birthday": "Для регистрации участнику должно быть не менее 14 лет."}
@@ -78,6 +79,29 @@ class SignupWrite(EnrollmentWrite):
         except DjangoValidationError as error:
             raise serializers.ValidationError({"password": error.messages})
         return data
+
+
+class WhiteLabelSignupWrite(SignupWrite):
+    first_name = serializers.CharField(
+        max_length=255,
+        validators=CustomUser._meta.get_field("first_name").validators,
+        required=False,
+        allow_blank=True,
+        default="",
+    )
+    last_name = serializers.CharField(
+        max_length=255,
+        validators=CustomUser._meta.get_field("last_name").validators,
+        required=False,
+        allow_blank=True,
+        default="",
+    )
+    birthday = serializers.DateField(
+        validators=CustomUser._meta.get_field("birthday").validators,
+        required=False,
+        allow_null=True,
+        default=None,
+    )
 
 
 class TokenWrite(RegistrationInput):
@@ -173,9 +197,8 @@ class PublicRegistrationActionView(PublicRegistrationView):
                 raise serializers.ValidationError(
                     "Для своего аккаунта отправьте только анкету."
                 )
-            return Response(
-                service.signup(pk, validated(SignupWrite, request.data)), status=201
-            )
+            form = WhiteLabelSignupWrite if is_white_label_program(pk) else SignupWrite
+            return Response(service.signup(pk, validated(form, request.data)), status=201)
         if action in ("confirm", "resend"):
             data = validated(TokenWrite, request.data)
             return Response(getattr(service, action)(pk, data["token"]))
