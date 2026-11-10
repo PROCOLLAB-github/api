@@ -12,6 +12,7 @@ case "${1:-check}" in
     ;;
   build)
     "$0" check
+    python3 preflight.py --check
     "${compose[@]}" build web
     ;;
   start)

@@ -20,13 +20,75 @@ preflight требует 8 GiB диска и 2560 MiB доступной RAM и 
 `procollab-white-label-pilot-base:20261109`, профиль `pilot_hosted_settings` и
 bind mount `/opt/procollab-white-label-pilot/backend:/procollab`.
 Uploads (`/var/lib/pilot`), static и logs используют собственные named volumes.
-Текущий план для `5.188.81.217`: проверить runtime settings, Django version,
-программы, vhost и frontend существующего пилота.
-Затем подготовить обновление именно этого экземпляра с сохранением его DB
-volume и данных, предварительной резервной копией и откатом только пилота.
-Не менять пароли, проекты dev, общие сертификаты и не перезагружать сервер.
-Имя БД и совместимость `settings_pilot` еще не подтверждены; новый профиль
-нельзя подключать к существующему контейнеру вслепую.
+Сравнение исходников подтвердило 272 отличающихся и 110 отсутствующих runtime
+файлов; в старой БД не применены 48 миграций текущей базы. Native registration
+там отсутствует. В БД четыре существующих аккаунта не с `@example.test`; это
+не основание считать их тестовыми или удалять. Прямой upgrade старой схемы не
+выполняется.
+
+Новый закрытый пилот v2: отдельные web и PostgreSQL 15, своя сеть и новые файлы
+в `/opt/procollab-white-label-pilot-v2`. API слушает только `127.0.0.1:18319`,
+DB не публикует порты. Старые web/DB/compose/backend/файлы остаются для отката.
+Лимиты web — 768 MiB / 0.5 CPU, PG — 256 MiB / 0.25 CPU, shared_buffers 64 MiB,
+max_connections 40, work_mem 1 MiB. App role не superuser. Для демо используются
+локальные cache/channel layers и синхронные Celery tasks; Redis/worker не нужны.
+
+`hosted.py` жестко проверяет hostname, root, имена/labels старых контейнеров,
+сети и принадлежность routes.inc только домену pilot. Запрещает чужие ресурсы,
+ссылки за пределы v2, несовпадающие artifacts и перезапись активного релиза.
+Перед запуском сохраняет запас памяти 768 MiB и диска 2 GiB плюс бюджет PG.
+Новые контейнеры получают повышенный OOM score, отдельные pids/log limits.
+Основные процессы/настройки Docker, dev/prod, DNS и сертификаты не меняются.
+
+## Существующий сервер: этапы v2
+
+1. Скачать `procollab-pilot-candidate.zip` и `procollab-pilot-runtime.zip` из
+   успешных workflow одного commit. Перенести их в `/root` по SSH. Runtime
+   содержит compressed rootfs и public image config, без секретов.
+2. Проверенным `unpack_candidate.py` распаковать только candidate ZIP в новый
+   каталог. Runtime ZIP не распаковывается: rootfs читается из него потоком.
+3. Из каталога `procollab-pilot` выполнить только проверку:
+
+```sh
+python3 hosted.py check --bundle . --runtime /root/procollab-pilot-runtime.zip
+```
+
+`check` читает ресурсы/конфигурацию и проверяет hashes. Он не создает контейнеры,
+DB, пользователей или nginx-конфигурацию. В JSON есть план ресурсов и dev HTTP.
+Далее отдельные этапы, после успешного результата предыдущего:
+
+```sh
+python3 hosted.py stage --bundle . --runtime /root/procollab-pilot-runtime.zip
+python3 hosted.py switch
+python3 hosted.py status
+```
+
+`stage` создает только v2, делает private backup старой БД/compose/routes,
+проверяет читаемость dump через `pg_restore --list`. Импортирует проверенный
+rootfs потоком (до 8 MiB/s), сохраняя запас диска; конфигурация ENV/CMD/WORKDIR
+восстанавливается и проверена в CI. Новый PG запускается на закрепленном digest,
+миграции/seed выполняются только в новой пустой БД `procollab_white_label_pilot_v2`.
+Временный API проходит instance/native registration/login smoke. Домен остается
+на старом пилоте. Новый пароль DB/Django/демо генерируется только на сервере.
+
+`switch` сохраняет старый pilot routes.inc, применяет новый include и один
+собственный maps-файл, выполняет `nginx -t` и graceful reload. Проверяет закрытый
+вход, branded metadata по HTTPS и прежнюю доступность dev. При ошибке возвращает
+старые routes и reload. Измененные другим оператором файлы не перезаписывает.
+Ни один старый контейнер не останавливается. Все старые DB/volume остаются.
+
+Ручной откат маршрутов:
+
+```sh
+python3 hosted.py rollback
+```
+
+Он возвращает старый пилот, не удаляя новые DB/контейнеры/данные. Каталог старого
+пилота сохраняется для отката и ACME. Прежний `deploy.sh` относится к старой копии;
+для v2 используется `hosted.py`. Данные входа — только на сервере в
+`/opt/procollab-white-label-pilot-v2/access.txt`, root-only. В чат их не отправлять.
+Это подготовка демо; нагрузка 100 участников, реальная почта и приемка клиента
+проверяются отдельно.
 
 Прямой публичный SSH из Codex Cloud в этой среде недоступен; нужен настроенный
 VPN/Tailscale либо выполнение подготовленных команд владельцем в SSH-терминале.

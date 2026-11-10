@@ -86,4 +86,4 @@ jobs:
           path: runtime-artifact/
           compression-level: 0
           if-no-files-found: error
-          retention-days: 2
+          retention-days: 7

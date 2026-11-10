@@ -214,3 +214,40 @@ Nginx syntax и compose config проверены. Celery обрабатывал
 Не проверены: обновление и smoke на реальном сервере, его текущий runtime
 profile/vhost, реальная доставка писем, нагрузка 100 участников и документы
 клиента. Серверная диагностика продолжается; DNS и стенд удаленно не изменялись.
+
+
+### Уточнение rollout по фактическому серверу
+
+Исходный pilot существенно старше `dev`: Django 4.2.11, 272 отличающихся/110
+отсутствующих файлов, 48 непримененных миграций; native registration отсутствует.
+Существующие четыре аккаунта не с example.test, данные сохраняются целиком.
+Прямой upgrade/очистка старой БД не выполняется.
+
+Подготовлена компактная v2 из web + собственного PostgreSQL 15 с новой пустой
+БД, своей сетью и data в `/opt/procollab-white-label-pilot-v2`. Старый проект
+остается работающим. Новый API — loopback 18319. Inline profile не использует
+Redis/worker; web ограничен 768 MiB / 0.5 CPU, PG 256 MiB / 0.25 CPU, с запасом
+768 MiB RAM / 2 GiB диска для dev. Приложение не использует DB superuser.
+
+Дополнительные критерии:
+
+- H01: check/stage проверяют известные host/project/labels/network/routes; чужие
+  ресурсы, некорректные пути/ссылки и разные revisions artifacts отклоняются.
+- H02: старая DB/compose/backend/контейнеры не меняются; backup локальный private,
+  новые migrations/seed выполняются только в новой DB.
+- H03: запуск ограничен cgroups и resource checks; образ собирается вне dev,
+  импортируется потоком с проверкой SHA, без распаковки docker-save во временный
+  многослойный архив. ENV/CMD/WORKDIR и source revision сохраняются.
+- H04: stage проверяет новый API/native registration/login до переключения домена.
+- H05: switch затрагивает только pilot routes и собственный maps, требует nginx
+  syntax check, dev/public smoke; ошибка откатывает маршруты, чужие правки
+  сохраняются. Нет глобального restart/down/prune/reboot.
+- H06: чистая DB и private secrets создаются локально; наружу email не отправляется,
+  demo ограничен example.test. Старые accounts и новая DB сохраняются при rollback.
+
+Проверено локально: inline HTTPS desktop/mobile flow на свежей DB с отдельным
+несуперпользователем; все миграции + seed; официальный pinned PG init с private
+SQL и non-superuser ролью; host-style nginx template и auth gate; негативные
+helper tests и rollback при ошибке nginx. Runtime export/import с восстановлением
+image config проверен реальным Docker локально на маленьком fixture и в CI на
+полном release image. Реальный server check/stage/switch еще не выполнялись.

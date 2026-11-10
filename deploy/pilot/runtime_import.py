@@ -55,7 +55,7 @@ class RuntimeArchive:
             or not re.fullmatch(
                 r"procollab-white-label-pilot-api:[a-f0-9]{12}", meta.get("image", "")
             )
-            or not isinstance(meta.get("image_size_bytes"), int)
+            or type(meta.get("image_size_bytes")) is not int
             or meta["image_size_bytes"] <= 0
         ):
             raise Refused("Некорректные метаданные runtime artifact.")
@@ -65,11 +65,19 @@ class RuntimeArchive:
         if member not in ("runtime.json", "pilot-api-rootfs.tar.gz"):
             raise Refused("Неизвестный файл runtime.")
         if self.path.is_dir():
+            if member == "runtime.json" and (self.path / member).stat().st_size > 2**20:
+                raise Refused("Метаданные runtime превышают допустимый размер.")
             with (self.path / member).open("rb") as stream:
                 yield stream
         else:
-            with zipfile.ZipFile(self.path) as archive, archive.open(member) as stream:
-                yield stream
+            with zipfile.ZipFile(self.path) as archive:
+                if (
+                    member == "runtime.json"
+                    and archive.getinfo(member).file_size > 2**20
+                ):
+                    raise Refused("Метаданные runtime превышают допустимый размер.")
+                with archive.open(member) as stream:
+                    yield stream
 
     def verify(self):
         digest = hashlib.sha256()

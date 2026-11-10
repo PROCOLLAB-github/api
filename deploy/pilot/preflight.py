@@ -58,6 +58,10 @@ def main(check=False):
         )
         if code:
             failures.append("Нет доступа к локальному Docker.")
+        if "procollab-white-label-pilot-" in output:
+            failures.append(
+                "Уже есть hosted pilot: второй полный стек не устанавливается."
+            )
         code, own = run(
             [
                 "docker",

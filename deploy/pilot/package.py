@@ -32,6 +32,10 @@ def package(api: Path, frontend: Path, target: Path) -> Path:
         "configure.py",
         "pilotctl",
         "preflight.py",
+        "hosted.py",
+        "runtime_import.py",
+        "hosted-maps.conf.template",
+        "hosted-routes.inc.template",
         "README.md",
     ):
         shutil.copy2(source / name, target / name)
