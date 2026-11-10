@@ -1,0 +1,67 @@
+name: Build pilot package
+
+on:
+  pull_request:
+    branches: [dev]
+    paths:
+      - ".github/workflows/pilot-package.yml"
+      - "deploy/pilot/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pilot-package-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package:
+    name: Build pilot artifact (no deployment)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: api
+
+      - name: Read pinned frontend revision
+        id: frontend
+        shell: bash
+        run: |
+          PILOT_FRONTEND_REF="$(cat api/deploy/pilot/frontend-revision.txt)"
+          [[ "$PILOT_FRONTEND_REF" =~ ^[a-f0-9]{40}$ ]]
+          printf 'revision=%s\n' "$PILOT_FRONTEND_REF" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          repository: PROCOLLAB-github/procollab
+          ref: ${{ steps.frontend.outputs.revision }}
+          path: frontend
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build pilot frontend
+        working-directory: frontend
+        env:
+          NG_CLI_ANALYTICS: "false"
+          NG_BUILD_MAX_WORKERS: "2"
+        run: ./node_modules/.bin/ng build social_platform --configuration=pilot --output-path=../frontend-build
+
+      - name: Package committed API, frontend and templates without secrets
+        run: python3 api/deploy/pilot/package.py --api api --frontend frontend-build/browser --target bundle/procollab-pilot
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: procollab-pilot-candidate
+          path: bundle/procollab-pilot.tar.gz
+          if-no-files-found: error
+          retention-days: 7

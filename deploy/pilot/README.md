@@ -34,6 +34,14 @@ VPN/Tailscale либо выполнение подготовленных ком�
 
 ## Сборка пакета
 
+Workflow `Build pilot package` создает artifact `procollab-pilot-candidate`
+на GitHub без деплоя/SSH и без секретов. Он берет Angular из публичного
+репозитория `PROCOLLAB-github/procollab` на точном commit из
+`frontend-revision.txt`, API — из проверяемого checkout. Artifact хранится
+7 дней; публичность репозитория не делает демо доступным без его входа.
+Это исходники и сборка для подготовки rollout, не команда установки второго
+стека на существующий сервер.
+
 В Angular checkout:
 
 ```sh
