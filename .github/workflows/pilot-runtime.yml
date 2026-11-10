@@ -30,7 +30,7 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/pilot-source" runtime-artifact
           git archive HEAD | tar -x -C "$RUNNER_TEMP/pilot-source"
-          PILOT_IMAGE="procollab-white-label-pilot-api:$(git rev-parse --short=12 HEAD)"
+          PILOT_IMAGE="procollab-white-label-pilot-build:$(git rev-parse --short=12 HEAD)"
           docker build --label "org.opencontainers.image.revision=$(git rev-parse HEAD)" --tag "$PILOT_IMAGE" "$RUNNER_TEMP/pilot-source"
           printf 'PILOT_IMAGE=%s\n' "$PILOT_IMAGE" >> "$GITHUB_ENV"
 
@@ -47,26 +47,38 @@ jobs:
             -e WHITE_LABEL_FRONTEND_URL=https://pilot.procollab.ru \
             "$PILOT_IMAGE" python manage.py check
 
-      - name: Export image with provenance and checksum
+      - name: Export streaming rootfs with provenance and checksum
         shell: bash
         run: |
-          docker save "$PILOT_IMAGE" | gzip -1 > runtime-artifact/pilot-api-image.tar.gz
+          PILOT_EXPORT_CONTAINER="$(docker create "$PILOT_IMAGE")"
+          docker export "$PILOT_EXPORT_CONTAINER" | gzip -1 > runtime-artifact/pilot-api-rootfs.tar.gz
+          docker rm "$PILOT_EXPORT_CONTAINER"
           docker image inspect "$PILOT_IMAGE" > "$RUNNER_TEMP/pilot-image-inspect.json"
           python3 - <<'PYINFO'
           import hashlib, json, os
           from pathlib import Path
           import subprocess
           info=json.loads(Path(os.environ['RUNNER_TEMP'],'pilot-image-inspect.json').read_text())[0]
-          archive=Path('runtime-artifact/pilot-api-image.tar.gz')
+          archive=Path('runtime-artifact/pilot-api-rootfs.tar.gz')
           metadata={
-              'image':os.environ['PILOT_IMAGE'], 'image_id':info['Id'],
-              'image_size_bytes':info['Size'], 'architecture':info['Architecture'],
+              'format':'docker-export-v1',
+              'image':os.environ['PILOT_IMAGE'].replace('-pilot-build:', '-pilot-api:'), 'image_size_bytes':info['Size'],
+              'architecture':info['Architecture'], 'config':info['Config'],
               'api_revision':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
               'archive_sha256':hashlib.file_digest(archive.open('rb'),'sha256').hexdigest(),
           }
           Path('runtime-artifact/runtime.json').write_text(json.dumps(metadata,indent=2)+'\n')
           PYINFO
-          (cd runtime-artifact && sha256sum pilot-api-image.tar.gz runtime.json > SHA256SUMS)
+          (cd runtime-artifact && sha256sum pilot-api-rootfs.tar.gz runtime.json > SHA256SUMS)
+
+      - name: Verify streaming import restores image configuration
+        run: |
+          python3 deploy/pilot/runtime_import.py --runtime runtime-artifact
+          PILOT_IMPORTED_IMAGE="$(python3 -c 'import json;print(json.load(open("runtime-artifact/runtime.json"))["image"])')"
+          docker run --rm \
+            -e DJANGO_SETTINGS_MODULE=procollab.settings_ci \
+            -e DJANGO_SECRET_KEY=ci-only-import-check \
+            "$PILOT_IMPORTED_IMAGE" python manage.py check
 
       - uses: actions/upload-artifact@v4
         with:
