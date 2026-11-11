@@ -499,6 +499,26 @@ class WeightedMigrationTests(TransactionTestCase):
             )
             executor = MigrationExecutor(connection)
             executor.migrate(current)
+            old_apps = executor.loader.project_state(
+                [
+                    ("partner_programs", "0043_project_copy_form"),
+                    ("project_rates", "0011_solution_score_value_1000"),
+                ]
+            ).apps
+            old_program = old_apps.get_model("partner_programs", "PartnerProgram")
+            fields = {
+                field.attname: getattr(program, field.attname)
+                for field in old_program._meta.local_fields
+                if not field.primary_key
+            }
+            fields.update(name="Legacy writer", tag="legacy-writer-after-migration")
+            created = old_program.objects.create(**fields)
+            from partner_programs.models import PartnerProgram
+
+            self.assertEqual(
+                PartnerProgram.objects.get(pk=created.pk).evaluation_scoring_mode,
+                "legacy",
+            )
             program.refresh_from_db()
             criterion.refresh_from_db()
             score.refresh_from_db()

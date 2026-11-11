@@ -245,7 +245,7 @@ def backup_database(backup):
     temporary.rename(backup / "database.dump")
 
 
-def rollback(record):
+def rollback(record, *, record_writer=None):
     require(record["phase"] in ("prepared", "active"), "Нет обновления для отката.")
     backup = Path(record["backup"])
     # Все внешние изменения проверяются до остановки контейнера или записи файлов.
@@ -330,7 +330,7 @@ def rollback(record):
             copy_atomic(backup / "frontend" / relative, frontend_path(relative))
     hosted.state_write(record["previous_state"])
     record["phase"] = "rolled_back"
-    save_record(record)
+    (record_writer or save_record)(record)
     return {
         "phase": "rolled_back",
         "database_restored": False,

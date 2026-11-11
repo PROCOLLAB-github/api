@@ -19,6 +19,7 @@ class Migration(migrations.Migration):
                     ("weighted_percent", "Веса, итог от 0 до 100"),
                 ],
                 default="legacy",
+                db_default="legacy",
                 max_length=20,
                 verbose_name="Способ расчета оценки",
             ),

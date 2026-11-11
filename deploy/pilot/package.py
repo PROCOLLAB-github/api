@@ -34,6 +34,8 @@ def package(api: Path, frontend: Path, target: Path) -> Path:
         "preflight.py",
         "hosted.py",
         "upgrade_invites.py",
+        "upgrade_weights.py",
+        "weights_base.json",
         "runtime_import.py",
         "hosted-maps.conf.template",
         "hosted-routes.inc.template",

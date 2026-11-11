@@ -1,0 +1,37 @@
+{
+  "base_source_revision": "95f8375e40f2263b6c1eb727f8ade2e2e95fa403",
+  "base_app_revision": "f7f800e15085555300419d87308b6fdf02e3a945",
+  "patches": {
+    "partner_programs/admin.py": "9f734b5b1f1baf894b9fa7addf4e17fb5aaebde291f4094108886a44f42aedbf",
+    "partner_programs/admin_criteria.py": null,
+    "partner_programs/migrations/0044_partnerprogram_evaluation_scoring_mode.py": null,
+    "partner_programs/models.py": "9328da5c4704866dd0489fcde9809977dc6da05513039667ec13eddd0ea91145",
+    "partner_programs/services/management_criteria.py": "0d60a976f75aab4540ff4b0412936462b37c3bdcf989d2dd84ce56d6f9e1fab1",
+    "partner_programs/services/results.py": "7b448cc40b950c6c822a61ee6bd364c57c1f4cd019f8d4c31f757c02fd8979aa",
+    "partner_programs/services/results_excel.py": "d91a1ea6945f197b199a226632d637a19a0b92a3b19ff1f948877ba5a54e100e",
+    "project_rates/admin.py": "8dea9a74b9513e2fb3a8046aba6362f8fe6b4398f23eda494f6e8c759667ad2c",
+    "project_rates/criteria_policy.py": "1a6fdd73da2c8aa689f307ff243162b030386698980070bb955c18bcad366662",
+    "project_rates/evaluation_math.py": "3e591cb9522e373a4f0b6ec090c094ca5bb680d458f3156843449593725ba292",
+    "project_rates/migrations/0012_criteria_weight_percent_and_more.py": null,
+    "project_rates/models.py": "d0f8b39197c7803b77ebd94bf33f85c0f8f1c8c880e84d8a6decf9dbfe89a900",
+    "project_rates/scoring.py": null,
+    "project_rates/serializers.py": "9f9d39351070789964e4f3008c6ce13f7c0aa27598e643b6c697d4009703e8d7",
+    "project_rates/services.py": "7e11cc291b5bc48068a0db31961e6bdcb6b8b99c436d69196181844023bb2a7b",
+    "project_rates/solution_evaluation.py": "7caad9c059426a707739a0db88dd26c8ae7818ca1a659f61fb6e03b6a552df01",
+    "project_rates/solution_models.py": "18d1425aab284df38dda08e11df8b6f646db40fcb7b1507f6ef35f80ba970776",
+    "project_rates/solution_results.py": "2459a41e7b4ce98295367a252ebcca6f49315eb1c6a80fe1a2cf477cc6d9db69",
+    "project_rates/typing.py": "75e26f1c6b1d0c4919641e9367504ed7a360a21da624541d03b931eaed4ea6aa",
+    "templates/partner_programs/admin/evaluation_criteria.html": null
+  },
+  "protected": {
+    "pyproject.toml": "0d9e46cce81c1fd211ae90c73394119d8bb070885f34d9ee2b64d49c6472ffe7",
+    "poetry.lock": "fd66c215bc4484d4056bdf9aaa1f31867eda35ccbc2a5e50e223491ecadd3f67",
+    "procollab/settings_pilot.py": "9de066782c3ff888f5be3dde0b3f3500377caecf8a1c7a941d1d23646b8038bb",
+    "procollab/settings_pilot_inline.py": "6a311d48ee93d7978a6d4e68e5dcf5919023d096b56ee453f67850752ef27366",
+    "procollab/white_label.py": "23235bf15e5d7574f86663271b62d0bb739fb4e7e64a3cb366c0d2c2e3488d16",
+    "users/filters.py": "0807e0b38b86cdbef47770ed3d0d0ee4846d453e279e356fa67d3027f0514063",
+    "users/serializers.py": "e43e9ec47e70d47b01df5750128258f1a70167ab0fc91b13a50be7ca16cdcfb7",
+    "users/views.py": "59e3af1f80c0d31f5c4cf86d4966d19c637786305a055c6cc57c8089f49e9c17",
+    "users/white_label_candidates.py": "6995344df5ae466f194125f04c3152ba78a6a40819239754b9c416877fcd8831"
+  }
+}

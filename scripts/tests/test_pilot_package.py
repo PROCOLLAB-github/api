@@ -59,6 +59,8 @@ class PilotPackageTests(unittest.TestCase):
                 [name.removeprefix("api/") for name in manifest["files"]],
             )
             self.assertEqual(len(manifest["api_revision"]), 40)
+            self.assertIn("upgrade_weights.py", manifest["files"])
+            self.assertIn("weights_base.json", manifest["files"])
 
     def test_regular_frontend_and_dirty_api_rejected(self):
         with TemporaryDirectory() as temp:
