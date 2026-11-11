@@ -13,6 +13,7 @@ from pathlib import Path
 import pwd
 import re
 import secrets
+import shlex
 import shutil
 import socket
 import subprocess
@@ -45,7 +46,7 @@ PG_IMAGE = (
 DB_NAME = "procollab_white_label_pilot_v2"
 DB_ROLE = "procollab_pilot_v2"
 ROUTES = OLD / "nginx/routes.inc"
-MAPS = Path("/etc/nginx/conf.d/procollab-pilot-v2-maps.conf")
+MAPS = Path("/etc/nginx/sites-enabled/00-procollab-pilot-v2-maps.conf")
 ORIGIN = "https://pilot.procollab.ru"
 LABEL = "io.procollab.pilot.instance"
 IDENTITY = "hosted-v2"
@@ -63,7 +64,8 @@ def digest(path):
 
 def private_write(path, contents):
     path = Path(path)
-    temporary = path.with_name(path.name + ".tmp")
+    # sites-enabled/* не должен подхватить временный конфиг при чужом reload.
+    temporary = path.with_name("." + path.name + ".tmp")
     fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
         with os.fdopen(fd, "w") as stream:
@@ -139,6 +141,73 @@ def candidate():
     return container
 
 
+def http_includes(config):
+    """Только активные include непосредственно внутри http, без комментариев."""
+    lexer = shlex.shlex(config, posix=True, punctuation_chars="{};")
+    lexer.whitespace_split = True
+    lexer.commenters = "#"
+    blocks, statement, result = [], [], []
+    for raw in lexer:
+        tokens = list(raw) if raw and all(c in "{};" for c in raw) else [raw]
+        for token in tokens:
+            if token == "{":
+                blocks.append(statement[0] if statement else "")
+                statement = []
+            elif token == "}":
+                require(blocks, "Неверный контекст nginx.")
+                blocks.pop()
+                statement = []
+            elif token == ";":
+                if (
+                    blocks == ["http"]
+                    and len(statement) == 2
+                    and statement[0] == "include"
+                ):
+                    result.append(statement[1])
+                statement = []
+            else:
+                statement.append(token)
+    require(not blocks, "Незакрытый блок nginx.")
+    return result
+
+
+def validate_maps_include(config):
+    require(
+        any(
+            pattern in http_includes(config)
+            for pattern in (
+                "/etc/nginx/sites-enabled/*",
+                "/etc/nginx/sites-enabled/*.conf",
+            )
+        ),
+        "Нет HTTP include sites-enabled для файла maps; основной nginx не изменяется.",
+    )
+
+
+def nginx_group(config):
+    user = re.search(r"(?m)^\s*user\s+(\S+?)(?:\s+(\S+?))?;", config)
+    if user:
+        return (
+            grp.getgrnam(user.group(2)).gr_gid
+            if user.group(2)
+            else pwd.getpwnam(user.group(1)).pw_gid
+        )
+    # При отсутствии user используются параметры сборки nginx, не догадка о группе.
+    compiled = subprocess.run(["nginx", "-V"], capture_output=True, text=True, check=True)
+    flags = shlex.split(compiled.stdout + "\n" + compiled.stderr)
+    defaults = dict(
+        value.split("=", 1)
+        for value in flags
+        if value.startswith(("--user=", "--group="))
+    )
+    require("--user" in defaults, "Не удалось определить пользователя nginx.")
+    return (
+        grp.getgrnam(defaults["--group"]).gr_gid
+        if "--group" in defaults
+        else pwd.getpwnam(defaults["--user"]).pw_gid
+    )
+
+
 def scope():
     require(
         os.geteuid() == 0 and socket.gethostname() == "procollab-dev",
@@ -184,10 +253,7 @@ def scope():
     config = result.stdout
     if not MAPS.exists():
         require("$ppv2_" not in config, "Префикс переменных nginx v2 уже используется.")
-    require(
-        "include /etc/nginx/conf.d/*.conf;" in config,
-        "Нет стандартного include conf.d; основной nginx не изменяется.",
-    )
+    validate_maps_include(Path("/etc/nginx/nginx.conf").read_text())
     domains = []
     for match in re.finditer(r"(?m)^\s*server\s*\{", config):
         level, end = 1, match.end()
@@ -204,14 +270,7 @@ def scope():
             )
             domains.append(found.group(1))
     require(domains, "Не найдены vhost пилота.")
-    user = re.search(r"(?m)^\s*user\s+(\S+?)(?:\s+(\S+?))?;", config)
-    require(user is not None, "Не удалось определить пользователя nginx.")
-    group = (
-        grp.getgrnam(user.group(2)).gr_gid
-        if user.group(2)
-        else pwd.getpwnam(user.group(1)).pw_gid
-    )
-    return {"old_network": names[0], "nginx_gid": group}
+    return {"old_network": names[0], "nginx_gid": nginx_group(config)}
 
 
 def health(url, *, headers=None, body=None):

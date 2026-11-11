@@ -77,6 +77,14 @@ rootfs потоком (до 8 MiB/s), сохраняя запас диска; к
 старые routes и reload. Измененные другим оператором файлы не перезаписывает.
 Ни один старый контейнер не останавливается. Все старые DB/volume остаются.
 
+Maps-файл размещается в `/etc/nginx/sites-enabled/00-procollab-pilot-v2-maps.conf`.
+Требуется существующий HTTP include `sites-enabled/*` или `sites-enabled/*.conf`;
+основной `nginx.conf` не редактируется. Временные файлы скрыты от include glob.
+Если bundle уже скачан, исправленный `hosted.py` можно запускать из отдельного
+каталога вместе с `configure.py`, `runtime_import.py` и двумя `hosted-*.template`
+из bundle. Передавать исходный bundle через `--bundle`: его manifest и runtime
+остаются прежними. Все дальнейшие команды выполнять этим же `hosted.py`.
+
 Ручной откат маршрутов:
 
 ```sh

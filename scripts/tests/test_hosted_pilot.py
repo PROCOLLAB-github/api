@@ -1,5 +1,6 @@
 """Защита dev: чужой host/network, старые DB/роли и ошибочный nginx запрещены."""
 
+import glob
 import hashlib
 import importlib.util
 import json
@@ -23,6 +24,62 @@ def sha(value):
 
 
 class HostedPilotGuards(unittest.TestCase):
+    def test_maps_use_existing_sites_enabled_http_include(self):
+        config = """events { worker_connections 1024; }
+http {
+    include       /etc/nginx/mime.types;
+    include /etc/nginx/sites-enabled/*;
+}"""
+        hosted.validate_maps_include(config)
+        self.assertEqual(hosted.MAPS.parent, Path("/etc/nginx/sites-enabled"))
+        self.assertEqual(
+            hosted.http_includes(config),
+            ["/etc/nginx/mime.types", "/etc/nginx/sites-enabled/*"],
+        )
+        hosted.validate_maps_include(
+            'http { include "/etc/nginx/sites-enabled/*.conf" ; }'
+        )
+
+    def test_comment_or_wrong_context_does_not_enable_maps(self):
+        for config in (
+            "# http { include /etc/nginx/sites-enabled/*; }",
+            "stream { include /etc/nginx/sites-enabled/*; }",
+            "http { server { include /etc/nginx/sites-enabled/*; } }",
+            'http { log_format test "include /etc/nginx/sites-enabled/*;"; }',
+        ):
+            with self.subTest(config=config), self.assertRaises(hosted.Refused):
+                hosted.validate_maps_include(config)
+
+    def test_compiled_nginx_user_when_user_directive_is_omitted(self):
+        with (
+            patch.object(
+                hosted.subprocess,
+                "run",
+                return_value=SimpleNamespace(
+                    stdout="",
+                    stderr="configure arguments: --user=www-data --group=www-data",
+                ),
+            ),
+            patch.object(hosted.grp, "getgrnam", return_value=SimpleNamespace(gr_gid=33)),
+        ):
+            self.assertEqual(hosted.nginx_group("events {} http {}"), 33)
+
+    def test_atomic_write_hides_temporary_nginx_config(self):
+        with TemporaryDirectory() as temp:
+            destination = Path(temp) / "pilot.conf"
+            replace = hosted.os.replace
+            seen = []
+
+            def commit(source, target):
+                seen.append(source.name)
+                self.assertEqual(glob.glob(str(Path(temp) / "*")), [])
+                replace(source, target)
+
+            with patch.object(hosted.os, "replace", side_effect=commit):
+                hosted.private_write(destination, "map config")
+            self.assertTrue(seen[0].startswith("."))
+            self.assertEqual(destination.read_text(), "map config")
+
     def test_other_host_refused_before_docker_inspection(self):
         with (
             patch.object(hosted.os, "geteuid", return_value=0),
