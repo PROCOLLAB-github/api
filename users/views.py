@@ -12,6 +12,7 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.template.loader import render_to_string
 from django.utils import timezone
+from django.utils.cache import patch_vary_headers
 from django_filters import rest_framework as filters
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import exceptions, permissions, status
@@ -49,6 +50,7 @@ from users.constants import (
 from users.helpers import check_related_fields_update, force_verify_user, verify_email
 from users.models import LikesOnProject, UserAchievement, UserSkillConfirmation
 from users.permissions import IsAchievementOwnerOrReadOnly
+from users.white_label_candidates import email_candidate_scope
 from users.serializers import (
     AchievementDetailSerializer,
     AchievementListSerializer,
@@ -690,6 +692,18 @@ class PublicUserListView(ListAPIView):
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = UserFilter
     permission_classes = [AllowAny]
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["white_label_email_candidate"] = bool(email_candidate_scope(self.request))
+        return context
+
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        if email_candidate_scope(request):
+            response["Cache-Control"] = "private, no-store"
+            patch_vary_headers(response, ("Authorization", "Cookie"))
+        return response
 
     def get_queryset(self):
         """Оптимизация запросов для навыков и категорий"""

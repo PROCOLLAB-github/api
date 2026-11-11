@@ -33,6 +33,7 @@ def package(api: Path, frontend: Path, target: Path) -> Path:
         "pilotctl",
         "preflight.py",
         "hosted.py",
+        "upgrade_invites.py",
         "runtime_import.py",
         "hosted-maps.conf.template",
         "hosted-routes.inc.template",

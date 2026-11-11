@@ -916,6 +916,12 @@ class PublicUserSerializer(serializers.ModelSerializer):
     skills = serializers.SerializerMethodField()
     is_online = serializers.SerializerMethodField()
 
+    def get_fields(self):
+        fields = super().get_fields()
+        if self.context.get("white_label_email_candidate"):
+            fields["email"] = serializers.EmailField(read_only=True)
+        return fields
+
     def get_skills(self, user: CustomUser) -> list:
         """Возвращает список навыков без поля approves"""
         skills = []

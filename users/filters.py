@@ -8,6 +8,7 @@ from django_filters import rest_framework as filters
 from core.models import Specialization
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 from users.utils import filter_age
+from users.white_label_candidates import email_candidate_scope
 
 User = get_user_model()
 MIN_AGE_VALUE = 0
@@ -91,8 +92,7 @@ class UserFilter(filters.FilterSet):
             for c in value
         )
 
-    @classmethod
-    def filter_by_fullname(cls, queryset, name, value):
+    def filter_by_fullname(self, queryset, name, value):
         """Ищет фрагменты имени и фамилии совместно, также в обратном порядке.
 
         split нормализует пробелы; пустая строка не фильтрует. Для составных
@@ -100,6 +100,12 @@ class UserFilter(filters.FilterSet):
         «Иван Иванов» не должен находить Петра Иванова по одной фамилии.
         Вся фильтрация выполняется в SQL до пагинации.
         """
+        scope = email_candidate_scope(self.request)
+        if scope:
+            return queryset.filter(
+                email__iexact=scope.email,
+                partner_program_profiles__partner_program_id=scope.program_id,
+            ).distinct()
         words = value.split()
         if not words:
             return queryset
@@ -115,14 +121,14 @@ class UserFilter(filters.FilterSet):
         if len(" ".join(words)) > name_limit:
             return queryset.none()
         if len(words) == 1:
-            pattern = cls.fullname_literal_pattern(words[0])
+            pattern = self.fullname_literal_pattern(words[0])
             return queryset.filter(
                 Q(first_name__regex=pattern) | Q(last_name__regex=pattern)
             )
         predicate = Q()
         for boundary in range(1, len(words)):
-            first = cls.fullname_literal_pattern(" ".join(words[:boundary]))
-            last = cls.fullname_literal_pattern(" ".join(words[boundary:]))
+            first = self.fullname_literal_pattern(" ".join(words[:boundary]))
+            last = self.fullname_literal_pattern(" ".join(words[boundary:]))
             predicate |= (Q(first_name__regex=first) & Q(last_name__regex=last)) | (
                 Q(first_name__regex=last) & Q(last_name__regex=first)
             )
