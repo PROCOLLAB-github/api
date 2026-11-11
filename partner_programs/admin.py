@@ -31,6 +31,7 @@ from partner_programs.services.case_fields import case_field_has_values
 from partner_programs.admin_registration import ProgramRegistrationAdminMixin
 from partner_programs.admin_publication import ProgramPublicationAdminMixin
 from partner_programs.admin_certificate_fonts import ProgramCertificateFontsAdminMixin
+from partner_programs.admin_criteria import ProgramCriteriaAdminMixin
 from partner_programs.program_dates import (
     DATE_FIELDS,
     program_date_errors,
@@ -54,6 +55,7 @@ class PartnerProgramFieldInline(admin.TabularInline):
 
 @admin.register(PartnerProgram)
 class PartnerProgramAdmin(
+    ProgramCriteriaAdminMixin,
     ProgramPublicationAdminMixin,
     ProgramRegistrationAdminMixin,
     ProgramCertificateFontsAdminMixin,
@@ -121,7 +123,7 @@ class PartnerProgramAdmin(
 
     autocomplete_fields = ("managers",)
     date_hierarchy = "datetime_started"
-    readonly_fields = ("datetime_created", "datetime_updated")
+    readonly_fields = ("datetime_created", "datetime_updated", "evaluation_criteria_link")
     fieldsets = (
         (
             None,
@@ -139,6 +141,7 @@ class PartnerProgramAdmin(
                     "publish_projects_after_finish",
                     "max_project_rates",
                     "is_distributed_evaluation",
+                    "evaluation_criteria_link",
                     "draft",
                     (
                         "datetime_started",

@@ -35,6 +35,16 @@ class ProjectScoreCreateSerializer(serializers.ModelSerializer):
 
 
 class CriteriaSerializer(serializers.ModelSerializer):
+    weight_percent = serializers.SerializerMethodField()
+
+    def get_weight_percent(self, obj):
+        if (
+            obj.partner_program.evaluation_scoring_mode != "weighted_percent"
+            or obj.weight_percent is None
+        ):
+            return None
+        return float(obj.weight_percent)
+
     class Meta:
         model = Criteria
         exclude = ["partner_program"]
@@ -105,7 +115,7 @@ class ProjectListForRateSerializer(serializers.ModelSerializer):
         program_id = self.context["view"].kwargs.get("program_id")
         return ProjectScore.objects.filter(
             project=obj, criteria__partner_program_id=program_id
-        ).select_related("criteria", "user")
+        ).select_related("criteria__partner_program", "user")
 
     def _get_user_scores(self, obj):
         scores = self._get_program_scores(obj)
@@ -124,15 +134,17 @@ class ProjectListForRateSerializer(serializers.ModelSerializer):
                     **CriteriaSerializer(c).data,
                     **({"value": scores[c.pk].value} if c.pk in scores else {}),
                 }
-                for c in Criteria.objects.filter(partner_program_id=program_id).order_by(
-                    "pk"
-                )
+                for c in Criteria.objects.filter(partner_program_id=program_id)
+                .select_related("partner_program")
+                .order_by("pk")
             ]
         if user_scores:
             serializer = ProjectScoreSerializer(user_scores, many=True)
             return serializer.data
         program_id = self.context["view"].kwargs.get("program_id")
-        criterias = Criteria.objects.filter(partner_program__id=program_id)
+        criterias = Criteria.objects.filter(
+            partner_program__id=program_id
+        ).select_related("partner_program")
         serializer = CriteriaSerializer(criterias, many=True)
         return serializer.data
 

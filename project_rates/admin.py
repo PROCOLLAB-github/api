@@ -27,6 +27,21 @@ class CriteriaAdminForm(forms.ModelForm):
             raise forms.ValidationError(
                 "После первой оценки критерии программы зафиксированы."
             )
+        if program:
+            from types import SimpleNamespace
+            from project_rates.scoring import validate_configuration
+
+            candidate = SimpleNamespace(
+                **{
+                    key: data.get(key)
+                    for key in ("type", "min_value", "max_value", "weight_percent")
+                }
+            )
+            criteria = list(program.criterias.exclude(pk=self.instance.pk)) + [candidate]
+            try:
+                validate_configuration(program, criteria)
+            except DjangoValidationError as error:
+                raise forms.ValidationError(error.messages) from error
         return data
 
 
@@ -34,7 +49,7 @@ class CriteriaAdminForm(forms.ModelForm):
 @admin.register(Criteria)
 class CriteriaAdmin(admin.ModelAdmin):
     form = CriteriaAdminForm
-    list_display = ("id", "name", "type", "get_program_name")
+    list_display = ("id", "name", "type", "weight_percent", "get_program_name")
     list_display_links = (
         "id",
         "name",

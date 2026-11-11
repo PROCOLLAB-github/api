@@ -3,6 +3,7 @@
 from decimal import Decimal, ROUND_HALF_UP
 
 from project_rates.validators import ProjectScoreValidator
+from project_rates.scoring import LEGACY, WEIGHTED, percentage_criteria, weighted_values
 
 
 def rounded(value):
@@ -33,8 +34,48 @@ def complete_values(criteria, values):
     )
 
 
-def evaluation_totals(criteria, values_by_user):
+def evaluation_totals(criteria, values_by_user, *, scoring_mode=LEGACY):
     """Сохраняет порядок округления существующего results_data, включая float totals."""
+    if scoring_mode == WEIGHTED:
+        specifications = percentage_criteria(criteria)
+        evaluations, exact_totals, contributions = {}, {}, {}
+        for user_id, values in values_by_user.items():
+            complete = complete_values(criteria, values)
+            parts = weighted_values(specifications, values) if complete else {}
+            total = sum(parts.values(), Decimal("0")) if complete else None
+            evaluations[user_id] = dict(complete=complete, total=numeric(total))
+            if complete:
+                exact_totals[user_id] = total
+                contributions[user_id] = parts
+        completed = list(exact_totals)
+        return dict(
+            evaluations=evaluations,
+            completed=len(completed),
+            score=numeric(rounded(sum(exact_totals.values()) / len(completed)))
+            if completed
+            else None,
+            averages={
+                str(c.pk): numeric(
+                    rounded(
+                        sum(Decimal(values_by_user[pk][c.pk]) for pk in completed)
+                        / len(completed)
+                    )
+                )
+                for c, *_ in specifications
+                if completed
+            },
+            contributions={
+                str(c.pk): numeric(
+                    rounded(
+                        sum(contributions[pk][c.pk] for pk in completed) / len(completed)
+                    )
+                )
+                for c, *_ in specifications
+                if completed
+            },
+            maximum=100.0,
+            has_numeric_criteria=True,
+        )
     numeric_criteria = [c for c in criteria if c.type in ("int", "float")]
     evaluations = {}
     for user_id, values in values_by_user.items():
@@ -76,6 +117,7 @@ def evaluation_totals(criteria, values_by_user):
         averages=averages,
         maximum=numeric(maximum),
         has_numeric_criteria=bool(numeric_criteria),
+        contributions={},
     )
 
 
