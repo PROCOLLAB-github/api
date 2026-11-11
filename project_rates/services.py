@@ -74,7 +74,7 @@ def get_projects_for_rate_queryset(
         "scores",
         queryset=ProjectScore.objects.filter(
             criteria__partner_program=program
-        ).select_related("user"),
+        ).select_related("user", "criteria__partner_program"),
         to_attr="_program_scores",
     )
 
@@ -157,12 +157,17 @@ def submit_project_scores(*, user, project_id: int, data) -> None:
     program = PartnerProgram.objects.select_for_update().get(pk=programs.pop())
     Expert.objects.get(user__id=user.id, programs=program)
     if (
-        expected_revision is not None or program.evaluation_criteria_version
+        expected_revision is not None
+        or program.evaluation_criteria_version
+        or program.evaluation_scoring_mode == "weighted_percent"
     ) and expected_revision != revision(program):
         raise CriteriaConflict(
             "criteria_changed",
             "Критерии изменились. Обновите форму оценки; введенные ответы сохранены в форме.",
         )
+    from project_rates.criteria_policy import require_scoring_configuration
+
+    require_scoring_configuration(program)
     rating_data, criteria_ids, program = _prepare_project_score_data(
         user=user,
         project_id=project_id,

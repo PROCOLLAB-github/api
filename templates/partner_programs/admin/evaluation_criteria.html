@@ -1,0 +1,24 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<h2>{{ original.name }}</h2>
+<p>Вес каждого числового критерия задается в процентах. В режиме весов сумма должна быть ровно 100%; итог кейса — от 0 до 100.</p>
+<p>Минимум шкалы дает нулевой вклад, максимум — полный вес. Оценки экспертов учитываются одинаково.</p>
+{% if locked %}<p class="errornote">Первая оценка уже сохранена. Критерии, веса и способ расчета зафиксированы.</p>{% endif %}
+{% if error %}<p class="errornote" role="alert">{{ error }}</p>{% endif %}
+<form method="post">{% csrf_token %}
+{{ scoring_form.non_field_errors }}
+{{ scoring_form.expected_updated_at }}{{ scoring_form.expected_revision }}
+<fieldset class="module aligned"{% if locked or not can_change %} disabled{% endif %}>
+  <div class="form-row">{{ scoring_form.scoring_mode.errors }}{{ scoring_form.scoring_mode.label_tag }}{{ scoring_form.scoring_mode }}</div>
+  {{ criteria_formset.management_form }}{{ criteria_formset.non_form_errors }}
+  {% for form in criteria_formset %}
+  <fieldset class="module aligned">
+    <h3>Критерий {{ forloop.counter }}</h3>{{ form.non_field_errors }}{{ form.id }}
+    {% for field in form.visible_fields %}<div class="form-row">{{ field.errors }}{{ field.label_tag }}{{ field }}</div>{% endfor %}
+  </fieldset>
+  {% endfor %}
+</fieldset>
+{% if not locked and can_change %}<div class="submit-row"><input type="submit" value="Сохранить критерии и веса" class="default"></div>{% endif %}
+</form>
+<p><a href="{% url 'admin:partner_programs_partnerprogram_change' original.pk %}">Вернуться к программе</a></p>
+{% endblock %}

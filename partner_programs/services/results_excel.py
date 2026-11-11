@@ -4,10 +4,11 @@ from io import BytesIO
 from math import isfinite
 
 from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill
+from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 from openpyxl.workbook.properties import CalcProperties
 from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
+from project_rates.scoring import WEIGHTED, decimal_number
 
 
 def text_cell(sheet, row, column, value):
@@ -40,6 +41,15 @@ def _export_results(data, *, label, group_key, id_key):
     criteria = data["criteria"]
     numeric = [c for c in criteria if c["type"] in ("int", "float")]
     other = [c for c in criteria if c not in numeric]
+    weighted = data.get("scoring_mode") == WEIGHTED
+    definitions = None
+    if weighted:
+        definitions = workbook.create_sheet("Критерии")
+        definitions.append(["Критерий", "Минимум", "Максимум", "Вес, %"])
+        for index, criterion in enumerate(numeric, 2):
+            text_cell(definitions, index, 1, criterion["name"])
+            for col, key in enumerate(("min_value", "max_value", "weight_percent"), 2):
+                definitions.cell(index, col, float(decimal_number(criterion[key])))
     rating.append(
         [
             "Место",
@@ -61,7 +71,7 @@ def _export_results(data, *, label, group_key, id_key):
             "Email",
             "Статус",
             *[c["name"] for c in numeric],
-            "Сумма",
+            "Итог из 100" if weighted else "Сумма",
             *[c["name"] for c in other],
             "ID решения" if id_key == "solution_id" else "ID проекта",
             "ID эксперта",
@@ -99,10 +109,18 @@ def _export_results(data, *, label, group_key, id_key):
                 if expert["complete"]:
                     expert_rows.append(row)
                     if numeric:
+                        formula = f"=SUM(F{row}:{get_column_letter(total_col - 1)}{row})"
+                        if weighted:
+                            terms = [
+                                f"({get_column_letter(col)}{row}-'Критерии'!B{index})"
+                                f"/('Критерии'!C{index}-'Критерии'!B{index})*'Критерии'!D{index}"
+                                for index, col in enumerate(range(6, total_col), 2)
+                            ]
+                            formula = "=SUM(" + ",".join(terms) + ")"
                         experts.cell(
                             row,
                             total_col,
-                            f"=SUM(F{row}:{get_column_letter(total_col - 1)}{row})",
+                            formula,
                         )
                 for col, criterion in enumerate(other, total_col + 1):
                     value = values.get(criterion["id"])
@@ -154,6 +172,15 @@ def _export_results(data, *, label, group_key, id_key):
             cell.fill = PatternFill("solid", fgColor="8A63E6")
         for col in range(1, sheet.max_column + 1):
             sheet.column_dimensions[get_column_letter(col)].width = 24
+    if definitions:
+        definitions.freeze_panes = "A2"
+        definitions.auto_filter.ref = definitions.dimensions
+        for row in definitions:
+            for cell in row:
+                cell.font = Font(name="Arial", size=10, bold=cell.row == 1)
+                cell.alignment = Alignment(vertical="top", wrap_text=True)
+        for column, width in (("A", 42), ("B", 16), ("C", 16), ("D", 16)):
+            definitions.column_dimensions[column].width = width
     output = BytesIO()
     workbook.save(output)
     return output.getvalue()

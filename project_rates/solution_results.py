@@ -15,6 +15,9 @@ from project_rates.solution_models import SolutionExpertAssignment, SolutionScor
 
 def results_data(program, query, *, solution_id=None):
     criteria = list(Criteria.objects.filter(partner_program=program).order_by("pk"))
+    from project_rates.criteria_policy import require_scoring_configuration
+
+    require_scoring_configuration(program, criteria)
     field = get_program_case_field(program)
     options = field.get_options_list() if field else []
     if query["case_scope"] == "selected" and query.get("case_name") not in options:
@@ -40,6 +43,7 @@ def results_data(program, query, *, solution_id=None):
         totals = evaluation_totals(
             criteria,
             {user_id: values[(solution.pk, user_id)] for user_id in people[solution.pk]},
+            scoring_mode=program.evaluation_scoring_mode,
         )
         experts = [
             dict(
@@ -77,6 +81,7 @@ def results_data(program, query, *, solution_id=None):
                 score=totals["score"],
                 place=None,
                 averages=totals["averages"],
+                contributions=totals["contributions"],
                 experts=experts,
             )
         )
@@ -108,10 +113,11 @@ def results_data(program, query, *, solution_id=None):
         )
         if rows:
             groups.append(dict(case_name=case_name, solutions=rows))
-    base = evaluation_totals(criteria, {})
+    base = evaluation_totals(criteria, {}, scoring_mode=program.evaluation_scoring_mode)
     return dict(
         program_id=program.pk,
         program_name=program.name,
+        scoring_mode=program.evaluation_scoring_mode,
         generated_at=timezone.now(),
         required_evaluators=required,
         maximum=base["maximum"],
@@ -126,6 +132,9 @@ def results_data(program, query, *, solution_id=None):
                 type=c.type,
                 min_value=c.min_value,
                 max_value=c.max_value,
+                weight_percent=float(c.weight_percent)
+                if c.weight_percent is not None
+                else None,
             )
             for c in criteria
         ],
