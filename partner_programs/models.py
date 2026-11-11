@@ -216,6 +216,7 @@ class PartnerProgram(models.Model):
     evaluation_scoring_mode = models.CharField(
         max_length=20,
         default="legacy",
+        db_default="legacy",
         choices=(
             ("legacy", "Сумма исходных баллов"),
             ("weighted_percent", "Веса, итог от 0 до 100"),
