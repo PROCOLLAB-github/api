@@ -49,6 +49,9 @@ class SolutionScore(models.Model):
         if solution and solution.status != "submitted":
             raise ValidationError({"solution": "Сначала нужно сдать решение."})
         if criterion:
+            from project_rates.scoring import validate_configuration
+
+            validate_configuration(criterion.partner_program)
             try:
                 ProjectScoreValidator.validate(
                     criteria_type=criterion.type,

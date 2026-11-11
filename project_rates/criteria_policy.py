@@ -15,16 +15,33 @@ class CriteriaConflict(APIException):
 
 
 def definitions(program):
-    return list(
+    rows = list(
         program.criterias.order_by("pk").values(
-            "id", "name", "description", "type", "min_value", "max_value"
+            "id",
+            "name",
+            "description",
+            "type",
+            "min_value",
+            "max_value",
+            "weight_percent",
         )
     )
+    for row in rows:
+        if row["weight_percent"] is not None:
+            row["weight_percent"] = float(row["weight_percent"])
+    return rows
 
 
 def revision(program):
     return hashlib.sha256(
-        json.dumps(definitions(program), ensure_ascii=False, sort_keys=True).encode()
+        json.dumps(
+            {
+                "scoring_mode": program.evaluation_scoring_mode,
+                "criteria": definitions(program),
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        ).encode()
     ).hexdigest()
 
 
@@ -46,3 +63,13 @@ def mark_locked(program):
         PartnerProgram.objects.filter(pk=program.pk).update(
             evaluation_criteria_locked_at=program.evaluation_criteria_locked_at
         )
+
+
+def require_scoring_configuration(program, criteria=None):
+    from django.core.exceptions import ValidationError
+    from project_rates.scoring import validate_configuration
+
+    try:
+        validate_configuration(program, criteria)
+    except ValidationError as error:
+        raise CriteriaConflict("invalid_criteria", " ".join(error.messages)) from error

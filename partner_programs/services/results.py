@@ -29,6 +29,9 @@ class ResultsQuery(serializers.Serializer):
 
 def results_data(program, query, *, project_link_id=None):
     criteria = list(Criteria.objects.filter(partner_program=program).order_by("pk"))
+    from project_rates.criteria_policy import require_scoring_configuration
+
+    require_scoring_configuration(program, criteria)
     numeric_criteria = [c for c in criteria if c.type in ("int", "float")]
     field = get_program_case_field(program)
     options = field.get_options_list() if field else []
@@ -53,7 +56,9 @@ def results_data(program, query, *, project_link_id=None):
     ).select_related("expert__user"):
         people[assignment.project_id][assignment.expert.user_id] = assignment.expert.user
     required = program.required_evaluators or program.max_project_rates or 1
-    maximum = evaluation_totals(criteria, {})["maximum"]
+    maximum = evaluation_totals(
+        criteria, {}, scoring_mode=program.evaluation_scoring_mode
+    )["maximum"]
     buckets = {name: [] for name in [*options, None]}
     for link in links:
         totals = evaluation_totals(
@@ -62,6 +67,7 @@ def results_data(program, query, *, project_link_id=None):
                 user_id: values[(link.project_id, user_id)]
                 for user_id in people[link.project_id]
             },
+            scoring_mode=program.evaluation_scoring_mode,
         )
         experts = []
         for user_id, user in sorted(people[link.project_id].items()):
@@ -99,6 +105,7 @@ def results_data(program, query, *, project_link_id=None):
                 "score": numeric(score),
                 "place": None,
                 "averages": averages,
+                "contributions": totals["contributions"],
                 "experts": experts,
             }
         )
@@ -137,6 +144,7 @@ def results_data(program, query, *, project_link_id=None):
     return {
         "program_id": program.pk,
         "program_name": program.name,
+        "scoring_mode": program.evaluation_scoring_mode,
         "generated_at": timezone.now(),
         "required_evaluators": required,
         "maximum": numeric(maximum),
@@ -151,6 +159,9 @@ def results_data(program, query, *, project_link_id=None):
                 "type": c.type,
                 "min_value": c.min_value,
                 "max_value": c.max_value,
+                "weight_percent": float(c.weight_percent)
+                if c.weight_percent is not None
+                else None,
             }
             for c in criteria
         ],

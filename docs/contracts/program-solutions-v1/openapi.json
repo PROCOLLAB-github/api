@@ -3,7 +3,7 @@
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "info": {
     "title": "PROCOLLAB Program Solutions C00",
-    "version": "1.21.0",
+    "version": "1.22.0",
     "description": "Контракт решений в программах для реализации и моков BE01–BE09. API base URL задается окружением. snake_case на проводе. Старые API не меняются."
   },
   "servers": [
@@ -11549,6 +11549,15 @@
             ],
             "maxLength": 1000,
             "description": "Строка/null по прежнему типу критерия. Текстовый комментарий допускает до 1000 символов, как текущий ProjectScore; числовой диапазон и True/False продолжают проверяться отдельно."
+          },
+          "weight_percent": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "exclusiveMinimum": 0,
+            "maximum": 100,
+            "description": "Процентный вес числового критерия; null, если вес не применяется."
           }
         },
         "required": [
@@ -12279,6 +12288,15 @@
               "number",
               "null"
             ]
+          },
+          "weight_percent": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "exclusiveMinimum": 0,
+            "maximum": 100,
+            "description": "Процентный вес числового критерия; null, если вес не применяется."
           }
         },
         "required": [
@@ -12396,6 +12414,12 @@
             "items": {
               "$ref": "#/components/schemas/ResultExpert"
             }
+          },
+          "contributions": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
           }
         },
         "required": [
@@ -12481,6 +12505,13 @@
             "items": {
               "$ref": "#/components/schemas/ResultCriterion"
             }
+          },
+          "scoring_mode": {
+            "type": "string",
+            "enum": [
+              "legacy",
+              "weighted_percent"
+            ]
           }
         },
         "required": [
