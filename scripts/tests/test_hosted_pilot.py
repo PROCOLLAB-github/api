@@ -24,6 +24,51 @@ def sha(value):
 
 
 class HostedPilotGuards(unittest.TestCase):
+    def test_dev_guard_does_not_require_react_containers(self):
+        containers = {
+            name: {"State": {"Running": True}}
+            for name in ("api-web-1", "api-redis-1", "api_celery")
+        }
+        with (
+            patch.object(
+                hosted, "inspect", side_effect=containers.__getitem__
+            ) as inspect,
+            patch.object(hosted, "health", return_value=(200, {}, b"")) as health,
+        ):
+            self.assertEqual(hosted.dev_health(), 200)
+        self.assertEqual(
+            {call.args[0] for call in inspect.call_args_list}, set(containers)
+        )
+        health.assert_called_once_with("https://dev.procollab.ru/")
+
+    def test_dev_guard_still_refuses_stopped_or_unhealthy_main_services(self):
+        names = ("api-web-1", "api-redis-1", "api_celery")
+        for name in names:
+            for bad_state in (
+                {"Running": False},
+                {"Running": True, "Health": {"Status": "unhealthy"}},
+            ):
+                with self.subTest(name=name, state=bad_state):
+                    containers = {other: {"State": {"Running": True}} for other in names}
+                    containers[name] = {"State": bad_state}
+                    with (
+                        patch.object(
+                            hosted, "inspect", side_effect=containers.__getitem__
+                        ),
+                        patch.object(hosted, "health") as health,
+                    ):
+                        with self.assertRaisesRegex(hosted.Refused, name):
+                            hosted.dev_health()
+                    health.assert_not_called()
+
+    def test_dev_guard_still_refuses_failed_public_http(self):
+        with (
+            patch.object(hosted, "inspect", return_value={"State": {"Running": True}}),
+            patch.object(hosted, "health", return_value=(503, {}, b"")),
+        ):
+            with self.assertRaises(hosted.Refused):
+                hosted.dev_health()
+
     def test_maps_use_existing_sites_enabled_http_include(self):
         config = """events { worker_connections 1024; }
 http {

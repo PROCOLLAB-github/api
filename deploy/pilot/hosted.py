@@ -283,13 +283,11 @@ def health(url, *, headers=None, body=None):
 
 
 def dev_health():
+    # Защищаем основной dev; сравнительный React не является зависимостью пилота.
     for name in (
         "api-web-1",
         "api-redis-1",
         "api_celery",
-        "api-react-web-1",
-        "api-react-redis-1",
-        "api-react-celery",
     ):
         container = inspect(name)
         require(
