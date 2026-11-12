@@ -318,7 +318,69 @@ mutations нет; только 6 POST входа/выхода собственн
 подтвердили сохранность команды/заявки/PDF, опубликованного index и dev.
 Данные проверки и скриншоты находятся вне Git; пароли/токены не сохраняются.
 
-## Сборка пакета
+## Общий рейтинг: точечное обновление действующего v2
+
+`package_overall.py` / `upgrade_overall.py` предназначены только для известного
+`/opt/procollab-white-label-pilot-v2`: backend 7657082 после весов/приглашений и
+auth frontend 75f41a5. Цель — runtime 3c21fbc и проверенная Angular 3241381e.
+Квиз не устанавливается; результат команды складывается из кейса 100 и будущего
+квиза 100. Отсутствующий этап остается ожидающим, баллы не подставляются.
+
+После фиксации установщика в Git, в API checkout:
+
+```sh
+python3 deploy/pilot/package_overall.py \
+  --api /workspace/pilot-api \
+  --frontend /workspace/overall-rating-qa-20261112/build-pilot/browser \
+  --output /workspace/work/overall-release
+```
+
+Установщик проверяет точные hashes исходной и целевой сборок, runtime/старых
+overlays, records, образ, env, лимиты, сеть/БД, dev и nginx. Пакет содержит
+11 runtime файлов, только измененную статику и helpers. Он распаковывается
+`unpack_candidate.py` в новый приватный каталог; перед распаковкой оператор
+сверяет SHA256 ZIP и самого unpacker из закрепленного Git commit.
+
+В распакованном `procollab-pilot`, от root на известном dev-сервере:
+
+```sh
+python3 -B upgrade_overall.py check --bundle "$PWD"
+python3 -B upgrade_overall.py apply --bundle "$PWD"
+python3 -B upgrade_overall.py status
+```
+
+`check` не публикует файлы и не меняет схему: запускает отдельный временный
+migration probe с read-only транзакциями. `apply` сначала создает проверенный
+pg_dump и backup статики/env в `backup/overall-<step>`, затем допускает только
+CreateModel 0045 (либо пустой план после отката) и штатную metadata прав новой
+модели. Меняется только web v2 на loopback 18319, с тем же образом и ресурсами.
+Dev, старый пилот и PostgreSQL сохраняются; nginx не перезагружается. После API,
+Excel и проверки сохранности кейсов публикуется index. `phase: active` вместе
+с успешным `status` подтверждает завершение; повторный `apply` не пересоздает web.
+
+При ошибке или прерывании выполняется откат web/статики. Для отдельного отката
+того же установленного шага:
+
+```sh
+python3 -B upgrade_overall.py rollback
+python3 -B upgrade_overall.py status
+```
+
+Откат сохраняет добавочную 0045 и текущие данные, не запускает pg_restore/drop,
+не отключает процентные критерии. Прежний backend 7657082 совместим с сохраненной
+таблицей. ID/labels/config и hashes backup проверяются до действий; при внешнем
+дрейфе скрипт останавливается с путем backup. `phase: prepared` требует rollback
+этим же установщиком перед повтором. Ручная подмена records/hashes и запуск
+старого `upgrade_weights.py` для рейтинга не подходят.
+
+Регрессия: `python3 -B -m unittest scripts.tests.test_pilot_overall_upgrade
+scripts.tests.test_pilot_frontend_upgrade scripts.tests.test_pilot_weights_upgrade
+scripts.tests.test_pilot_invite_upgrade scripts.tests.test_pilot_package
+scripts.tests.test_pilot_unpack`. Реальные PostgreSQL/Docker proofs и ограничения
+описаны в `docs/overall-case-quiz-ranking.md`, D01–D07. Сборка/проверки локально
+не подтверждают установку: после SSH вывода нужны HTTPS и браузерный smoke пилота.
+
+## Сборка полного пакета для нового стенда
 
 Workflow `Build pilot package` создает artifact `procollab-pilot-candidate`
 на GitHub без деплоя/SSH и без секретов. Он берет Angular из публичного
