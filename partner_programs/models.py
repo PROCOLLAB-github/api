@@ -11,6 +11,7 @@ from partner_programs.certificate_models import (  # noqa: F401
     ProgramCertificateConfig,
 )
 from partner_programs.constants import get_default_data_schema
+from partner_programs.overall_models import ProgramQuizOutcome  # noqa: F401
 from partner_programs.solution_models import (  # noqa: F401
     ProgramSolution,
     ProgramSolutionMember,

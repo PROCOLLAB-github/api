@@ -128,6 +128,10 @@ from partner_programs.results_views import (
     ManagementResultsView,
     ManagementResultsExportView,
 )
+from partner_programs.overall_views import (
+    ManagementOverallResultsView,
+    ManagementOverallResultsExportView,
+)
 
 from partner_programs.certificate_views import (
     CertificateSettingsView,
@@ -473,6 +477,16 @@ urlpatterns = [
         "<int:pk>/management/results/export/",
         program_view(ManagementResultsExportView),
         name="management-results-export",
+    ),
+    path(
+        "<int:pk>/management/overall-results/",
+        ManagementOverallResultsView.as_view(),
+        name="management-overall-results",
+    ),
+    path(
+        "<int:pk>/management/overall-results/export/",
+        ManagementOverallResultsExportView.as_view(),
+        name="management-overall-results-export",
     ),
     path(
         "<int:pk>/management/experts/",

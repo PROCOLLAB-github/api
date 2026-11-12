@@ -1,0 +1,56 @@
+{% extends "admin/base_site.html" %}
+{% load l10n %}
+{% block content %}
+<h2>{{ original.name }}</h2>
+<p>Кейс до 100 баллов + квиз до 100 баллов. Общий итог до 200.</p>
+<p>Место получают команды, завершившие оба этапа. При одинаковом итоге команды делят место.</p>
+{% if not snapshot.case_scoring_configured %}
+<p class="errornote">Для оценки кейса из 100 нужны <a href="{{ criteria_url }}">веса критериев</a>. Общий итог пока не рассчитывается.</p>
+{% endif %}
+<form method="get" role="search">
+  <p>
+    <label for="overall-search">Название команды</label>
+    <input id="overall-search" type="search" name="search" maxlength="200" value="{{ query.search }}">
+    <label for="overall-status">Статус</label>
+    <select id="overall-status" name="status">
+      <option value="all"{% if query.status == "all" %} selected{% endif %}>Все команды</option>
+      <option value="complete"{% if query.status == "complete" %} selected{% endif %}>В рейтинге</option>
+      <option value="pending"{% if query.status == "pending" %} selected{% endif %}>Ожидают итог</option>
+    </select>
+    <label for="overall-case-scope">Кейсы</label>
+    <select id="overall-case-scope" name="case_scope">
+      <option value="all"{% if query.case_scope == "all" %} selected{% endif %}>Все кейсы</option>
+      {% if snapshot.case_options %}<option value="selected"{% if query.case_scope == "selected" %} selected{% endif %}>Выбранный кейс</option>{% endif %}
+      <option value="without_case"{% if query.case_scope == "without_case" %} selected{% endif %}>Без кейса</option>
+    </select>
+    {% if snapshot.case_options %}<label for="overall-case">Кейс</label>
+    <select id="overall-case" name="case_name">
+      {% for case_name in snapshot.case_options %}<option{% if query.case_name == case_name %} selected{% endif %}>{{ case_name }}</option>{% endfor %}
+    </select>{% endif %}
+    <label for="overall-order">По итогу</label>
+    <select id="overall-order" name="order">
+      <option value="desc"{% if query.order == "desc" %} selected{% endif %}>По убыванию</option>
+      <option value="asc"{% if query.order == "asc" %} selected{% endif %}>По возрастанию</option>
+    </select>
+    <input type="submit" value="Применить">
+    <a href="?">Сбросить фильтры</a>
+  </p>
+</form>
+<p>Готовы к общему рейтингу: {{ snapshot.ready_count }} из {{ snapshot.matching_count }}.</p>
+<p><a href="{{ export_url }}">Скачать общий рейтинг в Excel</a></p>
+<div class="module">
+<table>
+  <caption>Общий рейтинг команд</caption>
+  <thead><tr><th scope="col">Место</th><th scope="col">Команда</th><th scope="col">Кейс</th><th scope="col">Кейс из 100</th><th scope="col">Квиз из 100</th><th scope="col">Итог из 200</th><th scope="col">Статус</th></tr></thead>
+  <tbody>
+  {% for row in rows %}
+  <tr>
+    <td>{{ row.place|default_if_none:"" }}</td><td>{{ row.name }}</td><td>{{ row.case_name|default_if_none:"Без кейса" }}</td>
+    <td>{{ row.case_score|default_if_none:""|floatformat:2 }}</td><td>{{ row.quiz_score|default_if_none:""|floatformat:2 }}</td><td>{{ row.score|default_if_none:""|floatformat:2 }}</td><td>{{ row.status_label }}{% if row.case_status == "pending" %}: {{ row.case_evaluators_completed }} из {{ row.case_evaluators_required }} оценок{% endif %}</td>
+  </tr>
+  {% empty %}<tr><td colspan="7">Команды пока не добавлены или не подходят под фильтры.</td></tr>{% endfor %}
+  </tbody>
+</table>
+</div>
+<p><a href="{% url 'admin:partner_programs_partnerprogram_change' original.pk %}">Вернуться к программе</a></p>
+{% endblock %}
