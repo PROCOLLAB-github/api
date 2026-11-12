@@ -183,12 +183,19 @@ SQL содержит только CREATE TABLE, ее constraints/FK/indexes; с�
   и процентных критериев. Живые БД не изменялись.
 - O10 — PASS: bounded query-count и PostgreSQL TransactionTestCase на одной
   команде/разных программах с общим source attempt ID.
-- O11 — NOT VERIFIED: конкретные desktop/mobile макеты показаны владельцу;
-  9 Chromium preview checks прошли, Angular runtime ожидает design approval.
+- O11 — PASS: владелец подтвердил экран ответом «да норм» 12 ноября.
+  Angular #540 реализует organizer-only рейтинг по этому API: 108 профильных
+  tests, после уточнения shared select повторены 72 component/management tests;
+  pilot/production builds и 13 Chromium сценариев с настоящей локальной БД/API
+  прошли. Проверены 200/ноль/ожидание, query/reload, Excel, ошибки/повтор,
+  desktop/mobile/keyboard, запрет чужого доступа и старые результаты кейса.
+  Подробный audit: Angular `docs/feature-specs/overall-case-quiz-ranking.md`.
 
 Review: новых BLOCKER/MAJOR в серверной части не осталось. В проверке исправлены
-отраженный HTML ошибки admin и разница scope чтения между API/admin. Backend
-готов к review; весь пользовательский экран еще не объявляется завершенным.
+отраженный HTML ошибки admin и разница scope чтения между API/admin. Сервер и
+Angular экран реализованы и проверены локально. Backend PostgreSQL CI, Docker
+image, pilot package и runtime image для runtime commit 515862c прошли.
+Это не установка общего рейтинга на пилот.
 
 Не проверено: установка этого изменения на pilot/dev/prod, интеграция с еще
 не реализованным квизом и native Excel пересчет формул. Формулы, входные числа
