@@ -380,6 +380,21 @@ scripts.tests.test_pilot_unpack`. Реальные PostgreSQL/Docker proofs и �
 описаны в `docs/overall-case-quiz-ranking.md`, D01–D07. Сборка/проверки локально
 не подтверждают установку: после SSH вывода нужны HTTPS и браузерный smoke пилота.
 
+### Приемка установленного общего рейтинга — 13 ноября 2026
+
+Владелец выполнил tooling `7a8e6c6`: runtime `3c21fbc`, frontend `3241381e`,
+apply/status active, БД сохранена, nginx не менялся, dev 200. Backup:
+`/opt/procollab-white-label-pilot-v2/backup/overall-d572cb63a116`.
+Пройдены 10 HTTPS/API, 11 Chromium и 3 cleanup проверки; проверены все пять
+измененных frontend файлов, права, API/admin Excel, старая команда/сдача/PDF,
+критерии и dev. Временный ZIP удален через QA owner API (204 → 404).
+
+Программа сохраняет legacy с единственным текстовым «Комментарий». В UI видна
+подсказка настроить числовые критерии с весами 100%, Excel в Angular отключен;
+итогов/мест без этапов нет. Настройки и тестовые баллы на пилоте не создавались.
+Далее нужны согласованные критерии/веса и настоящий квиз после его дизайна.
+Подробная приемка и непроверенное: [spec](../../docs/overall-case-quiz-ranking.md).
+
 ## Сборка полного пакета для нового стенда
 
 Workflow `Build pilot package` создает artifact `procollab-pilot-candidate`
