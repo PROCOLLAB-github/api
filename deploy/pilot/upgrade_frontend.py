@@ -24,6 +24,7 @@ PREVIOUS = "971e52fb1f199ee5c38e2fb42f06ff1946a261a7"
 REVISION = "75f41a5d9a008fb97418eb50724b3b99fc8349b7"
 BASE_INDEX = "8052cbdedfc44d328fe9d06d90ff1f135cd17506df461e59d582d8d68b73707c"
 HELPERS = {"upgrade_frontend.py", "hosted.py", "runtime_import.py", "upgrade_invites.py"}
+SNAPSHOT_FORMAT = "canonical-mounts-v1"
 require = hosted.require
 
 
@@ -109,6 +110,15 @@ def verify_bundle(bundle):
     return manifest
 
 
+def configuration_fingerprint(container):
+    # Docker собирает Mounts из map: порядок записей может меняться между inspect.
+    config = {key: container[key] for key in ("Config", "HostConfig")}
+    config["Mounts"] = sorted(
+        container["Mounts"], key=lambda mount: json.dumps(mount, sort_keys=True)
+    )
+    return hashlib.sha256(json.dumps(config, sort_keys=True).encode()).hexdigest()
+
+
 def protected_snapshot():
     names = (
         "api-web-1",
@@ -119,16 +129,15 @@ def protected_snapshot():
         hosted.WEB,
         hosted.PG,
     )
-    result = {"containers": {}, "files": {}}
+    result = {"format": SNAPSHOT_FORMAT, "containers": {}, "files": {}}
     for name in names:
         container = hosted.inspect(name)
         require(container["State"]["Running"], "Контейнер не работает: " + name)
-        config = {k: container[k] for k in ("Config", "HostConfig", "Mounts")}
         result["containers"][name] = [
             container["Id"],
             container["Image"],
             container["State"]["StartedAt"],
-            hashlib.sha256(json.dumps(config, sort_keys=True).encode()).hexdigest(),
+            configuration_fingerprint(container),
         ]
     paths = [
         ROOT / n for n in ("state.json", ".env", "access.txt", "weights-upgrade.json")
@@ -146,9 +155,26 @@ def protected_snapshot():
 
 
 def verify_protected(record):
+    current = protected_snapshot()
+    previous = record["protected"]
+    containers = sorted(
+        name
+        for name in set(current["containers"]) | set(previous["containers"])
+        if current["containers"].get(name) != previous["containers"].get(name)
+    )
+    paths = sorted(
+        name
+        for name in set(current["files"]) | set(previous["files"])
+        if current["files"].get(name) != previous["files"].get(name)
+    )
     require(
-        protected_snapshot() == record["protected"],
-        "Dev, backend или конфигурация изменились снаружи.",
+        current == previous,
+        "Изменились защищенные ресурсы: контейнеры="
+        + ",".join(containers)
+        + "; файлы="
+        + ",".join(paths)
+        + "; nginx="
+        + str(current["nginx"] != previous["nginx"]),
     )
 
 
@@ -234,9 +260,11 @@ def check(bundle):
         and state.get("weights_revision") == BACKEND,
         "Нужен действующий пилот с установленными весами 7657082.",
     )
+    previous = None
     if RECORD.exists():
+        previous = load_record()
         require(
-            load_record()["phase"] == "rolled_back",
+            previous["phase"] == "rolled_back",
             "Уже есть обновление; сначала проверьте status.",
         )
     current = hosted.candidate()
@@ -284,7 +312,26 @@ def check(bundle):
     )
     hosted.dev_health()
     api_smoke()
-    return manifest, protected_snapshot()
+    protected = protected_snapshot()
+    if previous:
+        # Подтверждаем сохранность ресурсов после предыдущей неудачной попытки.
+        # Старый hash Config нельзя нормализовать задним числом без исходного Mounts.
+        old = previous["protected"]
+        require(
+            old["files"] == protected["files"] and old["nginx"] == protected["nginx"],
+            "Защищенные файлы изменились после предыдущей попытки.",
+        )
+        require(
+            set(old["containers"]) == set(protected["containers"])
+            and all(
+                old["containers"][name][:3] == identity[:3]
+                for name, identity in protected["containers"].items()
+            ),
+            "Контейнеры изменились после предыдущей попытки.",
+        )
+        if old.get("format") == SNAPSHOT_FORMAT:
+            require(old == protected, "Конфигурация изменилась после предыдущей попытки.")
+    return manifest, protected
 
 
 def rollback(record):
@@ -368,9 +415,11 @@ def apply(bundle):
         "Проверки пройдены. Резервная копия интерфейса сохранена; публикую только статику пилота.",
         flush=True,
     )
+    stage = "protected_before_publish"
     try:
         verify_protected(record)
         for relative in sorted(record["frontend"], key=lambda p: p == "index.html"):
+            stage = "publish:" + relative
             source = bundle / "frontend" / relative
             require(
                 hosted.digest(source) == record["frontend"][relative]["after"],
@@ -383,18 +432,51 @@ def apply(bundle):
                 "Frontend изменен во время установки.",
             )
             files.copy_atomic(source, target)
+        stage = "published_https"
         verify_live(manifest["new_files"]["index.html"])
+        stage = "pilot_api"
         api_smoke()
+        stage = "protected_after_publish"
         verify_protected(record)
+        stage = "dev_http_after_publish"
         hosted.dev_health()
+        stage = "save_active_state"
         record["phase"] = "active"
         save_record(record)
-    except BaseException:
-        rollback(record)
+    except BaseException as error:
+        failure = {
+            "stage": stage,
+            "error_type": type(error).__name__,
+            "reason": str(error),
+        }
+        record["failure"] = failure
+        try:
+            hosted.private_write(
+                backup / "failure.json", json.dumps(failure, ensure_ascii=False, indent=2)
+            )
+        except OSError:
+            pass
+        try:
+            rollback(record)
+        except BaseException as rollback_error:
+            raise hosted.Refused(
+                "Обновление остановлено на этапе "
+                + stage
+                + ": "
+                + str(error)
+                + ". Откат не подтвержден: "
+                + str(rollback_error)
+                + ". Backup: "
+                + str(backup)
+            ) from error
         raise hosted.Refused(
-            "Проверка обновления не прошла; прежний интерфейс пилота восстановлен. Backup: "
+            "Обновление остановлено на этапе "
+            + stage
+            + ": "
+            + str(error)
+            + ". Прежний интерфейс пилота восстановлен. Backup: "
             + str(backup)
-        )
+        ) from error
     return status()
 
 

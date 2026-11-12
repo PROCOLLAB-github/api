@@ -90,8 +90,12 @@ class PilotFrontendUpgradeTests(unittest.TestCase):
             )
         )
         self.snapshot = {
-            "containers": {"dev": ["dev-original-id"]},
+            "format": upgrade.SNAPSHOT_FORMAT,
+            "containers": {
+                "dev": ["dev-original-id", "image-id", "original-start", "config-sha"]
+            },
             "files": {"nginx": "unchanged"},
+            "nginx": "original-nginx",
         }
         self.snapshot_mock = self.enterContext(
             patch.object(upgrade, "protected_snapshot", return_value=self.snapshot)
@@ -209,6 +213,12 @@ class PilotFrontendUpgradeTests(unittest.TestCase):
         self.assertEqual(
             (self.root / "frontend/index.html").read_bytes(), self.original["index.html"]
         )
+        record = upgrade.load_record()
+        self.assertEqual(record["failure"]["stage"], "published_https")
+        self.assertIn("HTTPS отдает другой frontend", record["failure"]["reason"])
+        saved = Path(record["backup"]) / "failure.json"
+        self.assertEqual(json.loads(saved.read_text()), record["failure"])
+        self.assertEqual(saved.stat().st_mode & 0o777, 0o600)
 
     def test_baseline_drift_prevents_overwriting_operator_changes(self):
         (self.root / "frontend/assets/logo.svg").write_bytes(b"operator logo")
@@ -351,6 +361,132 @@ class PilotFrontendUpgradeTests(unittest.TestCase):
         with self.assertRaisesRegex(upgrade.hosted.Refused, "backup является ссылкой"):
             upgrade.apply(self.bundle)
         self.assertFalse(upgrade.RECORD.exists())
+
+    def test_fingerprint_normalizes_only_mount_order_without_mutating_inspect(self):
+        container = {
+            "Config": {"Env": ["A=first", "A=last"]},
+            "HostConfig": {"Memory": 768},
+            "Mounts": [
+                {"Source": "/b", "Destination": "/b", "Type": "bind", "RW": False},
+                {"Source": "/a", "Destination": "/a", "Type": "bind", "RW": True},
+            ],
+        }
+        before = json.loads(json.dumps(container))
+        permuted = json.loads(json.dumps(container))
+        permuted["Mounts"].reverse()
+        self.assertEqual(
+            upgrade.configuration_fingerprint(container),
+            upgrade.configuration_fingerprint(permuted),
+        )
+        self.assertEqual(container, before)
+        permuted["Config"]["Env"].reverse()
+        self.assertNotEqual(
+            upgrade.configuration_fingerprint(container),
+            upgrade.configuration_fingerprint(permuted),
+        )
+
+    def test_fingerprint_still_detects_mount_source_destination_mode_and_limits(self):
+        container = {
+            "Config": {},
+            "HostConfig": {"Memory": 768},
+            "Mounts": [
+                {"Source": "/a", "Destination": "/a", "Type": "bind", "RW": False}
+            ],
+        }
+        original = upgrade.configuration_fingerprint(container)
+        for key, value in (
+            ("Source", "/dev"),
+            ("Destination", "/dev"),
+            ("RW", True),
+            ("Type", "volume"),
+        ):
+            changed = json.loads(json.dumps(container))
+            changed["Mounts"][0][key] = value
+            with self.subTest(key=key):
+                self.assertNotEqual(original, upgrade.configuration_fingerprint(changed))
+        changed = json.loads(json.dumps(container))
+        changed["HostConfig"]["Memory"] = 1024
+        self.assertNotEqual(original, upgrade.configuration_fingerprint(changed))
+
+    def test_apply_succeeds_when_inspect_reorders_mounts_between_every_call(self):
+        from types import SimpleNamespace
+
+        calls = {}
+
+        def inspect(name):
+            calls[name] = calls.get(name, 0) + 1
+            mounts = [
+                {
+                    "Source": str(self.root / "backend.py"),
+                    "Destination": "/procollab/backend.py",
+                    "Type": "bind",
+                    "RW": False,
+                },
+                {
+                    "Source": str(self.root / ".env"),
+                    "Destination": "/procollab/.env",
+                    "Type": "bind",
+                    "RW": False,
+                },
+            ]
+            return {
+                "Id": name + "-id",
+                "Image": "original-image",
+                "State": {"Running": True, "StartedAt": "original-start"},
+                "Config": {},
+                "HostConfig": {},
+                "Mounts": mounts if calls[name] % 2 else list(reversed(mounts)),
+            }
+
+        self.snapshot_mock.side_effect = REAL_SNAPSHOT
+        with patch.object(upgrade.hosted, "inspect", side_effect=inspect), patch.object(
+            upgrade.subprocess,
+            "run",
+            return_value=SimpleNamespace(stdout=b"nginx unchanged"),
+        ):
+            self.assertEqual(upgrade.apply(self.bundle)["phase"], "active")
+        self.assertGreater(sum(calls.values()), 20)
+        self.docker_mutation.assert_not_called()
+
+    def test_retry_accepts_old_rolled_back_record_and_preserves_it_in_backup(self):
+        upgrade.apply(self.bundle)
+        upgrade.rollback(upgrade.load_record())
+        previous = upgrade.load_record()
+        previous["protected"].pop("format")
+        previous["protected"]["containers"]["dev"][3] = "legacy-unsorted-hash"
+        upgrade.save_record(previous)
+        previous_path = Path(previous["backup"]) / "record.json"
+        before = previous_path.read_bytes()
+        self.assertEqual(upgrade.apply(self.bundle)["phase"], "active")
+        self.assertEqual(previous_path.read_bytes(), before)
+        self.assertEqual(
+            upgrade.load_record()["protected"]["format"], upgrade.SNAPSHOT_FORMAT
+        )
+
+    def test_retry_refuses_real_external_restart_since_previous_attempt(self):
+        upgrade.apply(self.bundle)
+        upgrade.rollback(upgrade.load_record())
+        self.snapshot["containers"]["dev"][2] = "external-restart"
+        with self.assertRaisesRegex(upgrade.hosted.Refused, "Контейнеры изменились"):
+            upgrade.apply(self.bundle)
+        self.assertEqual(upgrade.load_record()["phase"], "rolled_back")
+
+    def test_external_fixed_tool_works_with_immutable_original_bundle(self):
+        original_helper = self.bundle / "upgrade_frontend.py"
+        original_helper.write_text("# previous verified helper retained unchanged\n")
+        self.manifest["files"]["upgrade_frontend.py"] = upgrade.hosted.digest(
+            original_helper
+        )
+        self.write_manifest()
+        manifest_before = (self.bundle / "frontend-manifest.json").read_bytes()
+        self.assertEqual(upgrade.apply(self.bundle)["phase"], "active")
+        self.assertEqual(
+            (self.bundle / "frontend-manifest.json").read_bytes(), manifest_before
+        )
+        self.assertEqual(
+            upgrade.hosted.digest(original_helper),
+            self.manifest["files"]["upgrade_frontend.py"],
+        )
 
     def test_real_http_publication_retry_and_automatic_rollback_preserve_dev(self):
         from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
