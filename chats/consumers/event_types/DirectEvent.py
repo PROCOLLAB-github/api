@@ -1,16 +1,18 @@
 from channels.db import database_sync_to_async
 
-from chats.models import DirectChatMessage, DirectChat
+from chats.models import DirectChat
 from chats.websockets_settings import ChatType, Event, EventType
-from chats.exceptions import WrongChatIdException
 from django.core.cache import cache
 from chats.utils import (
     get_user_channel_cache_key,
     get_chat_and_user_ids_from_content,
-    orm_get,
-    orm_save,
 )
-from chats.services.messages import create_direct_message, delete_message, edit_message
+from chats.services.messages import (
+    create_direct_message,
+    delete_message,
+    edit_message,
+    mark_direct_message_read,
+)
 
 
 class DirectEvent:
@@ -41,7 +43,11 @@ class DirectEvent:
         # send message to user's channel
         other_user_channel = cache.get(get_user_channel_cache_key(other_user), None)
 
-        event_data = {"type": EventType.NEW_MESSAGE, "content": content}
+        event_data = {
+            "type": EventType.NEW_MESSAGE,
+            "content": content,
+            "_direct_chat_id": chat_id,
+        }
 
         await self.channel_layer.send(self.channel_name, event_data)
 
@@ -49,31 +55,29 @@ class DirectEvent:
             await self.channel_layer.send(other_user_channel, event_data)
 
     async def process_read_message_event(self, event: Event, room_name: str):
-        chat_id, other_user = await get_chat_and_user_ids_from_content(
-            event.content, self.user
+        _, other_user = await get_chat_and_user_ids_from_content(event.content, self.user)
+        chat_id = DirectChat.get_chat_id_from_users(self.user, other_user)
+        message_id = await database_sync_to_async(mark_direct_message_read)(
+            chat_id=chat_id,
+            message_id=event.content["message_id"],
+            user=self.user,
+            author=other_user,
         )
-        msg = await orm_get(DirectChatMessage.objects, pk=event.content["message_id"])
-        if msg.chat_id != chat_id or msg.author_id != other_user.id:
-            raise WrongChatIdException(
-                "Some of chat/message ids are wrong, you can't access this message"
-            )
-        msg.is_read = True
-        await orm_save(msg, update_fields=["is_read"])
         # send 2 events to user's channel
         other_user_channel = cache.get(get_user_channel_cache_key(other_user), None)
-        json_thingy = {
+        event_data = {
             "type": EventType.READ_MESSAGE,
             "content": {
-                "chat_id": event.content["chat_id"],
-                "chat_type": event.content["chat_type"],
+                "chat_id": chat_id,
+                "chat_type": ChatType.DIRECT,
                 "user_id": self.user.id,
-                "message_id": event.content["message_id"],
+                "message_id": message_id,
             },
+            "_direct_chat_id": chat_id,
         }
-        await self.channel_layer.send(self.channel_name, json_thingy)
-        if other_user_channel is None:
-            return
-        await self.channel_layer.send(other_user_channel, json_thingy)
+        await self.channel_layer.send(self.channel_name, event_data)
+        if other_user_channel and other_user_channel != self.channel_name:
+            await self.channel_layer.send(other_user_channel, event_data)
 
     async def process_delete_message_event(self, event: Event, room_name: str):
         _, other_user = await get_chat_and_user_ids_from_content(event.content, self.user)
@@ -87,18 +91,19 @@ class DirectEvent:
 
         # send message to user's channel
         other_user_channel = cache.get(get_user_channel_cache_key(other_user), None)
-        content = {
+        event_data = {
             "type": EventType.DELETE_MESSAGE,
             "content": {
                 "message_id": message_id,
                 "chat_id": chat_id,
                 "chat_type": ChatType.DIRECT,
             },
+            "_direct_chat_id": chat_id,
         }
-        await self.channel_layer.send(self.channel_name, content)
+        await self.channel_layer.send(self.channel_name, event_data)
 
         if other_user_channel and other_user_channel != self.channel_name:
-            await self.channel_layer.send(other_user_channel, content)
+            await self.channel_layer.send(other_user_channel, event_data)
 
     async def process_edit_message_event(self, event, room_name):
         _, other_user = await get_chat_and_user_ids_from_content(event.content, self.user)
@@ -118,7 +123,11 @@ class DirectEvent:
         # send message to user's channel
         other_user_channel = cache.get(get_user_channel_cache_key(other_user), None)
 
-        event_data = {"type": EventType.EDIT_MESSAGE, "content": content}
+        event_data = {
+            "type": EventType.EDIT_MESSAGE,
+            "content": content,
+            "_direct_chat_id": chat_id,
+        }
 
         if other_user_channel and other_user_channel != self.channel_name:
             await self.channel_layer.send(other_user_channel, event_data)

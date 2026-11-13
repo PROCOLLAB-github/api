@@ -150,7 +150,7 @@ def create_direct_message(
     file_urls=None,
     client_message_id=None,
 ):
-    chat = DirectChat.get_chat(author, other_user)
+    chat = get_direct_chat_for_participants(author, other_user)
     # Serialize sends in this chat before checking for a repeat or locking files.
     DirectChat.objects.select_for_update().get(pk=chat.pk)
     return _create_message(
@@ -164,6 +164,33 @@ def create_direct_message(
         file_urls=file_urls,
         client_message_id=client_message_id,
     )
+
+
+@transaction.atomic
+def get_direct_chat_for_participants(user, other_user):
+    chat = DirectChat.get_chat(user, other_user)
+    participants = set(chat.users.values_list("pk", flat=True))
+    if participants != {user.pk, other_user.pk}:
+        raise MessageValidationException("Чат недоступен.")
+    return chat
+
+
+def mark_direct_message_read(*, chat_id, message_id, user, author):
+    if type(message_id) not in (str, int):
+        raise MessageValidationException("Некорректный идентификатор сообщения.")
+    try:
+        messages = DirectChatMessage.objects.filter(
+            pk=message_id,
+            chat_id=chat_id,
+            chat__users=user,
+            author=author,
+            is_deleted=False,
+        ).filter(chat__users=author)
+        if user.pk != author.pk and messages.update(is_read=True):
+            return int(message_id)
+    except (TypeError, ValueError):
+        pass
+    raise MessageValidationException("Сообщение недоступно для прочтения.")
 
 
 @transaction.atomic

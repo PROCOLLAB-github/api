@@ -16,6 +16,12 @@ def accessible_chats(user, chat_model):
     return user.get_project_chats()
 
 
+def direct_chat_is_accessible(user, chat_id):
+    from chats.models import DirectChat
+
+    return accessible_chats(user, DirectChat).filter(pk=chat_id).exists()
+
+
 def get_lookup_kwarg(request, view, *names):
     view_kwargs = getattr(view, "kwargs", {}) or {}
     parser_kwargs = (getattr(request, "parser_context", None) or {}).get("kwargs", {})

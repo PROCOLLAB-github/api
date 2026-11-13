@@ -211,6 +211,7 @@ class ChatSearchAdmin(admin.ModelAdmin):
             event = {
                 "type": event_type,
                 "content": {"chat_id": chat.pk, "chat_type": ChatType.DIRECT, **content},
+                "_direct_chat_id": chat.pk,
             }
             for user in chat.users.all():
                 channel = cache.get(get_user_channel_cache_key(user))
