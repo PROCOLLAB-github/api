@@ -23,6 +23,9 @@ PROGRAM_SOLUTIONS_ENABLED = config("PROGRAM_SOLUTIONS_ENABLED", default=True, ca
 PROJECT_DEFAULT_PACK_URL = config("PROJECT_DEFAULT_PACK_URL", default="")
 
 WHITE_LABEL_ENABLED = config("WHITE_LABEL_ENABLED", default=False, cast=bool)
+WHITE_LABEL_ORGANIZERS_ARE_EXPERTS = config(
+    "WHITE_LABEL_ORGANIZERS_ARE_EXPERTS", default=False, cast=bool
+)
 WHITE_LABEL_PROGRAM_ID = config("WHITE_LABEL_PROGRAM_ID", default=0, cast=int)
 WHITE_LABEL_BRAND_NAME = config("WHITE_LABEL_BRAND_NAME", default="", cast=str)
 WHITE_LABEL_LOGO_URL = config("WHITE_LABEL_LOGO_URL", default="", cast=str)

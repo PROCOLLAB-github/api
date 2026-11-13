@@ -233,21 +233,106 @@ class OverallResultsTests(TestCase):
         for key in ('"experts"', '"email"', '"source_attempt_id"'):
             self.assertNotIn(key, body)
 
-    def test_legacy_mode_does_not_silently_normalize_case_or_break_existing_rating(self):
+    def test_raw_case_points_are_added_without_normalizing_or_summing_experts(self):
         PartnerProgram.objects.filter(pk=self.program.pk).update(
             evaluation_scoring_mode="legacy"
         )
         data = self.snapshot()
-        self.assertFalse(data["case_scoring_configured"])
-        self.assertTrue(
-            all(
-                p["status"] == "configuration_required" and p["score"] is None
-                for p in data["projects"]
-            )
-        )
+        self.assertTrue(data["case_scoring_configured"])
+        self.assertEqual((data["case_maximum"], data["maximum"]), (10, 110))
+        rows = self.rows()
+        self.assertEqual((rows["Альфа"]["case_score"], rows["Альфа"]["score"]), (8, 98))
+        self.assertEqual((rows["Ноль"]["score"], rows["Ноль"]["ready"]), (0, True))
+        self.assertEqual(rows["Квиз готов"]["status"], "pending_case")
         old = self.api.get(f"/programs/{self.program.pk}/management/results/")
         self.assertEqual(old.status_code, 200)
         self.assertEqual(old.data["maximum"], 10)
+
+    def test_raw_three_criteria_keep_24_out_of_30_before_adding_quiz(self):
+        program = create_rate_program(is_competitive=True, required_evaluators=2)
+        program.criterias.all().delete()
+        program.managers.add(self.manager)
+        criteria = [
+            Criteria.objects.create(
+                partner_program=program, name=name, type="int", min_value=0, max_value=10
+            )
+            for name in ("Решение", "Реализуемость", "Презентация")
+        ]
+        project, _ = team(program, name="Три критерия")
+        for _ in range(2):
+            expert = create_rate_expert(program=program)
+            for criterion in criteria:
+                ProjectScore.objects.create(
+                    criteria=criterion, project=project, user=expert, value="8"
+                )
+        record_quiz_outcome(program.pk, project.pk, "raw-three-criteria-quiz", 90)
+        data = self.api.get(self.url(program=program)).data
+        row = data["projects"][0]
+        self.assertEqual(
+            (row["case_score"], row["quiz_score"], row["score"]), (24, 90, 114)
+        )
+        self.assertEqual((data["case_maximum"], data["maximum"]), (30, 130))
+
+    def test_raw_case_can_exceed_100_and_share_values_with_admin_and_excel(self):
+        PartnerProgram.objects.filter(pk=self.program.pk).update(
+            evaluation_scoring_mode="legacy"
+        )
+        Criteria.objects.filter(pk=self.criterion.pk).update(max_value=200)
+        ProjectScore.objects.filter(project=self.projects["Альфа"]).update(value="170")
+        row = self.rows()["Альфа"]
+        self.assertEqual((row["case_score"], row["score"]), (170, 260))
+        self.assertEqual(self.snapshot()["maximum"], 300)
+        sheet = load_workbook(BytesIO(self.api.get(self.url(True)).content)).active
+        exported = next(r for r in sheet.iter_rows(min_row=2) if r[1].value == "Альфа")
+        self.assertEqual(exported[3].value, 170)
+        self.assertEqual(
+            [sheet.cell(1, c).value for c in (4, 5, 6)],
+            ["Баллы за кейс", "Баллы за квиз", "Итог"],
+        )
+        self.manager.is_staff = self.manager.is_superuser = True
+        self.manager.save()
+        self.client.force_login(self.manager)
+        response = self.client.get(
+            reverse(
+                "admin:partner_programs_partnerprogram_overall_results",
+                args=[self.program.pk],
+            )
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.context_data["snapshot"]["projects"], self.snapshot()["projects"]
+        )
+        self.assertNotContains(response, "из 200")
+        self.assertContains(response, "Баллы за кейс")
+
+    def test_unbounded_legacy_scale_has_no_invented_maximum(self):
+        PartnerProgram.objects.filter(pk=self.program.pk).update(
+            evaluation_scoring_mode="legacy"
+        )
+        Criteria.objects.filter(pk=self.criterion.pk).update(max_value=None)
+        data = self.snapshot()
+        self.assertIsNone(data["case_maximum"])
+        self.assertIsNone(data["maximum"])
+        self.assertEqual(self.rows()["Альфа"]["score"], 98)
+
+    def test_comment_only_program_keeps_teams_and_quiz_without_a_case_score(self):
+        PartnerProgram.objects.filter(pk=self.program.pk).update(
+            evaluation_scoring_mode="legacy"
+        )
+        Criteria.objects.filter(pk=self.criterion.pk).update(
+            type="str", min_value=None, max_value=None, weight_percent=None
+        )
+        data = self.snapshot()
+        self.assertFalse(data["case_scoring_configured"])
+        self.assertEqual(len(data["projects"]), 9)
+        self.assertEqual(data["ready_count"], 0)
+        self.assertTrue(
+            all(
+                r["status"] == "configuration_required" and r["score"] is None
+                for r in data["projects"]
+            )
+        )
+        self.assertEqual(self.rows()["Альфа"]["quiz_score"], 90)
 
     def test_empty_program_has_explicit_empty_result(self):
         program, _ = weighted_program()
@@ -363,7 +448,7 @@ class OverallResultsTests(TestCase):
         self.assertEqual(
             response.context_data["snapshot"]["projects"], self.snapshot()["projects"]
         )
-        self.assertContains(response, "Итог из 200")
+        self.assertContains(response, "Баллы за кейс")
         self.assertContains(response, "0,00")
         self.assertContains(response, "1 из 2 оценок")
         selected = self.client.get(url, {"search": "Гамма", "scope": "all"})

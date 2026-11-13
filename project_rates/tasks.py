@@ -8,6 +8,46 @@ from procollab.white_label import get_config, frontend_url
 
 
 @app.task(autoretry_for=(Exception,), retry_backoff=True, max_retries=3)
+def send_white_label_project_rated(program_id, project_id):
+    from partner_programs.models import PartnerProgramProject
+    from project_rates.models import ProjectScore
+
+    brand = get_config()
+    if not brand.enabled or brand.program_id != program_id:
+        return
+    link = (
+        PartnerProgramProject.objects.select_related("project__leader", "partner_program")
+        .filter(partner_program_id=program_id, project_id=project_id)
+        .first()
+    )
+    if (
+        not link
+        or not ProjectScore.objects.filter(
+            criteria__partner_program_id=program_id, project_id=project_id
+        ).exists()
+    ):
+        return
+    context = {
+        "first_name": link.project.leader.first_name,
+        "project_name": link.project.name,
+        "program_name": link.partner_program.name,
+        "program_url": f"{brand.frontend_url}/office/program/{program_id}",
+        "brand_name": brand.brand_name,
+    }
+    message = EmailMultiAlternatives(
+        f"Эксперт оценил проект | {brand.brand_name}",
+        render_to_string("email/white_label_project_rated.txt", context),
+        settings.EMAIL_USER,
+        [link.project.leader.email],
+    )
+    message.attach_alternative(
+        render_to_string("email/white_label_project_rated.html", context), "text/html"
+    )
+    if not message.send():
+        raise RuntimeError("Не удалось отправить уведомление об оценке проекта.")
+
+
+@app.task(autoretry_for=(Exception,), retry_backoff=True, max_retries=3)
 def send_expert_invitation(invitation_id, token):
     from project_rates.models import ExpertInvitation
     from project_rates.workspace import digest

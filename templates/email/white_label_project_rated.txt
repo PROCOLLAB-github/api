@@ -1,0 +1,8 @@
+Здравствуйте{% if first_name %}, {{ first_name }}{% endif %}!
+
+Эксперт сохранил оценку проекта «{{ project_name }}» в программе «{{ program_name }}».
+
+Страница программы:
+{{ program_url }}
+
+Команда {{ brand_name }}
