@@ -20,13 +20,8 @@ from partner_programs.models import PartnerProgramProject
 from project_rates.models import Criteria, ProjectExpertAssignment, ProjectScore
 
 
-def annotated_assignment_queryset(program_id=None):
-    """Общая SQL-проверка завершённости реального назначения в программе.
-
-    Завершенное назначение требует сданного проекта и оценок по обязательным
-    критериям программы. Если есть только комментарии, нужна сохраненная оценка.
-    Аннотации пригодны и для списка назначений, и для агрегации работ без N+1.
-    """
+def annotated_assignment_queryset(program_id=None, *, expert_completion=False):
+    """Кабинет эксперта учитывает обязательные критерии; отчеты — все критерии."""
     scope = program_id if program_id is not None else OuterRef("partner_program_id")
     criteria = (
         Criteria.objects.filter(partner_program_id=scope)
@@ -53,7 +48,7 @@ def annotated_assignment_queryset(program_id=None):
     link = PartnerProgramProject.objects.filter(
         partner_program_id=scope, project_id=OuterRef("project_id")
     ).order_by("pk")
-    return (
+    assignments = (
         (
             ProjectExpertAssignment.objects.filter(partner_program_id=program_id)
             if program_id is not None
@@ -71,22 +66,18 @@ def annotated_assignment_queryset(program_id=None):
             ),
             project_submitted_at=Subquery(link.values("datetime_submitted")[:1]),
         )
-        .annotate(
-            is_completed=Case(
-                When(
-                    Q(project_submitted=True)
-                    & (
-                        Q(
-                            required_criteria__gt=0,
-                            required_scored__gte=F("required_criteria"),
-                        )
-                        | Q(required_criteria=0, criteria_scored__gt=0)
-                    ),
-                    then=Value(True),
-                ),
-                default=Value(False),
-                output_field=BooleanField(),
-            )
+    )
+    if expert_completion:
+        complete = Q(
+            required_criteria__gt=0, required_scored__gte=F("required_criteria")
+        ) | Q(required_criteria=0, criteria_scored__gt=0)
+    else:
+        complete = Q(criteria_total__gt=0, criteria_scored__gte=F("criteria_total"))
+    return assignments.annotate(
+        is_completed=Case(
+            When(Q(project_submitted=True) & complete, then=Value(True)),
+            default=Value(False),
+            output_field=BooleanField(),
         )
     )
 

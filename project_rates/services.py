@@ -94,7 +94,7 @@ def get_projects_for_rate_queryset(
     completed = Q(_own_score_count__gt=0)
     if assigned_only:
         completed = Exists(
-            annotated_assignment_queryset(program.pk).filter(
+            annotated_assignment_queryset(program.pk, expert_completion=True).filter(
                 expert__user=user, project_id=OuterRef("pk"), is_completed=True
             )
         )
