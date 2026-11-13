@@ -1,6 +1,12 @@
 {% extends "admin/base_site.html" %}
 
 {% block content %}
+  {% if chat.first_unread_message_id %}
+    <p>
+      Непрочитанных сообщений {{ chat.unread_count }}.
+      <a href="{% url message_context_route chat.pk chat.first_unread_message_id %}#selected-message">К первому непрочитанному</a>
+    </p>
+  {% endif %}
   {% if draft_url %}
     <p><a href="{{ draft_url }}">Личный черновик</a></p>
   {% endif %}

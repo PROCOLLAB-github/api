@@ -81,23 +81,90 @@ class ChatPermissionsTests(TestCase):
     def test_direct_chat_preview_and_unreads_use_visible_incoming_messages(self):
         chat = DirectChat.get_chat(self.leader, self.collaborator)
         chat.messages.create(author=self.leader, text="Свое сообщение")
-        unread = chat.messages.create(author=self.collaborator, text="Новое сообщение")
+        first = chat.messages.create(
+            author=self.collaborator, text="Первое непрочитанное"
+        )
+        newest = chat.messages.create(author=self.collaborator, text="Новое сообщение")
         chat.messages.create(
             author=self.collaborator, text="Удаленное сообщение", is_deleted=True
         )
         api = APIClient()
         api.force_authenticate(self.leader)
         listing_url = reverse("chats:direct-chat-list")
+        detail_url = reverse("chats:direct-chat-detail", args=[chat.pk])
         unreads_url = reverse("chats:has-chat-unreads")
 
-        preview = api.get(listing_url, secure=True).json()[0]["last_message"]
-        self.assertEqual(preview["id"], unread.pk)
+        item = api.get(listing_url, secure=True).json()[0]
+        self.assertEqual(item["last_message"]["id"], newest.pk)
+        detail = api.get(detail_url, secure=True).json()
+        for summary in (item, detail):
+            self.assertEqual(summary["unread_count"], 2)
+            self.assertEqual(summary["first_unread_message_id"], first.pk)
+        context_url = reverse(
+            "chats:direct-chat-message-context", args=[chat.pk, first.pk]
+        )
+        self.assertIn(
+            first.pk,
+            [item["id"] for item in api.get(context_url, secure=True).json()["results"]],
+        )
+        first.refresh_from_db()
+        self.assertFalse(first.is_read)
         self.assertTrue(api.get(unreads_url, secure=True).json()["has_unreads"])
-        unread.is_deleted = True
-        unread.save(update_fields=["is_deleted"])
-        preview = api.get(listing_url, secure=True).json()[0]["last_message"]
-        self.assertEqual(preview["text"], "Свое сообщение")
+        first.is_read = True
+        first.save(update_fields=["is_read"])
+        newest.is_deleted = True
+        newest.save(update_fields=["is_deleted"])
+        item = api.get(listing_url, secure=True).json()[0]
+        self.assertEqual(item["last_message"]["id"], first.pk)
+        self.assertEqual(item["unread_count"], 0)
+        self.assertIsNone(item["first_unread_message_id"])
         self.assertFalse(api.get(unreads_url, secure=True).json()["has_unreads"])
+
+    def test_admin_opens_first_unread_and_marks_it_for_the_recipient(self):
+        chat = DirectChat.get_chat(self.staff, self.collaborator)
+        incoming = chat.messages.create(author=self.collaborator, text="Входящее")
+        own = chat.messages.create(author=self.staff, text="Исходящее")
+        self.client.force_login(self.staff)
+        route = "admin:chats_directchat_message_search"
+        search_url = reverse(route, args=[chat.pk])
+        context_url = reverse(route + "_context", args=[chat.pk, incoming.pk])
+        self.assertContains(
+            self.client.get(search_url, secure=True), "К первому непрочитанному"
+        )
+        self.assertContains(
+            self.client.get(search_url, secure=True), context_url + "#selected-message"
+        )
+        url = reverse(route + "_read", args=[chat.pk, incoming.pk])
+        with self.captureOnCommitCallbacks(execute=True) as callbacks:
+            response = self.client.post(url, secure=True)
+        self.assertRedirects(response, context_url, fetch_redirect_response=False)
+        self.assertEqual(len(callbacks), 1)
+        incoming.refresh_from_db()
+        self.assertTrue(incoming.is_read)
+        own_url = reverse(route + "_read", args=[chat.pk, own.pk])
+        self.assertEqual(self.client.post(own_url, secure=True).status_code, 404)
+        self.assertNotContains(
+            self.client.get(search_url, secure=True), "К первому непрочитанному"
+        )
+
+    def test_direct_and_project_history_are_read_only(self):
+        direct = DirectChat.get_chat(self.leader, self.collaborator)
+        api = APIClient()
+        api.force_authenticate(self.leader)
+        for route, chat in (
+            ("direct-chat-messages", direct),
+            ("project-chat-messages", self.chat),
+        ):
+            with self.subTest(route=route):
+                url = reverse("chats:" + route, args=[chat.pk])
+                history = api.get(url, secure=True)
+                self.assertEqual(history.status_code, 200)
+                self.assertIn("no-store", history["Cache-Control"])
+                response = api.post(
+                    url, {"text": "Сообщение"}, format="json", secure=True
+                )
+                self.assertEqual(response.status_code, 405)
+                self.assertFalse(chat.messages.exists())
 
 
 @override_settings(RUNNING_TESTS=False)

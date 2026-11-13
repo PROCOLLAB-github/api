@@ -28,6 +28,11 @@ from chats.direct_privacy import (
     set_block,
     set_incoming_policy,
 )
+from chats.direct_reads import (
+    mark_direct_message_read,
+    publish_direct_message_read,
+    with_direct_chat_unreads,
+)
 from chats.exceptions import MessageValidationException
 from chats.drafts import (
     DRAFT_TEXT_LIMIT,
@@ -55,8 +60,16 @@ from chats.notifications import (
     set_notification_mode,
 )
 from chats.permissions import accessible_chats, can_publish_in_program_channel
-from chats.program_channels import mark_channel_read, publish_channel_message
-from chats.project_reads import mark_project_message_read, publish_project_message_read
+from chats.program_channels import (
+    mark_channel_read,
+    publish_channel_message,
+    with_channel_unreads,
+)
+from chats.project_reads import (
+    mark_project_message_read,
+    publish_project_message_read,
+    with_project_chat_unreads,
+)
 from chats.search import ChatMessageSearchForm, search_chat_messages
 from chats.services.messages import create_project_message, delete_message, edit_message
 from chats.utils import get_user_channel_cache_key
@@ -131,6 +144,16 @@ class ChatSearchAdmin(admin.ModelAdmin):
 
     def message_search(self, request, object_id):
         chat = self.get_chat_for_member(request, object_id)
+        unreads = {
+            DirectChat: with_direct_chat_unreads,
+            ProjectChat: with_project_chat_unreads,
+            ProgramChannel: with_channel_unreads,
+        }[self.model]
+        chat = unreads(
+            accessible_chats(request.user, self.model).filter(pk=chat.pk), request.user.pk
+        ).first()
+        if chat is None:
+            raise Http404("Чат недоступен.")
         form = ChatMessageSearchForm(request.GET)
         page = None
         if form.is_valid():
@@ -765,6 +788,13 @@ class DirectChatAdmin(ChatSearchAdmin):
                 ),
                 name=self.message_search_url_name + "_privacy",
             ),
+            path(
+                "<slug:object_id>/messages/<int:message_id>/read/",
+                self.admin_site.admin_view(
+                    require_http_methods(["POST"])(self.read_message)
+                ),
+                name=self.message_search_url_name + "_read",
+            ),
         ] + super().get_urls()
 
     def incoming_settings(self, request):
@@ -792,10 +822,39 @@ class DirectChatAdmin(ChatSearchAdmin):
 
     def extra_channel_context(self, request, chat):
         return {
+            "direct_read_route": "admin:" + self.message_search_url_name + "_read",
             "direct_privacy_url": reverse(
                 "admin:" + self.message_search_url_name + "_privacy", args=[chat.pk]
-            )
+            ),
         }
+
+    def read_message(self, request, object_id, message_id):
+        chat = self.get_chat_for_member(request, object_id)
+        try:
+            with transaction.atomic():
+                author = direct_chat_opponent(chat, request.user)
+                mark_direct_message_read(
+                    chat_id=chat.pk,
+                    message_id=message_id,
+                    user=request.user,
+                    author=author,
+                )
+                transaction.on_commit(
+                    partial(
+                        async_to_sync(publish_direct_message_read),
+                        chat_id=chat.pk,
+                        message_id=message_id,
+                        user=request.user,
+                        author=author,
+                    ),
+                    robust=True,
+                )
+        except MessageValidationException as error:
+            raise Http404(str(error)) from error
+        self.message_user(request, "Сообщение отмечено прочитанным.")
+        return redirect(
+            "admin:" + self.message_search_url_name + "_context", chat.pk, message_id
+        )
 
     def chat_privacy(self, request, object_id):
         chat = self.get_chat_for_member(request, object_id)

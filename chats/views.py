@@ -8,7 +8,6 @@ from rest_framework import status
 from rest_framework.generics import (
     GenericAPIView,
     ListAPIView,
-    ListCreateAPIView,
     RetrieveAPIView,
 )
 from drf_yasg.utils import swagger_auto_schema
@@ -26,12 +25,13 @@ from chats.attachments import (
 from chats.exceptions import MessageValidationException
 from chats.drafts import with_draft_marker
 from chats.direct_privacy import direct_contact
+from chats.direct_reads import unread_direct_messages, with_direct_chat_unreads
 from chats.message_context import (
     MAX_CONTEXT_LIMIT,
     MessageContextForm,
     get_message_context,
 )
-from chats.models import DirectChat, DirectChatMessage, ProgramChannel, ProjectChat
+from chats.models import DirectChat, ProgramChannel, ProjectChat
 from chats.pagination import MessageListPagination
 from chats.permissions import IsProjectChatMember, IsChatMember, accessible_chats
 from chats.program_channels import channel_unread_messages
@@ -61,10 +61,9 @@ class DirectChatList(ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return with_draft_marker(
-            DirectChat.objects.prefetch_related("users").filter(users=self.request.user),
-            self.request.user,
-        )
+        user = self.request.user
+        chats = accessible_chats(user, DirectChat).prefetch_related("users")
+        return with_direct_chat_unreads(with_draft_marker(chats, user), user.pk)
 
     def get(self, request, *args, **kwargs):
         serialized_chats = []
@@ -134,7 +133,10 @@ class DirectChatDetail(RetrieveAPIView):
                 opponent = user1
             context = {"opponent": opponent}
             chat = get_direct_chat_for_participants(user1, user2)
-            data = DirectChatDetailSerializer(chat, context=context).data
+            chat = with_direct_chat_unreads(
+                accessible_chats(request.user, DirectChat), request.user.pk
+            ).get(pk=chat.pk)
+            data = self.get_serializer(chat, context=context).data
 
             data["name"] = f"{opponent.first_name} {opponent.last_name}"
             data["image_address"] = opponent.avatar
@@ -170,7 +172,8 @@ class DirectChatDetail(RetrieveAPIView):
             return Response({"detail": str(error)}, status=status.HTTP_404_NOT_FOUND)
 
 
-class ChatMessageHistory(ListCreateAPIView):
+@method_decorator(never_cache, name="dispatch")
+class ChatMessageHistory(ListAPIView):
     pagination_class = MessageListPagination
 
     @swagger_auto_schema(
@@ -252,14 +255,6 @@ class ProjectChatMessageList(ChatMessageHistory):
         return with_project_message_reads(
             messages, self.request.user.pk, include_reply=True
         )
-
-    def post(self, request, *args, **kwargs):
-        # TODO: try to create a message in a chat. If chat doesn't exist, create it and then create a message.
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
 @method_decorator(never_cache, name="dispatch")
@@ -402,6 +397,7 @@ class ChatMessageChanges(GenericAPIView):
         )
 
 
+@method_decorator(never_cache, name="dispatch")
 class ChatFileList(ListAPIView):
     chat_model = None
     serializer_class = ChatAttachmentSerializer
@@ -446,6 +442,7 @@ class ChatAttachmentDownload(APIView):
         return download_chat_attachment(request, chat, message_id, attachment_id)
 
 
+@method_decorator(never_cache, name="dispatch")
 class HasChatUnreadsView(GenericAPIView):
     """Returns True if user has unread messages"""
 
@@ -470,12 +467,8 @@ class HasChatUnreadsView(GenericAPIView):
     def get(self, request, *args, **kwargs):
         user = request.user
         has_direct_messages_unread = (
-            DirectChatMessage.objects.filter(
-                chat_id__in=user.direct_chats.values("pk"),
-                is_read=False,
-                is_deleted=False,
-            )
-            .exclude(author=user)
+            unread_direct_messages(user.pk)
+            .filter(chat_id__in=accessible_chats(user, DirectChat).values("pk"))
             .exists()
         )
         has_project_messages_unread = (

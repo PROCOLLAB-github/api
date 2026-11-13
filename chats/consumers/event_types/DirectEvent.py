@@ -1,5 +1,6 @@
 from channels.db import database_sync_to_async
 
+from chats.direct_reads import mark_direct_message_read, publish_direct_message_read
 from chats.models import DirectChat
 from chats.websockets_settings import ChatType, Event, EventType
 from django.core.cache import cache
@@ -11,7 +12,6 @@ from chats.services.messages import (
     create_direct_message,
     delete_message,
     edit_message,
-    mark_direct_message_read,
 )
 
 
@@ -63,21 +63,13 @@ class DirectEvent:
             user=self.user,
             author=other_user,
         )
-        # send 2 events to user's channel
-        other_user_channel = cache.get(get_user_channel_cache_key(other_user), None)
-        event_data = {
-            "type": EventType.READ_MESSAGE,
-            "content": {
-                "chat_id": chat_id,
-                "chat_type": ChatType.DIRECT,
-                "user_id": self.user.id,
-                "message_id": message_id,
-            },
-            "_direct_chat_id": chat_id,
-        }
-        await self.channel_layer.send(self.channel_name, event_data)
-        if other_user_channel and other_user_channel != self.channel_name:
-            await self.channel_layer.send(other_user_channel, event_data)
+        await publish_direct_message_read(
+            chat_id=chat_id,
+            message_id=message_id,
+            user=self.user,
+            author=other_user,
+            sender_channel=self.channel_name,
+        )
 
     async def process_delete_message_event(self, event: Event, room_name: str):
         _, other_user = await get_chat_and_user_ids_from_content(event.content, self.user)

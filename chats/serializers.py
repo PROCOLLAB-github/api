@@ -54,6 +54,8 @@ def serialize_message_attachments(message):
 
 class DirectChatListSerializer(serializers.ModelSerializer):
     has_draft = serializers.BooleanField(read_only=True)
+    unread_count = serializers.IntegerField(read_only=True)
+    first_unread_message_id = serializers.IntegerField(read_only=True, allow_null=True)
     last_message = serializers.SerializerMethodField()
     opponent = serializers.SerializerMethodField()
     name = serializers.SerializerMethodField(read_only=True)
@@ -85,7 +87,16 @@ class DirectChatListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DirectChat
-        fields = ["id", "opponent", "last_message", "name", "image_address", "has_draft"]
+        fields = [
+            "id",
+            "opponent",
+            "last_message",
+            "name",
+            "image_address",
+            "has_draft",
+            "unread_count",
+            "first_unread_message_id",
+        ]
 
 
 class ProgramChannelMessageSerializer(serializers.ModelSerializer):
@@ -112,6 +123,8 @@ class ProgramChannelMessageSerializer(serializers.ModelSerializer):
 
 class DirectChatDetailSerializer(serializers.ModelSerializer):
     opponent = serializers.SerializerMethodField()
+    unread_count = serializers.IntegerField(read_only=True)
+    first_unread_message_id = serializers.IntegerField(read_only=True, allow_null=True)
 
     def get_opponent(self, chat: DirectChat):
         user = self.context.get("opponent")
@@ -124,6 +137,8 @@ class DirectChatDetailSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "opponent",
+            "unread_count",
+            "first_unread_message_id",
         ]
 
 

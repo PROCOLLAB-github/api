@@ -208,24 +208,6 @@ def get_direct_chat_for_typing(user, other_user):
     return get_direct_chat_for_participants(user, other_user)
 
 
-def mark_direct_message_read(*, chat_id, message_id, user, author):
-    if type(message_id) not in (str, int):
-        raise MessageValidationException("Некорректный идентификатор сообщения.")
-    try:
-        messages = DirectChatMessage.objects.filter(
-            pk=message_id,
-            chat_id=chat_id,
-            chat__users=user,
-            author=author,
-            is_deleted=False,
-        ).filter(chat__users=author)
-        if user.pk != author.pk and messages.update(is_read=True):
-            return int(message_id)
-    except (TypeError, ValueError):
-        pass
-    raise MessageValidationException("Сообщение недоступно для прочтения.")
-
-
 @transaction.atomic
 def create_project_message(
     *,

@@ -18,6 +18,12 @@
     </form>
   {% endif %}
   {% if direct_privacy_url and message.author_id != request.user.pk %}
+    {% if direct_read_route and not message.is_read %}
+      <form method="post" action="{% url direct_read_route chat.pk message.pk %}">
+        {% csrf_token %}
+        <button type="submit">Отметить прочитанным</button>
+      </form>
+    {% endif %}
     <form method="post" action="{{ direct_privacy_url }}">
       {% csrf_token %}
       <input type="hidden" name="message_id" value="{{ message.pk }}">
