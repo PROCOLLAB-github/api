@@ -24,6 +24,7 @@ from chats.attachments import (
     get_accessible_chat,
 )
 from chats.exceptions import MessageValidationException
+from chats.direct_privacy import direct_contact
 from chats.message_context import (
     MAX_CONTEXT_LIMIT,
     MessageContextForm,
@@ -106,6 +107,7 @@ class ProjectChatDetail(RetrieveAPIView):
         )
 
 
+@method_decorator(never_cache, name="dispatch")
 class DirectChatDetail(RetrieveAPIView):
     queryset = DirectChat.objects.all()
     serializer_class = DirectChatDetailSerializer
@@ -134,6 +136,9 @@ class DirectChatDetail(RetrieveAPIView):
 
             data["name"] = f"{opponent.first_name} {opponent.last_name}"
             data["image_address"] = opponent.avatar
+            contact = direct_contact(request.user, opponent, chat)
+            data["blocked_by_me"] = contact.blocked_by_me
+            data["can_send"] = contact.can_send
 
             return Response(
                 status=status.HTTP_200_OK,

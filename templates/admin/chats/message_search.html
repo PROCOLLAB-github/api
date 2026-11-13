@@ -1,6 +1,9 @@
 {% extends "admin/base_site.html" %}
 
 {% block content %}
+  {% if direct_privacy_url %}
+    <p><a href="{{ direct_privacy_url }}">Настройки личных сообщений</a></p>
+  {% endif %}
   {% if channel_publish_url %}
     <p><a href="{{ channel_publish_url }}">Опубликовать в канале</a></p>
   {% endif %}

@@ -3,6 +3,7 @@ from uuid import UUID
 from django.db import transaction
 
 from chats.channel_events import notify_channel_change
+from chats.direct_privacy import lock_contact_users, require_direct_contact
 from chats.exceptions import MessageValidationException
 from chats.models import (
     DirectChat,
@@ -114,6 +115,7 @@ def _create_message(
     reply_to_id,
     file_urls,
     client_message_id,
+    validate_new_message=None,
 ):
     client_message_id = _normalize_client_message_id(client_message_id)
     if client_message_id is not None:
@@ -134,6 +136,8 @@ def _create_message(
                 False,
             )
 
+    if validate_new_message is not None:
+        validate_new_message()
     file_urls = _normalize_message(text, file_urls)
     reply = {}
     if message_model is not ProgramChannelMessage:
@@ -161,6 +165,7 @@ def create_direct_message(
     file_urls=None,
     client_message_id=None,
 ):
+    lock_contact_users(author, other_user)
     chat = get_direct_chat_for_participants(author, other_user)
     # Serialize sends in this chat before checking for a repeat or locking files.
     DirectChat.objects.select_for_update().get(pk=chat.pk)
@@ -174,6 +179,7 @@ def create_direct_message(
         reply_to_id=reply_to_id,
         file_urls=file_urls,
         client_message_id=client_message_id,
+        validate_new_message=lambda: require_direct_contact(author, other_user, chat),
     )
 
 
@@ -184,6 +190,15 @@ def get_direct_chat_for_participants(user, other_user):
     if participants != {user.pk, other_user.pk}:
         raise MessageValidationException("Чат недоступен.")
     return chat
+
+
+@transaction.atomic
+def get_direct_chat_for_typing(user, other_user):
+    lock_contact_users(user, other_user)
+    chat_id = DirectChat.get_chat_id_from_users(user, other_user)
+    chat = DirectChat.objects.filter(pk=chat_id, users=user).first()
+    require_direct_contact(user, other_user, chat)
+    return get_direct_chat_for_participants(user, other_user)
 
 
 def mark_direct_message_read(*, chat_id, message_id, user, author):
@@ -261,6 +276,13 @@ def _get_message_for_change(chat_model, chat_id, message_id, author):
 
 @transaction.atomic
 def edit_message(*, chat_model, chat_id, message_id, author, text):
+    if chat_model is DirectChat:
+        chat = accessible_chats(author, DirectChat).filter(pk=chat_id).first()
+        if chat is None:
+            raise MessageValidationException("Чат недоступен.")
+        other_user = chat.users.exclude(pk=author.pk).first() or author
+        lock_contact_users(author, other_user)
+        require_direct_contact(author, other_user, chat)
     message = _get_message_for_change(chat_model, chat_id, message_id, author)
     if message.is_deleted:
         raise MessageValidationException("Сообщение уже удалено.")

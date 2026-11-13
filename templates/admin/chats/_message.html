@@ -17,6 +17,13 @@
       <button type="submit">Отметить прочитанным до этой публикации</button>
     </form>
   {% endif %}
+  {% if direct_privacy_url and message.author_id != request.user.pk %}
+    <form method="post" action="{{ direct_privacy_url }}">
+      {% csrf_token %}
+      <input type="hidden" name="message_id" value="{{ message.pk }}">
+      <button type="submit" name="action" value="report">Пожаловаться на спам</button>
+    </form>
+  {% endif %}
   {% if message.file_to_message.all %}
     <p>Вложения:</p>
     <ul>

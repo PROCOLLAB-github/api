@@ -10,10 +10,11 @@ from django.core.cache import cache
 from django.utils import timezone
 
 from chats.channel_events import channel_group
+from chats.direct_privacy import direct_chat_opponent, direct_contact
 from chats.exceptions import ChatException
 from chats.permissions import accessible_chats, direct_chat_is_accessible
 from chats.project_reads import personalize_project_message_event
-from chats.services.messages import get_direct_chat_for_participants
+from chats.services.messages import get_direct_chat_for_typing
 from chats.utils import get_user_channel_cache_key
 from chats.websockets_settings import (
     Event,
@@ -26,7 +27,7 @@ from core.utils import get_user_online_cache_key, get_users_online_cache_key
 from users.models import CustomUser
 from chats.consumers.event_types import DirectEvent, ProjectEvent
 from chats.utils import get_chat_and_user_ids_from_content
-from chats.models import ProgramChannel, ProjectChat
+from chats.models import DirectChat, ProgramChannel, ProjectChat
 
 
 @database_sync_to_async
@@ -47,6 +48,18 @@ def get_user_channel_ids(user):
 @database_sync_to_async
 def can_access_program_channel(user, channel_id):
     return accessible_chats(user, ProgramChannel).filter(pk=channel_id).exists()
+
+
+@database_sync_to_async
+def can_receive_direct_typing(user, chat_id):
+    chat = accessible_chats(user, DirectChat).filter(pk=chat_id).first()
+    if chat is None:
+        return False
+    try:
+        other = direct_chat_opponent(chat, user)
+    except ChatException:
+        return False
+    return direct_contact(other, user, chat).can_send
 
 
 class ChatConsumer(AsyncJsonWebsocketConsumer):
@@ -223,7 +236,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 event.content, self.user
             )
 
-            chat = await database_sync_to_async(get_direct_chat_for_participants)(
+            chat = await database_sync_to_async(get_direct_chat_for_typing)(
                 self.user, other_user
             )
             event_data["content"]["chat_id"] = chat.pk
@@ -237,13 +250,14 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
     async def _send_chat_event(self, event):
         direct_chat_id = event.get("_direct_chat_id")
-        if direct_chat_id is not None and (
-            not self.user
-            or not await database_sync_to_async(direct_chat_is_accessible)(
-                self.user, direct_chat_id
+        if direct_chat_id is not None:
+            check_access = (
+                can_receive_direct_typing
+                if event["type"] == EventType.TYPING
+                else database_sync_to_async(direct_chat_is_accessible)
             )
-        ):
-            return
+            if not self.user or not await check_access(self.user, direct_chat_id):
+                return
         chat_id = event.get("_project_chat_id")
         if chat_id is not None:
             if not self.user or not await can_access_project_chat(self.user, chat_id):
