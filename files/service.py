@@ -130,7 +130,12 @@ class SelectelSwiftStorage(Storage):
                 }
             }
         }
-        response = requests.post(settings.SELECTEL_AUTH_TOKEN_URL, json=data)
+        response = requests.post(
+            settings.SELECTEL_AUTH_TOKEN_URL,
+            json=data,
+            timeout=(5, 15),
+            allow_redirects=False,
+        )
         if response.status_code not in [200, 201]:
             raise SelectelUploadError(
                 "Couldn't generate a token for Selectel Swift API (selcdn)"

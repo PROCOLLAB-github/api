@@ -6,6 +6,16 @@ from projects.models import Project
 User = get_user_model()
 
 
+def accessible_chats(user, chat_model):
+    from chats.models import DirectChat
+
+    if not user.is_authenticated:
+        return chat_model.objects.none()
+    if chat_model is DirectChat:
+        return user.direct_chats.all()
+    return user.get_project_chats()
+
+
 def get_lookup_kwarg(request, view, *names):
     view_kwargs = getattr(view, "kwargs", {}) or {}
     parser_kwargs = (getattr(request, "parser_context", None) or {}).get("kwargs", {})

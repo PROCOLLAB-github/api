@@ -1,6 +1,8 @@
 from django.urls import path
 
+from chats.models import DirectChat, ProjectChat
 from chats.views import (
+    ChatAttachmentDownload,
     DirectChatList,
     DirectChatMessageList,
     HasChatUnreadsView,
@@ -27,6 +29,11 @@ urlpatterns = [
         DirectChatFileList.as_view(),
         name="direct-chat-files",
     ),
+    path(
+        "directs/<slug:id>/messages/<int:message_id>/files/<slug:attachment_id>/download/",
+        ChatAttachmentDownload.as_view(chat_model=DirectChat),
+        name="direct-chat-attachment-download",
+    ),
     path("projects/", ProjectChatList.as_view(), name="project-chat-list"),
     path("projects/<int:pk>/", ProjectChatDetail.as_view(), name="project-chat-detail"),
     path(
@@ -38,6 +45,11 @@ urlpatterns = [
         "projects/<int:id>/files/",
         ProjectChatFileList.as_view(),
         name="project-chat-files",
+    ),
+    path(
+        "projects/<int:id>/messages/<int:message_id>/files/<slug:attachment_id>/download/",
+        ChatAttachmentDownload.as_view(chat_model=ProjectChat),
+        name="project-chat-attachment-download",
     ),
     path(
         "has-unreads/",

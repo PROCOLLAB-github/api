@@ -2,7 +2,7 @@ from django import forms
 from django.db.models import Case, Exists, F, OuterRef, Q, TextField, Value, When
 from django.db.models.functions import Concat
 
-from chats.models import DirectChat, ProjectChat
+from chats.models import ProjectChat
 from core.search import unicode_literal_pattern
 from files.models import UserFile
 
@@ -42,14 +42,6 @@ class ChatMessageSearchForm(forms.Form):
             },
         )
         self.order_fields(["q", "scope", "author_id"])
-
-
-def accessible_chats(user, chat_model):
-    if not user.is_authenticated:
-        return chat_model.objects.none()
-    if chat_model is DirectChat:
-        return user.direct_chats.all()
-    return user.get_project_chats()
 
 
 def search_chat_messages(chat, filters):

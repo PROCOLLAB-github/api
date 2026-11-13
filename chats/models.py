@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from hashlib import sha256
 from typing import List
 
 from django.contrib.auth import get_user_model
@@ -330,6 +331,14 @@ class FileToMessage(models.Model):
         related_name="file_to_message",
         null=True,
     )
+
+    @property
+    def download_id(self):
+        return sha256(self.file_id.encode()).hexdigest()
+
+    @property
+    def is_linked_to_one_message(self):
+        return (self.direct_message_id is None) != (self.project_message_id is None)
 
     def __str__(self):
         return f"FileToMessage<{self.file}>"

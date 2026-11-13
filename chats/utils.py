@@ -57,16 +57,3 @@ async def get_chat_and_user_ids_from_content(content, current_user) -> tuple[str
             f"User {current_user.id} is not a member of chat {chat_id}"
         )
     return chat_id, other_user
-
-
-def get_all_files(messages):
-    # looks like something bad -
-    files = []
-    for message in messages:
-        if hasattr(message, "file_to_message"):
-            files_in_message = [
-                file_to_message.file for file_to_message in message.file_to_message.all()
-            ]
-            files.extend(files_in_message)
-
-    return files

@@ -1,7 +1,9 @@
 from rest_framework import serializers
 
+from chats.attachments import attachment_download_url
 from chats.models import (
     DirectChat,
+    FileToMessage,
     ProjectChat,
     DirectChatMessage,
     ProjectChatMessage,
@@ -9,6 +11,43 @@ from chats.models import (
 from chats.project_reads import project_message_is_read, with_project_message_reads
 from files.serializers import UserFileSerializer
 from users.serializers import UserListSerializer, UserDetailSerializer, UserChatSerializer
+
+
+class ChatAttachmentSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(source="file.name", read_only=True)
+    extension = serializers.CharField(source="file.extension", read_only=True)
+    mime_type = serializers.CharField(source="file.mime_type", read_only=True)
+    size = serializers.IntegerField(source="file.size", read_only=True)
+    user = serializers.IntegerField(
+        source="file.user_id", read_only=True, allow_null=True
+    )
+    datetime_uploaded = serializers.DateTimeField(
+        source="file.datetime_uploaded", read_only=True
+    )
+    link = serializers.SerializerMethodField()
+
+    def get_link(self, attachment) -> str:
+        message = self.context.get("message") or (
+            attachment.project_message
+            if attachment.project_message_id is not None
+            else attachment.direct_message
+        )
+        return attachment_download_url(attachment, message)
+
+    class Meta:
+        model = FileToMessage
+        fields = UserFileSerializer.Meta.fields
+
+
+def serialize_message_attachments(message):
+    if message.is_deleted:
+        return []
+    attachments = [
+        item for item in message.file_to_message.all() if item.is_linked_to_one_message
+    ]
+    return ChatAttachmentSerializer(
+        attachments, many=True, context={"message": message}
+    ).data
 
 
 class DirectChatListSerializer(serializers.ModelSerializer):
@@ -162,11 +201,7 @@ class DirectChatMessageListSerializer(serializers.ModelSerializer):
 
     @classmethod
     def get_files(cls, message: DirectChatMessage):
-        data = []
-        for file_to_message in message.file_to_message.all():
-            file_data = UserFileSerializer(file_to_message.file).data
-            data.append(file_data)
-        return data
+        return serialize_message_attachments(message)
 
     class Meta:
         model = DirectChatMessage
@@ -227,11 +262,7 @@ class ProjectChatMessageListSerializer(ProjectChatMessageSerializer):
 
     @classmethod
     def get_files(cls, message: ProjectChatMessage):
-        data = []
-        for file_to_message in message.file_to_message.all():
-            file_data = UserFileSerializer(file_to_message.file).data
-            data.append(file_data)
-        return data
+        return serialize_message_attachments(message)
 
     class Meta:
         model = ProjectChatMessage
