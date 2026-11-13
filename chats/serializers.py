@@ -125,7 +125,15 @@ class ProjectChatDetailSerializer(serializers.ModelSerializer):
         ]
 
 
-class DirectChatMessageSerializer(serializers.ModelSerializer):
+class ChatReplySerializer(serializers.ModelSerializer):
+    def get_attribute(self, message):
+        reply = super().get_attribute(message)
+        if reply is not None and (reply.is_deleted or reply.chat_id != message.chat_id):
+            return None
+        return reply
+
+
+class DirectChatMessageSerializer(ChatReplySerializer):
     """Same as DirectChatMessageListSerializer but reply_to is an id, not an object.
     This is done to avoid circular imports.
     """
@@ -209,8 +217,12 @@ class ProjectChatMessageSerializer(serializers.ModelSerializer):
         ]
 
 
+class ProjectChatReplySerializer(ProjectChatMessageSerializer, ChatReplySerializer):
+    pass
+
+
 class ProjectChatMessageListSerializer(ProjectChatMessageSerializer):
-    reply_to = ProjectChatMessageSerializer(allow_null=True)
+    reply_to = ProjectChatReplySerializer(allow_null=True)
     files = serializers.SerializerMethodField()
 
     @classmethod
