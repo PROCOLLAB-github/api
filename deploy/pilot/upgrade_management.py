@@ -20,6 +20,7 @@ BASE = json.loads((Path(__file__).parent / "management_base.json").read_text())
 RECORD = ROOT / "management-upgrade.json"
 IDENTITY = "hosted-v2-management-upgrade"
 STEP_LABEL = "io.procollab.pilot.management.step"
+DEV_CONTAINERS = frozenset(("api-web-1", "api-redis-1", "api_celery"))
 PATCH_FILES = tuple(BASE["target_hashes"])
 HELPERS = overall.HELPERS | {"upgrade_management.py", "management_base.json"}
 require = hosted.require
@@ -94,6 +95,38 @@ def verify_outside(record):
         "Изменились dev, БД, старый пилот или посторонняя конфигурация nginx.",
     )
     return hosted.dev_health()
+
+
+def verify_predecessor(record):
+    """История фиксирует пилот; текущий DEV фиксируется заново перед этой установкой."""
+    previous = record["outside"]
+    current = overall.outside_snapshot(hosted.inspect(record["old_container_id"]))
+    require(
+        set(previous["containers"]) == set(current["containers"])
+        and DEV_CONTAINERS <= set(previous["containers"]),
+        "Изменился состав защищенных контейнеров.",
+    )
+
+    def pilot_snapshot(snapshot):
+        return {
+            **snapshot,
+            "containers": {
+                name: identity
+                for name, identity in snapshot["containers"].items()
+                if name not in DEV_CONTAINERS
+            },
+        }
+
+    require(
+        pilot_snapshot(previous) == pilot_snapshot(current),
+        "Изменились БД, старый пилот, защищенные файлы или nginx относительно принятой версии.",
+    )
+    hosted.dev_health()
+    return sorted(
+        name
+        for name in DEV_CONTAINERS
+        if previous["containers"][name] != current["containers"][name]
+    )
 
 
 def public_routes(before):
@@ -290,7 +323,7 @@ def check(bundle):
         verify_outside(restored)
     previous = overall.load_record()
     require(previous["phase"] == "active", "Нужен действующий общий рейтинг.")
-    overall.verify_outside(previous)
+    verify_predecessor(previous)
     current = hosted.candidate()
     require(
         current
@@ -651,6 +684,8 @@ def apply(bundle):
         "old_web": overall.container_identity(current),
         "previous_state": state,
         "outside": outside_snapshot(current),
+        "dev_guard": "current_healthy_snapshot",
+        "installer_sha256": hosted.digest(Path(__file__).resolve()),
         "frontend": {},
         "new_files": manifest["new_files"],
         "case_before": overall.case_snapshot(current),
@@ -809,6 +844,7 @@ if __name__ == "__main__":
                         "image_reused": True,
                         "dev_http": 200,
                         "pilot_basic_auth_will_be_removed": True,
+                        "dev_guard": "current_healthy_snapshot",
                     }
     except (hosted.Refused, OSError, ValueError) as error:
         sys.exit("ОСТАНОВЛЕНО: " + str(error))

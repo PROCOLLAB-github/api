@@ -9,6 +9,116 @@ from unittest.mock import patch
 import upgrade_management as upgrade
 
 
+class ManagementSnapshotGuardTests(unittest.TestCase):
+    def setUp(self):
+        self.previous = {
+            "containers": {
+                name: [name + "-old-id", "image-id", "started-before", "config-hash"]
+                for name in upgrade.overall.OUTSIDE
+            },
+            "files": {
+                str(upgrade.ROOT / ".env"): "environment-hash",
+                str(upgrade.hosted.ROUTES): "routes-hash",
+                str(upgrade.hosted.MAPS): "maps-hash",
+            },
+            "nginx": "nginx-hash",
+        }
+        self.current = deepcopy(self.previous)
+        for name in ("api-web-1", "api-redis-1", "api_celery"):
+            self.current["containers"][name] = [
+                name + "-new-id",
+                "new-image-id",
+                "started-now",
+                "new-config-hash",
+            ]
+        self.record = {"outside": self.previous, "old_container_id": "old-pilot-web"}
+
+    def verify_predecessor(self, current):
+        with patch.object(upgrade.hosted, "inspect"), patch.object(
+            upgrade.overall, "outside_snapshot", return_value=current
+        ), patch.object(upgrade.hosted, "dev_health", return_value=200) as health:
+            changed = upgrade.verify_predecessor(self.record)
+            health.assert_called_once_with()
+            return changed
+
+    def test_historical_dev_redeployment_accepts_current_health_without_rewriting_history(
+        self,
+    ):
+        before = deepcopy(self.record)
+        self.assertEqual(
+            self.verify_predecessor(self.current),
+            ["api-redis-1", "api-web-1", "api_celery"],
+        )
+        self.assertEqual(self.record, before)
+        self.assertEqual(self.verify_predecessor(deepcopy(self.previous)), [])
+
+    def test_historical_pilot_database_files_and_nginx_remain_strict(self):
+        for name in upgrade.overall.OUTSIDE:
+            if name in ("api-web-1", "api-redis-1", "api_celery"):
+                continue
+            for index in range(4):
+                current = deepcopy(self.current)
+                current["containers"][name][index] = "unexpected-change"
+                with self.subTest(container=name, identity_field=index):
+                    with self.assertRaises(upgrade.hosted.Refused):
+                        self.verify_predecessor(current)
+        for name in self.previous["files"]:
+            current = deepcopy(self.current)
+            current["files"][name] = "unexpected-change"
+            with self.subTest(file=name), self.assertRaises(upgrade.hosted.Refused):
+                self.verify_predecessor(current)
+        current = deepcopy(self.current)
+        current["nginx"] = "unexpected-change"
+        with self.assertRaises(upgrade.hosted.Refused):
+            self.verify_predecessor(current)
+
+    def test_container_set_changes_are_rejected(self):
+        for operation in ("missing-dev", "missing-database", "extra"):
+            current = deepcopy(self.current)
+            if operation == "missing-dev":
+                del current["containers"]["api-web-1"]
+            elif operation == "missing-database":
+                del current["containers"][upgrade.hosted.PG]
+            else:
+                current["containers"]["unexpected"] = ["id"] * 4
+            with self.subTest(operation=operation):
+                with self.assertRaises(upgrade.hosted.Refused):
+                    self.verify_predecessor(current)
+
+    def test_unhealthy_current_dev_stops_before_installation(self):
+        with patch.object(upgrade.hosted, "inspect"), patch.object(
+            upgrade.overall, "outside_snapshot", return_value=self.current
+        ), patch.object(
+            upgrade.hosted,
+            "dev_health",
+            side_effect=upgrade.hosted.Refused("DEV unhealthy"),
+        ):
+            with self.assertRaises(upgrade.hosted.Refused):
+                upgrade.verify_predecessor(self.record)
+
+    def test_current_guard_rejects_every_dev_identity_change_during_installation(self):
+        # Историческое обновление DEV допустимо; новое изменение после фиксации — нет.
+        record = {"outside": self.current, "old_container_id": "old-pilot-web"}
+        before = deepcopy(record)
+        for name in ("api-web-1", "api-redis-1", "api_celery"):
+            for index in range(4):
+                changed = deepcopy(self.current)
+                changed["containers"][name][index] = "changed-during-installation"
+                with self.subTest(container=name, identity_field=index):
+                    with patch.object(upgrade.hosted, "inspect"), patch.object(
+                        upgrade, "outside_snapshot", return_value=changed
+                    ), patch.object(upgrade.hosted, "dev_health") as health:
+                        with self.assertRaises(upgrade.hosted.Refused):
+                            upgrade.verify_outside(record)
+                        health.assert_not_called()
+        with patch.object(upgrade.hosted, "inspect"), patch.object(
+            upgrade, "outside_snapshot", return_value=deepcopy(self.current)
+        ), patch.object(upgrade.hosted, "dev_health", return_value=200) as health:
+            self.assertEqual(upgrade.verify_outside(record), 200)
+            health.assert_called_once_with()
+        self.assertEqual(record, before)
+
+
 class ManagementUpgradeTests(unittest.TestCase):
     def test_search_smoke_closes_its_session_even_when_the_search_fails(self):
         for fail_search in (False, True):
