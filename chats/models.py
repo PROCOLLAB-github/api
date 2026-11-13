@@ -249,6 +249,22 @@ class ProjectChatMessage(BaseMessage):
         ]
 
 
+class ProjectChatMessageRead(models.Model):
+    message = models.ForeignKey(
+        ProjectChatMessage, on_delete=models.CASCADE, related_name="read_receipts"
+    )
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+
+    class Meta:
+        verbose_name = "Прочтение сообщения в чате проекта"
+        verbose_name_plural = "Прочтения сообщений в чатах проектов"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["message", "user"], name="unique_project_chat_message_reader"
+            )
+        ]
+
+
 class DirectChatMessage(BaseMessage):
     """
     DirectChatMessage model
