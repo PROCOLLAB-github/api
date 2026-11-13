@@ -488,17 +488,15 @@ class UserDetailSerializer(
     has_evaluation_access = serializers.SerializerMethodField()
 
     def get_has_evaluation_access(self, user):
-        from project_rates.models import ExpertInvitation
         from project_rates.program_experts import evaluation_programs
+        from project_rates.workspace import pending_expert_invitations
 
         request_user = getattr(self.context.get("request"), "user", None)
         if not request_user or request_user.pk != user.pk or not user.is_active:
             return False
         return (
             evaluation_programs(user).exists()
-            or ExpertInvitation.objects.filter(
-                email__iexact=user.email, status="pending", expires_at__gt=timezone.now()
-            ).exists()
+            or pending_expert_invitations(user.email).exists()
         )
 
     verification_notice_acknowledged_at = serializers.DateTimeField(read_only=True)

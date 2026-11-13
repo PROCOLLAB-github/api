@@ -159,7 +159,116 @@ class ScoringWorkspaceTests(TestCase):
     def test_unsubmitted_link_is_not_completed(self):
         self.complete(self.project)
         self.program.program_projects.filter(project=self.project).update(submitted=False)
-        self.assertEqual(self.page(evaluation_status="pending")["count"], 1)
+        row = self.page(evaluation_status="pending")["results"][0]
+        self.assertFalse(row["can_rate"])
+        self.assertEqual(row["blocked_reason"], "Проект еще не сдан")
+        cabinet = self.client.get("/evaluation/applications/").data["results"][0]
+        self.assertEqual(cabinet["blocked_reason"], row["blocked_reason"])
+
+    def test_historical_assigned_score_uses_same_completion_and_loads_all_criteria(self):
+        self.program.required_evaluators = None
+        self.program.save(update_fields=["required_evaluators"])
+        ProjectScore.objects.create(
+            project=self.project, criteria=self.number, user=self.user, value="0"
+        )
+        row = self.page(evaluation_status="pending")["results"][0]
+        self.assertFalse(row["scored"])
+        self.assertTrue(row["can_rate"])
+        self.assertNotIn("program_fields", row)
+        criteria = {criterion["id"]: criterion for criterion in row["criterias"]}
+        self.assertEqual(criteria[self.number.pk]["value"], "0")
+        self.assertNotIn("value", criteria[self.boolean.pk])
+        self.assertIn(self.comment.pk, criteria)
+        self.assertEqual(self.page(evaluation_status="completed")["count"], 0)
+        cabinet = self.client.get("/evaluation/applications/")
+        self.assertEqual(
+            cabinet.data["results"][0]["application"]["project_id"], self.project.pk
+        )
+
+        ProjectScore.objects.create(
+            project=self.project, criteria=self.boolean, user=self.user, value="False"
+        )
+        self.assertEqual(self.page(evaluation_status="completed")["count"], 1)
+        cabinet = self.client.get("/evaluation/applications/", {"status": "completed"})
+        self.assertEqual(
+            cabinet.data["results"][0]["application"]["project_id"], self.project.pk
+        )
+
+    @patch("project_rates.services._send_project_rated_email")
+    def test_historical_workspace_cannot_save_unsubmitted_project(self, notify):
+        self.program.required_evaluators = None
+        self.program.save(update_fields=["required_evaluators"])
+        self.program.program_projects.filter(project=self.project).update(submitted=False)
+        row = self.page(project_id=self.project.pk)["results"][0]
+        self.assertFalse(row["can_rate"])
+        response = self.client.post(
+            f"/rate-project/rate/{self.project.pk}",
+            {
+                "expected_revision": row["criteria_revision"],
+                "scores": [
+                    {"criterion_id": self.number.pk, "value": 0},
+                    {"criterion_id": self.boolean.pk, "value": "False"},
+                ],
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400, response.data)
+        self.assertIn(row["blocked_reason"], str(response.data))
+        self.assertFalse(ProjectScore.objects.filter(project=self.project).exists())
+        notify.assert_not_called()
+
+    def test_materials_are_read_from_the_assessed_program_link(self):
+        project = create_rate_project()
+        other = create_rate_program()
+        field = PartnerProgramField.objects.create(
+            partner_program=self.program,
+            name="details",
+            label="Подробности",
+            field_type="text",
+        )
+        assessed_link = PartnerProgramProject(
+            partner_program=self.program,
+            project=project,
+            submitted=True,
+            submitted_form={
+                "fields": [
+                    {
+                        "id": field.pk,
+                        "name": field.name,
+                        "label": field.label,
+                        "field_type": field.field_type,
+                        "value": "Ответ программы",
+                    }
+                ],
+                "sections": {},
+            },
+        )
+        PartnerProgramProject.objects.bulk_create(
+            [
+                PartnerProgramProject(
+                    partner_program=other, project=project, submitted=True
+                ),
+                assessed_link,
+            ]
+        )
+        PartnerProgramFieldValue.objects.bulk_create(
+            [
+                PartnerProgramFieldValue(
+                    program_project=assessed_link,
+                    field=field,
+                    value_text="Текущее значение",
+                )
+            ]
+        )
+        ProjectExpertAssignment.objects.create(
+            partner_program=self.program, project=project, expert=self.user.expert
+        )
+        row = self.page(project_id=project.pk)["results"][0]
+        self.assertEqual(row["program_link_id"], assessed_link.pk)
+        self.assertEqual(
+            [(item["id"], item["value"]) for item in row["program_fields"]],
+            [(field.pk, "Ответ программы")],
+        )
 
     def test_no_criteria_never_means_completed(self):
         self.program.criterias.all().delete()

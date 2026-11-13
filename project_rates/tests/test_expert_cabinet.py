@@ -1,3 +1,4 @@
+import json
 from datetime import timedelta
 
 from django.test import TestCase, override_settings
@@ -69,6 +70,38 @@ class ExpertCabinetTests(TestCase):
         self.assertEqual(set(data), {"results", "has_access"})
         self.assertEqual(data["results"][0]["assigned"], 1)
         self.assertEqual(data["results"][0]["remaining"], 1)
+        self.assertFalse(data["results"][0]["can_export_rates"])
+        self.program.managers.add(self.user)
+        data = self.client.get("/evaluation/programs/").data
+        self.assertTrue(data["results"][0]["can_export_rates"])
+
+    def test_program_filter_uses_radio_options_and_keeps_global_counts(self):
+        field = PartnerProgramField.objects.create(
+            partner_program=self.program,
+            name="direction",
+            label="Направление",
+            field_type="radio",
+            options="Город|Образование",
+            show_filter=True,
+        )
+        PartnerProgramFieldValue.objects.bulk_create(
+            [
+                PartnerProgramFieldValue(
+                    program_project=self.link, field=field, value_text="Город"
+                )
+            ]
+        )
+        for value, count in (("Город", 1), ("Образование", 0)):
+            response = self.client.get(
+                "/evaluation/applications/",
+                {
+                    "program_id": self.program.pk,
+                    "filters": json.dumps({"direction": [value]}),
+                },
+            )
+            self.assertEqual(response.status_code, 200, response.data)
+            self.assertEqual(response.data["count"], count)
+            self.assertEqual(response.data["pending"], 1)
 
     def test_only_current_membership_and_own_assignments_are_visible(self):
         outsider = create_rate_expert(program=self.program)
@@ -172,7 +205,7 @@ class ExpertCabinetTests(TestCase):
 
     def test_search_pagination_and_counters_are_not_limited_to_first_page(self):
         for index in range(25):
-            self.assign(self.program, f"Project {index:02d} title")
+            self.assign(self.program, f"Project {str(index).zfill(2)} title")
         first, second = self.page(), self.page(offset=20)
         self.assertEqual(first["limit"], 20)
         self.assertEqual(len(first["results"]), 20)
@@ -205,7 +238,7 @@ class ExpertCabinetTests(TestCase):
         # Exercise historical unsent assignments without changing the submission policy.
         PartnerProgramProject.objects.filter(pk=self.link.pk).update(submitted=False)
         self.assertEqual(
-            self.page()["results"][0]["blocked_reason"], "Решение еще не сдано"
+            self.page()["results"][0]["blocked_reason"], "Проект еще не сдан"
         )
         PartnerProgramProject.objects.filter(pk=self.link.pk).update(submitted=True)
         Collaborator.objects.bulk_create(

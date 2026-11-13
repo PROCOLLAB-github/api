@@ -13,7 +13,7 @@ on:
         description: "DEV operation"
         type: choice
         default: deploy
-        options: [deploy, verify_solution_rollback, prepare_solution_browser, finalize_solution_browser, verify_program_publication, grant_program_creator_11, dependency_backup, dependency_verify, prepare_pr517_closeout]
+        options: [deploy, verify_solution_rollback, prepare_solution_browser, finalize_solution_browser, verify_program_publication, grant_program_creator_11, dependency_backup, dependency_verify, prepare_pr517_closeout, prepare_expert_rating]
       dependency_backup_key:
         description: "Ключ резервной копии для проверки сохранности данных dev"
         type: string
@@ -420,11 +420,12 @@ jobs:
           const manager = process.env.VERIFY_MANAGER_ID;
           const applyFixture = process.env.VERIFY_FIXTURE_APPLY;
           const phases = { verify_solution_rollback: 'verify_rollback', prepare_solution_browser: 'prepare_browser', finalize_solution_browser: 'finalize_browser', verify_program_publication: 'verify_publication', grant_program_creator_11: 'grant_creator_11', prepare_pr517_closeout: 'prepare_pr517_closeout' };
+          phases.prepare_expert_rating = 'prepare_expert_rating';
           if (!/^[0-9a-f]{40}$/.test(sha) || !phases[operation] || !/^[a-z0-9-]{8,50}$/.test(key) || !/^[1-9][0-9]{0,8}$/.test(manager)) throw new Error('Invalid acceptance arguments');
           if (!['true', 'false'].includes(applyFixture)) throw new Error('Invalid fixture apply flag');
           const phase = phases[operation];
           const file = phase === 'prepare_pr517_closeout' ? 'scripts/prepare_pr517_closeout.py' : phase === 'grant_creator_11' ? 'scripts/grant_dev_program_creation_20261027.py' : phase === 'verify_publication' ? 'scripts/verify_program_publication_dev.py' : phase === 'verify_rollback' ? 'scripts/verify_program_solutions_dev.py' : 'scripts/prepare_program_solutions_browser.py';
-          const source = fs.readFileSync(file, 'utf8');
+          const source = fs.readFileSync(phase === 'prepare_expert_rating' ? 'scripts/prepare_expert_rating_dev.py' : file, 'utf8');
           const script = [
             'set +x',
             'set -eu',

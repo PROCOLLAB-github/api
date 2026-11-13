@@ -14,9 +14,11 @@ from django.utils import timezone
 from rest_framework.exceptions import APIException, PermissionDenied, ValidationError
 
 from partner_programs.models import PartnerProgram, PartnerProgramProject
+from partner_programs.permissions import active_programs
 from partner_programs.services.assignment_analytics import annotated_assignment_queryset
 from partner_programs.services.case_analytics import project_case_links
 from partner_programs.services.case_fields import get_program_case_field
+from partner_programs.permissions import can_manage_program
 from partner_programs.services.management import managed_program, person_name
 from project_rates.models import (
     ExpertCaseScope,
@@ -547,14 +549,25 @@ def save_project_experts(program_id, user, data):
     return workspace_data(program)
 
 
+def active_expert_invitations():
+    programs = active_programs(PartnerProgram.objects.all())
+    return ExpertInvitation.objects.filter(partner_program__in=programs)
+
+
+def pending_expert_invitations(email):
+    return active_expert_invitations().filter(
+        email__iexact=email, status="pending", expires_at__gt=timezone.now()
+    )
+
+
 def token_invitation(token, *, lock=False, allow_accepted=False):
     if not isinstance(token, str) or not 20 <= len(token) <= 100:
         from django.http import Http404
 
         raise Http404
-    qs = (
-        ExpertInvitation.objects.select_for_update() if lock else ExpertInvitation.objects
-    )
+    qs = active_expert_invitations()
+    if lock:
+        qs = qs.select_for_update(of=("self",))
     invitation = get_object_or_404(
         qs.select_related("partner_program"), token_digest=digest(token)
     )
@@ -694,6 +707,11 @@ def my_programs(user):
             {
                 **program_card(program),
                 "status": "joined",
+                "storage_mode": program.solution_storage_mode,
+                "can_export_rates": (
+                    program.solution_storage_mode == "legacy_project"
+                    and can_manage_program(user, program)
+                ),
                 "assigned": len(assignments),
                 "completed": done,
                 "remaining": len(assignments) - done,
@@ -702,9 +720,7 @@ def my_programs(user):
     if user.is_active:
         independent = PartnerProgram.objects.filter(experts__user=user).values("pk")
         pending = (
-            ExpertInvitation.objects.filter(
-                email__iexact=user.email, status="pending", expires_at__gt=timezone.now()
-            )
+            pending_expert_invitations(user.email)
             .exclude(partner_program_id__in=independent)
             .select_related("partner_program")
             .order_by("pk")
@@ -895,9 +911,13 @@ def allocation(program, data):
         candidates.sort(
             key=lambda e: (
                 remaining[e.pk],
-                e.pk
-                if seed is None
-                else hashlib.sha256(f"{seed}:{link.project_id}:{e.pk}".encode()).digest(),
+                (
+                    e.pk
+                    if seed is None
+                    else hashlib.sha256(
+                        ":".join(map(str, (seed, link.project_id, e.pk))).encode()
+                    ).digest()
+                ),
             )
         )
         candidate_ids[link.project_id] = {e.pk for e in candidates}

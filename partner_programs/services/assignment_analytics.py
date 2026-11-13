@@ -2,7 +2,17 @@
 
 from datetime import timedelta
 
-from django.db.models import BooleanField, Case, Count, F, OuterRef, Subquery, Value, When
+from django.db.models import (
+    BooleanField,
+    Case,
+    Count,
+    F,
+    OuterRef,
+    Q,
+    Subquery,
+    Value,
+    When,
+)
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
@@ -13,8 +23,8 @@ from project_rates.models import Criteria, ProjectExpertAssignment, ProjectScore
 def annotated_assignment_queryset(program_id=None):
     """Общая SQL-проверка завершённости реального назначения в программе.
 
-    Завершённое назначение требует сданного решения и оценок по всем критериям
-    этой программы; отсутствие критериев никогда не означает завершённость.
+    Завершенное назначение требует сданного проекта и оценок по обязательным
+    критериям программы. Если есть только комментарии, нужна сохраненная оценка.
     Аннотации пригодны и для списка назначений, и для агрегации работ без N+1.
     """
     scope = program_id if program_id is not None else OuterRef("partner_program_id")
@@ -22,7 +32,10 @@ def annotated_assignment_queryset(program_id=None):
         Criteria.objects.filter(partner_program_id=scope)
         .order_by()
         .values("partner_program_id")
-        .annotate(total=Count("pk"))
+        .annotate(
+            total=Count("pk"),
+            required=Count("pk", filter=~Q(type="str")),
+        )
     )
     scores = (
         ProjectScore.objects.filter(
@@ -32,7 +45,10 @@ def annotated_assignment_queryset(program_id=None):
         )
         .order_by()
         .values("project_id", "user_id")
-        .annotate(total=Count("criteria_id", distinct=True))
+        .annotate(
+            total=Count("criteria_id", distinct=True),
+            required=Count("criteria_id", distinct=True, filter=~Q(criteria__type="str")),
+        )
     )
     link = PartnerProgramProject.objects.filter(
         partner_program_id=scope, project_id=OuterRef("project_id")
@@ -46,6 +62,8 @@ def annotated_assignment_queryset(program_id=None):
         .annotate(
             criteria_total=Coalesce(Subquery(criteria.values("total")[:1]), 0),
             criteria_scored=Coalesce(Subquery(scores.values("total")[:1]), 0),
+            required_criteria=Coalesce(Subquery(criteria.values("required")[:1]), 0),
+            required_scored=Coalesce(Subquery(scores.values("required")[:1]), 0),
             project_submitted=Coalesce(
                 Subquery(link.values("submitted")[:1]),
                 Value(False),
@@ -56,9 +74,14 @@ def annotated_assignment_queryset(program_id=None):
         .annotate(
             is_completed=Case(
                 When(
-                    project_submitted=True,
-                    criteria_total__gt=0,
-                    criteria_scored__gte=F("criteria_total"),
+                    Q(project_submitted=True)
+                    & (
+                        Q(
+                            required_criteria__gt=0,
+                            required_scored__gte=F("required_criteria"),
+                        )
+                        | Q(required_criteria=0, criteria_scored__gt=0)
+                    ),
                     then=Value(True),
                 ),
                 default=Value(False),
