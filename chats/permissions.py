@@ -1,9 +1,43 @@
 from django.contrib.auth import get_user_model
+from django.db.models import Q
 from rest_framework.permissions import BasePermission
 
+from partner_programs.models import PartnerProgram
+from partner_programs.permissions import active_programs
 from projects.models import Project
 
 User = get_user_model()
+
+
+def accessible_chats(user, chat_model):
+    from chats.models import DirectChat, ProgramChannel
+
+    if not user.is_authenticated:
+        return chat_model.objects.none()
+    if chat_model is DirectChat:
+        return user.direct_chats.all()
+    if chat_model is ProgramChannel:
+        programs = active_programs(PartnerProgram.objects.filter(draft=False))
+        programs = programs.filter(
+            Q(managers=user) | Q(partner_program_profiles__user=user)
+        )
+        return ProgramChannel.objects.filter(pk__in=programs.values("pk"))
+    return user.get_project_chats()
+
+
+def can_publish_in_program_channel(user, program):
+    return (
+        user.is_authenticated
+        and active_programs(
+            PartnerProgram.objects.filter(pk=program.pk, draft=False, managers=user)
+        ).exists()
+    )
+
+
+def direct_chat_is_accessible(user, chat_id):
+    from chats.models import DirectChat
+
+    return accessible_chats(user, DirectChat).filter(pk=chat_id).exists()
 
 
 def get_lookup_kwarg(request, view, *names):

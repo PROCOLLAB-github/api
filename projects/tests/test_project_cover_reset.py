@@ -7,6 +7,7 @@ from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
 from rest_framework.test import APIClient
 
+from chats.models import FileToMessage, ProjectChat, ProjectChatMessage
 from files.models import UserFile
 from invites.models import Invite
 from project_rates.tests.helpers import create_rate_expert
@@ -120,6 +121,21 @@ class ProjectCoverResetTests(TestCase):
         self.assertEqual(self.reset().status_code, 200)
         self.cdn.delete.assert_not_called()
         self.assertTrue(UserFile.objects.filter(pk=self.custom.pk).exists())
+
+    def test_file_attached_to_a_chat_message_is_preserved(self):
+        chat, _ = ProjectChat.objects.get_or_create(project=self.project)
+        message = ProjectChatMessage.objects.create(
+            chat=chat, author=self.leader, text="Файл проекта"
+        )
+        attachment = FileToMessage.objects.create(
+            file=self.custom, project_message=message
+        )
+
+        self.assertEqual(self.reset().status_code, 200)
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.cover_image_address, self.default.link)
+        self.cdn.delete.assert_not_called()
+        self.assertTrue(FileToMessage.objects.filter(pk=attachment.pk).exists())
 
     def test_cleanup_network_failure_keeps_success_and_does_not_log_exception(self):
         self.cdn.delete.side_effect = RuntimeError("private-url-or-token")

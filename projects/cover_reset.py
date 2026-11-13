@@ -7,6 +7,7 @@ from django.db import transaction
 from django.db.models import Q
 from rest_framework.exceptions import APIException
 
+from chats.attachments import used_by_visible_chat_message
 from files.models import UserFile
 from files.service import CDN, SelectelSwiftStorage
 from projects.models import DefaultProjectAvatar, DefaultProjectCover, Project
@@ -69,6 +70,7 @@ def cleanup_previous_cover(old_url: str | None, user_id: int) -> None:
             if (
                 DefaultProjectCover.objects.filter(image_id=old_url).exists()
                 or DefaultProjectAvatar.objects.filter(image_id=old_url).exists()
+                or used_by_visible_chat_message(old_url)
                 or Project.objects.filter(
                     Q(cover_image_address=old_url)
                     | Q(image_address=old_url)

@@ -1,20 +1,46 @@
+from django import forms
 from django.contrib.auth import get_user_model
+from django.shortcuts import get_object_or_404
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import never_cache
 
 from rest_framework import status
 from rest_framework.generics import (
     GenericAPIView,
     ListAPIView,
-    ListCreateAPIView,
     RetrieveAPIView,
 )
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from chats.models import ProjectChat, DirectChat
+from chats.attachments import (
+    chat_attachments,
+    download_chat_attachment,
+    get_accessible_chat,
+)
+from chats.exceptions import MessageValidationException
+from chats.drafts import with_draft_marker
+from chats.direct_privacy import direct_contact
+from chats.direct_reads import unread_direct_messages, with_direct_chat_unreads
+from chats.message_context import (
+    MAX_CONTEXT_LIMIT,
+    MessageContextForm,
+    get_message_context,
+)
+from chats.models import DirectChat, ProgramChannel, ProjectChat
 from chats.pagination import MessageListPagination
-from chats.permissions import IsProjectChatMember, IsChatMember
+from chats.permissions import IsProjectChatMember, IsChatMember, accessible_chats
+from chats.program_channels import channel_unread_messages
+from chats.project_reads import (
+    unread_project_messages,
+    with_project_chat_unreads,
+    with_project_message_reads,
+)
+from chats.search import ChatMessageSearchForm, search_chat_messages
 from chats.serializers import (
     DirectChatListSerializer,
     DirectChatMessageListSerializer,
@@ -22,50 +48,53 @@ from chats.serializers import (
     ProjectChatMessageListSerializer,
     ProjectChatDetailSerializer,
     DirectChatDetailSerializer,
+    ChatAttachmentSerializer,
 )
-from chats.utils import get_all_files
-from files.models import UserFile
-from files.serializers import UserFileSerializer
+from chats.services.messages import get_direct_chat_for_participants
 
 User = get_user_model()
 
 
+@method_decorator(never_cache, name="dispatch")
 class DirectChatList(ListAPIView):
     serializer_class = DirectChatListSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return DirectChat.objects.prefetch_related("users").filter(
-            users=self.request.user
-        )
+        user = self.request.user
+        chats = accessible_chats(user, DirectChat).prefetch_related("users")
+        return with_direct_chat_unreads(with_draft_marker(chats, user), user.pk)
 
     def get(self, request, *args, **kwargs):
-        chats = self.get_queryset()
         serialized_chats = []
-        for chat in chats:
-            try:
-                user1_id, _ = map(int, chat.id.split("_"))
-                # TODO сделать проверку на удаление профиля
-                if user1_id == request.user.id:
-                    opponent = chat.users.all()[1]
-                else:
-                    opponent = chat.users.first()
-
-                context = {"opponent": opponent}
-                serialized_chat = DirectChatListSerializer(chat, context=context).data
-                serialized_chats.append(serialized_chat)
-            except IndexError:
-                pass
+        for chat in self.get_queryset():
+            others = [user for user in chat.users.all() if user.pk != request.user.pk]
+            if len(others) == 1:
+                opponent = others[0]
+            elif not others and chat.pk == DirectChat.get_chat_id_from_users(
+                request.user, request.user
+            ):
+                opponent = request.user
+            else:
+                continue
+            context = {**self.get_serializer_context(), "opponent": opponent}
+            serialized_chats.append(self.get_serializer(chat, context=context).data)
         return Response(serialized_chats, status=status.HTTP_200_OK)
 
 
+@method_decorator(never_cache, name="dispatch")
 class ProjectChatList(ListAPIView):
     serializer_class = ProjectChatListSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         user = self.request.user
-        return user.get_project_chats()
+        if not user.is_authenticated:
+            return ProjectChat.objects.none()
+        return with_project_chat_unreads(
+            with_draft_marker(user.get_project_chats().select_related("project"), user),
+            user.pk,
+        )
 
 
 class ProjectChatDetail(RetrieveAPIView):
@@ -73,7 +102,13 @@ class ProjectChatDetail(RetrieveAPIView):
     serializer_class = ProjectChatDetailSerializer
     permission_classes = [IsProjectChatMember]
 
+    def get_queryset(self):
+        return with_project_chat_unreads(
+            super().get_queryset().select_related("project"), self.request.user.pk
+        )
 
+
+@method_decorator(never_cache, name="dispatch")
 class DirectChatDetail(RetrieveAPIView):
     queryset = DirectChat.objects.all()
     serializer_class = DirectChatDetailSerializer
@@ -97,12 +132,17 @@ class DirectChatDetail(RetrieveAPIView):
             else:
                 opponent = user1
             context = {"opponent": opponent}
-            data = DirectChatDetailSerializer(
-                DirectChat.get_chat(user1, user2), context=context
-            ).data
+            chat = get_direct_chat_for_participants(user1, user2)
+            chat = with_direct_chat_unreads(
+                accessible_chats(request.user, DirectChat), request.user.pk
+            ).get(pk=chat.pk)
+            data = self.get_serializer(chat, context=context).data
 
             data["name"] = f"{opponent.first_name} {opponent.last_name}"
             data["image_address"] = opponent.avatar
+            contact = direct_contact(request.user, opponent, chat)
+            data["blocked_by_me"] = contact.blocked_by_me
+            data["can_send"] = contact.can_send
 
             return Response(
                 status=status.HTTP_200_OK,
@@ -128,69 +168,281 @@ class DirectChatDetail(RetrieveAPIView):
                 status=status.HTTP_404_NOT_FOUND,
                 data={"detail": "Direct chat does not exist"},
             )
+        except MessageValidationException as error:
+            return Response({"detail": str(error)}, status=status.HTTP_404_NOT_FOUND)
 
 
-class DirectChatMessageList(ListCreateAPIView):
+@method_decorator(never_cache, name="dispatch")
+class ChatMessageHistory(ListAPIView):
+    pagination_class = MessageListPagination
+
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                "q",
+                openapi.IN_QUERY,
+                description="Текст сообщения или имя файла",
+                type=openapi.TYPE_STRING,
+                max_length=200,
+            ),
+            openapi.Parameter(
+                "scope",
+                openapi.IN_QUERY,
+                description="Где искать",
+                type=openapi.TYPE_STRING,
+                enum=["all", "messages", "files"],
+            ),
+            openapi.Parameter(
+                "author_id",
+                openapi.IN_QUERY,
+                description="ID автора сообщения",
+                type=openapi.TYPE_INTEGER,
+                minimum=1,
+            ),
+        ]
+    )
+    def get(self, request, *args, **kwargs):
+        response = super().get(request, *args, **kwargs)
+        if hasattr(self, "sync_cursor"):
+            response.data["sync_cursor"] = self.sync_cursor
+        return response
+
+    def get_queryset(self):
+        user = self.request.user
+        if getattr(self, "swagger_fake_view", False):
+            return self.serializer_class.Meta.model.objects.none()
+        chat = get_object_or_404(
+            accessible_chats(user, self.chat_model), pk=self.kwargs["id"]
+        )
+        form = ChatMessageSearchForm(self.request.query_params)
+        if not form.is_valid():
+            raise ValidationError(form.errors)
+        if (
+            not form.cleaned_data["q"]
+            and form.cleaned_data["author_id"] is None
+            and form.cleaned_data["scope"] != "files"
+        ):
+            self.sync_cursor = chat.message_revision
+        return search_chat_messages(chat, form.cleaned_data)
+
+
+class DirectChatMessageList(ChatMessageHistory):
+    chat_model = DirectChat
     serializer_class = DirectChatMessageListSerializer
     permission_classes = [IsAuthenticated, IsChatMember]
-    pagination_class = MessageListPagination
 
     def get_queryset(self):
         return (
-            self.request.user.direct_chats.get(id=self.kwargs["id"])
-            .messages.filter(is_deleted=False)
-            .order_by("-created_at")
-            .all()
+            super()
+            .get_queryset()
+            .select_related("author", "reply_to__author")
+            .prefetch_related("file_to_message__file")
         )
 
 
-class ProjectChatMessageList(ListCreateAPIView):
+class ProjectChatMessageList(ChatMessageHistory):
+    chat_model = ProjectChat
     serializer_class = ProjectChatMessageListSerializer
     permission_classes = [IsProjectChatMember]
-    pagination_class = MessageListPagination
 
     def get_queryset(self):
-        try:
-            return (
-                ProjectChat.objects.get(id=self.kwargs["id"])
-                .messages.filter(is_deleted=False)
-                .order_by("-created_at")
-                .all()
+        messages = (
+            super()
+            .get_queryset()
+            .select_related("author")
+            .prefetch_related("file_to_message__file")
+        )
+        return with_project_message_reads(
+            messages, self.request.user.pk, include_reply=True
+        )
+
+
+@method_decorator(never_cache, name="dispatch")
+class ChatMessageContext(GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    chat_model = None
+
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                "direction",
+                openapi.IN_QUERY,
+                description="Направление загрузки",
+                type=openapi.TYPE_STRING,
+                enum=["around", "older", "newer"],
+                default="around",
+            ),
+            openapi.Parameter(
+                "limit",
+                openapi.IN_QUERY,
+                description="Количество сообщений с каждой стороны",
+                type=openapi.TYPE_INTEGER,
+                minimum=1,
+                maximum=MAX_CONTEXT_LIMIT,
+            ),
+        ],
+        responses={200: "Сообщения по порядку, older_than и newer_than для продолжения"},
+    )
+    def get(self, request, id, message_id):
+        chat = get_accessible_chat(request.user, self.chat_model, id)
+        form = MessageContextForm(request.query_params)
+        if not form.is_valid():
+            raise ValidationError(form.errors)
+        queryset = chat.messages.select_related("author").prefetch_related(
+            "file_to_message__file"
+        )
+        if isinstance(chat, ProjectChat):
+            queryset = with_project_message_reads(
+                queryset, request.user.pk, include_reply=True
             )
-        except ProjectChat.DoesNotExist:
-            return ProjectChat.objects.none()
+        elif isinstance(chat, DirectChat):
+            queryset = queryset.select_related("reply_to__author")
+        context = get_message_context(chat, queryset, message_id, **form.cleaned_data)
+        return Response(
+            {
+                "results": self.get_serializer(context.messages, many=True).data,
+                "older_than": context.older_than,
+                "newer_than": context.newer_than,
+            }
+        )
 
-    def post(self, request, *args, **kwargs):
-        # TODO: try to create a message in a chat. If chat doesn't exist, create it and then create a message.
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+MAX_SYNC_LIMIT = 100
+MAX_SYNC_CURSOR = 2**63 - 1
 
 
-class DirectChatFileList(ListCreateAPIView):
-    serializer_class = UserFileSerializer
+class ChatMessageChangesForm(forms.Form):
+    after = forms.IntegerField(min_value=0, max_value=MAX_SYNC_CURSOR)
+    limit = forms.IntegerField(required=False, min_value=1, max_value=MAX_SYNC_LIMIT)
+
+
+@method_decorator(never_cache, name="dispatch")
+class ChatMessageChanges(GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    chat_model = None
+
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                "after",
+                openapi.IN_QUERY,
+                description="Курсор из sync_cursor истории или next_cursor изменений",
+                type=openapi.TYPE_INTEGER,
+                required=True,
+                minimum=0,
+            ),
+            openapi.Parameter(
+                "limit",
+                openapi.IN_QUERY,
+                description="Количество изменений на странице",
+                type=openapi.TYPE_INTEGER,
+                minimum=1,
+                maximum=MAX_SYNC_LIMIT,
+                default=MAX_SYNC_LIMIT,
+            ),
+        ],
+        responses={
+            200: "Изменения, next_cursor и has_more",
+            409: "Курсор устарел. Нужно заново загрузить историю.",
+        },
+    )
+    def get(self, request, id):
+        chat = get_accessible_chat(request.user, self.chat_model, id)
+        form = ChatMessageChangesForm(request.query_params)
+        if not form.is_valid():
+            raise ValidationError(form.errors)
+        after = form.cleaned_data["after"]
+        limit = form.cleaned_data["limit"] or MAX_SYNC_LIMIT
+        high_water = chat.message_revision
+        if after > high_water:
+            return Response(
+                {"detail": "Курсор недействителен. Загрузите историю чата заново."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        changed = (
+            chat.messages.filter(sync_revision__gt=after, sync_revision__lte=high_water)
+            .order_by("sync_revision")
+            .select_related("author")
+            .prefetch_related("file_to_message__file")
+        )
+        if isinstance(chat, ProjectChat):
+            changed = with_project_message_reads(
+                changed, request.user.pk, include_reply=True
+            )
+        elif isinstance(chat, DirectChat):
+            changed = changed.select_related("reply_to__author")
+        page = list(changed[: limit + 1])
+        has_more = len(page) > limit
+        results = []
+        for message in page[:limit]:
+            if message.is_deleted:
+                results.append({"type": "delete", "message_id": message.pk})
+            else:
+                results.append(
+                    {
+                        "type": "upsert",
+                        "message_id": message.pk,
+                        "message": self.get_serializer(message).data,
+                    }
+                )
+        # A message may move past this watermark if edited during the read.
+        # That newer revision will be fetched on the following request.
+        return Response(
+            {
+                "results": results,
+                "next_cursor": page[limit - 1].sync_revision if has_more else high_water,
+                "has_more": has_more,
+            }
+        )
+
+
+@method_decorator(never_cache, name="dispatch")
+class ChatFileList(ListAPIView):
+    chat_model = None
+    serializer_class = ChatAttachmentSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        messages = self.request.user.direct_chats.get(id=self.kwargs["id"]).messages.all()
-
-        return get_all_files(messages)
-
-
-class ProjectChatFileList(ListCreateAPIView):
-    serializer_class = UserFileSerializer
-    permission_classes = [IsProjectChatMember]
-
-    def get_queryset(self):
-        try:
-            messages = ProjectChat.objects.get(id=self.kwargs["id"]).messages.all()
-            return get_all_files(messages)
-        except ProjectChat.DoesNotExist:
-            return UserFile.objects.none()
+        if getattr(self, "swagger_fake_view", False):
+            return self.serializer_class.Meta.model.objects.none()
+        chat = get_accessible_chat(self.request.user, self.chat_model, self.kwargs["id"])
+        return (
+            chat_attachments(chat)
+            .select_related(
+                "file", "direct_message", "project_message", "channel_message"
+            )
+            .order_by("file__datetime_uploaded", "pk")
+        )
 
 
+class DirectChatFileList(ChatFileList):
+    chat_model = DirectChat
+
+
+class ProjectChatFileList(ChatFileList):
+    chat_model = ProjectChat
+
+
+@method_decorator(never_cache, name="dispatch")
+class ChatAttachmentDownload(APIView):
+    permission_classes = [IsAuthenticated]
+    chat_model = None
+
+    @swagger_auto_schema(
+        produces=["application/octet-stream"],
+        responses={
+            200: openapi.Response("Файл", schema=openapi.Schema(type=openapi.TYPE_FILE)),
+            404: "Вложение недоступно",
+            502: "Хранилище недоступно",
+        },
+    )
+    def get(self, request, id, message_id, attachment_id):
+        chat = get_accessible_chat(request.user, self.chat_model, id)
+        return download_chat_attachment(request, chat, message_id, attachment_id)
+
+
+@method_decorator(never_cache, name="dispatch")
 class HasChatUnreadsView(GenericAPIView):
     """Returns True if user has unread messages"""
 
@@ -214,22 +466,27 @@ class HasChatUnreadsView(GenericAPIView):
     )
     def get(self, request, *args, **kwargs):
         user = request.user
-        # get all user chats
-        direct_messages = user.direct_chats.all().prefetch_related("messages")
-        project_chats = user.get_project_chats().prefetch_related("messages")
-
         has_direct_messages_unread = (
-            direct_messages.filter(messages__is_read=False)
-            .exclude(messages__is_deleted=True)
-            .distinct()
+            unread_direct_messages(user.pk)
+            .filter(chat_id__in=accessible_chats(user, DirectChat).values("pk"))
             .exists()
         )
         has_project_messages_unread = (
-            project_chats.filter(messages__is_read=False)
-            .exclude(messages__is_deleted=True)
-            .distinct()
+            unread_project_messages(user.pk)
+            .filter(chat_id__in=user.get_project_chats().values("pk"))
+            .exists()
+        )
+        has_channel_messages_unread = (
+            channel_unread_messages(user.pk)
+            .filter(chat_id__in=accessible_chats(user, ProgramChannel).values("pk"))
             .exists()
         )
         return Response(
-            {"has_unreads": has_direct_messages_unread or has_project_messages_unread}
+            {
+                "has_unreads": (
+                    has_direct_messages_unread
+                    or has_project_messages_unread
+                    or has_channel_messages_unread
+                )
+            }
         )
