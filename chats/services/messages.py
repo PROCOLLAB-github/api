@@ -10,7 +10,7 @@ from chats.models import (
     ProjectChat,
     ProjectChatMessage,
 )
-from chats.permissions import is_project_member
+from chats.permissions import accessible_chats, is_project_member
 from chats.serializers import (
     DirectChatMessageListSerializer,
     ProjectChatMessageListSerializer,
@@ -197,3 +197,56 @@ def create_project_message(
         file_urls=file_urls,
         client_message_id=client_message_id,
     )
+
+
+def _get_message_for_change(chat_model, chat_id, message_id, author):
+    if type(message_id) not in (str, int):
+        raise MessageValidationException("Некорректный идентификатор сообщения.")
+    chat = (
+        chat_model.objects.select_for_update()
+        .filter(pk=chat_id, pk__in=accessible_chats(author, chat_model).values("pk"))
+        .first()
+    )
+    if chat is None:
+        raise MessageValidationException("Чат недоступен.")
+    try:
+        message = chat.messages.filter(pk=message_id, author=author).first()
+    except (TypeError, ValueError):
+        message = None
+    if message is None:
+        raise MessageValidationException("Сообщение недоступно для изменения.")
+    return message
+
+
+@transaction.atomic
+def edit_message(*, chat_model, chat_id, message_id, author, text):
+    message = _get_message_for_change(chat_model, chat_id, message_id, author)
+    if message.is_deleted:
+        raise MessageValidationException("Сообщение уже удалено.")
+    if not isinstance(text, str) or "\x00" in text:
+        raise MessageValidationException("Некорректный текст сообщения.")
+    if len(text) > message._meta.get_field("text").max_length:
+        raise MessageValidationException(
+            "Текст сообщения не должен превышать 8192 символа."
+        )
+    if not text.strip() and not message.file_to_message.exists():
+        raise MessageValidationException("Сообщение не может быть пустым.")
+    if message.text != text or not message.is_edited:
+        message.text = text
+        message.is_edited = True
+        message.save(update_fields=["text", "is_edited"])
+    serializer_class = (
+        DirectChatMessageListSerializer
+        if chat_model is DirectChat
+        else ProjectChatMessageListSerializer
+    )
+    return _serialize_message(type(message), serializer_class, message.pk)
+
+
+@transaction.atomic
+def delete_message(*, chat_model, chat_id, message_id, author):
+    message = _get_message_for_change(chat_model, chat_id, message_id, author)
+    if not message.is_deleted:
+        message.is_deleted = True
+        message.save(update_fields=["is_deleted"])
+    return message.pk

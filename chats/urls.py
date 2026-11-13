@@ -7,6 +7,7 @@ from chats.serializers import (
 )
 from chats.views import (
     ChatAttachmentDownload,
+    ChatMessageChanges,
     ChatMessageContext,
     DirectChatList,
     DirectChatMessageList,
@@ -35,6 +36,13 @@ urlpatterns = [
         name="direct-chat-files",
     ),
     path(
+        "directs/<slug:id>/messages/changes/",
+        ChatMessageChanges.as_view(
+            chat_model=DirectChat, serializer_class=DirectChatMessageListSerializer
+        ),
+        name="direct-chat-message-changes",
+    ),
+    path(
         "directs/<slug:id>/messages/<int:message_id>/context/",
         ChatMessageContext.as_view(
             chat_model=DirectChat, serializer_class=DirectChatMessageListSerializer
@@ -57,6 +65,13 @@ urlpatterns = [
         "projects/<int:id>/files/",
         ProjectChatFileList.as_view(),
         name="project-chat-files",
+    ),
+    path(
+        "projects/<int:id>/messages/changes/",
+        ChatMessageChanges.as_view(
+            chat_model=ProjectChat, serializer_class=ProjectChatMessageListSerializer
+        ),
+        name="project-chat-message-changes",
     ),
     path(
         "projects/<int:id>/messages/<int:message_id>/context/",

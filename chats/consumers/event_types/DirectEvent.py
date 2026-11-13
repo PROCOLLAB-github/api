@@ -1,12 +1,8 @@
 from channels.db import database_sync_to_async
 
 from chats.models import DirectChatMessage, DirectChat
-from chats.websockets_settings import Event, EventType
-from chats.exceptions import (
-    WrongChatIdException,
-    UserNotMessageAuthorException,
-    UserIsNotAuthor,
-)
+from chats.websockets_settings import ChatType, Event, EventType
+from chats.exceptions import WrongChatIdException
 from django.core.cache import cache
 from chats.utils import (
     get_user_channel_cache_key,
@@ -14,8 +10,7 @@ from chats.utils import (
     orm_get,
     orm_save,
 )
-from chats.serializers import DirectChatMessageListSerializer
-from chats.services import create_direct_message
+from chats.services.messages import create_direct_message, delete_message, edit_message
 
 
 class DirectEvent:
@@ -81,18 +76,13 @@ class DirectEvent:
         await self.channel_layer.send(other_user_channel, json_thingy)
 
     async def process_delete_message_event(self, event: Event, room_name: str):
-        message_id = event.content["message_id"]
-
-        message = await orm_get(DirectChatMessage.objects, pk=message_id)
-
-        if self.user.id != message.author_id:
-            raise UserIsNotAuthor(f"User {self.user.id} is not author {message.text}")
-
-        message.is_deleted = True
-        await orm_save(message, update_fields=["is_deleted"])
-
-        chat_id, other_user = await get_chat_and_user_ids_from_content(
-            event.content, self.user
+        _, other_user = await get_chat_and_user_ids_from_content(event.content, self.user)
+        chat_id = DirectChat.get_chat_id_from_users(self.user, other_user)
+        message_id = await database_sync_to_async(delete_message)(
+            chat_model=DirectChat,
+            chat_id=chat_id,
+            message_id=event.content["message_id"],
+            author=self.user,
         )
 
         # send message to user's channel
@@ -101,42 +91,25 @@ class DirectEvent:
             "type": EventType.DELETE_MESSAGE,
             "content": {
                 "message_id": message_id,
+                "chat_id": chat_id,
+                "chat_type": ChatType.DIRECT,
             },
         }
         await self.channel_layer.send(self.channel_name, content)
 
-        if other_user_channel is None:
-            return
-
-        await self.channel_layer.send(other_user_channel, content)
+        if other_user_channel and other_user_channel != self.channel_name:
+            await self.channel_layer.send(other_user_channel, content)
 
     async def process_edit_message_event(self, event, room_name):
-        chat_id, other_user = await get_chat_and_user_ids_from_content(
-            event.content, self.user
-        )
-        # if chat_id == 17_7, then chat_id will be == 7_17
+        _, other_user = await get_chat_and_user_ids_from_content(event.content, self.user)
         chat_id = DirectChat.get_chat_id_from_users(self.user, other_user)
-
-        # check if chat exists ( this raises exception if not )
-        await orm_get(DirectChat.objects, pk=chat_id)
-
-        msg = await orm_get(DirectChatMessage.objects, pk=event.content["message_id"])
-
-        if msg.author_id != self.user.id:
-            raise UserNotMessageAuthorException(
-                f"User {self.user.id} is not author of message {msg.id}"
-            )
-        msg.text = event.content["text"]
-        msg.is_edited = True
-        await orm_save(msg, update_fields=["text", "is_edited"])
-
-        serialized_message = await orm_get(
-            DirectChatMessage.objects.select_related(
-                "author", "reply_to__author"
-            ).prefetch_related("file_to_message__file"),
-            pk=msg.pk,
+        message_data = await database_sync_to_async(edit_message)(
+            chat_model=DirectChat,
+            chat_id=chat_id,
+            message_id=event.content["message_id"],
+            author=self.user,
+            text=event.content["text"],
         )
-        message_data = DirectChatMessageListSerializer(serialized_message).data
         content = {
             "chat_id": chat_id,
             "message": message_data,
@@ -147,7 +120,7 @@ class DirectEvent:
 
         event_data = {"type": EventType.EDIT_MESSAGE, "content": content}
 
-        if other_user_channel:
+        if other_user_channel and other_user_channel != self.channel_name:
             await self.channel_layer.send(other_user_channel, event_data)
 
         await self.channel_layer.send(self.channel_name, event_data)

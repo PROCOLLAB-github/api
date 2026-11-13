@@ -1,0 +1,18 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+  <p><a href="{% url message_context_route chat.pk message.pk %}#selected-message">К сообщению в переписке</a></p>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {{ form.action.errors }}
+    <p>{{ form.text.label_tag }} {{ form.text }}</p>
+    {{ form.text.errors }}
+    <button type="submit" name="action" value="edit" class="button default">Сохранить</button>
+  </form>
+  <form method="post">
+    {% csrf_token %}
+    <p>Сообщение будет удалено из переписки у всех участников чата.</p>
+    <button type="submit" name="action" value="delete" class="button">Удалить сообщение</button>
+  </form>
+{% endblock %}

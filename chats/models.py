@@ -4,7 +4,7 @@ from typing import List
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.db import models, transaction
+from django.db import models, router, transaction
 
 from files.models import UserFile
 from projects.models import Project
@@ -21,6 +21,28 @@ class BaseChat(models.Model):
     """
 
     created_at = models.DateTimeField(auto_now_add=True)
+    message_revision = models.PositiveBigIntegerField(
+        default=0, db_default=0, editable=False
+    )
+
+    def save(
+        self, force_insert=False, force_update=False, using=None, update_fields=None
+    ):
+        if not self._state.adding and update_fields is None:
+            # A chat settings save must not overwrite a newer message cursor.
+            update_fields = {
+                field.attname
+                for field in self._meta.concrete_fields
+                if not field.primary_key
+                and field.name != "message_revision"
+                and field.attname not in self.get_deferred_fields()
+            }
+        return super().save(
+            force_insert=force_insert,
+            force_update=force_update,
+            using=using,
+            update_fields=update_fields,
+        )
 
     def get_last_message(self):
         return self.messages.last()
@@ -194,6 +216,40 @@ class BaseMessage(models.Model):
     is_edited = models.BooleanField(default=False)
     client_message_id = models.UUIDField(null=True, blank=True, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
+    sync_revision = models.PositiveBigIntegerField(null=True, editable=False)
+
+    def save(
+        self, force_insert=False, force_update=False, using=None, update_fields=None
+    ):
+        if update_fields is not None and not {
+            "text",
+            "is_deleted",
+            "is_edited",
+            "reply_to",
+            "reply_to_id",
+        }.intersection(update_fields):
+            return super().save(
+                force_insert=force_insert,
+                force_update=force_update,
+                using=using,
+                update_fields=update_fields,
+            )
+        chat_model = self._meta.get_field("chat").related_model
+        using = using or router.db_for_write(type(self), instance=self)
+        with transaction.atomic(using=using):
+            chats = chat_model.objects.using(using)
+            # Serialize the revision with the message write in the same transaction.
+            chat = chats.select_for_update().get(pk=self.chat_id)
+            self.sync_revision = chat.message_revision + 1
+            chats.filter(pk=chat.pk).update(message_revision=self.sync_revision)
+            if update_fields is not None:
+                update_fields = {*update_fields, "sync_revision"}
+            return super().save(
+                force_insert=force_insert,
+                force_update=force_update,
+                using=using,
+                update_fields=update_fields,
+            )
 
     def __str__(self):
         return f"Message<{self.pk}>"
@@ -241,6 +297,9 @@ class ProjectChatMessage(BaseMessage):
     class Meta:
         verbose_name = "Сообщение в чате проекта"
         verbose_name_plural = "Сообщения в чатах проектов"
+        indexes = [
+            models.Index(fields=["chat", "sync_revision"], name="project_chat_sync_idx")
+        ]
         constraints = [
             models.UniqueConstraint(
                 fields=["chat", "author", "client_message_id"],
@@ -302,6 +361,9 @@ class DirectChatMessage(BaseMessage):
     class Meta:
         verbose_name = "Сообщение в личном чате"
         verbose_name_plural = "Сообщения в личных чатах"
+        indexes = [
+            models.Index(fields=["chat", "sync_revision"], name="direct_chat_sync_idx")
+        ]
         constraints = [
             models.UniqueConstraint(
                 fields=["chat", "author", "client_message_id"],

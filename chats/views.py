@@ -1,3 +1,4 @@
+from django import forms
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
@@ -187,7 +188,10 @@ class ChatMessageHistory(ListCreateAPIView):
         ]
     )
     def get(self, request, *args, **kwargs):
-        return super().get(request, *args, **kwargs)
+        response = super().get(request, *args, **kwargs)
+        if hasattr(self, "sync_cursor"):
+            response.data["sync_cursor"] = self.sync_cursor
+        return response
 
     def get_queryset(self):
         user = self.request.user
@@ -199,6 +203,12 @@ class ChatMessageHistory(ListCreateAPIView):
         form = ChatMessageSearchForm(self.request.query_params)
         if not form.is_valid():
             raise ValidationError(form.errors)
+        if (
+            not form.cleaned_data["q"]
+            and form.cleaned_data["author_id"] is None
+            and form.cleaned_data["scope"] != "files"
+        ):
+            self.sync_cursor = chat.message_revision
         return search_chat_messages(chat, form.cleaned_data)
 
 
@@ -287,6 +297,96 @@ class ChatMessageContext(GenericAPIView):
                 "results": self.get_serializer(context.messages, many=True).data,
                 "older_than": context.older_than,
                 "newer_than": context.newer_than,
+            }
+        )
+
+
+MAX_SYNC_LIMIT = 100
+MAX_SYNC_CURSOR = 2**63 - 1
+
+
+class ChatMessageChangesForm(forms.Form):
+    after = forms.IntegerField(min_value=0, max_value=MAX_SYNC_CURSOR)
+    limit = forms.IntegerField(required=False, min_value=1, max_value=MAX_SYNC_LIMIT)
+
+
+@method_decorator(never_cache, name="dispatch")
+class ChatMessageChanges(GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    chat_model = None
+
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                "after",
+                openapi.IN_QUERY,
+                description="Курсор из sync_cursor истории или next_cursor изменений",
+                type=openapi.TYPE_INTEGER,
+                required=True,
+                minimum=0,
+            ),
+            openapi.Parameter(
+                "limit",
+                openapi.IN_QUERY,
+                description="Количество изменений на странице",
+                type=openapi.TYPE_INTEGER,
+                minimum=1,
+                maximum=MAX_SYNC_LIMIT,
+                default=MAX_SYNC_LIMIT,
+            ),
+        ],
+        responses={
+            200: "Изменения, next_cursor и has_more",
+            409: "Курсор устарел. Нужно заново загрузить историю.",
+        },
+    )
+    def get(self, request, id):
+        chat = get_accessible_chat(request.user, self.chat_model, id)
+        form = ChatMessageChangesForm(request.query_params)
+        if not form.is_valid():
+            raise ValidationError(form.errors)
+        after = form.cleaned_data["after"]
+        limit = form.cleaned_data["limit"] or MAX_SYNC_LIMIT
+        high_water = chat.message_revision
+        if after > high_water:
+            return Response(
+                {"detail": "Курсор недействителен. Загрузите историю чата заново."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        changed = (
+            chat.messages.filter(sync_revision__gt=after, sync_revision__lte=high_water)
+            .order_by("sync_revision")
+            .select_related("author")
+            .prefetch_related("file_to_message__file")
+        )
+        if isinstance(chat, ProjectChat):
+            changed = with_project_message_reads(
+                changed, request.user.pk, include_reply=True
+            )
+        else:
+            changed = changed.select_related("reply_to__author")
+        page = list(changed[: limit + 1])
+        has_more = len(page) > limit
+        results = []
+        for message in page[:limit]:
+            if message.is_deleted:
+                results.append({"type": "delete", "message_id": message.pk})
+            else:
+                results.append(
+                    {
+                        "type": "upsert",
+                        "message_id": message.pk,
+                        "message": self.get_serializer(message).data,
+                    }
+                )
+        # A message may move past this watermark if edited during the read.
+        # That newer revision will be fetched on the following request.
+        return Response(
+            {
+                "results": results,
+                "next_cursor": page[limit - 1].sync_revision if has_more else high_water,
+                "has_more": has_more,
             }
         )
 
