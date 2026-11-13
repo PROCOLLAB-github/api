@@ -29,6 +29,14 @@ from chats.direct_privacy import (
     set_incoming_policy,
 )
 from chats.exceptions import MessageValidationException
+from chats.drafts import (
+    DRAFT_TEXT_LIMIT,
+    MAX_DRAFT_REVISION,
+    DraftConflict,
+    draft_chat,
+    draft_state,
+    save_draft,
+)
 from chats.message_context import MessageContextForm, get_message_context
 from chats.models import (
     ProjectChat,
@@ -80,6 +88,13 @@ class ChatSearchAdmin(admin.ModelAdmin):
             "<slug:object_id>" if self.model is DirectChat else "<int:object_id>"
         )
         return [
+            path(
+                object_path + "/draft/",
+                self.admin_site.admin_view(
+                    require_http_methods(["GET", "POST"])(self.personal_draft)
+                ),
+                name=self.message_search_url_name + "_draft",
+            ),
             path(
                 object_path + "/message-search/",
                 self.admin_site.admin_view(self.message_search),
@@ -136,6 +151,14 @@ class ChatSearchAdmin(admin.ModelAdmin):
                 "form": form,
                 "page": page,
                 "chat": chat,
+                "draft_url": (
+                    reverse(
+                        "admin:" + self.message_search_url_name + "_draft", args=[chat.pk]
+                    )
+                    if not isinstance(chat, ProgramChannel)
+                    or can_publish_in_program_channel(request.user, chat.program)
+                    else None
+                ),
                 **self.extra_channel_context(request, chat),
                 "message_context_route": "admin:"
                 + self.message_search_url_name
@@ -157,6 +180,49 @@ class ChatSearchAdmin(admin.ModelAdmin):
 
     def extra_channel_context(self, request, chat):
         return {}
+
+    def personal_draft(self, request, object_id):
+        chat = self.get_chat_for_member(request, object_id)
+        draft_chat(request.user, self.model, chat.pk)
+        current = draft_state(request.user, chat)
+        form = ChatDraftForm(
+            request.POST if request.method == "POST" else None, initial=current
+        )
+        response_status = 200
+        if request.method == "POST":
+            response_status = 400
+            if form.is_valid():
+                try:
+                    save_draft(request.user, self.model, chat.pk, **form.cleaned_data)
+                except DraftConflict as error:
+                    current = error.current
+                    response_status = 409
+                    form.add_error(
+                        None,
+                        "Черновик уже изменен. Скопируйте свой текст и обновите страницу.",
+                    )
+                except ValueError as error:
+                    form.add_error(None, str(error))
+                else:
+                    self.message_user(request, "Черновик сохранен.")
+                    return redirect(
+                        "admin:" + self.message_search_url_name + "_draft", chat.pk
+                    )
+        return TemplateResponse(
+            request,
+            "admin/chats/draft.html",
+            {
+                **self.admin_site.each_context(request),
+                "title": "Личный черновик",
+                "opts": self.model._meta,
+                "form": form,
+                "current": current if response_status == 409 else None,
+                "back_url": reverse(
+                    "admin:" + self.message_search_url_name, args=[chat.pk]
+                ),
+            },
+            status=response_status,
+        )
 
     def attachment_download(self, request, object_id, message_id, attachment_id):
         chat = self.get_chat_for_member(request, object_id)
@@ -286,6 +352,21 @@ class ChatSearchAdmin(admin.ModelAdmin):
         )
 
 
+class ChatDraftForm(forms.Form):
+    text = forms.CharField(
+        label="Текст черновика",
+        required=False,
+        strip=False,
+        max_length=DRAFT_TEXT_LIMIT,
+        widget=forms.Textarea,
+    )
+    revision = forms.IntegerField(
+        min_value=0,
+        max_value=MAX_DRAFT_REVISION,
+        widget=forms.HiddenInput,
+    )
+
+
 class OwnMessageForm(forms.Form):
     text = forms.CharField(
         label="Текст сообщения", required=False, strip=False, widget=forms.Textarea
@@ -316,6 +397,12 @@ class GroupMessageForm(forms.Form):
         queryset=get_user_model().objects.none(),
         required=False,
         error_messages={"invalid_choice": "Выберите участников этого чата."},
+    )
+    draft_revision = forms.IntegerField(
+        required=False,
+        min_value=0,
+        max_value=MAX_DRAFT_REVISION,
+        widget=forms.HiddenInput,
     )
 
     def __init__(self, user, chat, *args, **kwargs):
@@ -423,11 +510,16 @@ class GroupChatAdmin(ChatSearchAdmin):
             raise PermissionDenied("Публикации доступны менеджерам программы.")
         posted = request.method == "POST"
         uploading = posted and request.POST.get("action") == "upload"
+        draft = draft_state(request.user, chat)
         form = GroupMessageForm(
             request.user,
             chat,
             request.POST if posted and not uploading else None,
-            initial={"client_message_id": uuid4()},
+            initial={
+                "client_message_id": uuid4(),
+                "text": draft["text"],
+                "draft_revision": draft["revision"] if draft["text"] else None,
+            },
         )
         upload_form = ChannelUploadForm(
             request.POST if uploading else None, request.FILES if uploading else None
@@ -460,6 +552,18 @@ class GroupChatAdmin(ChatSearchAdmin):
                             user.pk for user in form.cleaned_data["mentions"]
                         ],
                     )
+                    revision = form.cleaned_data["draft_revision"]
+                    if created and revision is not None and revision < MAX_DRAFT_REVISION:
+                        try:
+                            save_draft(
+                                request.user,
+                                self.model,
+                                chat.pk,
+                                text="",
+                                revision=revision,
+                            )
+                        except DraftConflict:
+                            pass
                     if created and isinstance(chat, ProjectChat):
                         transaction.on_commit(
                             partial(

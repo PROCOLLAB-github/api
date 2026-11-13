@@ -53,6 +53,7 @@ def serialize_message_attachments(message):
 
 
 class DirectChatListSerializer(serializers.ModelSerializer):
+    has_draft = serializers.BooleanField(read_only=True)
     last_message = serializers.SerializerMethodField()
     opponent = serializers.SerializerMethodField()
     name = serializers.SerializerMethodField(read_only=True)
@@ -84,7 +85,7 @@ class DirectChatListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DirectChat
-        fields = ["id", "opponent", "last_message", "name", "image_address"]
+        fields = ["id", "opponent", "last_message", "name", "image_address", "has_draft"]
 
 
 class ProgramChannelMessageSerializer(serializers.ModelSerializer):
@@ -127,6 +128,7 @@ class DirectChatDetailSerializer(serializers.ModelSerializer):
 
 
 class ProjectChatListSerializer(serializers.ModelSerializer):
+    has_draft = serializers.BooleanField(read_only=True)
     last_message = serializers.SerializerMethodField(read_only=True)
     name = serializers.SerializerMethodField(read_only=True)
     image_address = serializers.SerializerMethodField(read_only=True)
@@ -159,6 +161,7 @@ class ProjectChatListSerializer(serializers.ModelSerializer):
             "name",
             "unread_count",
             "first_unread_message_id",
+            "has_draft",
         ]
 
 

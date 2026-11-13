@@ -8,6 +8,7 @@ from chats.channel_views import (
     ProgramChannelReadView,
 )
 from chats.direct_views import DirectBlockView, DirectPrivacyView, DirectSpamReportView
+from chats.draft_views import ChatDraftView
 from chats.models import DirectChat, ProgramChannel, ProjectChat
 from chats.notification_views import (
     ChatMentionRecipientsView,
@@ -37,6 +38,21 @@ from chats.views import (
 app_name = "chats"
 
 urlpatterns = [
+    path(
+        "directs/<slug:id>/draft/",
+        ChatDraftView.as_view(chat_model=DirectChat),
+        name="direct-chat-draft",
+    ),
+    path(
+        "projects/<int:id>/draft/",
+        ChatDraftView.as_view(chat_model=ProjectChat),
+        name="project-chat-draft",
+    ),
+    path(
+        "channels/<int:id>/draft/",
+        ChatDraftView.as_view(chat_model=ProgramChannel),
+        name="program-channel-draft",
+    ),
     path(
         "channels/<int:id>/notification-settings/",
         ChatNotificationSettingsView.as_view(chat_model=ProgramChannel),

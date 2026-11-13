@@ -1,6 +1,9 @@
 {% extends "admin/base_site.html" %}
 
 {% block content %}
+  {% if draft_url %}
+    <p><a href="{{ draft_url }}">Личный черновик</a></p>
+  {% endif %}
   {% if notification_settings_url %}
     <p><a href="{{ notification_settings_url }}">Настройки уведомлений</a></p>
   {% endif %}

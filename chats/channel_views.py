@@ -10,6 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from chats.attachments import get_accessible_chat
+from chats.drafts import with_draft_marker
 from chats.exceptions import MessageValidationException
 from chats.models import ProgramChannel, ProgramChannelMessage
 from chats.notifications import MAX_MENTIONS
@@ -34,7 +35,11 @@ class ProgramChannelSerializer(serializers.ModelSerializer):
     unread_count = serializers.IntegerField()
     first_unread_message_id = serializers.IntegerField(allow_null=True)
     can_publish = serializers.BooleanField(read_only=True)
+    has_draft = serializers.SerializerMethodField()
     last_message = serializers.SerializerMethodField()
+
+    def get_has_draft(self, channel) -> bool:
+        return channel.can_publish and channel.has_draft
 
     def get_last_message(self, channel):
         if channel.latest_messages:
@@ -53,6 +58,7 @@ class ProgramChannelSerializer(serializers.ModelSerializer):
             "unread_count",
             "first_unread_message_id",
             "last_message",
+            "has_draft",
         )
 
 
@@ -95,7 +101,9 @@ class ProgramChannelSummary:
             return ProgramChannel.objects.none()
         user = self.request.user
         managed = PartnerProgram.objects.filter(pk=OuterRef("pk"), managers=user)
-        channels = accessible_chats(user, ProgramChannel).select_related("program")
+        channels = with_draft_marker(
+            accessible_chats(user, ProgramChannel).select_related("program"), user
+        )
         recent = (
             ProgramChannelMessage.objects.filter(is_deleted=False)
             .select_related("author")

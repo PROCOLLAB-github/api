@@ -485,6 +485,52 @@ class ProgramChannelRead(models.Model):
         ]
 
 
+class ChatDraft(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    direct_chat = models.ForeignKey(DirectChat, on_delete=models.CASCADE, null=True)
+    project_chat = models.ForeignKey(ProjectChat, on_delete=models.CASCADE, null=True)
+    program_channel = models.ForeignKey(
+        ProgramChannel, on_delete=models.CASCADE, null=True
+    )
+    text = models.TextField(max_length=8192, blank=True)
+    revision = models.PositiveBigIntegerField(default=0)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(
+                        direct_chat__isnull=False,
+                        project_chat__isnull=True,
+                        program_channel__isnull=True,
+                    )
+                    | models.Q(
+                        direct_chat__isnull=True,
+                        project_chat__isnull=False,
+                        program_channel__isnull=True,
+                    )
+                    | models.Q(
+                        direct_chat__isnull=True,
+                        project_chat__isnull=True,
+                        program_channel__isnull=False,
+                    )
+                ),
+                name="chat_draft_has_one_chat",
+            ),
+            models.UniqueConstraint(
+                fields=["user", "direct_chat"], name="unique_direct_chat_draft_user"
+            ),
+            models.UniqueConstraint(
+                fields=["user", "project_chat"], name="unique_project_chat_draft_user"
+            ),
+            models.UniqueConstraint(
+                fields=["user", "program_channel"],
+                name="unique_program_channel_draft_user",
+            ),
+        ]
+
+
 class ChatNotificationPreference(models.Model):
     class Mode(models.TextChoices):
         ALL = "all", "Все сообщения"

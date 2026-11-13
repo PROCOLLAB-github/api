@@ -24,6 +24,7 @@ from chats.attachments import (
     get_accessible_chat,
 )
 from chats.exceptions import MessageValidationException
+from chats.drafts import with_draft_marker
 from chats.direct_privacy import direct_contact
 from chats.message_context import (
     MAX_CONTEXT_LIMIT,
@@ -54,35 +55,35 @@ from chats.services.messages import get_direct_chat_for_participants
 User = get_user_model()
 
 
+@method_decorator(never_cache, name="dispatch")
 class DirectChatList(ListAPIView):
     serializer_class = DirectChatListSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return DirectChat.objects.prefetch_related("users").filter(
-            users=self.request.user
+        return with_draft_marker(
+            DirectChat.objects.prefetch_related("users").filter(users=self.request.user),
+            self.request.user,
         )
 
     def get(self, request, *args, **kwargs):
-        chats = self.get_queryset()
         serialized_chats = []
-        for chat in chats:
-            try:
-                user1_id, _ = map(int, chat.id.split("_"))
-                # TODO сделать проверку на удаление профиля
-                if user1_id == request.user.id:
-                    opponent = chat.users.all()[1]
-                else:
-                    opponent = chat.users.first()
-
-                context = {"opponent": opponent}
-                serialized_chat = DirectChatListSerializer(chat, context=context).data
-                serialized_chats.append(serialized_chat)
-            except IndexError:
-                pass
+        for chat in self.get_queryset():
+            others = [user for user in chat.users.all() if user.pk != request.user.pk]
+            if len(others) == 1:
+                opponent = others[0]
+            elif not others and chat.pk == DirectChat.get_chat_id_from_users(
+                request.user, request.user
+            ):
+                opponent = request.user
+            else:
+                continue
+            context = {**self.get_serializer_context(), "opponent": opponent}
+            serialized_chats.append(self.get_serializer(chat, context=context).data)
         return Response(serialized_chats, status=status.HTTP_200_OK)
 
 
+@method_decorator(never_cache, name="dispatch")
 class ProjectChatList(ListAPIView):
     serializer_class = ProjectChatListSerializer
     permission_classes = [IsAuthenticated]
@@ -92,7 +93,8 @@ class ProjectChatList(ListAPIView):
         if not user.is_authenticated:
             return ProjectChat.objects.none()
         return with_project_chat_unreads(
-            user.get_project_chats().select_related("project"), user.pk
+            with_draft_marker(user.get_project_chats().select_related("project"), user),
+            user.pk,
         )
 
 
