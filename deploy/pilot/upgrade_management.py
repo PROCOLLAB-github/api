@@ -787,6 +787,7 @@ if __name__ == "__main__":
     parser.add_argument("--bundle", type=Path)
     args = parser.parse_args()
     try:
+        hosted.scope()
         with hosted.locked():
             if args.command == "status":
                 result = status()
