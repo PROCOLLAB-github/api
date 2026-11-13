@@ -180,7 +180,12 @@ class ProjectMessageDeliveryTests(TransactionTestCase):
 
         await communicator.send_json_to(data)
         first_response = await communicator.receive_json_from()
-        self.assertEqual(await recipient.receive_json_from(), first_response)
+        received = await recipient.receive_json_from()
+        self.assertEqual(
+            received["content"]["message"], first_response["content"]["message"]
+        )
+        self.assertTrue(received["content"]["notify"])
+        self.assertFalse(first_response["content"]["notify"])
         await communicator.send_json_to(data)
         second_response = await communicator.receive_json_from()
 

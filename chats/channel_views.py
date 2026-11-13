@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from chats.attachments import get_accessible_chat
 from chats.exceptions import MessageValidationException
 from chats.models import ProgramChannel, ProgramChannelMessage
+from chats.notifications import MAX_MENTIONS
 from chats.pagination import MessageListPagination
 from chats.permissions import accessible_chats, can_publish_in_program_channel
 from chats.program_channels import (
@@ -67,6 +68,12 @@ class ChannelMessageInput(serializers.Serializer):
     )
     client_message_id = serializers.UUIDField(
         required=False, allow_null=True, default=None
+    )
+    mentioned_user_ids = serializers.ListField(
+        child=serializers.IntegerField(min_value=1, max_value=2**63 - 1),
+        required=False,
+        default=list,
+        max_length=MAX_MENTIONS,
     )
 
 

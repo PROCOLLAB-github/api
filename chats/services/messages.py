@@ -19,6 +19,7 @@ from chats.permissions import (
     can_publish_in_program_channel,
     is_project_member,
 )
+from chats.notifications import validate_mentions
 from chats.serializers import (
     DirectChatMessageListSerializer,
     ProgramChannelMessageSerializer,
@@ -116,6 +117,8 @@ def _create_message(
     file_urls,
     client_message_id,
     validate_new_message=None,
+    mention_chat=None,
+    mentioned_user_ids=None,
 ):
     client_message_id = _normalize_client_message_id(client_message_id)
     if client_message_id is not None:
@@ -143,6 +146,10 @@ def _create_message(
     if message_model is not ProgramChannelMessage:
         reply["reply_to"] = _get_reply(message_model, chat_id, reply_to_id)
     files = _get_files(file_urls, author)
+    if mention_chat is not None:
+        reply["mentioned_user_ids"] = validate_mentions(
+            mention_chat, author, [] if mentioned_user_ids is None else mentioned_user_ids
+        )
     message = message_model.objects.create(
         chat_id=chat_id,
         author=author,
@@ -228,6 +235,7 @@ def create_project_message(
     reply_to_id=None,
     file_urls=None,
     client_message_id=None,
+    mentioned_user_ids=None,
 ):
     try:
         chat = (
@@ -249,6 +257,8 @@ def create_project_message(
         reply_to_id=reply_to_id,
         file_urls=file_urls,
         client_message_id=client_message_id,
+        mention_chat=chat,
+        mentioned_user_ids=mentioned_user_ids,
     )
 
 

@@ -9,7 +9,7 @@ def channel_group(channel_id):
     return f"{EventGroupType.PROGRAM_CHANNEL}_{channel_id}"
 
 
-def notify_channel_change(channel_id):
+def notify_channel_change(channel_id, *, new_message_id=None):
     layer = get_channel_layer()
     if layer is None:
         return
@@ -19,6 +19,7 @@ def notify_channel_change(channel_id):
             {
                 "type": EventType.PROGRAM_CHANNEL_CHANGED,
                 "content": {"channel_id": channel_id},
+                "_new_message_id": new_message_id,
             },
         ),
         robust=True,

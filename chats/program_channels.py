@@ -46,7 +46,9 @@ def _locked_channel(user, channel_id):
 
 
 @transaction.atomic
-def publish_channel_message(*, channel_id, author, text, file_urls, client_message_id):
+def publish_channel_message(
+    *, channel_id, author, text, file_urls, client_message_id, mentioned_user_ids=None
+):
     channel = _locked_channel(author, channel_id)
     if channel is None or not can_publish_in_program_channel(author, channel.program):
         raise MessageValidationException("Публикации доступны менеджерам программы.")
@@ -66,9 +68,11 @@ def publish_channel_message(*, channel_id, author, text, file_urls, client_messa
         reply_to_id=None,
         file_urls=file_urls,
         client_message_id=client_message_id,
+        mention_chat=channel,
+        mentioned_user_ids=mentioned_user_ids,
     )
     if created:
-        notify_channel_change(channel.pk)
+        notify_channel_change(channel.pk, new_message_id=publication["id"])
     return publication, created
 
 

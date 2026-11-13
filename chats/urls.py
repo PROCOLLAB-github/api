@@ -9,6 +9,10 @@ from chats.channel_views import (
 )
 from chats.direct_views import DirectBlockView, DirectPrivacyView, DirectSpamReportView
 from chats.models import DirectChat, ProgramChannel, ProjectChat
+from chats.notification_views import (
+    ChatMentionRecipientsView,
+    ChatNotificationSettingsView,
+)
 from chats.serializers import (
     DirectChatMessageListSerializer,
     ProgramChannelMessageSerializer,
@@ -33,6 +37,26 @@ from chats.views import (
 app_name = "chats"
 
 urlpatterns = [
+    path(
+        "channels/<int:id>/notification-settings/",
+        ChatNotificationSettingsView.as_view(chat_model=ProgramChannel),
+        name="program-channel-notification-settings",
+    ),
+    path(
+        "channels/<int:id>/mention-recipients/",
+        ChatMentionRecipientsView.as_view(chat_model=ProgramChannel),
+        name="program-channel-mention-recipients",
+    ),
+    path(
+        "projects/<int:id>/notification-settings/",
+        ChatNotificationSettingsView.as_view(chat_model=ProjectChat),
+        name="project-chat-notification-settings",
+    ),
+    path(
+        "projects/<int:id>/mention-recipients/",
+        ChatMentionRecipientsView.as_view(chat_model=ProjectChat),
+        name="project-chat-mention-recipients",
+    ),
     path("channels/", ProgramChannelList.as_view(), name="program-channel-list"),
     path(
         "channels/<int:id>/",
