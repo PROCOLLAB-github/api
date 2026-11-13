@@ -3,7 +3,7 @@ from typing import List
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 
 from files.models import UserFile
 from projects.models import Project
@@ -137,6 +137,7 @@ class DirectChat(BaseChat):
         return other_user.avatar
 
     @classmethod
+    @transaction.atomic
     def get_chat(cls, user1, user2) -> "DirectChat":
         """
         Returns chat between two users.
@@ -150,24 +151,16 @@ class DirectChat(BaseChat):
         """
 
         pk = cls.get_chat_id_from_users(user1, user2)
-        try:
-            return cls.objects.get(pk=pk)
-        except cls.DoesNotExist:
-            chat = cls.objects.create(pk=pk)
+        chat, created = cls.objects.get_or_create(pk=pk)
+        if created:
             chat.users.set([user1, user2])
-            return chat
+        return chat
 
     def get_last_messages(self, message_count):
         return self.messages.order_by("-created_at")[:message_count]
 
     def get_other_user(self, user) -> User:
         return self.users.exclude(pk=user.pk).first()
-
-    @classmethod
-    def create_from_two_users(cls, user1, user2):
-        chat = cls.objects.create(pk=cls.get_chat_id_from_users(user1, user2))
-        chat.users.set([user1, user2])
-        return chat
 
     @classmethod
     def get_chat_id_from_users(cls, user1, user2):
@@ -198,6 +191,7 @@ class BaseMessage(models.Model):
     is_read = models.BooleanField(default=False)
     is_deleted = models.BooleanField(default=False)
     is_edited = models.BooleanField(default=False)
+    client_message_id = models.UUIDField(null=True, blank=True, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -246,6 +240,13 @@ class ProjectChatMessage(BaseMessage):
     class Meta:
         verbose_name = "Сообщение в чате проекта"
         verbose_name_plural = "Сообщения в чатах проектов"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["chat", "author", "client_message_id"],
+                condition=models.Q(client_message_id__isnull=False),
+                name="unique_project_chat_client_message",
+            )
+        ]
 
 
 class DirectChatMessage(BaseMessage):
@@ -284,6 +285,13 @@ class DirectChatMessage(BaseMessage):
     class Meta:
         verbose_name = "Сообщение в личном чате"
         verbose_name_plural = "Сообщения в личных чатах"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["chat", "author", "client_message_id"],
+                condition=models.Q(client_message_id__isnull=False),
+                name="unique_direct_chat_client_message",
+            )
+        ]
 
 
 class FileToMessage(models.Model):

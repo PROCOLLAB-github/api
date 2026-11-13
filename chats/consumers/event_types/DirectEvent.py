@@ -1,3 +1,5 @@
+from channels.db import database_sync_to_async
+
 from chats.models import DirectChatMessage, DirectChat
 from chats.websockets_settings import Event, EventType
 from chats.exceptions import (
@@ -8,16 +10,12 @@ from chats.exceptions import (
 from django.core.cache import cache
 from chats.utils import (
     get_user_channel_cache_key,
-    create_message,
     get_chat_and_user_ids_from_content,
-    match_files_and_messages,
-    orm_create,
-    orm_exists,
     orm_get,
     orm_save,
-    orm_set,
 )
 from chats.serializers import DirectChatMessageListSerializer
+from chats.services import create_direct_message
 
 
 class DirectEvent:
@@ -27,53 +25,22 @@ class DirectEvent:
         self.channel_name = channel_name
 
     async def process_new_message_event(self, event: Event, room_name: str):
-        chat_id, other_user = await get_chat_and_user_ids_from_content(
-            event.content, self.user
-        )
-
-        # if chat_id == 17_7, then chat_id will be == 7_17
+        _, other_user = await get_chat_and_user_ids_from_content(event.content, self.user)
         chat_id = DirectChat.get_chat_id_from_users(self.user, other_user)
 
-        # check if chat exists
-        if not await orm_exists(DirectChat.objects.filter(pk=chat_id)):
-            # if not, create such chat
-            chat = await orm_create(DirectChat.objects, pk=chat_id)
-            await orm_set(chat.users, [self.user, other_user])
-
-        reply_to_message = None
-        if event.content["reply_to"] is not None:
-            try:
-                reply_to_message = await orm_get(
-                    DirectChatMessage.objects, pk=event.content["reply_to"]
-                )
-            except DirectChatMessage.DoesNotExist:
-                reply_to_message = None
-
-        msg = await create_message(
-            chat_id=chat_id,
-            chat_model=DirectChatMessage,
+        message_data, created = await database_sync_to_async(create_direct_message)(
             author=self.user,
-            text=event.content["text"],
-            reply_to=reply_to_message,
+            other_user=other_user,
+            text=event.content.get("text", ""),
+            reply_to_id=event.content.get("reply_to"),
+            file_urls=event.content.get("file_urls", []),
+            client_message_id=event.content.get("client_message_id"),
         )
-
-        messages = {
-            "direct_message": msg,
-            "project_message": None,
-        }
-        await match_files_and_messages(event.content["file_urls"], messages)
-
-        serialized_message = await orm_get(
-            DirectChatMessage.objects.select_related("author", "reply_to__author").prefetch_related(
-                "file_to_message__file"
-            ),
-            pk=msg.pk,
-        )
-        message_data = DirectChatMessageListSerializer(serialized_message).data
 
         content = {
             "chat_id": chat_id,
             "message": message_data,
+            "is_replay": not created,
         }
 
         # send message to user's channel
@@ -83,7 +50,7 @@ class DirectEvent:
 
         await self.channel_layer.send(self.channel_name, event_data)
 
-        if other_user_channel:
+        if created and other_user_channel and other_user_channel != self.channel_name:
             await self.channel_layer.send(other_user_channel, event_data)
 
     async def process_read_message_event(self, event: Event, room_name: str):
@@ -164,9 +131,9 @@ class DirectEvent:
         await orm_save(msg, update_fields=["text", "is_edited"])
 
         serialized_message = await orm_get(
-            DirectChatMessage.objects.select_related("author", "reply_to__author").prefetch_related(
-                "file_to_message__file"
-            ),
+            DirectChatMessage.objects.select_related(
+                "author", "reply_to__author"
+            ).prefetch_related("file_to_message__file"),
             pk=msg.pk,
         )
         message_data = DirectChatMessageListSerializer(serialized_message).data
