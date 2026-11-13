@@ -1,23 +1,36 @@
 """Read projection of the current expert's actual assignments; no new scoring states."""
 
-from django.db.models import Count, Exists, F, OuterRef, Subquery
+from django.db.models import Count, Exists, F, OuterRef, Q, Subquery
 from django.utils import timezone
 
-from partner_programs.models import PartnerProgramProject
+from partner_programs.models import PartnerProgram, PartnerProgramProject
 from partner_programs.services.assignment_analytics import annotated_assignment_queryset
 from partner_programs.services.case_analytics import project_case_links
 from partner_programs.services.case_fields import get_program_case_field
 from project_rates.models import ProjectScore
 from project_rates.program_experts import evaluation_programs
+from project_rates.project_scoring import project_scoring_blocker
 from projects.models import Collaborator
 
 
-def cabinet_projects(user, query, program_ids, *, paginate=True, as_applications=False):
-    own = annotated_assignment_queryset().filter(
-        expert__user=user,
-        partner_program_id__in=program_ids,
-    ).filter(
-        partner_program_id__in=evaluation_programs(user).values("pk"),
+def cabinet_projects(
+    user,
+    query,
+    program_ids,
+    *,
+    paginate=True,
+    as_applications=False,
+    project_filters: Q | None = None,
+):
+    own = (
+        annotated_assignment_queryset()
+        .filter(
+            expert__user=user,
+            partner_program_id__in=program_ids,
+        )
+        .filter(
+            partner_program_id__in=evaluation_programs(user).values("pk"),
+        )
     )
     linked = PartnerProgramProject.objects.filter(
         partner_program_id=OuterRef("partner_program_id"),
@@ -32,6 +45,8 @@ def cabinet_projects(user, query, program_ids, *, paginate=True, as_applications
         selected = selected.filter(partner_program_id=query["program_id"])
     if query.get("q"):
         selected = selected.filter(project__name__icontains=query["q"])
+    if project_filters is not None:
+        selected = selected.filter(project_filters)
     count = selected.count()
     scores = (
         ProjectScore.objects.filter(
@@ -54,6 +69,11 @@ def cabinet_projects(user, query, program_ids, *, paginate=True, as_applications
         cabinet_own_team=Exists(
             Collaborator.objects.filter(
                 project_id=OuterRef("project_id"), user_id=user.pk
+            )
+        ),
+        cabinet_organizer=Exists(
+            PartnerProgram.managers.through.objects.filter(
+                partnerprogram_id=OuterRef("partner_program_id"), customuser_id=user.pk
             )
         ),
     ).select_related("partner_program", "project")
@@ -83,22 +103,16 @@ def cabinet_projects(user, query, program_ids, *, paginate=True, as_applications
     rows = []
     for assignment in assignments:
         program, project = assignment.partner_program, assignment.project
-        reason = None
-        if program.datetime_evaluation_ends and now > program.datetime_evaluation_ends:
-            reason = "Срок оценивания завершен"
-        elif not assignment.criteria_total:
-            reason = "Критерии не настроены"
-        elif program.required_evaluators is not None:
-            if not assignment.project_submitted:
-                reason = "Решение еще не сдано"
-            elif project.leader_id == user.pk or assignment.cabinet_own_team:
-                reason = "Нельзя оценивать проект своей команды"
-        elif (
-            program.max_project_rates
-            and (assignment.cabinet_rated_count or 0) >= program.max_project_rates
-            and not assignment.cabinet_has_scores
-        ):
-            reason = "Лимит оценок достигнут"
+        reason = project_scoring_blocker(
+            program,
+            now=now,
+            has_criteria=assignment.criteria_total > 0,
+            submitted=assignment.project_submitted,
+            own_team=project.leader_id == user.pk or assignment.cabinet_own_team,
+            is_organizer=assignment.cabinet_organizer,
+            rated_count=assignment.cabinet_rated_count or 0,
+            has_own_scores=assignment.cabinet_has_scores,
+        )
         rows.append(
             {
                 "assignment_id": assignment.pk,

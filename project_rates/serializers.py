@@ -3,6 +3,7 @@ from rest_framework import serializers
 from core.services import get_views_count
 from projects.models import Project
 from .models import Criteria, ProjectScore
+from .project_scoring import project_scoring_blocker
 from .typing import CriteriasResponse, ProjectScoresResponse
 from .validators import ProjectScoreValidator
 
@@ -114,27 +115,53 @@ class ProjectListForRateSerializer(serializers.ModelSerializer):
             return [score for score in scores if score.user_id == request.user.id]
         return []
 
-    def get_criterias(self, obj) -> CriteriasResponse | ProjectScoresResponse:
+    def get_criterias(self, obj) -> list[CriteriasResponse | ProjectScoresResponse]:
         user_scores = self._get_user_scores(obj)
-        if self.context.get("managed_evaluation"):
-            program_id = self.context["view"].kwargs.get("program_id")
+        criteria = self.context["program_criteria"]
+        if self.context.get("managed_evaluation") or "assigned_program" in self.context:
             scores = {score.criteria_id: score for score in user_scores}
             return [
                 {
                     **CriteriaSerializer(c).data,
                     **({"value": scores[c.pk].value} if c.pk in scores else {}),
                 }
-                for c in Criteria.objects.filter(partner_program_id=program_id).order_by(
-                    "pk"
-                )
+                for c in criteria
             ]
         if user_scores:
             serializer = ProjectScoreSerializer(user_scores, many=True)
             return serializer.data
-        program_id = self.context["view"].kwargs.get("program_id")
-        criterias = Criteria.objects.filter(partner_program__id=program_id)
-        serializer = CriteriaSerializer(criterias, many=True)
+        serializer = CriteriaSerializer(criteria, many=True)
         return serializer.data
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        program = self.context.get("assigned_program")
+        if program is None:
+            return data
+
+        user = self.context["request"].user
+        reason = project_scoring_blocker(
+            program,
+            now=self.context["now"],
+            has_criteria=bool(self.context["program_criteria"]),
+            submitted=instance._program_submitted,
+            own_team=instance.leader_id == user.pk or instance._own_team,
+            is_organizer=self.context["is_organizer"],
+            rated_count=instance.rated_count,
+            has_own_scores=instance._own_score_count > 0,
+        )
+        data.update(
+            program_link_id=instance._program_link_id,
+            can_rate=reason is None,
+            blocked_reason=reason,
+        )
+        if self.context["include_program_fields"]:
+            from partner_programs.services.project_fields import program_link_fields
+
+            data["program_fields"] = program_link_fields(instance._program_link_id, user)[
+                "fields"
+            ]
+        return data
 
     def get_scored(self, obj) -> bool:
         if hasattr(obj, "_own_completed"):
@@ -157,11 +184,7 @@ class ProjectListForRateSerializer(serializers.ModelSerializer):
         if self.context.get("managed_evaluation"):
             from collections import defaultdict
 
-            required = set(
-                Criteria.objects.filter(
-                    partner_program_id=self.context["view"].kwargs["program_id"]
-                ).values_list("pk", flat=True)
-            )
+            required = {criterion.pk for criterion in self.context["program_criteria"]}
             scored = defaultdict(set)
             for score in program_scores:
                 scored[score.user_id].add(score.criteria_id)

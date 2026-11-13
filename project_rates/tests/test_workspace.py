@@ -9,6 +9,7 @@ from rest_framework.test import APIClient
 
 from partner_programs.services.analytics import _solution_rows
 from project_rates.models import ExpertInvitation, ProjectExpertAssignment, ProjectScore
+from project_rates.tasks import send_expert_invitation
 from project_rates.tests.helpers import (
     create_rate_program,
     create_rate_user,
@@ -367,6 +368,58 @@ class WorkspaceTests(TestCase):
         self.assertEqual(
             self.post(f"/evaluation/invitations/{token}/register/", {}).status_code, 410
         )
+
+    @override_settings(PROGRAM_SOLUTIONS_ENABLED=False)
+    def test_archived_solution_invitation_has_no_cabinet_access_or_actions(self):
+        invitee = create_rate_user()
+        archived = create_rate_program(solution_storage_mode="solution")
+        token = "archived-expert-invitation-0123456789"
+        invitation = ExpertInvitation.objects.create(
+            partner_program=archived,
+            email=invitee.email,
+            token_digest=digest(token),
+            expires_at=timezone.now() + timedelta(days=1),
+        )
+        public_url = f"/evaluation/invitations/{token}/"
+        own_url = f"/evaluation/own-invitations/{invitation.pk}/accept/"
+        self.client.force_authenticate(None)
+        self.assertEqual(self.client.get(public_url).status_code, 404)
+        self.assertEqual(self.post(public_url + "register/", {}).status_code, 404)
+        self.client.force_authenticate(invitee)
+        self.assertEqual(
+            self.client.get("/evaluation/programs/").data,
+            {"results": [], "has_access": False},
+        )
+        self.assertFalse(
+            self.client.get("/auth/users/current/").data["has_evaluation_access"]
+        )
+        self.assertEqual(self.post(public_url + "accept/", {}).status_code, 404)
+        self.assertEqual(self.post(own_url, {}).status_code, 404)
+        send_expert_invitation.run(invitation.pk, token)
+        invitation.refresh_from_db()
+        self.assertEqual(invitation.status, "pending")
+        self.assertEqual(invitation.delivery_status, "queued")
+        self.assertFalse(archived.experts.filter(user=invitee).exists())
+
+        legacy, _ = self.invitation(invitee.email)
+        cabinet = self.client.get("/evaluation/programs/").data
+        self.assertTrue(cabinet["has_access"])
+        self.assertEqual(
+            [row["invitation_id"] for row in cabinet["results"]], [legacy.pk]
+        )
+        self.assertTrue(
+            self.client.get("/auth/users/current/").data["has_evaluation_access"]
+        )
+        self.assertEqual(
+            self.client.get(f"/programs/{self.program.pk}/").data[
+                "pending_expert_invitation_id"
+            ],
+            legacy.pk,
+        )
+        with self.settings(PROGRAM_SOLUTIONS_ENABLED=True):
+            self.assertEqual(self.client.get(public_url).status_code, 200)
+            self.assertEqual(self.post(own_url, {}).status_code, 200)
+            self.assertTrue(archived.experts.filter(user=invitee).exists())
 
     def test_resending_old_invitation_does_not_overwrite_new_pending_one(self):
         old, _ = self.invitation("pending@example.com")

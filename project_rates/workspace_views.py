@@ -14,7 +14,6 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from partner_programs.models import PartnerProgram
 from partner_programs.services.management import managed_program
 from project_rates import workspace as service
-from project_rates.models import ExpertInvitation
 from users.models import CustomUser
 
 
@@ -281,10 +280,15 @@ class AcceptOwnInvitationView(PrivateView):
     @transaction.atomic
     def post(self, request, invitation_id):
         invitation = get_object_or_404(
-            ExpertInvitation, pk=invitation_id, email__iexact=request.user.email
+            service.active_expert_invitations(),
+            pk=invitation_id,
+            email__iexact=request.user.email,
         )
         PartnerProgram.objects.select_for_update().get(pk=invitation.partner_program_id)
-        invitation = ExpertInvitation.objects.select_for_update().get(pk=invitation.pk)
+        invitation = get_object_or_404(
+            service.active_expert_invitations().select_for_update(),
+            pk=invitation.pk,
+        )
         service.accept_invitation(invitation, request.user)
         return Response({"program_id": invitation.partner_program_id, "accepted": True})
 

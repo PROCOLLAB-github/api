@@ -8,10 +8,9 @@ from procollab.celery import app
 
 @app.task(autoretry_for=(Exception,), retry_backoff=True, max_retries=3)
 def send_expert_invitation(invitation_id, token):
-    from project_rates.models import ExpertInvitation
-    from project_rates.workspace import digest
+    from project_rates.workspace import active_expert_invitations, digest
 
-    rows = ExpertInvitation.objects.filter(
+    rows = active_expert_invitations().filter(
         pk=invitation_id,
         token_digest=digest(token),
         status="pending",

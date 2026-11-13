@@ -150,7 +150,7 @@ class PartnerProgramBaseSerializerMixin(serializers.ModelSerializer):
         return can_evaluate_program(user, program.pk)
 
     def get_pending_expert_invitation_id(self, program):
-        from django.utils import timezone
+        from project_rates.workspace import pending_expert_invitations
 
         user = self.context.get("user") or getattr(
             self.context.get("request"), "user", None
@@ -160,9 +160,8 @@ class PartnerProgramBaseSerializerMixin(serializers.ModelSerializer):
         if program.experts.filter(user_id=user.pk).exists():
             return None
         return (
-            program.expert_invitations.filter(
-                email__iexact=user.email, status="pending", expires_at__gt=timezone.now()
-            )
+            pending_expert_invitations(user.email)
+            .filter(partner_program=program)
             .values_list("pk", flat=True)
             .first()
         )

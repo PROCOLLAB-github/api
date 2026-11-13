@@ -8,6 +8,7 @@ from django.db.models import (
     Prefetch,
     Q,
     QuerySet,
+    Subquery,
     Value,
     When,
 )
@@ -17,6 +18,7 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from partner_programs.models import PartnerProgram, PartnerProgramProject
 from partner_programs.serializers import ProgramProjectFilterRequestSerializer
+from partner_programs.services.assignment_analytics import annotated_assignment_queryset
 from partner_programs.utils import filter_program_projects_by_field_name
 from projects.models import Collaborator, Project
 from project_rates.models import Criteria, ProjectExpertAssignment, ProjectScore
@@ -78,19 +80,32 @@ def get_projects_for_rate_queryset(
         to_attr="_program_scores",
     )
 
+    assigned_only = getattr(program, "assigned_only", False)
     projects_qs = Project.objects.filter(draft=False, id__in=project_ids)
-    if program.is_distributed_evaluation or getattr(program, "assigned_only", False):
+    if program.is_distributed_evaluation or assigned_only:
         projects_qs = projects_qs.filter(
             expert_assignments__partner_program=program,
             expert_assignments__expert__user=user,
         )
 
-    required_count = Criteria.objects.filter(partner_program=program).count()
-    submitted = PartnerProgramProject.objects.filter(
-        partner_program=program, project_id=OuterRef("pk"), submitted=True
-    )
+    links = PartnerProgramProject.objects.filter(
+        partner_program=program, project_id=OuterRef("pk")
+    ).order_by("pk")
     completed = Q(_own_score_count__gt=0)
-    if program.required_evaluators is not None:
+    if assigned_only:
+        completed = Exists(
+            annotated_assignment_queryset(program.pk).filter(
+                expert__user=user, project_id=OuterRef("pk"), is_completed=True
+            )
+        )
+        projects_qs = projects_qs.annotate(
+            _program_link_id=Subquery(links.values("pk")[:1]),
+            _own_team=Exists(
+                Collaborator.objects.filter(project_id=OuterRef("pk"), user_id=user.pk)
+            ),
+        )
+    elif program.required_evaluators is not None:
+        required_count = Criteria.objects.filter(partner_program=program).count()
         completed = (
             Q(
                 _own_score_count__gte=required_count,
@@ -107,7 +122,7 @@ def get_projects_for_rate_queryset(
                 filter=Q(scores__criteria__partner_program=program, scores__user=user),
                 distinct=True,
             ),
-            _program_submitted=Exists(submitted),
+            _program_submitted=Exists(links.filter(submitted=True)),
             rated_count=Count(
                 "scores__user",
                 filter=Q(scores__criteria__partner_program=program),
@@ -129,7 +144,8 @@ def get_projects_for_rate_queryset(
 @transaction.atomic
 def submit_project_scores(*, user, project_id: int, data) -> None:
     expected_revision = None
-    if isinstance(data, dict):
+    workspace = isinstance(data, dict)
+    if workspace:
         expected_revision = data.get("expected_revision")
         data = data.get("scores")
     if (
@@ -168,6 +184,14 @@ def submit_project_scores(*, user, project_id: int, data) -> None:
         user=user,
         project_id=project_id,
         data=data,
+        # The versioned request is also used by legacy callers outside the
+        # assigned workspace. Only its actual assignments opt into this policy.
+        workspace=workspace
+        and ProjectExpertAssignment.objects.filter(
+            partner_program=program,
+            project_id=project_id,
+            expert__user=user,
+        ).exists(),
     )
 
     serializer = ProjectScoreCreateSerializer(
@@ -203,7 +227,7 @@ def submit_project_scores(*, user, project_id: int, data) -> None:
 
 
 def _prepare_project_score_data(
-    *, user, project_id: int, data
+    *, user, project_id: int, data, workspace=False
 ) -> tuple[list, list, PartnerProgram]:
     rating_data = [dict(criterion) for criterion in data]
     criteria_ids = [criterion["criterion_id"] for criterion in rating_data]
@@ -221,24 +245,37 @@ def _prepare_project_score_data(
 
     program = criteria_qs.first().partner_program
     is_organizer = program.is_manager(user)
-    if (program.required_evaluators is not None or is_organizer) and (
+    if (workspace or program.required_evaluators is not None or is_organizer) and (
         program.datetime_evaluation_ends
         and timezone.now() > program.datetime_evaluation_ends
     ):
         raise ValidationError("Срок оценивания завершен.")
 
-    if program.required_evaluators is not None:
+    if (
+        program.required_evaluators is not None or (workspace and program.is_competitive)
+    ) and not (
+        PartnerProgramProject.objects.filter(
+            partner_program=program, project_id=project_id, submitted=True
+        ).exists()
+    ):
+        raise ValidationError("Проект еще не сдан.")
+
+    if program.required_evaluators is not None or workspace:
         required = set(program.criterias.exclude(type="str").values_list("pk", flat=True))
         if not required.issubset(criteria_ids):
             raise ValidationError(
                 "Заполните все обязательные критерии и сохраните оценку целиком."
             )
-        if not PartnerProgramProject.objects.filter(
-            partner_program=program, project_id=project_id, submitted=True
-        ).exists():
-            raise ValidationError("Сначала нужно сдать решение.")
-        # Optional comments are stored too, keeping completion and legacy analytics consistent.
+        # Persist an empty optional comment only if this expert has no saved answer.
         present = set(criteria_ids)
+        present.update(
+            ProjectScore.objects.filter(
+                project_id=project_id,
+                user=user,
+                criteria__partner_program=program,
+                criteria__type="str",
+            ).values_list("criteria_id", flat=True)
+        )
         for criterion in program.criterias.filter(type="str").exclude(pk__in=present):
             rating_data.append({"criterion_id": criterion.pk, "value": ""})
             criteria_ids.append(criterion.pk)
@@ -274,6 +311,8 @@ def _prepare_project_score_data(
 
 
 def _send_project_rated_email(*, project: Project, program: PartnerProgram) -> None:
+    if project.leader.email.lower().endswith("@example.invalid"):
+        return
     send_email.delay(
         ProjectRatedParams(
             message_type=MessageTypeEnum.PROJECT_RATED.value,
