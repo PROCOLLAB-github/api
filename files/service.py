@@ -13,7 +13,6 @@ from files.exceptions import SelectelUploadError
 from files.helpers import convert_image_to_webp
 from files.models import UserFile
 from files.typings import FileInfo
-from procollab.settings import SELECTEL_SWIFT_URL
 
 User = get_user_model()
 
@@ -109,7 +108,7 @@ class SelectelSwiftStorage(Storage):
             url: str looks like /hashedEmail/hashedFilename_hashedTime.extension
         """
         return (
-            f"{SELECTEL_SWIFT_URL}"
+            f"{settings.SELECTEL_SWIFT_URL.rstrip('/')}/"
             f"{abs(hash(user.email))}"
             f"/{abs(hash(file.name))}"
             f"_{abs(hash(time.time()))}"

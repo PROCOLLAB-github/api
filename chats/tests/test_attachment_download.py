@@ -1,8 +1,18 @@
 from unittest.mock import Mock, patch
+from uuid import uuid4
 
 import requests
+from channels.testing import HttpCommunicator, WebsocketCommunicator
 from django.contrib.auth import get_user_model
-from django.test import AsyncRequestFactory, SimpleTestCase, TestCase, override_settings
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import (
+    AsyncClient,
+    AsyncRequestFactory,
+    SimpleTestCase,
+    TestCase,
+    TransactionTestCase,
+    override_settings,
+)
 from django.urls import reverse
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import AccessToken
@@ -12,6 +22,7 @@ from chats.tests.constants import TEST_USER1, TEST_USER2, TEST_USER3
 from chats.tests.test_project_reads import create_project_chat
 from files.downloads import download_stored_file
 from files.models import UserFile
+from procollab.asgi import application
 from projects.models import Collaborator
 
 STORAGE = "https://storage.example.test/v1/account/media/"
@@ -264,3 +275,127 @@ class AsyncAttachmentDownloadTests(SimpleTestCase):
         )
         response.close()
         upstream.close.assert_called_once()
+
+
+@override_settings(ALLOWED_HOSTS=["testserver"], SELECTEL_SWIFT_URL=STORAGE.rstrip("/"))
+class ChatAttachmentRoundTripTests(TransactionTestCase):
+    def setUp(self):
+        users = get_user_model().objects
+        self.author = users.create(**TEST_USER1, is_active=True)
+        self.reader = users.create(**TEST_USER2, is_active=True)
+        self.chat = create_project_chat(self.author, self.reader)
+
+    async def send(self, token, payload):
+        socket = WebsocketCommunicator(
+            application, "/ws/chat/", subprotocols=["Bearer", token]
+        )
+        self.assertEqual(await socket.connect(timeout=5), (True, "Bearer"))
+        try:
+            await socket.send_json_to(payload)
+            event = await socket.receive_json_from(timeout=5)
+            self.assertEqual(event["type"], "new_message")
+            return event["content"]
+        finally:
+            await socket.disconnect()
+
+    async def test_upload_reconnect_and_download_keep_original_file(self):
+        author_token = str(AccessToken.for_user(self.author))
+        reader_token = str(AccessToken.for_user(self.reader))
+        reader = AsyncClient(authorization=f"Bearer {reader_token}")
+        history_url = reverse("chats:project-chat-messages", args=[self.chat.pk])
+        history = await reader.get(history_url, secure=True)
+        self.assertEqual(history.status_code, 200)
+        cursor = history.json()["sync_cursor"]
+        original = bytes(range(256)) * 300
+        uploaded = {}
+
+        def store(url, *, data, **kwargs):
+            self.assertTrue(url.startswith(STORAGE))
+            self.assertEqual(kwargs["headers"]["X-Auth-Token"], TOKEN)
+            uploaded[url] = data.read()
+            return Mock(status_code=201)
+
+        def fetch(url, **kwargs):
+            self.assertEqual(kwargs["headers"]["X-Auth-Token"], TOKEN)
+            content = uploaded[url]
+            upstream = Mock(
+                status_code=200, headers={"Content-Length": str(len(content))}
+            )
+            view = memoryview(content)
+            upstream.iter_content.side_effect = lambda chunk_size: (
+                bytes(view[offset:][:chunk_size])
+                for offset in range(0, len(content), chunk_size)
+            )
+            return upstream
+
+        with (
+            patch(
+                "files.service.requests.post",
+                return_value=Mock(status_code=201, headers={"x-subject-token": TOKEN}),
+            ),
+            patch("files.service.requests.put", side_effect=store) as upload,
+            patch("files.downloads.requests.get", side_effect=fetch) as download,
+        ):
+            sender = AsyncClient(authorization=f"Bearer {author_token}")
+            response = await sender.post(
+                "/files/?preserve_original=true",
+                {"file": SimpleUploadedFile("План.bin", original)},
+                secure=True,
+            )
+            self.assertEqual(response.status_code, 201)
+            storage_url = response.json()["url"]
+            payload = {
+                "type": "new_message",
+                "content": {
+                    "chat_type": "project",
+                    "chat_id": self.chat.pk,
+                    "client_message_id": str(uuid4()),
+                    "file_urls": [storage_url],
+                },
+            }
+            first = await self.send(author_token, payload)
+            replay = await self.send(author_token, payload)
+            self.assertFalse(first["is_replay"])
+            self.assertTrue(replay["is_replay"])
+            self.assertEqual(first["message"], replay["message"])
+
+            changes_url = reverse(
+                "chats:project-chat-message-changes", args=[self.chat.pk]
+            )
+            changes = await reader.get(changes_url, {"after": cursor}, secure=True)
+            self.assertEqual(changes.status_code, 200)
+            (change,) = changes.json()["results"]
+            self.assertEqual(change["message_id"], first["message"]["id"])
+            link = change["message"]["files"][0]["link"]
+            self.assertTrue(link.startswith("/chats/"))
+            download_request = HttpCommunicator(
+                application,
+                "GET",
+                link,
+                headers=[
+                    (b"host", b"testserver"),
+                    (b"authorization", f"Bearer {reader_token}".encode()),
+                ],
+            )
+            download_request.scope["scheme"] = "https"
+            await download_request.send_input({"type": "http.request", "body": b""})
+            result = await download_request.receive_output(timeout=5)
+            self.assertEqual(result["type"], "http.response.start")
+            self.assertEqual(result["status"], 200)
+            headers = {name.lower(): value for name, value in result["headers"]}
+            chunks = []
+            while True:
+                chunk = await download_request.receive_output(timeout=5)
+                self.assertEqual(chunk["type"], "http.response.body")
+                chunks.append(chunk.get("body", b""))
+                if not chunk.get("more_body"):
+                    break
+            await download_request.wait(timeout=5)
+            self.assertGreater(sum(bool(chunk) for chunk in chunks), 1)
+            self.assertEqual(b"".join(chunks), original)
+            self.assertEqual(headers[b"content-length"], str(len(original)).encode())
+            self.assertIn(b"filename*=utf-8''", headers[b"content-disposition"])
+            self.assertIn(b"no-store", headers[b"cache-control"])
+            upload.assert_called_once()
+            download.assert_called_once()
+        self.assertEqual(await self.chat.messages.acount(), 1)
