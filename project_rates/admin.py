@@ -5,12 +5,15 @@ from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.shortcuts import redirect
 from django.urls import reverse
+from rest_framework.exceptions import APIException
 
 from partner_programs.models import PartnerProgramProject
 from projects.models import Project
 from users.models import Expert
 
 from .models import Criteria, ProjectExpertAssignment, ProjectScore
+from .program_experts import program_experts
+from .solution_admin import ProgramLockAdmin, safe_id
 from .criteria_policy import locked
 from . import solution_admin  # noqa: F401
 
@@ -127,7 +130,7 @@ class ProjectExpertAssignmentBulkAddForm(forms.ModelForm):
 
         if program_id:
             self.fields["expert"].queryset = (
-                Expert.objects.filter(programs__id=program_id)
+                program_experts(program_id)
                 .select_related("user")
                 .order_by("user__last_name", "user__first_name")
             )
@@ -149,7 +152,7 @@ class ProjectExpertAssignmentBulkAddForm(forms.ModelForm):
         if not program or not expert or not projects:
             return cleaned_data
 
-        if not expert.programs.filter(id=program.id).exists():
+        if not program_experts(program.pk).filter(pk=expert.pk).exists():
             self.add_error("expert", "Эксперт не состоит в выбранной программе.")
 
         linked_project_ids = set(
@@ -193,11 +196,24 @@ class ProjectExpertAssignmentBulkAddForm(forms.ModelForm):
                 "Нет проектов для нового назначения: все уже назначены или достигли лимита."
             )
 
+        if program.is_manager(expert.user):
+            from project_rates.workspace import validate_organizer_project_assignments
+
+            try:
+                validate_organizer_project_assignments(program, expert, actionable)
+            except APIException as exc:
+                detail = (
+                    exc.detail.get("detail")
+                    if isinstance(exc.detail, dict)
+                    else exc.detail[0]
+                )
+                self.add_error("projects", detail)
+
         return cleaned_data
 
 
 @admin.register(ProjectExpertAssignment)
-class ProjectExpertAssignmentAdmin(admin.ModelAdmin):
+class ProjectExpertAssignmentAdmin(ProgramLockAdmin):
     list_display = (
         "id",
         "partner_program",
@@ -213,6 +229,13 @@ class ProjectExpertAssignmentAdmin(admin.ModelAdmin):
         "expert__user__last_name",
         "expert__user__email",
     )
+
+    def post_program_id(self, request, obj):
+        return (
+            obj.partner_program_id
+            if obj
+            else safe_id(request.POST.get("partner_program"))
+        )
 
     def get_form(self, request, obj=None, **kwargs):
         if obj is None:

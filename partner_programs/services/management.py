@@ -18,6 +18,7 @@ from partner_programs.serializers.management import BASIC_FIELDS, DATE_FIELDS
 from partner_programs.services.analytics import _solution_rows
 from partner_programs.services.case_analytics import project_case_links
 from project_rates.models import Criteria, ProjectScore
+from project_rates.program_experts import can_evaluate_program
 from project_rates.services import get_projects_for_rate_queryset
 from partner_programs.services.assignment_analytics import (
     assignment_rows,
@@ -288,8 +289,7 @@ def evaluation_data(program, link, user):
     eligible = (
         program.is_competitive
         and link.submitted
-        and user.user_type == 3
-        and program.experts.filter(user_id=user.pk).exists()
+        and can_evaluate_program(user, program.pk)
     )
     can_rate = bool(
         eligible

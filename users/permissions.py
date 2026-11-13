@@ -1,7 +1,7 @@
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 
-from users.models import Expert
+from project_rates.program_experts import can_evaluate_program, has_evaluation_role
 
 
 class IsAchievementOwnerOrReadOnly(BasePermission):
@@ -26,8 +26,8 @@ class IsExpert(BasePermission):
             raise PermissionDenied("Authentication credentials were not provided.")
         program_id = view.kwargs.get("program_id")
 
-        if not Expert.objects.filter(programs__id=program_id, user=user).exists():
-            raise PermissionDenied("You don't have permission to rate this program")
+        if not can_evaluate_program(user, program_id):
+            raise PermissionDenied("Оценивание доступно экспертам этой программы.")
         return True
 
 
@@ -40,8 +40,8 @@ class IsExpertPost(BasePermission):
         user = request.user
         if not getattr(user, "is_authenticated", False):
             raise PermissionDenied("Authentication credentials were not provided.")
-        if not Expert.objects.filter(user=user).exists():
-            raise PermissionDenied("User is not an expert")
+        if not has_evaluation_role(user):
+            raise PermissionDenied("Оценивание доступно экспертам программы.")
         return True
 
 

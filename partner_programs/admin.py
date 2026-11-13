@@ -74,6 +74,12 @@ class PartnerProgramAdmin(
             super().__init__(*args, **kwargs)
             if "city" in self.fields:
                 self.fields["city"].required = False
+            if "data_schema" in self.fields:
+                self.fields["data_schema"].required = False
+
+        def clean_data_schema(self):
+            value = self.cleaned_data.get("data_schema")
+            return {} if value is None else value
 
         def clean(self):
             data = super().clean()

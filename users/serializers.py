@@ -488,16 +488,15 @@ class UserDetailSerializer(
     has_evaluation_access = serializers.SerializerMethodField()
 
     def get_has_evaluation_access(self, user):
-        from project_rates.models import ExpertInvitation
+        from project_rates.program_experts import evaluation_programs
+        from project_rates.workspace import pending_expert_invitations
 
         request_user = getattr(self.context.get("request"), "user", None)
         if not request_user or request_user.pk != user.pk or not user.is_active:
             return False
         return (
-            Expert.objects.filter(user=user, programs__isnull=False).exists()
-            or ExpertInvitation.objects.filter(
-                email__iexact=user.email, status="pending", expires_at__gt=timezone.now()
-            ).exists()
+            evaluation_programs(user).exists()
+            or pending_expert_invitations(user.email).exists()
         )
 
     verification_notice_acknowledged_at = serializers.DateTimeField(read_only=True)
@@ -672,15 +671,20 @@ class UserDetailSerializer(
                 if value == CustomUser.MEMBER:
                     continue
 
-                # delete old user type object and attribute
-                getattr(instance, user_types_to_attr[instance.user_type]).delete()
-                setattr(instance, user_types_to_attr[instance.user_type], None)
+                # Expert identities also hold program assignments and independent access.
+                if instance.user_type != CustomUser.EXPERT:
+                    old_role = user_types_to_attr[instance.user_type]
+                    getattr(instance, old_role).delete()
+                    setattr(instance, old_role, None)
 
                 instance.user_type = value
 
-                # create new user type object, attribute sets automatically
-                new_user_type = user_types_to_model[value](user=instance)
-                new_user_type.save()
+                role_model = user_types_to_model[value]
+                if value == CustomUser.EXPERT:
+                    new_role, _ = role_model.objects.get_or_create(user=instance)
+                else:
+                    new_role = role_model.objects.create(user=instance)
+                setattr(instance, user_types_to_attr[value], new_role)
             setattr(instance, attr, value)
 
         instance.save()

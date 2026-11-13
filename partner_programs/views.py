@@ -246,10 +246,6 @@ class PartnerProgramDetail(generics.RetrieveAPIView):
             data["solution_action_blocked_reason"] = (
                 None if available else solution_context["blocked_reason"]
             )
-        data["is_user_expert"] = bool(
-            request.user.is_authenticated
-            and program.experts.filter(user_id=request.user.pk).exists()
-        )
         if request.user.is_authenticated:
             add_view(program, request.user)
         return Response(data, status=status.HTTP_200_OK)

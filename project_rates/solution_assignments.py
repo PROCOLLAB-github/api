@@ -13,6 +13,7 @@ from partner_programs.solution_schema import form_data
 from partner_programs.solution_team import program_for
 from project_rates.criteria_policy import revision as criteria_revision
 from project_rates.models import Criteria
+from project_rates.program_experts import program_experts
 from project_rates.solution_models import SolutionExpertAssignment, SolutionScore
 from project_rates.solution_evaluation import (
     snapshot_case,
@@ -36,7 +37,9 @@ def revision(program):
             )
         ),
         list(
-            program.experts.order_by("pk").values_list("pk", "user_id", "user__is_active")
+            program_experts(program.pk, active_only=False)
+            .order_by("pk")
+            .values_list("pk", "user_id", "user__is_active", "is_organizer")
         ),
         list(
             program.solution_expert_assignments.order_by("pk").values_list(
@@ -73,15 +76,14 @@ def check_revision(program, expected):
             "Данные изменились. Обновите список назначений.",
             meta={"current_assignment_revision": actual},
         )
+    return actual
 
 
 def expert_for(program, expert_id):
     if not 0 < expert_id <= 2**53 - 1:
         raise Http404
     expert = (
-        program.experts.filter(pk=expert_id, user__is_active=True)
-        .select_related("user")
-        .first()
+        program_experts(program.pk).filter(pk=expert_id).select_related("user").first()
     )
     if expert is None:
         raise Http404
@@ -140,7 +142,9 @@ def enable_workspace(program):
             "datetime_updated",
         ]
     )
-    members = dict(program.experts.values_list("user_id", "pk"))
+    members = dict(
+        program_experts(program.pk, active_only=False).values_list("user_id", "pk")
+    )
     historical = (
         SolutionScore.objects.filter(
             criteria__partner_program=program,
