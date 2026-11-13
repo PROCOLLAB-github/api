@@ -12,6 +12,7 @@ from django.views.decorators.http import require_safe
 
 from chats.attachments import download_chat_attachment, get_accessible_chat
 from chats.exceptions import MessageValidationException
+from chats.message_context import MessageContextForm, get_message_context
 from chats.models import (
     ProjectChat,
     DirectChat,
@@ -49,6 +50,11 @@ class ChatSearchAdmin(admin.ModelAdmin):
                 object_path + "/message-search/",
                 self.admin_site.admin_view(self.message_search),
                 name=self.message_search_url_name,
+            ),
+            path(
+                object_path + "/messages/<int:message_id>/context/",
+                self.admin_site.admin_view(require_safe(self.message_context)),
+                name=self.message_search_url_name + "_context",
             ),
             path(
                 object_path
@@ -89,6 +95,9 @@ class ChatSearchAdmin(admin.ModelAdmin):
                 "form": form,
                 "page": page,
                 "chat": chat,
+                "message_context_route": "admin:"
+                + self.message_search_url_name
+                + "_context",
                 "attachment_download_route": "admin:"
                 + self.message_search_url_name
                 + "_download",
@@ -104,6 +113,39 @@ class ChatSearchAdmin(admin.ModelAdmin):
     def attachment_download(self, request, object_id, message_id, attachment_id):
         chat = self.get_chat_for_member(request, object_id)
         return download_chat_attachment(request, chat, message_id, attachment_id)
+
+    def message_context(self, request, object_id, message_id):
+        chat = self.get_chat_for_member(request, object_id)
+        form = MessageContextForm(request.GET)
+        context = None
+        if form.is_valid():
+            queryset = chat.messages.select_related("author").prefetch_related(
+                "file_to_message__file"
+            )
+            context = get_message_context(chat, queryset, message_id, **form.cleaned_data)
+        request.current_app = self.admin_site.name
+        search_route = "admin:" + self.message_search_url_name
+        return TemplateResponse(
+            request,
+            "admin/chats/message_context.html",
+            {
+                **self.admin_site.each_context(request),
+                "opts": self.model._meta,
+                "title": "Сообщение в переписке",
+                "chat": chat,
+                "context_form": form,
+                "context": context,
+                "anchor_id": (
+                    message_id
+                    if context and form.cleaned_data["direction"] == "around"
+                    else None
+                ),
+                "search_route": search_route,
+                "message_context_route": search_route + "_context",
+                "attachment_download_route": search_route + "_download",
+            },
+            status=200 if context is not None else 400,
+        )
 
 
 @admin.register(ProjectChat)

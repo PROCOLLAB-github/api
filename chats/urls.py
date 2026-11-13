@@ -1,8 +1,13 @@
 from django.urls import path
 
 from chats.models import DirectChat, ProjectChat
+from chats.serializers import (
+    DirectChatMessageListSerializer,
+    ProjectChatMessageListSerializer,
+)
 from chats.views import (
     ChatAttachmentDownload,
+    ChatMessageContext,
     DirectChatList,
     DirectChatMessageList,
     HasChatUnreadsView,
@@ -30,6 +35,13 @@ urlpatterns = [
         name="direct-chat-files",
     ),
     path(
+        "directs/<slug:id>/messages/<int:message_id>/context/",
+        ChatMessageContext.as_view(
+            chat_model=DirectChat, serializer_class=DirectChatMessageListSerializer
+        ),
+        name="direct-chat-message-context",
+    ),
+    path(
         "directs/<slug:id>/messages/<int:message_id>/files/<slug:attachment_id>/download/",
         ChatAttachmentDownload.as_view(chat_model=DirectChat),
         name="direct-chat-attachment-download",
@@ -45,6 +57,13 @@ urlpatterns = [
         "projects/<int:id>/files/",
         ProjectChatFileList.as_view(),
         name="project-chat-files",
+    ),
+    path(
+        "projects/<int:id>/messages/<int:message_id>/context/",
+        ChatMessageContext.as_view(
+            chat_model=ProjectChat, serializer_class=ProjectChatMessageListSerializer
+        ),
+        name="project-chat-message-context",
     ),
     path(
         "projects/<int:id>/messages/<int:message_id>/files/<slug:attachment_id>/download/",
