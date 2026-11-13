@@ -2,17 +2,25 @@ from uuid import UUID
 
 from django.db import transaction
 
+from chats.channel_events import notify_channel_change
 from chats.exceptions import MessageValidationException
 from chats.models import (
     DirectChat,
     DirectChatMessage,
     FileToMessage,
+    ProgramChannel,
+    ProgramChannelMessage,
     ProjectChat,
     ProjectChatMessage,
 )
-from chats.permissions import accessible_chats, is_project_member
+from chats.permissions import (
+    accessible_chats,
+    can_publish_in_program_channel,
+    is_project_member,
+)
 from chats.serializers import (
     DirectChatMessageListSerializer,
+    ProgramChannelMessageSerializer,
     ProjectChatMessageListSerializer,
 )
 from files.models import UserFile
@@ -86,11 +94,12 @@ def _get_files(file_urls, author):
 
 
 def _serialize_message(message_model, serializer_class, message_id):
-    message = (
-        message_model.objects.select_related("author", "reply_to__author")
-        .prefetch_related("file_to_message__file")
-        .get(pk=message_id)
+    messages = message_model.objects.select_related("author").prefetch_related(
+        "file_to_message__file"
     )
+    if message_model is not ProgramChannelMessage:
+        messages = messages.select_related("reply_to__author")
+    message = messages.get(pk=message_id)
     return serializer_class(message).data
 
 
@@ -126,14 +135,16 @@ def _create_message(
             )
 
     file_urls = _normalize_message(text, file_urls)
-    reply_to = _get_reply(message_model, chat_id, reply_to_id)
+    reply = {}
+    if message_model is not ProgramChannelMessage:
+        reply["reply_to"] = _get_reply(message_model, chat_id, reply_to_id)
     files = _get_files(file_urls, author)
     message = message_model.objects.create(
         chat_id=chat_id,
         author=author,
         text=text,
-        reply_to=reply_to,
         client_message_id=client_message_id,
+        **reply,
     )
     for user_file in files:
         FileToMessage.objects.create(file=user_file, **{message_link_field: message})
@@ -236,6 +247,9 @@ def _get_message_for_change(chat_model, chat_id, message_id, author):
     )
     if chat is None:
         raise MessageValidationException("Чат недоступен.")
+    if chat_model is ProgramChannel:
+        if not can_publish_in_program_channel(author, chat.program):
+            raise MessageValidationException("Публикации доступны менеджерам программы.")
     try:
         message = chat.messages.filter(pk=message_id, author=author).first()
     except (TypeError, ValueError):
@@ -262,11 +276,13 @@ def edit_message(*, chat_model, chat_id, message_id, author, text):
         message.text = text
         message.is_edited = True
         message.save(update_fields=["text", "is_edited"])
-    serializer_class = (
-        DirectChatMessageListSerializer
-        if chat_model is DirectChat
-        else ProjectChatMessageListSerializer
-    )
+        if chat_model is ProgramChannel:
+            notify_channel_change(chat_id)
+    serializer_class = {
+        DirectChat: DirectChatMessageListSerializer,
+        ProjectChat: ProjectChatMessageListSerializer,
+        ProgramChannel: ProgramChannelMessageSerializer,
+    }[chat_model]
     return _serialize_message(type(message), serializer_class, message.pk)
 
 
@@ -276,4 +292,6 @@ def delete_message(*, chat_model, chat_id, message_id, author):
     if not message.is_deleted:
         message.is_deleted = True
         message.save(update_fields=["is_deleted"])
+        if chat_model is ProgramChannel:
+            notify_channel_change(chat_id)
     return message.pk

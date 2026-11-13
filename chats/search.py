@@ -2,7 +2,7 @@ from django import forms
 from django.db.models import Case, Exists, F, OuterRef, Q, TextField, Value, When
 from django.db.models.functions import Concat
 
-from chats.models import ProjectChat
+from chats.attachments import ATTACHMENT_FIELDS, chat_attachment_field
 from core.search import unicode_literal_pattern
 from files.models import UserFile
 
@@ -72,6 +72,11 @@ def search_chat_messages(chat, filters):
 
 
 def _message_files(chat):
-    if isinstance(chat, ProjectChat):
-        return UserFile.objects.filter(file_to_message__project_message_id=OuterRef("pk"))
-    return UserFile.objects.filter(file_to_message__direct_message_id=OuterRef("pk"))
+    message_field = chat_attachment_field(chat)
+    filters = {
+        "file_to_message__" + field + "__isnull": True
+        for field in ATTACHMENT_FIELDS.values()
+        if field != message_field
+    }
+    filters["file_to_message__" + message_field + "_id"] = OuterRef("pk")
+    return UserFile.objects.filter(**filters)

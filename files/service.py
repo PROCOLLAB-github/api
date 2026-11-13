@@ -11,6 +11,7 @@ from files.constants import SUPPORTED_IMAGES_TYPES
 from files.content import detect_content_type
 from files.exceptions import SelectelUploadError
 from files.helpers import convert_image_to_webp
+from files.models import UserFile
 from files.typings import FileInfo
 from procollab.settings import SELECTEL_SWIFT_URL
 
@@ -86,14 +87,18 @@ class SelectelSwiftStorage(Storage):
         token = self._get_auth_token()
         url = self._generate_url(file, user)
 
-        requests.put(
+        response = requests.put(
             url,
             headers={
                 "X-Auth-Token": token,
                 "Content-Type": file.content_type,
             },
             data=file.buffer,
+            timeout=(5, 60),
+            allow_redirects=False,
         )
+        if not 200 <= response.status_code < 300:
+            raise SelectelUploadError("Не удалось загрузить файл в хранилище.")
 
         return url
 
@@ -161,3 +166,20 @@ class CDN:
         return self.storage.upload(
             File(file, quality, preserve_original=preserve_original), user
         )
+
+
+def create_user_upload(cdn, file, user, *, preserve_original=False):
+    info = (
+        cdn.upload(file, user, preserve_original=True)
+        if preserve_original
+        else cdn.upload(file, user)
+    )
+    return UserFile.objects.create(
+        user=user,
+        link=info.url,
+        name=info.name,
+        size=info.size,
+        extension=info.extension,
+        mime_type=info.mime_type,
+        detected_mime_type=info.detected_mime_type,
+    )

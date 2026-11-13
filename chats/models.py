@@ -373,6 +373,60 @@ class DirectChatMessage(BaseMessage):
         ]
 
 
+class ProgramChannel(BaseChat):
+    program = models.OneToOneField(
+        "partner_programs.PartnerProgram",
+        on_delete=models.CASCADE,
+        primary_key=True,
+        verbose_name="Программа",
+    )
+
+    def __str__(self):
+        return f"Канал программы №{self.pk}"
+
+    class Meta:
+        verbose_name = "Канал программы"
+        verbose_name_plural = "Каналы программ"
+
+
+class ProgramChannelMessage(BaseMessage):
+    chat = models.ForeignKey(
+        ProgramChannel, on_delete=models.CASCADE, related_name="messages"
+    )
+    author = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, related_name="program_channel_posts"
+    )
+
+    class Meta:
+        verbose_name = "Публикация канала"
+        verbose_name_plural = "Публикации каналов"
+        indexes = [
+            models.Index(
+                fields=["chat", "sync_revision"], name="program_channel_sync_idx"
+            )
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["chat", "author", "client_message_id"],
+                condition=models.Q(client_message_id__isnull=False),
+                name="unique_program_channel_client_message",
+            )
+        ]
+
+
+class ProgramChannelRead(models.Model):
+    channel = models.ForeignKey(ProgramChannel, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    last_message_id = models.PositiveBigIntegerField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["channel", "user"], name="unique_program_channel_reader"
+            )
+        ]
+
+
 class FileToMessage(models.Model):
     file = models.OneToOneField(
         UserFile,
@@ -393,6 +447,13 @@ class FileToMessage(models.Model):
         related_name="file_to_message",
         null=True,
     )
+    channel_message = models.ForeignKey(
+        ProgramChannelMessage,
+        on_delete=models.CASCADE,
+        related_name="file_to_message",
+        null=True,
+        blank=True,
+    )
 
     @property
     def download_id(self):
@@ -400,7 +461,17 @@ class FileToMessage(models.Model):
 
     @property
     def is_linked_to_one_message(self):
-        return (self.direct_message_id is None) != (self.project_message_id is None)
+        return (
+            sum(
+                message_id is not None
+                for message_id in (
+                    self.direct_message_id,
+                    self.project_message_id,
+                    self.channel_message_id,
+                )
+            )
+            == 1
+        )
 
     def __str__(self):
         return f"FileToMessage<{self.file}>"

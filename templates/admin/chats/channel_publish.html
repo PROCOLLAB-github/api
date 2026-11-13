@@ -1,0 +1,15 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+  <p><a href="{{ back_url }}">К публикациям канала</a></p>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ upload_form.as_p }}
+    <button type="submit" name="action" value="upload" class="button">Загрузить файл</button>
+  </form>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="button default">Опубликовать</button>
+  </form>
+{% endblock %}
