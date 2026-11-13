@@ -6,6 +6,9 @@
   {% if show_context_link %}
     <p><a href="{% url message_context_route chat.pk message.pk %}#selected-message">Показать в переписке</a></p>
   {% endif %}
+  {% if message.author_id == request.user.pk and message_change_route %}
+    <p><a href="{% url message_change_route chat.pk message.pk %}">Изменить или удалить</a></p>
+  {% endif %}
   {% if message.file_to_message.all %}
     <p>Вложения:</p>
     <ul>

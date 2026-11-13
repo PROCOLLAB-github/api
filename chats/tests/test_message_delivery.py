@@ -226,6 +226,33 @@ class ProjectMessageDeliveryTests(TransactionTestCase):
         self.assertEqual(first["id"], second["id"])
         self.assertEqual(ProjectChatMessage.objects.count(), 1)
         self.assertEqual(FileToMessage.objects.count(), 1)
+        self.chat.refresh_from_db()
+        self.assertEqual(self.chat.message_revision, 1)
+        self.assertEqual(ProjectChatMessage.objects.get().sync_revision, 1)
+
+    @skipUnlessDBFeature("has_select_for_update")
+    def test_simultaneous_distinct_messages_have_distinct_sync_revisions(self):
+        ready = Barrier(2)
+
+        def send(text):
+            try:
+                ready.wait(timeout=10)
+                message, _ = create_project_message(
+                    chat_id=self.chat.pk, author=self.member, text=text
+                )
+                return message["id"]
+            finally:
+                connections.close_all()
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            requests = [pool.submit(send, text) for text in ("Первое", "Второе")]
+            sent = [request.result(timeout=10) for request in requests]
+
+        messages = self.chat.messages.order_by("sync_revision")
+        self.assertCountEqual(messages.values_list("pk", flat=True), sent)
+        self.assertEqual(list(messages.values_list("sync_revision", flat=True)), [1, 2])
+        self.chat.refresh_from_db()
+        self.assertEqual(self.chat.message_revision, 2)
 
     def test_failed_attachment_write_rolls_back_new_direct_chat_and_message(self):
         user_file = UserFile.objects.create(
