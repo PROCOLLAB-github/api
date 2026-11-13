@@ -71,6 +71,57 @@ class OptionalProgramTagTests(TestCase):
         program = PartnerProgram.objects.get(name=data["name"])
         self.assertEqual(program.tag, data["tag"])
 
+    def test_admin_allows_empty_legacy_schema_when_adding_a_manager(self):
+        data = self.payload()
+        data["data_schema"] = "{}"
+        self.assertEqual(self.client.post(self.url, data).status_code, 302)
+        program = PartnerProgram.objects.get(name=data["name"])
+        now = timezone.now().replace(microsecond=0)
+        program.draft = False
+        program.datetime_started = now - timezone.timedelta(days=1)
+        program.datetime_registration_ends = now + timezone.timedelta(days=1)
+        program.datetime_project_submission_ends = now + timezone.timedelta(days=1)
+        program.datetime_evaluation_ends = now + timezone.timedelta(days=2)
+        program.datetime_finished = now + timezone.timedelta(days=3)
+        program.save()
+        organizer = create_rate_user(prefix="empty-schema-manager")
+        self.url = reverse(
+            "admin:partner_programs_partnerprogram_change", args=[program.pk]
+        )
+        data = self.payload()
+        data.pop("draft")
+        data["data_schema"] = "{}"
+        data["managers"] = [self.admin.pk, organizer.pk]
+        for field in (
+            "datetime_started",
+            "datetime_registration_ends",
+            "datetime_project_submission_ends",
+            "datetime_evaluation_ends",
+            "datetime_finished",
+        ):
+            value = timezone.localtime(getattr(program, field))
+            data[field + "_0"] = value.strftime("%Y-%m-%d")
+            data[field + "_1"] = value.strftime("%H:%M:%S")
+        response = self.client.post(self.url, data)
+        errors = (
+            response.context["adminform"].form.errors
+            if response.status_code == 200
+            else None
+        )
+        self.assertEqual(response.status_code, 302, errors)
+        program.refresh_from_db()
+        organizer.refresh_from_db()
+        self.assertEqual(program.data_schema, {})
+        self.assertTrue(can_evaluate_program(organizer, program.pk))
+        self.assertEqual(organizer.user_type, organizer.MEMBER)
+        self.assertFalse(organizer.expert.project_assignments.exists())
+
+    def test_admin_blank_legacy_schema_becomes_an_empty_object(self):
+        data = self.payload()
+        data["data_schema"] = ""
+        self.assertEqual(self.client.post(self.url, data).status_code, 302)
+        self.assertEqual(PartnerProgram.objects.get(name=data["name"]).data_schema, {})
+
     def test_admin_manager_selection_uses_live_evaluation_access(self):
         organizer = create_rate_user(prefix="admin-added-organizer")
         data = self.payload()
