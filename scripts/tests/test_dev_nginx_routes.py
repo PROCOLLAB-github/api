@@ -12,9 +12,29 @@ from tempfile import TemporaryDirectory
 from threading import Thread
 import time
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from check_dev_routes import check_routes, request  # noqa: E402
+
+
+class DevRoutingSmokeTests(unittest.TestCase):
+    def test_only_password_reset_can_report_a_rate_limit(self):
+        def response(_base, path, method="GET", context=None):
+            if path == "/":
+                return 200, "text/html", b"<app-root></app-root>"
+            if "routing_check" in path:
+                return 200, "text/html", b"" if method == "HEAD" else b"<app-root></app-root>"
+            if path == throttled_path:
+                return 429, "application/json", b'{"detail":"Request was throttled."}'
+            return (400 if method == "POST" else 401), "application/json", b"{}"
+
+        with patch("check_dev_routes.request", side_effect=response):
+            throttled_path = "/auth/reset_password/"
+            check_routes("https://dev.procollab.ru")
+            throttled_path = "/api/token/"
+            with self.assertRaises(AssertionError):
+                check_routes("https://dev.procollab.ru")
 
 
 class Backend(BaseHTTPRequestHandler):
