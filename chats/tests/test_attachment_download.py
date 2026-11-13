@@ -127,7 +127,7 @@ class ChatAttachmentDownloadTests(TestCase):
         ):
             with self.subTest(message=message):
                 query = {"QUERY_STRING": "link=" + attachment.file_id}
-                with patch.object(FileView.cdn, "delete") as storage_delete:
+                with patch.object(FileView.cdn.storage, "delete") as storage_delete:
                     response = self.api.delete("/files/", secure=True, **query)
                     self.assertEqual(response.status_code, 409)
                     self.assertEqual(response.json()["code"], "chat_attachment_in_use")

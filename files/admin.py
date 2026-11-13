@@ -1,12 +1,15 @@
 import reprlib
 
-from django.contrib import admin
+from django.contrib import admin, messages
+from django.contrib.admin.actions import delete_selected
 from django.db import transaction
 from django.core.exceptions import PermissionDenied
 from django.forms import ModelForm, FileField
 from django.db.models import QuerySet
+from django.shortcuts import redirect
 
 from chats.attachments import ATTACHMENT_IN_USE, used_by_visible_chat_message
+from files.exceptions import SelectelDeleteError
 from files.service import CDN, SelectelSwiftStorage
 from files.models import UserFile
 from partner_programs.solution_files import used_by_submitted_solution
@@ -32,6 +35,7 @@ class UserFileForm(ModelForm):
 class UserFileAdmin(admin.ModelAdmin):
     form = UserFileForm
     readonly_fields = ("detected_mime_type",)
+    actions = ("delete_selected",)
 
     def get_deleted_objects(self, objs, request):
         deleted, counts, permissions_needed, protected = super().get_deleted_objects(
@@ -98,6 +102,13 @@ class UserFileAdmin(admin.ModelAdmin):
         obj.detected_mime_type = info.detected_mime_type
         super().save_model(request, obj, form, change)
 
+    def delete_view(self, request, object_id, extra_context=None):
+        try:
+            return super().delete_view(request, object_id, extra_context)
+        except SelectelDeleteError as error:
+            self.message_user(request, str(error), level=messages.ERROR)
+            return redirect(request.get_full_path())
+
     @transaction.atomic
     def delete_model(self, request, obj):
         obj = UserFile.objects.select_for_update().get(pk=obj.pk)
@@ -112,9 +123,37 @@ class UserFileAdmin(admin.ModelAdmin):
         for obj in rows:
             if error := file_deletion_error(obj):
                 raise PermissionDenied(error)
+        deleted = []
         for obj in rows:
-            self.cdn.delete(obj.link)
-        queryset.delete()
+            try:
+                self.cdn.delete(obj.link)
+            except SelectelDeleteError:
+                continue
+            deleted.append(obj)
+        if deleted:
+            self.log_deletions(request, deleted)
+            queryset.filter(pk__in=[obj.pk for obj in deleted]).delete()
+        return len(deleted), len(rows) - len(deleted)
+
+    @admin.action(permissions=["delete"], description="Удалить выбранные файлы")
+    def delete_selected(self, request, queryset):
+        if not request.POST.get("post"):
+            return delete_selected(self, request, queryset)
+        _, _, permissions_needed, protected = self.get_deleted_objects(queryset, request)
+        if protected:
+            return delete_selected(self, request, queryset)
+        if permissions_needed:
+            raise PermissionDenied
+        deleted, failed = self.delete_queryset(request, queryset)
+        if deleted:
+            self.message_user(request, f"Удалено файлов: {deleted}.", messages.SUCCESS)
+        if failed:
+            self.message_user(
+                request,
+                f"Не удалось удалить файлов: {failed}. Повторите попытку.",
+                messages.ERROR,
+            )
+        return None
 
     def get_queryset(self, request) -> QuerySet[UserFile]:
         qs = super().get_queryset(request)

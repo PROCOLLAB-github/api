@@ -1,38 +1,11 @@
-from urllib.parse import unquote, urlsplit
-
 import requests
 from asgiref.sync import sync_to_async
-from django.conf import settings
 from django.core.handlers.asgi import ASGIRequest
 from django.http import Http404, HttpResponse, StreamingHttpResponse
 from django.utils.http import content_disposition_header
 
 from files.exceptions import SelectelUploadError
-from files.service import SelectelSwiftStorage
-
-
-def is_storage_url(link):
-    try:
-        base = urlsplit(settings.SELECTEL_SWIFT_URL)
-        target = urlsplit(link)
-        path = unquote(target.path)
-        prefix = unquote(base.path).rstrip("/") + "/"
-        return (
-            target.scheme == base.scheme == "https"
-            and target.netloc.lower() == base.netloc.lower()
-            and not target.username
-            and not target.password
-            and not target.query
-            and not target.fragment
-            and path.startswith(prefix)
-            and len(path) > len(prefix)
-            and "\\" not in path
-            and "%" not in path
-            and not any(ord(char) < 32 or ord(char) == 127 for char in path)
-            and all(segment not in ("", ".", "..") for segment in path[1:].split("/"))
-        )
-    except ValueError:
-        return False
+from files.service import SelectelSwiftStorage, is_storage_url
 
 
 def download_filename(file):

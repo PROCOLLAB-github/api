@@ -8,7 +8,7 @@ from chats.models import ProgramChannel, ProgramChannelMessage, ProgramChannelRe
 from chats.permissions import accessible_chats, can_publish_in_program_channel
 from chats.serializers import ProgramChannelMessageSerializer
 from chats.services.messages import _create_message
-from files.downloads import is_storage_url
+from files.service import is_storage_url
 
 MAX_CHANNEL_ATTACHMENTS = 20
 

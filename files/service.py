@@ -1,5 +1,6 @@
 import time
 from abc import ABC, abstractmethod
+from urllib.parse import unquote, urlsplit
 
 import requests
 from django.conf import settings
@@ -9,12 +10,36 @@ from requests import Response
 
 from files.constants import SUPPORTED_IMAGES_TYPES
 from files.content import detect_content_type
-from files.exceptions import SelectelUploadError
+from files.exceptions import SelectelDeleteError, SelectelUploadError
 from files.helpers import convert_image_to_webp
 from files.models import UserFile
 from files.typings import FileInfo
 
 User = get_user_model()
+
+
+def is_storage_url(link):
+    try:
+        base = urlsplit(settings.SELECTEL_SWIFT_URL)
+        target = urlsplit(link)
+        path = unquote(target.path)
+        prefix = unquote(base.path).rstrip("/") + "/"
+        return (
+            target.scheme == base.scheme == "https"
+            and target.netloc.lower() == base.netloc.lower()
+            and not target.username
+            and not target.password
+            and not target.query
+            and not target.fragment
+            and path.startswith(prefix)
+            and len(path) > len(prefix)
+            and "\\" not in path
+            and "%" not in path
+            and not any(ord(char) < 32 or ord(char) == 127 for char in path)
+            and all(segment not in ("", ".", "..") for segment in path[1:].split("/"))
+        )
+    except ValueError:
+        return False
 
 
 class File:
@@ -68,8 +93,21 @@ class Storage(ABC):
 
 class SelectelSwiftStorage(Storage):
     def delete(self, url: str) -> Response:
-        token = self._get_auth_token()
-        return requests.delete(url, headers={"X-Auth-Token": token})
+        error_message = "Не удалось удалить файл из хранилища."
+        if not is_storage_url(url):
+            raise SelectelDeleteError(error_message)
+        try:
+            response = requests.delete(
+                url,
+                headers={"X-Auth-Token": self._get_auth_token()},
+                timeout=(5, 15),
+                allow_redirects=False,
+            )
+        except (requests.RequestException, SelectelUploadError, KeyError) as error:
+            raise SelectelDeleteError(error_message) from error
+        if not (200 <= response.status_code < 300 or response.status_code == 404):
+            raise SelectelDeleteError(error_message)
+        return response
 
     def upload(self, file: File, user: User) -> FileInfo:
         url = self._upload(file, user)
