@@ -1,0 +1,22 @@
+<article{% if message.pk == anchor_id %} id="selected-message"{% endif %}>
+  <h2>Сообщение №{{ message.pk }} · {{ message.author.get_full_name }}</h2>
+  {% if message.pk == anchor_id %}<p><strong>Выбранное сообщение</strong></p>{% endif %}
+  <p>{{ message.created_at|date:"d.m.Y H:i" }}</p>
+  <p>{{ message.text|linebreaksbr }}</p>
+  {% if show_context_link %}
+    <p><a href="{% url message_context_route chat.pk message.pk %}#selected-message">Показать в переписке</a></p>
+  {% endif %}
+  {% if message.file_to_message.all %}
+    <p>Вложения:</p>
+    <ul>
+      {% for attachment in message.file_to_message.all %}
+        {% if attachment.is_linked_to_one_message %}
+          <li>
+            {{ attachment.file.name }}{% if attachment.file.extension %}.{{ attachment.file.extension }}{% endif %}
+            <a href="{% url attachment_download_route chat.pk message.pk attachment.download_id %}">Скачать</a>
+          </li>
+        {% endif %}
+      {% endfor %}
+    </ul>
+  {% endif %}
+</article>

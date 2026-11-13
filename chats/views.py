@@ -22,6 +22,11 @@ from chats.attachments import (
     download_chat_attachment,
     get_accessible_chat,
 )
+from chats.message_context import (
+    MAX_CONTEXT_LIMIT,
+    MessageContextForm,
+    get_message_context,
+)
 from chats.models import ProjectChat, DirectChat
 from chats.pagination import MessageListPagination
 from chats.permissions import IsProjectChatMember, IsChatMember, accessible_chats
@@ -234,6 +239,56 @@ class ProjectChatMessageList(ChatMessageHistory):
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+
+@method_decorator(never_cache, name="dispatch")
+class ChatMessageContext(GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    chat_model = None
+
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                "direction",
+                openapi.IN_QUERY,
+                description="Направление загрузки",
+                type=openapi.TYPE_STRING,
+                enum=["around", "older", "newer"],
+                default="around",
+            ),
+            openapi.Parameter(
+                "limit",
+                openapi.IN_QUERY,
+                description="Количество сообщений с каждой стороны",
+                type=openapi.TYPE_INTEGER,
+                minimum=1,
+                maximum=MAX_CONTEXT_LIMIT,
+            ),
+        ],
+        responses={200: "Сообщения по порядку, older_than и newer_than для продолжения"},
+    )
+    def get(self, request, id, message_id):
+        chat = get_accessible_chat(request.user, self.chat_model, id)
+        form = MessageContextForm(request.query_params)
+        if not form.is_valid():
+            raise ValidationError(form.errors)
+        queryset = chat.messages.select_related("author").prefetch_related(
+            "file_to_message__file"
+        )
+        if isinstance(chat, ProjectChat):
+            queryset = with_project_message_reads(
+                queryset, request.user.pk, include_reply=True
+            )
+        else:
+            queryset = queryset.select_related("reply_to__author")
+        context = get_message_context(chat, queryset, message_id, **form.cleaned_data)
+        return Response(
+            {
+                "results": self.get_serializer(context.messages, many=True).data,
+                "older_than": context.older_than,
+                "newer_than": context.newer_than,
+            }
+        )
 
 
 class ChatFileList(ListAPIView):
