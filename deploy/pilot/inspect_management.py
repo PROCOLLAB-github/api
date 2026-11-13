@@ -10,7 +10,7 @@ sys.dont_write_bytecode = True
 
 # Проверенный пакет 47175a2. Не импортируем чужие или измененные root-скрипты.
 BUNDLE_HASHES = {
-    "management_base.json": "0f6f2ae5cc1582152fc6ea3f61c48efea15d940a17c7a89e86e41259739e50d0",
+    "management_base.json": "b73b82034a421224d78409f062a0653df5891af0d0cf28c2575910e6281d497d",
     "overall_base.json": "6ce9e753371c8cd5432d67592e71bcc637bdb54149de56eb61b1915b238ae833",
     "hosted.py": "865ab0d364436901b562d5c30f5522d7b6228f5ca7a933a63511fe30d7441a52",
     "runtime_import.py": "35bdeda83a3eb55d81f30f0555257fe6c7a6de104322d7504dcfbac51aff4fd3",
