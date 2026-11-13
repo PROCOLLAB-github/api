@@ -700,7 +700,9 @@ def my_programs(user):
             done = sum(row["is_completed"] for row in assignments)
         else:
             assignments = list(
-                annotated_assignment_queryset(program.pk).filter(expert__user=user)
+                annotated_assignment_queryset(program.pk, expert_completion=True).filter(
+                    expert__user=user
+                )
             )
             done = sum(a.is_completed for a in assignments)
         rows.append(

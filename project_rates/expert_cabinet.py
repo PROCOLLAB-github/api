@@ -23,7 +23,7 @@ def cabinet_projects(
     project_filters: Q | None = None,
 ):
     own = (
-        annotated_assignment_queryset()
+        annotated_assignment_queryset(expert_completion=True)
         .filter(
             expert__user=user,
             partner_program_id__in=program_ids,
