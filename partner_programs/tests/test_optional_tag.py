@@ -2,10 +2,13 @@
 
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from partner_programs.models import PartnerProgram
 from partner_programs.tests.helpers import create_user
+from project_rates.program_experts import can_evaluate_program
+from project_rates.tests.helpers import create_rate_user
 
 
 @override_settings(STORAGES={
@@ -53,3 +56,24 @@ class OptionalProgramTagTests(TestCase):
         self.assertEqual(self.client.post(self.url, data).status_code, 302)
         program = PartnerProgram.objects.get(name=data["name"])
         self.assertEqual(program.tag, data["tag"])
+
+    def test_admin_manager_selection_uses_live_evaluation_access(self):
+        organizer = create_rate_user(prefix="admin-added-organizer")
+        data = self.payload()
+        data["managers"] = [organizer.pk]
+        self.assertEqual(self.client.post(self.url, data).status_code, 302)
+        program = PartnerProgram.objects.get(name=data["name"])
+        self.assertFalse(can_evaluate_program(organizer, program.pk))
+
+        now = timezone.now()
+        program.draft = False
+        program.datetime_started = now
+        program.datetime_registration_ends = now + timezone.timedelta(days=1)
+        program.datetime_finished = now + timezone.timedelta(days=2)
+        program.save()
+        self.assertTrue(can_evaluate_program(organizer, program.pk))
+        self.assertFalse(organizer.expert.programs.exists())
+
+        organizer.expert.programs.add(program)
+        program.managers.remove(organizer)
+        self.assertTrue(can_evaluate_program(organizer, program.pk))

@@ -73,6 +73,71 @@ class SolutionAllocationTests(AllocationFixture, TestCase):
         self.assert_error(self.apply(response.data["plan_token"]), "expert_shortage", 409)
         self.assertEqual(SolutionExpertAssignment.objects.count(), 1)
 
+    def test_managers_are_manual_only_even_when_sent_in_auto_case_pools(self):
+        self.manager.is_active = True
+        self.manager.save(update_fields=["is_active"])
+        before_promotion = self.plan()
+        self.assertEqual(before_promotion.status_code, 200, before_promotion.data)
+        self.program.managers.add(self.second)
+        self.assertTrue(self.second.expert.programs.filter(pk=self.program.pk).exists())
+        self.assert_error(
+            self.apply(before_promotion.data["plan_token"]), "stale_assignments", 409
+        )
+
+        self.assertFalse(self.manager.expert.programs.filter(pk=self.program.pk).exists())
+        ids = [self.second.expert.pk, self.manager.expert.pk]
+        command = dict(
+            expert_ids=ids, case_pools=[dict(case_name="Задача 1", expert_ids=ids)]
+        )
+        response = self.plan(**command)
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data["assignments"], [])
+        self.assertEqual(response.data["shortages"][0]["missing"], 1)
+        self.assert_error(
+            self.plan(
+                **command,
+                assignment_overrides=[
+                    dict(
+                        solution_id=self.solution.pk, expert_ids=[self.manager.expert.pk]
+                    )
+                ],
+            ),
+            "invalid_assignments",
+            400,
+        )
+        manual = self.assign([self.solution.pk], actor=self.manager)
+        self.assertEqual(manual.status_code, 200, manual.data)
+        response = self.plan(**command)
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data["shortages"], [])
+        self.assertEqual(response.data["assignments"], [])
+        self.assertEqual(self.apply(response.data["plan_token"]).status_code, 200)
+        self.assertTrue(
+            SolutionExpertAssignment.objects.filter(
+                solution=self.solution, expert=self.manager.expert
+            ).exists()
+        )
+
+    def test_completed_manual_assignment_survives_loss_of_organizer_access(self):
+        self.manager.is_active = True
+        self.manager.save(update_fields=["is_active"])
+        manual = self.assign([self.solution.pk], actor=self.manager)
+        self.assertEqual(manual.status_code, 200, manual.data)
+        for criterion, value in zip(self.criteria, ["5", "True", "Готово"]):
+            SolutionScore.objects.create(
+                solution=self.solution, user=self.manager, criteria=criterion, value=value
+            )
+        self.program.managers.remove(self.manager)
+        snapshot = solution_allocation.assignment_snapshot(self.program)
+        self.assertIn(
+            dict(
+                solution_id=self.solution.pk,
+                expert_id=self.manager.expert.pk,
+                is_completed=True,
+            ),
+            snapshot,
+        )
+
     def test_case_pools_and_scopes_constrain_new_assignments(self):
         scope = ExpertCaseScope.objects.create(
             partner_program=self.program,

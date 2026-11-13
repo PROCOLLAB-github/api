@@ -10,32 +10,28 @@ from partner_programs.solution_models import ProgramSolution
 from partner_programs.solution_team import lock_solution, require_active
 from project_rates.criteria_policy import revision as criteria_revision, mark_locked
 from project_rates.models import Criteria
+from project_rates.program_experts import can_evaluate_program
 from project_rates.solution_models import SolutionExpertAssignment, SolutionScore
 from project_rates.evaluation_math import complete_values, valid_score as valid_value
-from users.models import Expert
 
 
-def program_expert(program, actor, *, required=True):
-    expert = Expert.objects.filter(
-        programs=program, user=actor, user__is_active=True
-    ).first()
-    if not expert and required:
+def require_program_evaluation(program, actor):
+    if not can_evaluate_program(actor, program.pk):
         raise SolutionError(
             "not_program_expert",
             "Оценивание доступно экспертам этой программы.",
             status=403,
         )
-    return expert
 
 
 def expert_visible_solutions(program, actor):
     query = ProgramSolution.objects.filter(program=program, status="submitted")
-    expert = program_expert(program, actor, required=False)
-    if not expert:
+    if not can_evaluate_program(actor, program.pk):
         return query.none()
     if program.is_distributed_evaluation:
         query = query.filter(
-            expert_assignments__partner_program=program, expert_assignments__expert=expert
+            expert_assignments__partner_program=program,
+            expert_assignments__expert__user=actor,
         )
     return query.distinct()
 
@@ -127,7 +123,9 @@ def blocked_reason(program, solution, actor, criteria, state):
         return "Организатор еще не настроил критерии."
     if program.is_distributed_evaluation and not state["assigned"]:
         return "Решение не назначено вам для оценки."
-    if program.required_evaluators is not None and actor.pk in team_user_ids(solution):
+    if actor.pk in team_user_ids(solution) and (
+        program.required_evaluators is not None or program.is_manager(actor)
+    ):
         return "Нельзя оценивать решение своей команды."
     if (
         program.required_evaluators is None
@@ -160,7 +158,7 @@ def rating_frame(solution, actor):
     from partner_programs.solution_api import solution_data, iso
 
     program = solution.program
-    program_expert(program, actor)
+    require_program_evaluation(program, actor)
     require_active(solution)
     if solution.status != "submitted":
         raise SolutionError("solution_not_submitted", "Сначала нужно сдать решение.")
@@ -197,7 +195,7 @@ def rating_frame(solution, actor):
 
 
 def list_ratings(program, actor, query):
-    program_expert(program, actor)
+    require_program_evaluation(program, actor)
     solutions = list(
         expert_visible_solutions(program, actor).select_related("program").order_by("pk")
     )
@@ -251,7 +249,7 @@ def score_issue(criterion_id, code, detail):
 def rate_solution(*, program_id, solution_id, actor, expected_criteria_revision, scores):
     solution = lock_solution(program_id, solution_id, actor)
     program = solution.program
-    program_expert(program, actor)
+    require_program_evaluation(program, actor)
     if program.solution_storage_mode != "solution":
         raise SolutionError(
             "solution_mode_unavailable", "Программа использует заявки на основе проектов."
@@ -278,8 +276,8 @@ def rate_solution(*, program_id, solution_id, actor, expected_criteria_revision,
             code = "evaluation_closed"
         elif not criteria:
             code = "criteria_not_configured"
-        elif program.required_evaluators is not None and actor.pk in team_user_ids(
-            solution
+        elif actor.pk in team_user_ids(solution) and (
+            program.required_evaluators is not None or program.is_manager(actor)
         ):
             code = "own_team"
         elif program.is_distributed_evaluation and not state["assigned"]:

@@ -4,18 +4,16 @@ from datetime import datetime, timezone
 
 from django.utils.dateparse import parse_datetime
 
-from partner_programs.models import PartnerProgram
 from partner_programs.solution_api import iso
 from project_rates.evaluation_math import complete_values
 from project_rates.expert_cabinet import cabinet_projects
 from project_rates.models import Criteria
+from project_rates.program_experts import evaluation_programs
 from project_rates.solution_evaluation import metrics, rating_summary
 
 
 def cabinet_applications(user, query):
-    programs = list(
-        PartnerProgram.objects.filter(experts__user=user).distinct().order_by("pk")
-    )
+    programs = list(evaluation_programs(user).order_by("pk"))
     legacy = cabinet_projects(
         user,
         query,

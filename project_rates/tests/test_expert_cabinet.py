@@ -172,7 +172,7 @@ class ExpertCabinetTests(TestCase):
 
     def test_search_pagination_and_counters_are_not_limited_to_first_page(self):
         for index in range(25):
-            self.assign(self.program, f"Project {index:02}")
+            self.assign(self.program, f"Project {index:02d} title")
         first, second = self.page(), self.page(offset=20)
         self.assertEqual(first["limit"], 20)
         self.assertEqual(len(first["results"]), 20)
@@ -182,7 +182,7 @@ class ExpertCabinetTests(TestCase):
             {r["assignment_id"] for r in first["results"]}
             & {r["assignment_id"] for r in second["results"]}
         )
-        filtered = self.page(q="Project 24")
+        filtered = self.page(q="Project 24 title")
         self.assertEqual(filtered["count"], 1)
         self.assertEqual(filtered["pending"], 26)
 

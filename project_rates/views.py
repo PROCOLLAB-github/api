@@ -1,6 +1,6 @@
 from rest_framework import generics, status
 from rest_framework.response import Response
-from rest_framework.exceptions import APIException
+from rest_framework.exceptions import APIException, PermissionDenied
 from rest_framework.exceptions import ValidationError
 
 from django_filters import rest_framework as filters
@@ -18,7 +18,6 @@ from project_rates.services import (
     get_rate_program,
     submit_project_scores,
 )
-from users.models import Expert
 from users.permissions import IsExpert, IsExpertPost
 
 
@@ -34,11 +33,8 @@ class RateProject(generics.CreateAPIView):
                 data=request.data,
             )
             return Response({"success": True}, status=status.HTTP_201_CREATED)
-        except Expert.DoesNotExist:
-            return Response(
-                {"error": "you have no permission to rate this program"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+        except PermissionDenied as e:
+            return Response({"error": e.detail}, status=e.status_code)
         except MaxProjectRatesReached as e:
             return Response(
                 {

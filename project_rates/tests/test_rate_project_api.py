@@ -4,7 +4,7 @@ from django.test import TestCase
 
 from rest_framework.test import APIClient
 
-from project_rates.models import ProjectScore
+from project_rates.models import ProjectExpertAssignment, ProjectScore
 from project_rates.tests.helpers import (
     create_rate_criteria,
     create_rate_expert,
@@ -38,6 +38,61 @@ class RateProjectAPITests(TestCase):
 
     def _payload(self, criteria=None, value: str = "8") -> list[dict]:
         return [{"criterion_id": (criteria or self.criteria).id, "value": value}]
+
+    @patch("project_rates.services.send_email.delay")
+    def test_organizer_can_rate_open_projects_and_loses_only_inherited_access(self, send):
+        organizer = create_rate_user(prefix="organizer")
+        self.program.managers.add(organizer)
+        self.client.force_authenticate(organizer)
+        self.assertEqual(self.client.get(f"/rate-project/{self.program.pk}").status_code, 200)
+        self.assertEqual(
+            self.client.post(self._rate_url(), self._payload(), format="json").status_code,
+            201,
+        )
+        self.program.managers.remove(organizer)
+        self.assertEqual(self.client.get(f"/rate-project/{self.program.pk}").status_code, 403)
+        self.assertEqual(
+            self.client.post(self._rate_url(), self._payload(), format="json").status_code,
+            403,
+        )
+        self.assertTrue(ProjectScore.objects.filter(user=organizer, value="8").exists())
+        organizer.expert.programs.add(self.program)
+        self.assertEqual(self.client.get(f"/rate-project/{self.program.pk}").status_code, 200)
+        send.assert_called_once()
+
+    @patch("project_rates.services.send_email.delay")
+    def test_distributed_organizer_needs_an_explicit_assignment(self, send):
+        organizer = create_rate_user(prefix="organizer")
+        self.program.managers.add(organizer)
+        self.program.program_projects.update(submitted=True)
+        self.program.is_distributed_evaluation = True
+        self.program.save(update_fields=["is_distributed_evaluation"])
+        self.client.force_authenticate(organizer)
+        result = self.client.get(f"/rate-project/{self.program.pk}")
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(result.data["results"], [])
+        self.assertEqual(
+            self.client.post(self._rate_url(), self._payload(), format="json").status_code,
+            400,
+        )
+        assignment = ProjectExpertAssignment(
+            partner_program=self.program, project=self.project, expert=organizer.expert
+        )
+        assignment.full_clean()
+        assignment.save()
+        self.assertEqual(
+            self.client.post(self._rate_url(), self._payload(), format="json").status_code,
+            201,
+        )
+        send.assert_called_once()
+
+    def test_organizer_cannot_rate_own_team_in_open_mode(self):
+        self.program.managers.add(self.leader)
+        self.client.force_authenticate(self.leader)
+        response = self.client.post(self._rate_url(), self._payload(), format="json")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Нельзя оценивать проект своей команды.", response.data)
+        self.assertFalse(ProjectScore.objects.filter(user=self.leader).exists())
 
     @patch("project_rates.services.send_email.delay")
     def test_expert_can_rate_project_without_distribution(self, send_email_delay):
@@ -104,7 +159,7 @@ class RateProjectAPITests(TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertEqual(
             response.data["error"],
-            "you have no permission to rate this program",
+            "Оценивание доступно экспертам этой программы.",
         )
         self.assertFalse(ProjectScore.objects.filter(user=outsider).exists())
         send_email_delay.assert_not_called()

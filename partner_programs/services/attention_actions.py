@@ -31,6 +31,7 @@ from partner_programs.services.analytics import (
 from partner_programs.services.assignment_analytics import annotated_assignment_queryset
 from partner_programs.services.exports import _literal_excel_cell
 from partner_programs.services.management import managed_program, person_name
+from project_rates.program_experts import program_experts
 from partner_programs.services.solution_attention import (
     SOLUTION_AWAITING,
     solution_assignment_sources,
@@ -114,7 +115,7 @@ def recipient_targets(program, category, rows):
             project_id__in=links,
             project_submitted=True,
             is_completed=False,
-            expert__programs=program.pk,
+            expert_id__in=program_experts(program.pk).values("pk"),
         )
         .order_by("pk")
         .values("pk", "project_id", "expert__user_id")

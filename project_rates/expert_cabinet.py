@@ -8,14 +8,16 @@ from partner_programs.services.assignment_analytics import annotated_assignment_
 from partner_programs.services.case_analytics import project_case_links
 from partner_programs.services.case_fields import get_program_case_field
 from project_rates.models import ProjectScore
+from project_rates.program_experts import evaluation_programs
 from projects.models import Collaborator
 
 
 def cabinet_projects(user, query, program_ids, *, paginate=True, as_applications=False):
     own = annotated_assignment_queryset().filter(
         expert__user=user,
-        partner_program__experts__user=user,
         partner_program_id__in=program_ids,
+    ).filter(
+        partner_program_id__in=evaluation_programs(user).values("pk"),
     )
     linked = PartnerProgramProject.objects.filter(
         partner_program_id=OuterRef("partner_program_id"),

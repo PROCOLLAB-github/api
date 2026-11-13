@@ -4,7 +4,7 @@ from django_filters import rest_framework as filters
 from partner_programs.models import PartnerProgram
 from project_rates.models import ProjectScore
 from projects.models import Project
-from users.models import Expert
+from project_rates.program_experts import can_evaluate_program
 
 
 class ProjectFilter(filters.FilterSet):
@@ -69,7 +69,7 @@ class ProjectFilter(filters.FilterSet):
             return Project.objects.none()
 
         program_status = program.projects_availability
-        user_is_expert = Expert.objects.filter(user=user, programs=program).exists()
+        user_is_expert = can_evaluate_program(user, program.pk)
 
         if program_status != "all_users" and not user_is_expert:
             return Project.objects.none()

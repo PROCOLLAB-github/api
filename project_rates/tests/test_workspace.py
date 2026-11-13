@@ -326,12 +326,15 @@ class WorkspaceTests(TestCase):
 
     def test_invitation_lifecycle_and_private_hub(self):
         invitation, token = self.invitation(self.manager.email)
-        self.assertEqual(
-            self.client.get("/evaluation/programs/").data["results"][0]["status"],
-            "pending",
-        )
-        self.assertFalse(
-            self.client.get("/evaluation/programs/").data["results"][0].get("assigned")
+        rows = self.client.get("/evaluation/programs/").data["results"]
+        joined = next(row for row in rows if row["status"] == "joined")
+        pending = next(row for row in rows if row["status"] == "pending")
+        self.assertEqual(joined["assigned"], 0)
+        self.assertEqual(pending["invitation_id"], invitation.pk)
+        self.assertNotIn("assigned", pending)
+        workspace = self.client.get(self.root + "experts/").data
+        self.assertTrue(
+            any(row.get("invitation_id") == invitation.pk for row in workspace["experts"])
         )
         with self.captureOnCommitCallbacks(execute=True):
             response = self.post(
@@ -548,7 +551,7 @@ class WorkspaceTests(TestCase):
             self.client.get("/auth/users/current/").data["has_evaluation_access"]
         )
         detail = self.client.get(f"/programs/{self.program.pk}/").data
-        self.assertFalse(detail["is_user_expert"])
+        self.assertTrue(detail["is_user_expert"])
         self.assertEqual(detail["pending_expert_invitation_id"], invitation.pk)
         self.post(f"/evaluation/invitations/{token}/accept/", {})
         detail = self.client.get(f"/programs/{self.program.pk}/").data
