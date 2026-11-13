@@ -16,7 +16,12 @@
           <p>Вложения:</p>
           <ul>
             {% for attachment in message.file_to_message.all %}
-              <li>{{ attachment.file.name }}{% if attachment.file.extension %}.{{ attachment.file.extension }}{% endif %}</li>
+              <li>
+                {{ attachment.file.name }}{% if attachment.file.extension %}.{{ attachment.file.extension }}{% endif %}
+                {% if attachment.is_linked_to_one_message %}
+                  <a href="{% url attachment_download_route chat.pk message.pk attachment.download_id %}">Скачать</a>
+                {% endif %}
+              </li>
             {% endfor %}
           </ul>
         {% endif %}

@@ -5,11 +5,12 @@ from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from django.utils.html import format_html
+from django.views.decorators.http import require_safe
 
+from chats.attachments import download_chat_attachment, get_accessible_chat
 from chats.exceptions import MessageValidationException
 from chats.models import (
     ProjectChat,
@@ -19,7 +20,7 @@ from chats.models import (
     FileToMessage,
 )
 from chats.project_reads import mark_project_message_read, publish_project_message_read
-from chats.search import ChatMessageSearchForm, accessible_chats, search_chat_messages
+from chats.search import ChatMessageSearchForm, search_chat_messages
 
 
 @admin.display(description="Пользователи чата")
@@ -40,12 +41,20 @@ class ChatSearchAdmin(admin.ModelAdmin):
         )
 
     def get_urls(self):
-        converter = "int" if self.model is ProjectChat else "slug"
+        object_path = (
+            "<int:object_id>" if self.model is ProjectChat else "<slug:object_id>"
+        )
         return [
             path(
-                "<" + converter + ":object_id>/message-search/",
+                object_path + "/message-search/",
                 self.admin_site.admin_view(self.message_search),
                 name=self.message_search_url_name,
+            ),
+            path(
+                object_path
+                + "/messages/<int:message_id>/files/<slug:attachment_id>/download/",
+                self.admin_site.admin_view(require_safe(self.attachment_download)),
+                name=self.message_search_url_name + "_download",
             ),
         ] + super().get_urls()
 
@@ -59,10 +68,7 @@ class ChatSearchAdmin(admin.ModelAdmin):
         return format_html('<a href="{}">Найти в чате</a>', url)
 
     def message_search(self, request, object_id):
-        visible = accessible_chats(request.user, self.model)
-        chat = get_object_or_404(visible, pk=object_id)
-        if not self.has_view_or_change_permission(request, chat):
-            raise PermissionDenied
+        chat = self.get_chat_for_member(request, object_id)
         form = ChatMessageSearchForm(request.GET)
         page = None
         if form.is_valid():
@@ -82,8 +88,22 @@ class ChatSearchAdmin(admin.ModelAdmin):
                 "title": "Поиск по переписке",
                 "form": form,
                 "page": page,
+                "chat": chat,
+                "attachment_download_route": "admin:"
+                + self.message_search_url_name
+                + "_download",
             },
         )
+
+    def get_chat_for_member(self, request, object_id):
+        chat = get_accessible_chat(request.user, self.model, object_id)
+        if not self.has_view_or_change_permission(request, chat):
+            raise PermissionDenied
+        return chat
+
+    def attachment_download(self, request, object_id, message_id, attachment_id):
+        chat = self.get_chat_for_member(request, object_id)
+        return download_chat_attachment(request, chat, message_id, attachment_id)
 
 
 @admin.register(ProjectChat)

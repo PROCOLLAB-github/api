@@ -1,5 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import never_cache
 
 from rest_framework import status
 from rest_framework.generics import (
@@ -13,16 +15,22 @@ from drf_yasg import openapi
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
+from chats.attachments import (
+    chat_attachments,
+    download_chat_attachment,
+    get_accessible_chat,
+)
 from chats.models import ProjectChat, DirectChat
 from chats.pagination import MessageListPagination
-from chats.permissions import IsProjectChatMember, IsChatMember
+from chats.permissions import IsProjectChatMember, IsChatMember, accessible_chats
 from chats.project_reads import (
     unread_project_messages,
     with_project_chat_unreads,
     with_project_message_reads,
 )
-from chats.search import ChatMessageSearchForm, accessible_chats, search_chat_messages
+from chats.search import ChatMessageSearchForm, search_chat_messages
 from chats.serializers import (
     DirectChatListSerializer,
     DirectChatMessageListSerializer,
@@ -30,10 +38,8 @@ from chats.serializers import (
     ProjectChatMessageListSerializer,
     ProjectChatDetailSerializer,
     DirectChatDetailSerializer,
+    ChatAttachmentSerializer,
 )
-from chats.utils import get_all_files
-from files.models import UserFile
-from files.serializers import UserFileSerializer
 
 User = get_user_model()
 
@@ -230,26 +236,45 @@ class ProjectChatMessageList(ChatMessageHistory):
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
-class DirectChatFileList(ListCreateAPIView):
-    serializer_class = UserFileSerializer
+class ChatFileList(ListAPIView):
+    serializer_class = ChatAttachmentSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        messages = self.request.user.direct_chats.get(id=self.kwargs["id"]).messages.all()
+        if getattr(self, "swagger_fake_view", False):
+            return self.serializer_class.Meta.model.objects.none()
+        chat = get_accessible_chat(self.request.user, self.chat_model, self.kwargs["id"])
+        return (
+            chat_attachments(chat)
+            .select_related("file", "direct_message", "project_message")
+            .order_by("file__datetime_uploaded", "pk")
+        )
 
-        return get_all_files(messages)
+
+class DirectChatFileList(ChatFileList):
+    chat_model = DirectChat
 
 
-class ProjectChatFileList(ListCreateAPIView):
-    serializer_class = UserFileSerializer
-    permission_classes = [IsProjectChatMember]
+class ProjectChatFileList(ChatFileList):
+    chat_model = ProjectChat
 
-    def get_queryset(self):
-        try:
-            messages = ProjectChat.objects.get(id=self.kwargs["id"]).messages.all()
-            return get_all_files(messages)
-        except ProjectChat.DoesNotExist:
-            return UserFile.objects.none()
+
+@method_decorator(never_cache, name="dispatch")
+class ChatAttachmentDownload(APIView):
+    permission_classes = [IsAuthenticated]
+    chat_model = None
+
+    @swagger_auto_schema(
+        produces=["application/octet-stream"],
+        responses={
+            200: openapi.Response("Файл", schema=openapi.Schema(type=openapi.TYPE_FILE)),
+            404: "Вложение недоступно",
+            502: "Хранилище недоступно",
+        },
+    )
+    def get(self, request, id, message_id, attachment_id):
+        chat = get_accessible_chat(request.user, self.chat_model, id)
+        return download_chat_attachment(request, chat, message_id, attachment_id)
 
 
 class HasChatUnreadsView(GenericAPIView):
