@@ -16,8 +16,17 @@ from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from django.utils.html import format_html
 from django.views.decorators.http import require_http_methods, require_safe
+from django.utils import timezone
 
 from chats.attachments import download_chat_attachment, get_accessible_chat
+from chats.direct_privacy import (
+    direct_chat_opponent,
+    direct_contact,
+    get_incoming_policy,
+    report_direct_spam,
+    set_block,
+    set_incoming_policy,
+)
 from chats.exceptions import MessageValidationException
 from chats.message_context import MessageContextForm, get_message_context
 from chats.models import (
@@ -25,6 +34,8 @@ from chats.models import (
     DirectChat,
     ProjectChatMessage,
     DirectChatMessage,
+    DirectChatPrivacy,
+    DirectChatSpamReport,
     FileToMessage,
     ProgramChannel,
 )
@@ -466,6 +477,184 @@ class DirectChatAdmin(ChatSearchAdmin):
         "message_search_link",
     )
     list_display_links = ("id",)
+    change_list_template = "admin/chats/direct_chat_list.html"
+
+    def has_module_permission(self, request):
+        return request.user.is_staff
+
+    def get_queryset(self, request):
+        if request.user.is_superuser:
+            return super().get_queryset(request)
+        return accessible_chats(request.user, DirectChat)
+
+    def has_view_permission(self, request, obj=None):
+        if request.user.is_superuser:
+            return super().has_view_permission(request, obj)
+        return (
+            obj is None
+            or accessible_chats(request.user, DirectChat).filter(pk=obj.pk).exists()
+        )
+
+    def has_add_permission(self, request):
+        return request.user.is_superuser and super().has_add_permission(request)
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_superuser and super().has_change_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_superuser and super().has_delete_permission(request, obj)
+
+    def get_urls(self):
+        return [
+            path(
+                "incoming-settings/",
+                self.admin_site.admin_view(
+                    require_http_methods(["GET", "POST"])(self.incoming_settings)
+                ),
+                name="chats_directchat_incoming_settings",
+            ),
+            path(
+                "<slug:object_id>/privacy/",
+                self.admin_site.admin_view(
+                    require_http_methods(["GET", "POST"])(self.chat_privacy)
+                ),
+                name=self.message_search_url_name + "_privacy",
+            ),
+        ] + super().get_urls()
+
+    def incoming_settings(self, request):
+        form = DirectPrivacyForm(
+            request.POST if request.method == "POST" else None,
+            initial={"incoming": get_incoming_policy(request.user)},
+        )
+        if request.method == "POST" and form.is_valid():
+            set_incoming_policy(request.user, form.cleaned_data["incoming"])
+            self.message_user(request, "Настройки сохранены.")
+            return redirect("admin:chats_directchat_incoming_settings")
+        return TemplateResponse(
+            request,
+            "admin/chats/direct_privacy.html",
+            {
+                **self.admin_site.each_context(request),
+                "title": "Настройки личных сообщений",
+                "opts": self.model._meta,
+                "form": form,
+                "search_url": reverse("admin:chats_directchat_changelist"),
+                "back_label": "К личным чатам",
+            },
+            status=400 if form.errors else 200,
+        )
+
+    def extra_channel_context(self, request, chat):
+        return {
+            "direct_privacy_url": reverse(
+                "admin:" + self.message_search_url_name + "_privacy", args=[chat.pk]
+            )
+        }
+
+    def chat_privacy(self, request, object_id):
+        chat = self.get_chat_for_member(request, object_id)
+        posted = request.method == "POST"
+        action = request.POST.get("action")
+        try:
+            other = direct_chat_opponent(chat, request.user)
+        except MessageValidationException:
+            other = None
+        error = None
+        if posted:
+            try:
+                if action in ("block", "unblock") and other is not None:
+                    set_block(request.user, other, action == "block")
+                elif action == "report" and other is not None:
+                    report = DirectSpamReportForm(request.POST)
+                    if not report.is_valid():
+                        raise MessageValidationException("Некорректный номер сообщения.")
+                    report_direct_spam(
+                        chat, request.user, report.cleaned_data["message_id"]
+                    )
+                else:
+                    raise MessageValidationException("Действие недоступно.")
+            except MessageValidationException as exc:
+                error = str(exc)
+            if not error:
+                self.message_user(
+                    request,
+                    (
+                        "Жалоба отправлена."
+                        if action == "report"
+                        else "Настройки сохранены."
+                    ),
+                )
+                return redirect(
+                    "admin:" + self.message_search_url_name + "_privacy", chat.pk
+                )
+        return TemplateResponse(
+            request,
+            "admin/chats/direct_privacy.html",
+            {
+                **self.admin_site.each_context(request),
+                "title": "Настройки личных сообщений",
+                "opts": self.model._meta,
+                "settings_url": reverse("admin:chats_directchat_incoming_settings"),
+                "contact": direct_contact(request.user, other, chat) if other else None,
+                "error": error,
+                "search_url": reverse(
+                    "admin:" + self.message_search_url_name, args=[chat.pk]
+                ),
+            },
+            status=400 if error else 200,
+        )
+
+
+class DirectPrivacyForm(forms.Form):
+    incoming = forms.ChoiceField(
+        label="Кто может начать диалог со мной",
+        choices=DirectChatPrivacy.Incoming.choices,
+        error_messages={
+            "invalid_choice": "Выберите, кто может начать диалог.",
+            "required": "Выберите, кто может начать диалог.",
+        },
+    )
+
+
+class DirectSpamReportForm(forms.Form):
+    message_id = forms.IntegerField(required=False, min_value=1, max_value=2**63 - 1)
+
+
+@admin.register(DirectChatSpamReport)
+class DirectChatSpamReportAdmin(admin.ModelAdmin):
+    list_display = (
+        "message_id",
+        "reporter",
+        "reported_user",
+        "created_at",
+        "reviewed_at",
+    )
+    list_filter = ("reviewed_at",)
+    fields = (
+        "chat",
+        "reporter",
+        "reported_user",
+        "message_id",
+        "message_text",
+        "created_at",
+        "reviewed_at",
+    )
+    readonly_fields = fields
+    actions = ("mark_reviewed",)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    @admin.action(permissions=["change"], description="Отметить рассмотренными")
+    def mark_reviewed(self, request, queryset):
+        count = queryset.filter(reviewed_at__isnull=True).update(
+            reviewed_at=timezone.now()
+        )
+        self.message_user(request, f"Отмечено рассмотренными: {count}")
 
 
 class ChatMessageAdmin(admin.ModelAdmin):

@@ -199,6 +199,39 @@ class DirectChat(BaseChat):
         verbose_name_plural = "Личные чаты"
 
 
+class DirectChatPrivacy(models.Model):
+    class Incoming(models.TextChoices):
+        EVERYONE = "everyone", "Все пользователи"
+        TEAM_MEMBERS = "team_members", "Участники моих команд"
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, primary_key=True)
+    incoming = models.CharField(
+        "Кто может начать диалог",
+        max_length=16,
+        choices=Incoming.choices,
+        default=Incoming.EVERYONE,
+    )
+
+
+class DirectChatBlock(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="+")
+    blocked_user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="+", verbose_name="Пользователь"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "blocked_user"], name="unique_direct_chat_block"
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(user=models.F("blocked_user")),
+                name="direct_chat_block_distinct_users",
+            ),
+        ]
+
+
 class BaseMessage(models.Model):
     """
     Base message model
@@ -369,6 +402,29 @@ class DirectChatMessage(BaseMessage):
                 fields=["chat", "author", "client_message_id"],
                 condition=models.Q(client_message_id__isnull=False),
                 name="unique_direct_chat_client_message",
+            )
+        ]
+
+
+class DirectChatSpamReport(models.Model):
+    chat = models.ForeignKey(DirectChat, on_delete=models.CASCADE, verbose_name="Диалог")
+    reporter = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="+", verbose_name="Кто пожаловался"
+    )
+    reported_user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="+", verbose_name="Автор сообщения"
+    )
+    message_id = models.PositiveBigIntegerField("Номер сообщения")
+    message_text = models.TextField("Текст сообщения", blank=True)
+    created_at = models.DateTimeField("Дата жалобы", auto_now_add=True)
+    reviewed_at = models.DateTimeField("Дата рассмотрения", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Жалоба на спам в личном чате"
+        verbose_name_plural = "Жалобы на спам в личных чатах"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["reporter", "message_id"], name="unique_direct_chat_spam_report"
             )
         ]
 

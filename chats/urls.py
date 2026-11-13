@@ -7,6 +7,7 @@ from chats.channel_views import (
     ProgramChannelMessageChange,
     ProgramChannelReadView,
 )
+from chats.direct_views import DirectBlockView, DirectPrivacyView, DirectSpamReportView
 from chats.models import DirectChat, ProgramChannel, ProjectChat
 from chats.serializers import (
     DirectChatMessageListSerializer,
@@ -78,7 +79,14 @@ urlpatterns = [
         name="program-channel-attachment-download",
     ),
     path("directs/", DirectChatList.as_view(), name="direct-chat-list"),
+    path("direct-privacy/", DirectPrivacyView.as_view(), name="direct-chat-privacy"),
     path("directs/<slug:id>/", DirectChatDetail.as_view(), name="direct-chat-detail"),
+    path("directs/<slug:id>/block/", DirectBlockView.as_view(), name="direct-chat-block"),
+    path(
+        "directs/<slug:id>/report-spam/",
+        DirectSpamReportView.as_view(),
+        name="direct-chat-report-spam",
+    ),
     path(
         "directs/<slug:id>/messages/",
         DirectChatMessageList.as_view(),
