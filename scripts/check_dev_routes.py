@@ -33,7 +33,7 @@ def request(base_url, path, method="GET", context=None):
 def check_routes(base_url, context=None, *, solution_templates_status=401):
     status, content_type, index = request(base_url, "/", context=context)
     assert status == 200 and content_type == "text/html" and b"<app-root" in index, "SPA index unavailable"
-    for path in (*AUTH_PAGES, "/office/program/all", "/expert-password-reset/"):
+    for path in (*AUTH_PAGES, "/office/program/all", "/office/evaluation", "/expert-password-reset/"):
         for suffix in ("", "/") if not path.endswith("/") else ("",):
             page = path + suffix + "?routing_check=1"
             for method in ("GET", "HEAD"):
@@ -45,6 +45,7 @@ def check_routes(base_url, context=None, *, solution_templates_status=401):
     # These invalid requests cannot send reset email or change a password.
     for path, method, expected in (
         ("/auth/users/current/", "GET", 401),
+        ("/evaluation/applications/?status=pending&limit=20&offset=0", "GET", 401),
         ("/solution-invitations/?status=pending&limit=100&offset=0", "GET", 401),
         ("/solution-form-templates/", "GET", solution_templates_status),
         ("/auth/reset_password/", "POST", 400),

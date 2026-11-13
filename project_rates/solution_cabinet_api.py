@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from partner_programs.solution_api import StrictSerializer
@@ -18,6 +19,9 @@ class CabinetQuery(StrictSerializer):
 
 
 class CabinetApplicationsView(EvaluationAPIView):
+    # The shared cabinet also serves project programs when solutions are disabled.
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
         query = CabinetQuery(data=request.query_params)
         query.is_valid(raise_exception=True)
