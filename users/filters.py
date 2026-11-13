@@ -1,11 +1,10 @@
-import re
-
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 from django_filters import rest_framework as filters
 
 from core.models import Specialization
+from core.search import unicode_literal_pattern
 from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 from users.utils import filter_age
 
@@ -84,12 +83,7 @@ class UserFilter(filters.FilterSet):
         Явные варианты букв обходятся без изменения collation/данных; каждый
         символ экранируется, поэтому ввод пользователя не становится regex.
         """
-        return "".join(
-            "(?:"
-            + "|".join(re.escape(v) for v in sorted({c, c.lower(), c.upper()}))
-            + ")"
-            for c in value
-        )
+        return unicode_literal_pattern(value)
 
     @classmethod
     def filter_by_fullname(cls, queryset, name, value):

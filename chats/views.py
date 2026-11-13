@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.shortcuts import get_object_or_404
 
 from rest_framework import status
 from rest_framework.generics import (
@@ -10,9 +11,10 @@ from rest_framework.generics import (
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
-from chats.models import ProjectChat, DirectChat, ProjectChatMessage
+from chats.models import ProjectChat, DirectChat
 from chats.pagination import MessageListPagination
 from chats.permissions import IsProjectChatMember, IsChatMember
 from chats.project_reads import (
@@ -20,6 +22,7 @@ from chats.project_reads import (
     with_project_chat_unreads,
     with_project_message_reads,
 )
+from chats.search import ChatMessageSearchForm, accessible_chats, search_chat_messages
 from chats.serializers import (
     DirectChatListSerializer,
     DirectChatMessageListSerializer,
@@ -144,33 +147,75 @@ class DirectChatDetail(RetrieveAPIView):
             )
 
 
-class DirectChatMessageList(ListCreateAPIView):
+class ChatMessageHistory(ListCreateAPIView):
+    pagination_class = MessageListPagination
+
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                "q",
+                openapi.IN_QUERY,
+                description="Текст сообщения или имя файла",
+                type=openapi.TYPE_STRING,
+                max_length=200,
+            ),
+            openapi.Parameter(
+                "scope",
+                openapi.IN_QUERY,
+                description="Где искать",
+                type=openapi.TYPE_STRING,
+                enum=["all", "messages", "files"],
+            ),
+            openapi.Parameter(
+                "author_id",
+                openapi.IN_QUERY,
+                description="ID автора сообщения",
+                type=openapi.TYPE_INTEGER,
+                minimum=1,
+            ),
+        ]
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    def get_queryset(self):
+        user = self.request.user
+        if getattr(self, "swagger_fake_view", False):
+            return self.serializer_class.Meta.model.objects.none()
+        chat = get_object_or_404(
+            accessible_chats(user, self.chat_model), pk=self.kwargs["id"]
+        )
+        form = ChatMessageSearchForm(self.request.query_params)
+        if not form.is_valid():
+            raise ValidationError(form.errors)
+        return search_chat_messages(chat, form.cleaned_data)
+
+
+class DirectChatMessageList(ChatMessageHistory):
+    chat_model = DirectChat
     serializer_class = DirectChatMessageListSerializer
     permission_classes = [IsAuthenticated, IsChatMember]
-    pagination_class = MessageListPagination
 
     def get_queryset(self):
         return (
-            self.request.user.direct_chats.get(id=self.kwargs["id"])
-            .messages.filter(is_deleted=False)
-            .order_by("-created_at")
-            .all()
+            super()
+            .get_queryset()
+            .select_related("author", "reply_to__author")
+            .prefetch_related("file_to_message__file")
         )
 
 
-class ProjectChatMessageList(ListCreateAPIView):
+class ProjectChatMessageList(ChatMessageHistory):
+    chat_model = ProjectChat
     serializer_class = ProjectChatMessageListSerializer
     permission_classes = [IsProjectChatMember]
-    pagination_class = MessageListPagination
 
     def get_queryset(self):
         messages = (
-            ProjectChatMessage.objects.filter(
-                chat_id=self.kwargs.get("id"), is_deleted=False
-            )
+            super()
+            .get_queryset()
             .select_related("author")
             .prefetch_related("file_to_message__file")
-            .order_by("-created_at", "-pk")
         )
         return with_project_message_reads(
             messages, self.request.user.pk, include_reply=True

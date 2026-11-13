@@ -1,0 +1,39 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+  <form method="get">
+    {{ form.as_p }}
+    <button type="submit">Найти</button>
+  </form>
+  {% if page %}
+    <p>Найдено сообщений: {{ page.paginator.count }}</p>
+    {% for message in page %}
+      <article>
+        <h2>Сообщение №{{ message.pk }} · {{ message.author.get_full_name }}</h2>
+        <p>{{ message.created_at|date:"d.m.Y H:i" }}</p>
+        <p>{{ message.text|linebreaksbr }}</p>
+        {% if message.file_to_message.all %}
+          <p>Вложения:</p>
+          <ul>
+            {% for attachment in message.file_to_message.all %}
+              <li>{{ attachment.file.name }}{% if attachment.file.extension %}.{{ attachment.file.extension }}{% endif %}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </article>
+    {% empty %}
+      <p>Сообщения не найдены.</p>
+    {% endfor %}
+    {% if page.has_other_pages %}
+      <nav aria-label="Страницы результатов">
+        {% if page.has_previous %}
+          <a href="{% querystring page=page.previous_page_number %}">Назад</a>
+        {% endif %}
+        <span>Страница {{ page.number }} из {{ page.paginator.num_pages }}</span>
+        {% if page.has_next %}
+          <a href="{% querystring page=page.next_page_number %}">Далее</a>
+        {% endif %}
+      </nav>
+    {% endif %}
+  {% endif %}
+{% endblock %}
