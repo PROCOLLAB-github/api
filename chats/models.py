@@ -44,8 +44,8 @@ class BaseChat(models.Model):
             update_fields=update_fields,
         )
 
-    def get_last_message(self):
-        return self.messages.last()
+    def visible_messages(self):
+        return self.messages.filter(is_deleted=False).order_by("-created_at", "-pk")
 
     def get_users_str(self):
         """Returns string of users separated by a comma, who are in chat
@@ -122,7 +122,7 @@ class ProjectChat(BaseChat):
         return self.project.image_address
 
     def get_last_messages(self, message_count) -> List["BaseMessage"]:
-        return self.messages.order_by("-created_at")[:message_count]
+        return self.visible_messages()[:message_count]
 
     def __str__(self):
         return f"ProjectChat<{self.project.id}> - {self.project.name}"
@@ -180,7 +180,7 @@ class DirectChat(BaseChat):
         return chat
 
     def get_last_messages(self, message_count):
-        return self.messages.order_by("-created_at")[:message_count]
+        return self.visible_messages()[:message_count]
 
     def get_other_user(self, user) -> User:
         return self.users.exclude(pk=user.pk).first()

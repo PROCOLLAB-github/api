@@ -7,12 +7,12 @@ from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from django.conf import settings
 from django.core.cache import cache
-from django.db.models import Q
 from django.utils import timezone
 
 from chats.exceptions import ChatException
-from chats.models import BaseChat
+from chats.permissions import accessible_chats, direct_chat_is_accessible
 from chats.project_reads import personalize_project_message_event
+from chats.services.messages import get_direct_chat_for_participants
 from chats.utils import get_user_channel_cache_key
 from chats.websockets_settings import (
     Event,
@@ -22,41 +22,26 @@ from chats.websockets_settings import (
 )
 from core.constants import ONE_DAY_IN_SECONDS, ONE_WEEK_IN_SECONDS
 from core.utils import get_user_online_cache_key, get_users_online_cache_key
-from projects.models import Collaborator
 from users.models import CustomUser
 from chats.consumers.event_types import DirectEvent, ProjectEvent
 from chats.utils import get_chat_and_user_ids_from_content
-from chats.models import DirectChat, ProjectChat
+from chats.models import ProjectChat
 
 
 @database_sync_to_async
-def get_user_project_ids(user_id: int) -> list[int]:
-    return list(
-        Collaborator.objects.filter(user_id=user_id).values_list("project", flat=True)
-    )
+def get_user_project_ids(user) -> list[int]:
+    return list(accessible_chats(user, ProjectChat).values_list("pk", flat=True))
 
 
 @database_sync_to_async
-def can_access_project_chat(user_id, chat_id):
-    try:
-        chat_id = int(chat_id)
-    except (TypeError, ValueError):
-        return False
-    return (
-        ProjectChat.objects.filter(pk=chat_id)
-        .filter(Q(project__leader_id=user_id) | Q(project__collaborator__user_id=user_id))
-        .exists()
-    )
+def can_access_project_chat(user, chat_id):
+    return accessible_chats(user, ProjectChat).filter(pk=chat_id).exists()
 
 
 class ChatConsumer(AsyncJsonWebsocketConsumer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.room_name: str = ""
         self.user: Optional[CustomUser] = None
-        self.chat_type = None
-        self.chat: Optional[BaseChat] = None
-        self.event = None
         self.joined_rooms: set[str] = set()
 
     async def connect(self):
@@ -72,17 +57,11 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         )
 
         if not settings.RUNNING_TESTS:
-            # get all projects that user is a member of
-            project_ids_list = await get_user_project_ids(self.user.id)
+            project_ids_list = await get_user_project_ids(self.user)
             for project_id in project_ids_list:
-                # FIXME: if a user is a leader but not a collaborator, this doesn't work
-                #  upd: it seems not possible to be a leader without being a collaborator
-                # join room for each project -
-                # It's currently not possible to do this in a single call, -
-                #  so we have to do it in a loop (e.g. that's O(N) calls to layer backend, redis cache that would be) -
-                room_name = f"{EventGroupType.CHATS_RELATED}_{project_id}"
-                await self.channel_layer.group_add(room_name, self.channel_name)
-                self.joined_rooms.add(room_name)
+                await self._ensure_room_subscription(
+                    f"{EventGroupType.CHATS_RELATED}_{project_id}"
+                )
 
         # set user online
         user_cache_key = get_user_online_cache_key(self.user)
@@ -120,6 +99,16 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             # don't need to proccess logic for disconnect
             #  if we are not logged in!
             return
+        for room_name in self.joined_rooms:
+            await self.channel_layer.group_discard(room_name, self.channel_name)
+        self.joined_rooms.clear()
+        await self.channel_layer.group_discard(
+            EventGroupType.GENERAL_EVENTS, self.channel_name
+        )
+        user_channel_key = get_user_channel_cache_key(self.user)
+        if cache.get(user_channel_key) != self.channel_name:
+            return
+        cache.delete(user_channel_key)
         online_users = cache.get(get_users_online_cache_key(), set())
         online_users.discard(self.user.id)
         cache.set(get_users_online_cache_key(), online_users)
@@ -135,7 +124,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
     async def receive_json(self, content, **kwargs):
         """Receive message from WebSocket in JSON format"""
 
-        # todo reply_to key is not required
+        if not isinstance(content, dict) or not isinstance(content.get("type"), str):
+            await self.send_json({"error": "Некорректный формат события."})
+            return
         event = Event(type=content["type"], content=content.get("content"))
 
         # two event types - related to group chat and related to leave/connect
@@ -146,26 +137,33 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             EventType.DELETE_MESSAGE,
             EventType.EDIT_MESSAGE,
         ]:
-            if event.content["chat_type"] == ChatType.DIRECT:
-                self.event = DirectEvent(self.user, self.channel_layer, self.channel_name)
-            elif event.content["chat_type"] == ChatType.PROJECT:
-                if not await can_access_project_chat(
-                    self.user.pk, event.content.get("chat_id")
-                ):
+            if not isinstance(event.content, dict):
+                await self.send_json({"error": "Некорректные данные события."})
+                return
+            chat_type = event.content.get("chat_type")
+            chat_id = event.content.get("chat_id")
+            room_name = ""
+            if chat_type == ChatType.DIRECT:
+                handler = DirectEvent(self.user, self.channel_layer, self.channel_name)
+            elif chat_type == ChatType.PROJECT:
+                try:
+                    if type(chat_id) not in (int, str):
+                        raise ValueError
+                    project_id = int(chat_id)
+                except ValueError:
+                    await self.send_json({"error": "Некорректный идентификатор чата."})
+                    return
+                if not await can_access_project_chat(self.user, project_id):
                     await self.send_json({"error": "У вас нет доступа к чату проекта."})
                     return
-                self.event = ProjectEvent(
-                    self.user, self.channel_layer, self.channel_name
-                )
-
-            chat_id = event.content.get("chat_id")
-            if event.content["chat_type"] == ChatType.PROJECT:
-                chat_id = int(chat_id)
-            room_name = f"{EventGroupType.CHATS_RELATED}_{chat_id}"
-            if event.content["chat_type"] == ChatType.PROJECT:
+                handler = ProjectEvent(self.user, self.channel_layer, self.channel_name)
+                room_name = f"{EventGroupType.CHATS_RELATED}_{project_id}"
                 await self._ensure_room_subscription(room_name)
+            else:
+                await self.send_json({"error": "Неизвестный тип чата."})
+                return
             try:
-                await self.__process_chat_related_event(event, room_name)
+                await self.__process_chat_related_event(handler, event, room_name)
             except ChatException as e:
                 await self.send_json({"error": str(e.get_error())})
             except KeyError as e:
@@ -175,20 +173,19 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             room_name = EventGroupType.GENERAL_EVENTS
             await self.__process_general_event(event, room_name)
         else:
-            return self.disconnect(400)
+            await self.send_json({"error": "Неизвестный тип события."})
 
-    async def __process_chat_related_event(self, event, room_name):
-        self.event: DirectEvent | ProjectEvent
+    async def __process_chat_related_event(self, handler, event, room_name):
         if event.type == EventType.NEW_MESSAGE:
-            await self.event.process_new_message_event(event, room_name)
+            await handler.process_new_message_event(event, room_name)
         elif event.type == EventType.TYPING:
             await self.__process_typing_event(event, room_name)
         elif event.type == EventType.READ_MESSAGE:
-            await self.event.process_read_message_event(event, room_name)
+            await handler.process_read_message_event(event, room_name)
         elif event.type == EventType.DELETE_MESSAGE:
-            await self.event.process_delete_message_event(event, room_name)
+            await handler.process_delete_message_event(event, room_name)
         elif event.type == EventType.EDIT_MESSAGE:
-            await self.event.process_edit_message_event(event, room_name)
+            await handler.process_edit_message_event(event, room_name)
 
     async def __process_typing_event(self, event: Event, room_name: str):
         """Send typing event to room group."""
@@ -204,29 +201,37 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
         if event.content["chat_type"] == ChatType.PROJECT:
             event_data["_project_chat_id"] = event.content["chat_id"]
+            await self.channel_layer.group_send(room_name, event_data)
 
-        if event.content["chat_type"] == ChatType.DIRECT:
+        else:
             _, other_user = await get_chat_and_user_ids_from_content(
                 event.content, self.user
             )
 
-            await database_sync_to_async(DirectChat.get_chat)(self.user, other_user)
+            chat = await database_sync_to_async(get_direct_chat_for_participants)(
+                self.user, other_user
+            )
+            event_data["content"]["chat_id"] = chat.pk
+            event_data["_direct_chat_id"] = chat.pk
 
             # send message to user's channel
             other_user_channel = cache.get(get_user_channel_cache_key(other_user), None)
 
-            if other_user_channel:
+            if other_user_channel and other_user_channel != self.channel_name:
                 await self.channel_layer.send(other_user_channel, event_data)
 
-        await self.channel_layer.group_send(
-            room_name,
-            event_data,
-        )
-
     async def _send_chat_event(self, event):
+        direct_chat_id = event.get("_direct_chat_id")
+        if direct_chat_id is not None and (
+            not self.user
+            or not await database_sync_to_async(direct_chat_is_accessible)(
+                self.user, direct_chat_id
+            )
+        ):
+            return
         chat_id = event.get("_project_chat_id")
         if chat_id is not None:
-            if not self.user or not await can_access_project_chat(self.user.pk, chat_id):
+            if not self.user or not await can_access_project_chat(self.user, chat_id):
                 room_name = f"{EventGroupType.CHATS_RELATED}_{int(chat_id)}"
                 await self.channel_layer.group_discard(room_name, self.channel_name)
                 self.joined_rooms.discard(room_name)
@@ -285,7 +290,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         elif event.type == EventType.SET_OFFLINE:
             cache.delete(cache_key)
             users_online_list = cache.get_or_set(users_online_list_key, set())
-            users_online_list.remove(self.user.pk)
+            users_online_list.discard(self.user.pk)
             cache.set(users_online_list_key, users_online_list, ONE_DAY_IN_SECONDS)
 
             # sent everyone online event that user X is offline
@@ -301,6 +306,5 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
     async def decode_json(self, text_data) -> dict:
         try:
             return json.loads(text_data)
-        except JSONDecodeError as error:
-            await self.disconnect(400)
-            raise error
+        except JSONDecodeError:
+            return {}

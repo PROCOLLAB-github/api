@@ -15,19 +15,6 @@ async def orm_get(queryset, **kwargs):
     return await queryset.aget(**kwargs)
 
 
-async def orm_exists(queryset) -> bool:
-    if settings.RUNNING_TESTS:
-        return queryset.exists()
-    return await queryset.aexists()
-
-
-async def orm_save(instance, update_fields=None):
-    if settings.RUNNING_TESTS:
-        instance.save(update_fields=update_fields)
-        return
-    await instance.asave(update_fields=update_fields)
-
-
 def get_user_channel_cache_key(user: User) -> str:
     return f"user_channel_{user.pk}"
 

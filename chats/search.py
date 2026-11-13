@@ -48,7 +48,7 @@ def search_chat_messages(chat, filters):
     query = filters["q"]
     scope = filters["scope"]
     author_id = filters["author_id"]
-    messages = chat.messages.filter(is_deleted=False).order_by("-created_at", "-pk")
+    messages = chat.visible_messages()
     if author_id is not None:
         messages = messages.filter(author_id=author_id)
     if not query:

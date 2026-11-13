@@ -72,7 +72,13 @@ class DirectChatListSerializer(serializers.ModelSerializer):
 
     @classmethod
     def get_last_message(cls, chat: DirectChat):
-        return DirectChatMessageListSerializer(chat.get_last_message()).data
+        message = (
+            chat.visible_messages()
+            .select_related("author", "reply_to__author")
+            .prefetch_related("file_to_message__file")
+            .first()
+        )
+        return DirectChatMessageListSerializer(message).data
 
     class Meta:
         model = DirectChat
@@ -113,7 +119,7 @@ class ProjectChatListSerializer(serializers.ModelSerializer):
 
     def get_last_message(self, chat: ProjectChat):
         user_id = self.context["request"].user.pk
-        messages = chat.messages.filter(is_deleted=False).order_by("-created_at", "-pk")
+        messages = chat.visible_messages()
         message = with_project_message_reads(
             messages, user_id, include_reply=True
         ).first()

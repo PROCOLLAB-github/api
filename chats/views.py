@@ -23,12 +23,13 @@ from chats.attachments import (
     download_chat_attachment,
     get_accessible_chat,
 )
+from chats.exceptions import MessageValidationException
 from chats.message_context import (
     MAX_CONTEXT_LIMIT,
     MessageContextForm,
     get_message_context,
 )
-from chats.models import ProjectChat, DirectChat
+from chats.models import DirectChat, DirectChatMessage, ProjectChat
 from chats.pagination import MessageListPagination
 from chats.permissions import IsProjectChatMember, IsChatMember, accessible_chats
 from chats.project_reads import (
@@ -46,6 +47,7 @@ from chats.serializers import (
     DirectChatDetailSerializer,
     ChatAttachmentSerializer,
 )
+from chats.services.messages import get_direct_chat_for_participants
 
 User = get_user_model()
 
@@ -126,9 +128,8 @@ class DirectChatDetail(RetrieveAPIView):
             else:
                 opponent = user1
             context = {"opponent": opponent}
-            data = DirectChatDetailSerializer(
-                DirectChat.get_chat(user1, user2), context=context
-            ).data
+            chat = get_direct_chat_for_participants(user1, user2)
+            data = DirectChatDetailSerializer(chat, context=context).data
 
             data["name"] = f"{opponent.first_name} {opponent.last_name}"
             data["image_address"] = opponent.avatar
@@ -157,6 +158,8 @@ class DirectChatDetail(RetrieveAPIView):
                 status=status.HTTP_404_NOT_FOUND,
                 data={"detail": "Direct chat does not exist"},
             )
+        except MessageValidationException as error:
+            return Response({"detail": str(error)}, status=status.HTTP_404_NOT_FOUND)
 
 
 class ChatMessageHistory(ListCreateAPIView):
@@ -455,13 +458,13 @@ class HasChatUnreadsView(GenericAPIView):
     )
     def get(self, request, *args, **kwargs):
         user = request.user
-        # get all user chats
-        direct_messages = user.direct_chats.all().prefetch_related("messages")
-
         has_direct_messages_unread = (
-            direct_messages.filter(messages__is_read=False)
-            .exclude(messages__is_deleted=True)
-            .distinct()
+            DirectChatMessage.objects.filter(
+                chat_id__in=user.direct_chats.values("pk"),
+                is_read=False,
+                is_deleted=False,
+            )
+            .exclude(author=user)
             .exists()
         )
         has_project_messages_unread = (
