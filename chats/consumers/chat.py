@@ -12,6 +12,7 @@ from django.utils import timezone
 
 from chats.exceptions import ChatException
 from chats.models import BaseChat
+from chats.project_reads import personalize_project_message_event
 from chats.utils import get_user_channel_cache_key
 from chats.websockets_settings import (
     Event,
@@ -157,7 +158,10 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                     self.user, self.channel_layer, self.channel_name
                 )
 
-            room_name = f"{EventGroupType.CHATS_RELATED}_{event.content.get('chat_id')}"
+            chat_id = event.content.get("chat_id")
+            if event.content["chat_type"] == ChatType.PROJECT:
+                chat_id = int(chat_id)
+            room_name = f"{EventGroupType.CHATS_RELATED}_{chat_id}"
             if event.content["chat_type"] == ChatType.PROJECT:
                 await self._ensure_room_subscription(room_name)
             try:
@@ -165,12 +169,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             except ChatException as e:
                 await self.send_json({"error": str(e.get_error())})
             except KeyError as e:
-                await self.send_json(
-                    {
-                        "error": f"Missing key (might be backend's fault,"
-                        f" but most likely you are missing this field): {e}"
-                    }
-                )
+                await self.send_json({"error": f"В запросе отсутствует поле {e}."})
 
         elif event.type in [EventType.SET_ONLINE, EventType.SET_OFFLINE]:
             room_name = EventGroupType.GENERAL_EVENTS
@@ -228,15 +227,24 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         chat_id = event.get("_project_chat_id")
         if chat_id is not None:
             if not self.user or not await can_access_project_chat(self.user.pk, chat_id):
-                room_name = f"{EventGroupType.CHATS_RELATED}_{chat_id}"
+                room_name = f"{EventGroupType.CHATS_RELATED}_{int(chat_id)}"
                 await self.channel_layer.group_discard(room_name, self.channel_name)
                 self.joined_rooms.discard(room_name)
                 return
+            audience = event.get("_project_read_audience")
+            if audience is not None and self.user.pk not in audience:
+                return
+            if event["type"] in (EventType.NEW_MESSAGE, EventType.EDIT_MESSAGE):
+                content = event["content"]
+                message = await database_sync_to_async(personalize_project_message_event)(
+                    content["message"], self.user.pk
+                )
+                event = {**event, "content": {**content, "message": message}}
         # Служебный контекст нужен для проверки уже открытых сокетов,
         # клиентский формат сообщений остается прежним.
         await self.send(
             json.dumps(
-                {key: value for key, value in event.items() if key != "_project_chat_id"}
+                {key: value for key, value in event.items() if not key.startswith("_")}
             )
         )
 

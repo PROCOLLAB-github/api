@@ -12,9 +12,14 @@ from drf_yasg import openapi
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from chats.models import ProjectChat, DirectChat
+from chats.models import ProjectChat, DirectChat, ProjectChatMessage
 from chats.pagination import MessageListPagination
 from chats.permissions import IsProjectChatMember, IsChatMember
+from chats.project_reads import (
+    unread_project_messages,
+    with_project_chat_unreads,
+    with_project_message_reads,
+)
 from chats.serializers import (
     DirectChatListSerializer,
     DirectChatMessageListSerializer,
@@ -65,13 +70,22 @@ class ProjectChatList(ListAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        return user.get_project_chats()
+        if not user.is_authenticated:
+            return ProjectChat.objects.none()
+        return with_project_chat_unreads(
+            user.get_project_chats().select_related("project"), user.pk
+        )
 
 
 class ProjectChatDetail(RetrieveAPIView):
     queryset = ProjectChat.objects.all()
     serializer_class = ProjectChatDetailSerializer
     permission_classes = [IsProjectChatMember]
+
+    def get_queryset(self):
+        return with_project_chat_unreads(
+            super().get_queryset().select_related("project"), self.request.user.pk
+        )
 
 
 class DirectChatDetail(RetrieveAPIView):
@@ -150,15 +164,17 @@ class ProjectChatMessageList(ListCreateAPIView):
     pagination_class = MessageListPagination
 
     def get_queryset(self):
-        try:
-            return (
-                ProjectChat.objects.get(id=self.kwargs["id"])
-                .messages.filter(is_deleted=False)
-                .order_by("-created_at")
-                .all()
+        messages = (
+            ProjectChatMessage.objects.filter(
+                chat_id=self.kwargs.get("id"), is_deleted=False
             )
-        except ProjectChat.DoesNotExist:
-            return ProjectChat.objects.none()
+            .select_related("author")
+            .prefetch_related("file_to_message__file")
+            .order_by("-created_at", "-pk")
+        )
+        return with_project_message_reads(
+            messages, self.request.user.pk, include_reply=True
+        )
 
     def post(self, request, *args, **kwargs):
         # TODO: try to create a message in a chat. If chat doesn't exist, create it and then create a message.
@@ -216,7 +232,6 @@ class HasChatUnreadsView(GenericAPIView):
         user = request.user
         # get all user chats
         direct_messages = user.direct_chats.all().prefetch_related("messages")
-        project_chats = user.get_project_chats().prefetch_related("messages")
 
         has_direct_messages_unread = (
             direct_messages.filter(messages__is_read=False)
@@ -225,9 +240,8 @@ class HasChatUnreadsView(GenericAPIView):
             .exists()
         )
         has_project_messages_unread = (
-            project_chats.filter(messages__is_read=False)
-            .exclude(messages__is_deleted=True)
-            .distinct()
+            unread_project_messages(user.pk)
+            .filter(chat_id__in=user.get_project_chats().values("pk"))
             .exists()
         )
         return Response(

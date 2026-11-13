@@ -230,7 +230,9 @@ class CustomUser(AbstractUser):
         from chats.models import ProjectChat
 
         user_project_ids = self.collaborations.all().values_list("project_id", flat=True)
-        return ProjectChat.objects.filter(project__in=user_project_ids)
+        return ProjectChat.objects.filter(
+            models.Q(project__leader=self) | models.Q(project_id__in=user_project_ids)
+        )
 
     def get_full_name(self) -> str:
         return f"{self.first_name} {self.last_name}"

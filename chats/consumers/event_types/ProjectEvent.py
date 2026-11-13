@@ -1,6 +1,7 @@
 from channels.db import database_sync_to_async
 
 from chats.models import ProjectChat, ProjectChatMessage
+from chats.project_reads import mark_project_message_read, publish_project_message_read
 from chats.utils import (
     orm_exists,
     orm_get,
@@ -9,7 +10,6 @@ from chats.utils import (
 from chats.services import create_project_message
 from chats.websockets_settings import Event, EventType
 from chats.exceptions import (
-    WrongChatIdException,
     UserNotInChatException,
     UserNotMessageAuthorException,
     UserIsNotAuthor,
@@ -55,37 +55,20 @@ class ProjectEvent:
             await self.channel_layer.send(self.channel_name, event_data)
 
     async def process_read_message_event(self, event: Event, room_name: str):
-        msg = await orm_get(ProjectChatMessage.objects, pk=event.content["message_id"])
-        chat = await orm_get(
-            ProjectChat.objects.select_related("project__leader"),
-            pk=msg.chat_id,
-        )
-        # check that user is in this chat
-        is_member = chat.project.leader_id == self.user.id or await orm_exists(
-            Collaborator.objects.filter(project_id=chat.project_id, user_id=self.user.id)
-        )
-        if not is_member:
-            raise UserNotInChatException(
-                f"User {self.user.id} is not in project chat {msg.chat_id}"
-            )
-        if msg.chat_id != int(event.content["chat_id"]):
-            raise WrongChatIdException(
-                "Some of chat/message ids are wrong, you can't access this message"
-            )
-        msg.is_read = True
-        await orm_save(msg, update_fields=["is_read"])
-        await self.channel_layer.group_send(
-            room_name,
-            {
-                "type": EventType.READ_MESSAGE,
-                "content": {
-                    "chat_id": event.content["chat_id"],
-                    "chat_type": event.content["chat_type"],
-                    "user_id": self.user.id,
-                    "message_id": event.content["message_id"],
-                },
-                "_project_chat_id": event.content["chat_id"],
-            },
+        chat_id = event.content["chat_id"]
+        message_id = event.content["message_id"]
+        author_id, read_count, created = await database_sync_to_async(
+            mark_project_message_read
+        )(chat_id=chat_id, message_id=message_id, user=self.user)
+        if author_id == self.user.pk:
+            return
+        await publish_project_message_read(
+            chat_id=chat_id,
+            message_id=int(message_id),
+            user_id=self.user.id,
+            author_id=author_id,
+            read_count=read_count,
+            sender_channel=None if created else self.channel_name,
         )
 
     async def process_delete_message_event(self, event: Event, room_name: str):
@@ -150,13 +133,7 @@ class ProjectEvent:
         message.is_edited = True
         await orm_save(message, update_fields=["text", "is_edited"])
 
-        serialized_message = await orm_get(
-            ProjectChatMessage.objects.select_related(
-                "author", "reply_to__author"
-            ).prefetch_related("file_to_message__file"),
-            pk=message.pk,
-        )
-        message_data = ProjectChatMessageListSerializer(serialized_message).data
+        message_data = await database_sync_to_async(serialize_project_message)(message.pk)
         content = {
             "chat_id": chat_id,
             "message": message_data,
@@ -169,3 +146,12 @@ class ProjectEvent:
         }
 
         await self.channel_layer.group_send(room_name, event_data)
+
+
+def serialize_project_message(message_id):
+    message = (
+        ProjectChatMessage.objects.select_related("author", "reply_to__author")
+        .prefetch_related("file_to_message__file")
+        .get(pk=message_id)
+    )
+    return ProjectChatMessageListSerializer(message).data
