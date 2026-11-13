@@ -242,11 +242,14 @@ class ManagementAPITests(TestCase):
         unsubmitted = create_program_project(
             self.program, project=create_project(leader=self.member.user), submitted=False
         )
-        ProjectExpertAssignment.objects.create(
-            partner_program=self.program,
-            project=unsubmitted.project,
-            expert=expert.expert,
-        )
+        # A previously assigned project may subsequently become unsubmitted.
+        ProjectExpertAssignment.objects.bulk_create([
+            ProjectExpertAssignment(
+                partner_program=self.program,
+                project=unsubmitted.project,
+                expert=expert.expert,
+            ),
+        ])
         self.assertFalse(
             self.client.get(
                 self.url("management-evaluation", link_id=unsubmitted.pk)

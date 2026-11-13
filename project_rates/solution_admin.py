@@ -12,6 +12,7 @@ from partner_programs.models import PartnerProgram
 from partner_programs.solution_errors import MAX_ID
 from partner_programs.solution_models import ProgramSolution
 from project_rates.models import Criteria
+from project_rates.program_experts import program_experts
 from project_rates.solution_models import SolutionScore, SolutionExpertAssignment
 
 
@@ -69,9 +70,7 @@ class SolutionAssignmentBulkForm(forms.ModelForm):
             self.fields["solutions"].queryset = self.fields["solutions"].queryset.filter(
                 program_id=program_id
             )
-            self.fields["expert"].queryset = self.fields["expert"].queryset.filter(
-                programs__pk=program_id, user__is_active=True
-            )
+            self.fields["expert"].queryset = program_experts(program_id)
 
     def clean(self):
         data = super().clean()

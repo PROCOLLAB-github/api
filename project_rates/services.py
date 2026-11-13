@@ -13,16 +13,16 @@ from django.db.models import (
 )
 from django.utils import timezone
 
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from partner_programs.models import PartnerProgram, PartnerProgramProject
 from partner_programs.serializers import ProgramProjectFilterRequestSerializer
 from partner_programs.utils import filter_program_projects_by_field_name
-from projects.models import Project
+from projects.models import Collaborator, Project
 from project_rates.models import Criteria, ProjectExpertAssignment, ProjectScore
+from project_rates.program_experts import can_evaluate_program
 from project_rates.serializers import ProjectScoreCreateSerializer
 from project_rates.criteria_policy import CriteriaConflict, mark_locked, revision
-from users.models import Expert
 from vacancy.mapping import ProjectRatedParams, MessageTypeEnum
 from vacancy.tasks import send_email
 
@@ -155,7 +155,8 @@ def submit_project_scores(*, user, project_id: int, data) -> None:
             )
         raise ValueError("All criteria must belong to the same program")
     program = PartnerProgram.objects.select_for_update().get(pk=programs.pop())
-    Expert.objects.get(user__id=user.id, programs=program)
+    if not can_evaluate_program(user, program.pk):
+        raise PermissionDenied("Оценивание доступно экспертам этой программы.")
     if (
         expected_revision is not None or program.evaluation_criteria_version
     ) and expected_revision != revision(program):
@@ -219,17 +220,14 @@ def _prepare_project_score_data(
         raise ValueError("All criteria must belong to the same program")
 
     program = criteria_qs.first().partner_program
-    Expert.objects.get(user__id=user.id, programs=program)
+    is_organizer = program.is_manager(user)
+    if (program.required_evaluators is not None or is_organizer) and (
+        program.datetime_evaluation_ends
+        and timezone.now() > program.datetime_evaluation_ends
+    ):
+        raise ValidationError("Срок оценивания завершен.")
 
     if program.required_evaluators is not None:
-        from projects.models import Collaborator
-
-        if (
-            program.datetime_evaluation_ends
-            and timezone.now() > program.datetime_evaluation_ends
-        ):
-            raise ValidationError("Срок оценивания завершен.")
-
         required = set(program.criterias.exclude(type="str").values_list("pk", flat=True))
         if not required.issubset(criteria_ids):
             raise ValidationError(
@@ -239,16 +237,17 @@ def _prepare_project_score_data(
             partner_program=program, project_id=project_id, submitted=True
         ).exists():
             raise ValidationError("Сначала нужно сдать решение.")
-        if (
-            Project.objects.filter(pk=project_id, leader=user).exists()
-            or Collaborator.objects.filter(project_id=project_id, user=user).exists()
-        ):
-            raise ValidationError("Нельзя оценивать проект своей команды.")
         # Optional comments are stored too, keeping completion and legacy analytics consistent.
         present = set(criteria_ids)
         for criterion in program.criterias.filter(type="str").exclude(pk__in=present):
             rating_data.append({"criterion_id": criterion.pk, "value": ""})
             criteria_ids.append(criterion.pk)
+
+    if (program.required_evaluators is not None or is_organizer) and (
+        Project.objects.filter(pk=project_id, leader=user).exists()
+        or Collaborator.objects.filter(project_id=project_id, user=user).exists()
+    ):
+        raise ValidationError("Нельзя оценивать проект своей команды.")
 
     for criterion in rating_data:
         criterion["user"] = user.id

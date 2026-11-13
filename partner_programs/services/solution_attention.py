@@ -8,6 +8,7 @@ from rest_framework.exceptions import ValidationError
 from partner_programs.serializers.attention_actions import MAX_SELECTION
 from partner_programs.services.solution_analytics import SolutionAnalyticsContext
 from partner_programs.solution_models import ProgramSolution
+from project_rates.program_experts import program_experts
 from project_rates.solution_models import SolutionExpertAssignment
 
 SOLUTION_AWAITING = "solutions-awaiting-evaluation"
@@ -68,8 +69,7 @@ def solution_recipient_targets(program, rows):
             solution__program=program,
             solution__status="submitted",
             solution__archived_at__isnull=True,
-            expert__programs=program,
-            expert__user__is_active=True,
+            expert_id__in=program_experts(program.pk).values("pk"),
         )
         .order_by("pk")
         .values("pk", "solution_id", "expert__user_id")

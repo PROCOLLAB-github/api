@@ -144,8 +144,8 @@ class SolutionExpertAssignment(models.Model):
 
     def clean(self):
         super().clean()
-        from users.models import Expert
         from project_rates.models import ExpertCaseScope
+        from project_rates.program_experts import program_experts
         from project_rates.workspace import eligible, target
 
         if not self.partner_program_id or not self.solution_id or not self.expert_id:
@@ -154,9 +154,7 @@ class SolutionExpertAssignment(models.Model):
         solution = ProgramSolution.all_objects.filter(pk=self.solution_id).first()
         if solution and solution.archived_at is not None:
             raise ValidationError({"solution": "Решение снято с участия."})
-        expert = Expert.objects.filter(
-            pk=self.expert_id, programs__pk=self.partner_program_id, user__is_active=True
-        ).first()
+        expert = program_experts(self.partner_program_id).filter(pk=self.expert_id).first()
         if expert is None:
             raise ValidationError(
                 {"expert": "Выберите активного эксперта этой программы."}

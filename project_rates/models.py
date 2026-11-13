@@ -195,14 +195,17 @@ class ProjectExpertAssignment(models.Model):
         ).exists()
 
     def clean(self):
+        from rest_framework.exceptions import APIException
+
+        from project_rates.program_experts import program_experts
+
         errors = {}
 
-        if (
-            self.expert_id
-            and self.partner_program_id
-            and not self.expert.programs.filter(id=self.partner_program_id).exists()
-        ):
-            errors["expert"] = "Эксперт не состоит в указанной программе."
+        expert = None
+        if self.expert_id and self.partner_program_id:
+            expert = program_experts(self.partner_program_id).filter(pk=self.expert_id).first()
+            if expert is None:
+                errors["expert"] = "Эксперт не состоит в указанной программе."
 
         if (
             self.project_id
@@ -213,6 +216,21 @@ class ProjectExpertAssignment(models.Model):
             ).exists()
         ):
             errors["project"] = "Проект не привязан к указанной программе."
+
+        if not errors and expert and expert.is_organizer and self.project_id:
+            previous = type(self).objects.filter(pk=self.pk).values_list(
+                "partner_program_id", "project_id", "expert_id"
+            ).first()
+            if previous != (self.partner_program_id, self.project_id, self.expert_id):
+                from project_rates.workspace import validate_organizer_project_assignments
+
+                try:
+                    validate_organizer_project_assignments(
+                        self.partner_program, expert, [self.project_id]
+                    )
+                except APIException as exc:
+                    detail = exc.detail.get("detail") if isinstance(exc.detail, dict) else exc.detail[0]
+                    errors["project"] = detail
 
         if self.partner_program_id and self.project_id:
             max_rates = self.partner_program.max_project_rates

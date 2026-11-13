@@ -506,6 +506,73 @@ class CaseDistributionTests(TestCase):
         self.assertEqual(applied.status_code, 200, applied.data)
         self.assertEqual(ProjectExpertAssignment.objects.count(), 2)
 
+    def test_managers_are_manual_only_even_when_sent_in_auto_case_pools(self):
+        self.program.managers.add(self.universal)
+        organizers = {self.manager.expert.pk, self.universal.expert.pk}
+        self.assertFalse(self.manager.expert.programs.filter(pk=self.program.pk).exists())
+        roster = {row["id"]: row for row in self.state()["experts"]}
+        self.assertTrue(all(roster[pk]["is_organizer"] for pk in organizers))
+        self.assertFalse(roster[self.sber.expert.pk]["is_organizer"])
+        ids = sorted(organizers | {self.sber.expert.pk})
+        command = {
+            "expert_ids": ids,
+            "project_ids": [self.projects[0].pk],
+            "case_pools": [{"case_name": "Сбер", "expert_ids": ids}],
+        }
+        preview = self.plan(**command)
+        self.assertEqual(preview.status_code, 200, preview.data)
+        self.assertEqual(
+            [row["expert_id"] for row in preview.data["assignments"]],
+            [self.sber.expert.pk],
+        )
+        self.assertEqual(preview.data["shortages"][0]["missing"], 1)
+        self.assertEqual(
+            self.plan(
+                **command,
+                assignment_overrides=[
+                    {"project_id": self.projects[0].pk, "expert_ids": sorted(organizers)}
+                ],
+            ).status_code,
+            400,
+        )
+
+        manual = self.write(self.projects[:1], [self.manager])
+        self.assertEqual(manual.status_code, 200, manual.data)
+        applied = self.plan(**command)
+        self.assertEqual(applied.status_code, 200, applied.data)
+        self.assertEqual(applied.data["shortages"], [])
+        response = self.client.post(
+            self.root + "expert-allocation/apply/",
+            {"plan_token": applied.data["plan_token"]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(
+            set(
+                ProjectExpertAssignment.objects.filter(
+                    project=self.projects[0]
+                ).values_list("expert_id", flat=True)
+            ),
+            {self.manager.expert.pk, self.sber.expert.pk},
+        )
+
+    def test_promoting_an_independent_expert_invalidates_a_signed_plan(self):
+        preview = self.plan(project_ids=[self.projects[0].pk])
+        self.assertEqual(preview.status_code, 200, preview.data)
+        self.assertFalse(preview.data["shortages"])
+        self.program.managers.add(self.universal)
+        self.assertTrue(
+            self.universal.expert.programs.filter(pk=self.program.pk).exists()
+        )
+        response = self.client.post(
+            self.root + "expert-allocation/apply/",
+            {"plan_token": preview.data["plan_token"]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 409, response.data)
+        self.assertEqual(response.data["code"], "stale_assignments")
+        self.assertFalse(ProjectExpertAssignment.objects.exists())
+
     def test_auto_apply_rechecks_limit_after_restoring_historical_assignments(self):
         self.program.required_evaluators = None
         self.program.max_project_rates = 1

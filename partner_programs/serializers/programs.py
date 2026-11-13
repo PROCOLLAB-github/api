@@ -12,6 +12,7 @@ from partner_programs.models import (
 )
 from projects.models import Project
 from projects.validators import validate_project
+from project_rates.program_experts import can_evaluate_program
 
 from .fields import PartnerProgramFieldValueUpdateSerializer
 
@@ -146,9 +147,7 @@ class PartnerProgramBaseSerializerMixin(serializers.ModelSerializer):
         user = self.context.get("user") or getattr(
             self.context.get("request"), "user", None
         )
-        return bool(
-            user and user.is_authenticated and program.experts.filter(user=user).exists()
-        )
+        return can_evaluate_program(user, program.pk)
 
     def get_pending_expert_invitation_id(self, program):
         from django.utils import timezone
@@ -157,6 +156,8 @@ class PartnerProgramBaseSerializerMixin(serializers.ModelSerializer):
             self.context.get("request"), "user", None
         )
         if not user or not user.is_authenticated or not user.is_active:
+            return None
+        if program.experts.filter(user_id=user.pk).exists():
             return None
         return (
             program.expert_invitations.filter(
