@@ -90,6 +90,38 @@
 - `limit`, по умолчанию `20`;
 - `offset`.
 
+## Каналы программ
+
+`GET /chats/channels/` и `GET /chats/channels/<id>/` возвращают сведения о канале,
+последнюю видимую публикацию, `can_publish`, персональные `unread_count` и
+`first_unread_message_id`. ID канала совпадает с ID программы. История и
+вложения доступны зарегистрированным участникам и менеджерам опубликованной программы.
+При возврате программы в черновик доступ закрывается, история сохраняется.
+
+- `GET /chats/channels/<id>/messages/` возвращает историю и поддерживает
+  `q`, `scope` и `author_id`. Переход к совпадению использует
+  `GET /chats/channels/<id>/messages/<message_id>/context/`.
+- `POST /chats/channels/<id>/messages/` принимает `text`, `file_urls` из
+  загрузки `POST /files/?preserve_original=true` и необязательный UUID
+  `client_message_id`. Повтор с тем же UUID возвращает исходную публикацию.
+  Менеджер может изменить или удалить свою публикацию через `PATCH` или
+  `DELETE /chats/channels/<id>/messages/<message_id>/`. Эти действия также
+  доступны из раздела «Каналы программ» в Django-админке.
+- `POST /chats/channels/<id>/read/` с `message_id` отмечает историю до этой
+  публикации включительно для текущего пользователя.
+- `GET /chats/channels/<id>/files/` возвращает вложения. Для скачивания
+  используйте `link` с авторизацией пользователя.
+
+WebSocket посылает `program_channel_changed` с `content.channel_id` после
+сохранения публикации, правки или удаления. После события или переподключения
+клиент вызывает `GET /chats/channels/<id>/messages/changes/?after=<cursor>`.
+Первый курсор берется из `sync_cursor` обычной истории, последующие из
+`next_cursor` ответа. Клиент применяет изменения по `message_id` и продолжает,
+пока `has_more` равно `true`. При `409` клиент заново загружает историю.
+Если канал стал доступен уже после подключения, отправьте событие
+`subscribe_program_channel` с `content.channel_id` и дождитесь подтверждения
+того же типа.
+
 ## WebSocket
 
 WebSocket endpoint:

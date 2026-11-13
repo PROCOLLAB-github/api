@@ -29,9 +29,10 @@ from chats.message_context import (
     MessageContextForm,
     get_message_context,
 )
-from chats.models import DirectChat, DirectChatMessage, ProjectChat
+from chats.models import DirectChat, DirectChatMessage, ProgramChannel, ProjectChat
 from chats.pagination import MessageListPagination
 from chats.permissions import IsProjectChatMember, IsChatMember, accessible_chats
+from chats.program_channels import channel_unread_messages
 from chats.project_reads import (
     unread_project_messages,
     with_project_chat_unreads,
@@ -292,7 +293,7 @@ class ChatMessageContext(GenericAPIView):
             queryset = with_project_message_reads(
                 queryset, request.user.pk, include_reply=True
             )
-        else:
+        elif isinstance(chat, DirectChat):
             queryset = queryset.select_related("reply_to__author")
         context = get_message_context(chat, queryset, message_id, **form.cleaned_data)
         return Response(
@@ -367,7 +368,7 @@ class ChatMessageChanges(GenericAPIView):
             changed = with_project_message_reads(
                 changed, request.user.pk, include_reply=True
             )
-        else:
+        elif isinstance(chat, DirectChat):
             changed = changed.select_related("reply_to__author")
         page = list(changed[: limit + 1])
         has_more = len(page) > limit
@@ -395,6 +396,7 @@ class ChatMessageChanges(GenericAPIView):
 
 
 class ChatFileList(ListAPIView):
+    chat_model = None
     serializer_class = ChatAttachmentSerializer
     permission_classes = [IsAuthenticated]
 
@@ -404,7 +406,9 @@ class ChatFileList(ListAPIView):
         chat = get_accessible_chat(self.request.user, self.chat_model, self.kwargs["id"])
         return (
             chat_attachments(chat)
-            .select_related("file", "direct_message", "project_message")
+            .select_related(
+                "file", "direct_message", "project_message", "channel_message"
+            )
             .order_by("file__datetime_uploaded", "pk")
         )
 
@@ -472,6 +476,17 @@ class HasChatUnreadsView(GenericAPIView):
             .filter(chat_id__in=user.get_project_chats().values("pk"))
             .exists()
         )
+        has_channel_messages_unread = (
+            channel_unread_messages(user.pk)
+            .filter(chat_id__in=accessible_chats(user, ProgramChannel).values("pk"))
+            .exists()
+        )
         return Response(
-            {"has_unreads": has_direct_messages_unread or has_project_messages_unread}
+            {
+                "has_unreads": (
+                    has_direct_messages_unread
+                    or has_project_messages_unread
+                    or has_channel_messages_unread
+                )
+            }
         )

@@ -9,6 +9,7 @@ from django.conf import settings
 from django.core.cache import cache
 from django.utils import timezone
 
+from chats.channel_events import channel_group
 from chats.exceptions import ChatException
 from chats.permissions import accessible_chats, direct_chat_is_accessible
 from chats.project_reads import personalize_project_message_event
@@ -25,7 +26,7 @@ from core.utils import get_user_online_cache_key, get_users_online_cache_key
 from users.models import CustomUser
 from chats.consumers.event_types import DirectEvent, ProjectEvent
 from chats.utils import get_chat_and_user_ids_from_content
-from chats.models import ProjectChat
+from chats.models import ProgramChannel, ProjectChat
 
 
 @database_sync_to_async
@@ -36,6 +37,16 @@ def get_user_project_ids(user) -> list[int]:
 @database_sync_to_async
 def can_access_project_chat(user, chat_id):
     return accessible_chats(user, ProjectChat).filter(pk=chat_id).exists()
+
+
+@database_sync_to_async
+def get_user_channel_ids(user):
+    return list(accessible_chats(user, ProgramChannel).values_list("pk", flat=True))
+
+
+@database_sync_to_async
+def can_access_program_channel(user, channel_id):
+    return accessible_chats(user, ProgramChannel).filter(pk=channel_id).exists()
 
 
 class ChatConsumer(AsyncJsonWebsocketConsumer):
@@ -62,6 +73,8 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 await self._ensure_room_subscription(
                     f"{EventGroupType.CHATS_RELATED}_{project_id}"
                 )
+            for channel_id in await get_user_channel_ids(self.user):
+                await self._ensure_room_subscription(channel_group(channel_id))
 
         # set user online
         user_cache_key = get_user_online_cache_key(self.user)
@@ -169,6 +182,8 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             except KeyError as e:
                 await self.send_json({"error": f"В запросе отсутствует поле {e}."})
 
+        elif event.type == EventType.SUBSCRIBE_PROGRAM_CHANNEL:
+            await self.subscribe_program_channel(event.content)
         elif event.type in [EventType.SET_ONLINE, EventType.SET_OFFLINE]:
             room_name = EventGroupType.GENERAL_EVENTS
             await self.__process_general_event(event, room_name)
@@ -273,6 +288,31 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
     async def edit_message(self, event: Event):
         await self._send_chat_event(event)
+
+    async def subscribe_program_channel(self, content):
+        channel_id = content.get("channel_id") if isinstance(content, dict) else None
+        if type(channel_id) is not int or not 0 < channel_id < 2**63:
+            await self.send_json({"error": "Некорректный идентификатор канала."})
+            return
+        if not await can_access_program_channel(self.user, channel_id):
+            await self.send_json({"error": "Канал недоступен."})
+            return
+        await self._ensure_room_subscription(channel_group(channel_id))
+        await self.send_json(
+            {
+                "type": EventType.SUBSCRIBE_PROGRAM_CHANNEL,
+                "content": {"channel_id": channel_id},
+            }
+        )
+
+    async def program_channel_changed(self, event):
+        channel_id = event["content"]["channel_id"]
+        if self.user and await can_access_program_channel(self.user, channel_id):
+            await self.send_json(event)
+        else:
+            room_name = channel_group(channel_id)
+            await self.channel_layer.group_discard(room_name, self.channel_name)
+            self.joined_rooms.discard(room_name)
 
     async def __process_general_event(self, event: Event, room_name: str):
         cache_key = get_user_online_cache_key(self.user)

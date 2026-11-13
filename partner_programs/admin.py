@@ -12,6 +12,8 @@ from django.http import HttpRequest
 from django.urls import path
 from django.utils import timezone
 
+from chats.models import ProgramChannel
+from chats.permissions import accessible_chats
 from core.utils import XlsxFileToExport, build_xlsx_download_response
 from mailing.views import MailingTemplateRender
 from partner_programs.models import (
@@ -189,6 +191,12 @@ class PartnerProgramAdmin(
             form.instance.managers.add(request.user)
 
     def change_view(self, request, object_id, form_url="", extra_context=None):
+        extra_context = {
+            **(extra_context or {}),
+            "can_open_program_channel": accessible_chats(request.user, ProgramChannel)
+            .filter(pk=self._program_id(object_id))
+            .exists(),
+        }
         if "Руководитель программы" in request.user.groups.all().values_list(
             "name", flat=True
         ):
@@ -199,6 +207,13 @@ class PartnerProgramAdmin(
             self.change_form_template = "partner_programs/admin/programs_change_form.html"
 
         return super().change_view(request, object_id, form_url, extra_context)
+
+    @staticmethod
+    def _program_id(object_id):
+        try:
+            return int(object_id)
+        except (ValueError, TypeError):
+            return None
 
     def get_urls(self):
         default_urls = super(PartnerProgramAdmin, self).get_urls()

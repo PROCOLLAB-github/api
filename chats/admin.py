@@ -1,5 +1,7 @@
 from functools import partial
+from uuid import uuid4
 
+import requests
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django import forms
@@ -8,6 +10,7 @@ from django.core.exceptions import PermissionDenied
 from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.db import transaction
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
@@ -23,13 +26,18 @@ from chats.models import (
     ProjectChatMessage,
     DirectChatMessage,
     FileToMessage,
+    ProgramChannel,
 )
-from chats.permissions import accessible_chats
+from chats.permissions import accessible_chats, can_publish_in_program_channel
+from chats.program_channels import mark_channel_read, publish_channel_message
 from chats.project_reads import mark_project_message_read, publish_project_message_read
 from chats.search import ChatMessageSearchForm, search_chat_messages
 from chats.services.messages import delete_message, edit_message
 from chats.utils import get_user_channel_cache_key
 from chats.websockets_settings import ChatType, EventGroupType, EventType
+from files.models import UserFile
+from files.exceptions import SelectelUploadError
+from files.service import CDN, SelectelSwiftStorage, create_user_upload
 
 
 @admin.display(description="Пользователи чата")
@@ -51,7 +59,7 @@ class ChatSearchAdmin(admin.ModelAdmin):
 
     def get_urls(self):
         object_path = (
-            "<int:object_id>" if self.model is ProjectChat else "<slug:object_id>"
+            "<slug:object_id>" if self.model is DirectChat else "<int:object_id>"
         )
         return [
             path(
@@ -110,6 +118,7 @@ class ChatSearchAdmin(admin.ModelAdmin):
                 "form": form,
                 "page": page,
                 "chat": chat,
+                **self.extra_channel_context(request, chat),
                 "message_context_route": "admin:"
                 + self.message_search_url_name
                 + "_context",
@@ -127,6 +136,9 @@ class ChatSearchAdmin(admin.ModelAdmin):
         if not self.has_view_or_change_permission(request, chat):
             raise PermissionDenied
         return chat
+
+    def extra_channel_context(self, request, chat):
+        return {}
 
     def attachment_download(self, request, object_id, message_id, attachment_id):
         chat = self.get_chat_for_member(request, object_id)
@@ -162,10 +174,11 @@ class ChatSearchAdmin(admin.ModelAdmin):
                                 **change, text=form.cleaned_data["text"]
                             )
                         }
-                    transaction.on_commit(
-                        partial(self.publish_change, chat, event_type, content),
-                        robust=True,
-                    )
+                    if not isinstance(chat, ProgramChannel):
+                        transaction.on_commit(
+                            partial(self.publish_change, chat, event_type, content),
+                            robust=True,
+                        )
             except MessageValidationException as error:
                 form.add_error(None, str(error))
             else:
@@ -183,6 +196,7 @@ class ChatSearchAdmin(admin.ModelAdmin):
                 "opts": self.model._meta,
                 "title": "Изменение сообщения",
                 "chat": chat,
+                **self.extra_channel_context(request, chat),
                 "message": message,
                 "form": form,
                 "message_context_route": search_route + "_context",
@@ -237,6 +251,7 @@ class ChatSearchAdmin(admin.ModelAdmin):
                 "opts": self.model._meta,
                 "title": "Сообщение в переписке",
                 "chat": chat,
+                **self.extra_channel_context(request, chat),
                 "context_form": form,
                 "context": context,
                 "anchor_id": (
@@ -265,6 +280,164 @@ class OwnMessageForm(forms.Form):
             "invalid_choice": "Выберите доступное действие.",
         },
     )
+
+
+class ChannelPublicationForm(forms.Form):
+    text = forms.CharField(
+        label="Текст публикации", required=False, strip=False, widget=forms.Textarea
+    )
+    files = forms.ModelMultipleChoiceField(
+        label="Мои загруженные файлы", queryset=UserFile.objects.none(), required=False
+    )
+    client_message_id = forms.UUIDField(
+        widget=forms.HiddenInput,
+        error_messages={"invalid": "Некорректный номер публикации."},
+    )
+
+    def __init__(self, user, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["files"].queryset = UserFile.objects.filter(user=user).order_by(
+            "-datetime_uploaded"
+        )
+
+
+class ChannelUploadForm(forms.Form):
+    file = forms.FileField(label="Файл")
+
+
+@admin.register(ProgramChannel)
+class ProgramChannelAdmin(ChatSearchAdmin):
+    list_display = ("program", "message_search_link")
+    list_display_links = None
+    cdn = CDN(storage=SelectelSwiftStorage())
+
+    def get_queryset(self, request):
+        return accessible_chats(request.user, ProgramChannel).select_related("program")
+
+    def has_view_permission(self, request, obj=None):
+        if obj is None:
+            return accessible_chats(request.user, ProgramChannel).exists()
+        return accessible_chats(request.user, ProgramChannel).filter(pk=obj.pk).exists()
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def get_urls(self):
+        return [
+            path(
+                "<int:object_id>/publish/",
+                self.admin_site.admin_view(
+                    require_http_methods(["GET", "POST"])(self.publish_message)
+                ),
+                name=self.message_search_url_name + "_publish",
+            ),
+            path(
+                "<int:object_id>/messages/<int:message_id>/read/",
+                self.admin_site.admin_view(
+                    require_http_methods(["POST"])(self.read_message)
+                ),
+                name=self.message_search_url_name + "_read",
+            ),
+        ] + super().get_urls()
+
+    def extra_channel_context(self, request, chat):
+        prefix = "admin:" + self.message_search_url_name
+        return {
+            "channel_read_route": prefix + "_read",
+            "channel_publish_url": (
+                reverse(prefix + "_publish", args=[chat.pk])
+                if can_publish_in_program_channel(request.user, chat.program)
+                else None
+            ),
+        }
+
+    def change_own_message(self, request, object_id, message_id):
+        chat = self.get_chat_for_member(request, object_id)
+        if not can_publish_in_program_channel(request.user, chat.program):
+            raise PermissionDenied("Публикации доступны менеджерам программы.")
+        return super().change_own_message(request, object_id, message_id)
+
+    def publish_message(self, request, object_id):
+        chat = self.get_chat_for_member(request, object_id)
+        if not can_publish_in_program_channel(request.user, chat.program):
+            raise PermissionDenied("Публикации доступны менеджерам программы.")
+        posted = request.method == "POST"
+        uploading = posted and request.POST.get("action") == "upload"
+        form = ChannelPublicationForm(
+            request.user,
+            request.POST if posted and not uploading else None,
+            initial={"client_message_id": uuid4()},
+        )
+        upload_form = ChannelUploadForm(
+            request.POST if uploading else None, request.FILES if uploading else None
+        )
+        if uploading and upload_form.is_valid():
+            try:
+                upload = create_user_upload(
+                    self.cdn,
+                    upload_form.cleaned_data["file"],
+                    request.user,
+                    preserve_original=True,
+                )
+            except (requests.RequestException, SelectelUploadError, KeyError):
+                upload_form.add_error(
+                    "file", "Не удалось загрузить файл. Повторите попытку."
+                )
+            else:
+                form.initial["files"] = [upload.pk]
+                self.message_user(request, "Файл загружен и выбран для публикации.")
+        if posted and not uploading and form.is_valid():
+            try:
+                publication, _ = publish_channel_message(
+                    channel_id=chat.pk,
+                    author=request.user,
+                    text=form.cleaned_data["text"],
+                    file_urls=[file.pk for file in form.cleaned_data["files"]],
+                    client_message_id=form.cleaned_data["client_message_id"],
+                )
+            except MessageValidationException as error:
+                form.add_error(None, str(error))
+            else:
+                self.message_user(request, "Публикация сохранена.")
+                return redirect(
+                    "admin:" + self.message_search_url_name + "_context",
+                    chat.pk,
+                    publication["id"],
+                )
+        return TemplateResponse(
+            request,
+            "admin/chats/channel_publish.html",
+            {
+                **self.admin_site.each_context(request),
+                "opts": self.model._meta,
+                "title": "Новая публикация в канале",
+                "form": form,
+                "upload_form": upload_form,
+                "back_url": reverse(
+                    "admin:" + self.message_search_url_name, args=[chat.pk]
+                ),
+            },
+            status=400 if form.errors or upload_form.errors else 200,
+        )
+
+    def read_message(self, request, object_id, message_id):
+        chat = self.get_chat_for_member(request, object_id)
+        try:
+            mark_channel_read(
+                channel_id=chat.pk, user=request.user, message_id=message_id
+            )
+        except MessageValidationException as error:
+            raise Http404(str(error)) from error
+        self.message_user(request, "Публикации отмечены прочитанными.")
+        return redirect(
+            "admin:" + self.message_search_url_name + "_context", chat.pk, message_id
+        )
 
 
 @admin.register(ProjectChat)

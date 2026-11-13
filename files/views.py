@@ -1,10 +1,12 @@
+import requests
 from django.db import transaction
 from rest_framework import generics
 from rest_framework import permissions, status
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
-from files.service import CDN, SelectelSwiftStorage
+from files.exceptions import SelectelUploadError
+from files.service import CDN, SelectelSwiftStorage, create_user_upload
 from files.models import UserFile
 from files.serializers import UserFileSerializer
 
@@ -43,21 +45,19 @@ class FileView(generics.GenericAPIView):
                 },
                 status=400,
             )
-        info = (
-            self.cdn.upload(request.FILES["file"], request.user, preserve_original=True)
-            if original == "true"
-            else self.cdn.upload(request.FILES["file"], request.user)
-        )
-        UserFile.objects.create(
-            user=request.user,
-            link=info.url,
-            name=info.name,
-            size=info.size,
-            extension=info.extension,
-            mime_type=info.mime_type,
-            detected_mime_type=info.detected_mime_type,
-        )
-        return Response({"url": info.url}, status=status.HTTP_201_CREATED)
+        try:
+            upload = create_user_upload(
+                self.cdn,
+                request.FILES["file"],
+                request.user,
+                preserve_original=original == "true",
+            )
+        except (requests.RequestException, SelectelUploadError, KeyError):
+            return Response(
+                {"detail": "Не удалось загрузить файл. Повторите попытку."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+        return Response({"url": upload.pk}, status=status.HTTP_201_CREATED)
 
     @transaction.atomic
     def delete(self, request, *args, **kwargs):

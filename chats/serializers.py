@@ -7,6 +7,7 @@ from chats.models import (
     ProjectChat,
     DirectChatMessage,
     ProjectChatMessage,
+    ProgramChannelMessage,
 )
 from chats.project_reads import project_message_is_read, with_project_message_reads
 from files.serializers import UserFileSerializer
@@ -27,10 +28,11 @@ class ChatAttachmentSerializer(serializers.ModelSerializer):
     link = serializers.SerializerMethodField()
 
     def get_link(self, attachment) -> str:
-        message = self.context.get("message") or (
-            attachment.project_message
-            if attachment.project_message_id is not None
-            else attachment.direct_message
+        message = (
+            self.context.get("message")
+            or attachment.channel_message
+            or attachment.project_message
+            or attachment.direct_message
         )
         return attachment_download_url(attachment, message)
 
@@ -83,6 +85,27 @@ class DirectChatListSerializer(serializers.ModelSerializer):
     class Meta:
         model = DirectChat
         fields = ["id", "opponent", "last_message", "name", "image_address"]
+
+
+class ProgramChannelMessageSerializer(serializers.ModelSerializer):
+    author = UserChatSerializer(allow_null=True)
+    files = serializers.SerializerMethodField()
+
+    @staticmethod
+    def get_files(message):
+        return serialize_message_attachments(message)
+
+    class Meta:
+        model = ProgramChannelMessage
+        fields = [
+            "id",
+            "author",
+            "text",
+            "client_message_id",
+            "files",
+            "is_edited",
+            "created_at",
+        ]
 
 
 class DirectChatDetailSerializer(serializers.ModelSerializer):
