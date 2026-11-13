@@ -6,8 +6,18 @@ from django.core.exceptions import PermissionDenied
 from django.forms import ModelForm, FileField
 from django.db.models import QuerySet
 
+from chats.attachments import ATTACHMENT_IN_USE, used_by_visible_chat_message
 from files.service import CDN, SelectelSwiftStorage
 from files.models import UserFile
+from partner_programs.solution_files import used_by_submitted_solution
+
+
+def file_deletion_error(file):
+    if used_by_submitted_solution(file.pk):
+        return "Файл используется в сохраненном решении."
+    if used_by_visible_chat_message(file.pk):
+        return ATTACHMENT_IN_USE
+    return None
 
 
 class UserFileForm(ModelForm):
@@ -24,14 +34,12 @@ class UserFileAdmin(admin.ModelAdmin):
     readonly_fields = ("detected_mime_type",)
 
     def get_deleted_objects(self, objs, request):
-        from partner_programs.solution_files import used_by_submitted_solution
-
         deleted, counts, permissions_needed, protected = super().get_deleted_objects(
             objs, request
         )
         for obj in objs:
-            if used_by_submitted_solution(obj.pk):
-                protected.append(f"Файл сохраненного решения: {obj}")
+            if error := file_deletion_error(obj):
+                protected.append(f"{obj} — {error}")
         return deleted, counts, permissions_needed, protected
 
     list_display = (
@@ -92,21 +100,18 @@ class UserFileAdmin(admin.ModelAdmin):
 
     @transaction.atomic
     def delete_model(self, request, obj):
-        from partner_programs.solution_files import used_by_submitted_solution
-
         obj = UserFile.objects.select_for_update().get(pk=obj.pk)
-        if used_by_submitted_solution(obj.pk):
-            raise PermissionDenied("Файл используется в сохраненном решении.")
+        if error := file_deletion_error(obj):
+            raise PermissionDenied(error)
         self.cdn.delete(obj.link)
         obj.delete()
 
     @transaction.atomic
     def delete_queryset(self, request, queryset):
-        from partner_programs.solution_files import used_by_submitted_solution
-
         rows = list(queryset.select_for_update().order_by("pk"))
-        if any(used_by_submitted_solution(obj.pk) for obj in rows):
-            raise PermissionDenied("Файл используется в сохраненном решении.")
+        for obj in rows:
+            if error := file_deletion_error(obj):
+                raise PermissionDenied(error)
         for obj in rows:
             self.cdn.delete(obj.link)
         queryset.delete()

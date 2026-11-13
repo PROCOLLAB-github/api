@@ -1032,9 +1032,27 @@ class FileToMessageAdmin(admin.ModelAdmin):
         "file",
         "direct_message",
         "project_message",
+        "channel_message",
     )
     list_display_links = (
         "file",
         "direct_message",
         "project_message",
+        "channel_message",
     )
+
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        return queryset if request.user.is_superuser else queryset.none()
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

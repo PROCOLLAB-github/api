@@ -1,3 +1,4 @@
+from django.db.models import Q
 from django.http import Http404
 from django.urls import reverse
 
@@ -30,6 +31,20 @@ ATTACHMENT_FIELDS = {
     ProjectChat: "project_message",
     ProgramChannel: "channel_message",
 }
+ATTACHMENT_IN_USE = "Файл прикреплен к опубликованному сообщению."
+
+
+def used_by_visible_chat_message(file_id, *, using=None):
+    return (
+        FileToMessage.objects.using(using)
+        .filter(file_id=file_id)
+        .filter(
+            Q(direct_message__is_deleted=False)
+            | Q(project_message__is_deleted=False)
+            | Q(channel_message__is_deleted=False)
+        )
+        .exists()
+    )
 
 
 def chat_attachment_field(chat):

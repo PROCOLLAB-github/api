@@ -4,7 +4,11 @@ from uuid import uuid4
 import requests
 from channels.testing import HttpCommunicator, WebsocketCommunicator
 from django.contrib.auth import get_user_model
+from django.contrib.admin import AdminSite
+from django.core.exceptions import PermissionDenied
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import transaction
+from django.db.models.deletion import ProtectedError
 from django.test import (
     AsyncClient,
     AsyncRequestFactory,
@@ -14,6 +18,7 @@ from django.test import (
     override_settings,
 )
 from django.urls import reverse
+from django.test import RequestFactory
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import AccessToken
 
@@ -21,7 +26,9 @@ from chats.models import DirectChat, DirectChatMessage, FileToMessage, ProjectCh
 from chats.tests.constants import TEST_USER1, TEST_USER2, TEST_USER3
 from chats.tests.test_project_reads import create_project_chat
 from files.downloads import download_stored_file
+from files.admin import UserFileAdmin
 from files.models import UserFile
+from files.views import FileView
 from procollab.asgi import application
 from projects.models import Collaborator
 
@@ -111,6 +118,61 @@ class ChatAttachmentDownloadTests(TestCase):
                 self.assertEqual(files[0]["link"], link)
                 self.assertEqual(files[0]["name"], "План проекта")
                 self.assertNotIn(STORAGE, str(history) + str(files))
+
+    def test_published_attachment_is_retained_until_message_is_deleted(self):
+        self.api.force_authenticate(self.author)
+        for attachment, message in (
+            (self.direct_attachment, self.direct_message),
+            (self.project_attachment, self.project_message),
+        ):
+            with self.subTest(message=message):
+                query = {"QUERY_STRING": "link=" + attachment.file_id}
+                with patch.object(FileView.cdn, "delete") as storage_delete:
+                    response = self.api.delete("/files/", secure=True, **query)
+                    self.assertEqual(response.status_code, 409)
+                    self.assertEqual(response.json()["code"], "chat_attachment_in_use")
+                    storage_delete.assert_not_called()
+                    with self.assertRaises(ProtectedError), transaction.atomic():
+                        UserFile.objects.filter(pk=attachment.file_id).delete()
+                    self.assertTrue(
+                        FileToMessage.objects.filter(pk=attachment.pk).exists()
+                    )
+
+                    message.is_deleted = True
+                    message.save(update_fields=["is_deleted"])
+                    self.assertEqual(
+                        self.api.delete("/files/", secure=True, **query).status_code, 204
+                    )
+                    storage_delete.assert_called_once_with(attachment.file_id)
+                self.assertFalse(UserFile.objects.filter(pk=attachment.file_id).exists())
+
+    def test_admin_bulk_delete_checks_every_file_before_contacting_storage(self):
+        unused = UserFile.objects.create(link=STORAGE + "unused.pdf", user=self.author)
+        files = UserFile.objects.filter(
+            pk__in=[unused.pk, self.project_attachment.file_id]
+        )
+        request = RequestFactory().post("/admin/files/userfile/")
+        request.user = self.member
+        file_admin = UserFileAdmin(UserFile, AdminSite())
+        with patch.object(file_admin.cdn, "delete") as storage_delete:
+            with self.assertRaises(PermissionDenied):
+                file_admin.delete_queryset(request, files)
+            storage_delete.assert_not_called()
+        self.assertEqual(files.count(), 2)
+
+    def test_attachment_link_admin_is_read_only(self):
+        self.client.force_login(self.member)
+        route = "admin:chats_filetomessage"
+        self.assertEqual(
+            self.client.get(reverse(route + "_changelist"), secure=True).status_code, 200
+        )
+        url = reverse(route + "_delete", args=[self.project_attachment.pk])
+        self.assertEqual(
+            self.client.post(url, {"post": "yes"}, secure=True).status_code, 403
+        )
+        self.assertTrue(
+            FileToMessage.objects.filter(pk=self.project_attachment.pk).exists()
+        )
 
     @patch("files.downloads.SelectelSwiftStorage._get_auth_token", return_value=TOKEN)
     @patch("files.downloads.requests.get")

@@ -219,6 +219,19 @@ class ProgramChannelTests(TestCase):
         PartnerProgram.objects.filter(pk=self.program.pk).update(draft=False)
         self.assertEqual(self.api.get(self.history, secure=True).json()["count"], 1)
 
+    def test_uploaded_file_cannot_be_removed_from_a_visible_publication(self):
+        published = self.publish(file_urls=[self.file.pk])
+        self.assertEqual(published.status_code, 201)
+        with patch("files.views.FileView.cdn.delete") as storage_delete:
+            response = self.api.delete(
+                "/files/", QUERY_STRING="link=" + self.file.pk, secure=True
+            )
+            self.assertEqual(response.status_code, 409)
+            self.assertEqual(response.json()["code"], "chat_attachment_in_use")
+            storage_delete.assert_not_called()
+        history = self.api.get(self.history, secure=True).json()
+        self.assertEqual(history["results"][0]["files"], published.json()["files"])
+
     @patch("files.service.requests.put")
     @patch("files.service.SelectelSwiftStorage._get_auth_token", return_value="test")
     def test_failed_storage_upload_does_not_create_an_attachment(self, _token, put):

@@ -5,6 +5,7 @@ from rest_framework import permissions, status
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
+from chats.attachments import ATTACHMENT_IN_USE, used_by_visible_chat_message
 from files.exceptions import SelectelUploadError
 from files.service import CDN, SelectelSwiftStorage, create_user_upload
 from files.models import UserFile
@@ -84,6 +85,11 @@ class FileView(generics.GenericAPIView):
             protect_solution_file(instance)
         except SolutionError as error:
             return Response(error.payload, status=error.status_code)
+        if used_by_visible_chat_message(instance.pk):
+            return Response(
+                {"code": "chat_attachment_in_use", "detail": ATTACHMENT_IN_USE},
+                status=status.HTTP_409_CONFLICT,
+            )
         self.cdn.delete(instance.link)  # delete the file via api
         instance.delete()  # delete the UserFile object
         return Response(status=status.HTTP_204_NO_CONTENT)
