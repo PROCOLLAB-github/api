@@ -14,10 +14,11 @@ from partner_programs.solution_team import program_for
 from project_rates.allocation_alternatives import alternative_pairs
 from project_rates.evaluation_math import complete_values
 from project_rates.models import Criteria
+from project_rates.program_experts import program_experts
 from project_rates.solution_assignments import check_revision, revision, enable_workspace
 from project_rates.solution_evaluation import snapshot_case, snapshot_name, team_user_ids
 from project_rates.solution_models import SolutionExpertAssignment, SolutionScore
-from project_rates.workspace import eligible, target
+from project_rates.workspace import eligible, expert_rows, target
 
 SALT = "solution-expert-allocation"
 
@@ -30,30 +31,35 @@ def require_mode(program):
 
 
 def assignment_snapshot(program, *, include_historical=True):
-    pairs = set(
-        program.solution_expert_assignments.values_list("solution_id", "expert_id")
-    )
-    members = dict(program.experts.values_list("user_id", "pk"))
+    pairs = {
+        (sid, eid): uid
+        for sid, eid, uid in program.solution_expert_assignments.values_list(
+            "solution_id", "expert_id", "expert__user_id"
+        )
+    }
     values = defaultdict(dict)
     for solution_id, user_id, criterion_id, value in SolutionScore.objects.filter(
         criteria__partner_program=program,
         solution__program=program,
         solution__archived_at__isnull=True,
     ).values_list("solution_id", "user_id", "criteria_id", "value"):
-        if user_id in members:
-            pair = (solution_id, members[user_id])
-            values[pair][criterion_id] = value
-            # Предпросмотр учитывает те же исторические назначения, что явный opt-in.
-            if include_historical and program.required_evaluators is None:
-                pairs.add(pair)
+        values[solution_id, user_id][criterion_id] = value
+    if include_historical and program.required_evaluators is None:
+        # Предпросмотр учитывает те же исторические назначения, что явный opt-in.
+        members = dict(
+            program_experts(program.pk, active_only=False).values_list("user_id", "pk")
+        )
+        for solution_id, user_id in values:
+            if user_id in members:
+                pairs[solution_id, members[user_id]] = user_id
     criteria = list(Criteria.objects.filter(partner_program=program).order_by("pk"))
     return [
         dict(
             solution_id=sid,
             expert_id=eid,
-            is_completed=complete_values(criteria, values[(sid, eid)]),
+            is_completed=complete_values(criteria, values.get((sid, uid), {})),
         )
-        for sid, eid in sorted(pairs)
+        for (sid, eid), uid in sorted(pairs.items())
     ]
 
 
@@ -74,10 +80,8 @@ def load_plan(token, program):
 
 def allocation(program, data):
     require_mode(program)
-    check_revision(program, data["revision"])
-    all_experts = list(
-        program.experts.filter(user__is_active=True).select_related("user").order_by("pk")
-    )
+    rev = check_revision(program, data["revision"])
+    all_experts = expert_rows(program)
     selected = set(data["expert_ids"])
     if (not selected and "case_pools" not in data) or selected - {
         e.pk for e in all_experts
@@ -87,6 +91,7 @@ def allocation(program, data):
             "Выберите активных экспертов этой программы.",
             status=400,
         )
+    organizers = {e.pk for e in all_experts if e.is_organizer}
     scopes = {scope.expert_id: scope for scope in program.expert_case_scopes.all()}
     field = get_program_case_field(program)
     cases = field.get_options_list() if field else []
@@ -94,7 +99,8 @@ def allocation(program, data):
     if "case_pools" in data:
         pools = {}
         for pool in data["case_pools"]:
-            name, members = pool["case_name"], set(pool["expert_ids"])
+            name = pool["case_name"]
+            members = set(pool["expert_ids"]) - organizers
             if name in pools or (name is not None and name not in cases):
                 raise SolutionError(
                     "invalid_assignments",
@@ -110,7 +116,11 @@ def allocation(program, data):
                     status=400,
                 )
             pools[name] = members
-    experts = [expert for expert in all_experts if expert.pk in selected]
+    experts = [
+        expert
+        for expert in all_experts
+        if expert.pk in selected and expert.pk not in organizers
+    ]
     solutions = list(program.solutions.filter(status="submitted").order_by("pk"))
     if "solution_ids" in data:
         selected_solutions = set(data["solution_ids"])
@@ -245,7 +255,6 @@ def allocation(program, data):
     pairs = {(row["solution_id"], row["expert_id"]) for row in additions}
     added = Counter(eid for _, eid in pairs)
     remaining = before + added
-    rev = revision(program)
     token = signing.dumps(
         dict(
             program_id=program.pk,

@@ -46,7 +46,7 @@ def expert_widget_metrics(program, user):
     if mode == "open" or not program.is_competitive:
         return {"mode": mode, "assigned": None, "remaining": None}
     counts = (
-        annotated_assignment_queryset(program.pk)
+        annotated_assignment_queryset(program.pk, expert_completion=True)
         .filter(expert__user_id=user.pk)
         .aggregate(
             assigned=Count("pk"),

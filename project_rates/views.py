@@ -1,9 +1,10 @@
 from rest_framework import generics, status
 from rest_framework.response import Response
-from rest_framework.exceptions import APIException
+from rest_framework.exceptions import APIException, PermissionDenied
 from rest_framework.exceptions import ValidationError
 
 from django_filters import rest_framework as filters
+from django.utils import timezone
 
 from projects.filters import ProjectFilter
 from project_rates.pagination import RateProjectsPagination
@@ -18,7 +19,6 @@ from project_rates.services import (
     get_rate_program,
     submit_project_scores,
 )
-from users.models import Expert
 from users.permissions import IsExpert, IsExpertPost
 
 
@@ -34,11 +34,8 @@ class RateProject(generics.CreateAPIView):
                 data=request.data,
             )
             return Response({"success": True}, status=status.HTTP_201_CREATED)
-        except Expert.DoesNotExist:
-            return Response(
-                {"error": "you have no permission to rate this program"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+        except PermissionDenied as e:
+            return Response({"error": e.detail}, status=e.status_code)
         except MaxProjectRatesReached as e:
             return Response(
                 {
@@ -109,11 +106,23 @@ class ProjectListForRate(generics.ListAPIView):
         from project_rates.criteria_policy import revision
 
         context = super().get_serializer_context()
-        context["program_max_rates"] = self._get_program().max_project_rates
-        context["criteria_revision"] = revision(self._get_program())
-        context["managed_evaluation"] = (
-            self._get_program().required_evaluators is not None
+        program = self._get_program()
+        context.update(
+            program_max_rates=program.max_project_rates,
+            criteria_revision=revision(program),
+            managed_evaluation=program.required_evaluators is not None,
+            program_criteria=list(program.criterias.order_by("pk")),
         )
-        if context["managed_evaluation"]:
-            context["program_max_rates"] = self._get_program().required_evaluators
+        if program.required_evaluators is not None:
+            context["program_max_rates"] = program.required_evaluators
+        if program.assigned_only:
+            context.update(
+                assigned_program=program,
+                is_organizer=program.is_manager(self.request.user),
+                now=timezone.now(),
+                include_program_fields=(
+                    self.request.method == "GET"
+                    and bool(self.request.query_params.get("project_id"))
+                ),
+            )
         return context

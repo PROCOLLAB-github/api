@@ -19,6 +19,7 @@ from project_rates.tests.helpers import (
     link_project_to_program,
 )
 from project_rates.criteria_policy import revision
+from project_rates.program_experts import can_evaluate_program, program_experts
 from users.models import Expert, Member
 
 
@@ -126,7 +127,7 @@ class WhiteLabelOrganizerExpertTests(TestCase):
     def test_bootstrap_is_idempotent_and_preserves_existing_scope(self):
         with override_settings(WHITE_LABEL_ORGANIZERS_ARE_EXPERTS=False):
             self.program.managers.add(self.user)
-        expert = Expert.objects.create(user=self.user)
+        expert, _ = Expert.objects.get_or_create(user=self.user)
         expert.programs.add(self.other)
         scope = ExpertCaseScope.objects.create(
             partner_program=self.program,
@@ -150,22 +151,33 @@ class WhiteLabelOrganizerExpertTests(TestCase):
             [self.program.pk],
         )
 
-    def test_default_flag_disabled_and_other_programs_and_participants_do_not_grant_roles(
+    def test_white_label_flag_controls_independent_membership_without_changing_primary_role(
         self,
     ):
         self.other.managers.add(self.user)
         self.program.users.add(self.user, through_defaults={"partner_program_data": {}})
         self.assertEqual(ensure_organizer_experts(self.other.pk), 0)
-        self.assertFalse(Expert.objects.filter(user=self.user).exists())
+        self.assertTrue(Expert.objects.filter(user=self.user).exists())
+        self.assertFalse(self.user.expert.programs.exists())
+        self.assertFalse(can_evaluate_program(self.user, self.program.pk))
+        self.assertTrue(can_evaluate_program(self.user, self.other.pk))
         with override_settings(WHITE_LABEL_ORGANIZERS_ARE_EXPERTS=False):
             self.program.managers.add(self.user)
             self.assertEqual(ensure_organizer_experts(self.program.pk), 0)
         with override_settings(WHITE_LABEL_ENABLED=False):
             self.assertEqual(ensure_organizer_experts(self.program.pk), 0)
-        self.assertFalse(Expert.objects.filter(user=self.user).exists())
+        self.assertFalse(self.user.expert.programs.exists())
+        self.assertTrue(can_evaluate_program(self.user, self.program.pk))
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.user_type, self.user.MEMBER)
+        self.assertFalse(self.user.is_staff or self.user.is_superuser)
+        self.assertFalse(ProjectExpertAssignment.objects.exists())
 
     def test_inactive_manager_is_not_granted_expert_access(self):
         self.user.is_active = False
         self.user.save()
         self.program.managers.add(self.user)
-        self.assertFalse(Expert.objects.filter(user=self.user).exists())
+        self.assertTrue(Expert.objects.filter(user=self.user).exists())
+        self.assertFalse(self.user.expert.programs.exists())
+        self.assertFalse(can_evaluate_program(self.user, self.program.pk))
+        self.assertFalse(program_experts(self.program.pk).filter(user=self.user).exists())

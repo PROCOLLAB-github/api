@@ -141,6 +141,20 @@ class SolutionEvaluationTests(EvaluationFixture, TestCase):
     def setUp(self):
         self.seed_evaluation()
 
+    def test_organizer_can_open_evaluation_and_only_rate_assigned_solutions(self):
+        self.manager.is_active = True
+        self.manager.save(update_fields=["is_active"])
+        self.assertFalse(self.manager.expert.programs.filter(pk=self.program.pk).exists())
+        response = call(self.manager, "get", self.list_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["results"], [])
+        self.assertEqual(self.rate(self.manager).status_code, 403)
+        self.program.required_evaluators = 2
+        self.program.save(update_fields=["required_evaluators"])
+        response = self.assign([self.solution.pk], actor=self.manager)
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(self.rate(self.manager).status_code, 200)
+
     def archive_after_opening_rating(self, *, distributed):
         from partner_programs.services import solution_archive_actions
 

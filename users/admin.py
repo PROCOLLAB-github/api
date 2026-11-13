@@ -217,8 +217,6 @@ class CustomUserAdmin(admin.ModelAdmin):
                         old_user.member.delete()
                     elif old_user.user_type == CustomUser.MENTOR:
                         old_user.mentor.delete()
-                    elif old_user.user_type == CustomUser.EXPERT:
-                        old_user.expert.delete()
                     elif old_user.user_type == CustomUser.INVESTOR:
                         old_user.investor.delete()
                 except Exception:
@@ -230,7 +228,7 @@ class CustomUserAdmin(admin.ModelAdmin):
                 elif obj.user_type == CustomUser.MENTOR:
                     Mentor.objects.create(user=old_user)
                 elif obj.user_type == CustomUser.EXPERT:
-                    Expert.objects.create(user=old_user)
+                    Expert.objects.get_or_create(user=old_user)
                 elif obj.user_type == CustomUser.INVESTOR:
                     Investor.objects.create(user=old_user)
 

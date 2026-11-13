@@ -8,5 +8,6 @@ class PartnerProgramsConfig(AppConfig):
 
     def ready(self):
         from partner_programs import white_label_signals  # noqa: F401
+        from partner_programs import organizer_signals  # noqa: F401
         from partner_programs import solution_file_signals  # noqa: F401
         from partner_programs import solution_lifecycle_signals  # noqa: F401

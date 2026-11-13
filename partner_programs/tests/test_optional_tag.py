@@ -2,16 +2,23 @@
 
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from partner_programs.models import PartnerProgram
 from partner_programs.tests.helpers import create_user
+from project_rates.program_experts import can_evaluate_program
+from project_rates.tests.helpers import create_rate_user
 
 
-@override_settings(STORAGES={
-    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
-    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
-})
+@override_settings(
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
+        },
+    }
+)
 class OptionalProgramTagTests(TestCase):
     def setUp(self):
         self.admin = create_user(is_staff=True, is_superuser=True, is_active=True)
@@ -22,9 +29,14 @@ class OptionalProgramTagTests(TestCase):
         page = self.client.get(self.url)
         self.assertFalse(page.context["adminform"].form.fields["tag"].required)
         data = {
-            "name": "Программа без тега", "tag": "", "description": "Описание", "city": "Москва",
-            "projects_availability": "all_users", "data_schema": '{"extra": {"name": "Поле"}}',
-            "draft": "on", "_save": "Сохранить",
+            "name": "Программа без тега",
+            "tag": "",
+            "description": "Описание",
+            "city": "Москва",
+            "projects_availability": "all_users",
+            "data_schema": '{"extra": {"name": "Поле"}}',
+            "draft": "on",
+            "_save": "Сохранить",
         }
         for inline in page.context["inline_admin_formsets"]:
             prefix = inline.formset.prefix
@@ -33,7 +45,11 @@ class OptionalProgramTagTests(TestCase):
 
     def test_create_in_admin_without_tag_and_edit_through_frontend_settings(self):
         response = self.client.post(self.url, self.payload())
-        errors = response.context["adminform"].form.errors if response.status_code == 200 else None
+        errors = (
+            response.context["adminform"].form.errors
+            if response.status_code == 200
+            else None
+        )
         self.assertEqual(response.status_code, 302, errors)
         program = PartnerProgram.objects.get(name="Программа без тега")
         self.assertEqual(program.tag, "")
@@ -43,7 +59,8 @@ class OptionalProgramTagTests(TestCase):
         api.force_authenticate(self.admin)
         saved = api.patch(
             f"/programs/{program.pk}/management/settings/basic/",
-            {"tag": "", "expected_updated_at": program.datetime_updated.isoformat()}, format="json",
+            {"tag": "", "expected_updated_at": program.datetime_updated.isoformat()},
+            format="json",
         )
         self.assertEqual(saved.status_code, 200, saved.data)
 
@@ -53,3 +70,24 @@ class OptionalProgramTagTests(TestCase):
         self.assertEqual(self.client.post(self.url, data).status_code, 302)
         program = PartnerProgram.objects.get(name=data["name"])
         self.assertEqual(program.tag, data["tag"])
+
+    def test_admin_manager_selection_uses_live_evaluation_access(self):
+        organizer = create_rate_user(prefix="admin-added-organizer")
+        data = self.payload()
+        data["managers"] = [organizer.pk]
+        self.assertEqual(self.client.post(self.url, data).status_code, 302)
+        program = PartnerProgram.objects.get(name=data["name"])
+        self.assertFalse(can_evaluate_program(organizer, program.pk))
+
+        now = timezone.now()
+        program.draft = False
+        program.datetime_started = now
+        program.datetime_registration_ends = now + timezone.timedelta(days=1)
+        program.datetime_finished = now + timezone.timedelta(days=2)
+        program.save()
+        self.assertTrue(can_evaluate_program(organizer, program.pk))
+        self.assertFalse(organizer.expert.programs.exists())
+
+        organizer.expert.programs.add(program)
+        program.managers.remove(organizer)
+        self.assertTrue(can_evaluate_program(organizer, program.pk))

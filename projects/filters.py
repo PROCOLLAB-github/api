@@ -4,7 +4,7 @@ from django_filters import rest_framework as filters
 from partner_programs.models import PartnerProgram
 from project_rates.models import ProjectScore
 from projects.models import Project
-from users.models import Expert
+from project_rates.program_experts import can_evaluate_program
 
 
 class ProjectFilter(filters.FilterSet):
@@ -69,7 +69,7 @@ class ProjectFilter(filters.FilterSet):
             return Project.objects.none()
 
         program_status = program.projects_availability
-        user_is_expert = Expert.objects.filter(user=user, programs=program).exists()
+        user_is_expert = can_evaluate_program(user, program.pk)
 
         if program_status != "all_users" and not user_is_expert:
             return Project.objects.none()
@@ -104,9 +104,7 @@ class ProjectFilter(filters.FilterSet):
     )
 
     # filters by whether there are any vacancies in the project
-    any_vacancies = filters.BooleanFilter(
-        field_name="vacancies", method="vacancy_filter"
-    )
+    any_vacancies = filters.BooleanFilter(field_name="vacancies", method="vacancy_filter")
     collaborator__count__gte = filters.NumberFilter(
         field_name="collaborator", method="filter_collaborator_count_gte"
     )
@@ -118,9 +116,7 @@ class ProjectFilter(filters.FilterSet):
     )
     is_rated_by_expert = filters.BooleanFilter(
         method="filter_by_have_expert_rates",
-        label=(
-            "is_rated_by_expert\n`1`/`true` rated projects\n`0`/`false` dosn't rated"
-        ),
+        label=("is_rated_by_expert\n`1`/`true` rated projects\n`0`/`false` dosn't rated"),
     )
 
     class Meta:

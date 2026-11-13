@@ -2,26 +2,49 @@
 
 from datetime import datetime, timezone
 
+from django.db.models import Q
 from django.utils.dateparse import parse_datetime
 
-from partner_programs.models import PartnerProgram
 from partner_programs.solution_api import iso
+from partner_programs.services.project_filters import get_filterable_program_fields
+from partner_programs.utils import filter_program_projects_by_field_name
 from project_rates.evaluation_math import complete_values
 from project_rates.expert_cabinet import cabinet_projects
 from project_rates.models import Criteria
+from project_rates.program_experts import evaluation_programs
 from project_rates.solution_evaluation import metrics, rating_summary
 
 
 def cabinet_applications(user, query):
-    programs = list(
-        PartnerProgram.objects.filter(experts__user=user).distinct().order_by("pk")
-    )
+    programs = list(evaluation_programs(user).order_by("pk"))
+    filters = query.get("filters", {})
+    program_id = query.get("program_id")
+    project_filters = None
+    if filters:
+        program = next(
+            (
+                p
+                for p in programs
+                if p.pk == program_id and p.solution_storage_mode == "legacy_project"
+            ),
+            None,
+        )
+        if program is not None:
+            fields = get_filterable_program_fields(program).filter(
+                field_type__in=("select", "radio", "checkbox"), name__in=filters
+            )
+            if set(fields.values_list("name", flat=True)) == filters.keys():
+                links = filter_program_projects_by_field_name(program, filters)
+                project_filters = Q(project_id__in=links.values("project_id"))
+            else:
+                project_filters = Q(pk__in=[])
     legacy = cabinet_projects(
         user,
         query,
         [p.pk for p in programs if p.solution_storage_mode == "legacy_project"],
         paginate=False,
         as_applications=True,
+        project_filters=project_filters,
     )
     rows = legacy["results"]
     pending, completed, unavailable = (
@@ -77,9 +100,11 @@ def cabinet_applications(user, query):
     rows.sort(
         key=lambda row: (
             row["deadline"] is None,
-            parse_datetime(row["deadline"])
-            if row["deadline"]
-            else datetime.max.replace(tzinfo=timezone.utc),
+            (
+                parse_datetime(row["deadline"])
+                if row["deadline"]
+                else datetime.max.replace(tzinfo=timezone.utc)
+            ),
             row["program"]["id"],
             row["application"]["name"].casefold(),
             row["assignment_id"],

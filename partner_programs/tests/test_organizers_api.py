@@ -135,17 +135,35 @@ class OrganizersApiTests(TestCase):
         invitation.refresh_from_db()
         self.assertEqual(invitation.status, "pending")
 
-    def test_acceptance_is_explicit_idempotent_program_scoped_and_not_expert(self):
+    def test_acceptance_grants_evaluation_only_in_this_program_and_keeps_primary_role(
+        self,
+    ):
         invitation, token = self.invite(self.colleague.email)
         self.client.force_authenticate(self.colleague)
         url = f"/programs/organizer-invitations/{token}/"
         self.assertEqual(self.client.get(url).status_code, 200)
         self.assertFalse(self.program.is_manager(self.colleague))
+        self.assertFalse(
+            self.client.get("/auth/users/current/").data["has_evaluation_access"]
+        )
         self.assertEqual(self.post(url + "accept/", {}).status_code, 200)
         self.assertEqual(self.post(url + "accept/", {}).status_code, 200)
         self.assertTrue(self.program.is_manager(self.colleague))
         self.assertFalse(self.other.is_manager(self.colleague))
-        self.assertFalse(Expert.objects.filter(user=self.colleague).exists())
+        profile = self.client.get("/auth/users/current/").data
+        self.assertEqual(profile["user_type"], CustomUser.MEMBER)
+        self.assertTrue(profile["has_evaluation_access"])
+        self.assertFalse(Expert.objects.get(user=self.colleague).programs.exists())
+        self.assertTrue(
+            self.client.get(f"/programs/{self.program.pk}/").data["is_user_expert"]
+        )
+        self.assertFalse(
+            self.client.get(f"/programs/{self.other.pk}/").data["is_user_expert"]
+        )
+        rows = self.client.get("/evaluation/programs/").data["results"]
+        self.assertEqual(
+            [(row["id"], row["assigned"]) for row in rows], [(self.program.pk, 0)]
+        )
         self.assertEqual(self.client.get(self.root + "organizers/").status_code, 200)
         self.program.refresh_from_db()
         self.assertIsNone(self.program.required_evaluators)
@@ -173,7 +191,7 @@ class OrganizersApiTests(TestCase):
         self.assertFalse(user.is_staff)
         self.assertFalse(user.is_superuser)
         self.assertEqual(user.user_type, CustomUser.MEMBER)
-        self.assertFalse(Expert.objects.filter(user=user).exists())
+        self.assertFalse(Expert.objects.get(user=user).programs.exists())
         self.assertIn("access", response.data)
 
     def test_registration_does_not_replace_existing_account(self):
