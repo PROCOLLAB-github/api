@@ -27,7 +27,8 @@ from core.utils import get_user_online_cache_key, get_users_online_cache_key
 from users.models import CustomUser
 from chats.consumers.event_types import DirectEvent, ProjectEvent
 from chats.utils import get_chat_and_user_ids_from_content
-from chats.models import DirectChat, ProgramChannel, ProjectChat
+from chats.models import DirectChat, ProgramChannel, ProgramChannelMessage, ProjectChat
+from chats.notifications import should_notify
 
 
 @database_sync_to_async
@@ -48,6 +49,18 @@ def get_user_channel_ids(user):
 @database_sync_to_async
 def can_access_program_channel(user, channel_id):
     return accessible_chats(user, ProgramChannel).filter(pk=channel_id).exists()
+
+
+@database_sync_to_async
+def channel_notification(user, channel_id, message_id):
+    message = (
+        ProgramChannelMessage.objects.filter(
+            chat_id=channel_id, pk=message_id, is_deleted=False
+        )
+        .values("author_id", "mentioned_user_ids")
+        .first()
+    )
+    return bool(message and should_notify(user, ProgramChannel, channel_id, **message))
 
 
 @database_sync_to_async
@@ -274,6 +287,17 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                     content["message"], self.user.pk
                 )
                 event = {**event, "content": {**content, "message": message}}
+                if event["type"] == EventType.NEW_MESSAGE:
+                    notify = not content.get(
+                        "is_replay"
+                    ) and await database_sync_to_async(should_notify)(
+                        self.user,
+                        ProjectChat,
+                        chat_id,
+                        author_id=message["author"]["id"],
+                        mentioned_user_ids=message.get("mentioned_user_ids", []),
+                    )
+                    event["content"]["notify"] = notify
         # Служебный контекст нужен для проверки уже открытых сокетов,
         # клиентский формат сообщений остается прежним.
         await self.send(
@@ -322,7 +346,14 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
     async def program_channel_changed(self, event):
         channel_id = event["content"]["channel_id"]
         if self.user and await can_access_program_channel(self.user, channel_id):
-            await self.send_json(event)
+            message_id = event.get("_new_message_id")
+            notify = message_id is not None and await channel_notification(
+                self.user, channel_id, message_id
+            )
+            content = {"channel_id": channel_id, "notify": notify}
+            if notify:
+                content["message_id"] = message_id
+            await self.send_json({"type": event["type"], "content": content})
         else:
             room_name = channel_group(channel_id)
             await self.channel_layer.group_discard(room_name, self.channel_name)

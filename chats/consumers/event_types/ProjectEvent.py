@@ -21,6 +21,7 @@ class ProjectEvent:
             reply_to_id=event.content.get("reply_to"),
             file_urls=event.content.get("file_urls", []),
             client_message_id=event.content.get("client_message_id"),
+            mentioned_user_ids=event.content.get("mentioned_user_ids", []),
         )
         content = {
             "chat_id": chat_id,

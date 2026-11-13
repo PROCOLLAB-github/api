@@ -12,6 +12,7 @@ from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import AccessToken
 
 from chats.models import ProgramChannel
+from chats.notifications import set_notification_mode
 from chats.tests.constants import TEST_USER1, TEST_USER2, TEST_USER3
 from chats.tests.test_attachment_download import STORAGE, upstream_file
 from files.models import UserFile
@@ -269,8 +270,33 @@ class ProgramChannelSocketTests(TransactionTestCase):
                 await socket.receive_json_from(timeout=5),
                 {
                     "type": "program_channel_changed",
-                    "content": {"channel_id": self.program.pk},
+                    "content": {
+                        "channel_id": self.program.pk,
+                        "notify": True,
+                        "message_id": response.json()["id"],
+                    },
                 },
+            )
+            await database_sync_to_async(set_notification_mode)(
+                self.member, ProgramChannel, self.program.pk, "mentions"
+            )
+            post = database_sync_to_async(api.post)
+            ordinary = await post(
+                url, {"text": "Без упоминания"}, format="json", secure=True
+            )
+            self.assertEqual(ordinary.status_code, 201)
+            self.assertFalse(
+                (await socket.receive_json_from(timeout=5))["content"]["notify"]
+            )
+            mentioned = await post(
+                url,
+                {"text": "С упоминанием", "mentioned_user_ids": [self.member.pk]},
+                format="json",
+                secure=True,
+            )
+            self.assertEqual(mentioned.status_code, 201)
+            self.assertTrue(
+                (await socket.receive_json_from(timeout=5))["content"]["notify"]
             )
             await database_sync_to_async(self.profile.delete)()
             response = await database_sync_to_async(api.post)(

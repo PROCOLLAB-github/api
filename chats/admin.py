@@ -6,6 +6,7 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django import forms
 from django.contrib import admin, messages
+from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied
 from django.core.cache import cache
 from django.core.paginator import Paginator
@@ -39,11 +40,17 @@ from chats.models import (
     FileToMessage,
     ProgramChannel,
 )
+from chats.notifications import (
+    Mode,
+    chat_mention_recipients,
+    notification_settings,
+    set_notification_mode,
+)
 from chats.permissions import accessible_chats, can_publish_in_program_channel
 from chats.program_channels import mark_channel_read, publish_channel_message
 from chats.project_reads import mark_project_message_read, publish_project_message_read
 from chats.search import ChatMessageSearchForm, search_chat_messages
-from chats.services.messages import delete_message, edit_message
+from chats.services.messages import create_project_message, delete_message, edit_message
 from chats.utils import get_user_channel_cache_key
 from chats.websockets_settings import ChatType, EventGroupType, EventType
 from files.models import UserFile
@@ -293,7 +300,7 @@ class OwnMessageForm(forms.Form):
     )
 
 
-class ChannelPublicationForm(forms.Form):
+class GroupMessageForm(forms.Form):
     text = forms.CharField(
         label="Текст публикации", required=False, strip=False, widget=forms.Textarea
     )
@@ -304,11 +311,27 @@ class ChannelPublicationForm(forms.Form):
         widget=forms.HiddenInput,
         error_messages={"invalid": "Некорректный номер публикации."},
     )
+    mentions = forms.ModelMultipleChoiceField(
+        label="Упомянуть участников",
+        queryset=get_user_model().objects.none(),
+        required=False,
+        error_messages={"invalid_choice": "Выберите участников этого чата."},
+    )
 
-    def __init__(self, user, *args, **kwargs):
+    def __init__(self, user, chat, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if isinstance(chat, ProjectChat):
+            self.fields["text"].label = "Текст сообщения"
         self.fields["files"].queryset = UserFile.objects.filter(user=user).order_by(
             "-datetime_uploaded"
+        )
+        self.fields["mentions"].queryset = (
+            chat_mention_recipients(chat)
+            .exclude(pk=user.pk)
+            .order_by("first_name", "last_name", "pk")
+        )
+        self.fields["mentions"].label_from_instance = (
+            lambda member: member.get_full_name()
         )
 
 
@@ -316,28 +339,19 @@ class ChannelUploadForm(forms.Form):
     file = forms.FileField(label="Файл")
 
 
-@admin.register(ProgramChannel)
-class ProgramChannelAdmin(ChatSearchAdmin):
-    list_display = ("program", "message_search_link")
-    list_display_links = None
+class NotificationSettingsForm(forms.Form):
+    mode = forms.ChoiceField(
+        label="Режим уведомлений",
+        choices=Mode.choices,
+        error_messages={
+            "invalid_choice": "Выберите режим уведомлений.",
+            "required": "Выберите режим уведомлений.",
+        },
+    )
+
+
+class GroupChatAdmin(ChatSearchAdmin):
     cdn = CDN(storage=SelectelSwiftStorage())
-
-    def get_queryset(self, request):
-        return accessible_chats(request.user, ProgramChannel).select_related("program")
-
-    def has_view_permission(self, request, obj=None):
-        if obj is None:
-            return accessible_chats(request.user, ProgramChannel).exists()
-        return accessible_chats(request.user, ProgramChannel).filter(pk=obj.pk).exists()
-
-    def has_add_permission(self, request):
-        return False
-
-    def has_change_permission(self, request, obj=None):
-        return False
-
-    def has_delete_permission(self, request, obj=None):
-        return False
 
     def get_urls(self):
         return [
@@ -349,39 +363,69 @@ class ProgramChannelAdmin(ChatSearchAdmin):
                 name=self.message_search_url_name + "_publish",
             ),
             path(
-                "<int:object_id>/messages/<int:message_id>/read/",
+                "<int:object_id>/notification-settings/",
                 self.admin_site.admin_view(
-                    require_http_methods(["POST"])(self.read_message)
+                    require_http_methods(["GET", "POST"])(self.notification_settings_view)
                 ),
-                name=self.message_search_url_name + "_read",
+                name=self.message_search_url_name + "_notifications",
             ),
         ] + super().get_urls()
+
+    def can_publish(self, user, chat):
+        return True
 
     def extra_channel_context(self, request, chat):
         prefix = "admin:" + self.message_search_url_name
         return {
-            "channel_read_route": prefix + "_read",
             "channel_publish_url": (
                 reverse(prefix + "_publish", args=[chat.pk])
-                if can_publish_in_program_channel(request.user, chat.program)
+                if self.can_publish(request.user, chat)
                 else None
+            ),
+            "notification_settings_url": reverse(
+                prefix + "_notifications", args=[chat.pk]
             ),
         }
 
-    def change_own_message(self, request, object_id, message_id):
+    def notification_settings_view(self, request, object_id):
         chat = self.get_chat_for_member(request, object_id)
-        if not can_publish_in_program_channel(request.user, chat.program):
-            raise PermissionDenied("Публикации доступны менеджерам программы.")
-        return super().change_own_message(request, object_id, message_id)
+        settings = notification_settings(request.user, self.model, chat.pk)
+        form = NotificationSettingsForm(
+            request.POST if request.method == "POST" else None, initial=settings
+        )
+        if request.method == "POST" and form.is_valid():
+            set_notification_mode(
+                request.user, self.model, chat.pk, form.cleaned_data["mode"]
+            )
+            self.message_user(request, "Настройки уведомлений сохранены.")
+            return redirect(
+                "admin:" + self.message_search_url_name + "_notifications", chat.pk
+            )
+        return TemplateResponse(
+            request,
+            "admin/chats/notification_settings.html",
+            {
+                **self.admin_site.each_context(request),
+                "opts": self.model._meta,
+                "title": "Настройки уведомлений",
+                "form": form,
+                "muted_until": settings["muted_until"],
+                "back_url": reverse(
+                    "admin:" + self.message_search_url_name, args=[chat.pk]
+                ),
+            },
+            status=400 if form.errors else 200,
+        )
 
     def publish_message(self, request, object_id):
         chat = self.get_chat_for_member(request, object_id)
-        if not can_publish_in_program_channel(request.user, chat.program):
+        if not self.can_publish(request.user, chat):
             raise PermissionDenied("Публикации доступны менеджерам программы.")
         posted = request.method == "POST"
         uploading = posted and request.POST.get("action") == "upload"
-        form = ChannelPublicationForm(
+        form = GroupMessageForm(
             request.user,
+            chat,
             request.POST if posted and not uploading else None,
             initial={"client_message_id": uuid4()},
         )
@@ -405,17 +449,38 @@ class ProgramChannelAdmin(ChatSearchAdmin):
                 self.message_user(request, "Файл загружен и выбран для публикации.")
         if posted and not uploading and form.is_valid():
             try:
-                publication, _ = publish_channel_message(
-                    channel_id=chat.pk,
-                    author=request.user,
-                    text=form.cleaned_data["text"],
-                    file_urls=[file.pk for file in form.cleaned_data["files"]],
-                    client_message_id=form.cleaned_data["client_message_id"],
-                )
+                with transaction.atomic():
+                    publication, created = self.save_publication(
+                        chat.pk,
+                        author=request.user,
+                        text=form.cleaned_data["text"],
+                        file_urls=[file.pk for file in form.cleaned_data["files"]],
+                        client_message_id=form.cleaned_data["client_message_id"],
+                        mentioned_user_ids=[
+                            user.pk for user in form.cleaned_data["mentions"]
+                        ],
+                    )
+                    if created and isinstance(chat, ProjectChat):
+                        transaction.on_commit(
+                            partial(
+                                self.publish_change,
+                                chat,
+                                EventType.NEW_MESSAGE,
+                                {"message": publication, "is_replay": False},
+                            ),
+                            robust=True,
+                        )
             except MessageValidationException as error:
                 form.add_error(None, str(error))
             else:
-                self.message_user(request, "Публикация сохранена.")
+                self.message_user(
+                    request,
+                    (
+                        "Публикация сохранена."
+                        if isinstance(chat, ProgramChannel)
+                        else "Сообщение отправлено."
+                    ),
+                )
                 return redirect(
                     "admin:" + self.message_search_url_name + "_context",
                     chat.pk,
@@ -427,7 +492,14 @@ class ProgramChannelAdmin(ChatSearchAdmin):
             {
                 **self.admin_site.each_context(request),
                 "opts": self.model._meta,
-                "title": "Новая публикация в канале",
+                "title": (
+                    "Новая публикация в канале"
+                    if isinstance(chat, ProgramChannel)
+                    else "Новое сообщение"
+                ),
+                "send_label": (
+                    "Опубликовать" if isinstance(chat, ProgramChannel) else "Отправить"
+                ),
                 "form": form,
                 "upload_form": upload_form,
                 "back_url": reverse(
@@ -436,6 +508,58 @@ class ProgramChannelAdmin(ChatSearchAdmin):
             },
             status=400 if form.errors or upload_form.errors else 200,
         )
+
+
+@admin.register(ProgramChannel)
+class ProgramChannelAdmin(GroupChatAdmin):
+    list_display = ("program", "message_search_link")
+    list_display_links = None
+
+    def get_queryset(self, request):
+        return accessible_chats(request.user, ProgramChannel).select_related("program")
+
+    def has_view_permission(self, request, obj=None):
+        if obj is None:
+            return accessible_chats(request.user, ProgramChannel).exists()
+        return accessible_chats(request.user, ProgramChannel).filter(pk=obj.pk).exists()
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def get_urls(self):
+        return [
+            path(
+                "<int:object_id>/messages/<int:message_id>/read/",
+                self.admin_site.admin_view(
+                    require_http_methods(["POST"])(self.read_message)
+                ),
+                name=self.message_search_url_name + "_read",
+            ),
+        ] + super().get_urls()
+
+    def extra_channel_context(self, request, chat):
+        return {
+            **super().extra_channel_context(request, chat),
+            "channel_read_route": "admin:" + self.message_search_url_name + "_read",
+        }
+
+    def can_publish(self, user, chat):
+        return can_publish_in_program_channel(user, chat.program)
+
+    def save_publication(self, chat_id, **data):
+        return publish_channel_message(channel_id=chat_id, **data)
+
+    def change_own_message(self, request, object_id, message_id):
+        chat = self.get_chat_for_member(request, object_id)
+        if not self.can_publish(request.user, chat):
+            raise PermissionDenied("Публикации доступны менеджерам программы.")
+        return super().change_own_message(request, object_id, message_id)
 
     def read_message(self, request, object_id, message_id):
         chat = self.get_chat_for_member(request, object_id)
@@ -452,7 +576,7 @@ class ProgramChannelAdmin(ChatSearchAdmin):
 
 
 @admin.register(ProjectChat)
-class ChatAdmin(ChatSearchAdmin):
+class ChatAdmin(GroupChatAdmin):
     list_display = (
         "id",
         "project",
@@ -465,6 +589,23 @@ class ChatAdmin(ChatSearchAdmin):
         "id",
         "project",
     )
+
+    def get_queryset(self, request):
+        if request.user.is_superuser:
+            return super().get_queryset(request)
+        return accessible_chats(request.user, ProjectChat).select_related("project")
+
+    def has_view_permission(self, request, obj=None):
+        if request.user.is_superuser:
+            return super().has_view_permission(request, obj)
+        chats = accessible_chats(request.user, ProjectChat)
+        return (chats if obj is None else chats.filter(pk=obj.pk)).exists()
+
+    def has_module_permission(self, request):
+        return super().has_module_permission(request) or self.has_view_permission(request)
+
+    def save_publication(self, chat_id, **data):
+        return create_project_message(chat_id=chat_id, **data)
 
 
 @admin.register(DirectChat)

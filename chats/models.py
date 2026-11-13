@@ -318,6 +318,7 @@ class ProjectChatMessage(BaseMessage):
         blank=True,
         related_name="project_replies",
     )
+    mentioned_user_ids = models.JSONField(default=list, blank=True, editable=False)
 
     def clean(self):
         # check that replied message is in the same chat
@@ -452,6 +453,7 @@ class ProgramChannelMessage(BaseMessage):
     author = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, related_name="program_channel_posts"
     )
+    mentioned_user_ids = models.JSONField(default=list, blank=True, editable=False)
 
     class Meta:
         verbose_name = "Публикация канала"
@@ -480,6 +482,48 @@ class ProgramChannelRead(models.Model):
             models.UniqueConstraint(
                 fields=["channel", "user"], name="unique_program_channel_reader"
             )
+        ]
+
+
+class ChatNotificationPreference(models.Model):
+    class Mode(models.TextChoices):
+        ALL = "all", "Все сообщения"
+        MENTIONS = "mentions", "Только упоминания"
+        MUTE_8H = "mute_8h", "Без звука на 8 часов"
+        MUTED = "muted", "Отключены до включения"
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    project_chat = models.ForeignKey(ProjectChat, on_delete=models.CASCADE, null=True)
+    program_channel = models.ForeignKey(
+        ProgramChannel, on_delete=models.CASCADE, null=True
+    )
+    mode = models.CharField("Режим уведомлений", max_length=12, choices=Mode.choices)
+    muted_until = models.DateTimeField(null=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(project_chat__isnull=False, program_channel__isnull=True)
+                    | models.Q(project_chat__isnull=True, program_channel__isnull=False)
+                ),
+                name="chat_notification_has_one_chat",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(mode="mute_8h", muted_until__isnull=False)
+                    | (~models.Q(mode="mute_8h") & models.Q(muted_until__isnull=True))
+                ),
+                name="chat_notification_mute_has_expiry",
+            ),
+            models.UniqueConstraint(
+                fields=["user", "project_chat"],
+                name="unique_project_chat_notification_user",
+            ),
+            models.UniqueConstraint(
+                fields=["user", "program_channel"],
+                name="unique_channel_notification_user",
+            ),
         ]
 
 
