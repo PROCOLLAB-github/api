@@ -1,0 +1,19 @@
+{
+  "retrieved_at": "2026-11-10",
+  "site": "https://сознаниеправа.рф/",
+  "name": "Сознание права",
+  "logo.png": {
+    "source": "https://static.tildacdn.com/tild6161-3031-4834-b834-326236393535/__logo.png",
+    "bytes": 10770,
+    "sha256": "0313170f21fdcfd4506d47e371a4c0e4eee36100bfbc5009f108b0584866ec29",
+    "content_type": "image/png"
+  },
+  "favicon.svg": {
+    "source": "https://static.tildacdn.com/tild6232-6630-4330-a538-353265646464/favicon.svg",
+    "bytes": 34291,
+    "sha256": "2459bf8a6a8bbb07422e350f26f02d5e84047f821b0af27f02572083685f1644",
+    "content_type": "image/svg+xml",
+    "stored_sha256": "40ad75eab7f2279ef6fdc31dd08a05ec8b49806efb4b827608f71c69bf4af6a1",
+    "normalization": "XML whitespace at end of file normalized; visual content unchanged"
+  }
+}

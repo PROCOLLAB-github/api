@@ -1,0 +1,67 @@
+# Этот файл обслуживает только отдельный compose project procollab-pilot.
+map_hash_bucket_size 128;
+map $cookie_procollab_pilot_gate $pilot_realm {
+    default "Pilot";
+    "@@GATE_TOKEN@@" off;
+}
+
+# Автоматический redirect /backend -> /backend/ возможен до auth_basic.
+# Допуск выдаем только после успешного ответа защищенного content handler.
+map $status $pilot_gate_cookie {
+    default "";
+    ~^2[0-9][0-9]$ "procollab_pilot_gate=@@GATE_TOKEN@@; Path=/; Max-Age=14400; Secure; HttpOnly; SameSite=Strict";
+}
+
+# Пароль внешнего демо-входа не передается в Django BasicAuthentication.
+map $http_authorization $pilot_api_authorization {
+    default "";
+    "~^Bearer " $http_authorization;
+}
+
+server {
+    listen 80;
+    server_name _;
+    root /srv/pilot/frontend;
+    index index.html;
+    server_tokens off;
+    client_max_body_size 100m;
+    auth_basic $pilot_realm;
+    auth_basic_user_file /etc/nginx/pilot.htpasswd;
+    add_header Set-Cookie $pilot_gate_cookie;
+    add_header X-Robots-Tag "noindex, nofollow" always;
+    add_header X-Content-Type-Options nosniff always;
+
+    location /backend/media/ {
+        alias /srv/pilot/data/media/;
+        add_header Content-Disposition attachment;
+        add_header X-Content-Type-Options nosniff always;
+    }
+    location /backend/static/ {
+        alias /srv/pilot/data/static/;
+    }
+    location /backend/ {
+        # ASGI получает полный path; Daphne/Django выделяют root_path /backend.
+        proxy_pass http://web:8000;
+        proxy_set_header Daphne-Root-Path /backend;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Authorization $pilot_api_authorization;
+        proxy_read_timeout 120s;
+    }
+    location /ws {
+        proxy_pass http://web:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+        proxy_read_timeout 600s;
+    }
+    location /brand/ {
+        alias /srv/pilot/brand/;
+    }
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

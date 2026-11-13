@@ -1,7 +1,7 @@
 from django import forms
 
 from files.models import UserFile
-from files.service import CDN, SelectelSwiftStorage
+from files.service import CDN, configured_storage
 
 from courses.models.file_validation import looks_like_image_file
 
@@ -20,7 +20,7 @@ def validate_image_upload(
 
 
 class UserFileUploadAdminMixin:
-    cdn = CDN(storage=SelectelSwiftStorage())
+    cdn = CDN(storage=configured_storage())
 
     def create_user_file(self, request, uploaded_file):
         info = self.cdn.upload(uploaded_file, request.user, quality=100)

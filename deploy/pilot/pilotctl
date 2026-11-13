@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd -- "$(dirname -- "$0")"
+docker_cli=(env -u DOCKER_HOST -u DOCKER_CONTEXT -u DOCKER_TLS -u DOCKER_TLS_VERIFY -u DOCKER_CERT_PATH docker --host=unix:///var/run/docker.sock)
+compose=("${docker_cli[@]}" compose --project-name procollab-pilot --env-file .env -f compose.yml)
+case "${1:-check}" in
+  init) python3 configure.py ;;
+  check)
+    test -s .env && test -s nginx.conf && test -s access.htpasswd
+    test -s frontend/index.html
+    "${compose[@]}" config --quiet
+    ;;
+  build)
+    "$0" check
+    python3 preflight.py --check
+    "${compose[@]}" build web
+    ;;
+  start)
+    "$0" check
+    python3 preflight.py --check
+    "${docker_cli[@]}" image inspect procollab-pilot-api:local >/dev/null
+    "${compose[@]}" up -d db redis
+    "${compose[@]}" run --rm web sh -ec 'python manage.py migrate --noinput && python manage.py collectstatic --noinput && python manage.py prepare_white_label_pilot'
+    "${compose[@]}" up -d web worker gateway
+    "${compose[@]}" exec -T gateway nginx -t
+    ;;
+  status) "${compose[@]}" ps ;;
+  stop) "${compose[@]}" stop ;;
+  *) printf 'Использование: ./pilotctl init|check|build|start|status|stop\n' >&2; exit 2 ;;
+esac

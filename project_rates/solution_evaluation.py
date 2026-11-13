@@ -177,6 +177,10 @@ def rating_frame(solution, actor):
                 type=c.type,
                 min_value=c.min_value,
                 max_value=c.max_value,
+                weight_percent=float(c.weight_percent)
+                if program.evaluation_scoring_mode == "weighted_percent"
+                and c.weight_percent is not None
+                else None,
                 value=state["own"].get(c.pk),
             )
             for c in criteria
@@ -264,6 +268,9 @@ def rate_solution(*, program_id, solution_id, actor, expected_criteria_revision,
             "Критерии изменились. Обновите форму оценки.",
             meta={"current_criteria_revision": actual_revision},
         )
+    from project_rates.criteria_policy import require_scoring_configuration
+
+    require_scoring_configuration(program)
     criteria = list(Criteria.objects.filter(partner_program=program).order_by("pk"))
     definitions = {c.pk: c for c in criteria}
     state = metrics(program, [solution], actor, criteria)[solution.pk]

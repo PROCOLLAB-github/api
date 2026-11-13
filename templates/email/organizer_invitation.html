@@ -3,9 +3,9 @@
 <body style="margin:0;background:#fafafa;color:#333;font-family:Arial,sans-serif">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding:32px 16px">
 <table role="presentation" style="max-width:600px;margin:auto;background:white;border-radius:15px" width="100%" cellpadding="24"><tr><td>
-<img src="{{ logo_url }}" width="120" alt="PROCOLLAB" style="display:block;width:120px;height:auto;border:0">
+{% if logo_url %}<img src="{{ logo_url }}" width="120" alt="{{ brand_name|default:'PROCOLLAB' }}" style="display:block;width:120px;height:auto;border:0;{% if logo_background == 'dark' %}background:#222;padding:8px{% endif %}">{% else %}<strong>{{ brand_name }}</strong>{% endif %}
 <h1 style="font-size:22px;line-height:1.35">Вас пригласили стать организатором</h1>
-<p>Программа «{{ program_name }}» на PROCOLLAB.</p>
+<p>Программа «{{ program_name }}» на {{ brand_name|default:"PROCOLLAB" }}.</p>
 <p>Приглашение для <strong>{{ email }}</strong>. После принятия вы сможете управлять этой программой и приглашать коллег.</p>
 <p style="margin:24px 0"><a href="{{ invitation_url }}" style="display:inline-block;background:#8a63e6;color:white;text-decoration:none;padding:8px 24px;border-radius:28px">Принять приглашение</a></p>
 <p>Если аккаунта еще нет, вы сможете зарегистрироваться по этой ссылке.</p>

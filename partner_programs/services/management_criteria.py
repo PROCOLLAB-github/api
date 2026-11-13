@@ -1,6 +1,8 @@
 """Atomic editing of the shared program criteria, before the first score."""
 
 import math
+from decimal import Decimal
+from types import SimpleNamespace
 
 from django.db import transaction
 from django.utils import timezone
@@ -11,6 +13,8 @@ from partner_programs.serializers.management import StrictFieldsMixin
 from partner_programs.services.management import managed_program
 from project_rates.criteria_policy import CriteriaConflict, definitions, locked, revision
 from project_rates.models import Criteria
+from project_rates.scoring import SCORING_MODES, validate_configuration
+from django.core.exceptions import ValidationError as ModelValidationError
 
 SUPPORTED_TYPES = ("int", "bool", "str")
 
@@ -24,12 +28,22 @@ class CriterionWrite(StrictFieldsMixin, serializers.Serializer):
     type = serializers.ChoiceField(choices=(*SUPPORTED_TYPES, "float"))
     min_value = serializers.FloatField(allow_null=True)
     max_value = serializers.FloatField(allow_null=True)
+    weight_percent = serializers.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        min_value=Decimal("0.01"),
+        max_value=Decimal("100"),
+        required=False,
+        allow_null=True,
+        coerce_to_string=False,
+    )
 
 
 class CriteriaWrite(StrictFieldsMixin, serializers.Serializer):
     expected_updated_at = serializers.DateTimeField()
     expected_revision = serializers.CharField(max_length=64)
     criteria = CriterionWrite(many=True)
+    scoring_mode = serializers.ChoiceField(choices=SCORING_MODES, required=False)
 
     def validate_criteria(self, rows):
         ids = [r["id"] for r in rows if r.get("id") is not None]
@@ -48,6 +62,7 @@ def criteria_data(program):
         # Historical scores have no timestamps; do not present the backfill date as first score.
         "supported_types": SUPPORTED_TYPES,
         "criteria": definitions(program),
+        "scoring_mode": program.evaluation_scoring_mode,
     }
 
 
@@ -69,7 +84,28 @@ def save_criteria(program_id, user, payload):
             "stale_criteria", "Настройки изменены. Обновите действующие критерии."
         )
     existing = {c.pk: c for c in program.criterias.all()}
+    mode = data.get("scoring_mode", program.evaluation_scoring_mode)
+    candidates = []
+    for row in data["criteria"]:
+        old = existing.get(row.get("id"))
+        row.setdefault("weight_percent", old.weight_percent if old else None)
+        candidates.append(SimpleNamespace(**row))
+    try:
+        from project_rates.scoring import validate_weight
+
+        for candidate in candidates:
+            validate_weight(candidate)
+        validate_configuration(SimpleNamespace(evaluation_scoring_mode=mode), candidates)
+    except (ModelValidationError, ValueError) as error:
+        raise serializers.ValidationError(
+            {"criteria": getattr(error, "messages", [str(error)])}
+        ) from error
+    # Режим и весь набор видны другим транзакциям только после commit. Все записи
+    # оценок используют тот же program lock; частичное состояние недоступно.
+    PartnerProgram.objects.filter(pk=program.pk).update(evaluation_scoring_mode=mode)
+    program.evaluation_scoring_mode = mode
     keep = []
+    created = []
     for row in data["criteria"]:
         pk = row.pop("id", None)
         old = existing.get(pk)
@@ -77,7 +113,11 @@ def save_criteria(program_id, user, payload):
             raise serializers.ValidationError(
                 {"criteria": "Критерий не принадлежит этой программе."}
             )
-        unchanged = old and all(getattr(old, key) == value for key, value in row.items())
+        unchanged = old and all(
+            getattr(old, key) == value
+            for key, value in row.items()
+            if key != "weight_percent"
+        )
         if not unchanged:
             if row["type"] not in SUPPORTED_TYPES:
                 raise serializers.ValidationError(
@@ -105,12 +145,18 @@ def save_criteria(program_id, user, payload):
             Criteria.objects.filter(pk=pk).update(**row)
             keep.append(pk)
         else:
-            keep.append(Criteria.objects.create(partner_program=program, **row).pk)
+            criterion = Criteria(partner_program=program, **row)
+            criterion.full_clean()
+            created.append(criterion)
+    Criteria.objects.bulk_create(created)
+    keep.extend(criterion.pk for criterion in created)
     program.criterias.exclude(pk__in=keep).delete()
     program.evaluation_criteria_version += 1
+    program.evaluation_scoring_mode = mode
     program.datetime_updated = timezone.now()
     PartnerProgram.objects.filter(pk=program.pk).update(
         evaluation_criteria_version=program.evaluation_criteria_version,
         datetime_updated=program.datetime_updated,
+        evaluation_scoring_mode=mode,
     )
     return criteria_data(program)

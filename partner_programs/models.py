@@ -11,6 +11,7 @@ from partner_programs.certificate_models import (  # noqa: F401
     ProgramCertificateConfig,
 )
 from partner_programs.constants import get_default_data_schema
+from partner_programs.overall_models import ProgramQuizOutcome  # noqa: F401
 from partner_programs.solution_models import (  # noqa: F401
     ProgramSolution,
     ProgramSolutionMember,
@@ -213,6 +214,16 @@ class PartnerProgram(models.Model):
     )
     evaluation_criteria_locked_at = models.DateTimeField(null=True, editable=False)
     evaluation_criteria_version = models.PositiveIntegerField(default=0, editable=False)
+    evaluation_scoring_mode = models.CharField(
+        max_length=20,
+        default="legacy",
+        db_default="legacy",
+        choices=(
+            ("legacy", "Сумма исходных баллов"),
+            ("weighted_percent", "Веса, итог от 0 до 100"),
+        ),
+        verbose_name="Способ расчета оценки",
+    )
     data_schema = models.JSONField(
         verbose_name="Схема данных в формате JSON",
         help_text="Ключи - имена полей, значения - тип поля ввода",
@@ -301,6 +312,7 @@ class PartnerProgram(models.Model):
     def clean(self):
         super().clean()
         self.validate_solution_template_change()
+        self.validate_scoring_mode_change()
         from partner_programs.project_form import PROJECT_SECTIONS
 
         if not isinstance(self.project_sections, dict) or any(
@@ -340,14 +352,44 @@ class PartnerProgram(models.Model):
                     {"solution_template": "После появления ответов шаблон нельзя менять."}
                 )
 
+    def validate_scoring_mode_change(self, previous=None):
+        from project_rates.criteria_policy import locked
+        from project_rates.scoring import LEGACY, validate_configuration
+
+        if not self.pk:
+            if self.evaluation_scoring_mode != LEGACY:
+                raise ValidationError(
+                    {
+                        "evaluation_scoring_mode": "Сначала создайте программу и настройте критерии."
+                    }
+                )
+            return
+        if previous is None:
+            previous = type(self).objects.filter(pk=self.pk).first()
+        if previous and previous.evaluation_scoring_mode != self.evaluation_scoring_mode:
+            if locked(previous):
+                raise ValidationError(
+                    {
+                        "evaluation_scoring_mode": "После первой оценки способ расчета нельзя менять."
+                    }
+                )
+            validate_configuration(self)
+
     def save(self, *args, **kwargs):
         fields = kwargs.get("update_fields")
-        if self.pk and (fields is None or "solution_template" in fields):
+        if not self.pk:
+            self.validate_scoring_mode_change()
+        if self.pk and (
+            fields is None
+            or {"solution_template", "evaluation_scoring_mode"}.intersection(fields)
+        ):
             with transaction.atomic():
                 previous = (
                     type(self).objects.select_for_update().filter(pk=self.pk).first()
                 )
                 self.validate_solution_template_change(previous)
+                if fields is None or "evaluation_scoring_mode" in fields:
+                    self.validate_scoring_mode_change(previous)
                 # Обычный save устаревшей карточки не отменяет операторский откат.
                 # Служебный запуск меняется явным update_fields под program lock.
                 if previous and (

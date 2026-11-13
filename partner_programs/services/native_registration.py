@@ -25,6 +25,11 @@ from partner_programs.models import (
 from partner_programs.services.management import managed_program
 from project_rates.workspace import WorkspaceConflict
 from users.models import CustomUser, University
+from procollab.white_label import (
+    frontend_url as instance_frontend_url,
+    get_config as get_instance_config,
+    is_white_label_program,
+)
 
 SALT = "program-native-confirm-v1"
 RECEIPT_SALT = "program-native-resend-v1"
@@ -33,7 +38,7 @@ SOURCES = ("own", "universities", "regions")
 
 
 def frontend_url():
-    return settings.EXPERT_WORKSPACE_FRONTEND_URL.rstrip("/")
+    return instance_frontend_url(settings.EXPERT_WORKSPACE_FRONTEND_URL)
 
 
 def config_for(program):
@@ -253,7 +258,7 @@ def public_data(program, user):
             partner_program=program, user=user
         ).exists()
     )
-    return {
+    data = {
         "id": program.pk,
         "name": program.name,
         "version": config.published_version,
@@ -264,6 +269,15 @@ def public_data(program, user):
         "program_url": f"/office/program/{program.pk}",
         "registration_ends": program.datetime_registration_ends,
     }
+    if is_white_label_program(program.pk):
+        data["account_mode"] = "email_password"
+        brand = get_instance_config()
+        data["branding"] = {
+            "name": brand.brand_name,
+            "logo_url": brand.logo_url,
+            "logo_background": brand.logo_background,
+        }
+    return data
 
 
 def validate_answers(schema, answers):

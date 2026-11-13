@@ -8,6 +8,7 @@ class CriteriasResponse(TypedDict):
     type: str
     min_value: int | float | None
     max_value: int | float | None
+    weight_percent: float | None
 
 
 class ProjectScoresResponse(CriteriasResponse):

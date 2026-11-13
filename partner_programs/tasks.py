@@ -84,6 +84,7 @@ def send_program_registration_confirmation(pending_id, generation):
     from django.core.mail import EmailMultiAlternatives
     from django.template.loader import render_to_string
     from urllib.parse import urlencode
+    from procollab.white_label import get_config
     from partner_programs.models import PendingProgramRegistration
     from partner_programs.services.native_registration import (
         confirmation_token,
@@ -96,15 +97,17 @@ def send_program_registration_confirmation(pending_id, generation):
     pending = rows.select_related("program", "user").first()
     if not pending:
         return
+    brand = get_config()
     context = {
         "program_name": pending.program.name,
         "first_name": pending.user.first_name,
+        "brand_name": brand.brand_name,
         "confirmation_url": f"{frontend_url()}/program-registration/{pending.program_id}#"
         + urlencode({"confirmation": confirmation_token(pending)}),
     }
     try:
         message = EmailMultiAlternatives(
-            "Подтвердите регистрацию в программе | PROCOLLAB",
+            f"Подтвердите регистрацию в программе | {brand.brand_name}",
             render_to_string("email/program_registration.txt", context),
             settings.EMAIL_USER,
             [pending.user.email],
@@ -150,6 +153,7 @@ def publish_finished_program_solutions_task() -> int:
 
 @app.task(autoretry_for=(Exception,), retry_backoff=True, max_retries=3)
 def send_organizer_invitation(invitation_id, token):
+    from procollab.white_label import get_config, frontend_url
     from django.conf import settings
     from django.core.mail import EmailMultiAlternatives
     from django.template.loader import render_to_string
@@ -166,18 +170,23 @@ def send_organizer_invitation(invitation_id, token):
     invitation = rows.select_related("partner_program").first()
     if not invitation:
         return
+    brand = get_config()
     context = {
         "program_name": invitation.partner_program.name,
         "email": invitation.email,
-        "invitation_url": settings.EXPERT_WORKSPACE_FRONTEND_URL.rstrip("/")
+        "invitation_url": frontend_url(settings.EXPERT_WORKSPACE_FRONTEND_URL)
         + "/organizer-invitation/"
         + token,
         "expires_at": invitation.expires_at,
-        "logo_url": "https://786505.selcdn.ru/app_files/procollab_logo.png",
+        "logo_url": brand.logo_url
+        if brand.enabled
+        else "https://786505.selcdn.ru/app_files/procollab_logo.png",
+        "brand_name": brand.brand_name,
+        "logo_background": brand.logo_background,
     }
     try:
         message = EmailMultiAlternatives(
-            "Приглашение организатора | PROCOLLAB",
+            f"Приглашение организатора | {brand.brand_name}",
             render_to_string("email/organizer_invitation.txt", context),
             settings.EMAIL_USER,
             [invitation.email],

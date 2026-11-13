@@ -13,17 +13,30 @@ User = get_user_model()
 class CriteriaQuerySet(models.QuerySet):
     def delete(self):
         from .criteria_policy import locked
+        from .scoring import validate_configuration
 
         with transaction.atomic():
-            ids = self.values_list("partner_program_id", flat=True).distinct()
-            programs = (
+            selected = list(self.values_list("pk", "partner_program_id"))
+            deleted = [pk for pk, _ in selected]
+            ids = {program_id for _, program_id in selected}
+            programs = list(
                 PartnerProgram.objects.select_for_update()
                 .filter(pk__in=ids)
                 .order_by("pk")
             )
+            current = list(
+                self.filter(pk__in=deleted).values_list("pk", "partner_program_id")
+            )
+            if any(program_id not in ids for _, program_id in current):
+                raise ValidationError("Критерий изменился. Обновите данные.")
+            deleted = [pk for pk, _ in current]
             if any(locked(p) for p in programs):
                 raise ValidationError("После первой оценки критерии нельзя удалять.")
-            return super().delete()
+            for program in programs:
+                validate_configuration(
+                    program, list(program.criterias.exclude(pk__in=deleted))
+                )
+            return models.QuerySet.delete(self.filter(pk__in=deleted))
 
 
 class Criteria(models.Model):
@@ -56,6 +69,9 @@ class Criteria(models.Model):
         null=True,
         blank=True,
     )
+    weight_percent = models.DecimalField(
+        verbose_name="Вес, %", max_digits=5, decimal_places=2, null=True, blank=True
+    )
     partner_program = models.ForeignKey(
         PartnerProgram,
         on_delete=models.CASCADE,
@@ -64,8 +80,23 @@ class Criteria(models.Model):
 
     objects = CriteriaQuerySet.as_manager()
 
+    def clean(self):
+        super().clean()
+        from .scoring import validate_weight
+
+        try:
+            validate_weight(self)
+        except ValueError as error:
+            raise ValidationError({"weight_percent": str(error)}) from error
+
     def save(self, *args, **kwargs):
         from .criteria_policy import locked
+        from .scoring import validate_weight
+
+        try:
+            validate_weight(self)
+        except ValueError as error:
+            raise ValidationError({"weight_percent": str(error)}) from error
 
         with transaction.atomic():
             old = type(self).objects.filter(pk=self.pk).first() if self.pk else None
@@ -77,6 +108,12 @@ class Criteria(models.Model):
                 .filter(pk__in=ids)
                 .order_by("pk")
             )
+            current = type(self).objects.filter(pk=self.pk).first() if self.pk else None
+            if (old is not None and current is None) or (
+                current is not None and current.partner_program_id not in ids
+            ):
+                raise ValidationError("Критерий изменился. Обновите данные.")
+            old = current
             changed = old is None or any(
                 getattr(old, field) != getattr(self, field)
                 for field in (
@@ -85,11 +122,20 @@ class Criteria(models.Model):
                     "type",
                     "min_value",
                     "max_value",
+                    "weight_percent",
                     "partner_program_id",
                 )
             )
             if changed and any(locked(p) for p in programs):
                 raise ValidationError("После первой оценки критерии нельзя менять.")
+            if changed:
+                from .scoring import validate_configuration
+
+                for program in programs:
+                    rows = list(program.criterias.exclude(pk=self.pk))
+                    if program.pk == self.partner_program_id:
+                        rows.append(self)
+                    validate_configuration(program, rows)
             return super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
@@ -101,6 +147,16 @@ class Criteria(models.Model):
     class Meta:
         verbose_name = "Критерий оценки проекта"
         verbose_name_plural = "Критерии оценки проектов"
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(weight_percent__isnull=True)
+                | (
+                    models.Q(type__in=("int", "float"))
+                    & models.Q(weight_percent__gt=0, weight_percent__lte=100)
+                ),
+                name="criterion_weight_numeric_positive",
+            )
+        ]
 
 
 class ProjectScore(models.Model):
@@ -137,7 +193,12 @@ class ProjectScore(models.Model):
         )
         with transaction.atomic():
             program = PartnerProgram.objects.select_for_update().get(pk=program_id)
+            from .scoring import validate_configuration
+
+            validate_configuration(program)
             self.criteria = Criteria.objects.get(pk=self.criteria_id)
+            if self.criteria.partner_program_id != program.pk:
+                raise ValidationError("Критерий изменился. Обновите форму оценки.")
             ProjectScoreValidator.validate(
                 criteria_type=self.criteria.type,
                 value=self.value,

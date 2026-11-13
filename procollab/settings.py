@@ -3,6 +3,7 @@ import mimetypes
 import sys
 from datetime import timedelta
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from decouple import config
 
@@ -20,6 +21,18 @@ EXPERT_WORKSPACE_FRONTEND_URL = config(
 )
 PROGRAM_SOLUTIONS_ENABLED = config("PROGRAM_SOLUTIONS_ENABLED", default=True, cast=bool)
 PROJECT_DEFAULT_PACK_URL = config("PROJECT_DEFAULT_PACK_URL", default="")
+
+WHITE_LABEL_ENABLED = config("WHITE_LABEL_ENABLED", default=False, cast=bool)
+WHITE_LABEL_PROGRAM_ID = config("WHITE_LABEL_PROGRAM_ID", default=0, cast=int)
+WHITE_LABEL_BRAND_NAME = config("WHITE_LABEL_BRAND_NAME", default="", cast=str)
+WHITE_LABEL_LOGO_URL = config("WHITE_LABEL_LOGO_URL", default="", cast=str)
+WHITE_LABEL_FAVICON_URL = config("WHITE_LABEL_FAVICON_URL", default="", cast=str)
+WHITE_LABEL_LOGO_BACKGROUND = config(
+    "WHITE_LABEL_LOGO_BACKGROUND", default="transparent", cast=str
+)
+WHITE_LABEL_FRONTEND_URL = config("WHITE_LABEL_FRONTEND_URL", default="", cast=str)
+WHITE_LABEL_API_HOST = config("WHITE_LABEL_API_HOST", default="", cast=str)
+WHITE_LABEL_DEMO_ALLOWED = config("WHITE_LABEL_DEMO_ALLOWED", default=False, cast=bool)
 
 AUTOPOSTING_ON = config("AUTOPOSTING_ON", default=False, cast=bool)
 
@@ -148,6 +161,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "procollab.white_label.template_context",
             ],
         },
     },
@@ -387,3 +401,15 @@ CELERY_ACCEPT_CONTENT = ["application/json"]
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TASK_SERIALIZER = "json"
 CELERY_TIMEZONE = "Europe/Moscow"
+
+if WHITE_LABEL_ENABLED:
+    # Настройки доверенных доменов относятся только к этому экземпляру.
+    instance_origin = WHITE_LABEL_FRONTEND_URL.rstrip("/")
+    instance_host = urlsplit(instance_origin).hostname
+    ALLOWED_HOSTS = list(ALLOWED_HOSTS)
+    for host in (instance_host, WHITE_LABEL_API_HOST):
+        if host and host not in ALLOWED_HOSTS:
+            ALLOWED_HOSTS.append(host)
+    CSRF_TRUSTED_ORIGINS = [*CSRF_TRUSTED_ORIGINS, instance_origin]
+    CORS_ALLOW_ALL_ORIGINS = False
+    CORS_ALLOWED_ORIGINS = [instance_origin]

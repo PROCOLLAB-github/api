@@ -1,0 +1,12 @@
+map $cookie_procollab_pilot_gate $ppv2_realm {
+    default "Pilot";
+    "@@TOKEN@@" off;
+}
+map $status $ppv2_gate_cookie {
+    default "";
+    ~^2[0-9][0-9]$ "procollab_pilot_gate=@@TOKEN@@; Path=/; Max-Age=14400; Secure; HttpOnly; SameSite=Strict";
+}
+map $http_authorization $ppv2_authorization {
+    default "";
+    "~^Bearer " $http_authorization;
+}

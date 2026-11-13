@@ -4,6 +4,7 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 
 from procollab.celery import app
+from procollab.white_label import get_config, frontend_url
 
 
 @app.task(autoretry_for=(Exception,), retry_backoff=True, max_retries=3)
@@ -20,18 +21,23 @@ def send_expert_invitation(invitation_id, token):
     invitation = rows.select_related("partner_program").first()
     if not invitation:
         return
+    brand = get_config()
     context = {
         "program_name": invitation.partner_program.name,
         "email": invitation.email,
-        "invitation_url": settings.EXPERT_WORKSPACE_FRONTEND_URL.rstrip("/")
+        "invitation_url": frontend_url(settings.EXPERT_WORKSPACE_FRONTEND_URL)
         + "/expert-invitation/"
         + token,
         "expires_at": invitation.expires_at,
-        "logo_url": "https://786505.selcdn.ru/app_files/procollab_logo.png",
+        "logo_url": brand.logo_url
+        if brand.enabled
+        else "https://786505.selcdn.ru/app_files/procollab_logo.png",
+        "brand_name": brand.brand_name,
+        "logo_background": brand.logo_background,
     }
     try:
         message = EmailMultiAlternatives(
-            "Приглашение эксперта | PROCOLLAB",
+            f"Приглашение эксперта | {brand.brand_name}",
             render_to_string("email/expert_invitation.txt", context),
             settings.EMAIL_USER,
             [invitation.email],
@@ -67,15 +73,16 @@ def send_expert_joined_notification(notification_id):
         ).first()
         if not recipient or not recipient.email:
             return
+        brand = get_config()
         context = {
             "program_name": program.name,
             "expert_name": notice.expert_name,
             "expert_email": notice.expert_email,
-            "program_url": settings.EXPERT_WORKSPACE_FRONTEND_URL.rstrip("/")
+            "program_url": frontend_url(settings.EXPERT_WORKSPACE_FRONTEND_URL)
             + f"/office/program/{program.pk}/management/experts",
         }
         message = EmailMultiAlternatives(
-            "Эксперт принял приглашение | PROCOLLAB",
+            f"Эксперт принял приглашение | {brand.brand_name}",
             render_to_string("email/expert_joined.txt", context),
             settings.EMAIL_USER,
             [recipient.email],

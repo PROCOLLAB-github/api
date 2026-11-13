@@ -12,6 +12,7 @@ from rest_framework_simplejwt.views import (
 )
 from users.authentication import ActivityTrackingJWTAuthentication
 from partner_programs.solution_form_api import SolutionFormTemplatesView
+from procollab.white_label import InstanceConfigView
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -29,6 +30,7 @@ schema_view = get_schema_view(
 )
 
 urlpatterns = [
+    path("instance/", InstanceConfigView.as_view(), name="instance-config"),
     path("admin/", admin.site.urls),
     path("api-auth/", include("rest_framework.urls")),
     re_path(
