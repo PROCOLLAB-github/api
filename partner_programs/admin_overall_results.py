@@ -35,7 +35,7 @@ class ProgramOverallResultsAdminMixin:
         if not obj or not obj.pk:
             return "Сначала сохраните программу."
         return format_html(
-            '<a href="{}">Кейс + квиз, итог из 200</a>',
+            '<a href="{}">Общий рейтинг: кейс + квиз</a>',
             reverse(
                 "admin:partner_programs_partnerprogram_overall_results", args=[obj.pk]
             ),

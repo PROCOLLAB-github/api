@@ -1,4 +1,4 @@
-"""Общий командный рейтинг: официальный кейс из 100 плюс завершенный квиз из 100."""
+"""Общий командный рейтинг: официальный результат кейса плюс завершенный квиз."""
 
 from decimal import Decimal
 
@@ -13,7 +13,7 @@ from project_rates.evaluation_math import assign_places
 from project_rates.scoring import WEIGHTED
 
 STATUS_LABELS = {
-    "configuration_required": "Не настроены веса критериев кейса",
+    "configuration_required": "Не добавлены числовые критерии кейса",
     "pending_both": "Ожидает кейс и квиз",
     "pending_case": "Ожидает кейс",
     "pending_quiz": "Ожидает квиз",
@@ -44,7 +44,7 @@ def overall_results_data(program, query):
     case_rows = {
         row["id"]: row for group in case_data["groups"] for row in group["projects"]
     }
-    configured = program.evaluation_scoring_mode == WEIGHTED
+    configured = case_data["has_numeric_criteria"]
     links = list(
         project_case_links(program, field=get_program_case_field(program))
         .select_related("project")
@@ -59,11 +59,15 @@ def overall_results_data(program, query):
     rows = []
     for link in links:
         case = case_rows.get(link.pk)
-        case_score = (
-            normalized_stage_score(case["score"])
-            if configured and case and case["score"] is not None
-            else None
-        )
+        case_score = None
+        if configured and case and case["score"] is not None:
+            # Исходная сумма уже усреднена по экспертам сервисом результатов.
+            # Ограничение 0–100 относится только к взвешенному режиму.
+            case_score = (
+                normalized_stage_score(case["score"])
+                if program.evaluation_scoring_mode == WEIGHTED
+                else Decimal(str(case["score"]))
+            )
         case_complete = bool(
             configured and case and case["ready"] and case_score is not None
         )
@@ -146,9 +150,11 @@ def overall_results_data(program, query):
         "program_name": program.name,
         "generated_at": timezone.now(),
         "formula": "case_plus_quiz",
-        "case_maximum": 100,
+        "case_maximum": case_data["maximum"],
         "quiz_maximum": 100,
-        "maximum": 200,
+        "maximum": (
+            case_data["maximum"] + 100 if case_data["maximum"] is not None else None
+        ),
         "case_scoring_mode": program.evaluation_scoring_mode,
         "case_scoring_configured": configured,
         "case_options": case_data["case_options"],

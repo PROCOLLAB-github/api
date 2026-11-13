@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="ru">
+<body style="font-family:Arial,sans-serif;color:#222;padding:24px">
+<h2>Эксперт оценил проект</h2>
+<p>Здравствуйте{% if first_name %}, {{ first_name }}{% endif %}!</p>
+<p>Эксперт сохранил оценку проекта «{{ project_name }}» в программе «{{ program_name }}».</p>
+<p><a href="{{ program_url }}">Страница программы</a></p>
+<p>Команда {{ brand_name }}</p>
+</body>
+</html>

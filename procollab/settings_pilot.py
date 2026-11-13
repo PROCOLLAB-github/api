@@ -28,6 +28,7 @@ STATIC_ROOT = Path("/procollab/pilot-data/static")
 MEDIA_URL = "/backend/media/"
 MEDIA_ROOT = Path("/procollab/pilot-data/media")
 PILOT_LOCAL_FILES = True
+WHITE_LABEL_ORGANIZERS_ARE_EXPERTS = True
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},

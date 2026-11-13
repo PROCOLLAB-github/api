@@ -280,6 +280,17 @@ def _prepare_project_score_data(
 
 
 def _send_project_rated_email(*, project: Project, program: PartnerProgram) -> None:
+    from procollab.white_label import is_white_label_program
+
+    if is_white_label_program(program.pk):
+        from project_rates.tasks import send_white_label_project_rated
+
+        # В чистой БД нет legacy MailingSchema №2. Письмо не откатывает оценку.
+        transaction.on_commit(
+            lambda: send_white_label_project_rated.delay(program.pk, project.pk),
+            robust=True,
+        )
+        return
     send_email.delay(
         ProjectRatedParams(
             message_type=MessageTypeEnum.PROJECT_RATED.value,
