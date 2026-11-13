@@ -1,4 +1,5 @@
 from django.test import TestCase, override_settings
+from rest_framework.test import APIClient
 
 from partner_programs.tests.test_solution_forms import call
 from project_rates.models import ProjectExpertAssignment
@@ -6,6 +7,7 @@ from project_rates.solution_models import SolutionExpertAssignment
 from project_rates.tests.helpers import (
     create_rate_program,
     create_rate_project,
+    create_rate_user,
     link_project_to_program,
 )
 from project_rates.tests.test_solution_evaluation import EvaluationFixture
@@ -75,6 +77,22 @@ class SolutionCabinetTests(EvaluationFixture, TestCase):
         self.assertEqual(page["count"], 1)
         self.assertEqual(page["results"][0]["application"]["kind"], "legacy_project")
         self.assertEqual(self.page(actor=self.captain)["count"], 0)
+
+    @override_settings(PROGRAM_SOLUTIONS_ENABLED=False)
+    def test_shared_cabinet_serves_projects_when_solutions_are_disabled(self):
+        self.assertEqual(APIClient().get(self.cabinet_url).status_code, 401)
+        page = self.page()
+        self.assertEqual(page["count"], 1)
+        self.assertEqual(page["pending"], 1)
+        self.assertEqual(page["results"][0]["application"]["kind"], "legacy_project")
+        self.assertEqual(page["results"][0]["application"]["project_id"], self.project.pk)
+        self.assertEqual(self.page(f"?program_id={self.program.pk}")["count"], 0)
+        self.assertEqual(call(self.expert, "get", self.list_url).status_code, 404)
+
+        organizer = create_rate_user(prefix="organizer-cabinet")
+        self.legacy.managers.add(organizer)
+        empty = self.page(actor=organizer)
+        self.assertEqual((empty["count"], empty["pending"], empty["results"]), (0, 0, []))
 
     def test_old_programs_and_include_projects_contract_stay_unchanged(self):
         old = call(self.expert, "get", "/evaluation/programs/").data

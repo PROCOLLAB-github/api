@@ -27,7 +27,12 @@ class Backend(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
-        protected = {"/auth/users/current/", "/solution-invitations/", "/solution-form-templates/"}
+        protected = {
+            "/auth/users/current/",
+            "/evaluation/applications/",
+            "/solution-invitations/",
+            "/solution-form-templates/",
+        }
         self.respond(401 if self.path.partition("?")[0] in protected else 404)
 
     def do_POST(self):
