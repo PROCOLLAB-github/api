@@ -236,6 +236,7 @@ class PartnerProgram(models.Model):
     program_format = models.CharField(
         max_length=24,
         choices=[
+            ("accelerator", "Акселератор"),
             ("case_championship", "Кейс-чемпионат"),
             ("hackathon", "Хакатон"),
             ("noncompetitive", "Неконкурсная программа"),

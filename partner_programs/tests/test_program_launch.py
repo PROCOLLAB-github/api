@@ -18,7 +18,12 @@ from partner_programs.models import (
     ProgramRegistration,
 )
 from partner_programs.services.program_launch import publish_program
-from partner_programs.tests.helpers import create_partner_program, create_user
+from partner_programs.tests.helpers import (
+    create_partner_program,
+    create_program_field,
+    create_program_member,
+    create_user,
+)
 
 
 class ProgramLaunchTestCase(TestCase):
@@ -42,6 +47,51 @@ class ProgramLaunchTestCase(TestCase):
 
 
 class ProgramCreationTests(ProgramLaunchTestCase):
+    def test_accelerator_preserves_existing_programs_and_starts_without_contest(self):
+        existing = [
+            create_partner_program(program_format=kind, is_competitive=competitive)
+            for kind, competitive in (
+                ("noncompetitive", False),
+                ("case_championship", True),
+                ("hackathon", True),
+                (None, False),
+            )
+        ]
+        field = create_program_field(
+            existing[0], name="legacy_answer", label="Прежний вопрос"
+        )
+        member = create_program_member(existing[0], data={"legacy_answer": "Ответ"})
+        before = list(
+            PartnerProgram.objects.filter(pk__in=[program.pk for program in existing])
+            .order_by("pk")
+            .values()
+        )
+        for enabled in (True, False):
+            with self.subTest(solutions_enabled=enabled), self.settings(
+                PROGRAM_SOLUTIONS_ENABLED=enabled
+            ):
+                response = self.create(format="accelerator")
+                self.assertEqual(response.status_code, 201, response.data)
+                program = PartnerProgram.objects.get(pk=response.data["id"])
+                self.assertEqual(program.program_format, "accelerator")
+                self.assertFalse(program.is_competitive)
+                self.assertEqual(program.solution_storage_mode, "legacy_project")
+                self.assertFalse(program.solution_creation_enabled)
+                self.assertFalse(program.fields.exists())
+                self.assertTrue(program.managers.filter(pk=self.creator.pk).exists())
+        self.assertEqual(
+            list(
+                PartnerProgram.objects.filter(pk__in=[program.pk for program in existing])
+                .order_by("pk")
+                .values()
+            ),
+            before,
+        )
+        field.refresh_from_db()
+        member.refresh_from_db()
+        self.assertEqual(field.label, "Прежний вопрос")
+        self.assertEqual(member.partner_program_data, {"legacy_answer": "Ответ"})
+
     @override_settings(PROGRAM_SOLUTIONS_ENABLED=False)
     def test_v1_switch_selects_project_templates_and_archives_v2_routes(self):
         archived = create_partner_program(
@@ -68,12 +118,14 @@ class ProgramCreationTests(ProgramLaunchTestCase):
         self.assertEqual(archived.solution_storage_mode, "solution")
         inbox = self.client.get("/solution-invitations/")
         self.assertEqual(inbox.status_code, 200)
-        self.assertEqual(inbox.data, {"count": 0, "next": None, "previous": None, "results": []})
+        self.assertEqual(
+            inbox.data, {"count": 0, "next": None, "previous": None, "results": []}
+        )
         self.client.force_authenticate(None)
         self.assertEqual(self.client.get("/solution-invitations/").status_code, 401)
 
     def test_all_formats_start_private_without_fake_dates_and_enrollment(self):
-        for kind in ("case_championship", "hackathon", "noncompetitive"):
+        for kind in ("case_championship", "hackathon", "noncompetitive", "accelerator"):
             with self.subTest(kind=kind):
                 response = self.create(format=kind)
                 self.assertEqual(response.status_code, 201, response.data)
@@ -84,9 +136,12 @@ class ProgramCreationTests(ProgramLaunchTestCase):
                 self.assertIsNone(program.datetime_started)
                 self.assertIsNone(program.datetime_finished)
                 self.assertIsNone(program.datetime_registration_ends)
-                self.assertEqual(program.is_competitive, kind != "noncompetitive")
                 self.assertEqual(
-                    program.solution_creation_enabled, kind != "noncompetitive"
+                    program.is_competitive, kind in ("case_championship", "hackathon")
+                )
+                self.assertEqual(
+                    program.solution_creation_enabled,
+                    kind in ("case_championship", "hackathon"),
                 )
 
     def test_staff_and_existing_manager_need_explicit_creation_permission(self):

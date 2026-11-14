@@ -1,0 +1,22 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+  <form method="post">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <div class="form-row">
+      {{ form.name.errors }}
+      {{ form.name.label_tag }} {{ form.name }}
+    </div>
+    <div class="form-row">
+      {{ form.format.errors }}
+      {{ form.format.label_tag }} {{ form.format }}
+    </div>
+    {{ form.idempotency_key }}
+    {{ form.idempotency_key.errors }}
+    <p>Программа будет создана как черновик и видна только организаторам.</p>
+    <div class="submit-row">
+      <input type="submit" value="Создать программу" class="default">
+      <a href="{% url 'admin:partner_programs_partnerprogram_changelist' %}">Отмена</a>
+    </div>
+  </form>
+{% endblock %}
