@@ -1,15 +1,18 @@
 import re
+from uuid import uuid4
 from partner_programs.registration_models import ProgramRegistration
 
 import tablib
 from django import forms
 from django.contrib import admin
 from django.db import transaction
+from django.core.exceptions import PermissionDenied
 from . import solution_admin  # noqa: F401
 from projects.team_admin import TeamValidationAdminMixin
 from django.db.models import QuerySet
-from django.http import HttpRequest
-from django.urls import path
+from django.http import HttpRequest, HttpResponseNotAllowed, HttpResponseRedirect
+from django.template.response import TemplateResponse
+from django.urls import path, reverse
 from django.utils import timezone
 
 from core.utils import XlsxFileToExport, build_xlsx_download_response
@@ -29,6 +32,7 @@ from partner_programs.forms import (
 )
 from partner_programs.services.case_fields import case_field_has_values
 from partner_programs.admin_registration import ProgramRegistrationAdminMixin
+from partner_programs.admin_registration import error_text
 from partner_programs.admin_publication import ProgramPublicationAdminMixin
 from partner_programs.admin_certificate_fonts import ProgramCertificateFontsAdminMixin
 from partner_programs.program_dates import (
@@ -36,6 +40,21 @@ from partner_programs.program_dates import (
     program_date_errors,
     reopens_program_deadline,
 )
+from rest_framework.exceptions import APIException
+
+
+class ProgramDraftCreateAdminForm(forms.Form):
+    name = forms.CharField(label="Название программы", max_length=255, strip=True)
+    format = forms.ChoiceField(
+        label="Тип программы",
+        choices=[
+            ("accelerator", "Акселератор"),
+            ("hackathon", "Хакатон"),
+            ("case_championship", "Кейс-чемпионат"),
+        ],
+        widget=forms.RadioSelect,
+    )
+    idempotency_key = forms.UUIDField(widget=forms.HiddenInput)
 
 
 class PartnerProgramMaterialInline(admin.StackedInline):
@@ -59,6 +78,8 @@ class PartnerProgramAdmin(
     ProgramCertificateFontsAdminMixin,
     admin.ModelAdmin,
 ):
+    change_list_template = "partner_programs/admin/programs_change_list.html"
+
     class PartnerProgramAdminForm(forms.ModelForm):
         confirm_reopen = forms.BooleanField(
             required=False,
@@ -104,7 +125,7 @@ class PartnerProgramAdmin(
 
     inlines = [PartnerProgramMaterialInline, PartnerProgramFieldInline]
     form = PartnerProgramAdminForm
-    list_display = ("id", "name", "tag", "city", "datetime_created")
+    list_display = ("id", "name", "program_format", "tag", "city", "datetime_created")
     list_display_links = (
         "id",
         "name",
@@ -117,17 +138,18 @@ class PartnerProgramAdmin(
         "city",
         "tag",
     )
-    list_filter = ("city",)
+    list_filter = ("city", "program_format")
 
     autocomplete_fields = ("managers",)
     date_hierarchy = "datetime_started"
-    readonly_fields = ("datetime_created", "datetime_updated")
+    readonly_fields = ("datetime_created", "datetime_updated", "program_format")
     fieldsets = (
         (
             None,
             {
                 "fields": (
                     "name",
+                    "program_format",
                     "tag",
                     "description",
                     "city",
@@ -204,6 +226,11 @@ class PartnerProgramAdmin(
         default_urls = super(PartnerProgramAdmin, self).get_urls()
         custom_urls = [
             path(
+                "create-draft/",
+                self.admin_site.admin_view(self.create_draft_view),
+                name="partner_programs_partnerprogram_create_draft",
+            ),
+            path(
                 "export/<int:object_id>/",
                 self.admin_site.admin_view(self.get_export_file_view),
                 name="export_profiles",
@@ -220,6 +247,51 @@ class PartnerProgramAdmin(
             ),
         ]
         return custom_urls + default_urls
+
+    def create_draft_view(self, request):
+        from partner_programs.program_launch_views import CreateProgramInput
+        from partner_programs.services.program_launch import create_program
+
+        if request.method not in ("GET", "POST"):
+            return HttpResponseNotAllowed(["GET", "POST"])
+        if not self.has_add_permission(request):
+            raise PermissionDenied
+        form = ProgramDraftCreateAdminForm(
+            request.POST if request.method == "POST" else None,
+            initial={"idempotency_key": uuid4()},
+        )
+        status = 200
+        if request.method == "POST" and form.is_valid():
+            serializer = CreateProgramInput(data=form.cleaned_data)
+            if serializer.is_valid():
+                try:
+                    program, created = create_program(
+                        request.user, serializer.validated_data
+                    )
+                except APIException as error:
+                    form.add_error(None, error_text(error.detail))
+                    status = error.status_code
+                else:
+                    if created:
+                        self.log_addition(request, program, "Создан черновик программы.")
+                    self.message_user(request, "Черновик программы создан.")
+                    return HttpResponseRedirect(
+                        reverse(
+                            "admin:partner_programs_partnerprogram_change",
+                            args=[program.pk],
+                        )
+                    )
+            else:
+                form.add_error(None, error_text(serializer.errors))
+        context = {
+            **self.admin_site.each_context(request),
+            "title": "Создание программы",
+            "opts": self.model._meta,
+            "form": form,
+        }
+        return TemplateResponse(
+            request, "partner_programs/admin/create_draft.html", context, status=status
+        )
 
     def mailing(self, request, partner_program):
         profiles = PartnerProgramUserProfile.objects.filter(

@@ -26,7 +26,7 @@ from partner_programs.services import native_registration as registration
 from project_rates.workspace import WorkspaceConflict
 from partner_programs.program_dates import DATE_FIELDS, program_date_errors
 
-FORMATS = ("case_championship", "hackathon", "noncompetitive")
+FORMATS = ("accelerator", "case_championship", "hackathon", "noncompetitive")
 
 PROJECT_FORM_FIELDS = {
     "case_championship": (
@@ -78,7 +78,7 @@ def create_program(user, data):
                 "Этот запрос уже создал другую программу. Обновите форму создания.",
             )
         return previous, False
-    competitive = data["format"] != "noncompetitive"
+    competitive = data["format"] in ("case_championship", "hackathon")
     use_solutions = competitive and settings.PROGRAM_SOLUTIONS_ENABLED
     program = PartnerProgram.objects.create(
         name=data["name"],
