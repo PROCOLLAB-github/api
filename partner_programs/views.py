@@ -164,6 +164,11 @@ class PartnerProgramList(generics.ListCreateAPIView):
                 )
             )
 
+        search = self.request.query_params.get("search", "").strip()
+        if search:
+            qs = qs.filter(name__icontains=search)
+        qs = qs.order_by("-datetime_created", "-pk")
+
         user = self.request.user
         if not user.is_authenticated:
             return qs
