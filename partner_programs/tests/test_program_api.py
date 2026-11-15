@@ -1,10 +1,11 @@
 from unittest.mock import patch
 
-from django.test import TestCase
+from django.db import connection
+from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from partner_programs.models import PartnerProgramUserProfile
+from partner_programs.models import PartnerProgram, PartnerProgramUserProfile
 from partner_programs.tests.helpers import (
     create_partner_program,
     create_program_member,
@@ -26,6 +27,107 @@ class PartnerProgramListAPITests(TestCase):
         program_ids = {item["id"] for item in response.data["results"]}
         self.assertIn(published.id, program_ids)
         self.assertNotIn(draft.id, program_ids)
+
+    @override_settings(PROGRAM_SOLUTIONS_ENABLED=False)
+    def test_search_filters_published_catalog_by_name_before_pagination(self):
+        match = create_partner_program(name="Первая смена названия")
+        recent = create_partner_program(name="Другая программа", tag="первая смена")
+        create_partner_program(name="Первая смена, черновик", draft=True)
+        create_partner_program(
+            name="Первая смена, решения", solution_storage_mode="solution"
+        )
+
+        first_page = self.client.get("/programs/", {"limit": 1})
+        self.assertEqual(first_page.status_code, 200)
+        self.assertEqual([row["id"] for row in first_page.data["results"]], [recent.id])
+
+        for query in ("Первая смена", "  Первая смена  "):
+            with self.subTest(query=query):
+                result = self.client.get("/programs/", {"search": query, "limit": 1})
+                self.assertEqual(result.status_code, 200)
+                self.assertEqual(result.data["count"], 1)
+                self.assertIsNone(result.data["next"])
+                self.assertEqual(
+                    [row["id"] for row in result.data["results"]], [match.id]
+                )
+
+        for query in ("", "   "):
+            with self.subTest(query=query):
+                result = self.client.get("/programs/", {"search": query, "limit": 1})
+                self.assertEqual(result.data["results"], first_page.data["results"])
+                self.assertEqual(result.data["count"], first_page.data["count"])
+
+    def test_search_ignores_ascii_case(self):
+        match = create_partner_program(name="First Shift")
+
+        result = self.client.get("/programs/", {"search": "FIRST shift"})
+
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual([row["id"] for row in result.data["results"]], [match.id])
+
+    def test_postgresql_search_ignores_cyrillic_case(self):
+        if connection.vendor != "postgresql":
+            self.skipTest("SQLite LIKE ignores case only for ASCII")
+        match = create_partner_program(name="Первая смена названия")
+
+        result = self.client.get("/programs/", {"search": "  пЕРВАЯ СМЕНА  "})
+
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual([row["id"] for row in result.data["results"]], [match.id])
+
+    def test_catalog_paginates_by_creation_date_then_id(self):
+        first_tie = create_partner_program()
+        second_tie = create_partner_program()
+        older = create_partner_program()
+        now = timezone.now()
+        PartnerProgram.objects.filter(pk__in=[first_tie.pk, second_tie.pk]).update(
+            datetime_created=now
+        )
+        PartnerProgram.objects.filter(pk=older.pk).update(
+            datetime_created=now - timezone.timedelta(days=1)
+        )
+
+        first = self.client.get("/programs/", {"limit": 1})
+        second = self.client.get("/programs/", {"limit": 1, "offset": 1})
+        third = self.client.get("/programs/", {"limit": 1, "offset": 2})
+
+        self.assertEqual(
+            [response.status_code for response in (first, second, third)], [200, 200, 200]
+        )
+        self.assertEqual(
+            [response.data["results"][0]["id"] for response in (first, second, third)],
+            [second_tie.id, first_tie.id, older.id],
+        )
+
+    def test_search_combines_with_participation_and_submission_filters(self):
+        user = create_user()
+        match = create_partner_program(name="Открытая программа", is_competitive=True)
+        closed = create_partner_program(
+            name="Открытая для просмотра",
+            is_competitive=True,
+            datetime_project_submission_ends=timezone.now() - timezone.timedelta(days=1),
+        )
+        create_partner_program(name="Открытая для других", is_competitive=True)
+        different_name = create_partner_program(
+            name="Другая программа", is_competitive=True
+        )
+        for program in (match, closed, different_name):
+            create_program_member(program, user=user)
+        query = {
+            "search": "Открытая",
+            "participating": "true",
+            "project_submission": "true",
+        }
+
+        anonymous = self.client.get("/programs/", query)
+        self.assertEqual(anonymous.status_code, 200)
+        self.assertEqual(anonymous.data["count"], 0)
+
+        self.client.force_authenticate(user)
+        result = self.client.get("/programs/", query)
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual([row["id"] for row in result.data["results"]], [match.id])
+        self.assertTrue(result.data["results"][0]["is_user_member"])
 
     def test_participating_filter_returns_active_programs_for_current_user(self):
         user = create_user(prefix="program-list-member")
