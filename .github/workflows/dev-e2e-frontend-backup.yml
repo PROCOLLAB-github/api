@@ -1,0 +1,47 @@
+name: DEV E2E frontend backup
+
+on:
+  push:
+    branches: [ops/dev-e2e-frontend-backup-20261120]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: api-deploy-dev
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    environment: dev
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --prefix "$RUNNER_TEMP/dev-ssh" --ignore-scripts --no-package-lock --no-audit --no-fund ssh2@1.16.0
+      - name: Save and verify the current frontend
+        env:
+          NODE_PATH: ${{ runner.temp }}/dev-ssh/node_modules
+          DEV_SERVER_HOST: ${{ secrets.DEV_SERVER_HOST }}
+          DEV_SERVER_USER: ${{ secrets.DEV_SERVER_USER }}
+          DEV_SERVER_PASSWORD: ${{ secrets.DEV_SERVER_PASSWORD }}
+          DEV_SSH_HOST_KEY_SHA256: ${{ vars.DEV_SSH_HOST_KEY_SHA256 }}
+          DEV_DEPLOY_SCRIPT: |
+            set +x
+            set -eu
+            umask 077
+            test "$(id -u)" = 0
+            test "$(readlink -f /home/front/app)" = /home/front/app
+            folder=/root/procollab-dependency-backups/dependency-20261120T203847Z-43488742
+            test -f "$folder/manifest.json"
+            test -f "$folder/database.dump"
+            test ! -e "$folder/frontend.tar.gz"
+            tar -C /home/front -czf "$folder/frontend.tar.gz.tmp" app
+            tar -tzf "$folder/frontend.tar.gz.tmp" >/dev/null
+            mv "$folder/frontend.tar.gz.tmp" "$folder/frontend.tar.gz"
+            sha256sum "$folder/frontend.tar.gz"
+            echo FRONTEND_BACKUP_VERIFIED=true
+        run: node scripts/dev_ci_ssh.cjs
