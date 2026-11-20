@@ -346,6 +346,12 @@ class ProgramRegistrationAdminMixin:
                 except APIException as error:
                     form.add_error(None, error_text(error.detail))
         config = registration.config_for(program)
+        case_check = None
+        if program.draft and program.program_format == "case_championship":
+            launch = program_launch.readiness_data(program, config)
+            case_check = next(
+                check for check in launch["checks"] if check["code"] == "cases"
+            )
         context = {
             **self.admin_site.each_context(request),
             "title": f"Регистрация: {program.name}",
@@ -357,6 +363,7 @@ class ProgramRegistrationAdminMixin:
             "connection": connection,
             "preview": preview,
             "state": state,
+            "case_check": case_check,
             "change_url": reverse(
                 "admin:partner_programs_partnerprogram_change", args=[program.pk]
             ),

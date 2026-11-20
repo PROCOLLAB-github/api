@@ -98,7 +98,7 @@ class PartnerProgramAdmin(
                 key in self.changed_data for key in (*DATE_FIELDS, "draft")
             ):
                 errors = program_date_errors(
-                    data, require_complete=not data.get("draft", True)
+                    data, require_complete=not data.get("draft", self.instance.draft)
                 )
                 if self.instance.pk and not data.get("confirm_reopen"):
                     previous = PartnerProgram.objects.values(*DATE_FIELDS).get(

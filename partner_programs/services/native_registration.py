@@ -28,6 +28,9 @@ from users.models import CustomUser, University
 
 SALT = "program-native-confirm-v1"
 RECEIPT_SALT = "program-native-resend-v1"
+BROWSER_PROOF_SALT = "program-native-browser-v1"
+CONFIRMATION_MAX_AGE = 86400
+RECOVERY_MAX_AGE = 7 * 86400
 FIELD_TYPES = ("text", "textarea", "number", "date", "select", "multiselect")
 SOURCES = ("own", "universities", "regions")
 
@@ -253,7 +256,7 @@ def public_data(program, user):
             partner_program=program, user=user
         ).exists()
     )
-    return {
+    data = {
         "id": program.pk,
         "name": program.name,
         "version": config.published_version,
@@ -264,6 +267,25 @@ def public_data(program, user):
         "program_url": f"/office/program/{program.pk}",
         "registration_ends": program.datetime_registration_ends,
     }
+    if user.is_authenticated and not enrolled:
+        pending = (
+            PendingProgramRegistration.objects.filter(
+                program=program, user=user, confirmed_at__isnull=False
+            )
+            .values("id", "answers")
+            .first()
+        )
+        if pending:
+            current_keys = {field["id"] for field in data["fields"]}
+            data["resume"] = {
+                "draft_id": str(pending["id"]),
+                "answers": {
+                    key: value
+                    for key, value in pending["answers"].items()
+                    if key in current_keys
+                },
+            }
+    return data
 
 
 def validate_answers(schema, answers):
@@ -441,17 +463,38 @@ def signup(pk, data):
             "account_exists", "Аккаунт уже создан. Войдите, чтобы участвовать."
         )
     queue_confirmation(pending)
-    return {"email_pending": True, "receipt": receipt_token(pending), "email": email}
+    return {
+        "email_pending": True,
+        "receipt": receipt_token(pending),
+        "email": email,
+        "browser_proof": signing.dumps({"id": str(pending.pk)}, salt=BROWSER_PROOF_SALT),
+    }
+
+
+def browser_proof_matches(pending, browser_proof):
+    if not browser_proof:
+        return False
+    try:
+        proof = signing.loads(
+            browser_proof, salt=BROWSER_PROOF_SALT, max_age=RECOVERY_MAX_AGE
+        )
+    except signing.BadSignature:
+        return False
+    return proof.get("id") == str(pending.pk)
 
 
 @transaction.atomic
-def confirm(pk, token):
+def confirm(pk, token, *, link_opened=False, browser_proof=None):
+    expired = False
     try:
-        proof = signing.loads(token, salt=SALT, max_age=86400)
+        try:
+            proof = signing.loads(token, salt=SALT, max_age=CONFIRMATION_MAX_AGE)
+        except signing.SignatureExpired:
+            expired = True
+            proof = signing.loads(token, salt=SALT, max_age=RECOVERY_MAX_AGE)
     except signing.BadSignature:
         raise WorkspaceConflict(
-            "confirmation_expired",
-            "Ссылка недействительна или истекла. Отправьте письмо еще раз.",
+            "confirmation_invalid", "Ссылка недействительна."
         )
     program = open_program(pk, lock=True)
     pending = get_object_or_404(
@@ -459,10 +502,22 @@ def confirm(pk, token):
         pk=proof.get("id"),
         program=program,
     )
-    if pending.confirmed_at or pending.generation != proof.get("generation"):
+    if pending.confirmed_at:
         raise WorkspaceConflict(
-            "confirmation_used", "Ссылка уже использована. Войдите в аккаунт."
+            "confirmation_used", "Почта уже подтверждена. Войдите в аккаунт."
         )
+    if pending.generation != proof.get("generation"):
+        raise WorkspaceConflict(
+            "confirmation_replaced", "Эта ссылка заменена. Откройте последнее письмо."
+        )
+    if expired:
+        raise WorkspaceConflict(
+            "confirmation_expired", "Срок действия ссылки истёк."
+        )
+    # Opening an email link may be done by a scanner. Only the browser
+    # that started this registration can skip the explicit confirmation.
+    if link_opened and not browser_proof_matches(pending, browser_proof):
+        return {"confirmation_required": True}
     user = pending.user
     user.is_active = True
     user.save(update_fields=["is_active"])
@@ -505,10 +560,10 @@ def confirm(pk, token):
 @transaction.atomic
 def resend(pk, token):
     try:
-        proof = signing.loads(token, salt=RECEIPT_SALT, max_age=7 * 86400)
+        proof = signing.loads(token, salt=RECEIPT_SALT, max_age=RECOVERY_MAX_AGE)
     except signing.BadSignature:
         try:
-            proof = signing.loads(token, salt=SALT, max_age=7 * 86400)
+            proof = signing.loads(token, salt=SALT, max_age=RECOVERY_MAX_AGE)
         except signing.BadSignature:
             raise ValidationError(
                 "Ссылка недействительна. Используйте вход или восстановление пароля."

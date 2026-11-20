@@ -339,19 +339,33 @@ class ProgramCreationTests(ProgramLaunchTestCase):
         self.assertEqual(response["Cache-Control"], "private, no-store")
 
 
+@override_settings(PROGRAM_SOLUTIONS_ENABLED=True)
 class ProgramPublicationTests(ProgramLaunchTestCase):
     def setUp(self):
         super().setUp()
         self.program = PartnerProgram.objects.get(pk=self.create().data["id"])
         self.url = f"/programs/{self.program.pk}/management/"
 
-    def configure(self, mode="native"):
+    def add_case(self, program=None):
+        return create_program_field(
+            program or self.program,
+            name="case",
+            label="Кейс",
+            field_type="select",
+            is_required=True,
+            show_filter=True,
+            options=["Кейс 1"],
+        )
+
+    def configure(self, mode="native", *, add_case=True):
         now = timezone.now()
         self.program.description = "Описание программы"
         self.program.datetime_started = now + timezone.timedelta(days=10)
         self.program.datetime_finished = now + timezone.timedelta(days=30)
         self.program.datetime_registration_ends = now + timezone.timedelta(days=5)
         self.program.save()
+        if add_case and self.program.program_format == "case_championship":
+            self.add_case()
         return ProgramRegistration.objects.create(
             program=self.program, draft={"mode": mode, "fields": []}
         )
@@ -373,7 +387,8 @@ class ProgramPublicationTests(ProgramLaunchTestCase):
     ):
         state = self.state()
         self.assertEqual(
-            {r["code"] for r in state["blockers"]}, {"page", "dates", "registration"}
+            {r["code"] for r in state["blockers"]},
+            {"page", "dates", "registration", "cases"},
         )
         self.assertFalse(state["can_publish"])
         self.assertEqual(self.publish().status_code, 400)
@@ -383,7 +398,7 @@ class ProgramPublicationTests(ProgramLaunchTestCase):
             ProgramRegistration.objects.filter(program=self.program).exists()
         )
 
-    def test_first_publication_opens_native_registration_without_solution_setup(self):
+    def test_first_publication_opens_native_registration_with_only_case_configured(self):
         config = self.configure()
         self.assertTrue(self.state()["can_publish"])
         response = self.publish()
@@ -397,7 +412,73 @@ class ProgramPublicationTests(ProgramLaunchTestCase):
             self.client.get(f"/programs/{self.program.pk}/registration/").status_code, 200
         )
         self.assertIn(str(self.program.pk), response.data["links"]["registration"])
-        self.assertFalse(self.program.fields.exists())
+        self.assertEqual(
+            list(self.program.fields.values_list("name", flat=True)), ["case"]
+        )
+
+    def test_case_championship_needs_a_saved_case_from_its_own_program(self):
+        config = self.configure(add_case=False)
+        self.add_case(create_partner_program())
+        self.program.fields.create(
+            name="topic", label="Кейс", field_type="select", options="Похожее поле"
+        )
+        state = self.state()
+        self.assertFalse(state["can_publish"])
+        self.assertEqual(
+            state["blockers"],
+            [
+                {
+                    "code": "cases",
+                    "section": "project-form",
+                    "detail": "Добавьте и сохраните хотя бы один кейс.",
+                }
+            ],
+        )
+        response = self.publish(state["revision"])
+        self.assertEqual(response.status_code, 400, response.data)
+        self.assertEqual(response.data["blockers"], state["blockers"])
+        self.program.refresh_from_db()
+        config.refresh_from_db()
+        self.assertTrue(self.program.draft)
+        self.assertIsNone(config.published)
+        self.assertEqual(config.published_version, 0)
+
+        self.add_case()
+        self.assertEqual(self.publish(state["revision"]).status_code, 409)
+        self.assertTrue(self.state()["can_publish"])
+        self.assertEqual(self.publish().status_code, 200)
+
+    def test_case_field_with_only_blank_options_blocks_publication(self):
+        self.configure()
+        revision = self.state()["revision"]
+        # Model writes reject these options. Simulate invalid data already in storage.
+        self.program.fields.filter(name="case").update(solution_options=[" "])
+        self.assertEqual(self.publish(revision).status_code, 409)
+        state = self.state()
+        self.assertEqual([r["code"] for r in state["blockers"]], ["cases"])
+        self.assertEqual(self.publish(state["revision"]).status_code, 400)
+
+    @override_settings(PROGRAM_SOLUTIONS_ENABLED=False)
+    def test_case_championship_using_legacy_project_form_also_requires_cases(self):
+        self.program = PartnerProgram.objects.get(pk=self.create().data["id"])
+        self.url = f"/programs/{self.program.pk}/management/"
+        self.configure(add_case=False)
+        self.assertEqual(self.program.solution_storage_mode, "legacy_project")
+        self.assertEqual([r["code"] for r in self.state()["blockers"]], ["cases"])
+        self.add_case()
+        self.assertEqual(self.publish().status_code, 200)
+
+    def test_published_case_championship_without_cases_stays_published(self):
+        config = self.configure(add_case=False)
+        self.program.draft = False
+        self.program.save(update_fields=["draft"])
+        state = self.state()
+        self.assertNotIn("cases", [check["code"] for check in state["checks"]])
+        self.assertEqual(self.publish(state["revision"]).status_code, 200)
+        self.program.refresh_from_db()
+        config.refresh_from_db()
+        self.assertFalse(self.program.draft)
+        self.assertEqual(config.published_version, 0)
 
     def test_registration_preparation_does_not_publish_anything_while_program_is_draft(
         self,
@@ -548,8 +629,12 @@ class ProgramPublicationTests(ProgramLaunchTestCase):
         self.assertEqual(response.status_code, 400, response.data)
 
     def test_later_solution_configuration_needs_no_technical_rollout(self):
+        self.program = PartnerProgram.objects.get(
+            pk=self.create(format="hackathon").data["id"]
+        )
+        self.url = f"/programs/{self.program.pk}/management/"
         self.configure()
-        self.publish()
+        self.assertEqual(self.publish().status_code, 200)
         participant = create_user(is_active=True)
         PartnerProgramUserProfile.objects.create(
             partner_program=self.program, user=participant, partner_program_data={}

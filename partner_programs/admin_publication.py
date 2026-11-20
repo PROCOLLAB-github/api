@@ -1,6 +1,7 @@
-"""Возврат программы в черновик через общую с кабинетом бизнес-логику."""
+"""Статус публикации и возврат в черновик в Django-админке."""
 
 from django import forms
+from django.contrib import admin
 from django.core.exceptions import PermissionDenied
 from django.http import Http404, HttpResponseNotAllowed, HttpResponseRedirect
 from django.template.response import TemplateResponse
@@ -16,6 +17,44 @@ class ReturnToDraftForm(forms.Form):
 
 
 class ProgramPublicationAdminMixin:
+    @admin.display(description="Статус программы")
+    def publication_status(self, program):
+        return "Черновик" if program.draft else "Опубликована"
+
+    def get_readonly_fields(self, request, obj=None):
+        fields = super().get_readonly_fields(request, obj)
+        if obj and obj.program_format == "case_championship":
+            return (*fields, "draft", "publication_status")
+        return fields
+
+    def get_fieldsets(self, request, obj=None):
+        fieldsets = super().get_fieldsets(request, obj)
+        if obj and obj.program_format == "case_championship":
+            return [
+                (
+                    name,
+                    {
+                        **options,
+                        "fields": tuple(
+                            "publication_status" if field == "draft" else field
+                            for field in options["fields"]
+                        ),
+                    },
+                )
+                for name, options in fieldsets
+            ]
+        return fieldsets
+
+    def save_model(self, request, obj, form, change):
+        if change and obj.program_format == "case_championship":
+            # A settings save must not undo a concurrent publish or return to draft.
+            obj.draft = (
+                self.model.objects.select_for_update()
+                .values_list("draft", flat=True)
+                .get(pk=obj.pk)
+            )
+        super().save_model(request, obj, form, change)
+
     def get_urls(self):
         return [
             path(
