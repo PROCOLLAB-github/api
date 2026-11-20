@@ -84,6 +84,11 @@ class TokenWrite(RegistrationInput):
     token = serializers.CharField(max_length=2000)
 
 
+class ConfirmationWrite(TokenWrite):
+    link_opened = serializers.BooleanField(default=False)
+    browser_proof = serializers.CharField(max_length=2000, required=False)
+
+
 def validated(cls, data):
     form = cls(data=data)
     form.is_valid(raise_exception=True)
@@ -176,7 +181,12 @@ class PublicRegistrationActionView(PublicRegistrationView):
             return Response(
                 service.signup(pk, validated(SignupWrite, request.data)), status=201
             )
-        if action in ("confirm", "resend"):
+        if action == "confirm":
+            data = validated(ConfirmationWrite, request.data)
+            if data["link_opened"] and request.user.is_authenticated:
+                data.pop("browser_proof", None)
+            return Response(service.confirm(pk, **data))
+        if action == "resend":
             data = validated(TokenWrite, request.data)
-            return Response(getattr(service, action)(pk, data["token"]))
+            return Response(service.resend(pk, data["token"]))
         return Response(status=404)

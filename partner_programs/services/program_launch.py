@@ -8,12 +8,14 @@ from html import unescape
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 from django.utils.html import strip_tags
 from django.core.validators import URLValidator
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.exceptions import ValidationError
 
+from partner_programs.constants import PROGRAM_CASE_FIELD_NAME
 from partner_programs.models import (
     PartnerProgram,
     PartnerProgramField,
@@ -164,7 +166,7 @@ def preview_program(pk, user, request):
     return data
 
 
-def _revision(program, config):
+def _revision(program, config, cases):
     values = {
         "program": {
             name: getattr(program, name) for name in (*BASIC_FIELDS, *DATE_FIELDS)
@@ -181,6 +183,8 @@ def _revision(program, config):
             else None
         ),
     }
+    if cases is not None:
+        values["cases"] = cases
     return hashlib.sha256(
         json.dumps(values, sort_keys=True, default=str).encode()
     ).hexdigest()
@@ -222,7 +226,34 @@ def _date_problem(program):
     return None
 
 
-def readiness_data(program, config=None):
+def _case_fields(program, *, lock=False):
+    case_field = Q(name=PROGRAM_CASE_FIELD_NAME)
+    if program.solution_storage_mode == "solution":
+        case_field |= Q(purpose="case")
+    fields = program.fields.filter(case_field).order_by("pk")
+    if lock:
+        fields = fields.select_for_update()
+    return list(
+        fields.values(
+            "pk", "field_type", "is_required", "is_visible", "options", "solution_options"
+        )
+    )
+
+
+def _case_is_ready(program, field):
+    options = field["solution_options"]
+    if options is None:
+        options = (field["options"] or "").split("|")
+    return (
+        field["field_type"] == "select"
+        and field["is_required"]
+        and (field["is_visible"] or program.solution_storage_mode == "solution")
+        and isinstance(options, list)
+        and any(isinstance(option, str) and option.strip() for option in options)
+    )
+
+
+def readiness_data(program, config=None, *, lock_cases=False):
     if config is None:
         config = registration.config_for(program)
     page_problem = (
@@ -231,9 +262,7 @@ def readiness_data(program, config=None):
         and unescape(strip_tags(program.description or "")).strip()
         else "Заполните название и описание программы."
     )
-    checks = []
-    blockers = []
-    for code, title, section, problem, ready_detail in (
+    checklist = [
         (
             "page",
             "Страница программы",
@@ -255,7 +284,27 @@ def readiness_data(program, config=None):
             _registration_problem(config),
             "Способ регистрации и анкета готовы.",
         ),
-    ):
+    ]
+    cases = None
+    if program.draft and program.program_format == "case_championship":
+        cases = _case_fields(program, lock=lock_cases)
+        case_problem = (
+            None
+            if any(_case_is_ready(program, field) for field in cases)
+            else "Добавьте и сохраните хотя бы один кейс."
+        )
+        checklist.append(
+            (
+                "cases",
+                "Кейсы программы",
+                "project-form",
+                case_problem,
+                "Кейсы сохранены.",
+            )
+        )
+    checks = []
+    blockers = []
+    for code, title, section, problem, ready_detail in checklist:
         checks.append(
             dict(
                 code=code,
@@ -267,16 +316,19 @@ def readiness_data(program, config=None):
         )
         if problem:
             blockers.append(dict(code=code, section=section, detail=problem))
+    warnings = []
+    if program.is_competitive:
+        warnings.append(
+            "Критерии и экспертов можно настроить после публикации."
+            if program.program_format == "case_championship"
+            else "Форму решения, критерии и экспертов можно настроить после публикации."
+        )
     return {
         "program": summary(program),
-        "revision": _revision(program, config),
+        "revision": _revision(program, config, cases),
         "checks": checks,
         "blockers": blockers,
-        "warnings": (
-            ["Форму решения, критерии и экспертов можно настроить после публикации."]
-            if program.is_competitive
-            else []
-        ),
+        "warnings": warnings,
         "can_publish": program.draft and not blockers,
         "links": {
             "program": f"{registration.frontend_url()}/office/program/{program.pk}",
@@ -315,7 +367,7 @@ def publish_program(pk, user, revision):
         ProgramRegistration.objects.select_for_update().filter(program=program).first()
     )
     program._native_registration_config = config
-    state = readiness_data(program, config)
+    state = readiness_data(program, config, lock_cases=True)
     if not program.draft:
         # Retry after a lost response never publishes a second questionnaire version.
         return state
