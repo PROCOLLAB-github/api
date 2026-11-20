@@ -44,6 +44,12 @@ def has_project_read_involvement(user, project: Project, *, program_id=None) -> 
     ).exists()
 
 
+def can_open_program_copy(user, project: Project, *, program_id) -> bool:
+    return (project.is_public and not project.draft) or has_project_read_involvement(
+        user, project, program_id=program_id
+    )
+
+
 class ProjectVisibilityPermission(BasePermission):
     """
     Ограничивает доступ к непубличным проектам.

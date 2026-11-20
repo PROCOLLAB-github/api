@@ -1,0 +1,15 @@
+{% if rows %}
+    <dl>
+        {% for row in rows %}
+            <dt{% if not forloop.first %} class="registration-answer-question"{% endif %}>
+                <strong>{{ row.label|default:"Ответ без названия вопроса" }}</strong>
+                {% if not row.label and row.key is not None %}
+                    <div class="help">ID поля: <code>{{ row.key }}</code></div>
+                {% endif %}
+            </dt>
+            <dd class="registration-answer-text">{{ row.text }}</dd>
+        {% endfor %}
+    </dl>
+{% else %}
+    <span>Нет сохраненных ответов.</span>
+{% endif %}
