@@ -512,7 +512,7 @@ def confirm(pk, token, *, link_opened=False, browser_proof=None):
         )
     if expired:
         raise WorkspaceConflict(
-            "confirmation_expired", "Срок действия ссылки истёк."
+            "confirmation_expired", "Срок действия ссылки истек."
         )
     # Opening an email link may be done by a scanner. Only the browser
     # that started this registration can skip the explicit confirmation.
