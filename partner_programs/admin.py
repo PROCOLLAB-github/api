@@ -11,6 +11,7 @@ from . import solution_admin  # noqa: F401
 from projects.team_admin import TeamValidationAdminMixin
 from django.db.models import QuerySet
 from django.http import HttpRequest, HttpResponseNotAllowed, HttpResponseRedirect
+from django.template.loader import render_to_string
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from django.utils import timezone
@@ -31,8 +32,8 @@ from partner_programs.forms import (
     ProgramFieldValueInlineFormSet,
 )
 from partner_programs.services.case_fields import case_field_has_values
-from partner_programs.admin_registration import ProgramRegistrationAdminMixin
-from partner_programs.admin_registration import error_text
+from partner_programs.admin_participant_answers import participant_answer_rows
+from partner_programs.admin_registration import ProgramRegistrationAdminMixin, error_text
 from partner_programs.admin_publication import ProgramPublicationAdminMixin
 from partner_programs.admin_certificate_fonts import ProgramCertificateFontsAdminMixin
 from partner_programs.program_dates import (
@@ -388,21 +389,28 @@ class PartnerProgramAdmin(
         return prepare_project_scores_export_data(program_id)
 
 
+class ParticipantProgramListFilter(admin.RelatedFieldListFilter):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.title = "Программа"
+
+
 @admin.register(PartnerProgramUserProfile)
 class PartnerProgramUserProfileAdmin(admin.ModelAdmin):
+    change_form_template = "partner_programs/admin/participant_change_form.html"
     list_display = (
         "id",
-        "user",
-        "partner_program",
-        "datetime_created",
+        "participant",
+        "program",
+        "registered_at",
     )
     list_display_links = (
         "id",
-        "user",
-        "partner_program",
-        "datetime_created",
+        "participant",
+        "program",
+        "registered_at",
     )
-    list_filter = ("partner_program",)
+    list_filter = (("partner_program", ParticipantProgramListFilter),)
     raw_id_fields = (
         "user",
         "project",
@@ -410,12 +418,96 @@ class PartnerProgramUserProfileAdmin(admin.ModelAdmin):
     )
     search_fields = ("user__first_name", "user__last_name", "partner_program_data")
     date_hierarchy = "datetime_created"
+    participant_fields = (
+        "participant",
+        "program",
+        "linked_project",
+        "registration_answers",
+        "welcome_confirmed_at",
+    )
+
+    class Media:
+        css = {"all": ("admin/partner_programs/participant_answers.css",)}
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related(
+            "user", "project", "partner_program"
+        )
+
+    def get_fields(self, request, obj=None):
+        if obj is not None and not self.has_change_permission(request, obj):
+            return self.participant_fields
+        return (
+            "user",
+            "partner_program",
+            "project",
+            "registration_answers" if obj is not None else "partner_program_data",
+            "welcome_acknowledged_at",
+        )
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj is None:
+            return ()
+        if self.has_change_permission(request, obj):
+            return ("registration_answers",)
+        return self.participant_fields
 
     def get_form(self, request, obj=None, **kwargs):
-        """`partner_program` field is optional in admin panel (bc is nullable)."""
         form = super().get_form(request, obj, **kwargs)
-        form.base_fields["project"].required = False
+        if "project" in form.base_fields:
+            form.base_fields["project"].required = False
         return form
+
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        labels = {
+            "user": "Участник",
+            "partner_program": "Программа",
+            "project": "Проект",
+            "partner_program_data": "Ответы анкеты",
+        }
+        if db_field.name in labels:
+            kwargs["label"] = labels[db_field.name]
+        return super().formfield_for_dbfield(db_field, request, **kwargs)
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            super().save_model(request, obj, form, change)
+        elif form.changed_data:
+            # An admin metadata edit must not write stale answers back to the database.
+            obj.save(update_fields=[*form.changed_data, "datetime_updated"])
+
+    def render_change_form(self, request, context, *args, obj=None, **kwargs):
+        if obj:
+            context["title"] = "Профиль участника"
+            context["subtitle"] = f"Регистрация №{obj.pk}"
+        return super().render_change_form(request, context, *args, obj=obj, **kwargs)
+
+    @admin.display(description="Участник", ordering="user")
+    def participant(self, obj):
+        return obj.user
+
+    @admin.display(description="Программа", ordering="partner_program")
+    def program(self, obj):
+        return obj.partner_program
+
+    @admin.display(description="Проект")
+    def linked_project(self, obj):
+        return obj.project
+
+    @admin.display(description="Дата регистрации", ordering="datetime_created")
+    def registered_at(self, obj):
+        return obj.datetime_created
+
+    @admin.display(description="Дата подтверждения приветствия программы")
+    def welcome_confirmed_at(self, obj):
+        return obj.welcome_acknowledged_at
+
+    @admin.display(description="Ответы анкеты")
+    def registration_answers(self, obj):
+        return render_to_string(
+            "partner_programs/admin/participant_answers.html",
+            {"rows": participant_answer_rows(obj)},
+        )
 
 
 @admin.register(PartnerProgramMaterial)
