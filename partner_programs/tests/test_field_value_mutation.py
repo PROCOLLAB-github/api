@@ -157,3 +157,21 @@ class ProgramFieldValueMutationTests(TestCase):
             ValidationError, "Выбранный кейс больше недоступен"
         ):
             value.full_clean()
+
+    def test_legacy_ordinary_choice_can_be_kept_or_repaired(self):
+        field = create_program_field(self.program, field_type="radio", options=["A"])
+        value = PartnerProgramFieldValue(
+            program_project=self.link, field=field, value_text="Устаревший вариант"
+        )
+        PartnerProgramFieldValue.objects.bulk_create([value])
+        value.full_clean()
+        value.save()
+        value.value_text = "Другой устаревший вариант"
+        with self.assertRaisesMessage(ValidationError, "Недопустимое значение"):
+            value.save()
+        value.refresh_from_db()
+        self.assertEqual(value.value_text, "Устаревший вариант")
+        value.value_text = "A"
+        value.save()
+        value.refresh_from_db()
+        self.assertEqual(value.value_text, "A")

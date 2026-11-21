@@ -18,6 +18,7 @@ from partner_programs.services.project_fields import (
 )
 from partner_programs.tests.helpers import (
     create_partner_program,
+    create_program_field,
     create_program_member,
     create_program_project,
     create_project,
@@ -115,3 +116,65 @@ class ProgramCaseLockingTests(TransactionTestCase):
         self.field.refresh_from_db()
         self.assertEqual(self.value.value_text, "C")
         self.assertIn("C", self.field.get_options_list())
+
+    def test_ordinary_choice_blocks_definition_change_after_validation(self):
+        field = create_program_field(
+            self.program, field_type="select", options=["A", "B"]
+        )
+        answer = PartnerProgramFieldValue(
+            program_project=self.link, field=field, value_text="B"
+        )
+
+        def worker(entered, release):
+            original_clean = answer.clean
+
+            def validated():
+                original_clean()
+                entered.set()
+                if not release.wait(10):
+                    raise AssertionError("Lock release timed out")
+
+            answer.clean = validated
+            answer.save()
+
+        def remove_option():
+            field.options = "A"
+            field.save()
+
+        self.run_while_locked(worker, remove_option)
+        with self.assertRaisesMessage(DjangoValidationError, "использованный вариант"):
+            remove_option()
+        field.refresh_from_db()
+        answer.refresh_from_db()
+        self.assertEqual(field.get_options_list(), ["A", "B"])
+        self.assertEqual(answer.value_text, "B")
+
+    def test_definition_change_blocks_answer_then_rejects_stale_choice(self):
+        for old_type in ("text", "radio"):
+            with self.subTest(old_type=old_type):
+                stale_field = create_program_field(
+                    self.program,
+                    field_type=old_type,
+                    options=["A", "B"] if old_type == "radio" else None,
+                )
+                answer = PartnerProgramFieldValue(
+                    program_project=self.link, field=stale_field, value_text="B"
+                )
+
+                def worker(entered, release):
+                    with transaction.atomic():
+                        current = type(stale_field).objects.get(pk=stale_field.pk)
+                        if old_type == "text":
+                            current.field_type = "select"
+                        current.options = "A"
+                        current.save()
+                        entered.set()
+                        if not release.wait(10):
+                            raise AssertionError("Lock release timed out")
+
+                self.run_while_locked(worker, answer.save)
+                with self.assertRaisesMessage(
+                    DjangoValidationError, "Недопустимое значение"
+                ):
+                    answer.save()
+                self.assertFalse(stale_field.values.exists())

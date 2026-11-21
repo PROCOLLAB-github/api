@@ -841,9 +841,12 @@ class PartnerProgramFieldValue(models.Model):
         return self.value_text
 
     def clean(self):
-        from partner_programs.services.field_values import validate_field_value_mutation
+        from partner_programs.services.field_values import (
+            validate_field_value_mutation,
+            validate_project_choice_value,
+        )
 
-        validate_field_value_mutation(self)
+        changed = validate_field_value_mutation(self)
         from partner_programs.services.case_fields import (
             is_program_case_field,
             validate_case_value,
@@ -853,22 +856,21 @@ class PartnerProgramFieldValue(models.Model):
             if self.field.partner_program_id != self.program_project.partner_program_id:
                 raise ValidationError("Поле кейса не относится к программе этой связи.")
             validate_case_value(self.field, self.value_text)
+        elif changed and self.field.field_type in ("select", "radio"):
+            try:
+                validate_project_choice_value(self.field, self.value_text)
+            except ValidationError as error:
+                raise ValidationError({"value_text": error.messages}) from error
 
+    @transaction.atomic
     def save(self, *args, **kwargs):
-        from partner_programs.services.case_fields import is_program_case_field
-
-        if is_program_case_field(self.field):
-            # Admin/model writes obey the same link -> definition lock order as PUT.
-            with transaction.atomic():
-                # Keep the parent-form instance: its unsaved submitted=True matters.
-                # Validation also checks DB state, under this same link lock.
-                PartnerProgramProject.objects.select_for_update().get(
-                    pk=self.program_project_id
-                )
-                self.field = PartnerProgramField.objects.select_for_update().get(
-                    pk=self.field_id
-                )
-                self.full_clean()
-                return super().save(*args, **kwargs)
+        # Match PUT's link -> definition order. Keep the parent-form instance for
+        # pending submissions, but re-read the definition after acquiring its lock.
+        PartnerProgramProject.objects.select_for_update().get(
+            pk=self.program_project_id
+        )
+        self.field = PartnerProgramField.objects.select_for_update().get(
+            pk=self.field_id
+        )
         self.full_clean()
-        super().save(*args, **kwargs)
+        return super().save(*args, **kwargs)
