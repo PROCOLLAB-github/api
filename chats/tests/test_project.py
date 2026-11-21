@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from django.test import TransactionTestCase
 
 from chats.consumers import ChatConsumer
-from chats.models import ProjectChat, ProjectChatMessage
+from chats.models import ProjectChat, ProjectChatMessage, ProjectChatMessageRead
 from chats.tests.constants import TEST_USER1, TEST_USER2, TEST_USER3
 from chats.websockets_settings import EventType
 
@@ -73,7 +73,14 @@ class DirectTests(TransactionTestCase):
         await self.communicator.send_json_to(self.data)
         response = await self.communicator.receive_json_from()
         project_message = ProjectChatMessage.objects.get(pk=1)
-        self.assertTrue(project_message.is_read)
+        self.assertFalse(project_message.is_read)
+        self.assertTrue(
+            ProjectChatMessageRead.objects.filter(
+                message=project_message, user=self.leader
+            ).exists()
+        )
+        self.assertEqual(response["content"]["read_count"], 1)
+        await self.communicator.disconnect()
 
     async def test_read_message_in_other_project_other_message(self):
         await self.connect(self.user)
@@ -88,6 +95,8 @@ class DirectTests(TransactionTestCase):
         response = await self.communicator.receive_json_from()
         project_message = ProjectChatMessage.objects.get(pk=1)
         self.assertFalse(project_message.is_read)
+        self.assertFalse(ProjectChatMessageRead.objects.exists())
+        await self.communicator.disconnect()
 
     async def test_delete_message_in_my_project_my_message(self):
         await self.connect(self.user)

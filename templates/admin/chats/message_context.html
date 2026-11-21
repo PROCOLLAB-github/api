@@ -1,0 +1,17 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+  <p><a href="{% url search_route chat.pk %}">К поиску по переписке</a></p>
+  {{ context_form.errors }}
+  {% if context.older_than %}
+    <p><a href="{% url message_context_route chat.pk context.older_than %}?direction=older&amp;limit={{ context_form.cleaned_data.limit }}">Более ранние сообщения</a></p>
+  {% endif %}
+  {% for message in context.messages %}
+    {% include "admin/chats/_message.html" %}
+  {% empty %}
+    {% if context %}<p>Сообщений в этом направлении больше нет.</p>{% endif %}
+  {% endfor %}
+  {% if context.newer_than %}
+    <p><a href="{% url message_context_route chat.pk context.newer_than %}?direction=newer&amp;limit={{ context_form.cleaned_data.limit }}">Более новые сообщения</a></p>
+  {% endif %}
+{% endblock %}

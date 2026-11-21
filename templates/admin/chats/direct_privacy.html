@@ -1,0 +1,27 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+  <p><a href="{{ search_url }}">{{ back_label|default:"К переписке" }}</a></p>
+  {% if error %}<p class="errornote">{{ error }}</p>{% endif %}
+  {% if form %}
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button type="submit">Сохранить настройки</button>
+    </form>
+  {% endif %}
+  {% if settings_url %}
+    <p><a href="{{ settings_url }}">Кто может начать диалог со мной</a></p>
+  {% endif %}
+  {% if contact %}
+    <form method="post">
+      {% csrf_token %}
+      {% if contact.blocked_by_me %}
+        <button type="submit" name="action" value="unblock">Разблокировать собеседника</button>
+      {% else %}
+        <button type="submit" name="action" value="block">Заблокировать собеседника</button>
+      {% endif %}
+      <button type="submit" name="action" value="report">Пожаловаться на последнее входящее сообщение</button>
+    </form>
+  {% endif %}
+{% endblock %}
