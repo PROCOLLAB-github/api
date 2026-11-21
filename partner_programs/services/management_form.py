@@ -16,6 +16,7 @@ from partner_programs.project_form import (
     PROJECT_SECTIONS,
     project_sections,
     protected_project_field,
+    validate_project_field_evolution,
 )
 from partner_programs.serializers.management import StrictFieldsMixin
 from partner_programs.services.management import managed_program
@@ -214,21 +215,13 @@ def save_form(program_id, user, payload):
             raise ValidationError({"fields": "Укажите варианты ответа."})
         if item["field_type"] not in ("select", "radio", "checkbox") and options:
             raise ValidationError({"fields": "Варианты доступны только полям выбора."})
-        if field and field.values.filter(value_text__regex=r"\S").exists():
-            if field.field_type != item["field_type"]:
-                raise ValidationError({"fields": "Нельзя изменить тип поля с ответами."})
-            if field.field_type in ("select", "radio"):
-                used = set(
-                    field.values.exclude(value_text="").values_list(
-                        "value_text", flat=True
-                    )
+        if field:
+            try:
+                validate_project_field_evolution(
+                    field, field_type=item["field_type"], options=options
                 )
-                if used - set(options):
-                    raise ValidationError(
-                        {
-                            "fields": "Нельзя удалить или переименовать использованный вариант ответа."
-                        }
-                    )
+            except ModelValidationError as error:
+                raise ValidationError({"fields": error.messages[0]}) from error
         if (
             field
             and field.name in PROJECT_FIELDS

@@ -699,8 +699,28 @@ class PartnerProgramField(models.Model):
         opts = self.options.split("|") if self.options else []
         return [opt.strip() for opt in opts if opt.strip()]
 
+    def validate_project_answer_changes(self, previous):
+        from partner_programs.project_form import validate_project_field_evolution
+
+        if previous is None or (
+            previous.field_type == self.field_type
+            and previous.options == self.options
+            and previous.solution_options == self.solution_options
+        ):
+            return
+        options = (
+            self.get_options_list()
+            if self.field_type == previous.field_type
+            and self.field_type in ("select", "radio")
+            and (self.solution_options is None or isinstance(self.solution_options, list))
+            else ()
+        )
+        validate_project_field_evolution(
+            previous, field_type=self.field_type, options=options
+        )
+
     def clean(self):
-        """ModelForm/admin and normal model writes share the reserved case rules."""
+        """Apply the same answer protections to both admin editing forms."""
         super().clean()
         from partner_programs.services.case_fields import (
             validate_program_case_configuration,
@@ -708,6 +728,7 @@ class PartnerProgramField(models.Model):
 
         validate_program_case_configuration(self)
         previous = type(self).objects.filter(pk=self.pk).first() if self.pk else None
+        self.validate_project_answer_changes(previous)
         program = PartnerProgram.objects.filter(pk=self.partner_program_id).first()
         if self.partner_program_id and (
             program
@@ -765,7 +786,7 @@ class PartnerProgramField(models.Model):
                 raise ValidationError(error.payload["detail"]) from error
 
     def save(self, *args, **kwargs):
-        """Serialize case definition edits with case value writes; no schema changes."""
+        """Serialize definition edits with program field value writes."""
         from partner_programs.services.case_fields import is_program_case_field
 
         with transaction.atomic():
@@ -790,6 +811,8 @@ class PartnerProgramField(models.Model):
                 and previous.solution_answers.exists()
             ):
                 self.full_clean()
+            else:
+                self.validate_project_answer_changes(previous)
             return super().save(*args, **kwargs)
 
 
