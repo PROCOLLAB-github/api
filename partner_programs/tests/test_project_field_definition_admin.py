@@ -140,3 +140,41 @@ class ProjectFieldDefinitionAdminTests(TestCase):
         self.assertEqual(self.client.post(url, payload).status_code, 302)
         field.refresh_from_db()
         self.assertEqual(field.field_type, "text")
+
+    def test_unanswered_field_can_still_move_to_another_program(self):
+        field = create_program_field(self.program)
+        other = create_partner_program()
+        url = reverse(
+            "admin:partner_programs_partnerprogramfield_change", args=[field.pk]
+        )
+        self.assertEqual(self.client.get(url).status_code, 200)
+        field.refresh_from_db()
+        self.assertEqual(field.partner_program_id, self.program.pk)
+        response = self.client.post(
+            url, {**self.field_payload(field), "partner_program": other.pk}
+        )
+        self.assertEqual(response.status_code, 302)
+        field.refresh_from_db()
+        self.assertEqual(field.partner_program_id, other.pk)
+
+    def test_missing_field_is_not_created_by_change_post(self):
+        field = create_program_field(self.program)
+        url = reverse(
+            "admin:partner_programs_partnerprogramfield_change", args=[field.pk]
+        )
+        payload = self.field_payload(field)
+        field.delete()
+        self.assertEqual(self.client.post(url, payload).status_code, 302)
+        self.assertFalse(self.program.fields.exists())
+
+    def test_add_post_creates_field_in_selected_program(self):
+        field = PartnerProgramField(
+            partner_program=self.program, name="new_field", label="Новое поле",
+            field_type="text",
+        )
+        payload = self.field_payload(field)
+        payload["options"] = ""
+        url = reverse("admin:partner_programs_partnerprogramfield_add")
+        response = self.client.post(url, payload)
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(self.program.fields.filter(name=field.name).exists())

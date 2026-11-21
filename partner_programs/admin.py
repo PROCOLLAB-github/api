@@ -5,6 +5,7 @@ from partner_programs.registration_models import ProgramRegistration
 import tablib
 from django import forms
 from django.contrib import admin
+from django.contrib.admin.utils import unquote
 from django.db import transaction
 from django.core.exceptions import PermissionDenied
 from . import solution_admin  # noqa: F401
@@ -325,14 +326,25 @@ class PartnerProgramAdmin(
         users = [profile.user for profile in profiles if profile.user is not None]
         return MailingTemplateRender().render_template(request, None, users, None)
 
+    @transaction.atomic
     def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
         if extra_context is None:
             extra_context = {}
-        if object_id:
+        if object_id and str(object_id).isdecimal():
             extra_context["object_id"] = int(object_id)
 
+        if request.method == "POST" and object_id and "_saveasnew" not in request.POST:
+            program = self.get_object(request, unquote(str(object_id)))
+            if program and self.has_change_permission(request, program):
+                locked_program = (
+                    PartnerProgram.objects.select_for_update().filter(pk=program.pk).first()
+                )
+                if locked_program:
+                    # This editor writes definitions, without locking project links.
+                    list(locked_program.fields.select_for_update().order_by("pk"))
+
         res = super(PartnerProgramAdmin, self).changeform_view(
-            request, object_id, extra_context=extra_context
+            request, object_id, form_url, extra_context
         )
         return res
 
@@ -578,6 +590,46 @@ class PartnerProgramProjectAdmin(TeamValidationAdminMixin, admin.ModelAdmin):
 
 @admin.register(PartnerProgramField)
 class PartnerProgramFieldAdmin(admin.ModelAdmin):
+    @transaction.atomic
+    def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
+        if request.method == "POST":
+            adding = object_id is None or "_saveasnew" in request.POST
+            field = None if adding else self.get_object(request, unquote(str(object_id)))
+            can_save = (
+                self.has_add_permission(request)
+                if adding
+                else field is not None and self.has_change_permission(request, field)
+            )
+            if can_save:
+                program_ids = {field.partner_program_id} if field else set()
+                try:
+                    selected_program_id = int(request.POST.get("partner_program"))
+                except (TypeError, ValueError):
+                    # ModelForm reports an invalid program choice.
+                    selected_program_id = 0
+                if 0 < selected_program_id < 2**63:
+                    program_ids.add(selected_program_id)
+                list(
+                    PartnerProgram.objects.select_for_update()
+                    .filter(pk__in=program_ids)
+                    .order_by("pk")
+                )
+                if field:
+                    current_program_id = (
+                        PartnerProgramField.objects.select_for_update()
+                        .filter(pk=field.pk)
+                        .values_list("partner_program_id", flat=True)
+                        .first()
+                    )
+                    if current_program_id not in (None, field.partner_program_id):
+                        self.message_user(
+                            request,
+                            "Поле перенесено в другую программу. Обновите форму.",
+                            level="warning",
+                        )
+                        return HttpResponseRedirect(request.path)
+        return super().changeform_view(request, object_id, form_url, extra_context)
+
     def get_deleted_objects(self, objs, request):
         """Use Django's standard protected deletion UI for single and bulk actions."""
         deleted, counts, permissions_needed, protected = super().get_deleted_objects(
