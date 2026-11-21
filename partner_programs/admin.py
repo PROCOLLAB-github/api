@@ -10,10 +10,16 @@ from django.core.exceptions import PermissionDenied
 from . import solution_admin  # noqa: F401
 from projects.team_admin import TeamValidationAdminMixin
 from django.db.models import QuerySet
-from django.http import HttpRequest, HttpResponseNotAllowed, HttpResponseRedirect
+from django.http import (
+    Http404,
+    HttpRequest,
+    HttpResponse,
+    HttpResponseNotAllowed,
+    HttpResponseRedirect,
+)
 from django.template.loader import render_to_string
 from django.template.response import TemplateResponse
-from django.urls import path, reverse
+from django.urls import NoReverseMatch, path, reverse
 from django.utils import timezone
 
 from core.utils import XlsxFileToExport, build_xlsx_download_response
@@ -294,10 +300,28 @@ class PartnerProgramAdmin(
             request, "partner_programs/admin/create_draft.html", context, status=status
         )
 
+    def _get_program_for_action(self, request, object_id, has_permission):
+        if not has_permission(request):
+            raise PermissionDenied
+        program = self.get_object(request, str(object_id))
+        if program is None:
+            raise Http404
+        if not has_permission(request, program):
+            raise PermissionDenied
+        return program
+
     def mailing(self, request, partner_program):
-        profiles = PartnerProgramUserProfile.objects.filter(
-            partner_program=partner_program
+        program = self._get_program_for_action(
+            request, partner_program, self.has_change_permission
         )
+        try:
+            reverse("mailing:send_mail")
+        except NoReverseMatch:
+            return HttpResponse(
+                "Рассылка недоступна.", status=503, content_type="text/plain; charset=utf-8"
+            )
+
+        profiles = PartnerProgramUserProfile.objects.filter(partner_program=program)
         users = [profile.user for profile in profiles if profile.user is not None]
         return MailingTemplateRender().render_template(request, None, users, None)
 
@@ -313,7 +337,9 @@ class PartnerProgramAdmin(
         return res
 
     def get_export_file_view(self, request, object_id):
-        program = PartnerProgram.objects.get(pk=object_id)
+        program = self._get_program_for_action(
+            request, object_id, self.has_view_or_change_permission
+        )
         return self.get_export_file(program)
 
     def get_export_file(self, partner_program: PartnerProgram):
@@ -365,28 +391,19 @@ class PartnerProgramAdmin(
         return build_xlsx_download_response(binary_data, base_name=file_name)
 
     def get_export_rates_view(self, request, object_id):
-        rates_data_to_write: list[dict] = self._get_prepared_rates_data_for_export(
-            object_id
+        program = self._get_program_for_action(
+            request, object_id, self.has_view_or_change_permission
         )
+        rates_data_to_write: list[dict] = prepare_project_scores_export_data(program.pk)
 
         xlsx_file_writer = XlsxFileToExport()
         xlsx_file_writer.write_data_to_xlsx(rates_data_to_write)
         binary_data_to_export: bytes = xlsx_file_writer.get_binary_data_from_self_file()
         xlsx_file_writer.clear_buffer()
 
-        program_name = PartnerProgram.objects.get(pk=object_id).name
         date_suffix = timezone.now().strftime("%d.%m.%y")
-        base_name = f"scores - {program_name or 'program'} - {date_suffix}"
+        base_name = f"scores - {program.name or 'program'} - {date_suffix}"
         return build_xlsx_download_response(binary_data_to_export, base_name=base_name)
-
-    def _get_prepared_rates_data_for_export(self, program_id: int) -> list[dict]:
-        """
-        Готовит данные для выгрузки оценок проектов.
-        Порядок колонок: название проекта → фамилия эксперта → доп. поля программы →
-        критерии → комментарий.
-        Если у проекта несколько экспертов, на каждый проект-эксперт создаётся отдельная строка.
-        """
-        return prepare_project_scores_export_data(program_id)
 
 
 class ParticipantProgramListFilter(admin.RelatedFieldListFilter):
