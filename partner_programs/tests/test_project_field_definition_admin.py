@@ -157,6 +157,31 @@ class ProjectFieldDefinitionAdminTests(TestCase):
         field.refresh_from_db()
         self.assertEqual(field.partner_program_id, other.pk)
 
+    def test_field_with_saved_value_cannot_move_to_another_program(self):
+        other = create_partner_program()
+        for text in ("Сохраненный ответ", ""):
+            with self.subTest(value=text):
+                field = create_program_field(self.program)
+                value = PartnerProgramFieldValue(
+                    program_project=self.link, field=field, value_text=text
+                )
+                PartnerProgramFieldValue.objects.bulk_create([value])
+                url = reverse(
+                    "admin:partner_programs_partnerprogramfield_change", args=[field.pk]
+                )
+                response = self.client.post(
+                    url, {**self.field_payload(field), "partner_program": other.pk}
+                )
+                self.assertContains(
+                    response, "Нельзя переносить поле с ответами в другую программу."
+                )
+                field.refresh_from_db()
+                value.refresh_from_db()
+                self.assertEqual(field.partner_program_id, self.program.pk)
+                self.assertEqual(value.program_project_id, self.link.pk)
+                self.assertEqual(value.field_id, field.pk)
+                self.assertEqual(value.value_text, text)
+
     def test_missing_field_is_not_created_by_change_post(self):
         field = create_program_field(self.program)
         url = reverse(

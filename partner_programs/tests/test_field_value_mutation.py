@@ -175,3 +175,17 @@ class ProgramFieldValueMutationTests(TestCase):
         value.save()
         value.refresh_from_db()
         self.assertEqual(value.value_text, "A")
+
+    def test_stale_field_instance_cannot_receive_answers_after_move(self):
+        stale_field = create_program_field(self.program)
+        moved_field = type(stale_field).objects.get(pk=stale_field.pk)
+        moved_field.partner_program = create_partner_program()
+        moved_field.save()
+        value = PartnerProgramFieldValue(
+            program_project=self.link, field=stale_field, value_text="Ответ"
+        )
+        with self.assertRaisesMessage(
+            ValidationError, "Поле не относится к программе этого проекта."
+        ):
+            value.save()
+        self.assertFalse(moved_field.values.exists())

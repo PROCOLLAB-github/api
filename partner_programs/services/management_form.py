@@ -218,7 +218,10 @@ def save_form(program_id, user, payload):
         if field:
             try:
                 validate_project_field_evolution(
-                    field, field_type=item["field_type"], options=options
+                    field,
+                    program_id=program.pk,
+                    field_type=item["field_type"],
+                    options=options,
                 )
             except ModelValidationError as error:
                 raise ValidationError({"fields": error.messages[0]}) from error

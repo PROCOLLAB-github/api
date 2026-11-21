@@ -703,7 +703,8 @@ class PartnerProgramField(models.Model):
         from partner_programs.project_form import validate_project_field_evolution
 
         if previous is None or (
-            previous.field_type == self.field_type
+            previous.partner_program_id == self.partner_program_id
+            and previous.field_type == self.field_type
             and previous.options == self.options
             and previous.solution_options == self.solution_options
         ):
@@ -716,7 +717,10 @@ class PartnerProgramField(models.Model):
             else ()
         )
         validate_project_field_evolution(
-            previous, field_type=self.field_type, options=options
+            previous,
+            program_id=self.partner_program_id,
+            field_type=self.field_type,
+            options=options,
         )
 
     def clean(self):
@@ -737,7 +741,7 @@ class PartnerProgramField(models.Model):
             and previous.solution_answers.exists()
         ):
             from partner_programs.solution_form_api import FieldWriteSerializer
-            from partner_programs.solution_forms import check_evolution, answer_count
+            from partner_programs.solution_forms import check_evolution
             from partner_programs.solution_schema import field_data, validate_definition
             from partner_programs.solution_schema import VALIDATION_DEFAULTS
             from partner_programs.solution_errors import SolutionError
@@ -774,13 +778,6 @@ class PartnerProgramField(models.Model):
                             {"purpose": "Такое назначение уже есть в форме."}
                         )
                 if previous:
-                    if (
-                        previous.partner_program_id != self.partner_program_id
-                        and answer_count(previous)
-                    ):
-                        raise ValidationError(
-                            "Нельзя переносить поле с ответами в другую программу."
-                        )
                     check_evolution(previous, candidate)
             except SolutionError as error:
                 raise ValidationError(error.payload["detail"]) from error
@@ -790,11 +787,20 @@ class PartnerProgramField(models.Model):
         from partner_programs.services.case_fields import is_program_case_field
 
         with transaction.atomic():
-            program = (
-                PartnerProgram.objects.select_for_update()
-                .filter(pk=self.partner_program_id)
+            source_id = (
+                type(self).objects.filter(pk=self.pk)
+                .values_list("partner_program_id", flat=True)
                 .first()
+                if self.pk
+                else None
             )
+            programs = {
+                program.pk: program
+                for program in PartnerProgram.objects.select_for_update()
+                .filter(pk__in=(source_id, self.partner_program_id))
+                .order_by("pk")
+            }
+            program = programs.get(self.partner_program_id)
             if program is None:
                 raise ValidationError({"partner_program": "Программа не найдена."})
             self.partner_program = program
@@ -803,6 +809,10 @@ class PartnerProgramField(models.Model):
                 if self.pk
                 else None
             )
+            if previous and previous.partner_program_id not in programs:
+                raise ValidationError(
+                    {"partner_program": "Программа поля изменилась. Обновите форму."}
+                )
             if (
                 self.partner_program.solution_storage_mode == "solution"
                 or is_program_case_field(self)
@@ -856,11 +866,16 @@ class PartnerProgramFieldValue(models.Model):
             if self.field.partner_program_id != self.program_project.partner_program_id:
                 raise ValidationError("Поле кейса не относится к программе этой связи.")
             validate_case_value(self.field, self.value_text)
-        elif changed and self.field.field_type in ("select", "radio"):
-            try:
-                validate_project_choice_value(self.field, self.value_text)
-            except ValidationError as error:
-                raise ValidationError({"value_text": error.messages}) from error
+        elif changed:
+            if self.field.partner_program_id != self.program_project.partner_program_id:
+                raise ValidationError(
+                    {"field": "Поле не относится к программе этого проекта."}
+                )
+            if self.field.field_type in ("select", "radio"):
+                try:
+                    validate_project_choice_value(self.field, self.value_text)
+                except ValidationError as error:
+                    raise ValidationError({"value_text": error.messages}) from error
 
     @transaction.atomic
     def save(self, *args, **kwargs):

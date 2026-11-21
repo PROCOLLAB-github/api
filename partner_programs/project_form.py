@@ -34,8 +34,14 @@ def protected_project_field(field):
     )
 
 
-def validate_project_field_evolution(previous, *, field_type, options):
-    """Preserve the type and selected option of every saved project answer."""
+def validate_project_field_evolution(previous, *, program_id, field_type, options):
+    """Preserve the program, type and selected option of saved project answers."""
+    if program_id != previous.partner_program_id and (
+        previous.values.exists() or previous.solution_answers.exists()
+    ):
+        raise ValidationError(
+            {"partner_program": "Нельзя переносить поле с ответами в другую программу."}
+        )
     if not previous.values.filter(value_text__regex=r"\S").exists():
         return
     if field_type != previous.field_type:

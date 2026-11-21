@@ -300,6 +300,22 @@ class SolutionFormTests(FormFixture, TestCase):
             field.save()
         self.assertEqual(self.program.fields.get(pk=field.pk).field_type, "textarea")
 
+    def test_field_with_empty_saved_solution_answer_cannot_move(self):
+        response = self.put(self.payload(fields=[*self.payload()["fields"], new_field()]))
+        self.assertEqual(response.status_code, 200, response.data)
+        field = self.program.fields.get(pk=response.data["form"]["fields"][1]["id"])
+        answer = self.answer(field.pk, "")
+        field.partner_program = solution_program()
+        with self.assertRaisesMessage(
+            ValidationError, "Нельзя переносить поле с ответами в другую программу."
+        ):
+            field.save()
+        field.refresh_from_db()
+        answer.refresh_from_db()
+        self.assertEqual(field.partner_program_id, self.program.pk)
+        self.assertEqual(answer.field_id, field.pk)
+        self.assertEqual(answer.value, "")
+
     def test_used_choice_options_preserved_exactly_while_unused_options_can_change(self):
         case = self.payload()["fields"][0]
         self.answer(case["id"], "Задача 1")
