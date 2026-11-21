@@ -5,15 +5,22 @@ from partner_programs.registration_models import ProgramRegistration
 import tablib
 from django import forms
 from django.contrib import admin
+from django.contrib.admin.utils import unquote
 from django.db import transaction
 from django.core.exceptions import PermissionDenied
 from . import solution_admin  # noqa: F401
 from projects.team_admin import TeamValidationAdminMixin
 from django.db.models import QuerySet
-from django.http import HttpRequest, HttpResponseNotAllowed, HttpResponseRedirect
+from django.http import (
+    Http404,
+    HttpRequest,
+    HttpResponse,
+    HttpResponseNotAllowed,
+    HttpResponseRedirect,
+)
 from django.template.loader import render_to_string
 from django.template.response import TemplateResponse
-from django.urls import path, reverse
+from django.urls import NoReverseMatch, path, reverse
 from django.utils import timezone
 
 from core.utils import XlsxFileToExport, build_xlsx_download_response
@@ -294,26 +301,57 @@ class PartnerProgramAdmin(
             request, "partner_programs/admin/create_draft.html", context, status=status
         )
 
+    def _get_program_for_action(self, request, object_id, has_permission):
+        if not has_permission(request):
+            raise PermissionDenied
+        program = self.get_object(request, str(object_id))
+        if program is None:
+            raise Http404
+        if not has_permission(request, program):
+            raise PermissionDenied
+        return program
+
     def mailing(self, request, partner_program):
-        profiles = PartnerProgramUserProfile.objects.filter(
-            partner_program=partner_program
+        program = self._get_program_for_action(
+            request, partner_program, self.has_change_permission
         )
+        try:
+            reverse("mailing:send_mail")
+        except NoReverseMatch:
+            return HttpResponse(
+                "Рассылка недоступна.", status=503, content_type="text/plain; charset=utf-8"
+            )
+
+        profiles = PartnerProgramUserProfile.objects.filter(partner_program=program)
         users = [profile.user for profile in profiles if profile.user is not None]
         return MailingTemplateRender().render_template(request, None, users, None)
 
+    @transaction.atomic
     def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
         if extra_context is None:
             extra_context = {}
-        if object_id:
+        if object_id and str(object_id).isdecimal():
             extra_context["object_id"] = int(object_id)
 
+        if request.method == "POST" and object_id and "_saveasnew" not in request.POST:
+            program = self.get_object(request, unquote(str(object_id)))
+            if program and self.has_change_permission(request, program):
+                locked_program = (
+                    PartnerProgram.objects.select_for_update().filter(pk=program.pk).first()
+                )
+                if locked_program:
+                    # This editor writes definitions, without locking project links.
+                    list(locked_program.fields.select_for_update().order_by("pk"))
+
         res = super(PartnerProgramAdmin, self).changeform_view(
-            request, object_id, extra_context=extra_context
+            request, object_id, form_url, extra_context
         )
         return res
 
     def get_export_file_view(self, request, object_id):
-        program = PartnerProgram.objects.get(pk=object_id)
+        program = self._get_program_for_action(
+            request, object_id, self.has_view_or_change_permission
+        )
         return self.get_export_file(program)
 
     def get_export_file(self, partner_program: PartnerProgram):
@@ -365,28 +403,19 @@ class PartnerProgramAdmin(
         return build_xlsx_download_response(binary_data, base_name=file_name)
 
     def get_export_rates_view(self, request, object_id):
-        rates_data_to_write: list[dict] = self._get_prepared_rates_data_for_export(
-            object_id
+        program = self._get_program_for_action(
+            request, object_id, self.has_view_or_change_permission
         )
+        rates_data_to_write: list[dict] = prepare_project_scores_export_data(program.pk)
 
         xlsx_file_writer = XlsxFileToExport()
         xlsx_file_writer.write_data_to_xlsx(rates_data_to_write)
         binary_data_to_export: bytes = xlsx_file_writer.get_binary_data_from_self_file()
         xlsx_file_writer.clear_buffer()
 
-        program_name = PartnerProgram.objects.get(pk=object_id).name
         date_suffix = timezone.now().strftime("%d.%m.%y")
-        base_name = f"scores - {program_name or 'program'} - {date_suffix}"
+        base_name = f"scores - {program.name or 'program'} - {date_suffix}"
         return build_xlsx_download_response(binary_data_to_export, base_name=base_name)
-
-    def _get_prepared_rates_data_for_export(self, program_id: int) -> list[dict]:
-        """
-        Готовит данные для выгрузки оценок проектов.
-        Порядок колонок: название проекта → фамилия эксперта → доп. поля программы →
-        критерии → комментарий.
-        Если у проекта несколько экспертов, на каждый проект-эксперт создаётся отдельная строка.
-        """
-        return prepare_project_scores_export_data(program_id)
 
 
 class ParticipantProgramListFilter(admin.RelatedFieldListFilter):
@@ -561,6 +590,46 @@ class PartnerProgramProjectAdmin(TeamValidationAdminMixin, admin.ModelAdmin):
 
 @admin.register(PartnerProgramField)
 class PartnerProgramFieldAdmin(admin.ModelAdmin):
+    @transaction.atomic
+    def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
+        if request.method == "POST":
+            adding = object_id is None or "_saveasnew" in request.POST
+            field = None if adding else self.get_object(request, unquote(str(object_id)))
+            can_save = (
+                self.has_add_permission(request)
+                if adding
+                else field is not None and self.has_change_permission(request, field)
+            )
+            if can_save:
+                program_ids = {field.partner_program_id} if field else set()
+                try:
+                    selected_program_id = int(request.POST.get("partner_program"))
+                except (TypeError, ValueError):
+                    # ModelForm reports an invalid program choice.
+                    selected_program_id = 0
+                if 0 < selected_program_id < 2**63:
+                    program_ids.add(selected_program_id)
+                list(
+                    PartnerProgram.objects.select_for_update()
+                    .filter(pk__in=program_ids)
+                    .order_by("pk")
+                )
+                if field:
+                    current_program_id = (
+                        PartnerProgramField.objects.select_for_update()
+                        .filter(pk=field.pk)
+                        .values_list("partner_program_id", flat=True)
+                        .first()
+                    )
+                    if current_program_id not in (None, field.partner_program_id):
+                        self.message_user(
+                            request,
+                            "Поле перенесено в другую программу. Обновите форму.",
+                            level="warning",
+                        )
+                        return HttpResponseRedirect(request.path)
+        return super().changeform_view(request, object_id, form_url, extra_context)
+
     def get_deleted_objects(self, objs, request):
         """Use Django's standard protected deletion UI for single and bulk actions."""
         deleted, counts, permissions_needed, protected = super().get_deleted_objects(
