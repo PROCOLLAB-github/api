@@ -3,7 +3,6 @@ import json
 from json import JSONDecodeError
 from typing import Optional
 
-from asgiref.sync import sync_to_async
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from django.conf import settings
@@ -208,22 +207,11 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             event_data["_project_chat_id"] = event.content["chat_id"]
 
         if event.content["chat_type"] == ChatType.DIRECT:
-            # fixme: need to move this to func
-            chat_id, other_user = await get_chat_and_user_ids_from_content(
+            _, other_user = await get_chat_and_user_ids_from_content(
                 event.content, self.user
             )
 
-            # if chat_id == 17_7, then chat_id will be == 7_17
-            chat_id = DirectChat.get_chat_id_from_users(self.user, other_user)
-
-            # check if chat exists
-            try:
-                await sync_to_async(DirectChat.objects.get)(pk=chat_id)
-            except DirectChat.DoesNotExist:
-                # if not, create such chat
-                await sync_to_async(DirectChat.create_from_two_users)(
-                    self.user, other_user
-                )
+            await database_sync_to_async(DirectChat.get_chat)(self.user, other_user)
 
             # send message to user's channel
             other_user_channel = cache.get(get_user_channel_cache_key(other_user), None)
