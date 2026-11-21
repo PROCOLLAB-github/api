@@ -1,0 +1,65 @@
+name: Targeted admin integrity PostgreSQL
+
+on:
+  push:
+    branches: [ci/e2e-admin-integrity-targeted-20261121]
+
+permissions:
+  contents: read
+
+jobs:
+  targeted:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: procollab_ci
+          POSTGRES_USER: procollab_ci
+          POSTGRES_PASSWORD: procollab_ci_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U procollab_ci -d procollab_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      PYTHONUNBUFFERED: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      DJANGO_SETTINGS_MODULE: procollab.settings_ci
+      DJANGO_SECRET_KEY: ci-only-not-production-secret
+      DEBUG: "False"
+      DATABASE_NAME: procollab_ci
+      DATABASE_USER: procollab_ci
+      DATABASE_PASSWORD: procollab_ci_password
+      DATABASE_HOST: 127.0.0.1
+      DATABASE_PORT: "5432"
+      ALLOW_REACT_DEV_DEMO_SEED: "False"
+      AUTOPOSTING_ON: "False"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 2c300324c4b7cf87d5d9f29642894aac1a2afd76
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 fontconfig poppler-utils
+          python -m pip install "poetry==2.5.1"
+          poetry config virtualenvs.create true
+          poetry install --no-interaction --no-ansi --no-root
+      - name: Run targeted PostgreSQL tests
+        run: >-
+          poetry run python manage.py test --verbosity 2
+          partner_programs.tests.test_program_action_admin_access
+          partner_programs.tests.test_project_field_definition_admin
+          partner_programs.tests.test_field_value_mutation
+          partner_programs.tests.test_case_locking
+          partner_programs.tests.test_case_fields
+          partner_programs.tests.test_solution_forms
+          partner_programs.tests.test_management_project_form_api
+          project_rates.tests.test_expert_assignments
