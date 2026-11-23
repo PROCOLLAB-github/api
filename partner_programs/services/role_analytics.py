@@ -13,17 +13,25 @@ from project_rates.models import ProjectScore
 from projects.models import Collaborator
 
 
-def program_widget_role(program, user):
+def is_program_participant(program, user):
+    return PartnerProgramUserProfile.objects.filter(
+        partner_program_id=program.pk, user_id=user.pk
+    ).exists()
+
+
+def program_widget_role(program, user, *, participant_view=False):
     """Роль только в этой программе; назначения и глобальный user_type не участвуют."""
     if not user or not user.is_authenticated:
+        return None
+    if participant_view:
+        if user.is_active and is_program_participant(program, user):
+            return "participant"
         return None
     if program.is_manager(user):
         return "organizer"
     if program.experts.filter(user_id=user.pk).exists():
         return "expert"
-    if PartnerProgramUserProfile.objects.filter(
-        partner_program_id=program.pk, user_id=user.pk
-    ).exists():
+    if is_program_participant(program, user):
         return "participant"
     return None
 
@@ -56,9 +64,9 @@ def expert_widget_metrics(program, user):
     return {"mode": mode, **counts}
 
 
-def require_widget_role(program, user):
+def require_widget_role(program, user, *, participant_view=False):
     """Проверка GET-контракта не меняет регистрации, назначения или бизнес-данные."""
-    role = program_widget_role(program, user)
+    role = program_widget_role(program, user, participant_view=participant_view)
     if role is None:
         raise PermissionDenied("Аналитика доступна только участникам этой программы.")
     return role
@@ -130,8 +138,8 @@ def participant_widget_metrics(program, user):
     return result
 
 
-def build_program_role_widget(program, user):
-    role = require_widget_role(program, user)
+def build_program_role_widget(program, user, *, participant_view=False):
+    role = require_widget_role(program, user, participant_view=participant_view)
     if program.solution_storage_mode == "solution":
         from partner_programs.services.solution_role_analytics import (
             build_solution_role_widget,

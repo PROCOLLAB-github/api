@@ -67,6 +67,51 @@ class ProgramRoleWidgetTests(TestCase):
         self.client.force_authenticate(None)
         self.assertEqual(self.client.get(self.url).status_code, 401)
 
+    def test_mixed_roles_can_request_own_participant_project_without_changing_default(self):
+        expert = create_rate_expert(program=self.program)
+        create_program_member(self.program, user=expert)
+        link = create_program_project(self.program, project=create_project(leader=expert))
+        self.assertEqual(self.widget(expert)["role"], "expert")
+        for role in ("expert", "organizer"):
+            with self.subTest(default_role=role):
+                if role == "organizer":
+                    self.program.managers.add(expert)
+                response = self.client.get(
+                    self.url, {"role": "participant", "user_id": self.member.pk}
+                )
+                self.assertEqual(response.status_code, 200, response.data)
+                self.assertEqual(response.data["role"], "participant")
+                self.assertEqual(
+                    response.data["participant"]["participant_project"]["program_link_id"],
+                    link.pk,
+                )
+                self.assertNotIn(role, response.data)
+                self.assertEqual(self.widget()["role"], role)
+
+    def test_explicit_participant_requires_an_active_member_of_this_program(self):
+        other = create_partner_program()
+        expert = create_rate_expert(program=self.program)
+        self.program.managers.add(expert)
+        create_program_member(other, user=expert)
+        inactive_member = create_program_member(
+            self.program, user=create_user(is_active=False)
+        ).user
+        for actor, status in ((expert, 403), (inactive_member, 403), (None, 401)):
+            with self.subTest(actor=actor):
+                self.client.force_authenticate(actor)
+                response = self.client.get(self.url, {"role": "participant"})
+                self.assertEqual(response.status_code, status, response.data)
+        self.assertEqual(self.widget(expert)["role"], "organizer")
+
+    def test_explicit_participant_view_respects_draft_visibility(self):
+        self.program.draft = True
+        self.program.save(update_fields=["draft"])
+        member = create_user(is_active=True)
+        create_program_member(self.program, user=member)
+        self.client.force_authenticate(member)
+        response = self.client.get(self.url, {"role": "participant"})
+        self.assertEqual(response.status_code, 404, response.data)
+
     def test_member_and_expert_cannot_access_manager_api(self):
         url = reverse("partner_programs:manager-overview", kwargs={"pk": self.program.pk})
         for user in (self.member, create_rate_expert(program=self.program)):

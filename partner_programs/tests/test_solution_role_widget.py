@@ -64,6 +64,16 @@ class SolutionRoleWidgetTests(EvaluationFixture, TestCase):
         self.assertEqual(data["case_name"], "Задача 1")
         self.assertEqual(data["stage"], "review")
 
+    def test_mixed_roles_can_request_their_own_participant_solution(self):
+        self.captain.is_active = True
+        self.captain.save(update_fields=["is_active"])
+        expected = self.widget()
+        self.program.managers.add(self.captain)
+        self.assertEqual(self.widget()["role"], "organizer")
+        response = call(self.captain, "get", self.widget_url, {"role": "participant"})
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data, expected)
+
     def test_accepted_members_share_application_and_pending_is_not_membership(self):
         draft = self.another_solution(submitted=False)
         member, pending = create_user(), create_user()

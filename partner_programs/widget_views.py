@@ -18,8 +18,11 @@ class ProgramRoleWidgetAPIView(APIView):
 
     def get(self, request, pk):
         program = get_object_or_404(PartnerProgram, pk=pk)
-        # role/user_id/project_id клиента не используются для доступа или выбора.
-        data = build_program_role_widget(program, request.user)
+        data = build_program_role_widget(
+            program,
+            request.user,
+            participant_view=request.query_params.get("role") == "participant",
+        )
         serializer = (
             SolutionProgramRoleWidgetSerializer
             if program.solution_storage_mode == "solution"
