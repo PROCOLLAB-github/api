@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.core.validators import URLValidator
 from django.db import models, transaction
 from django.utils import timezone
 
@@ -190,6 +191,18 @@ class PartnerProgram(models.Model):
         blank=True,
         verbose_name="Ссылка на регистрацию",
         help_text="Адрес страницы регистрации (например, на Tilda)",
+    )
+    landing_url = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name="Ссылка «Подробнее»",
+        help_text="Адрес сайта программы с http:// или https://.",
+        validators=[
+            URLValidator(
+                schemes=["http", "https"],
+                message="Укажите корректную ссылку с http:// или https://.",
+            )
+        ],
     )
     max_project_rates = models.PositiveIntegerField(
         null=True,

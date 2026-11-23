@@ -198,6 +198,7 @@ BASIC_FIELDS = (
     "advertisement_image_address",
     "registration_link",
     "presentation_address",
+    "landing_url",
 )
 
 
