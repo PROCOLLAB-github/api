@@ -129,6 +129,7 @@ class PartnerProgramAdmin(
                 "tag": forms.TextInput(attrs={"size": 80}),
                 "description": forms.Textarea(attrs={"rows": 4, "cols": 82}),
                 "city": forms.TextInput(attrs={"size": 80}),
+                "landing_url": forms.URLInput,
             }
 
     inlines = [PartnerProgramMaterialInline, PartnerProgramFieldInline]
@@ -184,6 +185,7 @@ class PartnerProgramAdmin(
                         "advertisement_image_address",
                     ),
                     ("presentation_address", "registration_link"),
+                    "landing_url",
                     "data_schema",
                 )
             },

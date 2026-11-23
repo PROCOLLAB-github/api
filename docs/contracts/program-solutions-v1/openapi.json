@@ -7364,7 +7364,7 @@
       "get": {
         "operationId": "getProgramRoleWidget",
         "summary": "Ролевой виджет текущего пользователя программы",
-        "description": "Прежний read-only endpoint. В legacy сохраняется ответ Project, в solution явный storage_mode и настоящая ссылка/счетчики решения. Роль organizer → expert → participant проверяется сервером. GET не меняет данные. Скрытые оценки, эксперты и регистрационные ответы не возвращаются. Ошибки сохраняют существующий DRF detail, не C00 Error.",
+        "description": "В legacy сохраняется ответ Project, в solution передается storage_mode и ссылка на решение или счетчики. По умолчанию сервер выбирает роль в порядке organizer → expert → participant. GET не меняет данные. Скрытые оценки, эксперты и регистрационные ответы не возвращаются. Ошибки сохраняют существующий DRF detail.",
         "parameters": [
           {
             "name": "program_id",
@@ -7374,6 +7374,15 @@
               "type": "integer",
               "minimum": 1,
               "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "description": "Значение participant выбирает ветвь участника, если текущий пользователь активен и зарегистрирован в этой программе. При отсутствии доступа к ветви участника в видимой программе возвращается 403.",
+            "schema": {
+              "type": "string",
+              "enum": ["participant"]
             }
           }
         ],

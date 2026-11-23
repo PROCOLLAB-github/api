@@ -31,6 +31,7 @@ from partner_programs.permissions import (
 )
 from partner_programs.selectors import get_current_program_application
 from partner_programs.services.publishing import publish_program_if_due
+from partner_programs.services.role_analytics import participant_project_links
 from partner_programs.serializers import (
     PartnerProgramDataSchemaSerializer,
     PartnerProgramFieldSerializer,
@@ -235,6 +236,13 @@ class PartnerProgramDetail(generics.RetrieveAPIView):
         data = serializer.data
         data["is_user_member"] = is_user_member
         data["current_application"] = current_application
+        data["has_submitted_team_project"] = bool(
+            is_user_member
+            and program.solution_storage_mode == "legacy_project"
+            and participant_project_links(program, request.user)
+            .filter(submitted=True)
+            .exists()
+        )
         if (
             program.program_format
             and program.solution_storage_mode == "solution"
