@@ -1,10 +1,7 @@
 name: DEV branding acceptance (temporary)
 on:
-  workflow_dispatch:
-    inputs:
-      expected_api:
-        required: true
-        type: string
+  push:
+    branches: [qa/dev-branding-live-20261124]
 permissions:
   contents: read
 jobs:
@@ -22,7 +19,7 @@ jobs:
       - run: node scripts/qa_dev_branding.cjs
         env:
           NODE_PATH: ${{ runner.temp }}/branding-test/node_modules
-          EXPECTED_API: ${{ inputs.expected_api }}
+          EXPECTED_API: 2d932e05d25d4195c6f5192191f3fba454176d0f
           DEV_SERVER_HOST: ${{ secrets.DEV_SERVER_HOST }}
           DEV_SERVER_USER: ${{ secrets.DEV_SERVER_USER }}
           DEV_SERVER_PASSWORD: ${{ secrets.DEV_SERVER_PASSWORD }}
