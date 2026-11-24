@@ -93,6 +93,15 @@ async function run() {
     await page.getByRole("heading",{name:"Основная информация",exact:true}).waitFor();
     assert.equal(await page.locator("#program-tag").count(),0);
 
+    const firstZone = page.locator(".management__image").filter({has:page.getByText("Обложка программы",{exact:true})});
+    const firstInput = firstZone.locator("input[type=file]");
+    await firstZone.getByText("JPG, PNG, WebP или GIF · до 10 МБ").waitFor();
+    await firstInput.setInputFiles({name:"test.pdf",mimeType:"application/pdf",buffer:Buffer.from("test")});
+    assert.equal(await page.getByRole("dialog",{name:"Обложка программы"}).count(),0);
+    await firstInput.setInputFiles({name:"oversize.png",mimeType:"image/png",buffer:Buffer.alloc(10 * 1024 ** 2 + 1)});
+    await firstZone.getByRole("alert").filter({hasText:"Файл больше 10 МБ."}).waitFor();
+    assert.equal(await page.getByRole("dialog",{name:"Обложка программы"}).count(),0);
+    console.log("File type and 10 MB limit block the preview on deployed dev");
     const items = [
       ["Обложка программы","Компьютер","cover_image_address","cover"],
       ["Обложка для телефона","Телефон","mobile_cover_image_address","mobile_cover"],
