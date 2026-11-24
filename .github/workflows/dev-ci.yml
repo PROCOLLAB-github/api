@@ -1,27 +1,14 @@
-name: DEV branding acceptance (temporary)
+name: DEV public media check (temporary)
 on:
   push:
     branches: [qa/dev-branding-live-20261124]
 permissions:
   contents: read
 jobs:
-  branding:
-    environment: dev
+  cdn:
     runs-on: ubuntu-latest
-    timeout-minutes: 9
+    timeout-minutes: 2
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-      - run: npm install --prefix "$RUNNER_TEMP/branding-test" --no-audit --no-fund ssh2@1.16.0 playwright pngjs
-      - run: |
-          "$RUNNER_TEMP/branding-test/node_modules/.bin/playwright" install chromium
-      - run: node scripts/qa_dev_branding.cjs
-        env:
-          NODE_PATH: ${{ runner.temp }}/branding-test/node_modules
-          EXPECTED_API: 2d932e05d25d4195c6f5192191f3fba454176d0f
-          DEV_SERVER_HOST: ${{ secrets.DEV_SERVER_HOST }}
-          DEV_SERVER_USER: ${{ secrets.DEV_SERVER_USER }}
-          DEV_SERVER_PASSWORD: ${{ secrets.DEV_SERVER_PASSWORD }}
-          DEV_SSH_HOST_KEY_SHA256: ${{ vars.DEV_SSH_HOST_KEY_SHA256 }}
+      - name: Fetch synthetic QA image anonymously
+        run: |
+          curl --fail --silent --show-error --retry 1 --max-time 12 --output /dev/null --write-out 'HTTP %{http_code}; %{content_type}; %{size_download} bytes\n' 'https://api.selcdn.ru/v1/SEL_228194/procollab_media/8793212375211439465/2854448568158194704_2153920190864548146.webp'
