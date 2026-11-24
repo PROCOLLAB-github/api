@@ -94,6 +94,7 @@ from partner_programs.widget_views import ProgramRoleWidgetAPIView
 
 from partner_programs.management_views import (
     ManagementView,
+    ManagementHelpStateView,
     ManagementProjectFormView,
     ManagementCriteriaView,
     ManagementParticipantsView,
@@ -175,6 +176,7 @@ urlpatterns = [
         "<int:pk>/management/preview/",
         program_view(ProgramPreviewView),
     ),
+    path("<int:pk>/management/help-state/", program_view(ManagementHelpStateView)),
     path("<int:pk>/management/launch/", program_view(ProgramReadinessView)),
     path("<int:pk>/management/publish/", program_view(ProgramPublishView)),
     path("<int:pk>/management/unpublish/", program_view(ProgramReturnToDraftView)),
