@@ -111,7 +111,7 @@ async function run() {
       };
       await card.locator("input[type=file]").setInputFiles(image("first.png",80));
       const crop = dialog.locator(".image-crop__frame");
-      if (frameKey) { await crop.waitFor(); await crop.press("+"); }
+      if (frameKey) { await crop.waitFor(); await crop.press("="); }
       await save();
       const first = await settings();
       assert.ok(first[field],"Missing uploaded URL: " + field);
