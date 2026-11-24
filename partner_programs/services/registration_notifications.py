@@ -12,6 +12,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from partner_programs.models import (
+    RegistrationConnectionEmail,
     RegistrationConnectionRequest,
     RegistrationConnectionNotification,
 )
@@ -26,29 +27,39 @@ def is_administrator(user):
     return user.is_active and (user.is_staff or user.is_superuser)
 
 
-def fanout_request(event):
+def fanout_request(event, *, email_to_administrators):
     ids = []
+    status = "queued" if email_to_administrators else "in_app_only"
     administrators = CustomUser.objects.filter(is_active=True).filter(
         Q(is_staff=True) | Q(is_superuser=True)
     )
     for recipient in administrators:
         notice, _ = RegistrationConnectionNotification.objects.get_or_create(
-            request=event, recipient=recipient
+            request=event, recipient=recipient, defaults={"delivery_status": status}
         )
-        ids.append(notice.pk)
+        if notice.delivery_status == "queued":
+            ids.append(notice.pk)
     return ids
 
 
-def queue_notifications(ids):
-    from partner_programs.tasks import send_registration_connection_notification
+def queue_notifications(ids, *, direct_email=False):
+    from partner_programs.tasks import (
+        send_registration_connection_email,
+        send_registration_connection_notification,
+    )
 
+    send = (
+        send_registration_connection_email
+        if direct_email
+        else send_registration_connection_notification
+    )
     for notification_id in ids:
         try:
-            send_registration_connection_notification.delay(notification_id)
+            send.delay(notification_id)
         except Exception:
             # Запись остается queued; ее подберет периодическая задача.
             logger.exception(
-                "Unable to enqueue registration notification %s", notification_id
+                "Unable to enqueue %s %s", send.name, notification_id
             )
 
 
@@ -64,8 +75,22 @@ def record_request(config, user):
         contact=config.connection_contact,
         created_at=config.requested_at,
     )
-    ids = fanout_request(event)
-    transaction.on_commit(partial(queue_notifications, ids), robust=True)
+    addresses = dict.fromkeys(
+        address.lower()
+        for address in settings.PROGRAM_REGISTRATION_REQUEST_EMAILS
+        if address
+    )
+    notification_ids = fanout_request(event, email_to_administrators=not addresses)
+    if notification_ids:
+        transaction.on_commit(partial(queue_notifications, notification_ids), robust=True)
+    if addresses:
+        email_ids = [
+            RegistrationConnectionEmail.objects.create(request=event, email=address).pk
+            for address in addresses
+        ]
+        transaction.on_commit(
+            partial(queue_notifications, email_ids, direct_email=True), robust=True
+        )
     return event
 
 
@@ -78,13 +103,20 @@ def visible_request_notifications(user):
     )
 
 
-def deliver_notification(notification_id):
+def deliver_notification(notification_id, *, direct_email=False):
+    model = (
+        RegistrationConnectionEmail if direct_email else RegistrationConnectionNotification
+    )
+    related = ["request__registration__program"]
+    if not direct_email:
+        related.append("recipient")
+
     error = None
     # Блокировка и emailed_at защищают от параллельных повторов одной задачи.
     with transaction.atomic():
         notice = (
-            RegistrationConnectionNotification.objects.select_for_update(of=("self",))
-            .select_related("request__registration__program", "recipient")
+            model.objects.select_for_update(of=("self",))
+            .select_related(*related)
             .filter(pk=notification_id)
             .first()
         )
@@ -92,15 +124,15 @@ def deliver_notification(notification_id):
             not notice
             or notice.emailed_at
             or notice.attempts >= MAX_ATTEMPTS
-            or notice.delivery_status == "cancelled"
+            or notice.delivery_status != "queued"
         ):
             return
-        recipient = notice.recipient
-        if not is_administrator(recipient):
+        if not direct_email and not is_administrator(notice.recipient):
             notice.delivery_status = "cancelled"
             notice.save(update_fields=["delivery_status"])
             return
-        if not recipient.email:
+        address = notice.email if direct_email else notice.recipient.email
+        if not address:
             notice.delivery_status = "failed"
             notice.attempts = MAX_ATTEMPTS
             notice.save(update_fields=["delivery_status", "attempts"])
@@ -126,7 +158,7 @@ def deliver_notification(notification_id):
                 "Запрос на подключение сайта мероприятия | PROCOLLAB",
                 render_to_string("email/registration_connection_request.txt", context),
                 settings.EMAIL_USER,
-                [recipient.email],
+                [address],
             )
             message.attach_alternative(
                 render_to_string("email/registration_connection_request.html", context),
@@ -148,14 +180,9 @@ def deliver_notification(notification_id):
         raise error
 
 
-def dispatch_pending_notifications():
-    # Запрос без получателей остается событием до появления активного администратора.
-    for event in RegistrationConnectionRequest.objects.filter(
-        notifications__isnull=True
-    ).order_by("pk")[:100]:
-        fanout_request(event)
-    ids = list(
-        RegistrationConnectionNotification.objects.filter(
+def pending_ids(model):
+    return list(
+        model.objects.filter(
             delivery_status="queued",
             emailed_at__isnull=True,
             attempts__lt=MAX_ATTEMPTS,
@@ -163,5 +190,22 @@ def dispatch_pending_notifications():
         .order_by("pk")
         .values_list("pk", flat=True)[:100]
     )
-    queue_notifications(ids)
-    return len(ids)
+
+
+def dispatch_pending_notifications():
+    # Уведомление в колокольчике можно создать и после появления администратора.
+    for event in RegistrationConnectionRequest.objects.filter(
+        notifications__isnull=True
+    ).order_by("pk")[:100]:
+        fanout_request(
+            event,
+            email_to_administrators=(
+                not settings.PROGRAM_REGISTRATION_REQUEST_EMAILS
+                and not event.email_deliveries.exists()
+            ),
+        )
+    notification_ids = pending_ids(RegistrationConnectionNotification)
+    email_ids = pending_ids(RegistrationConnectionEmail)
+    queue_notifications(notification_ids)
+    queue_notifications(email_ids, direct_email=True)
+    return len(notification_ids) + len(email_ids)

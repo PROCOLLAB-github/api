@@ -69,6 +69,13 @@ def send_registration_connection_notification(notification_id):
     deliver_notification(notification_id)
 
 
+@app.task(autoretry_for=(Exception,), retry_backoff=True, max_retries=3)
+def send_registration_connection_email(email_id):
+    from partner_programs.services.registration_notifications import deliver_notification
+
+    deliver_notification(email_id, direct_email=True)
+
+
 @app.task
 def dispatch_registration_connection_notifications():
     from partner_programs.services.registration_notifications import (
