@@ -84,7 +84,6 @@ def create_program(user, data):
     use_solutions = competitive and settings.PROGRAM_SOLUTIONS_ENABLED
     program = PartnerProgram.objects.create(
         name=data["name"],
-        tag="",
         city="",
         draft=True,
         program_format=data["format"],

@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator
@@ -355,6 +357,8 @@ class PartnerProgram(models.Model):
                 )
 
     def save(self, *args, **kwargs):
+        if self._state.adding and not (self.tag or "").strip():
+            self.tag = f"program-{uuid4().hex}"
         fields = kwargs.get("update_fields")
         if self.pk and (fields is None or "solution_template" in fields):
             with transaction.atomic():

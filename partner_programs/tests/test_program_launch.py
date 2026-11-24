@@ -166,7 +166,10 @@ class ProgramCreationTests(ProgramLaunchTestCase):
         program = PartnerProgram.objects.get(pk=response.data["id"])
         program.name = "Новое название"
         program.save(update_fields=["name", "datetime_updated"])
+        tag = PartnerProgram.objects.get(creation_key=key).tag
+        self.assertRegex(tag, r"^program-[a-f0-9]{32}$")
         retry = self.create(idempotency_key=key)
+        self.assertEqual(PartnerProgram.objects.get(creation_key=key).tag, tag)
         self.assertEqual(retry.status_code, 200)
         self.assertEqual(retry.data["id"], program.pk)
         self.assertEqual(
