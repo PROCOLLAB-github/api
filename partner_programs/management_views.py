@@ -1,17 +1,19 @@
 """Панель организатора поверх существующей модели программ."""
 
 from django.db import transaction
-from django.http import HttpResponse
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import serializers, status
+from rest_framework.exceptions import NotAuthenticated, NotFound
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from partner_programs.models import PartnerProgramMaterial
+from partner_programs.models import OrganizerGuideSeen, PartnerProgramMaterial
 from partner_programs.pagination import ProgramAttentionPagination
 from partner_programs.serializers.management import (
+    ManagementHelpStateWrite,
     ManagementParticipantQuery,
     ManagementProjectQuery,
     ManagementSettingsSerializer,
@@ -51,6 +53,36 @@ class ManagementBase(APIView):
 class ManagementView(ManagementBase):
     def get(self, request, pk):
         return Response(management_data(managed_program(pk, request.user)))
+
+
+class ManagementHelpStateView(ManagementBase):
+    def handle_exception(self, exc):
+        if isinstance(exc, (Http404, NotFound)):
+            exc = NotFound("Программа не найдена.")
+        elif isinstance(exc, NotAuthenticated):
+            exc = NotAuthenticated("Войдите в аккаунт.")
+        return super().handle_exception(exc)
+
+    def get(self, request, pk):
+        managed_program(pk, request.user)
+        return self.help_state(request.user)
+
+    def post(self, request, pk):
+        managed_program(pk, request.user)
+        body = ManagementHelpStateWrite(data=request.data)
+        body.is_valid(raise_exception=True)
+        OrganizerGuideSeen.objects.get_or_create(
+            user=request.user, guide=body.validated_data["guide"]
+        )
+        return self.help_state(request.user)
+
+    def help_state(self, user):
+        seen = (
+            OrganizerGuideSeen.objects.filter(user=user)
+            .order_by("guide")
+            .values_list("guide", flat=True)
+        )
+        return Response({"seen": list(seen)})
 
 
 class ManagementProjectFormView(ManagementBase):

@@ -35,6 +35,18 @@ from partner_programs.registration_models import (  # noqa: F401
 User = get_user_model()
 
 
+class OrganizerGuideSeen(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="+")
+    guide = models.CharField(max_length=64)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("user", "guide"), name="unique_organizer_guide_seen"
+            )
+        ]
+
+
 class OrganizerInvitation(models.Model):
     """Program management invitation, independent of expert membership."""
 
