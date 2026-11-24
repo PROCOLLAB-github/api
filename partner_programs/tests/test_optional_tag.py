@@ -1,4 +1,4 @@
-"""Пустой тег допустим в модели, админке и настройках организатора."""
+"""Тег новой программы назначается автоматически, если его не указали."""
 
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -39,18 +39,19 @@ class OptionalProgramTagTests(TestCase):
         errors = response.context["adminform"].form.errors if response.status_code == 200 else None
         self.assertEqual(response.status_code, 302, errors)
         program = PartnerProgram.objects.get(name="Программа без тега")
-        self.assertEqual(program.tag, "")
+        self.assertRegex(program.tag, r"^program-[a-f0-9]{32}$")
         program.full_clean()
         self.assertTrue(program.managers.filter(pk=self.admin.pk).exists())
         api = APIClient()
         api.force_authenticate(self.admin)
         saved = api.patch(
             f"/programs/{program.pk}/management/settings/basic/",
-            {"tag": "", "expected_updated_at": program.datetime_updated.isoformat()}, format="json",
+            {"city": "Казань", "expected_updated_at": program.datetime_updated.isoformat()}, format="json",
         )
         self.assertEqual(saved.status_code, 200, saved.data)
+        self.assertEqual(saved.data["tag"], program.tag)
 
-    def test_existing_nonempty_tag_remains_unchanged(self):
+    def test_explicit_admin_tag_is_kept(self):
         data = self.payload()
         data["tag"] = "существующий-тег"
         self.assertEqual(self.client.post(self.url, data).status_code, 302)
