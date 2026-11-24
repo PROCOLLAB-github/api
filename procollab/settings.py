@@ -4,7 +4,7 @@ import sys
 from datetime import timedelta
 from pathlib import Path
 
-from decouple import config
+from decouple import Csv, config
 
 mimetypes.add_type("application/javascript", ".js", True)
 mimetypes.add_type("text/css", ".css", True)
@@ -349,6 +349,9 @@ ANYMAIL = {
 }
 
 EMAIL_USER = config("EMAIL_USER", cast=str, default="example@mail.ru")
+PROGRAM_REGISTRATION_REQUEST_EMAILS = config(
+    "PROGRAM_REGISTRATION_REQUEST_EMAILS", default="", cast=Csv(post_process=tuple)
+)
 
 SELECTEL_ACCOUNT_ID = config("SELECTEL_ACCOUNT_ID", cast=str, default="123456")
 SELECTEL_CONTAINER_NAME = config(

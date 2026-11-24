@@ -127,7 +127,10 @@ class RegistrationConnectionNotification(models.Model):
     delivery_status = models.CharField(
         max_length=12,
         default="queued",
-        choices=[(value, value) for value in ("queued", "sent", "failed", "cancelled")],
+        choices=[
+            (value, value)
+            for value in ("queued", "sent", "failed", "cancelled", "in_app_only")
+        ],
     )
     attempts = models.PositiveSmallIntegerField(default=0)
 
@@ -139,3 +142,27 @@ class RegistrationConnectionNotification(models.Model):
             )
         ]
         indexes = [models.Index(fields=["delivery_status", "id"])]
+
+
+class RegistrationConnectionEmail(models.Model):
+    request = models.ForeignKey(
+        RegistrationConnectionRequest,
+        on_delete=models.CASCADE,
+        related_name="email_deliveries",
+    )
+    email = models.EmailField()
+    emailed_at = models.DateTimeField(null=True, blank=True)
+    delivery_status = models.CharField(max_length=12, default="queued")
+    attempts = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["request", "email"], name="unique_connection_request_email"
+            )
+        ]
+        indexes = [
+            models.Index(
+                fields=["delivery_status", "id"], name="connection_email_status_idx"
+            )
+        ]

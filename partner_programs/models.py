@@ -30,6 +30,7 @@ from partner_programs.registration_models import (  # noqa: F401
     PendingProgramRegistration,
     RegistrationConnectionRequest,
     RegistrationConnectionNotification,
+    RegistrationConnectionEmail,
 )
 
 User = get_user_model()
