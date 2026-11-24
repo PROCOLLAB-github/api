@@ -15,7 +15,8 @@ jobs:
         with:
           node-version: "24"
       - run: npm install --prefix "$RUNNER_TEMP/branding-test" --no-audit --no-fund ssh2@1.16.0 playwright pngjs
-      - run: "$RUNNER_TEMP/branding-test/node_modules/.bin/playwright" install chromium
+      - run: |
+          "$RUNNER_TEMP/branding-test/node_modules/.bin/playwright" install chromium
       - run: node scripts/qa_dev_branding.cjs
         env:
           NODE_PATH: ${{ runner.temp }}/branding-test/node_modules
