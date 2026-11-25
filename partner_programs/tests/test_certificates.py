@@ -3,6 +3,7 @@ from copy import deepcopy
 from datetime import timedelta
 from unittest.mock import patch
 
+from django.contrib.auth.models import Group, Permission
 from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import (
@@ -12,6 +13,7 @@ from django.test import (
     tag,
     skipUnlessDBFeature,
 )
+from django.urls import reverse
 from django.utils import timezone
 from PIL import Image
 from rest_framework.test import APIClient
@@ -573,6 +575,173 @@ class CertificateTests(TestCase):
         self.assertEqual(
             service.validate_draft(self.program, draft)["orientation"], "landscape"
         )
+
+    def test_rotation_and_title_preserve_legacy_and_issued_certificates(self):
+        legacy = deepcopy(self.config.draft)
+        legacy.pop("title")
+        for box in legacy["layout"].values():
+            box.pop("rotation")
+        self.config.draft = legacy
+        self.config.save(update_fields=["draft"])
+        row = self.row(pdf=b"%PDF-original", status="sent")
+
+        draft = self.client.get(self.root).data["draft"]
+        self.assertEqual(draft["title"], "СЕРТИФИКАТ")
+        self.assertEqual({box["rotation"] for box in draft["layout"].values()}, {0})
+        self.assertFalse(service.outdated_certificate(row, draft))
+
+        draft["title"] = "Сертификат участника"
+        draft["layout"]["title"]["rotation"] = 180
+        draft["layout"]["signature"]["rotation"] = -180
+        response = self.client.put(
+            self.root, {"revision": 1, "draft": draft}, format="json"
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        saved = self.client.get(self.root).data["draft"]
+        self.assertEqual(saved["title"], "Сертификат участника")
+        self.assertEqual(saved["layout"]["title"]["rotation"], 180)
+        self.assertEqual(saved["layout"]["signature"]["rotation"], -180)
+        self.assertTrue(service.outdated_certificate(row, saved))
+
+        response = self.client.put(
+            self.root, {"revision": 2, "draft": legacy}, format="json"
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        draft = response.data["draft"]
+        self.assertEqual(draft["title"], "Сертификат участника")
+        self.assertEqual(draft["layout"]["title"]["rotation"], 180)
+        self.assertEqual(draft["layout"]["signature"]["rotation"], -180)
+
+        draft["title"] = ""
+        draft["layout"]["title"]["rotation"] = 0
+        response = self.client.put(
+            self.root, {"revision": 3, "draft": draft}, format="json"
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data["draft"]["title"], "")
+        self.assertEqual(response.data["draft"]["layout"]["title"]["rotation"], 0)
+        row.refresh_from_db()
+        self.assertEqual(row.batch.snapshot, legacy)
+        self.assertEqual(bytes(row.pdf), b"%PDF-original")
+        self.assertEqual(row.status, "sent")
+
+    def test_rotation_and_title_reject_invalid_values_without_changing_draft(self):
+        for invalid in (-181, 181, 0.5, True, None, "90"):
+            with self.subTest(rotation=invalid):
+                draft = deepcopy(self.config.draft)
+                draft["layout"]["title"]["rotation"] = invalid
+                response = self.client.put(
+                    self.root, {"revision": 1, "draft": draft}, format="json"
+                )
+                self.assertEqual(response.status_code, 400)
+                self.assertIn("rotation", response.data["layout"]["title"])
+
+        for invalid in (251 * "я", 42, None):
+            with self.subTest(title=invalid):
+                draft = deepcopy(self.config.draft)
+                draft["title"] = invalid
+                response = self.client.put(
+                    self.root, {"revision": 1, "draft": draft}, format="json"
+                )
+                self.assertEqual(response.status_code, 400)
+                self.assertIn("title", response.data)
+
+        self.config.refresh_from_db()
+        self.assertEqual(self.config.revision, 1)
+        self.assertEqual(self.config.draft, service.default_draft())
+
+    def test_admin_certificate_settings_are_scoped_and_share_api_revision(self):
+        manager = create_user(is_staff=True, is_active=True)
+        self.program.managers.add(manager)
+        group, _ = Group.objects.get_or_create(name="Руководитель программы")
+        manager.groups.add(group)
+        permission = Permission.objects.get(
+            content_type__app_label="partner_programs",
+            codename="change_partnerprogram",
+        )
+        action = "admin:partner_programs_partnerprogram_certificate_settings"
+        url = reverse(action, args=[self.program.pk])
+        self.client.force_login(manager)
+        self.assertEqual(self.client.get(url).status_code, 403)
+        self.client.logout()
+        manager.user_permissions.add(permission)
+        self.client.force_login(manager)
+        self.assertEqual(
+            self.client.get(reverse(action, args=[self.foreign.pk])).status_code, 404
+        )
+
+        response = self.client.get(url)
+        self.assertContains(response, "СЕРТИФИКАТ")
+        self.assertContains(response, 'name="rotation_signature"')
+        data = {
+            "revision": self.config.revision,
+            "title": "Диплом",
+            **{f"rotation_{key}": 0 for key in service.ELEMENTS},
+            "rotation_signature": -47,
+        }
+        self.assertRedirects(self.client.post(url, data), url)
+
+        self.config.refresh_from_db()
+        self.assertEqual(self.config.revision, 2)
+        self.assertEqual(self.config.draft["title"], "Диплом")
+        self.assertEqual(self.config.draft["layout"]["signature"]["rotation"], -47)
+        self.assertEqual(
+            self.config.draft["layout"]["signature"]["width"],
+            service.default_draft()["layout"]["signature"]["width"],
+        )
+        self.assertContains(
+            self.client.post(url, {**data, "title": "Устаревшие настройки"}),
+            "Настройки изменены другим организатором.",
+        )
+        self.assertContains(
+            self.client.post(url, {**data, "revision": 2, "rotation_title": 181}),
+            "Угол поворота должен быть от −180 до 180 градусов.",
+        )
+        self.config.refresh_from_db()
+        self.assertEqual(self.config.revision, 2)
+        self.assertEqual(self.config.draft["title"], "Диплом")
+
+        self.client.force_authenticate(self.manager)
+        response = self.client.put(
+            self.root, {"revision": 1, "draft": service.default_draft()}, format="json"
+        )
+        self.assertEqual(response.status_code, 409)
+
+    @tag("native_pdf")
+    def test_pdf_rotates_text_and_signature_about_their_centers(self):
+        from weasyprint import HTML
+
+        draft = service.default_draft()
+        draft["hidden_elements"] = []
+        legacy = deepcopy(draft)
+        legacy.pop("title")
+        for box in legacy["layout"].values():
+            box.pop("rotation")
+        signature = service.upload_asset(self.program, "signature", self.image())
+        args = ({"signature": signature}, "Анна Крылова", "Программа", "1", timezone.now())
+
+        with patch("weasyprint.HTML", wraps=HTML) as render:
+            self.assertTrue(service.render_pdf(legacy, *args).startswith(b"%PDF"))
+            legacy_html = render.call_args.kwargs["string"]
+            self.assertTrue(service.render_pdf(draft, *args).startswith(b"%PDF"))
+            self.assertEqual(render.call_args.kwargs["string"], legacy_html)
+
+            draft["title"] = "Сертификат & участие"
+            draft["layout"]["title"]["rotation"] = 35
+            draft["layout"]["signature"]["rotation"] = -90
+            self.assertTrue(service.render_pdf(draft, *args).startswith(b"%PDF"))
+            html = render.call_args.kwargs["string"]
+        self.assertIn("Сертификат &amp; участие", html)
+        self.assertRegex(
+            html,
+            r'class="element title" style="[^"]*transform:rotate\(35deg\);transform-origin:center;',
+        )
+        self.assertRegex(
+            html,
+            r'class="element signature" style="[^"]*transform:rotate\(-90deg\);transform-origin:center;',
+        )
+        self.assertIn('class="element name" style="left:', html)
+        self.assertNotIn("rotate(0deg)", html)
 
     def test_portrait_background_keeps_a4_print_resolution(self):
         buffer = io.BytesIO()
