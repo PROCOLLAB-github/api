@@ -25,8 +25,9 @@ JSON использует snake_case; штатный Angular API interceptor п�
 - POST activate/: `{revision}` → неизменяемый снимок шаблона и рассылки;
   `timing=manual` запускает сейчас, `scheduled` требует дату не ранее окончания.
 - POST pause/ и resume/: останавливают/возобновляют очередь текущего запуска.
-- GET deliveries/: `status=all|sent|failed`, `search`, `limit` (до100), `offset`;
-  `{count,results,summary}`; PDF и отправка имеют независимые состояния.
+- GET deliveries/: `status=all|attention|pdf_failed|email_failed|sent|unsent`,
+  `search`, `limit` (до 100), `offset`; `{count,results,summary}`.
+  `failed` сохраняется как алиас `attention`.
 - POST retry/: `{ids?: UUID[]}`; только ошибки, повторно используется готовый PDF.
 - GET deliveries/{certificate_id}/pdf/: PDF, GET archive/: ZIP готовых PDF
   с теми же фильтрами. Ошибки без готового PDF остаются в журнале.
@@ -119,8 +120,16 @@ Pillow и PDF используют одни и те же локальные TTF,
 
 ## Управление выданными сертификатами
 
-- Журнал поддерживает `unsent` и возвращает `outdated` у строки, счетчики
-  `unsent`/`outdated`. Сравнивается визуальный шаблон, без настроек письма и расписания.
+- Журнал возвращает `pdf_status=pending|ready|failed` и
+  `email_status=not_planned|pending|sending|sent|failed`. Режим письма
+  определяется неизменяемым снимком задания. Прошлая отправка сохраняется
+  при обновлении PDF. `unsent` включает только строки с запланированным письмом
+  без подтвержденной отправки.
+- Фильтр `attention` объединяет ошибки PDF и отправки. В сводке `failed`
+  показывает их общее число, `pdf_failed` и `email_failed` — по отдельности.
+  `outdated` сравнивает визуальные шаблоны сохраненного PDF и текущего черновика.
+  Из карточки программы в Django-админке доступны те же фильтры и поиск,
+  повтор текущего фильтра ошибок и ZIP доступных PDF по текущему фильтру.
 - `POST selection/`: `{revision,action,ids}` либо
   `{revision,action,all_matching:true,status,search,excluded_ids}`. Выбор всех
   охватывает весь фильтр, а не страницу. ID другой программы, конфликт ревизии

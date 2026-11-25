@@ -2,7 +2,6 @@ import zipfile
 from datetime import timedelta
 
 from django.db import transaction
-from django.db.models import Count, F, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -20,6 +19,13 @@ from partner_programs.certificate_models import (
     ProgramCertificateConfig,
 )
 from partner_programs.management_views import ManagementBase
+from partner_programs.services.certificate_journal import (
+    CertificateJournal,
+    certificate_archive_name,
+    published_archive,
+    queue_selection,
+    selected_rows,
+)
 from partner_programs.services.management import managed_program
 from partner_programs.services import certificates as service
 
@@ -176,167 +182,20 @@ class CertificateQueueView(ManagementBase):
         return Response(service.state(program))
 
 
-class JournalQuery(serializers.Serializer):
-    status = serializers.ChoiceField(
-        choices=["all", "sent", "failed", "unsent"], default="all"
-    )
-    search = serializers.CharField(max_length=200, allow_blank=True, default="")
-    limit = serializers.IntegerField(min_value=1, max_value=100, default=20)
-    offset = serializers.IntegerField(min_value=0, default=0)
-
-
-def journal_rows(program, params):
-    query = JournalQuery(data=params)
-    query.is_valid(raise_exception=True)
-    data = query.validated_data
-    rows = ProgramCertificate.objects.filter(program=program).defer("pdf")
-    delivered = Q(sent_at__isnull=False) | Q(status="sent")
-    if data["status"] == "unsent":
-        rows = rows.exclude(delivered)
-    elif data["status"] == "sent":
-        rows = rows.filter(delivered)
-    elif data["status"] != "all":
-        rows = rows.filter(status=data["status"])
-    if data["search"]:
-        rows = rows.filter(
-            Q(name__icontains=data["search"]) | Q(email__icontains=data["search"])
-        )
-    return rows.order_by("created_at", "pk"), data
-
-
 class CertificateJournalView(ManagementBase):
     def get(self, request, pk):
         program = managed_program(pk, request.user)
-        rows, query = journal_rows(program, request.query_params)
-        draft = service.config_for(program).draft
-        stale_batches = [
-            batch.pk
-            for batch in ProgramCertificateBatch.objects.filter(program=program)
-            if service.template_values(batch.snapshot, program.name)
-            != service.template_values(draft, program.name)
-        ]
-        summary = ProgramCertificate.objects.filter(program=program).aggregate(
-            total=Count("pk"),
-            ready=Count("pk", filter=Q(pdf__isnull=False)),
-            sent=Count("pk", filter=Q(sent_at__isnull=False) | Q(status="sent")),
-            failed=Count("pk", filter=Q(status="failed")),
-            unsent=Count("pk", filter=Q(sent_at__isnull=True) & ~Q(status="sent")),
-            outdated=Count(
-                "pk",
-                filter=Q(rendered_batch_id__in=stale_batches)
-                | Q(rendered_batch__isnull=True, batch_id__in=stale_batches),
-            ),
-        )
-        offset = query["offset"]
-        end = offset + query["limit"]
-        result = [
-            {
-                "id": row.pk,
-                "name": row.name,
-                "email": row.email,
-                "status": row.status,
-                "pdf_ready": row.pdf_ready,
-                "error": row.error,
-                "sent_at": row.sent_at,
-                "outdated": service.outdated_certificate(row, draft),
-                "pdf_error": row.status == "failed"
-                and service.pdf_needs_render(row, row.pdf_ready),
-            }
-            for row in rows.select_related("batch", "rendered_batch", "program").annotate(
-                pdf_ready=~Q(pdf__isnull=True)
-            )[offset:end]
-        ]
-        return Response({"count": rows.count(), "summary": summary, "results": result})
-
-
-def selected_rows(program, data):
-    class Selection(serializers.Serializer):
-        all_matching = serializers.BooleanField(default=False)
-        ids = serializers.ListField(
-            child=serializers.UUIDField(), required=False, min_length=1, max_length=1000
-        )
-        excluded_ids = serializers.ListField(
-            child=serializers.UUIDField(), default=list, max_length=1000
-        )
-
-    selection = Selection(data=data)
-    selection.is_valid(raise_exception=True)
-    values = selection.validated_data
-    if bool(values["all_matching"]) == bool(values.get("ids")):
-        raise ValidationError("Выберите участников.")
-    if values["all_matching"]:
-        rows, _ = journal_rows(program, data)
-        return rows.exclude(pk__in=values["excluded_ids"])
-    rows = ProgramCertificate.objects.filter(program=program, pk__in=values["ids"])
-    if rows.count() != len(set(values["ids"])):
-        raise ValidationError("Участник не найден в этой программе.")
-    return rows
+        return Response(CertificateJournal(program, request.query_params).data())
 
 
 class CertificateSelectionView(ManagementBase):
     @transaction.atomic
     def post(self, request, pk):
         program = managed_program(pk, request.user, lock=True)
-        config = service.config_for(program)
-        service.revision_check(config, request.data)
-        action = serializers.ChoiceField(
-            choices=["send", "refresh", "retry"]
-        ).run_validation(request.data.get("action"))
-        rows = list(
-            selected_rows(program, request.data)
-            .select_for_update(of=("self",))
-            .select_related("batch", "program")
-            .defer("pdf")
-            .order_by("pk")
+        result = queue_selection(
+            program, request.data, request.build_absolute_uri("/").rstrip("/")
         )
-        if any(row.status in ("pending", "generating", "sending") for row in rows):
-            raise ValidationError("Дождитесь завершения текущей обработки сертификатов.")
-        selected = [
-            row
-            for row in rows
-            if action == "refresh"
-            or (action == "retry" and row.status == "failed")
-            or (row.status != "sent" and row.sent_at is None)
-        ]
-        if not selected:
-            return Response({"count": 0, "skipped": len(rows)}, status=202)
-        draft = service.validate_draft(program, config.draft)
-        for send_email in (False, True):
-            group = [
-                row.pk
-                for row in selected
-                if (
-                    row.sent_at is None
-                    and (
-                        action == "send"
-                        or (action == "retry" and row.batch.snapshot["send_email"])
-                    )
-                )
-                == send_email
-            ]
-            if not group:
-                continue
-            batch = service.manual_batch(
-                program,
-                draft,
-                request.build_absolute_uri("/").rstrip("/"),
-                "send" if send_email else "refresh",
-            )
-            targets = ProgramCertificate.objects.filter(pk__in=group)
-            # Keep the current file's snapshot before moving work to a new batch.
-            targets.filter(pdf__isnull=False, rendered_batch__isnull=True).update(
-                rendered_batch_id=F("batch_id")
-            )
-            targets.update(
-                batch=batch,
-                status="pending",
-                error="",
-                queued_at=None,
-                claimed_at=None,
-            )
-        return Response(
-            {"count": len(selected), "skipped": len(rows) - len(selected)}, status=202
-        )
+        return Response(result, status=202)
 
 
 class CertificateRetryView(ManagementBase):
@@ -461,44 +320,8 @@ class CertificateArchiveView(ManagementBase):
 
     def get(self, request, pk):
         program = managed_program(pk, request.user)
-        rows, _ = journal_rows(program, request.query_params)
-        # Spool to disk after 8 MB so a large program does not duplicate every PDF in RAM.
-        import tempfile
-        from django.http import FileResponse
-
-        output = tempfile.SpooledTemporaryFile(max_size=8 * 1024 * 1024)
-        with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
-            names = set()
-            for row in (
-                rows.filter(pdf__isnull=False)
-                .only("pk", "name", "pdf")
-                .iterator(chunk_size=50)
-            ):
-                archive.writestr(
-                    certificate_archive_name(row.name, names), bytes(row.pdf)
-                )
-        output.seek(0)
-        response = FileResponse(output, as_attachment=True, filename="certificates.zip")
-        response["Cache-Control"] = "private, no-store"
-        return response
-
-
-def certificate_archive_name(name, used):
-    import re
-    from pathlib import PureWindowsPath
-    from unicodedata import normalize
-
-    stem = re.sub(r'[\\/:*?"<>|\x00-\x1f\x7f]', "_", normalize("NFC", name))
-    stem = stem[:120].strip(" .") or "Сертификат"
-    if PureWindowsPath(stem).is_reserved():
-        stem = "Сертификат " + stem
-    filename = stem + ".pdf"
-    suffix = 2
-    while filename.casefold() in used:
-        filename = f"{stem} ({suffix}).pdf"
-        suffix += 1
-    used.add(filename.casefold())
-    return filename
+        rows = CertificateJournal(program, request.query_params).rows
+        return published_archive(rows)
 
 
 class MyCertificatesView(ManagementBase):

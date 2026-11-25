@@ -277,6 +277,9 @@ class CertificateTests(TestCase):
         row.refresh_from_db()
         self.assertEqual(bytes(row.pdf), b"%PDF-previous")
         self.assertEqual(row.rendered_batch_id, original_batch)
+        pending = self.client.get(self.root + "deliveries/").data["results"][0]
+        self.assertEqual(pending["pdf_status"], "pending")
+        self.assertEqual(pending["email_status"], "sent")
         public_url = f"/programs/{self.program.pk}/certificates/download/{token}/"
         self.assertEqual(self.client.get(public_url).content, b"%PDF-previous")
         with patch(
@@ -292,10 +295,18 @@ class CertificateTests(TestCase):
         journal = self.client.get(self.root + "deliveries/").data
         self.assertTrue(journal["results"][0]["pdf_ready"])
         self.assertTrue(journal["results"][0]["pdf_error"])
+        self.assertEqual(journal["results"][0]["pdf_status"], "failed")
+        self.assertEqual(journal["results"][0]["email_status"], "sent")
+        self.assertEqual(
+            journal["results"][0]["error"],
+            "Не удалось подготовить PDF. Повторите попытку.",
+        )
         self.assertTrue(journal["results"][0]["outdated"])
         self.assertEqual(journal["summary"]["outdated"], 1)
         self.assertEqual(journal["summary"]["sent"], 1)
         self.assertEqual(journal["summary"]["unsent"], 0)
+        self.assertEqual(journal["summary"]["pdf_failed"], 1)
+        self.assertEqual(journal["summary"]["email_failed"], 0)
         self.assertEqual(
             self.client.get(self.root + "deliveries/", {"status": "sent"}).data["count"],
             1,
@@ -1195,7 +1206,16 @@ class CertificateTests(TestCase):
         self.assertTrue(response.data["results"][0]["pdf_ready"])
         self.assertEqual(
             response.data["summary"],
-            {"total": 2, "ready": 2, "sent": 1, "failed": 1, "unsent": 1, "outdated": 0},
+            {
+                "total": 2,
+                "ready": 2,
+                "sent": 1,
+                "failed": 1,
+                "pdf_failed": 0,
+                "email_failed": 1,
+                "unsent": 1,
+                "outdated": 0,
+            },
         )
         self.assertEqual(
             len(self.client.get(self.root + "deliveries/?status=sent").data["results"]), 1
@@ -1203,6 +1223,191 @@ class CertificateTests(TestCase):
         self.assertEqual(
             self.client.get(self.root + "deliveries/?status=unknown").status_code, 400
         )
+
+    @patch("partner_programs.services.certificates.render_pdf")
+    def test_journal_tracks_email_attempts_on_a_visually_equivalent_manual_batch(
+        self, render
+    ):
+        self.config.draft = {**self.config.draft, "send_email": False}
+        self.config.save(update_fields=["draft"])
+        row = self.row(status="ready", pdf=b"%PDF-platform")
+        deliveries = self.root + "deliveries/"
+        platform = self.client.get(deliveries).data["results"][0]
+        self.assertEqual(
+            (platform["pdf_status"], platform["email_status"]), ("ready", "not_planned")
+        )
+        self.assertEqual(
+            self.client.get(deliveries, {"status": "unsent"}).data["count"], 0
+        )
+        response = self.client.post(
+            self.root + "selection/",
+            {"revision": 1, "action": "send", "ids": [str(row.pk)]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 202)
+        pending = self.client.get(deliveries, {"status": "unsent"}).data["results"][0]
+        self.assertEqual(
+            (pending["pdf_status"], pending["email_status"]), ("ready", "pending")
+        )
+
+        observed_email_statuses = []
+
+        def fail_email(_):
+            sending = self.client.get(deliveries).data["results"][0]
+            observed_email_statuses.append(sending["email_status"])
+            raise RuntimeError("mail provider unavailable")
+
+        with patch(
+            "partner_programs.services.certificates.send_certificate",
+            side_effect=fail_email,
+        ) as send:
+            service.process(row.pk)
+        send.assert_called_once()
+        self.assertEqual(observed_email_statuses, ["sending"])
+        render.assert_not_called()
+        response = self.client.get(deliveries, {"status": "email_failed"})
+        self.assertEqual(response.data["count"], 1)
+        failed = response.data["results"][0]
+        self.assertEqual(
+            (failed["pdf_status"], failed["email_status"]), ("ready", "failed")
+        )
+        self.assertEqual(
+            failed["error"], "Не удалось отправить письмо. Повторите попытку."
+        )
+        self.assertEqual(response.data["summary"]["email_failed"], 1)
+        self.assertEqual(self.client.get(deliveries, {"status": "pdf_failed"}).data["count"], 0)
+
+    def test_journal_attention_filters_archive_and_select_all_by_failure_stage(self):
+        rendered = self.batch()
+        changed = self.batch(snapshot={**self.config.draft, "title": "Новый шаблон"})
+        pdf = self.row(
+            name="Ошибка PDF",
+            status="failed",
+            pdf=b"%PDF-previous",
+            batch=changed,
+            rendered_batch=rendered,
+        )
+        email = self.row(
+            name="Ошибка отправки", user=self.member, status="failed", pdf=b"%PDF-ready"
+        )
+        legacy_sent = self.row(user=self.only_registered, status="sent", pdf=b"%PDF-sent")
+        deliveries = self.root + "deliveries/"
+        for status in ("attention", "failed"):
+            response = self.client.get(
+                deliveries, {"status": status, "limit": 1, "offset": 1}
+            )
+            self.assertEqual(response.data["count"], 2)
+            self.assertEqual([row["id"] for row in response.data["results"]], [email.pk])
+        response = self.client.get(deliveries, {"status": "pdf_failed"})
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(response.data["results"][0]["id"], pdf.pk)
+        self.assertEqual(response.data["results"][0]["email_status"], "pending")
+        self.assertEqual(response.data["summary"]["unsent"], 2)
+        self.assertEqual(response.data["summary"]["failed"], 2)
+        self.assertEqual(response.data["summary"]["pdf_failed"], 1)
+        sent = self.client.get(deliveries, {"status": "sent"}).data["results"][0]
+        self.assertEqual(sent["id"], legacy_sent.pk)
+        self.assertEqual(sent["email_status"], "sent")
+
+        import zipfile
+
+        response = self.client.get(self.root + "archive/", {"status": "pdf_failed"})
+        with zipfile.ZipFile(io.BytesIO(b"".join(response.streaming_content))) as archive:
+            self.assertEqual(archive.namelist(), ["Ошибка PDF.pdf"])
+            self.assertEqual(archive.read("Ошибка PDF.pdf"), b"%PDF-previous")
+        response = self.client.post(
+            self.root + "selection/",
+            {
+                "action": "retry",
+                "revision": 1,
+                "all_matching": True,
+                "status": "email_failed",
+                "offset": 20,
+            },
+            format="json",
+        )
+        self.assertEqual(response.data, {"count": 1, "skipped": 0})
+        pdf.refresh_from_db()
+        email.refresh_from_db()
+        self.assertEqual(pdf.status, "failed")
+        self.assertEqual(email.status, "pending")
+
+    def test_admin_certificate_journal_shares_filters_and_program_scope(self):
+        import zipfile
+
+        manager = create_user(is_staff=True, is_active=True)
+        self.program.managers.add(manager)
+        group, _ = Group.objects.get_or_create(name="Руководитель программы")
+        manager.groups.add(group)
+        batch = self.batch(snapshot={**self.config.draft, "send_email": False})
+        self.row(name="Только на платформе", status="ready", pdf=b"%PDF", batch=batch)
+        pdf = self.row(
+            name="Ошибка подготовки", user=self.member, status="failed", batch=batch
+        )
+        other_pdf = self.row(
+            name="Еще одна ошибка", user=create_user(), status="failed", batch=batch
+        )
+        email = self.row(
+            name="Ошибка почты", user=self.only_registered, status="failed", pdf=b"%PDF"
+        )
+        route = "admin:partner_programs_partnerprogram_certificate_journal"
+        url = reverse(route, args=[self.program.pk])
+        zip_url = reverse(route + "_zip", args=[self.program.pk])
+        retry_url = reverse(route + "_retry", args=[self.program.pk])
+        self.client.force_login(manager)
+        self.assertEqual(self.client.get(url).status_code, 403)
+        self.assertEqual(self.client.get(zip_url).status_code, 403)
+        self.assertEqual(self.client.post(retry_url).status_code, 403)
+        self.client.logout()
+        manager.user_permissions.add(
+            Permission.objects.get(
+                content_type__app_label="partner_programs", codename="change_partnerprogram"
+            )
+        )
+        self.client.force_login(manager)
+        self.assertEqual(
+            self.client.get(reverse(route, args=[self.foreign.pk])).status_code, 404
+        )
+        self.assertEqual(self.client.get(url, {"status": "invalid"}).status_code, 400)
+        response = self.client.get(url, {"status": "pdf_failed", "search": "подготовки"})
+        self.assertContains(response, "Ошибка подготовки")
+        self.assertContains(response, "Не запланировано")
+        self.assertNotContains(response, "Ошибка почты")
+        self.assertNotContains(response, "Только на платформе")
+
+        response = self.client.get(zip_url, {"status": "attention"})
+        self.assertIn("private", response["Cache-Control"])
+        self.assertIn("no-store", response["Cache-Control"])
+        with zipfile.ZipFile(io.BytesIO(b"".join(response.streaming_content))) as archive:
+            self.assertEqual(archive.namelist(), ["Ошибка почты.pdf"])
+            self.assertEqual(archive.read("Ошибка почты.pdf"), b"%PDF")
+
+        self.assertEqual(self.client.get(retry_url).status_code, 405)
+        csrf_client = APIClient(enforce_csrf_checks=True)
+        csrf_client.force_login(manager)
+        self.assertEqual(csrf_client.post(retry_url).status_code, 403)
+        payload = {
+            "status": "pdf_failed",
+            "search": "подготовки",
+            "revision": self.config.revision,
+        }
+        response = self.client.post(retry_url, payload, follow=True)
+        self.assertContains(response, "Подтвердите повтор обработки.")
+        response = self.client.post(
+            retry_url, {**payload, "confirm": "yes", "revision": 2}, follow=True
+        )
+        self.assertContains(response, "Настройки изменены другим организатором.")
+        pdf.refresh_from_db()
+        self.assertEqual(pdf.status, "failed")
+
+        response = self.client.post(retry_url, {**payload, "confirm": "yes"}, follow=True)
+        self.assertContains(response, "Поставлено в очередь на повтор: 1.")
+        for row in (pdf, other_pdf, email):
+            row.refresh_from_db()
+        self.assertEqual(pdf.status, "pending")
+        self.assertFalse(pdf.batch.snapshot["send_email"])
+        self.assertEqual(other_pdf.status, "failed")
+        self.assertEqual(email.status, "failed")
 
     def test_downloads_only_manager_owner_or_secret_link(self):
         row = self.row(status="sent", pdf=b"%PDF-test")

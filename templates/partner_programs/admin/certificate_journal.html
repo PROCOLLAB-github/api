@@ -1,0 +1,78 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<p><a href="{{ change_url }}">{{ program.name }}</a></p>
+<form method="get">
+    <label for="journal-status">Фильтр журнала</label>
+    <select name="status" id="journal-status">
+        {% for value, label in status_filters %}
+            <option value="{{ value }}"{% if query.status == value %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <label for="journal-search">Имя или почта</label>
+    <input type="search" name="search" id="journal-search" maxlength="200" value="{{ query.search }}">
+    <input type="submit" value="Применить">
+</form>
+{% if error %}
+    <p class="errornote">{{ error }}</p>
+{% else %}
+    <p>
+        Всего {{ page.summary.total }} · Отправлено {{ page.summary.sent }} ·
+        Требуют внимания {{ page.summary.failed }} ·
+        Ошибки PDF {{ page.summary.pdf_failed }} · Ошибки писем {{ page.summary.email_failed }}
+    </p>
+    <p>Найдено {{ page.count }}</p>
+    {% if page.count %}
+        <p><a href="{% url 'admin:partner_programs_partnerprogram_certificate_journal_zip' program.pk %}?{{ archive_query }}">Скачать доступные PDF по фильтру (ZIP)</a></p>
+    {% endif %}
+    {% if allow_retry %}
+        <details>
+            <summary>Повторить ошибки по фильтру</summary>
+            <form method="post" action="{% url 'admin:partner_programs_partnerprogram_certificate_journal_retry' program.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="revision" value="{{ revision }}">
+                <input type="hidden" name="status" value="{{ query.status }}">
+                <input type="hidden" name="search" value="{{ query.search }}">
+                <p>
+                    <label><input type="checkbox" name="confirm" value="yes" required>
+                        Подтверждаю повтор обработки всех ошибок по фильтру.
+                    </label>
+                </p>
+                <input type="submit" value="Поставить в очередь">
+            </form>
+        </details>
+    {% endif %}
+    <div class="results">
+        <table>
+            <thead>
+                <tr>
+                    <th scope="col">Участник</th>
+                    <th scope="col">Почта</th>
+                    <th scope="col">PDF</th>
+                    <th scope="col">Отправка письма</th>
+                    <th scope="col">Подробности</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in page.results %}
+                    <tr>
+                        <th scope="row">{{ row.name }}</th>
+                        <td>{{ row.email }}</td>
+                        <td>{{ row.pdf_label }}</td>
+                        <td>{{ row.email_label }}{% if row.sent_at %} · {{ row.sent_at }}{% endif %}</td>
+                        <td>{{ row.error }}{% if row.outdated %}{% if row.error %}<br>{% endif %}Шаблон PDF изменен{% endif %}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="5">Сертификаты не найдены.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if previous_query or next_query %}
+        <nav aria-label="Страницы журнала">
+            {% if previous_query %}<a href="?{{ previous_query }}">Предыдущая страница</a>{% endif %}
+            {% if next_query %}<a href="?{{ next_query }}">Следующая страница</a>{% endif %}
+        </nav>
+    {% endif %}
+{% endif %}
+{% endblock %}
