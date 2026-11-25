@@ -14,7 +14,8 @@ from django.db import transaction
 from django.db.models import Exists, OuterRef, Q
 from django.utils import timezone
 from PIL import Image, ImageFont, UnidentifiedImageError
-from rest_framework.exceptions import ValidationError
+from rest_framework import serializers
+from rest_framework.exceptions import APIException, ValidationError
 
 from partner_programs.certificate_models import (
     ProgramCertificate,
@@ -27,6 +28,17 @@ from partner_programs.services.management import person_name
 from projects.models import Collaborator
 
 logger = logging.getLogger(__name__)
+DEFAULT_TITLE = "СЕРТИФИКАТ"
+TITLE_MAX_LENGTH = 250
+MIN_ROTATION = -180
+MAX_ROTATION = 180
+
+
+class Conflict(APIException):
+    status_code = 409
+    default_detail = "Настройки изменены другим организатором. Обновите страницу."
+
+
 CERTIFICATE_FONTS = {
     "mont": ("Mont", "Mont-Regular.ttf", "Mont-SemiBold.ttf", 600),
     "mont-regular": (
@@ -69,6 +81,7 @@ def default_draft():
         "orientation": "landscape",
         "background_id": None,
         "signature_id": None,
+        "title": DEFAULT_TITLE,
         "director": "",
         "position": "",
         "show_text": True,
@@ -81,7 +94,9 @@ def default_draft():
         "message": "Здравствуйте, {name}!\nСпасибо за участие в программе «{program}».\nВаш сертификат готов.",
         "layout": {
             key: dict(
-                zip(("x", "y", "width", "height", "font_size"), pos), font_family="mont"
+                zip(("x", "y", "width", "height", "font_size"), pos),
+                font_family="mont",
+                rotation=0,
             )
             for key, pos in zip(ELEMENTS, positions)
         },
@@ -101,9 +116,14 @@ def normalized_draft(draft):
     return {
         **draft,
         "orientation": draft.get("orientation", "landscape"),
+        "title": draft.get("title", DEFAULT_TITLE),
         "hidden_elements": [key for key in ELEMENTS if key in hidden_elements(draft)],
         "layout": {
-            key: {**box, "font_family": box.get("font_family", "mont")}
+            key: {
+                **box,
+                "font_family": box.get("font_family", "mont"),
+                "rotation": box.get("rotation", 0),
+            }
             for key, box in draft["layout"].items()
         },
     }
@@ -156,6 +176,26 @@ def config_for(program):
     return ProgramCertificateConfig.objects.get_or_create(
         program=program, defaults={"draft": default_draft()}
     )[0]
+
+
+def revision_check(config, data):
+    revision = serializers.IntegerField(min_value=1).run_validation(data.get("revision"))
+    if revision != config.revision:
+        raise Conflict()
+
+
+def draft_for_update(program, data):
+    """Lock the config and check its revision after locking the program."""
+    config_for(program)
+    config = ProgramCertificateConfig.objects.select_for_update().get(program=program)
+    revision_check(config, data)
+    return config
+
+
+def save_draft(program, config, draft):
+    config.draft = validate_draft(program, draft, config.draft)
+    config.revision += 1
+    config.save(update_fields=["draft", "revision"])
 
 
 def asset_data(asset):
@@ -244,6 +284,7 @@ def template_values(draft, program_name):
             "orientation",
             "background_id",
             "signature_id",
+            "title",
             "director",
             "position",
             "hidden_elements",
@@ -361,7 +402,18 @@ def upload_font(program, upload):
 
 def validate_draft(program, draft, previous=None):
     """The API owns allowed geometry and substitutions, not arbitrary HTML/CSS."""
-    from rest_framework import serializers
+
+    class RotationField(serializers.IntegerField):
+        def to_internal_value(self, data):
+            if type(data) is not int:
+                self.fail("invalid")
+            return super().to_internal_value(data)
+
+    class TitleField(serializers.CharField):
+        def to_internal_value(self, data):
+            if not isinstance(data, str):
+                self.fail("invalid")
+            return super().to_internal_value(data)
 
     class Element(serializers.Serializer):
         x = serializers.FloatField(min_value=0, max_value=100)  # noqa: VNE001
@@ -369,6 +421,17 @@ def validate_draft(program, draft, previous=None):
         width = serializers.FloatField(min_value=2, max_value=100)
         height = serializers.FloatField(min_value=1, max_value=100)
         font_size = serializers.FloatField(min_value=8, max_value=72)
+        rotation = RotationField(
+            min_value=MIN_ROTATION,
+            max_value=MAX_ROTATION,
+            required=False,
+            error_messages={
+                "invalid": "Укажите угол поворота целым числом.",
+                "null": "Укажите угол поворота целым числом.",
+                "min_value": "Угол поворота должен быть от −180 до 180 градусов.",
+                "max_value": "Угол поворота должен быть от −180 до 180 градусов.",
+            },
+        )
         font_family = serializers.RegexField(
             r"^(?:mont(?:-regular|-light|-bold)?|pt-serif|lobster|custom-[1-9][0-9]{0,17})\Z",
             required=False,
@@ -380,6 +443,16 @@ def validate_draft(program, draft, previous=None):
         )
         background_id = serializers.IntegerField(allow_null=True)
         signature_id = serializers.IntegerField(allow_null=True)
+        title = TitleField(
+            max_length=TITLE_MAX_LENGTH,
+            allow_blank=True,
+            required=False,
+            error_messages={
+                "invalid": "Введите текст заголовка сертификата.",
+                "null": "Введите текст заголовка сертификата.",
+                "max_length": "Заголовок должен содержать не более {max_length} символов.",
+            },
+        )
         director = serializers.CharField(max_length=250, allow_blank=True)
         position = serializers.CharField(max_length=250, allow_blank=True)
         show_text = serializers.BooleanField()
@@ -400,9 +473,11 @@ def validate_draft(program, draft, previous=None):
     serializer = Draft(data=draft)
     serializer.is_valid(raise_exception=True)
     data = serializer.data
+    previous = previous or {}
+    data.setdefault("title", previous.get("title", DEFAULT_TITLE))
     if "orientation" not in data:
         # Older clients must not silently rotate a portrait template when saving.
-        data["orientation"] = (previous or {}).get("orientation", "landscape")
+        data["orientation"] = previous.get("orientation", "landscape")
     if "hidden_elements" not in data:
         # Старый клиент не должен восстанавливать удаленные новым редактором элементы.
         hidden = hidden_elements(previous or data)
@@ -424,10 +499,9 @@ def validate_draft(program, draft, previous=None):
             for field in ("x", "y", "width", "height", "font_size")
         ):
             raise ValidationError("Размеры и положение должны быть конечными числами.")
-        element.setdefault(
-            "font_family",
-            (previous or {}).get("layout", {}).get(key, {}).get("font_family", "mont"),
-        )
+        previous_box = previous.get("layout", {}).get(key, {})
+        element.setdefault("font_family", previous_box.get("font_family", "mont"))
+        element.setdefault("rotation", previous_box.get("rotation", 0))
         if (
             element["x"] + element["width"] > 100.01
             or element["y"] + element["height"] > 100.01
@@ -559,7 +633,7 @@ def render_pdf(
         return "data:image/png;base64," + base64.b64encode(bytes(asset.content)).decode()
 
     values = {
-        "title": "СЕРТИФИКАТ",
+        "title": snapshot.get("title", DEFAULT_TITLE),
         "subtitle": "подтверждает участие",
         "name": name,
         "program": program_name,
@@ -576,6 +650,8 @@ def render_pdf(
         if key in hidden:
             continue
         style = f'left:{box["x"]}%;top:{box["y"]}%;width:{box["width"]}%;height:{box["height"]}%;'
+        if rotation := box.get("rotation", 0):
+            style += f"transform:rotate({rotation}deg);transform-origin:center;"
         if key == "signature":
             if assets.get("signature"):
                 elements.append(

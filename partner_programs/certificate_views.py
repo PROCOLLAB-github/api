@@ -8,7 +8,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from rest_framework import serializers
-from rest_framework.exceptions import APIException, ValidationError
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -22,17 +22,6 @@ from partner_programs.certificate_models import (
 from partner_programs.management_views import ManagementBase
 from partner_programs.services.management import managed_program
 from partner_programs.services import certificates as service
-
-
-class Conflict(APIException):
-    status_code = 409
-    default_detail = "Настройки изменены другим организатором. Обновите страницу."
-
-
-def revision_check(config, data):
-    revision = serializers.IntegerField(min_value=1).run_validation(data.get("revision"))
-    if revision != config.revision:
-        raise Conflict()
 
 
 def pdf_response(content, filename):
@@ -50,14 +39,8 @@ class CertificateSettingsView(ManagementBase):
     @transaction.atomic
     def put(self, request, pk):
         program = managed_program(pk, request.user, lock=True)
-        service.config_for(program)
-        config = ProgramCertificateConfig.objects.select_for_update().get(program=program)
-        revision_check(config, request.data)
-        config.draft = service.validate_draft(
-            program, request.data.get("draft"), config.draft
-        )
-        config.revision += 1
-        config.save(update_fields=["revision", "draft"])
+        config = service.draft_for_update(program, request.data)
+        service.save_draft(program, config, request.data.get("draft"))
         return Response(service.state(program))
 
 
@@ -83,7 +66,7 @@ class CertificatePreviewView(ManagementBase):
     def post(self, request, pk):
         program = managed_program(pk, request.user)
         config = service.config_for(program)
-        revision_check(config, request.data)
+        service.revision_check(config, request.data)
         long_name = serializers.BooleanField(default=False).run_validation(
             request.data.get("long_name", False)
         )
@@ -107,7 +90,7 @@ class CertificateTestView(ManagementBase):
             config = ProgramCertificateConfig.objects.select_for_update().get(
                 program=program
             )
-            revision_check(config, request.data)
+            service.revision_check(config, request.data)
             if config.last_test_at and config.last_test_at > timezone.now() - timedelta(
                 minutes=1
             ):
@@ -130,7 +113,7 @@ class CertificateActivateView(ManagementBase):
     def post(self, request, pk):
         program = managed_program(pk, request.user, lock=True)
         config = service.config_for(program)
-        revision_check(config, request.data)
+        service.revision_check(config, request.data)
         draft = service.validate_draft(program, config.draft)
         if (
             ProgramCertificateBatch.objects.filter(program=program, active=True)
@@ -295,7 +278,7 @@ class CertificateSelectionView(ManagementBase):
     def post(self, request, pk):
         program = managed_program(pk, request.user, lock=True)
         config = service.config_for(program)
-        revision_check(config, request.data)
+        service.revision_check(config, request.data)
         action = serializers.ChoiceField(
             choices=["send", "refresh", "retry"]
         ).run_validation(request.data.get("action"))
@@ -404,7 +387,7 @@ class CertificateDownloadView(ManagementBase):
     def post(self, request, pk, certificate_id):
         program = managed_program(pk, request.user, lock=True)
         config = service.config_for(program)
-        revision_check(config, request.data)
+        service.revision_check(config, request.data)
         row = get_object_or_404(
             ProgramCertificate.objects.select_for_update(of=("self",)).select_related(
                 "batch", "rendered_batch", "program"
@@ -443,7 +426,7 @@ class CertificateArchiveView(ManagementBase):
             request.data.get("published_only", False)
         )
         if not published_only:
-            revision_check(config, request.data)
+            service.revision_check(config, request.data)
         if published_only and rows.filter(pdf__isnull=True).exists():
             raise ValidationError(
                 "Сначала подготовьте PDF для всех выбранных участников."

@@ -43,6 +43,7 @@ from partner_programs.admin_participant_answers import participant_answer_rows
 from partner_programs.admin_registration import ProgramRegistrationAdminMixin, error_text
 from partner_programs.admin_publication import ProgramPublicationAdminMixin
 from partner_programs.admin_certificate_fonts import ProgramCertificateFontsAdminMixin
+from partner_programs.admin_certificate_settings import ProgramCertificateSettingsAdminMixin
 from partner_programs.program_dates import (
     DATE_FIELDS,
     program_date_errors,
@@ -84,6 +85,7 @@ class PartnerProgramAdmin(
     ProgramPublicationAdminMixin,
     ProgramRegistrationAdminMixin,
     ProgramCertificateFontsAdminMixin,
+    ProgramCertificateSettingsAdminMixin,
     admin.ModelAdmin,
 ):
     change_list_template = "partner_programs/admin/programs_change_list.html"
