@@ -1339,7 +1339,9 @@ class CertificateTests(TestCase):
         self.program.managers.add(manager)
         group, _ = Group.objects.get_or_create(name="Руководитель программы")
         manager.groups.add(group)
-        batch = self.batch(snapshot={**self.config.draft, "send_email": False})
+        legacy_snapshot = {**self.config.draft}
+        legacy_snapshot.pop("send_email", None)
+        batch = self.batch(snapshot=legacy_snapshot)
         self.row(name="Только на платформе", status="ready", pdf=b"%PDF", batch=batch)
         pdf = self.row(
             name="Ошибка подготовки", user=self.member, status="failed", batch=batch

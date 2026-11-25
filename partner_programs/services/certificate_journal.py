@@ -255,7 +255,7 @@ def queue_selection(program, data, public_base_url):
                 row.sent_at is None
                 and (
                     action == "send"
-                    or (action == "retry" and row.batch.snapshot["send_email"])
+                    or (action == "retry" and row.batch.snapshot.get("send_email", False))
                 )
             )
             == send_email
