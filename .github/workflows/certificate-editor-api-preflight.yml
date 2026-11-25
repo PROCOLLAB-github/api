@@ -1,0 +1,49 @@
+name: Certificate editor API preflight
+
+on:
+  push:
+    branches: [fix/dev-certificate-element-rotation-20261125]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: procollab_ci
+          POSTGRES_USER: procollab_ci
+          POSTGRES_PASSWORD: procollab_ci_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U procollab_ci -d procollab_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DJANGO_SETTINGS_MODULE: procollab.settings_ci
+      DJANGO_SECRET_KEY: only-for-registration-email-test
+      DEBUG: "False"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 fontconfig poppler-utils
+          python -m pip install poetry==2.5.1
+          poetry install --no-interaction --no-ansi --no-root
+      - name: Validate models and render certificates
+        run: |
+          poetry run python manage.py check
+          poetry run python manage.py makemigrations --check --dry-run
+          poetry run python manage.py test --verbosity 2 \
+            partner_programs.tests.test_certificates \
+            partner_programs.tests.test_solution_certificates \
+            partner_programs.tests.test_registration_admin
