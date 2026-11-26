@@ -36,6 +36,35 @@ from partner_programs.registration_models import (  # noqa: F401
 User = get_user_model()
 
 
+class ParticipantExportJob(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    program = models.ForeignKey(
+        "PartnerProgram", on_delete=models.CASCADE, related_name="+"
+    )
+    requested_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name="+")
+    source = models.CharField(max_length=8)
+    parameters = models.JSONField(default=dict)
+    status = models.CharField(max_length=8, default="queued")
+    detail = models.CharField(max_length=255, blank=True)
+    filename = models.TextField(blank=True)
+    content = models.BinaryField(null=True, editable=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(db_index=True)
+    started_at = models.DateTimeField(null=True)
+    completed_at = models.DateTimeField(null=True)
+
+    class Meta:
+        indexes = [
+            models.Index(
+                fields=["program", "requested_by", "source", "-created_at"],
+                name="participant_export_owner",
+            ),
+            models.Index(
+                fields=["status", "created_at"], name="participant_export_queue"
+            ),
+        ]
+
+
 class OrganizerGuideSeen(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="+")
     guide = models.CharField(max_length=64)

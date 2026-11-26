@@ -18,9 +18,11 @@
 
 
     {{ block.super }}
-    <div class="submit-row">
-        <input type="button" class="export-btn" value="Экспорт" onclick="export_profiles()"/>
-    </div>
+    {% if object_id %}
+        <div class="submit-row">
+            <a class="button" href="{% url 'admin:partner_programs_participant_export' object_id %}" target="_blank" rel="noopener">Экспорт</a>
+        </div>
+    {% endif %}
 
 
 
@@ -29,13 +31,6 @@
         <input type="button" class="export-btn" value="Выгрузка оценок" onclick="partner_programs_export_rates()"/>
     </div>
     <script>
-        function export_profiles() {
-
-            {% if object_id %}
-                window.open("{% url 'admin:export_profiles' object_id %}", '_blank').focus()
-            {% endif %}
-        }
-
 
          function partner_programs_export_rates() {
             {% if object_id %}

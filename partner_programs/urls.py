@@ -92,6 +92,11 @@ from partner_programs.views import (
 
 from partner_programs.widget_views import ProgramRoleWidgetAPIView
 
+from partner_programs.participant_export_views import (
+    ParticipantExportDownloadView,
+    ParticipantExportJobsView,
+    ParticipantExportJobView,
+)
 from partner_programs.management_views import (
     ManagementView,
     ManagementHelpStateView,
@@ -544,6 +549,21 @@ urlpatterns = [
         "<int:pk>/management/projects/selection/",
         program_view(ManagementSelectionView),
         {"kind": "projects"},
+    ),
+    path(
+        "<int:pk>/management/participants/export-jobs/",
+        program_view(ParticipantExportJobsView),
+        name="participant-export-jobs",
+    ),
+    path(
+        "<int:pk>/management/participants/export-jobs/<uuid:job_id>/",
+        program_view(ParticipantExportJobView),
+        name="participant-export-job",
+    ),
+    path(
+        "<int:pk>/management/participants/export-jobs/<uuid:job_id>/download/",
+        program_view(ParticipantExportDownloadView),
+        name="participant-export-download",
     ),
     path(
         "<int:pk>/management/participants/export/",
