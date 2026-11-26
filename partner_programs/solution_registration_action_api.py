@@ -4,6 +4,7 @@ from django.http import Http404
 from rest_framework import serializers
 from rest_framework.response import Response
 
+from core.cache_control import PrivateNoStoreResponseMixin
 from partner_programs.services import solution_registration_actions as actions
 from partner_programs.solution_api import (
     CommandInteger,
@@ -37,14 +38,7 @@ class RemovalApply(RemovalPreview):
     )
 
 
-class PrivateView(SolutionAPIView):
-    def finalize_response(self, request, response, *args, **kwargs):
-        response = super().finalize_response(request, response, *args, **kwargs)
-        response["Cache-Control"] = "private, no-store"
-        return response
-
-
-class SolutionRegistrationRemovalView(PrivateView):
+class SolutionRegistrationRemovalView(PrivateNoStoreResponseMixin, SolutionAPIView):
     apply_action = False
 
     def post(self, request, pk):
@@ -70,7 +64,7 @@ def audit_data(audit):
     )
 
 
-class SolutionRegistrationRemovalHistoryView(PrivateView):
+class SolutionRegistrationRemovalHistoryView(PrivateNoStoreResponseMixin, SolutionAPIView):
     def get(self, request, pk, audit_id=None):
         program = actions.managed_program(pk, request.user)
         query = (HistoryQuery if audit_id is None else StrictSerializer)(
