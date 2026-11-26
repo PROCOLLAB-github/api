@@ -9,6 +9,7 @@ on:
       - ".github/workflows/program-management-performance.yml"
       - "tools/performance/**"
       - "partner_programs/services/analytics.py"
+      - "partner_programs/services/native_registration.py"
       - "partner_programs/services/participants_excel.py"
       - "partner_programs/solution_participants.py"
   workflow_dispatch:
@@ -68,7 +69,8 @@ jobs:
         if: matrix.profile == 'small'
         run: |
           poetry run flake8 tools/performance partner_programs/services/participants_excel.py \
-            partner_programs/services/analytics.py partner_programs/solution_participants.py
+            partner_programs/services/analytics.py partner_programs/services/native_registration.py \
+            partner_programs/solution_participants.py
           poetry run python manage.py test --verbosity 2 \
             partner_programs.tests.test_management_participants \
             partner_programs.tests.test_native_registration \

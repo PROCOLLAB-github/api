@@ -12,7 +12,7 @@ from pathlib import Path
 from statistics import median
 from tempfile import TemporaryDirectory
 from time import perf_counter
-from urllib.parse import urlencode
+from urllib.parse import parse_qs, urlencode, urlsplit
 
 from django.conf import settings
 from django.core import mail
@@ -69,7 +69,7 @@ def require(condition, description):
 @dataclass(frozen=True)
 class Request:
     path: str
-    token: str
+    token: str | None
     body: bytes | None = None
 
 
@@ -94,7 +94,9 @@ def error_name(error):
 
 
 def fetch(request, port):
-    headers = {"Authorization": f"Bearer {request.token}", "Accept": "*/*"}
+    headers = {"Accept": "*/*"}
+    if request.token:
+        headers["Authorization"] = f"Bearer {request.token}"
     if request.body is not None:
         headers["Content-Type"] = "application/json"
     conn = http.client.HTTPConnection(LOOPBACK, port, timeout=HTTP_TIMEOUT_SECONDS)
@@ -194,6 +196,7 @@ class ProgramManagementPerformance(LiveServerTestCase):
             self.run_allocation_preview()
             self.run_enrollment()
             require(not mail.outbox, "Benchmark caused an unexpected email")
+            self.run_signup_and_confirmation()
         except Exception as error:
             report["errors"].append(error_name(error))
             raise
@@ -571,4 +574,98 @@ class ProgramManagementPerformance(LiveServerTestCase):
         require(
             rows.count() == fixture.scale.participants + ENROLLMENT_SAMPLES + 1,
             "Unexpected number of registrations after enrollment",
+        )
+
+    @override_settings(
+        PASSWORD_HASHERS=["django.contrib.auth.hashers.BCryptSHA256PasswordHasher"]
+    )
+    def run_signup_and_confirmation(self):
+        fixture = self.fixture
+        # Five measurements and one warm-up per endpoint fit the live IP limit of 12.
+        emails = [f"perf-signup-{index}@example.test" for index in range(6)]
+        root = f"/programs/{fixture.program.pk}/registration/"
+        answers = {FIELD_ID: ANSWERS[1]}
+        password = "benchmark-river-park-837"
+        signups = [
+            self.request(
+                root + "signup/",
+                token="",
+                payload={
+                    "version": 1,
+                    "answers": answers,
+                    "first_name": "Мария",
+                    "last_name": "Иванова",
+                    "email": email,
+                    "birthday": "2000-01-01",
+                    "password": password,
+                    "repeat_password": password,
+                    "accept_policy": True,
+                    "accept_age": True,
+                },
+            )
+            for email in emails
+        ]
+
+        def check_signup(data):
+            require(data.get("email_pending") is True, "Signup did not wait for email")
+            require("access" not in data, "Unconfirmed signup returned an access token")
+
+        self.run_scenario(
+            "new_account_signup",
+            signups[1:],
+            5,
+            json_response(check_signup),
+            {"emails": 5, "password_hasher": "BCryptSHA256", "delivery": "locmem"},
+            warmup=signups[0],
+        )
+        tokens = {}
+        require(len(mail.outbox) == len(emails), "Unexpected number of signup emails")
+        for message in mail.outbox:
+            links = [
+                line.strip()
+                for line in message.body.splitlines()
+                if "#confirmation=" in line
+            ]
+            require(len(links) == 1, "Signup email must contain one confirmation link")
+            link = urlsplit(links[0])
+            require(
+                link.path == f"/program-registration/{fixture.program.pk}",
+                "Confirmation link belongs to the wrong program",
+            )
+            tokens[message.to[0]] = parse_qs(link.fragment)["confirmation"][0]
+        require(set(tokens) == set(emails), "Emails sent to the wrong recipients")
+        confirmations = [
+            self.request(root + "confirm/", token="", payload={"token": tokens[email]})
+            for email in emails
+        ]
+
+        def check_confirmation(data):
+            require(data.get("enrolled") is True, "Confirmed account was not enrolled")
+            require(data.get("program_id") == fixture.program.pk, "Wrong program")
+            require(bool(data.get("access")), "Confirmed account has no access token")
+
+        self.run_scenario(
+            "confirm_new_account",
+            confirmations[1:],
+            5,
+            json_response(check_confirmation),
+            {"confirmed_registrations": 5},
+            warmup=confirmations[0],
+        )
+        registrations = PartnerProgramUserProfile.objects.filter(
+            partner_program=fixture.program, user__email__in=emails
+        ).select_related("user")
+        require(registrations.count() == len(emails), "Confirmation lost a registration")
+        require(
+            all(
+                row.user.is_active
+                and row.partner_program_data == answers
+                and row.registration_schema == fixture.registration_schema
+                for row in registrations
+            ),
+            "Confirmation did not preserve answers and activate the account",
+        )
+        require(
+            registrations.first().user.check_password(password),
+            "New account cannot authenticate with its original password",
         )
