@@ -2,16 +2,23 @@ name: Program management performance
 
 on:
   push:
-    branches: [perf/dev-program-management-20261126]
+    branches: [dev]
+    paths:
+      - ".github/workflows/program-management-performance.yml"
+      - "tools/performance/**"
+      - "partner_programs/**"
+      - "project_rates/**"
+      - "pyproject.toml"
+      - "poetry.lock"
   pull_request:
     branches: [dev]
     paths:
       - ".github/workflows/program-management-performance.yml"
       - "tools/performance/**"
-      - "partner_programs/services/analytics.py"
-      - "partner_programs/services/native_registration.py"
-      - "partner_programs/services/participants_excel.py"
-      - "partner_programs/solution_participants.py"
+      - "partner_programs/**"
+      - "project_rates/**"
+      - "pyproject.toml"
+      - "poetry.lock"
   workflow_dispatch:
 
 permissions:
@@ -78,21 +85,6 @@ jobs:
             partner_programs.tests.test_attention_analytics_api \
             partner_programs.tests.test_solution_entrypoints \
             partner_programs.tests.test_solution_manager_analytics
-      - name: Measure the original implementation on the same runner
-        if: matrix.profile != 'pressure'
-        run: |
-          baseline=7967544bf9cc78c2e0833328b17e366382837c0d
-          git fetch --no-tags --depth=1 origin "$baseline"
-          baseline_dir="$RUNNER_TEMP/baseline"
-          git worktree add --detach "$baseline_dir" "$baseline"
-          mkdir -p "$baseline_dir/tools" "$GITHUB_WORKSPACE/perf-results/baseline"
-          cp -r tools/performance "$baseline_dir/tools/"
-          poetry_python="$(poetry env info --executable)"
-          cd "$baseline_dir"
-          PROCOLLAB_PERF_IMPLEMENTATION="$baseline" \
-          PROCOLLAB_PERF_OUTPUT="$GITHUB_WORKSPACE/perf-results/baseline/program-management.json" \
-          /usr/bin/time -v -o "$GITHUB_WORKSPACE/perf-results/baseline/runner-usage.txt" \
-            "$poetry_python" manage.py test tools.performance.program_management --verbosity 2
       - name: Measure representative operations over HTTP
         run: |
           mkdir -p perf-results
