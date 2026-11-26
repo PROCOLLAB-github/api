@@ -18,8 +18,8 @@ from partner_programs.tests.helpers import create_partner_program, create_progra
 class ParticipantExportJobTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.owner = create_user()
-        cls.other = create_user()
+        cls.owner = create_user(is_active=True)
+        cls.other = create_user(is_active=True)
         cls.program = create_partner_program()
         cls.program.managers.add(cls.owner, cls.other)
         cls.member = create_program_member(
@@ -57,7 +57,8 @@ class ParticipantExportJobTests(TestCase):
         self.assertEqual(self.client.get(url + "download/").status_code, 409)
         self.assertTrue(process_export_job(created.data["id"]))
         self.assertTrue(process_export_job(created.data["id"]))  # Broker redelivery.
-        self.assertEqual(self.client.get(url).data["status"], "ready")
+        status = self.client.get(url).data
+        self.assertEqual(status["status"], "ready", status)
         result = self.client.get(url + "download/")
         reference = self.client.get(self.root + "export/", filters)
         self.assertEqual(result.status_code, 200)
