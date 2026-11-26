@@ -1,10 +1,11 @@
 from io import BytesIO
 
 from django.contrib.auth.models import Group, Permission
-from django.test import TestCase
+from django.test import Client, TestCase
 from django.urls import reverse
 from openpyxl import load_workbook
 
+from partner_programs.services.participant_export_jobs import process_export_job
 from partner_programs.tests.helpers import (
     create_partner_program,
     create_program_member,
@@ -16,9 +17,12 @@ from project_rates.models import Criteria, ProjectScore
 
 
 PROFILE_EXPORT = "admin:export_profiles"
+PARTICIPANT_EXPORT = "admin:partner_programs_participant_export"
+PARTICIPANT_EXPORT_STATUS = "admin:partner_programs_participant_export_status"
+PARTICIPANT_EXPORT_DOWNLOAD = "admin:partner_programs_participant_export_download"
 SCORE_EXPORT = "admin:partner_programs_export_rates"
 MAILING = "admin:partner_programs_mailing"
-PROGRAM_ACTIONS = (PROFILE_EXPORT, SCORE_EXPORT, MAILING)
+PROGRAM_ACTIONS = (PROFILE_EXPORT, PARTICIPANT_EXPORT, SCORE_EXPORT, MAILING)
 
 
 class PartnerProgramAdminActionAccessTests(TestCase):
@@ -87,6 +91,65 @@ class PartnerProgramAdminActionAccessTests(TestCase):
         self.assertIn("9", scores)
         response = self.client.get(reverse(MAILING, args=[self.program.pk]))
         self.assertEqual(response.status_code, 403)
+
+    def test_participant_export_queue_restores_job_and_downloads_legacy_excel(self):
+        self.grant_program_permission(self.manager, "view_partnerprogram")
+        self.client = Client(enforce_csrf_checks=True)
+        self.client.force_login(self.manager)
+        program = create_partner_program(
+            name="Программа участников",
+            data_schema={"role": {"name": "Роль"}, "hidden": {"type": "text"}},
+        )
+        program.managers.add(self.manager)
+        member = create_user(first_name="Иван", last_name="Иванов", patronymic="Петрович")
+        create_program_member(
+            program, user=member, data={"role": "Инже\u0007нер", "hidden": "Скрыто"}
+        )
+        page_url = reverse(PARTICIPANT_EXPORT, args=[program.pk])
+
+        page = self.client.get(page_url)
+        self.assertContains(page, "Подготовить Excel")
+        self.assertIsNone(page.context["job"])
+        self.assertEqual(self.client.post(page_url).status_code, 403)
+        self.assertIsNone(self.client.get(page_url).context["job"])
+
+        response = self.client.post(
+            page_url, {"csrfmiddlewaretoken": self.client.cookies["csrftoken"].value}
+        )
+        self.assertRedirects(response, page_url, fetch_redirect_response=False)
+        page = self.client.get(page_url)
+        self.assertContains(page, "Подготавливаем Excel")
+        job = page.context["job"]
+        self.assertEqual(job["status"], "queued")
+        status_url = reverse(PARTICIPANT_EXPORT_STATUS, args=[program.pk, job["id"]])
+        download_url = reverse(PARTICIPANT_EXPORT_DOWNLOAD, args=[program.pk, job["id"]])
+        self.assertEqual(self.client.get(status_url).json()["status"], "queued")
+        self.assertEqual(self.client.get(download_url).status_code, 409)
+
+        self.assertTrue(process_export_job(job["id"]))
+        self.assertEqual(self.client.get(status_url).json()["status"], "ready")
+        self.assertContains(self.client.get(page_url), "Скачать Excel")
+        download = self.client.get(download_url)
+        legacy = self.client.get(reverse(PROFILE_EXPORT, args=[program.pk]))
+        expected_rows = [
+            ("Имя", "Фамилия", "Отчество", "Почта", "Дата рождения", "Роль"),
+            ("Иван", "Иванов", "Петрович", member.email, "1990-01-01", "Инженер"),
+        ]
+        for response in (download, legacy):
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(".xlsx", response["Content-Disposition"])
+            workbook = load_workbook(BytesIO(response.content), read_only=True)
+            try:
+                self.assertEqual(
+                    list(workbook.active.iter_rows(values_only=True)), expected_rows
+                )
+            finally:
+                workbook.close()
+
+        self.client.force_login(self.superuser)
+        self.assertIsNone(self.client.get(page_url).context["job"])
+        self.assertEqual(self.client.get(status_url).status_code, 404)
+        self.assertEqual(self.client.get(download_url).status_code, 404)
 
     def test_manager_with_change_permission_is_limited_to_own_program(self):
         self.grant_program_permission(self.manager, "change_partnerprogram")

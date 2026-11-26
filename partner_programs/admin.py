@@ -1,8 +1,6 @@
-import re
 from uuid import uuid4
 from partner_programs.registration_models import ProgramRegistration
 
-import tablib
 from django import forms
 from django.contrib import admin
 from django.contrib.admin.utils import unquote
@@ -17,6 +15,7 @@ from django.http import (
     HttpResponse,
     HttpResponseNotAllowed,
     HttpResponseRedirect,
+    JsonResponse,
 )
 from django.template.loader import render_to_string
 from django.template.response import TemplateResponse
@@ -34,6 +33,14 @@ from partner_programs.models import (
     PartnerProgramUserProfile,
 )
 from partner_programs.services import prepare_project_scores_export_data
+from partner_programs.services.admin_participants_excel import export_admin_participants
+from partner_programs.services.participant_export_jobs import (
+    create_export_job,
+    export_download_response,
+    get_export_job,
+    job_payload,
+    latest_export_job,
+)
 from partner_programs.forms import (
     ProgramFieldInlineFormSet,
     ProgramFieldValueInlineFormSet,
@@ -49,7 +56,24 @@ from partner_programs.program_dates import (
     program_date_errors,
     reopens_program_deadline,
 )
+from project_rates.workspace import WorkspaceConflict
 from rest_framework.exceptions import APIException
+
+
+ADMIN_PARTICIPANT_EXPORT_STATUS = {
+    "queued": "Подготавливаем Excel…",
+    "ready": "Файл готов к скачиванию.",
+    "failed": "Не удалось подготовить Excel. Попробуйте еще раз.",
+    "expired": "Срок хранения файла истек. Подготовьте Excel заново.",
+}
+
+
+def admin_participant_export_payload(job):
+    payload = job_payload(job)
+    payload["message"] = (
+        payload["detail"] or ADMIN_PARTICIPANT_EXPORT_STATUS[payload["status"]]
+    )
+    return payload
 
 
 class ProgramDraftCreateAdminForm(forms.Form):
@@ -248,6 +272,21 @@ class PartnerProgramAdmin(
                 name="export_profiles",
             ),
             path(
+                "export-participants/<int:object_id>/",
+                self.admin_site.admin_view(self.participant_export_view),
+                name="partner_programs_participant_export",
+            ),
+            path(
+                "export-participants/<int:object_id>/<uuid:job_id>/",
+                self.admin_site.admin_view(self.participant_export_status_view),
+                name="partner_programs_participant_export_status",
+            ),
+            path(
+                "export-participants/<int:object_id>/<uuid:job_id>/download/",
+                self.admin_site.admin_view(self.participant_export_download_view),
+                name="partner_programs_participant_export_download",
+            ),
+            path(
                 "mailing/<int:partner_program>/",
                 self.admin_site.admin_view(self.mailing),
                 name="partner_programs_mailing",
@@ -359,52 +398,73 @@ class PartnerProgramAdmin(
         return self.get_export_file(program)
 
     def get_export_file(self, partner_program: PartnerProgram):
-        json_schema = partner_program.data_schema
-
-        profiles = PartnerProgramUserProfile.objects.filter(
-            partner_program=partner_program
-        )
-        to_delete_from_json_scheme = []
-        column_names = ["Имя", "Фамилия", "Отчество", "Почта", "Дата рождения"]
-        for field_key in json_schema:
-            if "name" not in json_schema[field_key]:
-                to_delete_from_json_scheme.append(field_key)
-            else:
-                column_names.append(json_schema[field_key]["name"])
-
-        for field_key in to_delete_from_json_scheme:
-            del json_schema[field_key]
-
-        response_data = tablib.Dataset(headers=column_names)
-        for profile in profiles:
-            if profile.user is None:
-                row = [""] * 5
-            else:
-                row = [
-                    profile.user.first_name,
-                    profile.user.last_name,
-                    profile.user.patronymic,
-                    profile.user.email,
-                    str(profile.user.birthday),
-                ]
-
-            json_data = profile.partner_program_data
-            ILLEGAL_CHARACTERS_RE = re.compile(r"[\000-\010]|[\013-\014]|[\016-\037]")
-
-            for key in json_schema:
-                value = json_data.get(key, "")  # Получаем значение из json_data
-                cleaned_value = ILLEGAL_CHARACTERS_RE.sub(
-                    "", value
-                )  # Удаляем недопустимые символы из значения
-                row.append(cleaned_value)  # Добавляем очищенное значение в row
-
-            response_data.append(row)
-
-        binary_data = response_data.export("xlsx")
+        binary_data = export_admin_participants(partner_program)
         file_name = (
             f"{partner_program.name} {timezone.now().strftime('%d-%m-%Y %H:%M:%S')}"
         )
         return build_xlsx_download_response(binary_data, base_name=file_name)
+
+    def participant_export_view(self, request, object_id):
+        program = self._get_program_for_action(
+            request, object_id, self.has_view_or_change_permission
+        )
+        if request.method not in ("GET", "POST"):
+            return HttpResponseNotAllowed(["GET", "POST"])
+
+        error = ""
+        status = 200
+        if request.method == "POST":
+            try:
+                create_export_job(program, request.user, source="admin", parameters={})
+            except WorkspaceConflict as conflict:
+                error = error_text(conflict.detail)
+                status = conflict.status_code
+            else:
+                return HttpResponseRedirect(
+                    reverse(
+                        "admin:partner_programs_participant_export", args=[program.pk]
+                    )
+                )
+
+        job = latest_export_job(program, request.user, source="admin")
+        context = {
+            **self.admin_site.each_context(request),
+            "title": "Экспорт участников",
+            "opts": self.model._meta,
+            "program": program,
+            "job": admin_participant_export_payload(job) if job else None,
+            "error": error,
+        }
+        return TemplateResponse(
+            request,
+            "partner_programs/admin/participant_export.html",
+            context,
+            status=status,
+        )
+
+    def participant_export_status_view(self, request, object_id, job_id):
+        program = self._get_program_for_action(
+            request, object_id, self.has_view_or_change_permission
+        )
+        if request.method != "GET":
+            return HttpResponseNotAllowed(["GET"])
+        job = get_export_job(program, request.user, job_id, source="admin")
+        return JsonResponse(admin_participant_export_payload(job))
+
+    def participant_export_download_view(self, request, object_id, job_id):
+        program = self._get_program_for_action(
+            request, object_id, self.has_view_or_change_permission
+        )
+        if request.method != "GET":
+            return HttpResponseNotAllowed(["GET"])
+        job = get_export_job(program, request.user, job_id, source="admin")
+        if job.status != "ready":
+            return HttpResponse(
+                ADMIN_PARTICIPANT_EXPORT_STATUS[job.status],
+                status=410 if job.status == "expired" else 409,
+                content_type="text/plain; charset=utf-8",
+            )
+        return export_download_response(job)
 
     def get_export_rates_view(self, request, object_id):
         program = self._get_program_for_action(
