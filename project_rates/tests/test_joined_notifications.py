@@ -80,7 +80,7 @@ class ExpertJoinedNotificationTests(TestCase):
         self.client.force_authenticate(self.managers[0])
         response = self.client.get(self.root)
         self.assertEqual(response.data["unread_count"], 1)
-        self.assertIn("no-store", response["Cache-Control"])
+        self.assertEqual(response["Cache-Control"], "private, no-store")
         notice = response.data["results"][0]
         read = self.client.post(f"{self.root}{notice['id']}/read/", {}).data
         self.assertEqual(
@@ -98,7 +98,9 @@ class ExpertJoinedNotificationTests(TestCase):
             self.client.post(f"{self.root}{notice['id']}/read/", {}).status_code, 404
         )
         self.client.force_authenticate(None)
-        self.assertEqual(self.client.get(self.root).status_code, 401)
+        response = self.client.get(self.root)
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response["Cache-Control"], "private, no-store")
 
     def test_rollback_does_not_create_notices_or_send_mail(self):
         with self.captureOnCommitCallbacks(execute=True):

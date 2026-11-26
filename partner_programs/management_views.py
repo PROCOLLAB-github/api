@@ -10,6 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.cache_control import PrivateNoStoreResponseMixin
 from partner_programs.models import OrganizerGuideSeen, PartnerProgramMaterial
 from partner_programs.pagination import ProgramAttentionPagination
 from partner_programs.serializers.management import (
@@ -41,13 +42,8 @@ def conflict(code, detail):
     return Response({"code": code, "detail": detail}, status=status.HTTP_409_CONFLICT)
 
 
-class ManagementBase(APIView):
+class ManagementBase(PrivateNoStoreResponseMixin, APIView):
     permission_classes = [IsAuthenticated]
-
-    def finalize_response(self, request, response, *args, **kwargs):
-        response = super().finalize_response(request, response, *args, **kwargs)
-        response["Cache-Control"] = "private, no-store"
-        return response
 
 
 class ManagementView(ManagementBase):

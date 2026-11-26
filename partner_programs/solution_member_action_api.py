@@ -2,6 +2,7 @@
 
 from rest_framework.response import Response
 
+from core.cache_control import PrivateNoStoreResponseMixin
 from partner_programs.services import solution_member_actions
 from partner_programs.solution_api import (
     CommandInteger,
@@ -22,13 +23,8 @@ class MemberRemovalApplySerializer(MemberRemovalPreviewSerializer):
     )
 
 
-class SolutionMemberRemovalView(SolutionAPIView):
+class SolutionMemberRemovalView(PrivateNoStoreResponseMixin, SolutionAPIView):
     apply_action = False
-
-    def finalize_response(self, request, response, *args, **kwargs):
-        response = super().finalize_response(request, response, *args, **kwargs)
-        response["Cache-Control"] = "private, no-store"
-        return response
 
     def post(self, request, pk, solution_id):
         query = StrictSerializer(data=request.query_params)
