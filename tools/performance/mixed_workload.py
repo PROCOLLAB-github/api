@@ -95,12 +95,16 @@ class MixedProgramWorkloadTests(perf.ProgramManagementPerformance):
     def test_mixed_program_workload(self):
         output = os.environ.get("PROCOLLAB_PERF_OUTPUT")
         perf.require(bool(output), "Set PROCOLLAB_PERF_OUTPUT to a JSON report path")
+        export_setting = os.environ.get("PROCOLLAB_PERF_WITH_EXPORTS", "1")
+        perf.require(export_setting in {"0", "1"}, "Expected export setting 0 or 1")
+        self.with_exports = export_setting == "1"
         self.report = {
             "schema_version": 1,
             "implementation": os.environ.get(
                 "PROCOLLAB_PERF_IMPLEMENTATION", "unspecified"
             ),
             "profile": "pressure",
+            "mixed_export_clients": 2 if self.with_exports else 0,
             "http_socket_timeout_seconds": perf.HTTP_TIMEOUT_SECONDS,
             "start_barrier_timeout_seconds": BARRIER_TIMEOUT_SECONDS,
             "fixture": {},
@@ -146,9 +150,10 @@ class MixedProgramWorkloadTests(perf.ProgramManagementPerformance):
         self.run_phase("control_overview", overview_clients)
         self.run_phase("control_participants", participants_clients)
         self.run_phase("control_excel", excel_clients)
-        self.run_phase(
-            "mixed", overview_clients + participants_clients + writers + excel_clients
-        )
+        mixed_clients = overview_clients + participants_clients + writers
+        if self.with_exports:
+            mixed_clients.extend(excel_clients)
+        self.run_phase("mixed", mixed_clients)
         # This full export must contain every committed enrollment after the mixed phase.
         self.run_phase("post_write", [(excel,)], enrolled=set(self.enrollment_answers))
         self.check_persistence()
@@ -261,6 +266,8 @@ class MixedProgramWorkloadTests(perf.ProgramManagementPerformance):
         if write_rows:
             phase["native_enrollment_overlap"] = {}
             for scenario in (OVERVIEW, PARTICIPANTS, EXCEL, SIGNUP):
+                if not groups[scenario]:
+                    continue
                 overlaps = [
                     overlap_seconds(row, write)
                     for row in groups[scenario]
@@ -272,6 +279,14 @@ class MixedProgramWorkloadTests(perf.ProgramManagementPerformance):
                 }
                 if scenario != SIGNUP and not any(overlaps):
                     phase_errors[f"No HTTP overlap between {scenario} and enrollment"] += 1
+            if groups[EXCEL]:
+                overview_requests_with_excel = sum(
+                    any(overlap_seconds(row, export) for export in groups[EXCEL])
+                    for row in groups[OVERVIEW]
+                )
+                phase["overview_requests_overlapping_excel"] = overview_requests_with_excel
+                if not overview_requests_with_excel:
+                    phase_errors["No HTTP overlap between overview and Excel"] += 1
         phase.update(summarize(observations, phase_errors))
         self.report["phases"].append(phase)
 
