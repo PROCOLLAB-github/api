@@ -172,7 +172,7 @@ class ProgramManagementPerformance(LiveServerTestCase):
 
     def test_program_management(self):
         profile = os.environ.get("PROCOLLAB_PERF_PROFILE", "small")
-        require(profile in SCALES, "PROCOLLAB_PERF_PROFILE must be small or large")
+        require(profile in SCALES, "Unknown PROCOLLAB_PERF_PROFILE")
         output = os.environ.get("PROCOLLAB_PERF_OUTPUT")
         require(bool(output), "Set PROCOLLAB_PERF_OUTPUT to a JSON report path")
         report = {
@@ -186,6 +186,9 @@ class ProgramManagementPerformance(LiveServerTestCase):
             "errors": [],
         }
         self.report = report
+        self.read_concurrency = (
+            (*READ_LEVELS, (24, 72)) if profile == "pressure" else READ_LEVELS
+        )
         mail.get_connection()
         cache.clear()
         try:
@@ -287,7 +290,7 @@ class ProgramManagementPerformance(LiveServerTestCase):
         )
 
     def read_levels(self, name, request, check, expected):
-        for concurrency, samples in READ_LEVELS:
+        for concurrency, samples in self.read_concurrency:
             self.run_scenario(
                 name,
                 [request] * samples,

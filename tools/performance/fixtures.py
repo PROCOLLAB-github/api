@@ -1,4 +1,4 @@
-"""Synthetic legacy program data with reproducible counts at both scales."""
+"""Synthetic legacy program data with reproducible counts for each profile."""
 
 from dataclasses import dataclass
 from datetime import date, timedelta
@@ -25,7 +25,11 @@ class Scale:
     experts: int
 
 
-SCALES = {"small": Scale(1_000, 60, 12), "large": Scale(10_000, 500, 30)}
+SCALES = {
+    "small": Scale(1_000, 60, 12),
+    "large": Scale(10_000, 500, 30),
+    "pressure": Scale(25_000, 1_000, 48),
+}
 ENROLLMENT_SAMPLES = 12
 CASE_NAMES = ("Городская среда", "Образование")
 XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"

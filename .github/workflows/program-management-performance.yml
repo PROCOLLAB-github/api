@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        profile: [small, large]
+        profile: [small, large, pressure]
     services:
       postgres:
         image: postgres:15-alpine
@@ -79,6 +79,7 @@ jobs:
             partner_programs.tests.test_solution_entrypoints \
             partner_programs.tests.test_solution_manager_analytics
       - name: Measure the original implementation on the same runner
+        if: matrix.profile != 'pressure'
         run: |
           baseline=7967544bf9cc78c2e0833328b17e366382837c0d
           git fetch --no-tags --depth=1 origin "$baseline"
