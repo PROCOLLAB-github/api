@@ -7,6 +7,7 @@ import io
 from datetime import timedelta
 from unittest.mock import patch
 
+from django.contrib.auth.hashers import make_password
 from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
@@ -173,6 +174,24 @@ class NativeRegistrationTests(TestCase):
         self.participant.refresh_from_db()
         self.assertEqual(self.participant.first_name, "Анна")
         self.assertFalse(PartnerProgramUserProfile.objects.exists())
+
+    def test_signup_rechecks_deadline_after_password_is_prepared(self):
+        def hash_after_registration_closed(password):
+            PartnerProgram.objects.filter(pk=self.program.pk).update(
+                datetime_registration_ends=timezone.now() - timedelta(seconds=1)
+            )
+            return make_password(password)
+
+        with patch(
+            "partner_programs.services.native_registration.make_password",
+            side_effect=hash_after_registration_closed,
+        ):
+            response = self.post("/registration/signup/", self.signup())
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.data["code"], "registration_closed")
+        self.assertFalse(CustomUser.objects.filter(email=self.signup()["email"]).exists())
+        self.assertFalse(PendingProgramRegistration.objects.exists())
 
     def test_signup_pending_confirm_single_use(self):
         with self.captureOnCommitCallbacks(execute=True):

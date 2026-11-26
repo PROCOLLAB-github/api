@@ -33,12 +33,17 @@ def export_participants(rows):
         cell.fill = PatternFill("solid", fgColor="EEE8FB")
         header_cells.append(cell)
     sheet.append(header_cells)
+    answers_sheet = workbook.create_sheet("Анкеты")
+    answers_sheet.append(["Участник", "Почта", "Поле анкеты", "Ответ"])
+    moscow = ZoneInfo("Europe/Moscow")
     number = 0
     for number, profile in enumerate(rows.iterator(chunk_size=500), 1):
+        name = person_name(profile.user)
+        email = profile.user.email
         values = [
             number,
-            person_name(profile.user),
-            profile.user.email,
+            name,
+            email,
             profile.participant_region,
             profile.datetime_created,
             profile.user.last_activity,
@@ -48,7 +53,7 @@ def export_participants(rows):
             if hasattr(value, "tzinfo"):
                 cell = WriteOnlyCell(
                     sheet,
-                    value.astimezone(ZoneInfo("Europe/Moscow")).replace(tzinfo=None),
+                    value.astimezone(moscow).replace(tzinfo=None),
                 )
                 cell.number_format = "dd.mm.yyyy hh:mm"
             elif isinstance(value, int):
@@ -60,15 +65,11 @@ def export_participants(rows):
                 cell.data_type = "s"
             cells.append(cell)
         sheet.append(cells)
-    sheet.auto_filter.ref = f"A1:F{number + 1}"
-    answers_sheet = workbook.create_sheet("Анкеты")
-    answers_sheet.append(["Участник", "Почта", "Поле анкеты", "Ответ"])
-    for profile in rows.iterator(chunk_size=500):
         for field in profile.registration_schema.get("fields", []):
             value = profile.partner_program_data.get(field["id"])
             values = [
-                person_name(profile.user),
-                profile.user.email,
+                name,
+                email,
                 field["label"],
                 ", ".join(map(str, value)) if isinstance(value, list) else value,
             ]
@@ -81,6 +82,7 @@ def export_participants(rows):
                 cell.data_type = "s"
                 cells.append(cell)
             answers_sheet.append(cells)
+    sheet.auto_filter.ref = f"A1:F{number + 1}"
     stream = BytesIO()
     workbook.save(stream)
     return stream.getvalue()

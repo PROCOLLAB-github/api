@@ -1,10 +1,14 @@
 from datetime import datetime
 from io import BytesIO
 
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 from openpyxl import load_workbook
 from rest_framework.test import APIClient
 
+from partner_programs.services.management import participant_rows
+from partner_programs.services.participants_excel import export_participants
 from partner_programs.tests.helpers import (
     create_partner_program,
     create_program_member,
@@ -218,6 +222,34 @@ class ManagementParticipantsTests(TestCase):
         ).active
         self.assertTrue(sheet.cell(2, 2).value.startswith("="))
         self.assertEqual(sheet.cell(2, 2).data_type, "s")
+
+    def test_participant_and_answer_sheets_read_the_same_rows_once(self):
+        profile = self.rows[0]
+        profile.registration_schema = {
+            "fields": [
+                {"id": "regions", "label": "Регионы"},
+                {"id": "note", "label": "Комментарий"},
+            ]
+        }
+        profile.partner_program_data = {"regions": ["Москва", "Казань"]}
+        profile.save(update_fields=["registration_schema", "partner_program_data"])
+
+        with CaptureQueriesContext(connection) as queries:
+            content = export_participants(participant_rows(self.program))
+
+        table = profile._meta.db_table
+        self.assertEqual(sum(table in query["sql"] for query in queries), 1)
+        workbook = load_workbook(BytesIO(content))
+        self.assertEqual(workbook.sheetnames, ["Участники", "Анкеты"])
+        self.assertEqual(workbook["Участники"].max_row, len(self.rows) + 1)
+        answers = list(workbook["Анкеты"].values)
+        self.assertEqual(
+            answers[1:],
+            [
+                ("Анна User", profile.user.email, "Регионы", "Москва, Казань"),
+                ("Анна User", profile.user.email, "Комментарий", "—"),
+            ],
+        )
 
     def test_export_permission_and_empty_result(self):
         empty = self.client.get(self.root + "export/", {"search": "Не существует"})
