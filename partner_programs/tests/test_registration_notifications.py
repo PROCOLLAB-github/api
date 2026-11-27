@@ -14,6 +14,7 @@ from rest_framework.test import APIClient
 
 from partner_programs.models import (
     ProgramRegistration,
+    RegistrationConnectionEmail,
     RegistrationConnectionRequest,
     RegistrationConnectionNotification,
 )
@@ -30,6 +31,7 @@ from datetime import timedelta
 SETTINGS = {
     "EXPERT_WORKSPACE_FRONTEND_URL": "https://dev.procollab.ru",
     "EMAIL_USER": "no-reply@example.test",
+    "PROGRAM_REGISTRATION_REQUEST_EMAILS": (),
     "EMAIL_BACKEND": "django.core.mail.backends.locmem.EmailBackend",
     "CELERY_TASK_ALWAYS_EAGER": True,
     "CELERY_TASK_EAGER_PROPAGATES": True,
@@ -119,6 +121,72 @@ class RegistrationRequestNotificationTests(TestCase):
             ),
             ["Нужна интеграция", "Другой комментарий"],
         )
+
+    @override_settings(
+        PROGRAM_REGISTRATION_REQUEST_EMAILS=(
+            "partners@example.test",
+            "second@example.test",
+            "third@example.test",
+            "PARTNERS@example.test",
+        )
+    )
+    def test_configured_recipients_receive_one_email_each_and_admins_keep_their_inbox(
+        self,
+    ):
+        self.submit(execute=False)
+        self.assertEqual(len(mail.outbox), 0)
+        deliver_notification(
+            RegistrationConnectionEmail.objects.first().pk, direct_email=True
+        )
+        dispatch_pending_notifications()
+        dispatch_pending_notifications()
+        self.submit()
+        self.assertCountEqual(
+            [message.to for message in mail.outbox],
+            [
+                ["partners@example.test"],
+                ["second@example.test"],
+                ["third@example.test"],
+            ],
+        )
+        self.assertEqual(RegistrationConnectionRequest.objects.count(), 1)
+        self.assertEqual(
+            list(
+                RegistrationConnectionNotification.objects.values_list(
+                    "delivery_status", flat=True
+                )
+            ),
+            ["in_app_only", "in_app_only"],
+        )
+        self.client.force_authenticate(self.admin)
+        self.assertEqual(self.client.get(self.inbox).data["unread_count"], 1)
+
+    @override_settings(PROGRAM_REGISTRATION_REQUEST_EMAILS=("partners@example.test",))
+    def test_configured_delivery_recovers_after_broker_failure_without_administrators(
+        self,
+    ):
+        for user in (self.admin, self.superuser):
+            user.is_active = False
+            user.save(update_fields=["is_active"])
+        with patch(
+            "partner_programs.tasks.send_registration_connection_email.delay",
+            side_effect=RuntimeError("broker down"),
+        ):
+            self.submit()
+        self.assertEqual(len(mail.outbox), 0)
+        self.assertFalse(RegistrationConnectionNotification.objects.exists())
+        dispatch_pending_notifications()
+        self.assertEqual(
+            [message.to for message in mail.outbox], [["partners@example.test"]]
+        )
+
+        self.admin.is_active = True
+        self.admin.save(update_fields=["is_active"])
+        with override_settings(PROGRAM_REGISTRATION_REQUEST_EMAILS=()):
+            dispatch_pending_notifications()
+        self.assertEqual(len(mail.outbox), 1)
+        self.client.force_authenticate(self.admin)
+        self.assertEqual(self.client.get(self.inbox).data["unread_count"], 1)
 
     def test_invalid_foreign_and_connected_requests_do_not_emit(self):
         self.client.force_authenticate(self.manager)

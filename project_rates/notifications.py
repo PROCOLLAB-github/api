@@ -9,6 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.cache_control import PrivateNoStoreResponseMixin
 from partner_programs.services.management import person_name
 from project_rates.models import ExpertJoinedNotification
 
@@ -41,13 +42,8 @@ def visible_notifications(user):
     )
 
 
-class ExpertNotificationsView(APIView):
+class ExpertNotificationsView(PrivateNoStoreResponseMixin, APIView):
     permission_classes = [IsAuthenticated]
-
-    def finalize_response(self, request, response, *args, **kwargs):
-        response = super().finalize_response(request, response, *args, **kwargs)
-        response["Cache-Control"] = "private, no-store"
-        return response
 
     def get(self, request, notification_id=None):
         if notification_id is not None:

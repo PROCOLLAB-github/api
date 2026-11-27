@@ -1,5 +1,7 @@
 import logging
 
+from django.db import OperationalError
+
 from procollab.celery import app
 from partner_programs.services import (
     publish_finished_program_projects,
@@ -7,6 +9,36 @@ from partner_programs.services import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+@app.task(
+    acks_late=True,
+    reject_on_worker_lost=True,
+    autoretry_for=(OperationalError,),
+    retry_backoff=True,
+    soft_time_limit=240,
+    time_limit=270,
+    ignore_result=True,
+)
+def generate_participant_export(job_id):
+    from partner_programs.services.participant_export_jobs import (
+        dispatch_next_export,
+        process_export_job,
+    )
+
+    if process_export_job(job_id):
+        dispatch_next_export()
+
+
+@app.task(ignore_result=True)
+def recover_participant_exports():
+    from partner_programs.services.participant_export_jobs import (
+        delete_expired_exports,
+        dispatch_next_export,
+    )
+
+    delete_expired_exports()
+    dispatch_next_export()
 
 
 @app.task
@@ -67,6 +99,13 @@ def send_registration_connection_notification(notification_id):
     from partner_programs.services.registration_notifications import deliver_notification
 
     deliver_notification(notification_id)
+
+
+@app.task(autoretry_for=(Exception,), retry_backoff=True, max_retries=3)
+def send_registration_connection_email(email_id):
+    from partner_programs.services.registration_notifications import deliver_notification
+
+    deliver_notification(email_id, direct_email=True)
 
 
 @app.task

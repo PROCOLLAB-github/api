@@ -1,5 +1,8 @@
+from uuid import uuid4
+
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.core.validators import URLValidator
 from django.db import models, transaction
 from django.utils import timezone
 
@@ -27,9 +30,51 @@ from partner_programs.registration_models import (  # noqa: F401
     PendingProgramRegistration,
     RegistrationConnectionRequest,
     RegistrationConnectionNotification,
+    RegistrationConnectionEmail,
 )
 
 User = get_user_model()
+
+
+class ParticipantExportJob(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    program = models.ForeignKey(
+        "PartnerProgram", on_delete=models.CASCADE, related_name="+"
+    )
+    requested_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name="+")
+    source = models.CharField(max_length=8)
+    parameters = models.JSONField(default=dict)
+    status = models.CharField(max_length=8, default="queued")
+    detail = models.CharField(max_length=255, blank=True)
+    filename = models.TextField(blank=True)
+    content = models.BinaryField(null=True, editable=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(db_index=True)
+    started_at = models.DateTimeField(null=True)
+    completed_at = models.DateTimeField(null=True)
+
+    class Meta:
+        indexes = [
+            models.Index(
+                fields=["program", "requested_by", "source", "-created_at"],
+                name="participant_export_owner",
+            ),
+            models.Index(
+                fields=["status", "created_at"], name="participant_export_queue"
+            ),
+        ]
+
+
+class OrganizerGuideSeen(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="+")
+    guide = models.CharField(max_length=64)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("user", "guide"), name="unique_organizer_guide_seen"
+            )
+        ]
 
 
 class OrganizerInvitation(models.Model):
@@ -191,6 +236,18 @@ class PartnerProgram(models.Model):
         verbose_name="Ссылка на регистрацию",
         help_text="Адрес страницы регистрации (например, на Tilda)",
     )
+    landing_url = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name="Ссылка «Подробнее»",
+        help_text="Адрес сайта программы с http:// или https://.",
+        validators=[
+            URLValidator(
+                schemes=["http", "https"],
+                message="Укажите корректную ссылку с http:// или https://.",
+            )
+        ],
+    )
     max_project_rates = models.PositiveIntegerField(
         null=True,
         blank=True,
@@ -236,6 +293,7 @@ class PartnerProgram(models.Model):
     program_format = models.CharField(
         max_length=24,
         choices=[
+            ("accelerator", "Акселератор"),
             ("case_championship", "Кейс-чемпионат"),
             ("hackathon", "Хакатон"),
             ("noncompetitive", "Неконкурсная программа"),
@@ -341,6 +399,8 @@ class PartnerProgram(models.Model):
                 )
 
     def save(self, *args, **kwargs):
+        if self._state.adding and not (self.tag or "").strip():
+            self.tag = f"program-{uuid4().hex}"
         fields = kwargs.get("update_fields")
         if self.pk and (fields is None or "solution_template" in fields):
             with transaction.atomic():
@@ -698,8 +758,32 @@ class PartnerProgramField(models.Model):
         opts = self.options.split("|") if self.options else []
         return [opt.strip() for opt in opts if opt.strip()]
 
+    def validate_project_answer_changes(self, previous):
+        from partner_programs.project_form import validate_project_field_evolution
+
+        if previous is None or (
+            previous.partner_program_id == self.partner_program_id
+            and previous.field_type == self.field_type
+            and previous.options == self.options
+            and previous.solution_options == self.solution_options
+        ):
+            return
+        options = (
+            self.get_options_list()
+            if self.field_type == previous.field_type
+            and self.field_type in ("select", "radio")
+            and (self.solution_options is None or isinstance(self.solution_options, list))
+            else ()
+        )
+        validate_project_field_evolution(
+            previous,
+            program_id=self.partner_program_id,
+            field_type=self.field_type,
+            options=options,
+        )
+
     def clean(self):
-        """ModelForm/admin and normal model writes share the reserved case rules."""
+        """Apply the same answer protections to both admin editing forms."""
         super().clean()
         from partner_programs.services.case_fields import (
             validate_program_case_configuration,
@@ -707,6 +791,7 @@ class PartnerProgramField(models.Model):
 
         validate_program_case_configuration(self)
         previous = type(self).objects.filter(pk=self.pk).first() if self.pk else None
+        self.validate_project_answer_changes(previous)
         program = PartnerProgram.objects.filter(pk=self.partner_program_id).first()
         if self.partner_program_id and (
             program
@@ -715,7 +800,7 @@ class PartnerProgramField(models.Model):
             and previous.solution_answers.exists()
         ):
             from partner_programs.solution_form_api import FieldWriteSerializer
-            from partner_programs.solution_forms import check_evolution, answer_count
+            from partner_programs.solution_forms import check_evolution
             from partner_programs.solution_schema import field_data, validate_definition
             from partner_programs.solution_schema import VALIDATION_DEFAULTS
             from partner_programs.solution_errors import SolutionError
@@ -752,27 +837,29 @@ class PartnerProgramField(models.Model):
                             {"purpose": "Такое назначение уже есть в форме."}
                         )
                 if previous:
-                    if (
-                        previous.partner_program_id != self.partner_program_id
-                        and answer_count(previous)
-                    ):
-                        raise ValidationError(
-                            "Нельзя переносить поле с ответами в другую программу."
-                        )
                     check_evolution(previous, candidate)
             except SolutionError as error:
                 raise ValidationError(error.payload["detail"]) from error
 
     def save(self, *args, **kwargs):
-        """Serialize case definition edits with case value writes; no schema changes."""
+        """Serialize definition edits with program field value writes."""
         from partner_programs.services.case_fields import is_program_case_field
 
         with transaction.atomic():
-            program = (
-                PartnerProgram.objects.select_for_update()
-                .filter(pk=self.partner_program_id)
+            source_id = (
+                type(self).objects.filter(pk=self.pk)
+                .values_list("partner_program_id", flat=True)
                 .first()
+                if self.pk
+                else None
             )
+            programs = {
+                program.pk: program
+                for program in PartnerProgram.objects.select_for_update()
+                .filter(pk__in=(source_id, self.partner_program_id))
+                .order_by("pk")
+            }
+            program = programs.get(self.partner_program_id)
             if program is None:
                 raise ValidationError({"partner_program": "Программа не найдена."})
             self.partner_program = program
@@ -781,6 +868,10 @@ class PartnerProgramField(models.Model):
                 if self.pk
                 else None
             )
+            if previous and previous.partner_program_id not in programs:
+                raise ValidationError(
+                    {"partner_program": "Программа поля изменилась. Обновите форму."}
+                )
             if (
                 self.partner_program.solution_storage_mode == "solution"
                 or is_program_case_field(self)
@@ -789,6 +880,8 @@ class PartnerProgramField(models.Model):
                 and previous.solution_answers.exists()
             ):
                 self.full_clean()
+            else:
+                self.validate_project_answer_changes(previous)
             return super().save(*args, **kwargs)
 
 
@@ -817,9 +910,12 @@ class PartnerProgramFieldValue(models.Model):
         return self.value_text
 
     def clean(self):
-        from partner_programs.services.field_values import validate_field_value_mutation
+        from partner_programs.services.field_values import (
+            validate_field_value_mutation,
+            validate_project_choice_value,
+        )
 
-        validate_field_value_mutation(self)
+        changed = validate_field_value_mutation(self)
         from partner_programs.services.case_fields import (
             is_program_case_field,
             validate_case_value,
@@ -829,22 +925,26 @@ class PartnerProgramFieldValue(models.Model):
             if self.field.partner_program_id != self.program_project.partner_program_id:
                 raise ValidationError("Поле кейса не относится к программе этой связи.")
             validate_case_value(self.field, self.value_text)
+        elif changed:
+            if self.field.partner_program_id != self.program_project.partner_program_id:
+                raise ValidationError(
+                    {"field": "Поле не относится к программе этого проекта."}
+                )
+            if self.field.field_type in ("select", "radio"):
+                try:
+                    validate_project_choice_value(self.field, self.value_text)
+                except ValidationError as error:
+                    raise ValidationError({"value_text": error.messages}) from error
 
+    @transaction.atomic
     def save(self, *args, **kwargs):
-        from partner_programs.services.case_fields import is_program_case_field
-
-        if is_program_case_field(self.field):
-            # Admin/model writes obey the same link -> definition lock order as PUT.
-            with transaction.atomic():
-                # Keep the parent-form instance: its unsaved submitted=True matters.
-                # Validation also checks DB state, under this same link lock.
-                PartnerProgramProject.objects.select_for_update().get(
-                    pk=self.program_project_id
-                )
-                self.field = PartnerProgramField.objects.select_for_update().get(
-                    pk=self.field_id
-                )
-                self.full_clean()
-                return super().save(*args, **kwargs)
+        # Match PUT's link -> definition order. Keep the parent-form instance for
+        # pending submissions, but re-read the definition after acquiring its lock.
+        PartnerProgramProject.objects.select_for_update().get(
+            pk=self.program_project_id
+        )
+        self.field = PartnerProgramField.objects.select_for_update().get(
+            pk=self.field_id
+        )
         self.full_clean()
-        super().save(*args, **kwargs)
+        return super().save(*args, **kwargs)

@@ -10,6 +10,24 @@ from partner_programs.models import PartnerProgram
 from partner_programs.program_dates import DATE_FIELDS, program_date_errors
 
 
+class ManagementHelpStateWrite(serializers.Serializer):
+    default_error_messages = {"invalid": "Передайте объект с идентификатором инструкции."}
+
+    guide = serializers.ChoiceField(
+        choices=(
+            "participant-removal-v1",
+            "allocation-shortage-v1",
+            "participant-empty-v1",
+            "certificates-v1",
+        ),
+        error_messages={
+            "required": "Укажите идентификатор инструкции.",
+            "null": "Укажите идентификатор инструкции.",
+            "invalid_choice": "Инструкция с таким идентификатором не найдена.",
+        },
+    )
+
+
 class StrictFieldsMixin:
     def to_internal_value(self, data):
         unknown = set(data) - set(self.fields)
@@ -198,6 +216,7 @@ BASIC_FIELDS = (
     "advertisement_image_address",
     "registration_link",
     "presentation_address",
+    "landing_url",
 )
 
 

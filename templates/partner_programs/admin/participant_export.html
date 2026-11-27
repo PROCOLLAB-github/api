@@ -1,0 +1,58 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+  <p>{{ program.name }}</p>
+  {% if error %}<p class="errornote" role="alert">{{ error }}</p>{% endif %}
+  <form method="post" id="participant-export-form" action="{% url 'admin:partner_programs_participant_export' program.pk %}">
+    {% csrf_token %}
+    <p id="participant-export-status" role="status"{% if job.status == 'queued' %} data-status-url="{% url 'admin:partner_programs_participant_export_status' program.pk job.id %}"{% endif %}>{{ job.message }}</p>
+    {% if job %}
+      <p id="participant-export-download"{% if job.status != 'ready' %} hidden{% endif %}>
+        <a href="{% url 'admin:partner_programs_participant_export_download' program.pk job.id %}">Скачать Excel</a>
+      </p>
+    {% endif %}
+    {% if job.status == 'queued' %}
+      <p id="participant-export-refresh"><a href="{% url 'admin:partner_programs_participant_export' program.pk %}">Обновить статус</a></p>
+    {% endif %}
+    <div class="submit-row">
+      <input id="participant-export-submit" type="submit" class="default" value="Подготовить Excel"{% if job.status == 'queued' %} disabled{% endif %}>
+      <a href="{% url 'admin:partner_programs_partnerprogram_change' program.pk %}">К программе</a>
+    </div>
+  </form>
+  <script>
+    (() => {
+      const form = document.getElementById("participant-export-form");
+      const submit = document.getElementById("participant-export-submit");
+      const status = document.getElementById("participant-export-status");
+      const statusUrl = status.dataset.statusUrl;
+      form.addEventListener("submit", () => { submit.disabled = true; });
+      if (!statusUrl) return;
+
+      const download = document.getElementById("participant-export-download");
+      const refresh = document.getElementById("participant-export-refresh");
+      async function updateStatus() {
+        try {
+          const response = await fetch(statusUrl, { cache: "no-store" });
+          if (response.redirected || response.status === 403 || response.status === 404) {
+            status.textContent = "Экспорт недоступен. Обновите страницу.";
+            return;
+          }
+          if (!response.ok) throw new Error();
+          const job = await response.json();
+          if (status.textContent !== job.message) status.textContent = job.message;
+          if (job.status === "queued") {
+            window.setTimeout(updateStatus, 2000);
+          } else {
+            download.hidden = job.status !== "ready";
+            refresh.hidden = true;
+            submit.disabled = false;
+          }
+        } catch {
+          status.textContent = "Не удалось обновить статус. Повторяем попытку…";
+          window.setTimeout(updateStatus, 5000);
+        }
+      }
+      window.setTimeout(updateStatus, 2000);
+    })();
+  </script>
+{% endblock %}

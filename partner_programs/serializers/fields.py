@@ -1,8 +1,10 @@
 from urllib.parse import urlparse
 
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
 from partner_programs.models import PartnerProgramField
+from partner_programs.services.field_values import validate_project_choice_value
 
 
 class ProgramFieldReference(serializers.PrimaryKeyRelatedField):
@@ -48,8 +50,8 @@ class PartnerProgramFieldValueUpdateSerializer(serializers.Serializer):
             "text": self._validate_text,
             "textarea": self._validate_text,
             "checkbox": self._validate_checkbox,
-            "select": self._validate_select,
-            "radio": self._validate_radio,
+            "select": self._validate_choice,
+            "radio": self._validate_choice,
             "file": self._validate_file,
             "url": self._validate_file,
         }
@@ -91,39 +93,11 @@ class PartnerProgramFieldValueUpdateSerializer(serializers.Serializer):
                     "Неверный тип значения для поля 'checkbox'."
                 )
 
-    def _validate_select(self, field: PartnerProgramField, value, attrs):
-        self._validate_choice_field(field, value, "select")
-
-    def _validate_radio(self, field: PartnerProgramField, value, attrs):
-        self._validate_choice_field(field, value, "radio")
-
-    def _validate_choice_field(self, field: PartnerProgramField, value, field_type):
-        options = field.get_options_list()
-
-        if not options:
-            raise serializers.ValidationError(
-                f"Для поля типа '{field_type}' не заданы допустимые значения."
-            )
-
-        if field.is_required:
-            if value is None or value == "":
-                raise serializers.ValidationError(
-                    f"Значение обязательно для поля типа '{field_type}'."
-                )
-        else:
-            if value is None or value == "":
-                return
-
-        if value is not None:
-            if not isinstance(value, str):
-                raise serializers.ValidationError(
-                    f"Ожидается строковое значение для поля типа '{field_type}'."
-                )
-            if value not in options:
-                raise serializers.ValidationError(
-                    f"Недопустимое значение для поля типа '{field_type}'. "
-                    f"Ожидается одно из: {options}."
-                )
+    def _validate_choice(self, field: PartnerProgramField, value, attrs):
+        try:
+            validate_project_choice_value(field, value)
+        except DjangoValidationError as error:
+            raise serializers.ValidationError(error.messages[0]) from error
 
     def _validate_file(self, field: PartnerProgramField, value, attrs):
         if field.is_required:

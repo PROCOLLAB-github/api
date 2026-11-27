@@ -66,6 +66,7 @@ jobs:
             DEV_SERVER_USER: ${{ secrets.DEV_SERVER_USER }}
             DEV_SERVER_PASSWORD: ${{ secrets.DEV_SERVER_PASSWORD }}
             DEV_SSH_HOST_KEY_SHA256: ${{ vars.DEV_SSH_HOST_KEY_SHA256 }}
+            PROGRAM_REGISTRATION_REQUEST_EMAILS: ${{ secrets.PROGRAM_REGISTRATION_REQUEST_EMAILS }}
             DEV_DEPLOY_SCRIPT: |
               set +x
               set -eu
@@ -114,6 +115,7 @@ jobs:
 
               echo "EMAIL_USER=${{ secrets.EMAIL_USER }}" >> .env
               echo "UNISENDER_GO_API_KEY=${{ secrets.UNISENDER_GO_API_KEY }}" >> .env
+              printf 'PROGRAM_REGISTRATION_REQUEST_EMAILS=%s\n' "$(printf '%s' "$registration_request_emails_b64" | base64 -d)" >> .env
 
               chmod 600 .env
 
@@ -245,6 +247,18 @@ jobs:
                   echo "Actual:   ${actual_image_id}" >&2
                   echo "Reference: ${configured_image}" >&2
                   exit 1
+                fi
+                if [ -n "$registration_request_emails_b64" ]; then
+                  docker exec "$container" python -c '
+              from django.core.validators import validate_email
+              from procollab.settings import PROGRAM_REGISTRATION_REQUEST_EMAILS as recipients
+
+              if not recipients:
+                  raise SystemExit("Registration request email recipients are missing")
+              for recipient in recipients:
+                  validate_email(recipient)
+              print(f"Registration request email configured for {len(set(recipients))} recipients")
+              '
                 fi
               done
 
@@ -385,7 +399,14 @@ jobs:
                 docker compose -f docker-compose.dev-ci.yml logs --tail=100 web >&2 || true
                 exit 1
               fi
-          run: node scripts/dev_ci_ssh.cjs
+          run: |
+            registration_request_emails_b64="$(printf '%s' "$PROGRAM_REGISTRATION_REQUEST_EMAILS" | base64 -w0)"
+            if [ -n "$registration_request_emails_b64" ]; then
+              echo "::add-mask::$registration_request_emails_b64"
+            fi
+            export DEV_DEPLOY_SCRIPT="registration_request_emails_b64='$registration_request_emails_b64'
+            $DEV_DEPLOY_SCRIPT"
+            node scripts/dev_ci_ssh.cjs
   solution-acceptance:
     name: Solution acceptance
     if: github.ref == 'refs/heads/dev' && github.event_name == 'workflow_dispatch' && inputs.operation != 'deploy' && inputs.operation != '' && inputs.operation != 'dependency_backup' && inputs.operation != 'dependency_verify'

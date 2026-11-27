@@ -1,15 +1,25 @@
-import re
+from uuid import uuid4
 from partner_programs.registration_models import ProgramRegistration
 
-import tablib
 from django import forms
 from django.contrib import admin
+from django.contrib.admin.utils import unquote
 from django.db import transaction
+from django.core.exceptions import PermissionDenied
 from . import solution_admin  # noqa: F401
 from projects.team_admin import TeamValidationAdminMixin
 from django.db.models import QuerySet
-from django.http import HttpRequest
-from django.urls import path
+from django.http import (
+    Http404,
+    HttpRequest,
+    HttpResponse,
+    HttpResponseNotAllowed,
+    HttpResponseRedirect,
+    JsonResponse,
+)
+from django.template.loader import render_to_string
+from django.template.response import TemplateResponse
+from django.urls import NoReverseMatch, path, reverse
 from django.utils import timezone
 
 from chats.models import ProgramChannel
@@ -25,19 +35,61 @@ from partner_programs.models import (
     PartnerProgramUserProfile,
 )
 from partner_programs.services import prepare_project_scores_export_data
+from partner_programs.services.admin_participants_excel import export_admin_participants
+from partner_programs.services.participant_export_jobs import (
+    create_export_job,
+    export_download_response,
+    get_export_job,
+    job_payload,
+    latest_export_job,
+)
 from partner_programs.forms import (
     ProgramFieldInlineFormSet,
     ProgramFieldValueInlineFormSet,
 )
 from partner_programs.services.case_fields import case_field_has_values
-from partner_programs.admin_registration import ProgramRegistrationAdminMixin
+from partner_programs.admin_participant_answers import participant_answer_rows
+from partner_programs.admin_registration import ProgramRegistrationAdminMixin, error_text
 from partner_programs.admin_publication import ProgramPublicationAdminMixin
 from partner_programs.admin_certificate_fonts import ProgramCertificateFontsAdminMixin
+from partner_programs.admin_certificate_settings import ProgramCertificateSettingsAdminMixin
 from partner_programs.program_dates import (
     DATE_FIELDS,
     program_date_errors,
     reopens_program_deadline,
 )
+from project_rates.workspace import WorkspaceConflict
+from rest_framework.exceptions import APIException
+
+
+ADMIN_PARTICIPANT_EXPORT_STATUS = {
+    "queued": "Подготавливаем Excel…",
+    "ready": "Файл готов к скачиванию.",
+    "failed": "Не удалось подготовить Excel. Попробуйте еще раз.",
+    "expired": "Срок хранения файла истек. Подготовьте Excel заново.",
+}
+
+
+def admin_participant_export_payload(job):
+    payload = job_payload(job)
+    payload["message"] = (
+        payload["detail"] or ADMIN_PARTICIPANT_EXPORT_STATUS[payload["status"]]
+    )
+    return payload
+
+
+class ProgramDraftCreateAdminForm(forms.Form):
+    name = forms.CharField(label="Название программы", max_length=255, strip=True)
+    format = forms.ChoiceField(
+        label="Тип программы",
+        choices=[
+            ("accelerator", "Акселератор"),
+            ("hackathon", "Хакатон"),
+            ("case_championship", "Кейс-чемпионат"),
+        ],
+        widget=forms.RadioSelect,
+    )
+    idempotency_key = forms.UUIDField(widget=forms.HiddenInput)
 
 
 class PartnerProgramMaterialInline(admin.StackedInline):
@@ -59,8 +111,11 @@ class PartnerProgramAdmin(
     ProgramPublicationAdminMixin,
     ProgramRegistrationAdminMixin,
     ProgramCertificateFontsAdminMixin,
+    ProgramCertificateSettingsAdminMixin,
     admin.ModelAdmin,
 ):
+    change_list_template = "partner_programs/admin/programs_change_list.html"
+
     class PartnerProgramAdminForm(forms.ModelForm):
         confirm_reopen = forms.BooleanField(
             required=False,
@@ -79,7 +134,7 @@ class PartnerProgramAdmin(
                 key in self.changed_data for key in (*DATE_FIELDS, "draft")
             ):
                 errors = program_date_errors(
-                    data, require_complete=not data.get("draft", True)
+                    data, require_complete=not data.get("draft", self.instance.draft)
                 )
                 if self.instance.pk and not data.get("confirm_reopen"):
                     previous = PartnerProgram.objects.values(*DATE_FIELDS).get(
@@ -102,11 +157,12 @@ class PartnerProgramAdmin(
                 "tag": forms.TextInput(attrs={"size": 80}),
                 "description": forms.Textarea(attrs={"rows": 4, "cols": 82}),
                 "city": forms.TextInput(attrs={"size": 80}),
+                "landing_url": forms.URLInput,
             }
 
     inlines = [PartnerProgramMaterialInline, PartnerProgramFieldInline]
     form = PartnerProgramAdminForm
-    list_display = ("id", "name", "tag", "city", "datetime_created")
+    list_display = ("id", "name", "program_format", "tag", "city", "datetime_created")
     list_display_links = (
         "id",
         "name",
@@ -119,17 +175,18 @@ class PartnerProgramAdmin(
         "city",
         "tag",
     )
-    list_filter = ("city",)
+    list_filter = ("city", "program_format")
 
     autocomplete_fields = ("managers",)
     date_hierarchy = "datetime_started"
-    readonly_fields = ("datetime_created", "datetime_updated")
+    readonly_fields = ("datetime_created", "datetime_updated", "program_format")
     fieldsets = (
         (
             None,
             {
                 "fields": (
                     "name",
+                    "program_format",
                     "tag",
                     "description",
                     "city",
@@ -156,6 +213,7 @@ class PartnerProgramAdmin(
                         "advertisement_image_address",
                     ),
                     ("presentation_address", "registration_link"),
+                    "landing_url",
                     "data_schema",
                 )
             },
@@ -219,9 +277,29 @@ class PartnerProgramAdmin(
         default_urls = super(PartnerProgramAdmin, self).get_urls()
         custom_urls = [
             path(
+                "create-draft/",
+                self.admin_site.admin_view(self.create_draft_view),
+                name="partner_programs_partnerprogram_create_draft",
+            ),
+            path(
                 "export/<int:object_id>/",
                 self.admin_site.admin_view(self.get_export_file_view),
                 name="export_profiles",
+            ),
+            path(
+                "export-participants/<int:object_id>/",
+                self.admin_site.admin_view(self.participant_export_view),
+                name="partner_programs_participant_export",
+            ),
+            path(
+                "export-participants/<int:object_id>/<uuid:job_id>/",
+                self.admin_site.admin_view(self.participant_export_status_view),
+                name="partner_programs_participant_export_status",
+            ),
+            path(
+                "export-participants/<int:object_id>/<uuid:job_id>/download/",
+                self.admin_site.admin_view(self.participant_export_download_view),
+                name="partner_programs_participant_export_download",
             ),
             path(
                 "mailing/<int:partner_program>/",
@@ -236,116 +314,211 @@ class PartnerProgramAdmin(
         ]
         return custom_urls + default_urls
 
-    def mailing(self, request, partner_program):
-        profiles = PartnerProgramUserProfile.objects.filter(
-            partner_program=partner_program
+    def create_draft_view(self, request):
+        from partner_programs.program_launch_views import CreateProgramInput
+        from partner_programs.services.program_launch import create_program
+
+        if request.method not in ("GET", "POST"):
+            return HttpResponseNotAllowed(["GET", "POST"])
+        if not self.has_add_permission(request):
+            raise PermissionDenied
+        form = ProgramDraftCreateAdminForm(
+            request.POST if request.method == "POST" else None,
+            initial={"idempotency_key": uuid4()},
         )
+        status = 200
+        if request.method == "POST" and form.is_valid():
+            serializer = CreateProgramInput(data=form.cleaned_data)
+            if serializer.is_valid():
+                try:
+                    program, created = create_program(
+                        request.user, serializer.validated_data
+                    )
+                except APIException as error:
+                    form.add_error(None, error_text(error.detail))
+                    status = error.status_code
+                else:
+                    if created:
+                        self.log_addition(request, program, "Создан черновик программы.")
+                    self.message_user(request, "Черновик программы создан.")
+                    return HttpResponseRedirect(
+                        reverse(
+                            "admin:partner_programs_partnerprogram_change",
+                            args=[program.pk],
+                        )
+                    )
+            else:
+                form.add_error(None, error_text(serializer.errors))
+        context = {
+            **self.admin_site.each_context(request),
+            "title": "Создание программы",
+            "opts": self.model._meta,
+            "form": form,
+        }
+        return TemplateResponse(
+            request, "partner_programs/admin/create_draft.html", context, status=status
+        )
+
+    def _get_program_for_action(self, request, object_id, has_permission):
+        if not has_permission(request):
+            raise PermissionDenied
+        program = self.get_object(request, str(object_id))
+        if program is None:
+            raise Http404
+        if not has_permission(request, program):
+            raise PermissionDenied
+        return program
+
+    def mailing(self, request, partner_program):
+        program = self._get_program_for_action(
+            request, partner_program, self.has_change_permission
+        )
+        try:
+            reverse("mailing:send_mail")
+        except NoReverseMatch:
+            return HttpResponse(
+                "Рассылка недоступна.", status=503, content_type="text/plain; charset=utf-8"
+            )
+
+        profiles = PartnerProgramUserProfile.objects.filter(partner_program=program)
         users = [profile.user for profile in profiles if profile.user is not None]
         return MailingTemplateRender().render_template(request, None, users, None)
 
+    @transaction.atomic
     def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
         if extra_context is None:
             extra_context = {}
-        if object_id:
+        if object_id and str(object_id).isdecimal():
             extra_context["object_id"] = int(object_id)
 
+        if request.method == "POST" and object_id and "_saveasnew" not in request.POST:
+            program = self.get_object(request, unquote(str(object_id)))
+            if program and self.has_change_permission(request, program):
+                locked_program = (
+                    PartnerProgram.objects.select_for_update().filter(pk=program.pk).first()
+                )
+                if locked_program:
+                    # This editor writes definitions, without locking project links.
+                    list(locked_program.fields.select_for_update().order_by("pk"))
+
         res = super(PartnerProgramAdmin, self).changeform_view(
-            request, object_id, extra_context=extra_context
+            request, object_id, form_url, extra_context
         )
         return res
 
     def get_export_file_view(self, request, object_id):
-        program = PartnerProgram.objects.get(pk=object_id)
+        program = self._get_program_for_action(
+            request, object_id, self.has_view_or_change_permission
+        )
         return self.get_export_file(program)
 
     def get_export_file(self, partner_program: PartnerProgram):
-        json_schema = partner_program.data_schema
-
-        profiles = PartnerProgramUserProfile.objects.filter(
-            partner_program=partner_program
-        )
-        to_delete_from_json_scheme = []
-        column_names = ["Имя", "Фамилия", "Отчество", "Почта", "Дата рождения"]
-        for field_key in json_schema:
-            if "name" not in json_schema[field_key]:
-                to_delete_from_json_scheme.append(field_key)
-            else:
-                column_names.append(json_schema[field_key]["name"])
-
-        for field_key in to_delete_from_json_scheme:
-            del json_schema[field_key]
-
-        response_data = tablib.Dataset(headers=column_names)
-        for profile in profiles:
-            if profile.user is None:
-                row = [""] * 5
-            else:
-                row = [
-                    profile.user.first_name,
-                    profile.user.last_name,
-                    profile.user.patronymic,
-                    profile.user.email,
-                    str(profile.user.birthday),
-                ]
-
-            json_data = profile.partner_program_data
-            ILLEGAL_CHARACTERS_RE = re.compile(r"[\000-\010]|[\013-\014]|[\016-\037]")
-
-            for key in json_schema:
-                value = json_data.get(key, "")  # Получаем значение из json_data
-                cleaned_value = ILLEGAL_CHARACTERS_RE.sub(
-                    "", value
-                )  # Удаляем недопустимые символы из значения
-                row.append(cleaned_value)  # Добавляем очищенное значение в row
-
-            response_data.append(row)
-
-        binary_data = response_data.export("xlsx")
+        binary_data = export_admin_participants(partner_program)
         file_name = (
             f"{partner_program.name} {timezone.now().strftime('%d-%m-%Y %H:%M:%S')}"
         )
         return build_xlsx_download_response(binary_data, base_name=file_name)
 
-    def get_export_rates_view(self, request, object_id):
-        rates_data_to_write: list[dict] = self._get_prepared_rates_data_for_export(
-            object_id
+    def participant_export_view(self, request, object_id):
+        program = self._get_program_for_action(
+            request, object_id, self.has_view_or_change_permission
         )
+        if request.method not in ("GET", "POST"):
+            return HttpResponseNotAllowed(["GET", "POST"])
+
+        error = ""
+        status = 200
+        if request.method == "POST":
+            try:
+                create_export_job(program, request.user, source="admin", parameters={})
+            except WorkspaceConflict as conflict:
+                error = error_text(conflict.detail)
+                status = conflict.status_code
+            else:
+                return HttpResponseRedirect(
+                    reverse(
+                        "admin:partner_programs_participant_export", args=[program.pk]
+                    )
+                )
+
+        job = latest_export_job(program, request.user, source="admin")
+        context = {
+            **self.admin_site.each_context(request),
+            "title": "Экспорт участников",
+            "opts": self.model._meta,
+            "program": program,
+            "job": admin_participant_export_payload(job) if job else None,
+            "error": error,
+        }
+        return TemplateResponse(
+            request,
+            "partner_programs/admin/participant_export.html",
+            context,
+            status=status,
+        )
+
+    def participant_export_status_view(self, request, object_id, job_id):
+        program = self._get_program_for_action(
+            request, object_id, self.has_view_or_change_permission
+        )
+        if request.method != "GET":
+            return HttpResponseNotAllowed(["GET"])
+        job = get_export_job(program, request.user, job_id, source="admin")
+        return JsonResponse(admin_participant_export_payload(job))
+
+    def participant_export_download_view(self, request, object_id, job_id):
+        program = self._get_program_for_action(
+            request, object_id, self.has_view_or_change_permission
+        )
+        if request.method != "GET":
+            return HttpResponseNotAllowed(["GET"])
+        job = get_export_job(program, request.user, job_id, source="admin")
+        if job.status != "ready":
+            return HttpResponse(
+                ADMIN_PARTICIPANT_EXPORT_STATUS[job.status],
+                status=410 if job.status == "expired" else 409,
+                content_type="text/plain; charset=utf-8",
+            )
+        return export_download_response(job)
+
+    def get_export_rates_view(self, request, object_id):
+        program = self._get_program_for_action(
+            request, object_id, self.has_view_or_change_permission
+        )
+        rates_data_to_write: list[dict] = prepare_project_scores_export_data(program.pk)
 
         xlsx_file_writer = XlsxFileToExport()
         xlsx_file_writer.write_data_to_xlsx(rates_data_to_write)
         binary_data_to_export: bytes = xlsx_file_writer.get_binary_data_from_self_file()
         xlsx_file_writer.clear_buffer()
 
-        program_name = PartnerProgram.objects.get(pk=object_id).name
         date_suffix = timezone.now().strftime("%d.%m.%y")
-        base_name = f"scores - {program_name or 'program'} - {date_suffix}"
+        base_name = f"scores - {program.name or 'program'} - {date_suffix}"
         return build_xlsx_download_response(binary_data_to_export, base_name=base_name)
 
-    def _get_prepared_rates_data_for_export(self, program_id: int) -> list[dict]:
-        """
-        Готовит данные для выгрузки оценок проектов.
-        Порядок колонок: название проекта → фамилия эксперта → доп. поля программы →
-        критерии → комментарий.
-        Если у проекта несколько экспертов, на каждый проект-эксперт создаётся отдельная строка.
-        """
-        return prepare_project_scores_export_data(program_id)
+
+class ParticipantProgramListFilter(admin.RelatedFieldListFilter):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.title = "Программа"
 
 
 @admin.register(PartnerProgramUserProfile)
 class PartnerProgramUserProfileAdmin(admin.ModelAdmin):
+    change_form_template = "partner_programs/admin/participant_change_form.html"
     list_display = (
         "id",
-        "user",
-        "partner_program",
-        "datetime_created",
+        "participant",
+        "program",
+        "registered_at",
     )
     list_display_links = (
         "id",
-        "user",
-        "partner_program",
-        "datetime_created",
+        "participant",
+        "program",
+        "registered_at",
     )
-    list_filter = ("partner_program",)
+    list_filter = (("partner_program", ParticipantProgramListFilter),)
     raw_id_fields = (
         "user",
         "project",
@@ -353,12 +526,96 @@ class PartnerProgramUserProfileAdmin(admin.ModelAdmin):
     )
     search_fields = ("user__first_name", "user__last_name", "partner_program_data")
     date_hierarchy = "datetime_created"
+    participant_fields = (
+        "participant",
+        "program",
+        "linked_project",
+        "registration_answers",
+        "welcome_confirmed_at",
+    )
+
+    class Media:
+        css = {"all": ("admin/partner_programs/participant_answers.css",)}
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related(
+            "user", "project", "partner_program"
+        )
+
+    def get_fields(self, request, obj=None):
+        if obj is not None and not self.has_change_permission(request, obj):
+            return self.participant_fields
+        return (
+            "user",
+            "partner_program",
+            "project",
+            "registration_answers" if obj is not None else "partner_program_data",
+            "welcome_acknowledged_at",
+        )
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj is None:
+            return ()
+        if self.has_change_permission(request, obj):
+            return ("registration_answers",)
+        return self.participant_fields
 
     def get_form(self, request, obj=None, **kwargs):
-        """`partner_program` field is optional in admin panel (bc is nullable)."""
         form = super().get_form(request, obj, **kwargs)
-        form.base_fields["project"].required = False
+        if "project" in form.base_fields:
+            form.base_fields["project"].required = False
         return form
+
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        labels = {
+            "user": "Участник",
+            "partner_program": "Программа",
+            "project": "Проект",
+            "partner_program_data": "Ответы анкеты",
+        }
+        if db_field.name in labels:
+            kwargs["label"] = labels[db_field.name]
+        return super().formfield_for_dbfield(db_field, request, **kwargs)
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            super().save_model(request, obj, form, change)
+        elif form.changed_data:
+            # An admin metadata edit must not write stale answers back to the database.
+            obj.save(update_fields=[*form.changed_data, "datetime_updated"])
+
+    def render_change_form(self, request, context, *args, obj=None, **kwargs):
+        if obj:
+            context["title"] = "Профиль участника"
+            context["subtitle"] = f"Регистрация №{obj.pk}"
+        return super().render_change_form(request, context, *args, obj=obj, **kwargs)
+
+    @admin.display(description="Участник", ordering="user")
+    def participant(self, obj):
+        return obj.user
+
+    @admin.display(description="Программа", ordering="partner_program")
+    def program(self, obj):
+        return obj.partner_program
+
+    @admin.display(description="Проект")
+    def linked_project(self, obj):
+        return obj.project
+
+    @admin.display(description="Дата регистрации", ordering="datetime_created")
+    def registered_at(self, obj):
+        return obj.datetime_created
+
+    @admin.display(description="Дата подтверждения приветствия программы")
+    def welcome_confirmed_at(self, obj):
+        return obj.welcome_acknowledged_at
+
+    @admin.display(description="Ответы анкеты")
+    def registration_answers(self, obj):
+        return render_to_string(
+            "partner_programs/admin/participant_answers.html",
+            {"rows": participant_answer_rows(obj)},
+        )
 
 
 @admin.register(PartnerProgramMaterial)
@@ -412,6 +669,46 @@ class PartnerProgramProjectAdmin(TeamValidationAdminMixin, admin.ModelAdmin):
 
 @admin.register(PartnerProgramField)
 class PartnerProgramFieldAdmin(admin.ModelAdmin):
+    @transaction.atomic
+    def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
+        if request.method == "POST":
+            adding = object_id is None or "_saveasnew" in request.POST
+            field = None if adding else self.get_object(request, unquote(str(object_id)))
+            can_save = (
+                self.has_add_permission(request)
+                if adding
+                else field is not None and self.has_change_permission(request, field)
+            )
+            if can_save:
+                program_ids = {field.partner_program_id} if field else set()
+                try:
+                    selected_program_id = int(request.POST.get("partner_program"))
+                except (TypeError, ValueError):
+                    # ModelForm reports an invalid program choice.
+                    selected_program_id = 0
+                if 0 < selected_program_id < 2**63:
+                    program_ids.add(selected_program_id)
+                list(
+                    PartnerProgram.objects.select_for_update()
+                    .filter(pk__in=program_ids)
+                    .order_by("pk")
+                )
+                if field:
+                    current_program_id = (
+                        PartnerProgramField.objects.select_for_update()
+                        .filter(pk=field.pk)
+                        .values_list("partner_program_id", flat=True)
+                        .first()
+                    )
+                    if current_program_id not in (None, field.partner_program_id):
+                        self.message_user(
+                            request,
+                            "Поле перенесено в другую программу. Обновите форму.",
+                            level="warning",
+                        )
+                        return HttpResponseRedirect(request.path)
+        return super().changeform_view(request, object_id, form_url, extra_context)
+
     def get_deleted_objects(self, objs, request):
         """Use Django's standard protected deletion UI for single and bulk actions."""
         deleted, counts, permissions_needed, protected = super().get_deleted_objects(

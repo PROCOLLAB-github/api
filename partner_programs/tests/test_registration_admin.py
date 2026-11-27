@@ -2,17 +2,23 @@
 
 import copy
 import io
+import json
 
 from django.contrib.auth.models import Group, Permission
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 from openpyxl import Workbook
 from rest_framework.test import APIClient
 
 from partner_programs.models import ProgramRegistration, PartnerProgramUserProfile
 from partner_programs.services import native_registration as registration
-from partner_programs.tests.helpers import create_partner_program, create_user
+from partner_programs.tests.helpers import (
+    create_partner_program,
+    create_program_field,
+    create_user,
+)
 
 
 @override_settings(
@@ -315,6 +321,85 @@ class RegistrationAdminTests(TestCase):
         self.assertEqual(
             ProgramRegistration.objects.get(program=self.program).published_version, 1
         )
+
+    def test_case_championship_waits_for_saved_case_before_publishing_in_admin(self):
+        self.program.draft = True
+        self.program.program_format = "case_championship"
+        self.program.is_competitive = True
+        self.program.save()
+        change_url = reverse(
+            "admin:partner_programs_partnerprogram_change", args=[self.program.pk]
+        )
+        change = self.client.get(change_url)
+        self.assertContains(change, "Статус программы")
+        self.assertNotIn("draft", change.context["adminform"].form.fields)
+        page = self.client.get(self.url)
+        self.assertContains(page, f"{change_url}#fields-group")
+        self.assertContains(page, "Добавьте и сохраните хотя бы один кейс.")
+        response = self.client.post(self.url, self.payload(action="publish"))
+        self.assertContains(response, "Добавьте и сохраните хотя бы один кейс.")
+        self.assertFalse(ProgramRegistration.objects.filter(program=self.program).exists())
+        self.program.refresh_from_db()
+        self.assertTrue(self.program.draft)
+
+        create_program_field(
+            self.program,
+            name="case",
+            label="Кейс",
+            field_type="select",
+            is_required=True,
+            options=["Кейс 1"],
+            show_filter=True,
+        )
+        self.assertEqual(
+            self.client.post(self.url, self.payload(action="publish")).status_code, 302
+        )
+        self.program.refresh_from_db()
+        self.assertFalse(self.program.draft)
+        self.assertEqual(
+            ProgramRegistration.objects.get(program=self.program).published["fields"],
+            [self.field],
+        )
+
+    def test_published_case_championship_without_cases_can_be_edited_in_admin(self):
+        self.program.program_format = "case_championship"
+        self.program.is_competitive = True
+        self.program.save()
+        url = reverse(
+            "admin:partner_programs_partnerprogram_change", args=[self.program.pk]
+        )
+        page = self.client.get(url)
+        self.assertContains(page, "Опубликована")
+        data = {
+            "name": "Кейс-чемпионат с обновленным описанием",
+            "tag": self.program.tag,
+            "city": self.program.city,
+            "description": "Обновленное описание",
+            "is_competitive": "on",
+            "projects_availability": self.program.projects_availability,
+            "project_sections": "{}",
+            "data_schema": json.dumps({"name": {"name": "Имя"}}),
+            "draft": "on",
+            "_save": "Сохранить",
+        }
+        for key in (
+            "datetime_started",
+            "datetime_finished",
+            "datetime_registration_ends",
+        ):
+            date = timezone.localtime(getattr(self.program, key))
+            data[f"{key}_0"] = date.strftime("%Y-%m-%d")
+            data[f"{key}_1"] = date.strftime("%H:%M:%S")
+        for inline in page.context["inline_admin_formsets"]:
+            prefix = inline.formset.prefix
+            data[f"{prefix}-TOTAL_FORMS"] = 0
+            data[f"{prefix}-INITIAL_FORMS"] = 0
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 302)
+        self.program.refresh_from_db()
+        self.assertEqual(self.program.description, data["description"])
+        self.assertFalse(self.program.draft)
+        self.assertFalse(self.program.fields.exists())
 
     def test_external_form_requires_connection_and_then_publishes(self):
         page = self.client.post(

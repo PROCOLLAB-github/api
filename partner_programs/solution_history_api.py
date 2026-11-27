@@ -4,6 +4,7 @@ from django.http import Http404
 from rest_framework import serializers
 from rest_framework.response import Response
 
+from core.cache_control import PrivateNoStoreResponseMixin
 from partner_programs.permissions import can_manage_program
 from partner_programs.solution_api import (
     SolutionAPIView,
@@ -88,12 +89,7 @@ class HistoryQuery(StrictSerializer):
     limit = serializers.IntegerField(min_value=1, max_value=100, default=20)
 
 
-class SolutionHistoryView(SolutionAPIView):
-    def finalize_response(self, request, response, *args, **kwargs):
-        response = super().finalize_response(request, response, *args, **kwargs)
-        response["Cache-Control"] = "private, no-store"
-        return response
-
+class SolutionHistoryView(PrivateNoStoreResponseMixin, SolutionAPIView):
     def get(self, request, pk, solution_id, change_id=None):
         solution = managed_solution(pk, solution_id, request.user)
         query = (StrictSerializer if change_id is not None else HistoryQuery)(

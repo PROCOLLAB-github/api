@@ -9,7 +9,7 @@ from django_filters import rest_framework as filters
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import generics, permissions, status, viewsets
-from rest_framework.exceptions import NotFound, ValidationError
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -19,6 +19,7 @@ from core.permissions import IsStaffOrReadOnly
 from core.services import add_view
 from partner_programs.models import (
     PartnerProgram,
+    PartnerProgramProject,
     PartnerProgramUserProfile,
 )
 from partner_programs.services.project_apply import copy_project
@@ -48,6 +49,7 @@ from projects.permissions import (
     IsProjectLeaderOrReadOnlyForNonDrafts,
     ProjectVisibilityPermission,
     TimingAfterEndsProgramPermission,
+    can_open_program_copy,
 )
 from core.serializers import EmptySerializer
 from projects.serializers import (
@@ -60,6 +62,7 @@ from projects.serializers import (
     ProjectCompanyUpsertSerializer,
     ProjectDetailSerializer,
     ProjectDuplicateRequestSerializer,
+    ProjectDuplicateResponseSerializer,
     ProjectGoalSerializer,
     ProjectListSerializer,
     ProjectSubscribersListSerializer,
@@ -531,7 +534,11 @@ class DuplicateProjectView(APIView):
 
     @swagger_auto_schema(
         request_body=ProjectDuplicateRequestSerializer,
-        responses={201: ProjectDuplicateRequestSerializer(), 400: "Validation error"},
+        responses={
+            200: ProjectDuplicateResponseSerializer(),
+            201: ProjectDuplicateResponseSerializer(),
+            400: "Validation error",
+        },
         operation_description="Дублирует проект и привязывает его к указанной партнерской программе",
     )
     def post(self, request):
@@ -555,16 +562,31 @@ class DuplicateProjectView(APIView):
                 source_project__isnull=False
             ).exists():
                 raise ValidationError("Выберите исходный проект.")
-            existing = original_project.program_copies.filter(
-                partner_program=partner_program
-            ).first()
+            existing = (
+                original_project.program_copies.filter(partner_program=partner_program)
+                .select_related("project")
+                .order_by("pk")
+                .first()
+            )
             if existing:
+                if not can_open_program_copy(
+                    request.user, existing.project, program_id=partner_program.pk
+                ):
+                    raise PermissionDenied("У вас нет доступа к проекту.")
                 return Response(
                     {
                         "new_project_id": existing.project_id,
                         "program_link_id": existing.id,
                         "partner_program": partner_program.name,
+                        "can_edit": not existing.submitted
+                        and existing.project.leader_id == request.user.pk,
                     }
+                )
+            if PartnerProgramProject.objects.filter(
+                project__name=original_project.name, partner_program=partner_program
+            ).exists():
+                raise ValidationError(
+                    {"detail": "В этой программе уже есть проект с таким названием."}
                 )
             new_project = copy_project(original_project, leader=request.user)
             program_link = team_service.bind_project_to_program(
@@ -579,6 +601,7 @@ class DuplicateProjectView(APIView):
                 "new_project_id": new_project.id,
                 "program_link_id": program_link.id,
                 "partner_program": partner_program.name,
+                "can_edit": True,
             },
             status=status.HTTP_201_CREATED,
         )

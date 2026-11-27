@@ -1,0 +1,26 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<p><a href="{{ change_url }}">{{ program.name }}</a></p>
+<form method="post">
+    {% csrf_token %}
+    {{ form.revision }}
+    {{ form.revision.errors }}
+    {{ form.non_field_errors }}
+    <div>
+        {{ form.title.errors }}
+        {{ form.title.label_tag }}
+        {{ form.title }}
+    </div>
+    <fieldset>
+        <legend>Поворот элементов, °</legend>
+        <p>Целое число от −180 до 180. Положительный угол поворачивает элемент по часовой стрелке.</p>
+        {% for field in form.visible_fields %}
+            {% if field.name != "title" %}
+                <div>{{ field.errors }} {{ field.label_tag }} {{ field }}</div>
+            {% endif %}
+        {% endfor %}
+    </fieldset>
+    <div class="submit-row"><input type="submit" value="Сохранить настройки" class="default"></div>
+</form>
+{% endblock %}

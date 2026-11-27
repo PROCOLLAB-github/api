@@ -35,13 +35,15 @@ Registration settings add `program_draft`. For a draft, `POST .../management/reg
 
 - `program`: summary above;
 - `revision`: SHA256 of saved launch-affecting state;
-- `checks`: three `{code,title,section,ready,detail}` objects; codes `page|dates|registration`, sections `basic|dates|registration`;
+- `checks`: `{code,title,section,ready,detail}` objects. The base checks are `page` (`basic`), `dates` (`dates`) and `registration` (`registration`). Case-championship drafts also return `cases` (`project-form`);
 - `blockers`: `{code,section,detail}` for unmet checks;
 - `warnings`: optional work that does not prevent enrollment;
 - `can_publish`: draft with no blockers;
 - `links`: `{program,registration}`; registration null until publication.
 
 Minimum: nonblank name/description; all3dates; finish after start; registration deadline in the future; saved valid registration schema. An empty additional questionnaire is valid because account requirements are handled by existing enrollment. External mode additionally requires administrator connection and a valid HTTP(S) URL. For first publication, the registration deadline may be after the program starts but must be no later than the program finish (equality is valid). A deadline after finish returns a dates blocker and publication HTTP400 without changing program/questionnaire state. Existing published-program date editing is unchanged.
+
+A draft with `program_format=case_championship` also requires a saved, required case selection field in the program's application form with at least one nonblank option. This applies to both solution and legacy project storage. Changes to the saved case definition can invalidate the launch revision. The launch checklist links to the project application form. Hackathons, accelerators, noncompetitive and unclassified programs use the base checks. Already published case championships remain published and editable, including those without cases. A case championship returned to draft uses the same checks when published again.
 
 URLs use existing `EXPERT_WORKSPACE_FRONTEND_URL`; set it to the dev frontend origin in dev. Native registration URL remains `/program-registration/{id}`. External registration uses the connected URL.
 
@@ -61,6 +63,8 @@ The preview questionnaire uses existing registration settings, saved `draft.fiel
 - 400 `{code:"program_not_ready",detail,blockers}` if requirements are unmet. Neither object is partially published.
 - Success200 returns readiness state with `program.draft=false`, public links and `can_publish=false`.
 - A retry after success returns current published state without incrementing questionnaire version again.
+
+In Django admin, case championships are published from the program's registration editor through the same service. The program change form shows publication status as read-only and provides access to case fields.
 
 New competitive program details for registered participants add `solution_action_available` and `solution_action_blocked_reason`, using the existing canonical solution context. An existing solution remains accessible even if creation is disabled. Before form setup, `form_not_configured` disables creation and supplies a clear explanation. Form setup later enables the existing flow without another rollout command. Existing programs’ operator rollback remains effective.
 

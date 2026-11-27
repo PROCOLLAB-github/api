@@ -33,45 +33,36 @@ def _participant_profiles(program_id):
     Руководитель считается участником команды и без записи Collaborator.
     Поле project регистрационной анкеты не заменяет фактические связи команды.
     """
-    from partner_programs.solution_participants import membership_expressions
+    from partner_programs.solution_participants import (
+        matches_membership,
+        membership_user_ids,
+    )
 
-    leader_exists = Exists(
-        PartnerProgramProject.objects.filter(
-            partner_program_id=program_id,
-            project__leader_id=OuterRef("user_id"),
-        )
-    )
-    submitted_leader_exists = Exists(
-        PartnerProgramProject.objects.filter(
-            partner_program_id=program_id,
-            project__leader_id=OuterRef("user_id"),
-            submitted=True,
-        )
-    )
-    collaborator_exists = Exists(
-        Collaborator.objects.filter(
-            user_id=OuterRef("user_id"),
-            project__program_links__partner_program_id=program_id,
-        )
-    )
+    links = PartnerProgramProject.objects.filter(partner_program_id=program_id).order_by()
+    collaborators = Collaborator.objects.filter(
+        project__program_links__partner_program_id=program_id,
+    ).order_by()
     legacy = dict(
-        is_project_leader=leader_exists,
-        is_submitted_project_leader=submitted_leader_exists,
-        is_project_collaborator=collaborator_exists,
+        is_project_leader=links.values("project__leader_id"),
+        is_submitted_project_leader=links.filter(submitted=True).values(
+            "project__leader_id"
+        ),
+        is_project_collaborator=collaborators.values("user_id"),
     )
-    solutions = membership_expressions(program_id)
+    solutions = membership_user_ids(program_id)
     return PartnerProgramUserProfile.objects.filter(
         partner_program_id=program_id
     ).annotate(
         **{
             key: Case(
                 When(
-                    partner_program__solution_storage_mode="solution", then=solutions[key]
+                    partner_program__solution_storage_mode="solution",
+                    then=matches_membership(solutions[key]),
                 ),
-                default=value,
+                default=matches_membership(users),
                 output_field=BooleanField(),
             )
-            for key, value in legacy.items()
+            for key, users in legacy.items()
         }
     )
 

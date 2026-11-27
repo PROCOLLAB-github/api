@@ -7,6 +7,7 @@ import io
 from datetime import timedelta
 from unittest.mock import patch
 
+from django.contrib.auth.hashers import make_password
 from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
@@ -174,6 +175,24 @@ class NativeRegistrationTests(TestCase):
         self.assertEqual(self.participant.first_name, "Анна")
         self.assertFalse(PartnerProgramUserProfile.objects.exists())
 
+    def test_signup_rechecks_deadline_after_password_is_prepared(self):
+        def hash_after_registration_closed(password):
+            PartnerProgram.objects.filter(pk=self.program.pk).update(
+                datetime_registration_ends=timezone.now() - timedelta(seconds=1)
+            )
+            return make_password(password)
+
+        with patch(
+            "partner_programs.services.native_registration.make_password",
+            side_effect=hash_after_registration_closed,
+        ):
+            response = self.post("/registration/signup/", self.signup())
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.data["code"], "registration_closed")
+        self.assertFalse(CustomUser.objects.filter(email=self.signup()["email"]).exists())
+        self.assertFalse(PendingProgramRegistration.objects.exists())
+
     def test_signup_pending_confirm_single_use(self):
         with self.captureOnCommitCallbacks(execute=True):
             response = self.post("/registration/signup/", self.signup())
@@ -196,12 +215,50 @@ class NativeRegistrationTests(TestCase):
         profile = PartnerProgramUserProfile.objects.get()
         self.assertEqual(profile.partner_program_data, self.data()["answers"])
         self.assertEqual(profile.registration_schema, self.schema)
-        self.assertEqual(
-            self.post(
-                "/registration/confirm/", {"token": confirmation_token(pending)}
-            ).status_code,
-            409,
+        repeat = self.post(
+            "/registration/confirm/", {"token": confirmation_token(pending)}
         )
+        self.assertEqual(repeat.status_code, 409)
+        self.assertEqual(repeat.data["code"], "confirmation_used")
+        self.assertNotIn("access", repeat.data)
+        self.assertEqual(PartnerProgramUserProfile.objects.count(), 1)
+
+    def test_link_open_only_confirms_with_matching_signup_browser_proof(self):
+        signup = self.post("/registration/signup/", self.signup())
+        other_signup = self.post(
+            "/registration/signup/", {**self.signup(), "email": "other@example.test"}
+        )
+        self.assertEqual(signup.status_code, 201)
+        self.assertEqual(other_signup.status_code, 201)
+        pending = PendingProgramRegistration.objects.get(user__email=self.signup()["email"])
+        link = {"token": confirmation_token(pending), "link_opened": True}
+
+        for extra in (
+            {},
+            {"browser_proof": signup.data["receipt"]},
+            {"browser_proof": other_signup.data["browser_proof"]},
+        ):
+            result = self.post("/registration/confirm/", {**link, **extra})
+            self.assertEqual(result.data, {"confirmation_required": True})
+        self.client.force_authenticate(self.participant)
+        result = self.post(
+            "/registration/confirm/", {**link, "browser_proof": signup.data["browser_proof"]}
+        )
+        self.assertEqual(result.data, {"confirmation_required": True})
+        self.client.force_authenticate(None)
+
+        pending.refresh_from_db()
+        self.assertIsNone(pending.confirmed_at)
+        self.assertFalse(pending.user.is_active)
+        self.assertFalse(PartnerProgramUserProfile.objects.exists())
+        result = self.post(
+            "/registration/confirm/", {**link, "browser_proof": signup.data["browser_proof"]}
+        )
+        self.assertTrue(result.data["enrolled"])
+        self.assertIn("refresh", result.data)
+        profile = PartnerProgramUserProfile.objects.get()
+        self.assertEqual(profile.user_id, pending.user_id)
+        self.assertEqual(profile.partner_program_data, self.data()["answers"])
 
     def test_dob_policy_password_are_required(self):
         for key, value in (
@@ -276,9 +333,9 @@ class NativeRegistrationTests(TestCase):
             ).status_code,
             200,
         )
-        self.assertEqual(
-            self.post("/registration/confirm/", {"token": old}).status_code, 409
-        )
+        replaced = self.post("/registration/confirm/", {"token": old, "link_opened": True})
+        self.assertEqual(replaced.status_code, 409)
+        self.assertEqual(replaced.data["code"], "confirmation_replaced")
         self.assertEqual(
             self.post("/registration/resend/", {"token": "bogus"}).status_code, 400
         )
@@ -286,12 +343,26 @@ class NativeRegistrationTests(TestCase):
     def test_expired_confirmation_cannot_issue_tokens(self):
         self.post("/registration/signup/", self.signup())
         pending = PendingProgramRegistration.objects.get()
-        with patch("django.core.signing.time.time", return_value=1):
+        issued_at = (timezone.now() - timedelta(days=2)).timestamp()
+        with patch("django.core.signing.time.time", return_value=issued_at):
             token = confirmation_token(pending)
-        self.assertEqual(
-            self.post("/registration/confirm/", {"token": token}).status_code, 409
-        )
+        opened = self.post("/registration/confirm/", {"token": token, "link_opened": True})
+        self.assertEqual(opened.status_code, 409)
+        self.assertEqual(opened.data["code"], "confirmation_expired")
+        self.assertNotIn("access", opened.data)
         self.assertFalse(PartnerProgramUserProfile.objects.exists())
+
+        self.post("/registration/confirm/", {"token": confirmation_token(pending)})
+        repeated = self.post("/registration/confirm/", {"token": token, "link_opened": True})
+        self.assertEqual(repeated.status_code, 409)
+        self.assertEqual(repeated.data["code"], "confirmation_used")
+        self.assertNotIn("refresh", repeated.data)
+
+        with patch("django.core.signing.time.time", return_value=1):
+            very_old_token = confirmation_token(pending)
+        stale = self.post("/registration/confirm/", {"token": very_old_token, "link_opened": True})
+        self.assertEqual(stale.status_code, 409)
+        self.assertEqual(stale.data["code"], "confirmation_invalid")
 
     def test_archive_retains_old_answers_and_export(self):
         self.client.force_authenticate(self.participant)
@@ -478,7 +549,17 @@ class NativeRegistrationTests(TestCase):
         self.assertEqual(self.post("/register_new/", self.signup()).status_code, 400)
 
     def test_new_required_fields_before_confirmation_require_review(self):
-        self.post("/registration/signup/", self.signup())
+        retired_field = {**self.field, "id": "f" + "c" * 32, "label": "Факультет"}
+        self.config.published = {
+            **self.schema,
+            "fields": [self.field, retired_field],
+        }
+        self.config.save()
+        original_answers = {
+            **self.data()["answers"],
+            retired_field["id"]: "Второй вуз",
+        }
+        self.post("/registration/signup/", {**self.signup(), "answers": original_answers})
         pending = PendingProgramRegistration.objects.get()
         newer = copy.deepcopy(self.schema)
         newer["fields"].append({**self.field, "id": "f" + "b" * 32, "label": "Курс"})
@@ -491,8 +572,20 @@ class NativeRegistrationTests(TestCase):
         self.assertEqual(result.status_code, 200, result.data)
         self.assertTrue(result.data["review_required"])
         self.assertFalse(result.data["enrolled"])
-        self.assertEqual(result.data["answers"], self.data()["answers"])
+        self.assertEqual(result.data["answers"], original_answers)
         self.assertFalse(PartnerProgramUserProfile.objects.exists())
+
+        self.assertNotIn("resume", self.client.get(self.root + "/registration/").data)
+        self.client.force_authenticate(self.participant)
+        self.assertNotIn("resume", self.client.get(self.root + "/registration/").data)
+        pending.refresh_from_db()
+        self.client.force_authenticate(pending.user)
+        form = self.client.get(self.root + "/registration/")
+        self.assertEqual(form.data["version"], 2)
+        self.assertEqual(
+            form.data["resume"],
+            {"draft_id": str(pending.pk), "answers": self.data()["answers"]},
+        )
 
     def test_region_filter_uses_program_answer_without_overwriting_profile(self):
         schema = {

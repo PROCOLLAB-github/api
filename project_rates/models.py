@@ -199,6 +199,19 @@ class ProjectExpertAssignment(models.Model):
 
         from project_rates.program_experts import program_experts
 
+        previous = (
+            type(self).objects.select_related("expert").filter(pk=self.pk).first()
+            if self.pk
+            else None
+        )
+        identity_changed = previous is None or (
+            previous.partner_program_id,
+            previous.project_id,
+            previous.expert_id,
+        ) != (self.partner_program_id, self.project_id, self.expert_id)
+        if previous and identity_changed and previous.has_scores():
+            raise ValidationError("Нельзя снять эксперта с сохраненной оценкой.")
+
         errors = {}
 
         expert = None
@@ -217,20 +230,26 @@ class ProjectExpertAssignment(models.Model):
         ):
             errors["project"] = "Проект не привязан к указанной программе."
 
-        if not errors and expert and expert.is_organizer and self.project_id:
-            previous = type(self).objects.filter(pk=self.pk).values_list(
-                "partner_program_id", "project_id", "expert_id"
-            ).first()
-            if previous != (self.partner_program_id, self.project_id, self.expert_id):
-                from project_rates.workspace import validate_organizer_project_assignments
+        if (
+            not errors
+            and expert
+            and expert.is_organizer
+            and self.project_id
+            and identity_changed
+        ):
+            from project_rates.workspace import validate_organizer_project_assignments
 
-                try:
-                    validate_organizer_project_assignments(
-                        self.partner_program, expert, [self.project_id]
-                    )
-                except APIException as exc:
-                    detail = exc.detail.get("detail") if isinstance(exc.detail, dict) else exc.detail[0]
-                    errors["project"] = detail
+            try:
+                validate_organizer_project_assignments(
+                    self.partner_program, expert, [self.project_id]
+                )
+            except APIException as exc:
+                detail = (
+                    exc.detail.get("detail")
+                    if isinstance(exc.detail, dict)
+                    else exc.detail[0]
+                )
+                errors["project"] = detail
 
         if self.partner_program_id and self.project_id:
             max_rates = self.partner_program.max_project_rates

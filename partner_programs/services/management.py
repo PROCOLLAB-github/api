@@ -17,6 +17,7 @@ from partner_programs.permissions import can_manage_program
 from partner_programs.serializers.management import BASIC_FIELDS, DATE_FIELDS
 from partner_programs.services.analytics import _solution_rows
 from partner_programs.services.case_analytics import project_case_links
+from partner_programs.services.registration_answers import registration_answer_rows
 from project_rates.models import Criteria, ProjectScore
 from project_rates.program_experts import can_evaluate_program
 from project_rates.services import get_projects_for_rate_queryset
@@ -150,11 +151,11 @@ def participant_data(profile):
         "registered_at": profile.datetime_created,
         "last_activity": profile.user.last_activity,
         "registration_answers": [
-            {
-                "label": field["label"],
-                "value": profile.partner_program_data.get(field["id"]),
-            }
-            for field in profile.registration_schema.get("fields", [])
+            {"label": row["label"], "value": row["value"]}
+            for row in registration_answer_rows(
+                profile.registration_schema, profile.partner_program_data
+            )
+            if row["label"] is not None
         ],
     }
 

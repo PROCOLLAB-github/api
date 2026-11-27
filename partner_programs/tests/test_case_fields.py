@@ -131,7 +131,7 @@ class ProgramCaseHistoryTests(TestCase):
         with self.assertRaises(ValidationError):
             self.field.save()
 
-    def test_generic_option_edit_retains_existing_behavior(self):
+    def test_generic_option_edit_preserves_used_choice(self):
         field = create_program_field(
             self.program, name="track", field_type="select", options=["A"]
         )
@@ -139,7 +139,11 @@ class ProgramCaseHistoryTests(TestCase):
             program_project=self.link, field=field, value_text="A"
         )
         field.options = "B"
-        field.full_clean()
+        with self.assertRaises(ValidationError):
+            field.full_clean()
+        with self.assertRaises(ValidationError):
+            field.save()
+        field.options = "A|B"
         field.save()
 
     def test_direct_case_value_save_validates_choice_and_program(self):

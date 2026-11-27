@@ -344,12 +344,14 @@ class ProjectDetailSerializer(TeamPolicySerializerMixin, serializers.ModelSerial
 
     def get_program_copies(self, project):
         request = self.context.get("request")
-        if getattr(getattr(request, "user", None), "pk", None) != project.leader_id:
+        user = getattr(request, "user", None)
+        if getattr(user, "pk", None) != project.leader_id:
             return []
         from partner_programs.permissions import active_programs
+        from projects.permissions import can_open_program_copy
 
         copies = (
-            project.program_copies.select_related("partner_program")
+            project.program_copies.select_related("project", "partner_program")
             .filter(partner_program__in=active_programs(PartnerProgram.objects.all()))
             .order_by("pk")
         )
@@ -362,6 +364,9 @@ class ProjectDetailSerializer(TeamPolicySerializerMixin, serializers.ModelSerial
                 "submitted": link.submitted,
             }
             for link in copies
+            if can_open_program_copy(
+                user, link.project, program_id=link.partner_program_id
+            )
         ]
 
     @classmethod
@@ -576,22 +581,20 @@ class ProjectDuplicateRequestSerializer(serializers.Serializer):
             )
 
         try:
-            partner_program = PartnerProgram.objects.get(pk=partner_program_id)
+            PartnerProgram.objects.get(pk=partner_program_id)
         except PartnerProgram.DoesNotExist:
             raise serializers.ValidationError(
                 "Партнерская программа с указанным ID не найдена."
             )
 
-        exists = PartnerProgramProject.objects.filter(
-            project__name=project.name, partner_program=partner_program
-        ).exists()
-
-        if exists:
-            raise serializers.ValidationError(
-                f"Проект с именем '{project.name}' уже привязан к партнерской программе '{partner_program.name}'."
-            )
-
         return data
+
+
+class ProjectDuplicateResponseSerializer(serializers.Serializer):
+    new_project_id = serializers.IntegerField()
+    program_link_id = serializers.IntegerField()
+    partner_program = serializers.CharField()
+    can_edit = serializers.BooleanField()
 
 
 class ProjectCompanyUpsertSerializer(serializers.Serializer):
