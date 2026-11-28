@@ -1,0 +1,11 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+  <p><a href="{{ back_url }}">К переписке</a></p>
+  {% if muted_until %}<p>Уведомления без звука до {{ muted_until|date:"d.m.Y H:i" }}.</p>{% endif %}
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="button default">Сохранить</button>
+  </form>
+{% endblock %}

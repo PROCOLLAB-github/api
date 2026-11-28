@@ -1,0 +1,14 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+  <p><a href="{{ back_url }}">К переписке</a></p>
+  {% if current %}
+    <p>Сохраненная версия</p>
+    <p>{{ current.text|linebreaksbr }}</p>
+  {% endif %}
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="button default">Сохранить черновик</button>
+  </form>
+{% endblock %}

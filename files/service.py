@@ -1,5 +1,6 @@
 import time
 from abc import ABC, abstractmethod
+from urllib.parse import unquote, urlsplit
 
 import requests
 from django.conf import settings
@@ -9,12 +10,36 @@ from requests import Response
 
 from files.constants import SUPPORTED_IMAGES_TYPES
 from files.content import detect_content_type
-from files.exceptions import SelectelUploadError
+from files.exceptions import SelectelDeleteError, SelectelUploadError
 from files.helpers import convert_image_to_webp
+from files.models import UserFile
 from files.typings import FileInfo
-from procollab.settings import SELECTEL_SWIFT_URL
 
 User = get_user_model()
+
+
+def is_storage_url(link):
+    try:
+        base = urlsplit(settings.SELECTEL_SWIFT_URL)
+        target = urlsplit(link)
+        path = unquote(target.path)
+        prefix = unquote(base.path).rstrip("/") + "/"
+        return (
+            target.scheme == base.scheme == "https"
+            and target.netloc.lower() == base.netloc.lower()
+            and not target.username
+            and not target.password
+            and not target.query
+            and not target.fragment
+            and path.startswith(prefix)
+            and len(path) > len(prefix)
+            and "\\" not in path
+            and "%" not in path
+            and not any(ord(char) < 32 or ord(char) == 127 for char in path)
+            and all(segment not in ("", ".", "..") for segment in path[1:].split("/"))
+        )
+    except ValueError:
+        return False
 
 
 class File:
@@ -68,8 +93,21 @@ class Storage(ABC):
 
 class SelectelSwiftStorage(Storage):
     def delete(self, url: str) -> Response:
-        token = self._get_auth_token()
-        return requests.delete(url, headers={"X-Auth-Token": token})
+        error_message = "Не удалось удалить файл из хранилища."
+        if not is_storage_url(url):
+            raise SelectelDeleteError(error_message)
+        try:
+            response = requests.delete(
+                url,
+                headers={"X-Auth-Token": self._get_auth_token()},
+                timeout=(5, 15),
+                allow_redirects=False,
+            )
+        except (requests.RequestException, SelectelUploadError, KeyError) as error:
+            raise SelectelDeleteError(error_message) from error
+        if not (200 <= response.status_code < 300 or response.status_code == 404):
+            raise SelectelDeleteError(error_message)
+        return response
 
     def upload(self, file: File, user: User) -> FileInfo:
         url = self._upload(file, user)
@@ -86,14 +124,18 @@ class SelectelSwiftStorage(Storage):
         token = self._get_auth_token()
         url = self._generate_url(file, user)
 
-        requests.put(
+        response = requests.put(
             url,
             headers={
                 "X-Auth-Token": token,
                 "Content-Type": file.content_type,
             },
             data=file.buffer,
+            timeout=(5, 60),
+            allow_redirects=False,
         )
+        if not 200 <= response.status_code < 300:
+            raise SelectelUploadError("Не удалось загрузить файл в хранилище.")
 
         return url
 
@@ -104,7 +146,7 @@ class SelectelSwiftStorage(Storage):
             url: str looks like /hashedEmail/hashedFilename_hashedTime.extension
         """
         return (
-            f"{SELECTEL_SWIFT_URL}"
+            f"{settings.SELECTEL_SWIFT_URL.rstrip('/')}/"
             f"{abs(hash(user.email))}"
             f"/{abs(hash(file.name))}"
             f"_{abs(hash(time.time()))}"
@@ -130,7 +172,12 @@ class SelectelSwiftStorage(Storage):
                 }
             }
         }
-        response = requests.post(settings.SELECTEL_AUTH_TOKEN_URL, json=data)
+        response = requests.post(
+            settings.SELECTEL_AUTH_TOKEN_URL,
+            json=data,
+            timeout=(5, 15),
+            allow_redirects=False,
+        )
         if response.status_code not in [200, 201]:
             raise SelectelUploadError(
                 "Couldn't generate a token for Selectel Swift API (selcdn)"
@@ -156,3 +203,20 @@ class CDN:
         return self.storage.upload(
             File(file, quality, preserve_original=preserve_original), user
         )
+
+
+def create_user_upload(cdn, file, user, *, preserve_original=False):
+    info = (
+        cdn.upload(file, user, preserve_original=True)
+        if preserve_original
+        else cdn.upload(file, user)
+    )
+    return UserFile.objects.create(
+        user=user,
+        link=info.url,
+        name=info.name,
+        size=info.size,
+        extension=info.extension,
+        mime_type=info.mime_type,
+        detected_mime_type=info.detected_mime_type,
+    )

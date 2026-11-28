@@ -1,9 +1,10 @@
 from abc import abstractmethod
+from hashlib import sha256
 from typing import List
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, router, transaction
 
 from files.models import UserFile
 from projects.models import Project
@@ -20,9 +21,31 @@ class BaseChat(models.Model):
     """
 
     created_at = models.DateTimeField(auto_now_add=True)
+    message_revision = models.PositiveBigIntegerField(
+        default=0, db_default=0, editable=False
+    )
 
-    def get_last_message(self):
-        return self.messages.last()
+    def save(
+        self, force_insert=False, force_update=False, using=None, update_fields=None
+    ):
+        if not self._state.adding and update_fields is None:
+            # A chat settings save must not overwrite a newer message cursor.
+            update_fields = {
+                field.attname
+                for field in self._meta.concrete_fields
+                if not field.primary_key
+                and field.name != "message_revision"
+                and field.attname not in self.get_deferred_fields()
+            }
+        return super().save(
+            force_insert=force_insert,
+            force_update=force_update,
+            using=using,
+            update_fields=update_fields,
+        )
+
+    def visible_messages(self):
+        return self.messages.filter(is_deleted=False).order_by("-created_at", "-pk")
 
     def get_users_str(self):
         """Returns string of users separated by a comma, who are in chat
@@ -99,7 +122,7 @@ class ProjectChat(BaseChat):
         return self.project.image_address
 
     def get_last_messages(self, message_count) -> List["BaseMessage"]:
-        return self.messages.order_by("-created_at")[:message_count]
+        return self.visible_messages()[:message_count]
 
     def __str__(self):
         return f"ProjectChat<{self.project.id}> - {self.project.name}"
@@ -137,6 +160,7 @@ class DirectChat(BaseChat):
         return other_user.avatar
 
     @classmethod
+    @transaction.atomic
     def get_chat(cls, user1, user2) -> "DirectChat":
         """
         Returns chat between two users.
@@ -150,24 +174,16 @@ class DirectChat(BaseChat):
         """
 
         pk = cls.get_chat_id_from_users(user1, user2)
-        try:
-            return cls.objects.get(pk=pk)
-        except cls.DoesNotExist:
-            chat = cls.objects.create(pk=pk)
+        chat, created = cls.objects.get_or_create(pk=pk)
+        if created:
             chat.users.set([user1, user2])
-            return chat
+        return chat
 
     def get_last_messages(self, message_count):
-        return self.messages.order_by("-created_at")[:message_count]
+        return self.visible_messages()[:message_count]
 
     def get_other_user(self, user) -> User:
         return self.users.exclude(pk=user.pk).first()
-
-    @classmethod
-    def create_from_two_users(cls, user1, user2):
-        chat = cls.objects.create(pk=cls.get_chat_id_from_users(user1, user2))
-        chat.users.set([user1, user2])
-        return chat
 
     @classmethod
     def get_chat_id_from_users(cls, user1, user2):
@@ -181,6 +197,39 @@ class DirectChat(BaseChat):
     class Meta:
         verbose_name = "Личный чат"
         verbose_name_plural = "Личные чаты"
+
+
+class DirectChatPrivacy(models.Model):
+    class Incoming(models.TextChoices):
+        EVERYONE = "everyone", "Все пользователи"
+        TEAM_MEMBERS = "team_members", "Участники моих команд"
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, primary_key=True)
+    incoming = models.CharField(
+        "Кто может начать диалог",
+        max_length=16,
+        choices=Incoming.choices,
+        default=Incoming.EVERYONE,
+    )
+
+
+class DirectChatBlock(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="+")
+    blocked_user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="+", verbose_name="Пользователь"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "blocked_user"], name="unique_direct_chat_block"
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(user=models.F("blocked_user")),
+                name="direct_chat_block_distinct_users",
+            ),
+        ]
 
 
 class BaseMessage(models.Model):
@@ -198,7 +247,42 @@ class BaseMessage(models.Model):
     is_read = models.BooleanField(default=False)
     is_deleted = models.BooleanField(default=False)
     is_edited = models.BooleanField(default=False)
+    client_message_id = models.UUIDField(null=True, blank=True, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
+    sync_revision = models.PositiveBigIntegerField(null=True, editable=False)
+
+    def save(
+        self, force_insert=False, force_update=False, using=None, update_fields=None
+    ):
+        if update_fields is not None and not {
+            "text",
+            "is_deleted",
+            "is_edited",
+            "reply_to",
+            "reply_to_id",
+        }.intersection(update_fields):
+            return super().save(
+                force_insert=force_insert,
+                force_update=force_update,
+                using=using,
+                update_fields=update_fields,
+            )
+        chat_model = self._meta.get_field("chat").related_model
+        using = using or router.db_for_write(type(self), instance=self)
+        with transaction.atomic(using=using):
+            chats = chat_model.objects.using(using)
+            # Serialize the revision with the message write in the same transaction.
+            chat = chats.select_for_update().get(pk=self.chat_id)
+            self.sync_revision = chat.message_revision + 1
+            chats.filter(pk=chat.pk).update(message_revision=self.sync_revision)
+            if update_fields is not None:
+                update_fields = {*update_fields, "sync_revision"}
+            return super().save(
+                force_insert=force_insert,
+                force_update=force_update,
+                using=using,
+                update_fields=update_fields,
+            )
 
     def __str__(self):
         return f"Message<{self.pk}>"
@@ -234,6 +318,7 @@ class ProjectChatMessage(BaseMessage):
         blank=True,
         related_name="project_replies",
     )
+    mentioned_user_ids = models.JSONField(default=list, blank=True, editable=False)
 
     def clean(self):
         # check that replied message is in the same chat
@@ -246,6 +331,32 @@ class ProjectChatMessage(BaseMessage):
     class Meta:
         verbose_name = "Сообщение в чате проекта"
         verbose_name_plural = "Сообщения в чатах проектов"
+        indexes = [
+            models.Index(fields=["chat", "sync_revision"], name="project_chat_sync_idx")
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["chat", "author", "client_message_id"],
+                condition=models.Q(client_message_id__isnull=False),
+                name="unique_project_chat_client_message",
+            )
+        ]
+
+
+class ProjectChatMessageRead(models.Model):
+    message = models.ForeignKey(
+        ProjectChatMessage, on_delete=models.CASCADE, related_name="read_receipts"
+    )
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+
+    class Meta:
+        verbose_name = "Прочтение сообщения в чате проекта"
+        verbose_name_plural = "Прочтения сообщений в чатах проектов"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["message", "user"], name="unique_project_chat_message_reader"
+            )
+        ]
 
 
 class DirectChatMessage(BaseMessage):
@@ -284,6 +395,182 @@ class DirectChatMessage(BaseMessage):
     class Meta:
         verbose_name = "Сообщение в личном чате"
         verbose_name_plural = "Сообщения в личных чатах"
+        indexes = [
+            models.Index(fields=["chat", "sync_revision"], name="direct_chat_sync_idx")
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["chat", "author", "client_message_id"],
+                condition=models.Q(client_message_id__isnull=False),
+                name="unique_direct_chat_client_message",
+            )
+        ]
+
+
+class DirectChatSpamReport(models.Model):
+    chat = models.ForeignKey(DirectChat, on_delete=models.CASCADE, verbose_name="Диалог")
+    reporter = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="+", verbose_name="Кто пожаловался"
+    )
+    reported_user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="+", verbose_name="Автор сообщения"
+    )
+    message_id = models.PositiveBigIntegerField("Номер сообщения")
+    message_text = models.TextField("Текст сообщения", blank=True)
+    created_at = models.DateTimeField("Дата жалобы", auto_now_add=True)
+    reviewed_at = models.DateTimeField("Дата рассмотрения", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Жалоба на спам в личном чате"
+        verbose_name_plural = "Жалобы на спам в личных чатах"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["reporter", "message_id"], name="unique_direct_chat_spam_report"
+            )
+        ]
+
+
+class ProgramChannel(BaseChat):
+    program = models.OneToOneField(
+        "partner_programs.PartnerProgram",
+        on_delete=models.CASCADE,
+        primary_key=True,
+        verbose_name="Программа",
+    )
+
+    def __str__(self):
+        return f"Канал программы №{self.pk}"
+
+    class Meta:
+        verbose_name = "Канал программы"
+        verbose_name_plural = "Каналы программ"
+
+
+class ProgramChannelMessage(BaseMessage):
+    chat = models.ForeignKey(
+        ProgramChannel, on_delete=models.CASCADE, related_name="messages"
+    )
+    author = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, related_name="program_channel_posts"
+    )
+    mentioned_user_ids = models.JSONField(default=list, blank=True, editable=False)
+
+    class Meta:
+        verbose_name = "Публикация канала"
+        verbose_name_plural = "Публикации каналов"
+        indexes = [
+            models.Index(
+                fields=["chat", "sync_revision"], name="program_channel_sync_idx"
+            )
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["chat", "author", "client_message_id"],
+                condition=models.Q(client_message_id__isnull=False),
+                name="unique_program_channel_client_message",
+            )
+        ]
+
+
+class ProgramChannelRead(models.Model):
+    channel = models.ForeignKey(ProgramChannel, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    last_message_id = models.PositiveBigIntegerField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["channel", "user"], name="unique_program_channel_reader"
+            )
+        ]
+
+
+class ChatDraft(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    direct_chat = models.ForeignKey(DirectChat, on_delete=models.CASCADE, null=True)
+    project_chat = models.ForeignKey(ProjectChat, on_delete=models.CASCADE, null=True)
+    program_channel = models.ForeignKey(
+        ProgramChannel, on_delete=models.CASCADE, null=True
+    )
+    text = models.TextField(max_length=8192, blank=True)
+    revision = models.PositiveBigIntegerField(default=0)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(
+                        direct_chat__isnull=False,
+                        project_chat__isnull=True,
+                        program_channel__isnull=True,
+                    )
+                    | models.Q(
+                        direct_chat__isnull=True,
+                        project_chat__isnull=False,
+                        program_channel__isnull=True,
+                    )
+                    | models.Q(
+                        direct_chat__isnull=True,
+                        project_chat__isnull=True,
+                        program_channel__isnull=False,
+                    )
+                ),
+                name="chat_draft_has_one_chat",
+            ),
+            models.UniqueConstraint(
+                fields=["user", "direct_chat"], name="unique_direct_chat_draft_user"
+            ),
+            models.UniqueConstraint(
+                fields=["user", "project_chat"], name="unique_project_chat_draft_user"
+            ),
+            models.UniqueConstraint(
+                fields=["user", "program_channel"],
+                name="unique_program_channel_draft_user",
+            ),
+        ]
+
+
+class ChatNotificationPreference(models.Model):
+    class Mode(models.TextChoices):
+        ALL = "all", "Все сообщения"
+        MENTIONS = "mentions", "Только упоминания"
+        MUTE_8H = "mute_8h", "Без звука на 8 часов"
+        MUTED = "muted", "Отключены до включения"
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    project_chat = models.ForeignKey(ProjectChat, on_delete=models.CASCADE, null=True)
+    program_channel = models.ForeignKey(
+        ProgramChannel, on_delete=models.CASCADE, null=True
+    )
+    mode = models.CharField("Режим уведомлений", max_length=12, choices=Mode.choices)
+    muted_until = models.DateTimeField(null=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(project_chat__isnull=False, program_channel__isnull=True)
+                    | models.Q(project_chat__isnull=True, program_channel__isnull=False)
+                ),
+                name="chat_notification_has_one_chat",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(mode="mute_8h", muted_until__isnull=False)
+                    | (~models.Q(mode="mute_8h") & models.Q(muted_until__isnull=True))
+                ),
+                name="chat_notification_mute_has_expiry",
+            ),
+            models.UniqueConstraint(
+                fields=["user", "project_chat"],
+                name="unique_project_chat_notification_user",
+            ),
+            models.UniqueConstraint(
+                fields=["user", "program_channel"],
+                name="unique_channel_notification_user",
+            ),
+        ]
 
 
 class FileToMessage(models.Model):
@@ -306,6 +593,31 @@ class FileToMessage(models.Model):
         related_name="file_to_message",
         null=True,
     )
+    channel_message = models.ForeignKey(
+        ProgramChannelMessage,
+        on_delete=models.CASCADE,
+        related_name="file_to_message",
+        null=True,
+        blank=True,
+    )
+
+    @property
+    def download_id(self):
+        return sha256(self.file_id.encode()).hexdigest()
+
+    @property
+    def is_linked_to_one_message(self):
+        return (
+            sum(
+                message_id is not None
+                for message_id in (
+                    self.direct_message_id,
+                    self.project_message_id,
+                    self.channel_message_id,
+                )
+            )
+            == 1
+        )
 
     def __str__(self):
         return f"FileToMessage<{self.file}>"

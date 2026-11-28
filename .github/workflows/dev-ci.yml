@@ -13,7 +13,7 @@ on:
         description: "DEV operation"
         type: choice
         default: deploy
-        options: [deploy, verify_solution_rollback, prepare_solution_browser, finalize_solution_browser, verify_program_publication, grant_program_creator_11, dependency_backup, dependency_verify, prepare_pr517_closeout, prepare_expert_rating]
+        options: [deploy, verify_direct_dialog, verify_solution_rollback, prepare_solution_browser, finalize_solution_browser, verify_program_publication, grant_program_creator_11, dependency_backup, dependency_verify, prepare_pr517_closeout, prepare_expert_rating]
       dependency_backup_key:
         description: "Ключ резервной копии для проверки сохранности данных dev"
         type: string
@@ -409,7 +409,7 @@ jobs:
             node scripts/dev_ci_ssh.cjs
   solution-acceptance:
     name: Solution acceptance
-    if: github.ref == 'refs/heads/dev' && github.event_name == 'workflow_dispatch' && inputs.operation != 'deploy' && inputs.operation != '' && inputs.operation != 'dependency_backup' && inputs.operation != 'dependency_verify'
+    if: github.ref == 'refs/heads/dev' && github.event_name == 'workflow_dispatch' && inputs.operation != 'deploy' && inputs.operation != '' && inputs.operation != 'dependency_backup' && inputs.operation != 'dependency_verify' && inputs.operation != 'verify_direct_dialog'
     environment: dev
     runs-on: ubuntu-latest
     timeout-minutes: 12
@@ -475,6 +475,48 @@ jobs:
             timeoutMs: 9 * 60 * 1000
           }).catch(() => { console.error('DEV solution acceptance failed; inspect masked output.'); process.exitCode = 1; });
           NODE
+
+  direct-dialog-acceptance:
+    name: Direct dialog acceptance
+    if: github.ref == 'refs/heads/dev' && github.event_name == 'workflow_dispatch' && inputs.operation == 'verify_direct_dialog'
+    environment: dev
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install pinned acceptance tools
+        run: npm install --prefix "$RUNNER_TEMP/direct-dialog-tools" --ignore-scripts --no-package-lock --no-audit --no-fund ssh2@1.16.0 playwright-core@1.65.1
+      - name: Prepare synthetic DEV participants
+        env: &direct-dialog-ssh
+          NODE_PATH: ${{ runner.temp }}/direct-dialog-tools/node_modules
+          DEV_SERVER_HOST: ${{ secrets.DEV_SERVER_HOST }}
+          DEV_SERVER_USER: ${{ secrets.DEV_SERVER_USER }}
+          DEV_SERVER_PASSWORD: ${{ secrets.DEV_SERVER_PASSWORD }}
+          DEV_SSH_HOST_KEY_SHA256: ${{ vars.DEV_SSH_HOST_KEY_SHA256 }}
+        run: node .github/scripts/direct_dialog_ssh.cjs prepare
+      - name: Verify desktop and mobile Chrome
+        env:
+          NODE_PATH: ${{ runner.temp }}/direct-dialog-tools/node_modules
+        run: node .github/scripts/direct_dialog_browser.mjs "$RUNNER_TEMP/direct-dialog.json" "$RUNNER_TEMP/direct-dialog-screenshots"
+      - name: Verify live API, WebSocket and storage
+        if: success() || failure()
+        run: |
+          test -f "$RUNNER_TEMP/direct-dialog.json"
+          node .github/scripts/direct_dialog_smoke.mjs "$RUNNER_TEMP/direct-dialog.json"
+      - name: Verify saved report and remove synthetic DEV data
+        if: always()
+        env: *direct-dialog-ssh
+        run: node .github/scripts/direct_dialog_ssh.cjs cleanup
+      - uses: actions/upload-artifact@v4
+        if: success() || failure()
+        with:
+          name: direct-dialog-screenshots
+          path: ${{ runner.temp }}/direct-dialog-screenshots/
+          if-no-files-found: ignore
+          retention-days: 7
 
   dependency-preflight:
     if: github.ref == 'refs/heads/dev' && github.event_name == 'workflow_dispatch' && (inputs.operation == 'dependency_backup' || inputs.operation == 'dependency_verify')

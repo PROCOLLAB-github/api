@@ -8,6 +8,9 @@
         <li><a href="{% url 'admin:partner_programs_partnerprogram_certificate_settings' original.pk %}">Заголовок и поворот элементов сертификата</a></li>
         <li><a href="{% url 'admin:partner_programs_partnerprogram_certificate_journal' original.pk %}">Журнал сертификатов</a></li>
         {% if not original.draft %}
+            {% if can_open_program_channel %}
+                <li><a href="{% url 'admin:chats_programchannel_message_search' original.pk %}">Канал программы</a></li>
+            {% endif %}
             <li><a href="{% url 'admin:partner_programs_partnerprogram_unpublish' original.pk %}">Вернуть в черновик</a></li>
         {% endif %}
     {% endif %}

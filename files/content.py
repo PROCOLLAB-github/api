@@ -48,7 +48,7 @@ def detect_content_type(stream):
                 kind = image.format
                 image.verify()
             return Image.MIME.get(kind, "application/octet-stream")
-        except (UnidentifiedImageError, OSError, ValueError):
+        except (UnidentifiedImageError, OSError, SyntaxError, ValueError):
             pass
         if header.startswith(b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"):
             return "application/x-ole-storage"
