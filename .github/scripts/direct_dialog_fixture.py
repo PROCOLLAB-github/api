@@ -84,6 +84,7 @@ else:
             chat__in=chats, message_id__in=selected_ids, reporter__in=accounts
         ).values_list("message_id", flat=True))
         users.filter(pk__in=[user.pk for user in accounts]).update(is_active=False)
+        chats.delete()
         failed = []
         headers = {"X-Auth-Token": SelectelSwiftStorage._get_auth_token()}
         for upload in UserFile.objects.filter(user__in=accounts):
@@ -99,10 +100,8 @@ else:
                 failed.append(response.status_code)
                 continue
             upload.delete()
-        with transaction.atomic():
-            chats.delete()
-            if not failed:
-                users.filter(pk__in=[user.pk for user in accounts]).delete()
+        if not failed:
+            users.filter(pk__in=[user.pk for user in accounts]).delete()
         print(json.dumps({
             "cleaned": 0 if failed else len(accounts),
             "deactivated": len(accounts),
