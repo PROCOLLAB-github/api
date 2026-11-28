@@ -1,3 +1,4 @@
+from io import BytesIO
 from unittest.mock import Mock, patch
 from urllib.parse import urlencode
 
@@ -5,14 +6,31 @@ import requests
 from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
 from django.contrib.admin.models import DELETION, LogEntry
 from django.contrib.admin.utils import quote
-from django.test import TestCase, override_settings
+from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 from rest_framework.test import APIClient
 
+from PIL import Image
+
+from files.content import detect_content_type
 from files.models import UserFile
 from projects.tests.helpers import create_staff_user
 
 STORAGE = "https://storage.example.test/v1/account/media/"
+
+
+class FileContentTypeTests(SimpleTestCase):
+    def test_wrong_png_checksum_has_no_image_preview(self):
+        original = BytesIO()
+        Image.new("RGB", (2, 2)).save(original, format="PNG")
+        damaged = bytearray(original.getvalue())
+        image_data = damaged.index(b"IDAT") + 4
+        damaged[image_data] ^= 1
+        stream = BytesIO(damaged)
+
+        self.assertEqual(detect_content_type(original), "image/png")
+        self.assertEqual(detect_content_type(stream), "application/octet-stream")
+        self.assertEqual(stream.tell(), 0)
 
 
 @override_settings(ALLOWED_HOSTS=["testserver"], SELECTEL_SWIFT_URL=STORAGE)
