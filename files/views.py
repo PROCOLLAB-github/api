@@ -1,4 +1,5 @@
 import requests
+from django.conf import settings
 from django.db import transaction
 from rest_framework import generics
 from rest_framework import permissions, status
@@ -46,12 +47,23 @@ class FileView(generics.GenericAPIView):
                 },
                 status=400,
             )
+        scope = request.query_params.get("scope", "")
+        if scope not in ("", "direct_chat"):
+            return Response({"detail": "Неизвестный тип загрузки."}, status=status.HTTP_400_BAD_REQUEST)
+        cdn = self.cdn
+        if scope == "direct_chat":
+            if not settings.SELECTEL_DIRECT_CHAT_SWIFT_URL:
+                return Response(
+                    {"detail": "Хранилище вложений чата временно недоступно."},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+            cdn = CDN(storage=SelectelSwiftStorage(base_url=settings.SELECTEL_DIRECT_CHAT_SWIFT_URL))
         try:
             upload = create_user_upload(
-                self.cdn,
+                cdn,
                 request.FILES["file"],
                 request.user,
-                preserve_original=original == "true",
+                preserve_original=scope == "direct_chat" or original == "true",
             )
         except (requests.RequestException, SelectelUploadError, KeyError):
             return Response(
