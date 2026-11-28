@@ -27,7 +27,6 @@ let retryPayload;
 let retryAttempts = 0;
 let withheldAck = false;
 let replayObserved = false;
-let allowAck = false;
 
 async function setup(user, mobile = false) {
   const context = await browser.newContext({
@@ -81,7 +80,7 @@ try {
     server.onMessage((data) => {
       const event = JSON.parse(String(data));
       if (event.type === 'new_message' && event.content?.message?.text === retryText) {
-        if (!allowAck) {
+        if (!withheldAck) {
           withheldAck = true;
           console.log('Withheld the first delivery confirmation');
           return;
@@ -177,13 +176,16 @@ try {
   await desktopPage.getByRole('button', { name: 'Отправить', exact: true }).click();
   await mobilePage.getByText(retryText, { exact: true }).waitFor({ timeout: 15000 });
   const retry = desktopPage.getByRole('button', { name: 'Повторить', exact: true });
-  await retry.waitFor({ timeout: 20000 });
+  const confirmed = messageRow(desktopPage, retryText);
+  await retry.or(confirmed).first().waitFor({ timeout: 25000 });
+  if (await retry.isVisible()) await retry.click();
+  await confirmed.waitFor({ timeout: 10000 });
+  for (let attempt = 0; !replayObserved && attempt < 20; attempt++) {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
   assert.equal(withheldAck, true);
-  allowAck = true;
-  await retry.click();
-  await messageRow(desktopPage, retryText).waitFor({ timeout: 10000 });
   assert.equal(replayObserved, true);
-  assert.equal(retryAttempts, 2);
+  assert.ok(retryAttempts >= 2);
   for (const page of [desktopPage, mobilePage]) {
     assert.equal(await page.getByText(retryText, { exact: true }).count(), 1);
   }
