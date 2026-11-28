@@ -95,6 +95,16 @@ try {
   }
   const desktopPage = await desktop.newPage();
   const mobilePage = await mobile.newPage();
+  for (const [screen, page] of [['desktop', desktopPage], ['mobile', mobilePage]]) {
+    page.on('response', async (response) => {
+      if (new URL(response.url()).pathname !== '/files/' || response.request().method() !== 'POST') return;
+      const body = await response.json().catch(() => ({}));
+      console.log(`${screen} attachment upload: status=${response.status()} url=${typeof body?.url === 'string'}`);
+    });
+    page.on('requestfailed', (request) => {
+      if (new URL(request.url()).pathname === '/files/') console.log(`${screen} attachment transport failed`);
+    });
+  }
   await Promise.all([desktopPage.goto(url), mobilePage.goto(url)]);
   const composer = desktopPage.getByRole('textbox', { name: 'Сообщение', exact: true });
   await composer.waitFor({ timeout: 25000 });
