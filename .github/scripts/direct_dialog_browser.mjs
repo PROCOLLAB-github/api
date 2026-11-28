@@ -17,6 +17,7 @@ const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAwAAAAICAIAAABChommAAAAFElEQVR
 const sample = randomUUID().slice(0, 8);
 const message = `Фотографии на проверку ${sample}`;
 const singleText = `Одна фотография ${sample}`;
+const laterText = `Более новое сообщение ${sample}`;
 const retryText = `Сообщение после повтора ${sample}`;
 const actionsLabel = 'Действия с сообщением';
 const reportLabel = 'Пожаловаться на спам';
@@ -24,6 +25,7 @@ const reportLabel = 'Пожаловаться на спам';
 const browser = await chromium.launch({ channel: 'chrome', headless: true, executablePath: process.env.DIRECT_DIALOG_CHROME });
 let retryPayload;
 let retryAttempts = 0;
+let withheldAck = false;
 let replayObserved = false;
 let allowAck = false;
 
@@ -46,7 +48,7 @@ async function setup(user, mobile = false) {
   return context;
 }
 
-function localSocket(client, user) {
+function connectSocket(client, user) {
   const connection = new WebSocket(new URL('/ws/chat/', origin.replace(/^http/, 'ws')), ['Bearer', user.access]);
   const queue = [];
   connection.addEventListener('open', () => queue.splice(0).forEach((message) => connection.send(message)));
@@ -64,7 +66,7 @@ function localSocket(client, user) {
 try {
   const desktop = await setup(author);
   await desktop.routeWebSocket('**/ws/chat/', (client) => {
-    const server = localUi ? localSocket(client, author) : client.connectToServer();
+    const server = connectSocket(client, author);
     client.onMessage((data) => {
       const event = JSON.parse(String(data));
       if (event.type === 'new_message' && event.content?.text === retryText) {
@@ -79,7 +81,11 @@ try {
     server.onMessage((data) => {
       const event = JSON.parse(String(data));
       if (event.type === 'new_message' && event.content?.message?.text === retryText) {
-        if (!allowAck) return;
+        if (!allowAck) {
+          withheldAck = true;
+          console.log('Withheld the first delivery confirmation');
+          return;
+        }
         replayObserved = event.content.is_replay === true;
       }
       client.send(data);
@@ -88,7 +94,7 @@ try {
   const mobile = await setup(recipient, true);
   if (localUi) {
     await mobile.routeWebSocket('**/ws/chat/', (client) => {
-      const server = localSocket(client, recipient);
+      const server = connectSocket(client, recipient);
       client.onMessage((data) => server.send(data));
       server.onMessage((data) => client.send(data));
     });
@@ -143,21 +149,10 @@ try {
   });
   await singlePhoto.scrollIntoViewIfNeeded();
   await singlePhoto.locator('img').waitFor();
-  await composer.fill(retryText);
-  await desktopPage.locator('input[type=file]').setInputFiles({ name: 'retry.png', mimeType: 'image/png', buffer: png });
+  console.log('Chrome desktop/mobile: sent album and one photo, downloaded original bytes.');
+  await composer.fill(laterText);
   await desktopPage.getByRole('button', { name: 'Отправить', exact: true }).click();
-  await mobilePage.getByText(retryText, { exact: true }).waitFor({ timeout: 15000 });
-  const retry = desktopPage.getByRole('button', { name: 'Повторить', exact: true });
-  await retry.waitFor({ timeout: 20000 });
-  allowAck = true;
-  await retry.click();
-  const confirmed = desktopPage.locator('[id^=direct-message-]').getByText(retryText, { exact: true });
-  await confirmed.waitFor({ timeout: 10000 });
-  assert.equal(replayObserved, true);
-  assert.equal(retryAttempts, 2);
-  for (const page of [desktopPage, mobilePage]) {
-    assert.equal(await page.getByText(retryText, { exact: true }).count(), 1);
-  }
+  await messageRow(mobilePage, laterText).waitFor();
 
   const selected = messageRow(mobilePage, message);
   const id = (await selected.getAttribute('id')).replace('direct-message-', '');
@@ -165,7 +160,7 @@ try {
   await mobilePage.getByText(reportLabel, { exact: true }).click();
   const confirmation = mobilePage.getByRole('dialog');
   await confirmation.getByText(message, { exact: true }).waitFor();
-  assert.equal(await confirmation.getByText(retryText, { exact: true }).count(), 0);
+  assert.equal(await confirmation.getByText(laterText, { exact: true }).count(), 0);
   await desktopPage.screenshot({ path: join(screenshots, 'desktop.png') });
   await mobilePage.screenshot({ path: join(screenshots, 'mobile-report.png') });
   const response = mobilePage.waitForResponse((reply) => reply.url().endsWith('/report-spam/') && reply.request().method() === 'POST');
@@ -174,7 +169,25 @@ try {
   assert.equal(report.status(), 204);
   assert.equal(String(report.request().postDataJSON().message_id), id);
   await writeFile(`${fixturePath}.browser-selected`, id, { mode: 0o600 });
-  console.log('Chrome desktop/mobile: two images, download, lost ACK and deduplicated retry, exact selected report.');
+  console.log('Chrome mobile: report submitted for the selected older incoming message.');
+
+  await desktopPage.bringToFront();
+  await composer.fill(retryText);
+  await desktopPage.locator('input[type=file]').setInputFiles({ name: 'retry.png', mimeType: 'image/png', buffer: png });
+  await desktopPage.getByRole('button', { name: 'Отправить', exact: true }).click();
+  await mobilePage.getByText(retryText, { exact: true }).waitFor({ timeout: 15000 });
+  const retry = desktopPage.getByRole('button', { name: 'Повторить', exact: true });
+  await retry.waitFor({ timeout: 20000 });
+  assert.equal(withheldAck, true);
+  allowAck = true;
+  await retry.click();
+  await messageRow(desktopPage, retryText).waitFor({ timeout: 10000 });
+  assert.equal(replayObserved, true);
+  assert.equal(retryAttempts, 2);
+  for (const page of [desktopPage, mobilePage]) {
+    assert.equal(await page.getByText(retryText, { exact: true }).count(), 1);
+  }
+  console.log('Chrome desktop/mobile: lost ACK and deduplicated retry of an attachment.');
 } finally {
   await browser.close();
 }
