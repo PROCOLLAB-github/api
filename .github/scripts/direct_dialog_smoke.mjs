@@ -20,7 +20,7 @@ async function request(user, path, expected, options = {}) {
 async function upload(name) {
   const body = new FormData();
   body.set('file', new Blob([png], { type: 'image/png' }), name);
-  const response = await request(sender, '/files/?preserve_original=true', 201, { method: 'POST', body });
+  const response = await request(sender, '/files/?scope=direct_chat', 201, { method: 'POST', body });
   return (await response.json()).url;
 }
 

@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from django.conf import settings
 from django.db import transaction
 
 from chats.channel_events import notify_channel_change
@@ -26,6 +27,7 @@ from chats.serializers import (
     ProjectChatMessageListSerializer,
 )
 from files.models import UserFile
+from files.service import is_direct_chat_storage_url
 
 
 def _normalize_client_message_id(value):
@@ -146,6 +148,12 @@ def _create_message(
     if message_model is not ProgramChannelMessage:
         reply["reply_to"] = _get_reply(message_model, chat_id, reply_to_id)
     files = _get_files(file_urls, author)
+    if (
+        message_model is DirectChatMessage
+        and settings.SELECTEL_DIRECT_CHAT_SWIFT_URL
+        and any(not is_direct_chat_storage_url(file.link) for file in files)
+    ):
+        raise MessageValidationException("Загрузите вложения личного чата заново.")
     if mention_chat is not None:
         reply["mentioned_user_ids"] = validate_mentions(
             mention_chat, author, [] if mentioned_user_ids is None else mentioned_user_ids

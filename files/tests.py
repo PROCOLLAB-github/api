@@ -6,17 +6,21 @@ import requests
 from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
 from django.contrib.admin.models import DELETION, LogEntry
 from django.contrib.admin.utils import quote
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 from rest_framework.test import APIClient
 
 from PIL import Image
 
+from chats.exceptions import MessageValidationException
+from chats.services.messages import create_direct_message
 from files.content import detect_content_type
 from files.models import UserFile
 from projects.tests.helpers import create_staff_user
 
 STORAGE = "https://storage.example.test/v1/account/media/"
+DIRECT_STORAGE = "https://storage.example.test/v1/account/private-direct/"
 
 
 class FileContentTypeTests(SimpleTestCase):
@@ -31,6 +35,50 @@ class FileContentTypeTests(SimpleTestCase):
         self.assertEqual(detect_content_type(original), "image/png")
         self.assertEqual(detect_content_type(stream), "application/octet-stream")
         self.assertEqual(stream.tell(), 0)
+
+
+@override_settings(ALLOWED_HOSTS=["testserver"], SELECTEL_SWIFT_URL=STORAGE)
+class DirectAttachmentUploadTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = create_staff_user(prefix="direct-upload")
+
+    def upload(self, suffix):
+        api = APIClient()
+        api.force_authenticate(self.user)
+        return api.post(
+            "/files/" + suffix, {"file": SimpleUploadedFile("notes.txt", b"contents")}, secure=True
+        )
+
+    @override_settings(SELECTEL_DIRECT_CHAT_SWIFT_URL=DIRECT_STORAGE)
+    @patch("files.service.SelectelSwiftStorage._get_auth_token", return_value="test")
+    @patch("files.service.requests.put", return_value=Mock(status_code=201))
+    def test_scope_routes_only_direct_attachments_to_the_private_container(self, put, _token):
+        direct = self.upload("?scope=direct_chat")
+        other = self.upload("?preserve_original=true")
+        self.assertEqual((direct.status_code, other.status_code), (201, 201))
+        self.assertTrue(direct.json()["url"].startswith(DIRECT_STORAGE))
+        self.assertTrue(other.json()["url"].startswith(STORAGE))
+        self.assertEqual([call.args[0] for call in put.call_args_list], [direct.json()["url"], other.json()["url"]])
+
+    @override_settings(SELECTEL_DIRECT_CHAT_SWIFT_URL="")
+    @patch("files.service.requests.put")
+    def test_private_upload_does_not_fall_back_to_public_storage(self, put):
+        self.assertEqual(self.upload("?scope=direct_chat").status_code, 503)
+        put.assert_not_called()
+
+    @override_settings(SELECTEL_DIRECT_CHAT_SWIFT_URL=DIRECT_STORAGE)
+    def test_direct_message_requires_private_storage_for_new_files(self):
+        recipient = create_staff_user(prefix="direct-recipient")
+        public = UserFile.objects.create(user=self.user, link=STORAGE + "notes.txt")
+        private = UserFile.objects.create(user=self.user, link=DIRECT_STORAGE + "notes.txt")
+        with self.assertRaisesMessage(MessageValidationException, "Загрузите вложения личного чата заново."):
+            create_direct_message(author=self.user, other_user=recipient, text="", file_urls=[public.pk])
+        message, created = create_direct_message(
+            author=self.user, other_user=recipient, text="", file_urls=[private.pk]
+        )
+        self.assertTrue(created)
+        self.assertRegex(message["files"][0]["link"], r"^/chats/directs/.+/download/$")
 
 
 @override_settings(ALLOWED_HOSTS=["testserver"], SELECTEL_SWIFT_URL=STORAGE)

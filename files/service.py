@@ -19,8 +19,18 @@ User = get_user_model()
 
 
 def is_storage_url(link):
+    return _storage_url_matches(link, settings.SELECTEL_SWIFT_URL) or is_direct_chat_storage_url(link)
+
+
+def is_direct_chat_storage_url(link):
+    return _storage_url_matches(link, settings.SELECTEL_DIRECT_CHAT_SWIFT_URL)
+
+
+def _storage_url_matches(link, base_url):
+    if not base_url:
+        return False
     try:
-        base = urlsplit(settings.SELECTEL_SWIFT_URL)
+        base = urlsplit(base_url)
         target = urlsplit(link)
         path = unquote(target.path)
         prefix = unquote(base.path).rstrip("/") + "/"
@@ -92,6 +102,9 @@ class Storage(ABC):
 
 
 class SelectelSwiftStorage(Storage):
+    def __init__(self, base_url=None):
+        self.base_url = base_url
+
     def delete(self, url: str) -> Response:
         error_message = "Не удалось удалить файл из хранилища."
         if not is_storage_url(url):
@@ -146,7 +159,7 @@ class SelectelSwiftStorage(Storage):
             url: str looks like /hashedEmail/hashedFilename_hashedTime.extension
         """
         return (
-            f"{settings.SELECTEL_SWIFT_URL.rstrip('/')}/"
+            f"{(self.base_url or settings.SELECTEL_SWIFT_URL).rstrip('/')}/"
             f"{abs(hash(user.email))}"
             f"/{abs(hash(file.name))}"
             f"_{abs(hash(time.time()))}"
