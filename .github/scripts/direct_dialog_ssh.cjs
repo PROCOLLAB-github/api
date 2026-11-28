@@ -14,9 +14,11 @@ async function run() {
     .digest('hex')
     .slice(0, 24);
   const fixturePath = path.join(process.env.RUNNER_TEMP, 'direct-dialog.json');
-  const receiptPath = `${fixturePath}.selected`;
-  const selected = action === 'cleanup' && fs.existsSync(receiptPath) ? fs.readFileSync(receiptPath, 'utf8') : '0';
-  if (!/^[0-9]{1,16}$/.test(selected)) throw new Error('Invalid reported message ID');
+  const receiptPaths = ['browser-selected', 'api-selected'].map((type) => `${fixturePath}.${type}`);
+  const selectedIds = action === 'cleanup'
+    ? receiptPaths.filter((file) => fs.existsSync(file)).map((file) => fs.readFileSync(file, 'utf8'))
+    : [];
+  if (!selectedIds.every((id) => /^[1-9][0-9]{0,15}$/.test(id))) throw new Error('Invalid reported message ID');
 
   let stdout = '';
   const source = fs.readFileSync(path.join(__dirname, 'direct_dialog_fixture.py'), 'utf8').replace(/\r\n/g, '\n');
@@ -31,7 +33,7 @@ async function run() {
       `case "$(docker inspect -f '{{.Config.Image}}' "$web")" in procollab-dev-api:${sha}-*) ;; *) exit 31 ;; esac`,
       'docker exec "$web" python manage.py migrate --check >&2',
     ] : []),
-    `docker exec -e DIRECT_DIALOG_QA_KEY=${key} -e DIRECT_DIALOG_QA_ACTION=${action} -e DIRECT_DIALOG_QA_SELECTED=${selected} -i "$web" python - <<'DIRECT_DIALOG_FIXTURE'`,
+    `docker exec -e DIRECT_DIALOG_QA_KEY=${key} -e DIRECT_DIALOG_QA_ACTION=${action} -e DIRECT_DIALOG_QA_SELECTED=${selectedIds.join(',')} -i "$web" python - <<'DIRECT_DIALOG_FIXTURE'`,
     source,
     'DIRECT_DIALOG_FIXTURE',
   ].join('\n');
@@ -53,13 +55,15 @@ async function run() {
       console.log(`Prepared two synthetic dev accounts on ${sha}`);
     } else if (stdout.trim()) {
       const receipt = JSON.parse(stdout.trim().split('\n').at(-1));
-      console.log(`Removed ${receipt.cleaned} synthetic accounts; selected report saved: ${receipt.selected_report_saved}`);
-      if (selected !== '0' && !receipt.selected_report_saved) throw new Error('Expected report missing');
+      console.log(`Removed ${receipt.cleaned} synthetic accounts; selected reports saved: ${receipt.selected_reports_saved}`);
+      if (receipt.selected_reports_saved !== selectedIds.length) throw new Error('Expected report missing');
+    } else if (selectedIds.length) {
+      throw new Error('Expected fixture missing');
     }
   } finally {
     if (action === 'cleanup') {
       fs.rmSync(fixturePath, { force: true });
-      fs.rmSync(receiptPath, { force: true });
+      for (const receiptPath of receiptPaths) fs.rmSync(receiptPath, { force: true });
     }
   }
 }

@@ -16,12 +16,14 @@ const screenshots = process.argv[3];
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAwAAAAICAIAAABChommAAAAFElEQVR4nGNsYGhgIASYCKoY9ooAMHcBEEgyj5EAAAAASUVORK5CYII=', 'base64');
 const sample = randomUUID().slice(0, 8);
 const message = `Фотографии на проверку ${sample}`;
+const singleText = `Одна фотография ${sample}`;
 const retryText = `Сообщение после повтора ${sample}`;
 const actionsLabel = 'Действия с сообщением';
 const reportLabel = 'Пожаловаться на спам';
 
 const browser = await chromium.launch({ channel: 'chrome', headless: true, executablePath: process.env.DIRECT_DIALOG_CHROME });
 let retryPayload;
+let retryAttempts = 0;
 let replayObserved = false;
 let allowAck = false;
 
@@ -33,6 +35,7 @@ async function setup(user, mobile = false) {
   });
   await context.addCookies(Object.entries({ devAccessToken: user.access, devRefreshToken: user.refresh })
     .map(([name, value]) => ({ name, value, url: localUi || origin })));
+  await context.addInitScript(() => localStorage.setItem('cookieConsent', 'declined'));
   if (localUi) {
     await context.route('https://dev.procollab.ru/**', async (route) => {
       const { pathname, search } = new URL(route.request().url());
@@ -69,6 +72,7 @@ try {
         assert.match(uuid, /^[0-9a-f-]{36}$/);
         if (retryPayload) assert.deepEqual(event.content, retryPayload);
         retryPayload = event.content;
+        retryAttempts += 1;
       }
       server.send(data);
     });
@@ -101,31 +105,51 @@ try {
   );
   await desktopPage.getByRole('button', { name: 'Отправить', exact: true }).click();
 
-  const mobilePhoto = mobilePage.getByRole('button', { name: 'Открыть изображение first.png', exact: true });
+  const messageRow = (page, text) => page.locator('[id^=direct-message-]').filter({ hasText: text });
+  const photo = { name: 'Открыть изображение first.png', exact: true };
+  const mobilePhoto = messageRow(mobilePage, message).getByRole('button', photo);
   await mobilePhoto.waitFor({ timeout: 25000 });
-  await desktopPage.getByRole('button', { name: 'Открыть изображение first.png', exact: true }).waitFor();
+  const desktopPhoto = messageRow(desktopPage, message).getByRole('button', photo);
+  await Promise.all([desktopPhoto.scrollIntoViewIfNeeded(), mobilePhoto.scrollIntoViewIfNeeded()]);
+  await Promise.all([desktopPhoto.locator('img').waitFor(), mobilePhoto.locator('img').waitFor()]);
   await mkdir(screenshots, { recursive: true });
   await mobilePage.screenshot({ path: join(screenshots, 'mobile-images.png') });
   await mobilePhoto.click();
   await mobilePage.getByRole('button', { name: 'Следующее изображение', exact: true }).click();
   const download = mobilePage.waitForEvent('download');
   await mobilePage.getByText('Скачать', { exact: true }).click();
-  assert.equal((await download).suggestedFilename(), 'second.png');
-  await mobilePage.keyboard.press('Escape');
+  const original = await download;
+  assert.equal(original.suggestedFilename(), 'second.png');
+  assert.deepEqual(await readFile(await original.path()), png);
+  const gallery = mobilePage.getByRole('dialog');
+  await gallery.getByRole('button', { name: 'Закрыть', exact: true }).click();
+  await gallery.waitFor({ state: 'hidden' });
+
+  await mobilePage.getByRole('textbox', { name: 'Сообщение', exact: true }).fill(singleText);
+  await mobilePage.locator('input[type=file]').setInputFiles({ name: 'single.png', mimeType: 'image/png', buffer: png });
+  await mobilePage.getByRole('button', { name: 'Отправить', exact: true }).click();
+  const singlePhoto = messageRow(desktopPage, singleText).getByRole('button', {
+    name: 'Открыть изображение single.png', exact: true,
+  });
+  await singlePhoto.scrollIntoViewIfNeeded();
+  await singlePhoto.locator('img').waitFor();
   await composer.fill(retryText);
+  await desktopPage.locator('input[type=file]').setInputFiles({ name: 'retry.png', mimeType: 'image/png', buffer: png });
   await desktopPage.getByRole('button', { name: 'Отправить', exact: true }).click();
   await mobilePage.getByText(retryText, { exact: true }).waitFor({ timeout: 15000 });
   const retry = desktopPage.getByRole('button', { name: 'Повторить', exact: true });
   await retry.waitFor({ timeout: 20000 });
   allowAck = true;
   await retry.click();
-  await retry.waitFor({ state: 'hidden', timeout: 10000 });
+  const confirmed = desktopPage.locator('[id^=direct-message-]').getByText(retryText, { exact: true });
+  await confirmed.waitFor({ timeout: 10000 });
   assert.equal(replayObserved, true);
+  assert.equal(retryAttempts, 2);
   for (const page of [desktopPage, mobilePage]) {
     assert.equal(await page.getByText(retryText, { exact: true }).count(), 1);
   }
 
-  const selected = mobilePage.locator('[id^=direct-message-]').filter({ hasText: message });
+  const selected = messageRow(mobilePage, message);
   const id = (await selected.getAttribute('id')).replace('direct-message-', '');
   await selected.getByRole('button', { name: actionsLabel, exact: true }).click();
   await mobilePage.getByText(reportLabel, { exact: true }).click();
@@ -139,7 +163,7 @@ try {
   const report = await response;
   assert.equal(report.status(), 204);
   assert.equal(String(report.request().postDataJSON().message_id), id);
-  await writeFile(`${fixturePath}.selected`, id, { mode: 0o600 });
+  await writeFile(`${fixturePath}.browser-selected`, id, { mode: 0o600 });
   console.log('Chrome desktop/mobile: two images, download, lost ACK and deduplicated retry, exact selected report.');
 } finally {
   await browser.close();

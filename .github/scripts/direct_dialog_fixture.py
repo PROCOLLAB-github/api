@@ -12,6 +12,7 @@ django.setup()
 
 from django.contrib.auth import get_user_model  # noqa: E402
 from django.db import transaction  # noqa: E402
+from django.utils import timezone  # noqa: E402
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken  # noqa: E402
 
 from chats.models import DirectChat, DirectChatSpamReport  # noqa: E402
@@ -20,7 +21,7 @@ from files.service import SelectelSwiftStorage  # noqa: E402
 
 key = os.environ["DIRECT_DIALOG_QA_KEY"]
 action = os.environ["DIRECT_DIALOG_QA_ACTION"]
-selected_id = int(os.environ.get("DIRECT_DIALOG_QA_SELECTED") or 0)
+selected_ids = [int(part) for part in os.environ.get("DIRECT_DIALOG_QA_SELECTED", "").split(",") if part]
 if not re.fullmatch(r"[a-f0-9]{24}", key) or action not in ("prepare", "cleanup"):
     raise SystemExit("Invalid direct chat acceptance arguments")
 
@@ -36,6 +37,7 @@ if action == "prepare":
                 last_name="Проверка чата",
                 is_active=True,
                 onboarding_stage=None,
+                verification_notice_acknowledged_at=timezone.now(),
             )
             user.set_unusable_password()
             user.save(update_fields=["password"])
@@ -53,9 +55,9 @@ else:
         if len(accounts) == 2:
             chat_id = DirectChat.get_chat_id_from_users(*accounts)
             chats = DirectChat.objects.filter(pk=chat_id)
-        selected_saved = selected_id > 0 and DirectChatSpamReport.objects.filter(
-            chat__in=chats, message_id=selected_id, reporter__in=accounts
-        ).exists()
+        saved_ids = set(DirectChatSpamReport.objects.filter(
+            chat__in=chats, message_id__in=selected_ids, reporter__in=accounts
+        ).values_list("message_id", flat=True))
         storage = SelectelSwiftStorage()
         for upload in UserFile.objects.filter(user__in=accounts):
             storage.delete(upload.link)
@@ -63,4 +65,4 @@ else:
         with transaction.atomic():
             chats.delete()
             users.filter(pk__in=[user.pk for user in accounts]).delete()
-        print(json.dumps({"cleaned": len(accounts), "selected_report_saved": selected_saved}))
+        print(json.dumps({"cleaned": len(accounts), "selected_reports_saved": len(saved_ids)}))

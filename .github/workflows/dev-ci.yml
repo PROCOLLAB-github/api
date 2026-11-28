@@ -497,15 +497,15 @@ jobs:
           DEV_SERVER_PASSWORD: ${{ secrets.DEV_SERVER_PASSWORD }}
           DEV_SSH_HOST_KEY_SHA256: ${{ vars.DEV_SSH_HOST_KEY_SHA256 }}
         run: node .github/scripts/direct_dialog_ssh.cjs prepare
-      - name: Verify live API, WebSocket and storage
-        run: node .github/scripts/direct_dialog_smoke.mjs "$RUNNER_TEMP/direct-dialog.json"
       - name: Verify desktop and mobile Chrome
-        if: success() || failure()
         env:
           NODE_PATH: ${{ runner.temp }}/direct-dialog-tools/node_modules
+        run: node .github/scripts/direct_dialog_browser.mjs "$RUNNER_TEMP/direct-dialog.json" "$RUNNER_TEMP/direct-dialog-screenshots"
+      - name: Verify live API, WebSocket and storage
+        if: success() || failure()
         run: |
           test -f "$RUNNER_TEMP/direct-dialog.json"
-          node .github/scripts/direct_dialog_browser.mjs "$RUNNER_TEMP/direct-dialog.json" "$RUNNER_TEMP/direct-dialog-screenshots"
+          node .github/scripts/direct_dialog_smoke.mjs "$RUNNER_TEMP/direct-dialog.json"
       - name: Verify saved report and remove synthetic DEV data
         if: always()
         env: *direct-dialog-ssh

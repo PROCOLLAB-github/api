@@ -60,10 +60,11 @@ let viewer;
 try {
   const urls = [await upload('direct-qa-first.png'), await upload('direct-qa-second.png')];
   const storageResponses = await Promise.all(urls.map((url) =>
-    fetch(url, { method: 'HEAD', redirect: 'manual', signal: AbortSignal.timeout(10000) })
+    fetch(url, { redirect: 'manual', signal: AbortSignal.timeout(10000) })
   ));
-  const nonPrivate = storageResponses.filter(({ status }) => status >= 200 && status < 400).length;
+  const nonPrivate = storageResponses.filter(({ status }) => ![401, 403, 404].includes(status)).length;
   console.log(`Selectel direct access: ${storageResponses.map(({ status }) => status).join(', ')}`);
+  await Promise.all(storageResponses.map(({ body }) => body?.cancel()));
   author = await socket(sender);
   viewer = await socket(recipient);
   const original = payload(`Проверка ${marker}`, urls);
@@ -93,9 +94,9 @@ try {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ message_id: first.id }),
   });
-  await writeFile(`${path}.selected`, String(first.id), { mode: 0o600 });
+  await writeFile(`${path}.api-selected`, String(first.id), { mode: 0o600 });
   console.log(JSON.stringify({ selected: first.id, images: first.files.length, idempotent: true, report: 204 }));
-  assert.equal(nonPrivate, 0, 'Selectel returned direct access to the test attachments');
+  assert.equal(nonPrivate, 0, 'Selectel privacy check requires a denied or missing response');
 } finally {
   author?.close();
   viewer?.close();
